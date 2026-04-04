@@ -1,7 +1,10 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
+import DangerButton from '@/Components/DangerButton.vue';
+import Modal from '@/Components/Modal.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 const props = defineProps({
     company: Object,
@@ -10,12 +13,22 @@ const props = defineProps({
     templates: Array,
 });
 
+const showDeleteModal = ref(false);
+
 const attach = (templateId) => {
     router.post(route('admin.companies.templates.attach', [props.company.id, templateId]));
 };
 
 const detach = (templateId) => {
     router.delete(route('admin.companies.templates.detach', [props.company.id, templateId]));
+};
+
+const deleteCompany = () => {
+    router.delete(route('admin.companies.destroy', props.company.id), {
+        onFinish: () => {
+            showDeleteModal.value = false;
+        },
+    });
 };
 </script>
 
@@ -87,5 +100,26 @@ const detach = (templateId) => {
                 <li v-for="u in company.users" :key="u.id">{{ u.name }} — {{ u.email }} ({{ u.role }})</li>
             </ul>
         </div>
+
+        <div class="mt-8 rounded-xl border border-red-200 bg-red-50/50 p-6">
+            <h3 class="font-semibold text-red-800">Excluir empresa</h3>
+            <p class="mt-2 text-sm text-red-900/90">
+                Remove a empresa, usuários vinculados a ela e os dados associados (pesquisas, assinaturas, etc.). Esta ação não pode ser desfeita.
+            </p>
+            <DangerButton class="mt-4" type="button" @click="showDeleteModal = true">Excluir empresa</DangerButton>
+        </div>
+
+        <Modal :show="showDeleteModal" @close="showDeleteModal = false">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900">Confirmar exclusão</h2>
+                <p class="mt-2 text-sm text-gray-600">
+                    Tem certeza que deseja excluir <strong>{{ company.name }}</strong>? Todos os dados desta empresa serão apagados permanentemente.
+                </p>
+                <div class="mt-6 flex justify-end gap-2">
+                    <SecondaryButton type="button" @click="showDeleteModal = false">Cancelar</SecondaryButton>
+                    <DangerButton type="button" @click="deleteCompany">Sim, excluir</DangerButton>
+                </div>
+            </div>
+        </Modal>
     </AdminLayout>
 </template>

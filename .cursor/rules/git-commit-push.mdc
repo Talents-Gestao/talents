@@ -1,0 +1,17 @@
+---
+description: Após alterações no código, fazer commit e push no Git
+alwaysApply: true
+---
+
+# Commit e push no Git
+
+Quando concluíres uma tarefa que **alterou ficheiros** no projeto (código, config, assets versionados):
+
+1. **`git status`** — rever o que mudou.
+2. **`git add`** apenas o que pertence ao pedido (não incluir `.env`, segredos nem artefatos ignorados).
+3. **`git commit -m "mensagem"`** — mensagem clara em português ou inglês, no imperativo (ex.: `fix: remove porta 80 do nginx no compose de produção`).
+4. **`git push`** para o remote da branch atual (ex.: `git push origin $(git branch --show-current)`).
+
+**Exceções:** não fazer commit se o utilizador pedir explicitamente para não commitar, ou se não houver alterações. Se o push falhar (rede, auth), tenta resolver (credenciais, remoto) e informa o utilizador com o erro.
+
+O repositório Git deste trabalho é a pasta **`talents/`** (não confundir com a pasta pai `talents8` se existir só um nível sem Git).

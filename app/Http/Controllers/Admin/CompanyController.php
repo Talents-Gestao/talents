@@ -201,7 +201,10 @@ class CompanyController extends Controller
 
     public function destroy(Company $company): RedirectResponse
     {
-        $company->delete();
+        DB::transaction(function () use ($company) {
+            User::query()->where('company_id', $company->id)->delete();
+            $company->delete();
+        });
 
         return redirect()->route('admin.companies.index')->with('success', 'Empresa removida.');
     }
