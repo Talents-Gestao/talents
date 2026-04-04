@@ -52,6 +52,10 @@ const flashSuccess = computed(() => page.props.flash?.success);
                 Status:
                 <span class="font-semibold text-talents-800">{{ statusLabel(complaint.status) }}</span>
             </p>
+            <p class="mt-1 text-sm text-gray-600">
+                Setor:
+                <span class="text-gray-900">{{ complaint.department_name || 'Não informado' }}</span>
+            </p>
 
             <div
                 v-if="flashSuccess"

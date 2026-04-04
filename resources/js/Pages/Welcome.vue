@@ -50,7 +50,7 @@ defineProps({
                         Menos improviso. Mais clareza sobre o clima e os riscos na sua empresa.
                     </h1>
                     <p class="mt-6 text-lg text-gray-600">
-                        O Talents ajuda você a ouvir o time com segurança, enxergar onde investir em bem-estar e
+                        A Talents ajuda você a ouvir o time com segurança, enxergar onde investir em bem-estar e
                         documentar o que a lei exige — sem planilhas intermináveis nem relatórios que ninguém usa.
                     </p>
                     <div class="mt-8 flex flex-wrap gap-4">

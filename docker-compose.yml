@@ -10,6 +10,8 @@ services:
     # Desenvolvimento: sem entrypoint de produção (migrate/cache a cada subida)
     entrypoint: ["php-fpm", "-F"]
     working_dir: /var/www/html
+    env_file:
+      - .env
     volumes:
       - ./:/var/www/html
     networks:
@@ -69,6 +71,8 @@ services:
     container_name: talents-queue
     restart: unless-stopped
     working_dir: /var/www/html
+    env_file:
+      - .env
     environment:
       CONTAINER_ROLE: queue
     command: php artisan queue:work --sleep=3 --tries=3
@@ -79,6 +83,17 @@ services:
     depends_on:
       - postgres
       - redis
+
+  # Node apenas para npm (build / dev). Não sobe com `docker compose up` — use o profile `tools`.
+  node:
+    image: node:22-alpine
+    profiles: [tools]
+    container_name: talents-node
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - talents
 
 networks:
   talents:

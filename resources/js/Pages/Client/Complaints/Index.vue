@@ -41,6 +41,7 @@ const categoryLabel = (c) => {
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-gray-700">Protocolo</th>
                         <th class="px-4 py-3 text-left font-medium text-gray-700">Tipo</th>
+                        <th class="px-4 py-3 text-left font-medium text-gray-700">Setor</th>
                         <th class="px-4 py-3 text-left font-medium text-gray-700">Status</th>
                         <th class="px-4 py-3 text-left font-medium text-gray-700">Data</th>
                         <th class="px-4 py-3"></th>
@@ -50,6 +51,7 @@ const categoryLabel = (c) => {
                     <tr v-for="c in complaints.data" :key="c.id">
                         <td class="px-4 py-3 font-mono text-xs">{{ c.protocol }}</td>
                         <td class="px-4 py-3">{{ categoryLabel(c.category) }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ c.department_name || '—' }}</td>
                         <td class="px-4 py-3">{{ statusLabel(c.status) }}</td>
                         <td class="px-4 py-3 text-gray-600">{{ c.created_at }}</td>
                         <td class="px-4 py-3 text-right">

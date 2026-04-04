@@ -2,52 +2,83 @@
 
 Plataforma SaaS em **Laravel 12**, **Inertia.js** e **Vue 3** para conformidade com a NR-1 (riscos psicossociais): painel administrativo Talents, painel por empresa, pesquisas anônimas, dashboards, insights, plano de ação e relatórios PDF.
 
-## Requisitos locais
+## Desenvolvimento local (somente Docker)
 
-- PHP 8.2+ e Composer
-- Node.js 20+
-- PostgreSQL 16 e Redis (ou use Docker)
+**Não use PHP, Composer ou Node instalados no Windows/macOS/Linux host** para este projeto: banco, Redis, filas e extensões PHP estão definidos para rodar dentro dos containers. Todos os comandos abaixo assumem o diretório `talents/` e [Docker Compose](https://docs.docker.com/compose/) v2.
 
-## Instalação rápida (sem Docker)
-
-```bash
-cd talents
-composer install
-cp .env.example .env
-php artisan key:generate
-# Ajuste DB_* no .env para PostgreSQL ou use sqlite para testes
-php artisan migrate --seed
-npm install
-npm run build
-php artisan serve
-```
-
-### Usuários de demonstração (após `migrate --seed`)
-
-| Perfil | E-mail | Senha |
-|--------|--------|--------|
-| Admin Talents | admin@talents.local | password |
-| RH empresa demo | rh@empresa.local | password |
-
-## Docker (desenvolvimento / Coolify)
-
-Serviços: `app` (PHP-FPM), `nginx`, `postgres`, `redis`, `queue`.
-
-O arquivo **`.env`** já vem preparado para Docker (`DB_HOST=postgres`, `REDIS_HOST=redis`, `APP_URL=http://localhost:8080`, filas e cache em Redis).
+### Subir a stack
 
 ```bash
 cd talents
 docker compose up -d --build
-docker compose exec app composer install
-docker compose exec app php artisan migrate --seed --force
-npm install && npm run build
 ```
+
+### Composer e Artisan (container `app`)
+
+```bash
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate --seed
+docker compose exec app php artisan test
+```
+
+### Frontend (npm só no container `node`, profile `tools`)
+
+Não rode `npm` na máquina host. Use o serviço `node`:
+
+```bash
+docker compose --profile tools run --rm node npm ci
+docker compose --profile tools run --rm node npm run build
+```
+
+Vite em modo desenvolvimento (HMR), expondo a porta 5173:
+
+```bash
+docker compose --profile tools run --rm -p 5173:5173 node sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
+```
+
+Ajuste `APP_URL` no `.env` conforme o endereço que você usa no navegador (ex.: `http://localhost:8080`). Se o Vite apontar assets para outra origem, configure as variáveis do Vite/Laravel conforme a [documentação do Laravel Vite](https://laravel.com/docs/vite#running-the-development-server-in-docker).
+
+### Acesso
 
 - **Aplicação:** http://localhost:8080 (`APP_PORT` no `.env`)
 - **PostgreSQL no host:** porta `5433` (`FORWARD_DB_PORT`) — usuário/senha `talents` / `secret`, banco `talents`
 - **Redis no host:** porta `6380` (`FORWARD_REDIS_PORT`)
 
-O build do Vite (`npm run build`) pode ser feito na máquina host; o `public/build` é montado no container.
+O arquivo **`.env`** para Docker local costuma usar `DB_HOST=postgres`, `REDIS_HOST=redis`, `APP_URL=http://localhost:8080`.
+
+### Consulta CNPJ (ReceitaWS)
+
+1. Defina `RECEITAWS_TOKEN` no `.env` (veja `.env.example`).
+2. Se aparecer *«Consulta CNPJ não está configurada no servidor»*, o cache de config pode estar antigo. Limpe e reinicie o PHP:
+
+   ```bash
+   docker compose exec app php artisan config:clear
+   docker compose restart app
+   ```
+
+   Evite versionar `bootstrap/cache/config.php`; em produção, após alterar `.env`, rode `config:clear` ou gere o cache de novo com `php artisan config:cache` **somente** quando o token já estiver definido.
+
+### Configurações (Mia / IA e SMTP)
+
+No admin, **Configurações** (`/admin/settings`) concentra a IA (Mia) e o envio de e-mail (SMTP). Com SMTP habilitado no painel, os valores do banco substituem `MAIL_*` do `.env` após o boot — útil no Coolify. O atalho antigo `/admin/ai-settings` redireciona para essa página. Ao cadastrar uma **nova empresa**, é criado o primeiro usuário `company_admin` e enviado um e-mail com link para definir senha (depende de SMTP ou do driver `log` em desenvolvimento).
+
+Chaves de API e senhas SMTP são guardadas **criptografadas** com a `APP_KEY`. Se ela mudar (novo deploy sem o mesmo segredo), salve de novo no painel ou use o diagnóstico:
+
+```bash
+docker compose exec app php artisan app:check-encryption
+```
+
+### Usuários de demonstração (após `migrate --seed`)
+
+| Perfil | E-mail | Senha |
+|--------|--------|-------|
+| Admin Talents | admin@talents.local | password |
+| RH empresa demo | rh@empresa.local | password |
+
+## Produção (Coolify)
+
+Use `docker-compose.prod.yml` no Coolify. Variáveis de ambiente e segredos ficam no painel do Coolify, não no repositório.
 
 ## Rotas principais
 
@@ -60,12 +91,6 @@ O build do Vite (`npm run build`) pode ser feito na máquina host; o `public/bui
 ## Marca e tema
 
 Logo em `public/images/logo.png`. Paleta Tailwind `talents-*` definida em `tailwind.config.js`.
-
-## Testes
-
-```bash
-php artisan test
-```
 
 ## Licença
 

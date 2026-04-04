@@ -79,8 +79,7 @@ class SurveyResultsController extends Controller
         $aiSetting = AiSetting::current();
         $aiEnabled = $aiSetting
             && $aiSetting->is_enabled
-            && $aiSetting->api_key !== null
-            && $aiSetting->api_key !== '';
+            && $aiSetting->safeApiKey() !== null;
 
         $latestAi = AiAnalysis::query()
             ->where('survey_id', $survey->id)
@@ -119,7 +118,7 @@ class SurveyResultsController extends Controller
         $survey = $this->findSurvey($request, $survey);
 
         $setting = AiSetting::current();
-        if (! $setting || ! $setting->is_enabled || ! $setting->api_key) {
+        if (! $setting || ! $setting->is_enabled || $setting->safeApiKey() === null) {
             return back()->with('error', 'A análise por IA não está disponível.');
         }
 

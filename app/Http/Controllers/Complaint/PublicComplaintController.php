@@ -10,6 +10,7 @@ use App\Services\ComplaintAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,10 +24,15 @@ class PublicComplaintController extends Controller
     public function create(string $token): Response
     {
         $company = $this->findCompany($token);
+        $company->load(['departments' => fn ($q) => $q->orderBy('name')]);
 
         return Inertia::render('Complaint/Submit', [
             'token' => $token,
             'companyName' => $company->name,
+            'departments' => $company->departments->map(fn ($d) => [
+                'id' => $d->id,
+                'name' => $d->name,
+            ])->values()->all(),
             'categories' => [
                 'assedio_moral' => 'Assédio moral',
                 'assedio_sexual' => 'Assédio sexual',
@@ -48,6 +54,11 @@ class PublicComplaintController extends Controller
             'is_anonymous' => ['required', 'boolean'],
             'reporter_name' => ['nullable', 'string', 'max:255'],
             'reporter_email' => ['nullable', 'email', 'max:255'],
+            'department_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('departments', 'id')->where('company_id', $company->id),
+            ],
         ]);
 
         if (! $data['is_anonymous']) {
@@ -59,6 +70,7 @@ class PublicComplaintController extends Controller
 
         $complaint = Complaint::create([
             'company_id' => $company->id,
+            'department_id' => $data['department_id'] ?? null,
             'protocol' => (string) Str::uuid(),
             'category' => $data['category'],
             'description' => $data['description'],
@@ -134,7 +146,10 @@ class PublicComplaintController extends Controller
         $complaint = Complaint::query()
             ->where('company_id', $company->id)
             ->where('protocol', $protocol)
-            ->with(['messages' => fn ($q) => $q->orderBy('id')])
+            ->with([
+                'department',
+                'messages' => fn ($q) => $q->orderBy('id'),
+            ])
             ->firstOrFail();
 
         ComplaintAuditService::log($complaint, 'viewed_by_reporter', $request, null);
@@ -146,12 +161,13 @@ class PublicComplaintController extends Controller
                 'protocol' => $complaint->protocol,
                 'category' => $complaint->category,
                 'status' => $complaint->status,
-                'description' => $complaint->description,
+                'department_name' => $complaint->department?->name,
+                'description' => $complaint->safeDecrypt('description', Complaint::UNREADABLE_ENCRYPTED_PLACEHOLDER),
                 'created_at' => $complaint->created_at?->toIso8601String(),
                 'messages' => $complaint->messages->map(fn ($m) => [
                     'id' => $m->id,
                     'author_type' => $m->author_type,
-                    'content' => $m->content,
+                    'content' => $m->safeDecrypt('content', Complaint::UNREADABLE_ENCRYPTED_PLACEHOLDER),
                     'created_at' => $m->created_at?->toIso8601String(),
                 ]),
             ],

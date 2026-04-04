@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Concerns\SafelyDecryptsAttributes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ComplaintMessage extends Model
 {
+    use SafelyDecryptsAttributes;
+
     public const AUTHOR_REPORTER = 'reporter';
 
     public const AUTHOR_COMPANY = 'company';

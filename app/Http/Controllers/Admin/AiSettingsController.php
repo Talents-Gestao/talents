@@ -7,35 +7,12 @@ use App\Models\AiSetting;
 use App\Services\Nr1AiAnalyzer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class AiSettingsController extends Controller
 {
-    public function edit(): Response
+    public function edit(): RedirectResponse
     {
-        $row = AiSetting::query()->first();
-        if (! $row) {
-            $row = AiSetting::query()->create([
-                'provider' => 'openai',
-                'model' => 'gpt-4o-mini',
-                'is_enabled' => false,
-                'max_tokens' => 2000,
-                'temperature' => 0.30,
-            ]);
-        }
-
-        return Inertia::render('Admin/AiSettings/Edit', [
-            'settings' => [
-                'id' => $row->id,
-                'provider' => $row->provider,
-                'model' => $row->model,
-                'is_enabled' => $row->is_enabled,
-                'max_tokens' => $row->max_tokens,
-                'temperature' => (float) $row->temperature,
-                'api_key_set' => $row->api_key !== null && $row->api_key !== '',
-            ],
-        ]);
+        return redirect()->route('admin.settings.edit', ['tab' => 'ia']);
     }
 
     public function update(Request $request): RedirectResponse
@@ -67,7 +44,7 @@ class AiSettingsController extends Controller
         $row->updated_by = $request->user()->id;
         $row->save();
 
-        return redirect()->route('admin.ai-settings.edit')->with('success', 'Configurações de IA salvas.');
+        return redirect()->route('admin.settings.edit', ['tab' => 'ia'])->with('success', 'Configurações de IA salvas.');
     }
 
     public function test(Request $request, Nr1AiAnalyzer $analyzer): RedirectResponse
@@ -90,10 +67,11 @@ class AiSettingsController extends Controller
         $key = $data['api_key'] ?? null;
         if ($key === null || $key === '') {
             $existing = AiSetting::current();
-            if (! $existing?->api_key) {
-                return back()->with('error', 'Informe a chave da API para testar.');
+            $plain = $existing?->safeApiKey();
+            if ($plain === null || $plain === '') {
+                return back()->with('error', 'Informe a chave da API para testar (ou salve uma chave válida se a anterior foi criptografada com outra APP_KEY).');
             }
-            $setting->api_key = $existing->api_key;
+            $setting->api_key = $plain;
         } else {
             $setting->api_key = $key;
         }

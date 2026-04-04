@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ComplaintReporterNotificationMail;
 use App\Models\Complaint;
 use App\Models\ComplaintMessage;
 use App\Services\ComplaintAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,6 +24,7 @@ class ComplaintController extends Controller
     {
         $complaints = Complaint::query()
             ->where('company_id', $this->companyId($request))
+            ->with('department')
             ->orderByDesc('id')
             ->paginate(20)
             ->through(fn (Complaint $c) => [
@@ -30,6 +33,7 @@ class ComplaintController extends Controller
                 'category' => $c->category,
                 'status' => $c->status,
                 'is_anonymous' => $c->is_anonymous,
+                'department_name' => $c->department?->name,
                 'created_at' => $c->created_at?->toIso8601String(),
             ]);
 
@@ -42,7 +46,10 @@ class ComplaintController extends Controller
     {
         abort_unless($complaint->company_id === $this->companyId($request), 404);
 
-        $complaint->load(['messages' => fn ($q) => $q->orderBy('id')]);
+        $complaint->load([
+            'department',
+            'messages' => fn ($q) => $q->orderBy('id'),
+        ]);
 
         ComplaintAuditService::log($complaint, 'viewed_by_company', $request, $request->user());
 
@@ -52,16 +59,17 @@ class ComplaintController extends Controller
                 'protocol' => $complaint->protocol,
                 'category' => $complaint->category,
                 'status' => $complaint->status,
+                'department_name' => $complaint->department?->name,
                 'is_anonymous' => $complaint->is_anonymous,
-                'reporter_name' => $complaint->is_anonymous ? null : $complaint->reporter_name,
-                'reporter_email' => $complaint->is_anonymous ? null : $complaint->reporter_email,
-                'description' => $complaint->description,
+                'reporter_name' => $complaint->is_anonymous ? null : $complaint->safeDecrypt('reporter_name', Complaint::UNREADABLE_ENCRYPTED_PLACEHOLDER),
+                'reporter_email' => $complaint->is_anonymous ? null : $complaint->safeDecrypt('reporter_email', Complaint::UNREADABLE_ENCRYPTED_PLACEHOLDER),
+                'description' => $complaint->safeDecrypt('description', Complaint::UNREADABLE_ENCRYPTED_PLACEHOLDER),
                 'created_at' => $complaint->created_at?->toIso8601String(),
                 'resolved_at' => $complaint->resolved_at?->toIso8601String(),
                 'messages' => $complaint->messages->map(fn ($m) => [
                     'id' => $m->id,
                     'author_type' => $m->author_type,
-                    'content' => $m->content,
+                    'content' => $m->safeDecrypt('content', Complaint::UNREADABLE_ENCRYPTED_PLACEHOLDER),
                     'created_at' => $m->created_at?->toIso8601String(),
                     'user' => $m->user ? ['name' => $m->user->name] : null,
                 ]),
@@ -102,6 +110,10 @@ class ComplaintController extends Controller
             'to' => $data['status'],
         ]);
 
+        if ($previous !== $data['status']) {
+            $this->notifyReporterIfIdentified($complaint, 'status', ['status' => $data['status']]);
+        }
+
         return back()->with('success', 'Status atualizado.');
     }
 
@@ -122,6 +134,27 @@ class ComplaintController extends Controller
 
         ComplaintAuditService::log($complaint, 'message_added_by_company', $request, $request->user());
 
+        $this->notifyReporterIfIdentified($complaint, 'message');
+
         return back()->with('success', 'Resposta registrada.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    private function notifyReporterIfIdentified(Complaint $complaint, string $eventType, array $meta = []): void
+    {
+        if ($complaint->is_anonymous) {
+            return;
+        }
+
+        $email = $complaint->reporter_email;
+        if (! is_string($email) || $email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        $complaint->loadMissing('company');
+
+        Mail::to($email)->send(new ComplaintReporterNotificationMail($complaint, $eventType, $meta));
     }
 }

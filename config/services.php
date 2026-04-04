@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'receitaws' => [
+        'token' => env('RECEITAWS_TOKEN'),
+        'base_url' => env('RECEITAWS_BASE_URL', 'https://receitaws.com.br/v1'),
+        'timeout' => (int) env('RECEITAWS_TIMEOUT', 60),
+    ],
+
 ];

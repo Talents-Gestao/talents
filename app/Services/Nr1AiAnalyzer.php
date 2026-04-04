@@ -116,7 +116,7 @@ PROMPT;
      */
     private function callOpenAi(AiSetting $setting, string $userContent): array
     {
-        $key = $setting->api_key;
+        $key = $setting->safeApiKey();
         if ($key === null || $key === '') {
             throw new RuntimeException('API key não configurada.');
         }
@@ -156,7 +156,7 @@ PROMPT;
      */
     private function callAnthropic(AiSetting $setting, string $userContent): array
     {
-        $key = $setting->api_key;
+        $key = $setting->safeApiKey();
         if ($key === null || $key === '') {
             throw new RuntimeException('API key não configurada.');
         }
@@ -223,7 +223,7 @@ PROMPT;
      */
     private function testOpenAi(AiSetting $setting): array
     {
-        $key = $setting->api_key;
+        $key = $setting->safeApiKey();
         if ($key === null || $key === '') {
             return ['ok' => false, 'message' => 'Informe a chave da API.'];
         }
@@ -252,7 +252,7 @@ PROMPT;
      */
     private function testAnthropic(AiSetting $setting): array
     {
-        $key = $setting->api_key;
+        $key = $setting->safeApiKey();
         if ($key === null || $key === '') {
             return ['ok' => false, 'message' => 'Informe a chave da API.'];
         }

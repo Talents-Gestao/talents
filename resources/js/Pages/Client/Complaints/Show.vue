@@ -75,7 +75,11 @@ const statusLabel = (s) => {
             <div class="space-y-6 lg:col-span-2">
                 <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
                     <h3 class="font-semibold text-gray-900">Relato</h3>
-                    <p class="mt-2 text-sm text-gray-600">Tipo: {{ complaint.category }} · {{ statusLabel(complaint.status) }}</p>
+                    <p class="mt-2 text-sm text-gray-600">
+                        Tipo: {{ complaint.category }} · {{ statusLabel(complaint.status) }}
+                        <span v-if="complaint.department_name"> · Setor: {{ complaint.department_name }}</span>
+                        <span v-else> · Setor: não informado</span>
+                    </p>
                     <p v-if="!complaint.is_anonymous" class="mt-2 text-sm text-gray-600">
                         Contato: {{ complaint.reporter_name }} — {{ complaint.reporter_email }}
                     </p>

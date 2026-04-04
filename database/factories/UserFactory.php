@@ -53,4 +53,12 @@ class UserFactory extends Factory
             'company_id' => null,
         ]);
     }
+
+    public function companyAdmin(?int $companyId = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::CompanyAdmin,
+            'company_id' => $companyId,
+        ]);
+    }
 }

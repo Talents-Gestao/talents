@@ -10,9 +10,16 @@ class Company extends Model
 {
     protected $fillable = [
         'name',
+        'contact_email',
         'legal_name',
         'cnpj',
         'segment',
+        'address_street',
+        'address_neighborhood',
+        'address_city',
+        'address_state',
+        'address_zip',
+        'tax_regime',
         'employee_count_estimate',
         'is_active',
         'complaints_public_token',

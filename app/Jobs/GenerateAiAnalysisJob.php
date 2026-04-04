@@ -41,7 +41,7 @@ class GenerateAiAnalysisJob implements ShouldQueue
             }
 
             $setting = AiSetting::current();
-            if (! $setting || ! $setting->is_enabled || ! $setting->api_key) {
+            if (! $setting || ! $setting->is_enabled || $setting->safeApiKey() === null) {
                 Log::warning('GenerateAiAnalysisJob skipped: IA desabilitada ou sem chave.', ['survey_id' => $this->surveyId]);
 
                 return;

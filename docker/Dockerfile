@@ -1,6 +1,14 @@
 # syntax=docker/dockerfile:1
 
 # -----------------------------------------------------------------------------
+# Stage 0: dependências PHP (Ziggy é importado pelo Vite em resources/js/app.js)
+# -----------------------------------------------------------------------------
+FROM composer:2 AS composer-deps
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --optimize-autoloader
+
+# -----------------------------------------------------------------------------
 # Stage 1: frontend (Vite / Vue / PWA)
 # -----------------------------------------------------------------------------
 FROM node:22-alpine AS frontend
@@ -10,6 +18,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+COPY --from=composer-deps /app/vendor ./vendor
 RUN npm run build
 
 # -----------------------------------------------------------------------------

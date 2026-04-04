@@ -34,9 +34,16 @@ const detach = (templateId) => {
             <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
                 <h3 class="font-semibold text-talents-700">Dados</h3>
                 <dl class="mt-4 space-y-2 text-sm">
+                    <div><dt class="text-gray-500">E-mail (contato / administrador)</dt><dd>{{ company.contact_email || '—' }}</dd></div>
                     <div><dt class="text-gray-500">Razão social</dt><dd>{{ company.legal_name || '—' }}</dd></div>
                     <div><dt class="text-gray-500">CNPJ</dt><dd>{{ company.cnpj || '—' }}</dd></div>
+                    <div><dt class="text-gray-500">Logradouro</dt><dd>{{ company.address_street || '—' }}</dd></div>
+                    <div><dt class="text-gray-500">Bairro</dt><dd>{{ company.address_neighborhood || '—' }}</dd></div>
+                    <div><dt class="text-gray-500">Município</dt><dd>{{ company.address_city || '—' }}</dd></div>
+                    <div><dt class="text-gray-500">UF</dt><dd>{{ company.address_state || '—' }}</dd></div>
+                    <div><dt class="text-gray-500">CEP</dt><dd>{{ company.address_zip || '—' }}</dd></div>
                     <div><dt class="text-gray-500">Segmento</dt><dd>{{ company.segment || '—' }}</dd></div>
+                    <div><dt class="text-gray-500">Regime de tributação</dt><dd>{{ company.tax_regime || '—' }}</dd></div>
                 </dl>
                 <div v-if="complaintsPublicUrl" class="mt-4 border-t border-gray-100 pt-4">
                     <h4 class="text-xs font-semibold uppercase text-gray-500">Canal de denúncias (público)</h4>

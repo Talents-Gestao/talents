@@ -6,11 +6,16 @@ const props = defineProps({
     token: String,
     companyName: String,
     categories: Object,
+    departments: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const form = useForm({
     category: '',
     description: '',
+    department_id: '',
     is_anonymous: true,
     reporter_name: '',
     reporter_email: '',
@@ -48,6 +53,18 @@ const needsIdentity = computed(() => !form.is_anonymous);
                         <option v-for="(label, key) in categories" :key="key" :value="key">{{ label }}</option>
                     </select>
                     <p v-if="form.errors.category" class="mt-1 text-sm text-red-600">{{ form.errors.category }}</p>
+                </div>
+
+                <div v-if="departments.length">
+                    <label class="block text-sm font-medium text-gray-700">Setor / departamento (opcional)</label>
+                    <select
+                        v-model="form.department_id"
+                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    >
+                        <option value="">Não informar</option>
+                        <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+                    </select>
+                    <p v-if="form.errors.department_id" class="mt-1 text-sm text-red-600">{{ form.errors.department_id }}</p>
                 </div>
 
                 <div>

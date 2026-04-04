@@ -40,10 +40,10 @@ const navLinkClass = (active) =>
                                 Templates NR1
                             </Link>
                             <Link
-                                :href="route('admin.ai-settings.edit')"
-                                :class="navLinkClass(route().current('admin.ai-settings.*'))"
+                                :href="route('admin.settings.edit')"
+                                :class="navLinkClass(route().current('admin.settings.edit') || route().current('admin.ai-settings.edit'))"
                             >
-                                Mia (IA)
+                                Configurações
                             </Link>
                             <Link
                                 :href="route('admin.training.index')"
@@ -88,7 +88,7 @@ const navLinkClass = (active) =>
                 <ResponsiveNavLink :href="route('admin.companies.index')">Empresas</ResponsiveNavLink>
                 <ResponsiveNavLink :href="route('admin.plans.index')">Planos</ResponsiveNavLink>
                 <ResponsiveNavLink :href="route('admin.survey-templates.index')">Templates</ResponsiveNavLink>
-                <ResponsiveNavLink :href="route('admin.ai-settings.edit')">Mia (IA)</ResponsiveNavLink>
+                <ResponsiveNavLink :href="route('admin.settings.edit')">Configurações</ResponsiveNavLink>
                 <ResponsiveNavLink :href="route('admin.training.index')">Capacitação (em breve)</ResponsiveNavLink>
             </div>
         </nav>

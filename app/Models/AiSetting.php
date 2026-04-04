@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Concerns\SafelyDecryptsAttributes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AiSetting extends Model
 {
+    use SafelyDecryptsAttributes;
+
     protected $fillable = [
         'provider',
         'api_key',
@@ -35,5 +38,23 @@ class AiSetting extends Model
     public static function current(): ?self
     {
         return static::query()->orderBy('id')->first();
+    }
+
+    /**
+     * Há valor persistido no banco (não descriptografa).
+     */
+    public function hasStoredApiKey(): bool
+    {
+        return $this->hasStoredEncrypted('api_key');
+    }
+
+    /**
+     * Chave descriptografada para uso em runtime; null se vazia ou se o ciphertext não bate com APP_KEY.
+     */
+    public function safeApiKey(): ?string
+    {
+        $key = $this->safeDecrypt('api_key');
+
+        return ($key !== null && $key !== '') ? $key : null;
     }
 }
