@@ -12,7 +12,15 @@ class ActionPlan extends Model
         'company_id',
         'survey_id',
         'status',
+        'admin_published_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'admin_published_at' => 'datetime',
+        ];
+    }
 
     public function company(): BelongsTo
     {

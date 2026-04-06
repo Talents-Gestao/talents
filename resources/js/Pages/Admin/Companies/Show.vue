@@ -95,6 +95,29 @@ const deleteCompany = () => {
         </div>
 
         <div class="mt-8 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
+            <h3 class="font-semibold text-talents-700">Pesquisas e plano de ação</h3>
+            <p class="mt-2 text-sm text-gray-600">
+                Edite o plano de ação de cada pesquisa; ele só aparece para a empresa após você preencher e salvar os itens.
+            </p>
+            <ul class="mt-4 space-y-2 text-sm">
+                <li
+                    v-for="s in company.surveys || []"
+                    :key="s.id"
+                    class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 py-2 last:border-0"
+                >
+                    <span class="font-medium text-gray-900">{{ s.title }}</span>
+                    <Link
+                        :href="route('admin.companies.surveys.action-plan.edit', [company.id, s.id])"
+                        class="font-medium text-talents-700 hover:underline"
+                    >
+                        Plano de ação
+                    </Link>
+                </li>
+                <li v-if="!(company.surveys || []).length" class="text-gray-500">Nenhuma pesquisa cadastrada.</li>
+            </ul>
+        </div>
+
+        <div class="mt-8 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
             <h3 class="font-semibold text-talents-700">Usuários</h3>
             <ul class="mt-4 space-y-1 text-sm">
                 <li v-for="u in company.users" :key="u.id">{{ u.name }} — {{ u.email }} ({{ u.role }})</li>

@@ -152,7 +152,12 @@ class CompanyController extends Controller
 
     public function show(Company $company): Response
     {
-        $company->load(['subscriptions.plan', 'surveyTemplates', 'users']);
+        $company->load([
+            'subscriptions.plan',
+            'surveyTemplates',
+            'users',
+            'surveys' => fn ($q) => $q->orderByDesc('id'),
+        ]);
 
         return Inertia::render('Admin/Companies/Show', [
             'company' => $company,

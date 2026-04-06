@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\ActionPlanItem;
 use App\Models\Survey;
-use App\Services\ActionPlanGenerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -31,19 +30,16 @@ class ActionPlanController extends Controller
 
         $plan = $survey->actionPlans()->with('items')->latest()->first();
 
+        $visible =
+            $plan !== null
+            && $plan->admin_published_at !== null
+            && $plan->items->isNotEmpty();
+
         return Inertia::render('Client/Surveys/ActionPlan', [
             'survey' => $survey,
-            'plan' => $plan,
+            'plan' => $visible ? $plan : null,
+            'actionPlanLocked' => ! $visible,
         ]);
-    }
-
-    public function generate(Request $request, Survey $survey, ActionPlanGenerator $generator): RedirectResponse
-    {
-        $survey = $this->findSurvey($request, $survey);
-
-        $generator->generate($survey);
-
-        return redirect()->route('client.surveys.action-plan', $survey)->with('success', 'Plano de ação gerado.');
     }
 
     public function updateItem(Request $request, ActionPlanItem $item): RedirectResponse

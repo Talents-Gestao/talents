@@ -363,9 +363,9 @@ onUnmounted(() => {
                                 >
                             </summary>
                             <p class="mt-2 text-xs leading-relaxed text-gray-500">
-                                A Mia gera orientações a partir dos dados agregados desta pesquisa. Não substitui avaliação por profissionais
-                                habilitados nem o cumprimento das obrigações legais da empresa. Use como apoio à decisão e ao programa de
-                                gerenciamento de riscos psicossociais.
+                                A Mia avalia o cenário a partir dos dados agregados desta pesquisa; não substitui parecer com especialista
+                                nem plano de ação personalizado. Não substitui avaliação por profissionais habilitados nem o cumprimento das
+                                obrigações legais da empresa. Use como apoio à decisão e ao programa de gerenciamento de riscos psicossociais.
                             </p>
                         </details>
                         <div class="mt-4 flex flex-wrap gap-2">
@@ -414,6 +414,50 @@ onUnmounted(() => {
                 </div>
 
                 <p v-else class="mt-4 text-sm text-gray-500">Nenhuma análise ainda — peça à Mia quando quiser.</p>
+            </div>
+        </div>
+
+        <div
+            v-if="aiEnabled && overall"
+            class="relative mb-8 overflow-hidden rounded-2xl border-2 border-talents-200 bg-gradient-to-br from-talents-50/90 via-white to-amber-50/40 p-6 shadow-md"
+        >
+            <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-talents-100/30 via-transparent to-transparent" />
+            <div class="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div class="flex min-w-0 flex-1 gap-4">
+                    <div
+                        class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-talents-200 bg-white/90 text-talents-800 shadow-sm"
+                        aria-hidden="true"
+                    >
+                        <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="1.75"
+                                d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+                            />
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="text-lg font-semibold text-talents-900">Parecer técnico com especialista</h3>
+                        <p class="mt-2 text-sm leading-relaxed text-gray-600">
+                            Tenha acesso ao parecer técnico completo, com recomendações personalizadas de um especialista em saúde mental
+                            organizacional e alinhamento à NR-1 — disponível em planos superiores.
+                        </p>
+                    </div>
+                </div>
+                <a
+                    href="https://wa.me/5511952512752"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                >
+                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.123 1.035 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
+                        />
+                    </svg>
+                    Falar com especialista
+                </a>
             </div>
         </div>
 
