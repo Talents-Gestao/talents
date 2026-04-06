@@ -22,6 +22,13 @@ docker compose exec app php artisan migrate --seed
 docker compose exec app php artisan test
 ```
 
+### Testes e checklist antes do público
+
+- A suíte **PHPUnit** cobre autenticação, autorização admin/cliente, pesquisa pública (janela de datas e throttle), denúncias e acessos cruzados entre empresas (IDOR).
+- **Rate limiting** das rotas públicas (`POST` em pesquisa e denúncia): valores em [`config/public_rate_limits.php`](config/public_rate_limits.php), registrados em `AppServiceProvider`.
+- Para demonstração ou go-live, use o checklist manual [`SMOKE_CHECKLIST.md`](SMOKE_CHECKLIST.md).
+- **E2E (opcional):** não há Playwright/Cypress no projeto; após estabilizar os testes acima, avalie Laravel Dusk ou Playwright para um fluxo crítico (ex.: login no `/client` e abertura de resultados), se precisar de regressão em navegador real.
+
 ### Frontend (npm só no container `node`, profile `tools`)
 
 Não rode `npm` na máquina host. Use o serviço `node`:
@@ -87,6 +94,7 @@ Use `docker-compose.prod.yml` no Coolify. Variáveis de ambiente e segredos fica
 - `/admin/*` — Painel Talents (super admin)
 - `/client/*` — Painel da empresa
 - `/pesquisa/{token}` — Pesquisa anônima (link da campanha)
+- `/denuncia/{token}` — Canal de denúncia da empresa (token público)
 
 ## Marca e tema
 

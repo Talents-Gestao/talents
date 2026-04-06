@@ -23,13 +23,28 @@ class Company extends Model
         'employee_count_estimate',
         'is_active',
         'complaints_public_token',
+        'rhid_base_url',
+        'rhid_email',
+        'rhid_password',
+        'rhid_domain',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'rhid_password' => 'encrypted',
         ];
+    }
+
+    public function rhidAuditLogs(): HasMany
+    {
+        return $this->hasMany(RhidAuditLog::class);
+    }
+
+    public function rhidConfigured(): bool
+    {
+        return filled($this->rhid_email) && filled($this->rhid_password);
     }
 
     public function users(): HasMany

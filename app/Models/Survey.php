@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class Survey extends Model
 {
@@ -65,5 +66,34 @@ class Survey extends Model
     public function aiAnalyses(): HasMany
     {
         return $this->hasMany(AiAnalysis::class);
+    }
+
+    /**
+     * Regra única para exibição e envio da pesquisa pública (evita POST direto fora da janela).
+     *
+     * @return 'inactive'|'not_started'|'ended'|null null = aceita participação
+     */
+    public function publicParticipationClosureReason(?Carbon $at = null): ?string
+    {
+        $at ??= now();
+
+        if ($this->status !== 'active') {
+            return 'inactive';
+        }
+
+        if ($this->starts_at && $at->lt($this->starts_at)) {
+            return 'not_started';
+        }
+
+        if ($this->ends_at && $at->gt($this->ends_at)) {
+            return 'ended';
+        }
+
+        return null;
+    }
+
+    public function acceptsPublicResponses(?Carbon $at = null): bool
+    {
+        return $this->publicParticipationClosureReason($at) === null;
     }
 }

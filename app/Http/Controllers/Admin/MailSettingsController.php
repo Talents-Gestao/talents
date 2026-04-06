@@ -15,13 +15,16 @@ class MailSettingsController extends Controller
     {
         $data = $request->validate([
             'host' => ['nullable', 'string', 'max:255'],
-            'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            // 110/143/993/995 são POP/IMAP — não funcionam como SMTP
+            'port' => ['nullable', 'integer', 'min:1', 'max:65535', Rule::notIn([110, 143, 993, 995])],
             'encryption' => ['nullable', 'string', Rule::in(['tls', 'ssl', ''])],
             'username' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'max:500'],
             'from_address' => ['nullable', 'string', 'max:255', 'email'],
             'from_name' => ['nullable', 'string', 'max:255'],
             'is_enabled' => ['boolean'],
+        ], [
+            'port.not_in' => 'Esta porta é de IMAP/POP, não de envio SMTP. Use em geral 587 (TLS) ou 465 (SSL).',
         ]);
 
         $row = MailSetting::query()->first();

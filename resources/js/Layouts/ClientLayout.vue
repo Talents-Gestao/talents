@@ -54,6 +54,13 @@ const showingNavigationDropdown = ref(false);
                                 Capacitação
                                 <span class="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">Em breve</span>
                             </NavLink>
+                            <NavLink
+                                v-if="$page.props.auth.user?.role === 'company_admin'"
+                                :href="route('client.rhid.compliance.index')"
+                                :active="route().current('client.rhid.*')"
+                            >
+                                RHID / Ponto
+                            </NavLink>
                         </div>
                     </div>
                     <div class="hidden sm:flex sm:items-center">
@@ -83,6 +90,12 @@ const showingNavigationDropdown = ref(false);
                 <ResponsiveNavLink :href="route('client.positions.index')">Cargos</ResponsiveNavLink>
                 <ResponsiveNavLink :href="route('client.complaints.index')">Denúncias</ResponsiveNavLink>
                 <ResponsiveNavLink :href="route('client.training.index')">Capacitação (em breve)</ResponsiveNavLink>
+                <ResponsiveNavLink
+                    v-if="$page.props.auth.user?.role === 'company_admin'"
+                    :href="route('client.rhid.compliance.index')"
+                >
+                    RHID / Ponto
+                </ResponsiveNavLink>
             </div>
         </nav>
 

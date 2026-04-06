@@ -1,8 +1,13 @@
 <?php
 
+use App\Http\Middleware\EnsureCompanyAccess;
+use App\Http\Middleware\EnsureCompanyAdmin;
+use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -22,13 +27,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            HandleInertiaRequests::class,
+            AddLinkHeadersForPreloadedAssets::class,
         ]);
 
         $middleware->alias([
-            'super_admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
-            'company' => \App\Http\Middleware\EnsureCompanyAccess::class,
+            'super_admin' => EnsureSuperAdmin::class,
+            'company' => EnsureCompanyAccess::class,
+            'company_admin' => EnsureCompanyAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -32,21 +32,15 @@ class PublicSurveyController extends Controller
             ->with(['template.sections.questions', 'company.departments'])
             ->firstOrFail();
 
-        if ($survey->status !== 'active') {
+        $closedReason = $survey->publicParticipationClosureReason();
+        if ($closedReason !== null) {
             return Inertia::render('Survey/Closed', [
-                'message' => 'Esta pesquisa não está ativa no momento.',
-            ]);
-        }
-
-        $now = now();
-        if ($survey->starts_at && $now->lt($survey->starts_at)) {
-            return Inertia::render('Survey/Closed', [
-                'message' => 'Esta pesquisa ainda não iniciou.',
-            ]);
-        }
-        if ($survey->ends_at && $now->gt($survey->ends_at)) {
-            return Inertia::render('Survey/Closed', [
-                'message' => 'Esta pesquisa já foi encerrada.',
+                'message' => match ($closedReason) {
+                    'inactive' => 'Esta pesquisa não está ativa no momento.',
+                    'not_started' => 'Esta pesquisa ainda não iniciou.',
+                    'ended' => 'Esta pesquisa já foi encerrada.',
+                    default => 'Esta pesquisa não está ativa no momento.',
+                },
             ]);
         }
 
@@ -89,7 +83,7 @@ class PublicSurveyController extends Controller
             ->with(['template.sections.questions'])
             ->firstOrFail();
 
-        if ($survey->status !== 'active') {
+        if (! $survey->acceptsPublicResponses()) {
             abort(403);
         }
 

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class PasswordResetLinkController extends Controller
 {
@@ -36,9 +37,19 @@ class PasswordResetLinkController extends Controller
         // We will send the password reset link to this user. Once we have attempted
         // to send the link, we will examine the response then see the message we
         // need to show to the user. Finally, we'll send out a proper response.
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
+        try {
+            $status = Password::sendResetLink(
+                $request->only('email')
+            );
+        } catch (TransportExceptionInterface $e) {
+            report($e);
+
+            throw ValidationException::withMessages([
+                'email' => [
+                    'Não foi possível enviar o e-mail de recuperação. Verifique as configurações SMTP em Configurações → E-mail (porta 587 com TLS ou 465 com SSL; não use 995/POP3) ou tente novamente mais tarde.',
+                ],
+            ]);
+        }
 
         if ($status == Password::RESET_LINK_SENT) {
             return back()->with('status', __($status));
