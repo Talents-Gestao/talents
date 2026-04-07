@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Mail\CompanyAdminInvitationMail;
 use App\Models\Company;
+use App\Models\MethodologyFormTemplate;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\SurveyTemplate;
@@ -153,19 +154,22 @@ class CompanyController extends Controller
     public function show(Company $company): Response
     {
         $company->load([
-            'subscriptions.plan',
+            'subscriptions.plan.modules',
             'surveyTemplates',
+            'methodologyFormTemplates',
             'users',
             'surveys' => fn ($q) => $q->orderByDesc('id'),
         ]);
 
         return Inertia::render('Admin/Companies/Show', [
             'company' => $company,
+            'planIncludesMetodologia' => $company->hasMethodologyEnabled(),
             'complaintsPublicUrl' => $company->complaints_public_token
                 ? url('/denuncia/'.$company->complaints_public_token)
                 : null,
             'plans' => Plan::query()->where('is_active', true)->get(),
             'templates' => SurveyTemplate::query()->where('is_active', true)->get(['id', 'title']),
+            'methodologyTemplates' => MethodologyFormTemplate::query()->where('is_active', true)->orderBy('title')->get(['id', 'title']),
         ]);
     }
 

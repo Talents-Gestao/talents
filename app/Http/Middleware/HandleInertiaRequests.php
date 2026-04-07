@@ -21,6 +21,19 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
 
+        $companyPayload = null;
+        if ($user && $user->company_id) {
+            $company = $user->relationLoaded('company')
+                ? $user->company
+                : $user->company()->first();
+
+            if ($company) {
+                $companyPayload = array_merge($company->toArray(), [
+                    'has_methodology' => $company->hasMethodologyEnabled(),
+                ]);
+            }
+        }
+
         return [
             ...parent::share($request),
             'auth' => [
@@ -31,9 +44,7 @@ class HandleInertiaRequests extends Middleware
                         'email' => $user->email,
                         'role' => $user->role->value,
                         'company_id' => $user->company_id,
-                        'company' => $user->relationLoaded('company')
-                            ? $user->company
-                            : $user->company()->first(),
+                        'company' => $companyPayload,
                     ]
                     : null,
             ],

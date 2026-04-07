@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(base_path('routes/client.php'));
             Route::middleware('web')->group(base_path('routes/survey.php'));
             Route::middleware('web')->group(base_path('routes/complaint.php'));
+            Route::middleware('web')->group(base_path('routes/methodology.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Company extends Model
 {
@@ -81,6 +82,40 @@ class Company extends Model
     {
         return $this->belongsToMany(SurveyTemplate::class, 'company_survey_template')
             ->withTimestamps();
+    }
+
+    public function methodology(): HasOne
+    {
+        return $this->hasOne(CompanyMethodology::class);
+    }
+
+    public function methodologyFormTemplates(): BelongsToMany
+    {
+        return $this->belongsToMany(MethodologyFormTemplate::class, 'company_methodology_form_template')
+            ->withTimestamps();
+    }
+
+    public function methodologySurveys(): HasMany
+    {
+        return $this->hasMany(MethodologySurvey::class);
+    }
+
+    /**
+     * Metodologia Talents disponível quando a assinatura ativa inclui o módulo "metodologia" no plano.
+     */
+    public function hasMethodologyEnabled(): bool
+    {
+        $subscription = $this->subscriptions()
+            ->where('status', 'active')
+            ->with('plan.modules')
+            ->latest()
+            ->first();
+
+        if (! $subscription?->plan) {
+            return false;
+        }
+
+        return $subscription->plan->modules->contains('key', Module::KEY_METODOLOGIA);
     }
 
     public function activeSubscription(): ?Subscription

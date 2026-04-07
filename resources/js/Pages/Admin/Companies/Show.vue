@@ -8,9 +8,11 @@ import { ref } from 'vue';
 
 const props = defineProps({
     company: Object,
+    planIncludesMetodologia: { type: Boolean, default: false },
     complaintsPublicUrl: { type: String, default: null },
     plans: Array,
     templates: Array,
+    methodologyTemplates: { type: Array, default: () => [] },
 });
 
 const showDeleteModal = ref(false);
@@ -21,6 +23,14 @@ const attach = (templateId) => {
 
 const detach = (templateId) => {
     router.delete(route('admin.companies.templates.detach', [props.company.id, templateId]));
+};
+
+const attachMethodologyTemplate = (templateId) => {
+    router.post(route('admin.companies.methodology-templates.attach', [props.company.id, templateId]));
+};
+
+const detachMethodologyTemplate = (templateId) => {
+    router.delete(route('admin.companies.methodology-templates.detach', [props.company.id, templateId]));
 };
 
 const deleteCompany = () => {
@@ -72,6 +82,47 @@ const deleteCompany = () => {
                     <li v-if="!company.subscriptions?.length">Nenhuma assinatura.</li>
                 </ul>
             </div>
+        </div>
+
+        <div class="mt-8 rounded-xl border border-talents-200 bg-white p-6 text-gray-900 shadow-sm">
+            <h3 class="font-semibold text-talents-700">Metodologia Talents</h3>
+            <p class="mt-2 text-sm text-gray-600">
+                O acesso no portal da empresa é definido pelo <strong>plano</strong>: inclua o módulo <strong>Metodologia Talents</strong> em
+                <Link :href="route('admin.plans.index')" class="font-medium text-talents-700 hover:underline">Planos</Link>
+                (assinatura ativa).
+            </p>
+            <p
+                class="mt-3 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium"
+                :class="planIncludesMetodologia ? 'bg-emerald-50 text-emerald-900' : 'bg-amber-50 text-amber-900'"
+            >
+                {{ planIncludesMetodologia ? 'Plano ativo inclui Metodologia Talents.' : 'Plano ativo não inclui Metodologia Talents — ajuste o plano da empresa.' }}
+            </p>
+
+            <h4 class="mt-6 text-sm font-semibold text-gray-800">Templates de satisfação (etapa 02)</h4>
+            <ul class="mt-3 space-y-2 text-sm">
+                <li v-for="t in methodologyTemplates" :key="'m-' + t.id" class="flex items-center justify-between gap-2">
+                    <span>{{ t.title }}</span>
+                    <span>
+                        <button
+                            v-if="!(company.methodology_form_templates || []).some((x) => x.id === t.id)"
+                            type="button"
+                            class="font-medium text-talents-700 hover:underline"
+                            @click="attachMethodologyTemplate(t.id)"
+                        >
+                            Vincular
+                        </button>
+                        <button
+                            v-else
+                            type="button"
+                            class="font-medium text-red-600 hover:underline"
+                            @click="detachMethodologyTemplate(t.id)"
+                        >
+                            Remover
+                        </button>
+                    </span>
+                </li>
+                <li v-if="!methodologyTemplates.length" class="text-gray-500">Nenhum template cadastrado. Crie em Admin → Metodologia → Templates.</li>
+            </ul>
         </div>
 
         <div class="mt-8 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">

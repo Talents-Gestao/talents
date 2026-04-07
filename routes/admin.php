@@ -5,6 +5,9 @@ use App\Http\Controllers\Admin\AiSettingsController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\MailSettingsController;
+use App\Http\Controllers\Admin\MethodologyCompanyController;
+use App\Http\Controllers\Admin\MethodologyController as AdminMethodologyController;
+use App\Http\Controllers\Admin\MethodologyFormTemplateController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SurveyTemplateController;
@@ -34,4 +37,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::put('ai-settings', [AiSettingsController::class, 'update'])->name('ai-settings.update');
     Route::post('ai-settings/test', [AiSettingsController::class, 'test'])->name('ai-settings.test');
     Route::get('capacitacao', [AdminTrainingController::class, 'index'])->name('training.index');
+
+    Route::get('metodologia', [AdminMethodologyController::class, 'index'])->name('metodologia.index');
+    Route::post('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'attachTemplate'])->name('companies.methodology-templates.attach');
+    Route::delete('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'detachTemplate'])->name('companies.methodology-templates.detach');
+    Route::resource('methodology-templates', MethodologyFormTemplateController::class)
+        ->parameters(['methodology-templates' => 'template']);
 });

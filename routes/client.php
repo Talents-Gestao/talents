@@ -6,6 +6,9 @@ use App\Http\Controllers\Client\DashboardController as ClientDashboardController
 use App\Http\Controllers\Client\DepartmentController;
 use App\Http\Controllers\Client\ExportController;
 use App\Http\Controllers\Client\ImportController;
+use App\Http\Controllers\Client\MethodologyController as ClientMethodologyController;
+use App\Http\Controllers\Client\MethodologySurveyController;
+use App\Http\Controllers\Client\MethodologySurveyResultsController;
 use App\Http\Controllers\Client\PositionController;
 use App\Http\Controllers\Client\ReportController;
 use App\Http\Controllers\Client\RhidApiController;
@@ -33,6 +36,14 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
     Route::get('surveys/{survey}/export/csv', [ExportController::class, 'csv'])->name('surveys.export.csv');
 
     Route::get('capacitacao', [TrainingController::class, 'index'])->name('training.index');
+
+    Route::prefix('metodologia')->name('metodologia.')->group(function () {
+        Route::get('/', [ClientMethodologyController::class, 'index'])->name('index');
+        Route::get('pesquisa-satisfacao/{survey}/results', [MethodologySurveyResultsController::class, 'show'])->name('pesquisa-satisfacao.results');
+        Route::get('pesquisa-satisfacao/{survey}/export/csv', [MethodologySurveyResultsController::class, 'exportCsv'])->name('pesquisa-satisfacao.export.csv');
+        Route::resource('pesquisa-satisfacao', MethodologySurveyController::class)
+            ->parameters(['pesquisa-satisfacao' => 'survey']);
+    });
     Route::get('complaints', [ComplaintController::class, 'index'])->name('complaints.index');
     Route::get('complaints/{complaint}', [ComplaintController::class, 'show'])->name('complaints.show');
     Route::patch('complaints/{complaint}/status', [ComplaintController::class, 'updateStatus'])->name('complaints.status');

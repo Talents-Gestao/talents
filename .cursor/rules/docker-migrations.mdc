@@ -1,0 +1,31 @@
+---
+description: Ambiente Docker — migrations e comandos Artisan no container
+alwaysApply: true
+---
+
+# Docker: migrations e alterações de base de dados
+
+Este projeto corre em **Docker** (`docker-compose.yml` na raiz de `talents/`). Serviços relevantes: **`app`** (PHP/Laravel, `container_name: talents-app`), **`postgres`**, **`redis`**, **`nginx`**.
+
+## Obrigatório
+
+- **Não** assumir PHP/Composer/Artisan instalados no host Windows para executar migrations, seeders ou comandos que acedem à base de dados.
+- **Executar** `php artisan` (migrate, migrate:fresh, db:seed, tinker, etc.) **dentro do container da aplicação**, a partir da pasta do projeto no host:
+
+```bash
+docker compose exec app php artisan migrate
+docker compose exec app php artisan migrate --force
+docker compose exec app php artisan db:seed
+```
+
+(Equivalente: `docker exec talents-app php artisan ...` se o stack já estiver a correr.)
+
+## Alterações solicitadas
+
+- **Migrations, seeders, factories** e qualquer alteração de schema/dados que dependa do Laravel: criar ou editar ficheiros no repositório e aplicar com os comandos acima **via Docker**.
+- Se o utilizador pedir para “correr migrations” ou “atualizar a BD”, usar **`docker compose exec app`** (ou documentar claramente se os contentores não estiverem disponíveis no ambiente do agente).
+
+## Notas
+
+- Garantir que os contentores estão ativos: `docker compose up -d` (na pasta `talents/`).
+- Em CI/produção (ex.: Coolify), o fluxo pode ser outro; esta regra foca o **desenvolvimento local com o compose deste repositório**.

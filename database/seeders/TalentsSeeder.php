@@ -27,6 +27,14 @@ class TalentsSeeder extends Seeder
             ['name' => 'NR-1 Riscos psicossociais', 'description' => 'Pesquisas e PGR']
         );
 
+        $metodologia = Module::query()->firstOrCreate(
+            ['key' => Module::KEY_METODOLOGIA],
+            [
+                'name' => 'Metodologia Talents',
+                'description' => 'Jornada de diagnóstico, pesquisa de satisfação e etapas da metodologia.',
+            ]
+        );
+
         $plan = Plan::query()->firstOrCreate(
             ['slug' => 'nr1-pro'],
             [
@@ -38,7 +46,7 @@ class TalentsSeeder extends Seeder
             ]
         );
 
-        $plan->modules()->syncWithoutDetaching([$nr1->id]);
+        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id]);
 
         $admin = User::query()->firstOrCreate(
             ['email' => 'admin@talents.local'],

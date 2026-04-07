@@ -33,6 +33,21 @@ const showingNavigationDropdown = ref(false);
                                 Pesquisas NR1
                             </NavLink>
                             <NavLink
+                                v-if="$page.props.auth.user?.company?.has_methodology"
+                                :href="route('client.metodologia.index')"
+                                :active="route().current('client.metodologia.*')"
+                                class="inline-flex items-center gap-1.5"
+                            >
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.856 2.65m.119-3.44a48.39 48.39 0 00-8.803-4.107 48.005 48.005 0 00-8.734 4.842m18.063-2.61a48.29 48.29 0 00-8.09 5.34M6.31 6.31A48.29 48.29 0 018.13 4.031m-4.01 9.349a48.005 48.005 0 004.108 8.41"
+                                    />
+                                </svg>
+                                Metodologia Talents
+                            </NavLink>
+                            <NavLink
                                 :href="route('client.departments.index')"
                                 :active="route().current('client.departments.*')"
                             >
@@ -86,6 +101,9 @@ const showingNavigationDropdown = ref(false);
             <div v-if="showingNavigationDropdown" class="sm:hidden border-t px-4 pb-4">
                 <ResponsiveNavLink :href="route('client.dashboard')">Painel</ResponsiveNavLink>
                 <ResponsiveNavLink :href="route('client.surveys.index')">Pesquisas</ResponsiveNavLink>
+                <ResponsiveNavLink v-if="$page.props.auth.user?.company?.has_methodology" :href="route('client.metodologia.index')">
+                    Metodologia Talents
+                </ResponsiveNavLink>
                 <ResponsiveNavLink :href="route('client.departments.index')">Setores</ResponsiveNavLink>
                 <ResponsiveNavLink :href="route('client.positions.index')">Cargos</ResponsiveNavLink>
                 <ResponsiveNavLink :href="route('client.complaints.index')">Denúncias</ResponsiveNavLink>
