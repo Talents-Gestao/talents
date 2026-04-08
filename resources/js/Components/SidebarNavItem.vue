@@ -33,21 +33,16 @@ const closeMobileSidebar = inject('closeMobileSidebar', null);
 
 const linkClasses = computed(() => {
     const base =
-        'group relative flex items-center gap-3 rounded-lg border-l-2 py-2 text-sm font-medium transition duration-150 ease-in-out';
-    if (props.collapsed) {
-        if (props.active) {
-            return `${base} justify-center border-transparent bg-talents-50/90 px-2 text-talents-800`;
-        }
-        return `${base} justify-center border-transparent px-2 text-zinc-600 hover:bg-zinc-100/90 hover:text-zinc-900`;
-    }
+        'group flex items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition duration-150 ease-in-out';
+    const padding = props.collapsed ? 'justify-center px-2' : 'px-3';
     if (props.active) {
-        return `${base} border-talents-600 bg-talents-50/80 px-3 text-talents-800`;
+        return `${base} ${padding} bg-talents-50 text-talents-700`;
     }
-    return `${base} border-transparent px-3 text-zinc-600 hover:border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900`;
+    return `${base} ${padding} text-gray-600 hover:bg-talents-50 hover:text-talents-900`;
 });
 
 const iconClasses = computed(() =>
-    props.active ? 'text-talents-700' : 'text-zinc-400 group-hover:text-zinc-700',
+    props.active ? 'text-talents-600' : 'text-gray-400 group-hover:text-talents-600',
 );
 
 const onNavigate = () => {
@@ -68,7 +63,7 @@ const onNavigate = () => {
         <span v-if="!collapsed" class="min-w-0 flex-1 truncate">{{ label }}</span>
         <span
             v-if="badge && !collapsed"
-            class="ml-auto shrink-0 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-900 ring-1 ring-amber-200/80"
+            class="ml-auto shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900"
         >
             {{ badge }}
         </span>

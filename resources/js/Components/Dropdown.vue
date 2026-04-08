@@ -12,7 +12,7 @@ const props = defineProps({
     },
     contentClasses: {
         type: String,
-        default: 'py-1 bg-white ring-1 ring-zinc-200/80',
+        default: 'py-1 bg-white',
     },
     /** Abre o painel acima do gatilho (rodapé da sidebar). */
     openUpward: {
@@ -121,12 +121,12 @@ function toggle() {
 
             <div
                 v-show="open"
-                class="fixed z-[210] rounded-lg shadow-sm"
+                class="fixed z-[210] rounded-md shadow-lg"
                 :style="menuStyle"
                 role="menu"
             >
                 <div
-                    class="rounded-lg"
+                    class="rounded-md ring-1 ring-black ring-opacity-5"
                     :class="contentClasses"
                 >
                     <slot name="content" />
