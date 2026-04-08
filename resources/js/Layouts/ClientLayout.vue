@@ -1,132 +1,131 @@
 <script setup>
-import { ref } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
+import SidebarLayout from '@/Components/SidebarLayout.vue';
+import SidebarNavItem from '@/Components/SidebarNavItem.vue';
 import { Link } from '@inertiajs/vue3';
-
-const showingNavigationDropdown = ref(false);
+import {
+    AcademicCapIcon,
+    BriefcaseIcon,
+    BuildingOfficeIcon,
+    ClipboardDocumentListIcon,
+    FingerPrintIcon,
+    HomeIcon,
+    RocketLaunchIcon,
+    ShieldExclamationIcon,
+    UserCircleIcon,
+} from '@heroicons/vue/24/outline';
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-100">
-        <nav class="border-b border-talents-200 bg-white shadow-sm">
-            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="flex h-16 justify-between">
-                    <div class="flex items-center gap-8">
-                        <Link :href="route('client.dashboard')" class="flex shrink-0 items-center">
-                            <ApplicationLogo class="h-10" />
-                        </Link>
-                        <div class="hidden space-x-6 sm:flex">
-                            <NavLink
-                                :href="route('client.dashboard')"
-                                :active="route().current('client.dashboard')"
-                            >
-                                Painel
-                            </NavLink>
-                            <NavLink
-                                :href="route('client.surveys.index')"
-                                :active="route().current('client.surveys.*')"
-                            >
-                                Pesquisas NR1
-                            </NavLink>
-                            <NavLink
-                                v-if="$page.props.auth.user?.company?.has_methodology"
-                                :href="route('client.metodologia.index')"
-                                :active="route().current('client.metodologia.*')"
-                                class="inline-flex items-center gap-1.5"
-                            >
-                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.856 2.65m.119-3.44a48.39 48.39 0 00-8.803-4.107 48.005 48.005 0 00-8.734 4.842m18.063-2.61a48.29 48.29 0 00-8.09 5.34M6.31 6.31A48.29 48.29 0 018.13 4.031m-4.01 9.349a48.005 48.005 0 004.108 8.41"
-                                    />
-                                </svg>
-                                Metodologia Talents
-                            </NavLink>
-                            <NavLink
-                                :href="route('client.departments.index')"
-                                :active="route().current('client.departments.*')"
-                            >
-                                Setores
-                            </NavLink>
-                            <NavLink
-                                :href="route('client.positions.index')"
-                                :active="route().current('client.positions.*')"
-                            >
-                                Cargos
-                            </NavLink>
-                            <NavLink
-                                :href="route('client.complaints.index')"
-                                :active="route().current('client.complaints.*')"
-                            >
-                                Denúncias
-                            </NavLink>
-                            <NavLink :href="route('client.training.index')" :active="route().current('client.training.*')">
-                                Capacitação
-                                <span class="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">Em breve</span>
-                            </NavLink>
-                            <NavLink
-                                v-if="$page.props.auth.user?.role === 'company_admin'"
-                                :href="route('client.rhid.compliance.index')"
-                                :active="route().current('client.rhid.*')"
-                            >
-                                RHID / Ponto
-                            </NavLink>
-                        </div>
-                    </div>
-                    <div class="hidden sm:flex sm:items-center">
-                        <Dropdown align="right" width="48">
-                            <template #trigger>
-                                <button
-                                    type="button"
-                                    class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-talents-900"
-                                >
-                                    {{ $page.props.auth.user.name }}
-                                </button>
-                            </template>
-                            <template #content>
-                                <DropdownLink :href="route('profile.edit')">Perfil</DropdownLink>
-                                <DropdownLink :href="route('logout')" method="post" as="button">
-                                    Sair
-                                </DropdownLink>
-                            </template>
-                        </Dropdown>
-                    </div>
-                </div>
-            </div>
-            <div v-if="showingNavigationDropdown" class="sm:hidden border-t px-4 pb-4">
-                <ResponsiveNavLink :href="route('client.dashboard')">Painel</ResponsiveNavLink>
-                <ResponsiveNavLink :href="route('client.surveys.index')">Pesquisas</ResponsiveNavLink>
-                <ResponsiveNavLink v-if="$page.props.auth.user?.company?.has_methodology" :href="route('client.metodologia.index')">
-                    Metodologia Talents
-                </ResponsiveNavLink>
-                <ResponsiveNavLink :href="route('client.departments.index')">Setores</ResponsiveNavLink>
-                <ResponsiveNavLink :href="route('client.positions.index')">Cargos</ResponsiveNavLink>
-                <ResponsiveNavLink :href="route('client.complaints.index')">Denúncias</ResponsiveNavLink>
-                <ResponsiveNavLink :href="route('client.training.index')">Capacitação (em breve)</ResponsiveNavLink>
-                <ResponsiveNavLink
-                    v-if="$page.props.auth.user?.role === 'company_admin'"
-                    :href="route('client.rhid.compliance.index')"
-                >
-                    RHID / Ponto
-                </ResponsiveNavLink>
-            </div>
-        </nav>
+    <SidebarLayout shell-class="min-h-screen bg-slate-100">
+        <template #logo="{ collapsed }">
+            <Link
+                :href="route('client.dashboard')"
+                class="flex min-w-0 max-w-full items-center justify-center lg:justify-start"
+            >
+                <ApplicationLogo
+                    :class="
+                        collapsed
+                            ? '!h-7 !max-h-7 !max-w-[2.75rem] w-auto object-contain object-center'
+                            : '!h-8 !max-h-8 !max-w-[10.5rem] w-auto object-contain object-left'
+                    "
+                />
+            </Link>
+        </template>
 
-        <header v-if="$slots.header" class="bg-white shadow">
-            <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                <slot name="header" />
-            </div>
-        </header>
+        <template #navigation="{ collapsed }">
+            <SidebarNavItem
+                :href="route('client.dashboard')"
+                :active="route().current('client.dashboard')"
+                :icon="HomeIcon"
+                label="Painel"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                :href="route('client.surveys.index')"
+                :active="route().current('client.surveys.*')"
+                :icon="ClipboardDocumentListIcon"
+                label="Pesquisas NR1"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                v-if="$page.props.auth.user?.company?.has_methodology"
+                :href="route('client.metodologia.index')"
+                :active="route().current('client.metodologia.*')"
+                :icon="RocketLaunchIcon"
+                label="Metodologia Talents"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                :href="route('client.departments.index')"
+                :active="route().current('client.departments.*')"
+                :icon="BuildingOfficeIcon"
+                label="Setores"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                :href="route('client.positions.index')"
+                :active="route().current('client.positions.*')"
+                :icon="BriefcaseIcon"
+                label="Cargos"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                :href="route('client.complaints.index')"
+                :active="route().current('client.complaints.*')"
+                :icon="ShieldExclamationIcon"
+                label="Denúncias"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                :href="route('client.training.index')"
+                :active="route().current('client.training.*')"
+                :icon="AcademicCapIcon"
+                label="Capacitação"
+                :collapsed="collapsed"
+                badge="Em breve"
+            />
+            <SidebarNavItem
+                v-if="$page.props.auth.user?.role === 'company_admin'"
+                :href="route('client.rhid.compliance.index')"
+                :active="route().current('client.rhid.*')"
+                :icon="FingerPrintIcon"
+                label="RHID / Ponto"
+                :collapsed="collapsed"
+            />
+        </template>
 
-        <main class="py-8">
-            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <slot />
+        <template #user="{ collapsed }">
+            <div class="px-0.5">
+                <Dropdown align="right" width="48" open-upward>
+                    <template #trigger>
+                        <button
+                            type="button"
+                            class="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-2 text-left text-sm text-talents-900 shadow-sm transition hover:bg-talents-50"
+                            :class="collapsed ? 'justify-center' : ''"
+                        >
+                            <UserCircleIcon class="h-8 w-8 shrink-0 text-talents-600" />
+                            <span v-if="!collapsed" class="min-w-0 flex-1 truncate font-medium">
+                                {{ $page.props.auth.user.name }}
+                            </span>
+                        </button>
+                    </template>
+                    <template #content>
+                        <DropdownLink :href="route('profile.edit')">Perfil</DropdownLink>
+                        <DropdownLink :href="route('logout')" method="post" as="button">
+                            Sair
+                        </DropdownLink>
+                    </template>
+                </Dropdown>
             </div>
-        </main>
-    </div>
+        </template>
+
+        <template v-if="$slots.header" #header>
+            <slot name="header" />
+        </template>
+
+        <slot />
+    </SidebarLayout>
 </template>

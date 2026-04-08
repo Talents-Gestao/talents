@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureCompanyAccess;
 use App\Http\Middleware\EnsureCompanyAdmin;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\LogInertiaRequestTiming;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -26,6 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Traefik / proxy reverso (Coolify): HTTPS e IPs corretos
         $middleware->trustProxies(at: '*');
+
+        $middleware->web(prepend: [
+            LogInertiaRequestTiming::class,
+        ]);
 
         $middleware->web(append: [
             HandleInertiaRequests::class,

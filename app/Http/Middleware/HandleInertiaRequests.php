@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -19,6 +20,8 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $shareStartedAt = microtime(true);
+
         $user = $request->user();
 
         $companyPayload = null;
@@ -34,7 +37,7 @@ class HandleInertiaRequests extends Middleware
             }
         }
 
-        return [
+        $shared = [
             ...parent::share($request),
             'auth' => [
                 'user' => $user
@@ -54,5 +57,14 @@ class HandleInertiaRequests extends Middleware
                 'info' => fn () => $request->session()->get('info'),
             ],
         ];
+
+        if (config('app.debug') && $request->headers->has('X-Inertia')) {
+            Log::debug('[Inertia] HandleInertiaRequests::share()', [
+                'path' => $request->path(),
+                'share_ms' => round((microtime(true) - $shareStartedAt) * 1000, 2),
+            ]);
+        }
+
+        return $shared;
     }
 }
