@@ -1,0 +1,36 @@
+/* Calendário do dashboard — Bootstrap 5 (escopo visual no wrapper .dashboard-bs-calendar) */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+.dashboard-bs-calendar {
+    --bs-body-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --bs-border-radius: 0.75rem;
+    --bs-primary: #632a7e;
+    --bs-primary-rgb: 99, 42, 126;
+    --bs-link-color: #632a7e;
+    --bs-link-hover-color: #4a1f5e;
+}
+
+.dashboard-bs-calendar .card {
+    --bs-card-border-radius: 0.75rem;
+    --bs-card-border-width: 1px;
+    --bs-card-border-color: rgba(0, 0, 0, 0.06);
+    --bs-card-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.dashboard-bs-calendar .table {
+    --bs-table-bg: transparent;
+}
+
+.dashboard-bs-calendar .cal-cell {
+    min-height: 5.5rem;
+    vertical-align: top;
+}
+
+.dashboard-bs-calendar .cal-cell-muted {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.dashboard-bs-calendar .cal-today {
+    box-shadow: inset 0 0 0 2px rgba(99, 42, 126, 0.35);
+    border-radius: 0.35rem;
+}

@@ -1,7 +1,10 @@
 <script setup>
+import DashboardBootstrapCalendar from '@/Components/DashboardBootstrapCalendar.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
+
+import '../../../css/dashboard-calendar-bootstrap.css';
 
 const copied = ref(false);
 
@@ -19,6 +22,7 @@ defineProps({
     lastSurvey: Object,
     overallRisk: Object,
     complaintsPublicUrl: { type: String, default: null },
+    dashboardCalendar: { type: Object, default: null },
 });
 
 const healthLevelLabel = (level) => {
@@ -35,6 +39,20 @@ const healthLevelLabel = (level) => {
         <template #header>
             <h2 class="text-xl font-semibold leading-tight text-talents-900">Painel NR-1</h2>
         </template>
+
+        <div v-if="dashboardCalendar" class="mb-10">
+            <DashboardBootstrapCalendar
+                :items="dashboardCalendar.items"
+                :year="dashboardCalendar.year"
+                :month="dashboardCalendar.month"
+                :kind-labels="dashboardCalendar.kindLabels"
+                title="Calendário estratégico"
+                subtitle="Suas datas e orientações do mês"
+                :full-page-href="route('client.strategic-calendar.index')"
+                full-page-label="Ver detalhes"
+                dashboard-route="client.dashboard"
+            />
+        </div>
 
         <div class="grid gap-6 sm:grid-cols-3">
             <div class="rounded-xl border border-talents-200 bg-white p-6 shadow-sm">

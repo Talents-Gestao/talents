@@ -2,18 +2,22 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\StrategicCalendarItemKind;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\StrategicCalendarItem;
 use App\Models\Survey;
 use App\Models\SurveyResponse;
 use App\Models\SurveyResult;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $companiesCount = Company::query()->count();
         $activeCompanies = Company::query()->where('is_active', true)->count();
@@ -51,6 +55,18 @@ class DashboardController extends Controller
             ->take(10)
             ->values();
 
+        $calYear = max(2000, min(2100, (int) $request->input('cal_year', now()->year)));
+        $calMonth = max(1, min(12, (int) $request->input('cal_month', now()->month)));
+        $monthStart = Carbon::create($calYear, $calMonth, 1)->startOfDay();
+        $monthEnd = $monthStart->copy()->endOfMonth()->endOfDay();
+
+        $dashboardCalendarItems = StrategicCalendarItem::query()
+            ->with('company:id,name')
+            ->whereBetween('occurs_on', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->orderBy('occurs_on')
+            ->orderBy('id')
+            ->get();
+
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'companies_total' => $companiesCount,
@@ -64,6 +80,14 @@ class DashboardController extends Controller
                 'name' => $c->name,
                 'segment' => $c->segment,
             ]),
+            'dashboardCalendar' => [
+                'year' => $calYear,
+                'month' => $calMonth,
+                'items' => $dashboardCalendarItems,
+                'kindLabels' => collect(StrategicCalendarItemKind::cases())->mapWithKeys(
+                    fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()]
+                ),
+            ],
         ]);
     }
 }

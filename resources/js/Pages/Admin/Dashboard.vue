@@ -1,11 +1,15 @@
 <script setup>
+import DashboardBootstrapCalendar from '@/Components/DashboardBootstrapCalendar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
+
+import '../../../css/dashboard-calendar-bootstrap.css';
 
 defineProps({
     stats: Object,
     riskBySegment: Array,
     criticalCompanies: Array,
+    dashboardCalendar: Object,
 });
 </script>
 
@@ -18,6 +22,20 @@ defineProps({
                 Visão geral Talents
             </h2>
         </template>
+
+        <div v-if="dashboardCalendar" class="mb-10">
+            <DashboardBootstrapCalendar
+                :items="dashboardCalendar.items"
+                :year="dashboardCalendar.year"
+                :month="dashboardCalendar.month"
+                :kind-labels="dashboardCalendar.kindLabels"
+                title="Calendário estratégico"
+                subtitle="Eventos e ritos do mês — visão completa"
+                :full-page-href="route('admin.strategic-calendar.index')"
+                full-page-label="Gerenciar itens"
+                dashboard-route="admin.dashboard"
+            />
+        </div>
 
         <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
@@ -36,15 +54,6 @@ defineProps({
                 <p class="text-sm text-gray-500">Respostas concluídas</p>
                 <p class="mt-2 text-3xl font-bold">{{ stats.responses_completed }}</p>
             </div>
-        </div>
-
-        <div class="mt-10">
-            <Link
-                :href="route('admin.strategic-calendar.index')"
-                class="inline-flex rounded-xl border border-talents-200 bg-white px-5 py-4 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-50"
-            >
-                Calendário estratégico — eventos e ritos
-            </Link>
         </div>
 
         <div class="mt-10 grid gap-8 lg:grid-cols-2">

@@ -24,6 +24,7 @@
     "dependencies": {
         "@heroicons/vue": "^2.2.0",
         "apexcharts": "^5.10.4",
+        "bootstrap": "^5.3.3",
         "marked": "^17.0.5",
         "vue3-apexcharts": "^1.11.1"
     }
