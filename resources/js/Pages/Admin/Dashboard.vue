@@ -18,7 +18,7 @@ defineProps({
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-900">
+            <h2 class="text-2xl font-semibold tracking-tight text-zinc-900">
                 Visão geral Talents
             </h2>
         </template>
@@ -38,42 +38,42 @@ defineProps({
         </div>
 
         <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
-                <p class="text-sm text-gray-500">Empresas</p>
-                <p class="mt-2 text-3xl font-bold">{{ stats.companies_total }}</p>
+            <div class="surface-card p-6 text-zinc-900">
+                <p class="text-sm text-zinc-500">Empresas</p>
+                <p class="mt-2 text-3xl font-semibold tabular-nums">{{ stats.companies_total }}</p>
             </div>
-            <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
-                <p class="text-sm text-gray-500">Empresas ativas</p>
-                <p class="mt-2 text-3xl font-bold">{{ stats.companies_active }}</p>
+            <div class="surface-card p-6 text-zinc-900">
+                <p class="text-sm text-zinc-500">Empresas ativas</p>
+                <p class="mt-2 text-3xl font-semibold tabular-nums">{{ stats.companies_active }}</p>
             </div>
-            <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
-                <p class="text-sm text-gray-500">Campanhas</p>
-                <p class="mt-2 text-3xl font-bold">{{ stats.surveys_total }}</p>
+            <div class="surface-card p-6 text-zinc-900">
+                <p class="text-sm text-zinc-500">Campanhas</p>
+                <p class="mt-2 text-3xl font-semibold tabular-nums">{{ stats.surveys_total }}</p>
             </div>
-            <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
-                <p class="text-sm text-gray-500">Respostas concluídas</p>
-                <p class="mt-2 text-3xl font-bold">{{ stats.responses_completed }}</p>
+            <div class="surface-card p-6 text-zinc-900">
+                <p class="text-sm text-zinc-500">Respostas concluídas</p>
+                <p class="mt-2 text-3xl font-semibold tabular-nums">{{ stats.responses_completed }}</p>
             </div>
         </div>
 
         <div class="mt-10 grid gap-8 lg:grid-cols-2">
-            <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
-                <h3 class="text-lg font-semibold text-talents-700">Média de saúde por segmento (0–100)</h3>
-                <ul class="mt-4 space-y-2 text-sm">
-                    <li v-for="row in riskBySegment" :key="row.segment" class="flex justify-between">
+            <div class="surface-card p-6 text-zinc-900">
+                <h3 class="text-lg font-semibold text-zinc-900">Média de saúde por segmento (0–100)</h3>
+                <ul class="mt-4 space-y-2 text-sm text-zinc-700">
+                    <li v-for="row in riskBySegment" :key="row.segment" class="flex justify-between gap-4">
                         <span>{{ row.segment }}</span>
-                        <span class="font-mono">{{ Number(row.avg_score).toFixed(1) }}</span>
+                        <span class="font-mono tabular-nums text-zinc-900">{{ Number(row.avg_score).toFixed(1) }}</span>
                     </li>
-                    <li v-if="!riskBySegment?.length" class="text-gray-500">Sem dados ainda.</li>
+                    <li v-if="!riskBySegment?.length" class="text-zinc-500">Sem dados ainda.</li>
                 </ul>
             </div>
-            <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
-                <h3 class="text-lg font-semibold text-talents-700">Empresas com saúde crítica (última campanha)</h3>
-                <ul class="mt-4 space-y-2 text-sm">
+            <div class="surface-card p-6 text-zinc-900">
+                <h3 class="text-lg font-semibold text-zinc-900">Empresas com saúde crítica (última campanha)</h3>
+                <ul class="mt-4 space-y-2 text-sm text-zinc-700">
                     <li v-for="c in criticalCompanies" :key="c.id">
-                        {{ c.name }} <span v-if="c.segment" class="text-gray-500">({{ c.segment }})</span>
+                        {{ c.name }} <span v-if="c.segment" class="text-zinc-500">({{ c.segment }})</span>
                     </li>
-                    <li v-if="!criticalCompanies?.length" class="text-gray-500">Nenhuma no momento.</li>
+                    <li v-if="!criticalCompanies?.length" class="text-zinc-500">Nenhuma no momento.</li>
                 </ul>
             </div>
         </div>

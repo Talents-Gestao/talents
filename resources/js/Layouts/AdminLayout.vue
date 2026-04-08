@@ -19,7 +19,7 @@ import {
 </script>
 
 <template>
-    <SidebarLayout shell-class="min-h-screen bg-gray-50">
+    <SidebarLayout shell-class="min-h-screen bg-zinc-50">
         <template #logo="{ collapsed }">
             <Link
                 :href="route('admin.dashboard')"
@@ -107,7 +107,7 @@ import {
                     <template #trigger>
                         <button
                             type="button"
-                            class="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-2 text-left text-sm text-talents-900 shadow-sm transition hover:bg-talents-50"
+                            class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-zinc-800 transition hover:bg-zinc-100/90 focus:outline-none focus:ring-2 focus:ring-talents-500/30"
                             :class="collapsed ? 'justify-center' : ''"
                         >
                             <UserCircleIcon class="h-8 w-8 shrink-0 text-talents-600" />

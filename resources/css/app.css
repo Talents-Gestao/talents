@@ -4,6 +4,12 @@
 
 @layer base {
     body {
-        @apply antialiased text-slate-900;
+        @apply antialiased text-zinc-900;
+    }
+}
+
+@layer components {
+    .surface-card {
+        @apply rounded-xl border border-zinc-200/80 bg-white;
     }
 }
