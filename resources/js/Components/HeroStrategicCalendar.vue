@@ -92,6 +92,12 @@ watch(
 
 const kindLabel = (kind) => props.kindLabels[kind] ?? kind;
 
+/** Eventos do dia atualmente selecionado no hero */
+const selectedDayItems = computed(() => {
+    const iso = `${props.year}-${String(props.month).padStart(2, '0')}-${String(selectedDay.value).padStart(2, '0')}`;
+    return itemsByDay.value[iso] ?? [];
+});
+
 function itemsTitle(cell) {
     if (!cell.items?.length) return '';
     return cell.items.map((it) => `${kindLabel(it.kind)}: ${it.title}`).join('\n');
@@ -183,15 +189,52 @@ const gridButtonSizeClass = computed(() =>
                     Hoje
                 </button>
             </div>
-            <div class="relative z-10 flex flex-1 flex-col items-center justify-center text-center">
-                <p class="text-xs font-medium uppercase tracking-[0.2em] text-white/90 sm:text-sm">
-                    {{ heroMonthYear }}
-                </p>
-                <p :class="['mt-2 font-bold tabular-nums leading-none tracking-tight', dayNumClass]">
-                    {{ selectedDay }}
-                </p>
+            <div
+                class="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-2 text-center sm:px-3"
+            >
+                <div class="flex w-full max-w-[16rem] flex-col items-center">
+                    <p class="text-xs font-medium uppercase tracking-[0.2em] text-white/90 sm:text-sm">
+                        {{ heroMonthYear }}
+                    </p>
+                    <p :class="['mt-2 font-bold tabular-nums leading-none tracking-tight', dayNumClass]">
+                        {{ selectedDay }}
+                    </p>
+
+                    <ul
+                        v-if="selectedDayItems.length"
+                        class="mt-4 w-full space-y-2 text-left"
+                        :class="compact ? 'max-h-28 overflow-y-auto pr-0.5' : 'max-h-48 overflow-y-auto sm:max-h-56'"
+                        aria-live="polite"
+                    >
+                        <li
+                            v-for="it in selectedDayItems"
+                            :key="it.id"
+                            class="rounded-lg border border-white/20 bg-black/25 px-2.5 py-2 text-white shadow-sm backdrop-blur-sm"
+                            :class="compact ? 'py-1.5' : ''"
+                        >
+                            <span
+                                class="block text-[10px] font-semibold uppercase tracking-wide text-white/75"
+                                :class="it.kind === 'rito' ? 'text-violet-200' : 'text-sky-200'"
+                            >
+                                {{ kindLabel(it.kind) }}
+                            </span>
+                            <span
+                                class="mt-0.5 block font-medium leading-snug text-white"
+                                :class="compact ? 'text-[11px] line-clamp-2' : 'text-xs sm:text-sm line-clamp-4'"
+                            >
+                                {{ it.title }}
+                            </span>
+                            <p
+                                v-if="it.description && !compact"
+                                class="mt-1 text-[11px] leading-relaxed text-white/70 line-clamp-3"
+                            >
+                                {{ it.description }}
+                            </p>
+                        </li>
+                    </ul>
+                </div>
             </div>
-            <div class="relative z-10 h-4 shrink-0 lg:h-6" />
+            <div class="relative z-10 h-3 shrink-0 sm:h-4" />
         </div>
 
         <!-- Grid -->
