@@ -5,6 +5,7 @@ namespace App\Services\Rhid;
 use App\Exceptions\RhidApiException;
 use App\Models\Company;
 use App\Models\User;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
@@ -72,17 +73,27 @@ class RhidClient
             );
         }
 
-        $response = match ($method) {
-            'GET' => $pending->get($url),
-            'DELETE' => $pending->delete($url),
-            'POST' => isset($options['raw_body'])
-                ? $pending->post($url)
-                : ($asJson
-                    ? $pending->post($url, is_array($body) ? $body : [])
-                    : $pending->post($url)),
-            'PUT' => $pending->put($url, is_array($body) ? $body : []),
-            default => throw new RhidApiException('Metodo HTTP nao suportado: '.$method),
-        };
+        try {
+            $response = match ($method) {
+                'GET' => $pending->get($url),
+                'DELETE' => $pending->delete($url),
+                'POST' => isset($options['raw_body'])
+                    ? $pending->post($url)
+                    : ($asJson
+                        ? $pending->post($url, is_array($body) ? $body : [])
+                        : $pending->post($url)),
+                'PUT' => $pending->put($url, is_array($body) ? $body : []),
+                default => throw new RhidApiException('Metodo HTTP nao suportado: '.$method),
+            };
+        } catch (ConnectionException $e) {
+            throw new RhidApiException(
+                'Sem conexao com o servidor RHID (rede, DNS ou timeout). Tente novamente.',
+                null,
+                null,
+                0,
+                $e,
+            );
+        }
 
         if ($response->status() === 401 && $attempt < 2) {
             $this->auth->forgetToken($company);

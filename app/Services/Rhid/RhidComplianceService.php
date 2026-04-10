@@ -174,7 +174,10 @@ class RhidComplianceService
     }
 
     /**
-     * Banco de horas de todos os colaboradores na data: lista IDs paginada + consultas em lotes.
+     * Banco de horas na data de referencia.
+     *
+     * Por padrao: uma unica chamada a person_banco_horas?date= (API RHID).
+     * Com config rhid.bank_hours_aggregate: lista colaboradores paginada + consultas em lotes.
      *
      * @return array{date: string, rows: list<array<string, mixed>>, source: string}
      */
@@ -185,6 +188,16 @@ class RhidComplianceService
         int $listPageSize = 200,
         int $bankChunk = 50,
     ): array {
+        if (! config('rhid.bank_hours_aggregate')) {
+            $rows = $this->personBankHours($company, $user, ['date' => $date]);
+
+            return [
+                'date' => $date,
+                'rows' => $rows,
+                'source' => 'person_banco_horas',
+            ];
+        }
+
         $listPageSize = max(1, min(500, $listPageSize));
         $bankChunk = max(1, min(200, $bankChunk));
 

@@ -30,6 +30,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Banco de horas (person_banco_horas)
+    |--------------------------------------------------------------------------
+    |
+    | Por padrao usamos uma unica chamada GET com ?date= conforme a API RHID.
+    | Defina true apenas se o seu tenant RHID exigir agregar por lista de IDs
+    | (varias requisicoes — mais lento e sujeito a timeout).
+    |
+    */
+    'bank_hours_aggregate' => filter_var(env('RHID_BANK_HOURS_AGGREGATE', false), FILTER_VALIDATE_BOOL),
+
+    /*
+    |--------------------------------------------------------------------------
     | Polling de relatório assíncrono
     |--------------------------------------------------------------------------
     */

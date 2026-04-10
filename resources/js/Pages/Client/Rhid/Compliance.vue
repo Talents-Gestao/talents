@@ -401,7 +401,8 @@ const downloadReport = () => {
                     Consulta alinhada ao endpoint RHID
                     <code class="rounded bg-slate-100 px-1 text-xs">GET customerdb/person.svc/person_banco_horas</code>
                     (parametro <code class="text-xs">date</code> em YYYYMMDD; filtros opcionais abaixo). Sem filtros, o
-                    sistema agrega todos os colaboradores em varias chamadas quando necessario.
+                    backend faz uma unica chamada <code class="text-xs">?date=</code> (comportamento da API). A agregacao
+                    por varias requisicoes so vale com <code class="text-xs">RHID_BANK_HOURS_AGGREGATE=true</code> no servidor.
                 </p>
                 <div class="grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
