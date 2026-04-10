@@ -127,15 +127,24 @@ class RhidApiController extends Controller
         $company = $this->company($request);
         $query = $request->validate([
             'date' => ['required'],
-            'companies' => ['nullable'],
-            'costcenters' => ['nullable'],
-            'departments' => ['nullable'],
+            'companies' => ['nullable', 'integer'],
+            'costcenters' => ['nullable', 'integer'],
+            'departments' => ['nullable', 'integer'],
             'people' => ['nullable', 'array'],
             'people.*' => ['integer'],
-            'personroles' => ['nullable'],
+            'personroles' => ['nullable', 'integer'],
         ]);
 
-        return $this->jsonOrError(fn () => $compliance->personBankHours($company, $request->user(), $query));
+        $query = array_filter(
+            $query,
+            static fn ($v) => $v !== null && $v !== '' && $v !== []
+        );
+
+        return $this->jsonOrError(fn () => [
+            'date' => (string) $query['date'],
+            'rows' => $compliance->personBankHours($company, $request->user(), $query),
+            'source' => 'person_banco_horas',
+        ]);
     }
 
     public function allPersonBankHours(Request $request, RhidComplianceService $compliance): JsonResponse|Response

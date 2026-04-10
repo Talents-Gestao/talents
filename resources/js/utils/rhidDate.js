@@ -72,6 +72,27 @@ export function todayHtmlDate() {
  * @param {unknown} payload
  * @returns {unknown[]}
  */
+/**
+ * Formata datas no formato Microsoft JSON: /Date(1647918000000-0300)/
+ * @param {unknown} val
+ * @returns {string} data local pt-BR ou string vazia se invalido
+ */
+export function formatRhidDotNetDate(val) {
+    if (val == null || val === '') {
+        return '';
+    }
+    const s = String(val);
+    const m = s.match(/\/Date\((-?\d+)/);
+    if (!m) {
+        return '';
+    }
+    const d = new Date(parseInt(m[1], 10));
+    if (Number.isNaN(d.getTime())) {
+        return '';
+    }
+    return d.toLocaleDateString('pt-BR');
+}
+
 export function extractListItems(payload) {
     if (payload == null) {
         return [];

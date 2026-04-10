@@ -6,7 +6,13 @@ import InputLabel from '@/Components/InputLabel.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, ref } from 'vue';
-import { extractListItems, monthRangeHtmlDates, todayHtmlDate, toRhidYmd } from '@/utils/rhidDate';
+import {
+    extractListItems,
+    formatRhidDotNetDate,
+    monthRangeHtmlDates,
+    todayHtmlDate,
+    toRhidYmd,
+} from '@/utils/rhidDate';
 
 const page = usePage();
 
@@ -22,6 +28,12 @@ const lastPunches = ref([]);
 
 const bankDateHtml = ref(todayHtmlDate());
 const bankResult = ref(null);
+/** Filtros opcionais do GET person_banco_horas (inteiros RHID) */
+const bankFilterCompanies = ref('');
+const bankFilterCostcenters = ref('');
+const bankFilterDepartments = ref('');
+const bankFilterPerson = ref('');
+const bankFilterPersonroles = ref('');
 
 const peopleList = ref(null);
 
@@ -78,6 +90,32 @@ const bankDisplayName = (row) =>
     row?.strPersonName ??
     (row?.idPerson != null ? `ID ${row.idPerson}` : row?.id != null ? `ID ${row.id}` : '—');
 
+const bankHasOptionalFilters = () =>
+    [bankFilterCompanies, bankFilterCostcenters, bankFilterDepartments, bankFilterPerson, bankFilterPersonroles].some(
+        (r) => String(r.value ?? '').trim() !== '',
+    );
+
+const bankRowAdmissao = (row) =>
+    (row?.admissionDateStr && String(row.admissionDateStr).trim()) ||
+    formatRhidDotNetDate(row?.admissionDate) ||
+    '—';
+
+const bankRowInicioBh = (row) =>
+    (row?.inicioBancoHorasStr && String(row.inicioBancoHorasStr).trim()) ||
+    formatRhidDotNetDate(row?.inicioBancoHoras) ||
+    '—';
+
+const bankRowEmpresa = (row) =>
+    row?.companyTradingName || row?.companyName || (row?.idCompany != null ? `#${row.idCompany}` : '—');
+
+const bankRowDepartamento = (row) =>
+    row?.departmentName || (row?.idDepartment != null ? `#${row.idDepartment}` : '—');
+
+const bankRowCentroCusto = (row) =>
+    row?.costCenterName || (row?.idCostCenter != null ? `#${row.idCostCenter}` : '—');
+
+const bankRowCargo = (row) => row?.roleName || (row?.idPersonRole != null ? `#${row.idPersonRole}` : '—');
+
 const bankDisplayValue = (row) => {
     const keys = [
         'strSaldoBancoHoras',
@@ -115,7 +153,7 @@ const loadLastPunches = async () => {
     }
 };
 
-const loadAllBankHours = async () => {
+const loadBankHours = async () => {
     if (!props.configured) {
         return;
     }
@@ -124,10 +162,44 @@ const loadAllBankHours = async () => {
     bankResult.value = null;
     try {
         const dateParam = toRhidYmd(bankDateHtml.value) || bankDateHtml.value;
-        const { data } = await axios.get(route('client.rhid.api.person-bank-hours.all'), {
-            params: { date: dateParam },
-        });
-        bankResult.value = data;
+        if (bankHasOptionalFilters()) {
+            const params = { date: dateParam };
+            const n = (v) => {
+                const t = String(v ?? '').trim();
+                if (t === '') {
+                    return null;
+                }
+                const x = parseInt(t, 10);
+                return Number.isNaN(x) ? null : x;
+            };
+            const c = n(bankFilterCompanies.value);
+            const cc = n(bankFilterCostcenters.value);
+            const d = n(bankFilterDepartments.value);
+            const p = n(bankFilterPerson.value);
+            const pr = n(bankFilterPersonroles.value);
+            if (c !== null) {
+                params.companies = c;
+            }
+            if (cc !== null) {
+                params.costcenters = cc;
+            }
+            if (d !== null) {
+                params.departments = d;
+            }
+            if (p !== null) {
+                params.people = [p];
+            }
+            if (pr !== null) {
+                params.personroles = pr;
+            }
+            const { data } = await axios.get(route('client.rhid.api.person-bank-hours'), { params });
+            bankResult.value = data;
+        } else {
+            const { data } = await axios.get(route('client.rhid.api.person-bank-hours.all'), {
+                params: { date: dateParam },
+            });
+            bankResult.value = data;
+        }
     } catch (e) {
         handleError(e);
     } finally {
@@ -326,34 +398,129 @@ const downloadReport = () => {
 
             <div v-show="tab === 'bank'" class="space-y-4">
                 <p class="text-sm text-slate-600">
-                    Consulta o banco de horas de <strong>todos os colaboradores</strong> na data escolhida (via API RHID).
+                    Consulta alinhada ao endpoint RHID
+                    <code class="rounded bg-slate-100 px-1 text-xs">GET customerdb/person.svc/person_banco_horas</code>
+                    (parametro <code class="text-xs">date</code> em YYYYMMDD; filtros opcionais abaixo). Sem filtros, o
+                    sistema agrega todos os colaboradores em varias chamadas quando necessario.
                 </p>
-                <div class="max-w-xs">
-                    <InputLabel value="Data de referencia" />
-                    <input
-                        v-model="bankDateHtml"
-                        type="date"
-                        class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                    />
+                <div class="grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div>
+                        <InputLabel value="Data de referencia (date)" />
+                        <input
+                            v-model="bankDateHtml"
+                            type="date"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Empresa (companies)" />
+                        <input
+                            v-model="bankFilterCompanies"
+                            type="number"
+                            min="0"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                            placeholder="opcional"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Centro de custo (costcenters)" />
+                        <input
+                            v-model="bankFilterCostcenters"
+                            type="number"
+                            min="0"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                            placeholder="opcional"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Departamento (departments)" />
+                        <input
+                            v-model="bankFilterDepartments"
+                            type="number"
+                            min="0"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                            placeholder="opcional"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Funcionario (people)" />
+                        <input
+                            v-model="bankFilterPerson"
+                            type="number"
+                            min="0"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                            placeholder="opcional"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Cargo (personroles)" />
+                        <input
+                            v-model="bankFilterPersonroles"
+                            type="number"
+                            min="0"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                            placeholder="opcional"
+                        />
+                    </div>
                 </div>
-                <PrimaryButton type="button" :disabled="loading" @click="loadAllBankHours">
-                    Consultar banco de todos
-                </PrimaryButton>
+                <PrimaryButton type="button" :disabled="loading" @click="loadBankHours">Consultar banco de horas</PrimaryButton>
                 <p v-if="bankResult?.source" class="text-xs text-slate-500">
-                    Fonte dos dados: {{ bankResult.source }} · Data: {{ bankResult.date }}
+                    Fonte: {{ bankResult.source }} · Data referencia: {{ bankResult.date }}
                 </p>
                 <div v-if="bankRows.length" class="overflow-x-auto rounded border border-slate-200">
-                    <table class="min-w-full text-left text-sm">
+                    <table class="min-w-[72rem] text-left text-sm">
                         <thead class="bg-slate-50">
                             <tr>
-                                <th class="p-2">Colaborador</th>
-                                <th class="p-2">Banco de horas</th>
+                                <th class="whitespace-nowrap p-2">ID</th>
+                                <th class="whitespace-nowrap p-2">Nome</th>
+                                <th class="whitespace-nowrap p-2">Nome social</th>
+                                <th class="whitespace-nowrap p-2">Matricula</th>
+                                <th class="whitespace-nowrap p-2">CPF</th>
+                                <th class="whitespace-nowrap p-2">Saldo BH</th>
+                                <th class="whitespace-nowrap p-2">Empresa</th>
+                                <th class="whitespace-nowrap p-2">Depto</th>
+                                <th class="whitespace-nowrap p-2">Centro custo</th>
+                                <th class="whitespace-nowrap p-2">Cargo</th>
+                                <th class="whitespace-nowrap p-2">Admissao</th>
+                                <th class="whitespace-nowrap p-2">Inicio BH</th>
+                                <th class="whitespace-nowrap p-2">E-mail</th>
+                                <th class="whitespace-nowrap p-2">Telefone</th>
+                                <th class="whitespace-nowrap p-2">Status</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="(row, i) in bankRows" :key="i" class="border-t border-slate-100">
-                                <td class="p-2 font-medium text-slate-800">{{ bankDisplayName(row) }}</td>
-                                <td class="p-2 tabular-nums text-slate-700">{{ bankDisplayValue(row) }}</td>
+                            <tr v-for="(row, i) in bankRows" :key="row.id ?? i" class="border-t border-slate-100">
+                                <td class="whitespace-nowrap p-2 font-mono text-xs">{{ row.id ?? '—' }}</td>
+                                <td class="max-w-[10rem] truncate p-2 font-medium text-slate-800" :title="bankDisplayName(row)">
+                                    {{ bankDisplayName(row) }}
+                                </td>
+                                <td class="max-w-[8rem] truncate p-2 text-slate-600" :title="row.socialName || ''">
+                                    {{ row.socialName || '—' }}
+                                </td>
+                                <td class="whitespace-nowrap p-2 text-slate-600">{{ row.registration ?? '—' }}</td>
+                                <td class="whitespace-nowrap p-2 text-slate-600">{{ row.cpf ?? '—' }}</td>
+                                <td class="whitespace-nowrap p-2 tabular-nums font-medium text-slate-800">
+                                    {{ bankDisplayValue(row) }}
+                                </td>
+                                <td class="max-w-[8rem] truncate p-2 text-slate-600" :title="bankRowEmpresa(row)">
+                                    {{ bankRowEmpresa(row) }}
+                                </td>
+                                <td class="max-w-[8rem] truncate p-2 text-slate-600" :title="bankRowDepartamento(row)">
+                                    {{ bankRowDepartamento(row) }}
+                                </td>
+                                <td class="max-w-[8rem] truncate p-2 text-slate-600" :title="bankRowCentroCusto(row)">
+                                    {{ bankRowCentroCusto(row) }}
+                                </td>
+                                <td class="max-w-[8rem] truncate p-2 text-slate-600" :title="bankRowCargo(row)">
+                                    {{ bankRowCargo(row) }}
+                                </td>
+                                <td class="whitespace-nowrap p-2 text-slate-600">{{ bankRowAdmissao(row) }}</td>
+                                <td class="whitespace-nowrap p-2 text-slate-600">{{ bankRowInicioBh(row) }}</td>
+                                <td class="max-w-[10rem] truncate p-2 text-slate-600" :title="row.email || ''">
+                                    {{ row.email || '—' }}
+                                </td>
+                                <td class="whitespace-nowrap p-2 text-slate-600">{{ row.phone || '—' }}</td>
+                                <td class="whitespace-nowrap p-2 text-slate-600">{{ row.status ?? '—' }}</td>
                             </tr>
                         </tbody>
                     </table>
