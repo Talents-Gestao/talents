@@ -75,9 +75,18 @@ class RhidApiController extends Controller
     public function listJustifications(Request $request, RhidComplianceService $compliance): JsonResponse|Response
     {
         $company = $this->company($request);
+
+        $merged = $request->all();
+        foreach (['ini', 'fim'] as $key) {
+            if (array_key_exists($key, $merged) && $merged[$key] !== null) {
+                $merged[$key] = preg_replace('/\D/', '', (string) $merged[$key]);
+            }
+        }
+        $request->merge($merged);
+
         $payload = $request->validate([
-            'ini' => ['required', 'string'],
-            'fim' => ['required', 'string'],
+            'ini' => ['required', 'string', 'size:8', 'regex:/^\d{8}$/'],
+            'fim' => ['required', 'string', 'size:8', 'regex:/^\d{8}$/'],
             'page' => ['nullable', 'integer', 'min:0'],
             'maxSize' => ['nullable', 'integer', 'min:1', 'max:500'],
             'companies' => ['nullable', 'array'],
@@ -98,6 +107,10 @@ class RhidApiController extends Controller
 
         $payload['page'] = (int) ($payload['page'] ?? 0);
         $payload['maxSize'] = (int) ($payload['maxSize'] ?? 100);
+
+        // Servidor RHID (.NET) espera datas AnoMesDia; inteiros yyyyMMdd evitam falha de parse em DateTime.
+        $payload['ini'] = (int) $payload['ini'];
+        $payload['fim'] = (int) $payload['fim'];
 
         return $this->jsonOrError(fn () => $compliance->listJustifications($company, $request->user(), $payload));
     }

@@ -736,9 +736,11 @@ const downloadReport = () => {
 };
 
 const buildJustificationsBody = () => {
+    const iniStr = toRhidYmd(justIniDate.value);
+    const fimStr = toRhidYmd(justFimDate.value);
     const body = {
-        ini: toRhidYmd(justIniDate.value),
-        fim: toRhidYmd(justFimDate.value),
+        ini: /^\d{8}$/.test(iniStr) ? parseInt(iniStr, 10) : iniStr,
+        fim: /^\d{8}$/.test(fimStr) ? parseInt(fimStr, 10) : fimStr,
         page: justPage.value,
         maxSize: Math.min(500, Math.max(1, Number(justMaxSize.value) || 100)),
     };
@@ -760,6 +762,13 @@ const buildJustificationsBody = () => {
 
 const fetchJustifications = async () => {
     if (!props.configured) {
+        return;
+    }
+    const iniStr = toRhidYmd(justIniDate.value);
+    const fimStr = toRhidYmd(justFimDate.value);
+    if (!/^\d{8}$/.test(iniStr) || !/^\d{8}$/.test(fimStr)) {
+        clearErr();
+        err.value = 'Informe data inicial e final validas (periodo em formato completo).';
         return;
     }
     loading.value = true;
