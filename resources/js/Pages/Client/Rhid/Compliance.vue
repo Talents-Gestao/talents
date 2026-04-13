@@ -18,6 +18,17 @@ import {
     todayHtmlDate,
     toRhidYmd,
 } from '@/utils/rhidDate';
+import {
+    buildJustificationTypeMapFromPayload,
+    buildPersonDepartmentMapFromPayload,
+    chartColorAt,
+    departmentLabelForJustification,
+    isAtestadoHeuristic,
+    justificationTypeLabel,
+    JUST_ANALYTICS_MAX_PAGES,
+    JUST_MAX_DEPT_CHART,
+    JUST_TOP_COLLABORATORS,
+} from '@/utils/rhidJustificationsAnalytics';
 
 const page = usePage();
 
@@ -86,6 +97,18 @@ const justFilterPeople = ref('');
 const justFilterShifts = ref('');
 const justFilterJustificationTypes = ref('');
 const justResult = ref(null);
+/** Linhas de todo o periodo carregadas para graficos (multi-pagina) */
+const justAnalyticsRows = ref([]);
+const justAnalyticsLoading = ref(false);
+const justAnalyticsMeta = ref({
+    pagesLoaded: 0,
+    truncated: false,
+    mergedTotal: 0,
+    recordsTotalFromApi: null,
+});
+const justificationTypeMap = ref({});
+const personDeptMapForJust = ref({});
+const justChartDrilldown = ref(null);
 
 const parseIdList = (raw) => {
     const t = String(raw ?? '').trim();
@@ -735,13 +758,16 @@ const downloadReport = () => {
     window.open(url, '_blank');
 };
 
-const buildJustificationsBody = () => {
+/**
+ * @param {number|undefined} pageOverride — se omitido, usa justPage (listagem paginada)
+ */
+const buildJustificationsBody = (pageOverride) => {
     const iniStr = toRhidYmd(justIniDate.value);
     const fimStr = toRhidYmd(justFimDate.value);
     const body = {
         ini: iniStr,
         fim: fimStr,
-        page: justPage.value,
+        page: pageOverride !== undefined ? pageOverride : justPage.value,
         maxSize: Math.min(500, Math.max(1, Number(justMaxSize.value) || 100)),
     };
     const add = (key, r) => {
@@ -811,6 +837,473 @@ const justificationApprovalLabel = (row) => {
     const s = row?.approvalStatus ?? row?._approvalStatus;
     return s != null ? String(s) : '—';
 };
+
+const closeJustChartDrilldown = () => {
+    justChartDrilldown.value = null;
+};
+
+const justRowToDrillLine = (row) => {
+    const pid = row?.idPerson;
+    const tmap = justificationTypeMap.value;
+    const pmap = personDeptMapForJust.value;
+    return {
+        name: row?.name ?? '—',
+        personId: pid != null && Number.isFinite(Number(pid)) ? Number(pid) : null,
+        tipo: justificationTypeLabel(row?.idJustificationType, tmap),
+        dept: departmentLabelForJustification(pid, pmap),
+        ini: row?.inicioStrColumn ?? row?.inicioStr ?? '—',
+        fim: row?.fimStrColumn ?? row?.fimStr ?? '—',
+        status: justificationApprovalLabel(row),
+        justificativa: row?.justificativa ?? '—',
+    };
+};
+
+const loadJustificationsAnalyticsFull = async () => {
+    if (!props.configured) {
+        return;
+    }
+    const iniStr = toRhidYmd(justIniDate.value);
+    const fimStr = toRhidYmd(justFimDate.value);
+    if (!/^\d{8}$/.test(iniStr) || !/^\d{8}$/.test(fimStr)) {
+        clearErr();
+        err.value = 'Informe data inicial e final validas (periodo em formato completo).';
+        return;
+    }
+    justAnalyticsLoading.value = true;
+    clearErr();
+    justAnalyticsRows.value = [];
+    justAnalyticsMeta.value = {
+        pagesLoaded: 0,
+        truncated: false,
+        mergedTotal: 0,
+        recordsTotalFromApi: null,
+    };
+    try {
+        const [typesRes, peopleRes] = await Promise.all([
+            axios.get(route('client.rhid.api.justification-types')),
+            axios.get(route('client.rhid.api.people.index'), { params: { page: 0, maxSize: 500 } }),
+        ]);
+        justificationTypeMap.value = buildJustificationTypeMapFromPayload(typesRes.data);
+        personDeptMapForJust.value = buildPersonDepartmentMapFromPayload(peopleRes.data);
+
+        const maxSize = Math.min(500, Math.max(1, Number(justMaxSize.value) || 100));
+        const merged = [];
+        let recordsTotal = null;
+        for (let p = 0; p < JUST_ANALYTICS_MAX_PAGES; p += 1) {
+            const { data } = await axios.post(route('client.rhid.api.justifications.list'), buildJustificationsBody(p));
+            const chunk = Array.isArray(data?.data) ? data.data : [];
+            if (typeof data?.recordsTotal === 'number') {
+                recordsTotal = data.recordsTotal;
+            }
+            merged.push(...chunk);
+            justAnalyticsMeta.value = {
+                ...justAnalyticsMeta.value,
+                pagesLoaded: p + 1,
+                mergedTotal: merged.length,
+                recordsTotalFromApi: recordsTotal,
+            };
+            if (chunk.length < maxSize) {
+                break;
+            }
+            if (recordsTotal != null && merged.length >= recordsTotal) {
+                break;
+            }
+        }
+        const truncated = justAnalyticsMeta.value.pagesLoaded >= JUST_ANALYTICS_MAX_PAGES
+            && (recordsTotal == null || merged.length < recordsTotal);
+        justAnalyticsMeta.value = {
+            ...justAnalyticsMeta.value,
+            truncated,
+            mergedTotal: merged.length,
+            recordsTotalFromApi: recordsTotal,
+        };
+        justAnalyticsRows.value = merged;
+    } catch (e) {
+        handleError(e);
+    } finally {
+        justAnalyticsLoading.value = false;
+    }
+};
+
+const justTypeSlices = computed(() => {
+    const rows = justAnalyticsRows.value;
+    const tmap = justificationTypeMap.value;
+    const byKey = new Map();
+    for (const row of rows) {
+        const id = row?.idJustificationType;
+        const key = id != null ? String(id) : '_none';
+        if (!byKey.has(key)) {
+            byKey.set(key, {
+                key,
+                label: justificationTypeLabel(id, tmap),
+                rows: [],
+                color: chartColorAt(byKey.size),
+            });
+        }
+        byKey.get(key).rows.push(row);
+    }
+    return [...byKey.values()].sort((a, b) => b.rows.length - a.rows.length);
+});
+
+const justAtestadoSlices = computed(() => {
+    const rows = justAnalyticsRows.value;
+    const tmap = justificationTypeMap.value;
+    const at = rows.filter((r) => isAtestadoHeuristic(r, tmap));
+    const rest = rows.filter((r) => !isAtestadoHeuristic(r, tmap));
+    const out = [];
+    if (at.length) {
+        out.push({ label: 'Atestados (heuristica)', color: '#dc2626', rows: at });
+    }
+    if (rest.length) {
+        out.push({ label: 'Outras justificativas', color: '#64748b', rows: rest });
+    }
+    return out;
+});
+
+const justAtestadoCount = computed(() => {
+    const tmap = justificationTypeMap.value;
+    return justAnalyticsRows.value.filter((r) => isAtestadoHeuristic(r, tmap)).length;
+});
+
+const openJustDrilldownFromTypeDonut = (_event, _chartContext, config) => {
+    const i = config?.dataPointIndex;
+    if (i == null || i < 0) {
+        return;
+    }
+    const s = justTypeSlices.value[i];
+    if (!s) {
+        return;
+    }
+    const lines = s.rows.map(justRowToDrillLine).sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+    justChartDrilldown.value = {
+        title: s.label,
+        subtitle: `${s.rows.length} registro(s) no periodo · por tipo`,
+        lines,
+    };
+};
+
+const justTypeDonutChart = computed(() => {
+    const slices = justTypeSlices.value;
+    const series = slices.map((s) => s.rows.length);
+    const labels = slices.map((s) => (s.label.length > 40 ? `${s.label.slice(0, 38)}…` : s.label));
+    const colors = slices.map((s) => s.color);
+    const total = series.reduce((a, b) => a + b, 0);
+    const options = {
+        chart: {
+            type: 'donut',
+            toolbar: { show: false },
+            fontFamily: 'Figtree, sans-serif',
+            foreColor: '#334155',
+            events: { dataPointSelection: openJustDrilldownFromTypeDonut },
+        },
+        labels,
+        colors,
+        legend: { position: 'bottom', fontSize: '12px' },
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '68%',
+                    labels: {
+                        show: total > 0,
+                        total: {
+                            show: true,
+                            label: 'Justificativas',
+                            formatter: () => String(total),
+                        },
+                    },
+                },
+            },
+        },
+        dataLabels: { enabled: true, style: { fontSize: '10px' } },
+        tooltip: {
+            y: {
+                formatter: (val) => {
+                    const pct = total ? ((Number(val) / total) * 100).toFixed(1) : '0';
+                    return `${val} (${pct}%) — clique para listar`;
+                },
+            },
+        },
+        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
+    };
+    return { series, options, empty: total === 0 };
+});
+
+const openJustDrilldownFromAtestadoDonut = (_event, _chartContext, config) => {
+    const i = config?.dataPointIndex;
+    if (i == null || i < 0) {
+        return;
+    }
+    const s = justAtestadoSlices.value[i];
+    if (!s) {
+        return;
+    }
+    const lines = s.rows.map(justRowToDrillLine).sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+    justChartDrilldown.value = {
+        title: s.label,
+        subtitle: `${s.rows.length} registro(s) · atestado por nome do tipo ou texto`,
+        lines,
+    };
+};
+
+const justAtestadoDonutChart = computed(() => {
+    const slices = justAtestadoSlices.value;
+    const series = slices.map((s) => s.rows.length);
+    const labels = slices.map((s) => s.label);
+    const colors = slices.map((s) => s.color);
+    const total = series.reduce((a, b) => a + b, 0);
+    const options = {
+        chart: {
+            type: 'donut',
+            toolbar: { show: false },
+            fontFamily: 'Figtree, sans-serif',
+            foreColor: '#334155',
+            events: { dataPointSelection: openJustDrilldownFromAtestadoDonut },
+        },
+        labels,
+        colors,
+        legend: { position: 'bottom', fontSize: '12px' },
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '62%',
+                    labels: {
+                        show: total > 0,
+                        total: {
+                            show: true,
+                            label: 'Total',
+                            formatter: () => String(total),
+                        },
+                    },
+                },
+            },
+        },
+        dataLabels: { enabled: true, style: { fontSize: '11px' } },
+        tooltip: {
+            y: {
+                formatter: (val) => {
+                    const pct = total ? ((Number(val) / total) * 100).toFixed(1) : '0';
+                    return `${val} (${pct}%)`;
+                },
+            },
+        },
+        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
+    };
+    return { series, options, empty: total === 0 };
+});
+
+const justTopPersonSlices = computed(() => {
+    const rows = justAnalyticsRows.value;
+    const pmap = personDeptMapForJust.value;
+    const byPerson = new Map();
+    for (const row of rows) {
+        const pid = row?.idPerson;
+        const key = pid != null ? String(pid) : '_none';
+        const name = row?.name ?? pmap[key]?.name ?? (pid != null ? `#${pid}` : 'Sem pessoa');
+        if (!byPerson.has(key)) {
+            byPerson.set(key, { name, personId: pid, rows: [] });
+        }
+        byPerson.get(key).rows.push(row);
+    }
+    const entries = [...byPerson.values()]
+        .sort((a, b) => b.rows.length - a.rows.length)
+        .slice(0, JUST_TOP_COLLABORATORS);
+    return entries;
+});
+
+const openJustDrilldownFromTopPerson = (_event, _chartContext, config) => {
+    const i = config?.dataPointIndex;
+    if (i == null || i < 0) {
+        return;
+    }
+    const s = justTopPersonSlices.value[i];
+    if (!s) {
+        return;
+    }
+    const lines = s.rows.map(justRowToDrillLine).sort((a, b) => a.ini.localeCompare(b.ini, 'pt'));
+    justChartDrilldown.value = {
+        title: s.name,
+        subtitle: `${s.rows.length} justificativa(s) no periodo`,
+        lines,
+    };
+};
+
+const justTopPersonBarChart = computed(() => {
+    const slices = justTopPersonSlices.value;
+    const categories = slices.map((s) => {
+        const n = s.name;
+        return n.length > 32 ? `${n.slice(0, 30)}…` : n;
+    });
+    const data = slices.map((s) => s.rows.length);
+    const options = {
+        chart: {
+            type: 'bar',
+            toolbar: { show: false },
+            fontFamily: 'Figtree, sans-serif',
+            foreColor: '#334155',
+            events: { dataPointSelection: openJustDrilldownFromTopPerson },
+        },
+        plotOptions: {
+            bar: { horizontal: true, borderRadius: 4, barHeight: '72%', dataLabels: { position: 'right' } },
+        },
+        colors: ['#632a7e'],
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => String(val),
+            style: { fontSize: '11px', colors: ['#334155'] },
+        },
+        xaxis: { categories },
+        tooltip: { y: { formatter: (val) => `${val} ocorrencia(s) — clique para listar` } },
+        yaxis: { labels: { maxWidth: 200 } },
+        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
+    };
+    return {
+        series: [{ name: 'Quantidade', data }],
+        options,
+        empty: data.length === 0,
+    };
+});
+
+const justDeptSlices = computed(() => {
+    const rows = justAnalyticsRows.value;
+    const pmap = personDeptMapForJust.value;
+    const map = new Map();
+    for (const row of rows) {
+        const d = departmentLabelForJustification(row?.idPerson, pmap);
+        if (!map.has(d)) {
+            map.set(d, { name: d, rows: [] });
+        }
+        map.get(d).rows.push(row);
+    }
+    const entries = [...map.entries()]
+        .map(([, v]) => v)
+        .sort((a, b) => b.rows.length - a.rows.length);
+    const top = entries.slice(0, JUST_MAX_DEPT_CHART);
+    const rest = entries.slice(JUST_MAX_DEPT_CHART);
+    if (!rest.length) {
+        return top;
+    }
+    const mergedRows = rest.flatMap((e) => e.rows);
+    return [
+        ...top,
+        {
+            name: 'Outros',
+            rows: mergedRows,
+        },
+    ];
+});
+
+const openJustDrilldownFromDept = (_event, _chartContext, config) => {
+    const i = config?.dataPointIndex;
+    if (i == null || i < 0) {
+        return;
+    }
+    const s = justDeptSlices.value[i];
+    if (!s) {
+        return;
+    }
+    const lines = s.rows.map(justRowToDrillLine).sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+    justChartDrilldown.value = {
+        title: s.name,
+        subtitle: `${s.rows.length} justificativa(s) neste agrupamento`,
+        lines,
+    };
+};
+
+const justDeptBarChart = computed(() => {
+    const final = justDeptSlices.value;
+    const categories = final.map((e) => (e.name.length > 28 ? `${e.name.slice(0, 26)}…` : e.name));
+    const data = final.map((e) => e.rows.length);
+    const options = {
+        chart: {
+            type: 'bar',
+            toolbar: { show: false },
+            fontFamily: 'Figtree, sans-serif',
+            foreColor: '#334155',
+            events: { dataPointSelection: openJustDrilldownFromDept },
+        },
+        plotOptions: {
+            bar: { horizontal: true, borderRadius: 4, barHeight: '70%', dataLabels: { position: 'right' } },
+        },
+        colors: ['#0d9488'],
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => String(val),
+            style: { fontSize: '11px', colors: ['#334155'] },
+        },
+        xaxis: { categories },
+        tooltip: { y: { formatter: (val) => `${val} — clique para listar` } },
+        yaxis: { labels: { maxWidth: 200 } },
+        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
+    };
+    return {
+        series: [{ name: 'Quantidade', data }],
+        options,
+        empty: data.length === 0,
+    };
+});
+
+const justStatusSlices = computed(() => {
+    const rows = justAnalyticsRows.value;
+    const map = new Map();
+    for (const row of rows) {
+        const st = justificationApprovalLabel(row);
+        if (!map.has(st)) {
+            map.set(st, { label: st, rows: [] });
+        }
+        map.get(st).rows.push(row);
+    }
+    return [...map.values()].sort((a, b) => b.rows.length - a.rows.length);
+});
+
+const openJustDrilldownFromStatus = (_event, _chartContext, config) => {
+    const i = config?.dataPointIndex;
+    if (i == null || i < 0) {
+        return;
+    }
+    const s = justStatusSlices.value[i];
+    if (!s) {
+        return;
+    }
+    const lines = s.rows.map(justRowToDrillLine).sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+    justChartDrilldown.value = {
+        title: `Status: ${s.label}`,
+        subtitle: `${s.rows.length} registro(s)`,
+        lines,
+    };
+};
+
+const justStatusBarChart = computed(() => {
+    const slices = justStatusSlices.value.slice(0, 12);
+    const categories = slices.map((s) => (s.label.length > 24 ? `${s.label.slice(0, 22)}…` : s.label));
+    const data = slices.map((s) => s.rows.length);
+    const options = {
+        chart: {
+            type: 'bar',
+            toolbar: { show: false },
+            fontFamily: 'Figtree, sans-serif',
+            foreColor: '#334155',
+            events: { dataPointSelection: openJustDrilldownFromStatus },
+        },
+        plotOptions: {
+            bar: { horizontal: true, borderRadius: 4, barHeight: '65%', dataLabels: { position: 'right' } },
+        },
+        colors: ['#4f46e5'],
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => String(val),
+            style: { fontSize: '11px', colors: ['#334155'] },
+        },
+        xaxis: { categories },
+        tooltip: { y: { formatter: (val) => `${val} — clique para listar` } },
+        yaxis: { labels: { maxWidth: 200 } },
+        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
+    };
+    return {
+        series: [{ name: 'Quantidade', data }],
+        options,
+        empty: data.length === 0,
+    };
+});
 </script>
 
 <template>
@@ -891,6 +1384,53 @@ const justificationApprovalLabel = (row) => {
                 </div>
             </Modal>
 
+            <Modal :show="justChartDrilldown != null" max-width="3xl" @close="closeJustChartDrilldown">
+                <div v-if="justChartDrilldown" class="p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">{{ justChartDrilldown.title }}</h3>
+                    <p class="mt-1 text-sm text-slate-600">{{ justChartDrilldown.subtitle }}</p>
+                    <div class="mt-4 max-h-[min(32rem,70vh)] overflow-auto rounded-lg border border-slate-200">
+                        <table class="min-w-full text-left text-sm">
+                            <thead class="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                <tr>
+                                    <th class="whitespace-nowrap p-2">Colaborador</th>
+                                    <th class="whitespace-nowrap p-2">Tipo</th>
+                                    <th class="whitespace-nowrap p-2">Setor</th>
+                                    <th class="whitespace-nowrap p-2">Inicio</th>
+                                    <th class="whitespace-nowrap p-2">Fim</th>
+                                    <th class="whitespace-nowrap p-2">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr
+                                    v-for="(ln, ji) in justChartDrilldown.lines"
+                                    :key="ji"
+                                    class="border-t border-slate-100"
+                                >
+                                    <td class="max-w-[12rem] p-2 font-medium text-slate-800">
+                                        <Link
+                                            v-if="ln.personId != null"
+                                            :href="route('client.rhid.collaborators.show', ln.personId)"
+                                            class="text-talents-800 hover:underline"
+                                        >
+                                            {{ ln.name }}
+                                        </Link>
+                                        <span v-else>{{ ln.name }}</span>
+                                    </td>
+                                    <td class="max-w-[10rem] truncate p-2 text-slate-700" :title="ln.tipo">{{ ln.tipo }}</td>
+                                    <td class="max-w-[8rem] truncate p-2 text-slate-600" :title="ln.dept">{{ ln.dept }}</td>
+                                    <td class="whitespace-nowrap p-2 text-slate-700">{{ ln.ini }}</td>
+                                    <td class="whitespace-nowrap p-2 text-slate-700">{{ ln.fim }}</td>
+                                    <td class="whitespace-nowrap p-2 text-slate-600">{{ ln.status }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <SecondaryButton type="button" @click="closeJustChartDrilldown">Fechar</SecondaryButton>
+                    </div>
+                </div>
+            </Modal>
+
             <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
                 <button
                     v-for="t in tabs"
@@ -910,6 +1450,9 @@ const justificationApprovalLabel = (row) => {
 
             <p v-if="err" class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ err }}</p>
             <p v-if="loading" class="text-sm text-slate-500">Carregando...</p>
+            <p v-if="justAnalyticsLoading" class="text-sm font-medium text-talents-800">
+                Carregando periodo completo para graficos…
+            </p>
 
             <div v-show="tab === 'punches'" class="space-y-3">
                 <PrimaryButton type="button" :disabled="loading" @click="loadLastPunches">Atualizar marcacoes</PrimaryButton>
@@ -1237,6 +1780,102 @@ const justificationApprovalLabel = (row) => {
                     <SecondaryButton type="button" :disabled="loading || !canJustNextPage" @click="justGoNext">
                         Proxima pagina
                     </SecondaryButton>
+                    <SecondaryButton type="button" :disabled="loading || justAnalyticsLoading" @click="loadJustificationsAnalyticsFull">
+                        Carregar periodo para graficos
+                    </SecondaryButton>
+                </div>
+                <p class="text-xs text-slate-500">
+                    Graficos usam todas as paginas do periodo (ate {{ JUST_ANALYTICS_MAX_PAGES }} paginas). Setor vem do cadastro
+                    de colaboradores (ate 500 na primeira consulta).
+                </p>
+                <div
+                    v-if="justAnalyticsRows.length"
+                    class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+                >
+                    <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                        <p class="text-xs font-medium uppercase text-slate-500">Total no periodo</p>
+                        <p class="mt-1 text-2xl font-semibold text-slate-900">{{ justAnalyticsMeta.mergedTotal }}</p>
+                        <p v-if="justAnalyticsMeta.recordsTotalFromApi != null" class="mt-1 text-xs text-slate-500">
+                            RHID recordsTotal: {{ justAnalyticsMeta.recordsTotalFromApi }}
+                        </p>
+                    </div>
+                    <div class="rounded-lg border border-rose-100 bg-rose-50/80 p-4 shadow-sm">
+                        <p class="text-xs font-medium uppercase text-rose-800">Atestados (heuristica)</p>
+                        <p class="mt-1 text-2xl font-semibold text-rose-900">{{ justAtestadoCount }}</p>
+                        <p class="mt-1 text-xs text-rose-700">Nome do tipo ou texto contem "atest"</p>
+                    </div>
+                    <div
+                        v-if="justAnalyticsMeta.truncated"
+                        class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:col-span-2 lg:col-span-2"
+                    >
+                        Limite de paginas atingido — estreite o periodo ou os filtros para carregar tudo.
+                    </div>
+                </div>
+                <div v-if="justAnalyticsRows.length" class="grid gap-4 lg:grid-cols-2">
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
+                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Por tipo de justificativa</h3>
+                        <p class="mb-3 text-xs text-slate-500">
+                            Clique numa fatia para ver colaboradores e datas.
+                        </p>
+                        <apexchart
+                            v-if="!justTypeDonutChart.empty"
+                            type="donut"
+                            height="320"
+                            :options="justTypeDonutChart.options"
+                            :series="justTypeDonutChart.series"
+                        />
+                        <p v-else class="text-sm text-slate-500">Sem dados.</p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Atestado vs outras</h3>
+                        <p class="mb-3 text-xs text-slate-500">Heuristica por palavra-chave no tipo ou texto.</p>
+                        <apexchart
+                            v-if="!justAtestadoDonutChart.empty"
+                            type="donut"
+                            height="280"
+                            :options="justAtestadoDonutChart.options"
+                            :series="justAtestadoDonutChart.series"
+                        />
+                        <p v-else class="text-sm text-slate-500">Sem dados.</p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Top colaboradores</h3>
+                        <p class="mb-3 text-xs text-slate-500">Mais justificativas no periodo ({{ JUST_TOP_COLLABORATORS }}).</p>
+                        <apexchart
+                            v-if="!justTopPersonBarChart.empty"
+                            type="bar"
+                            :height="Math.max(260, (justTopPersonBarChart.series[0]?.data?.length ?? 0) * 40)"
+                            :options="justTopPersonBarChart.options"
+                            :series="justTopPersonBarChart.series"
+                        />
+                        <p v-else class="text-sm text-slate-500">Sem dados.</p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Por setor (departamento)</h3>
+                        <p class="mb-3 text-xs text-slate-500">
+                            Ate {{ JUST_MAX_DEPT_CHART }} setores + Outros. Clique na barra para listar.
+                        </p>
+                        <apexchart
+                            v-if="!justDeptBarChart.empty"
+                            type="bar"
+                            :height="Math.max(280, (justDeptBarChart.series[0]?.data?.length ?? 0) * 36)"
+                            :options="justDeptBarChart.options"
+                            :series="justDeptBarChart.series"
+                        />
+                        <p v-else class="text-sm text-slate-500">Sem dados.</p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
+                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Por status de aprovacao</h3>
+                        <p class="mb-3 text-xs text-slate-500">Distribuicao pelo status retornado pela API.</p>
+                        <apexchart
+                            v-if="!justStatusBarChart.empty"
+                            type="bar"
+                            :height="Math.max(240, (justStatusBarChart.series[0]?.data?.length ?? 0) * 36)"
+                            :options="justStatusBarChart.options"
+                            :series="justStatusBarChart.series"
+                        />
+                        <p v-else class="text-sm text-slate-500">Sem dados.</p>
+                    </div>
                 </div>
                 <div v-if="justRows.length" class="overflow-x-auto rounded border border-slate-200">
                     <table class="min-w-full text-left text-sm">
