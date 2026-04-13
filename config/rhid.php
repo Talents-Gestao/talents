@@ -82,12 +82,25 @@ return [
     | Listagem de justificativas (POST justification.svc/list)
     |--------------------------------------------------------------------------
     |
-    | Por padrao enviamos ini/fim como string compacta yyyyMMdd (8 digitos), como
-    | na documentacao Control iD. Se o servidor RHID retornar erro de DateTime
-    | (.NET / cultura pt-BR), defina RHID_JUSTIFICATION_LIST_DATES_BR=true para
-    | enviar ini/fim como dd/MM/yyyy.
+    | Formato de ini/fim no corpo enviado ao RHID (apos validar yyyyMMdd no Talents):
+    | - iso: yyyy-MM-dd (padrao; costuma funcionar com DateTime .NET / JSON)
+    | - compact: yyyyMMdd (documentacao Control iD "AnoMesDia")
+    | - br: dd/MM/yyyy (cultura pt-BR em alguns tenants)
+    |
+    | RHID_JUSTIFICATION_LIST_INI_FIM_FORMAT sobrescreve tudo. Se nao definido,
+    | RHID_JUSTIFICATION_LIST_DATES_BR=true ainda forca modo br (compatibilidade).
     |
     */
-    'justification_list_dates_br' => filter_var(env('RHID_JUSTIFICATION_LIST_DATES_BR', true), FILTER_VALIDATE_BOOL),
+    'justification_list_ini_fim_format' => (function () {
+        $fmt = env('RHID_JUSTIFICATION_LIST_INI_FIM_FORMAT');
+        if (is_string($fmt) && $fmt !== '') {
+            return strtolower($fmt);
+        }
+        if (filter_var(env('RHID_JUSTIFICATION_LIST_DATES_BR', false), FILTER_VALIDATE_BOOL)) {
+            return 'br';
+        }
+
+        return 'iso';
+    })(),
 
 ];

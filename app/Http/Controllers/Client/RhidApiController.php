@@ -111,27 +111,33 @@ class RhidApiController extends Controller
         $payload['ini'] = $this->formatJustificationListDateForRhidApi((string) $payload['ini']);
         $payload['fim'] = $this->formatJustificationListDateForRhidApi((string) $payload['fim']);
 
+        // Documentacao API: maxSize como string.
+        $payload['maxSize'] = (string) $payload['maxSize'];
+
         return $this->jsonOrError(fn () => $compliance->listJustifications($company, $request->user(), $payload));
     }
 
     /**
      * Converte yyyyMMdd validado para o formato esperado pelo POST justification.svc/list.
-     * Compacto (padrao doc) ou dd/MM/yyyy quando RHID_JUSTIFICATION_LIST_DATES_BR=true.
+     *
+     * @see config('rhid.justification_list_ini_fim_format') iso|compact|br
      */
     protected function formatJustificationListDateForRhidApi(string $yyyymmdd): string
     {
-        if (! config('rhid.justification_list_dates_br', false)) {
-            return $yyyymmdd;
-        }
-
         $y = (int) substr($yyyymmdd, 0, 4);
         $m = (int) substr($yyyymmdd, 4, 2);
         $d = (int) substr($yyyymmdd, 6, 2);
-        if ($y < 1900 || $m < 1 || $m > 12 || $d < 1 || $d > 31) {
+        if (! checkdate($m, $d, $y)) {
             return $yyyymmdd;
         }
 
-        return sprintf('%02d/%02d/%04d', $d, $m, $y);
+        $format = strtolower((string) config('rhid.justification_list_ini_fim_format', 'iso'));
+
+        return match ($format) {
+            'br', 'pt-br', 'pt_br' => sprintf('%02d/%02d/%04d', $d, $m, $y),
+            'compact', 'yyyymmdd', 'ymd' => $yyyymmdd,
+            default => sprintf('%04d-%02d-%02d', $y, $m, $d),
+        };
     }
 
     public function storeJustification(Request $request, RhidComplianceService $compliance): JsonResponse|Response
