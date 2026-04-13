@@ -64,4 +64,17 @@ return [
 
     'report_poll_sleep_ms' => (int) env('RHID_REPORT_POLL_SLEEP_MS', 1000),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Auditoria local do merge person (banco de horas / detalhe colaborador)
+    |--------------------------------------------------------------------------
+    |
+    | Em APP_ENV=local, o servico registra no log (debug) JSON antes/depois do
+    | merge do objeto aninhado person. Por padrao so grava quando o snapshot
+    | compacto muda; defina RHID_MERGE_AUDIT_FULL=true para linha completa em
+    | todas as linhas (pode gerar logs grandes).
+    |
+    */
+    'merge_audit_full' => filter_var(env('RHID_MERGE_AUDIT_FULL', false), FILTER_VALIDATE_BOOL),
+
 ];

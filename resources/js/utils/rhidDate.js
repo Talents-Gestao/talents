@@ -173,6 +173,8 @@ export function parseRhidBankBalanceMinutes(row) {
 
 /**
  * Nome amigavel para exibicao (cadastro / banco de horas).
+ * Ordem alinhada ao uso tipico do RHID: strPersonName / personName primeiro;
+ * objeto `person` aninhado tem precedencia sobre a raiz (mesmo criterio do backend).
  * @param {Record<string, unknown>|null|undefined} row
  * @returns {string}
  */
@@ -182,23 +184,17 @@ export function pickRhidPersonDisplayName(row) {
     }
     const nest = row.person || row.Person;
     const trim = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : '');
-    const candidates = [
-        trim(row.strPersonName),
-        trim(row.personName),
-        trim(row.name),
-        trim(row.nome),
-        trim(row.strNome),
-        trim(row.strName),
-        nest ? trim(nest.strPersonName) : '',
-        nest ? trim(nest.personName) : '',
-        nest ? trim(nest.name) : '',
-        nest ? trim(nest.nome) : '',
-        nest ? trim(nest.strNome) : '',
-        nest ? trim(nest.strName) : '',
-    ].filter(Boolean);
-    const unique = [...new Set(candidates)];
-    if (unique.length) {
-        return unique.reduce((a, b) => (b.length > a.length ? b : a));
+    const keys = ['strPersonName', 'personName', 'name', 'nome', 'strNome', 'strName'];
+    for (const k of keys) {
+        const inner = nest && typeof nest === 'object' ? nest[k] : undefined;
+        const tInner = trim(inner);
+        if (tInner) {
+            return tInner;
+        }
+        const tRoot = trim(row[k]);
+        if (tRoot) {
+            return tRoot;
+        }
     }
     if (row.idPerson != null) {
         return `ID ${row.idPerson}`;

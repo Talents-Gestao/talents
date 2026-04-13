@@ -6,6 +6,7 @@ use App\Exceptions\RhidApiException;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Log;
 
 class RhidComplianceService
 {
@@ -167,7 +168,7 @@ class RhidComplianceService
         $out = [];
         foreach ($rows as $row) {
             if (is_array($row)) {
-                $out[] = $this->mergePersonNestedIntoBankHourRow($row);
+                $out[] = $this->mergePersonNestedIntoBankHourRow($row, 'person_banco_horas');
             }
         }
 
@@ -262,7 +263,7 @@ class RhidComplianceService
             throw new RhidApiException('Colaborador nao encontrado na API RHID.', $r->status());
         }
 
-        $row = $this->mergePersonNestedIntoBankHourRow($row);
+        $row = $this->mergePersonNestedIntoBankHourRow($row, 'person.show.'.$id);
         $row = $this->enrichSinglePersonDepartmentAndRoleNames($company, $user, $row);
 
         return $this->shrinkPersonDetailForClient($row);
@@ -279,7 +280,10 @@ class RhidComplianceService
             $map = $this->departmentIdToNameMap($company, $user);
             $idi = (int) $idDept;
             $cur = $row['departmentName'] ?? null;
-            if ((! is_string($cur) || trim($cur) === '') && isset($map[$idi])) {
+            $fillDept = isset($map[$idi]) && (
+                ! is_string($cur) || trim($cur) === '' || $this->looksLikeRhidIdPlaceholder($cur)
+            );
+            if ($fillDept) {
                 $row['departmentName'] = $map[$idi];
             }
         }
@@ -288,7 +292,10 @@ class RhidComplianceService
             $map = $this->personRoleIdToNameMap($company, $user);
             $idi = (int) $idRole;
             $cur = $row['roleName'] ?? null;
-            if ((! is_string($cur) || trim($cur) === '') && isset($map[$idi])) {
+            $fillRole = isset($map[$idi]) && (
+                ! is_string($cur) || trim($cur) === '' || $this->looksLikeRhidIdPlaceholder($cur)
+            );
+            if ($fillRole) {
                 $row['roleName'] = $map[$idi];
             }
         }
@@ -471,7 +478,7 @@ class RhidComplianceService
                 continue;
             }
             $current = $row['roleName'] ?? null;
-            if (is_string($current) && trim($current) !== '') {
+            if (is_string($current) && trim($current) !== '' && ! $this->looksLikeRhidIdPlaceholder($current)) {
                 continue;
             }
             $rows[$i]['roleName'] = $map[$idInt];
@@ -614,6 +621,14 @@ class RhidComplianceService
     }
 
     /**
+     * Valores como "#54" ou "#37" vindos da API no lugar do nome — devem ser trocados pela lista mestre.
+     */
+    protected function looksLikeRhidIdPlaceholder(string $value): bool
+    {
+        return (bool) preg_match('/^#\d+$/', trim($value));
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $rows
      * @return list<array<string, mixed>>
      */
@@ -633,7 +648,7 @@ class RhidComplianceService
                 continue;
             }
             $current = $row['departmentName'] ?? null;
-            if (is_string($current) && trim($current) !== '') {
+            if (is_string($current) && trim($current) !== '' && ! $this->looksLikeRhidIdPlaceholder($current)) {
                 continue;
             }
             $rows[$i]['departmentName'] = $map[$idInt];
@@ -782,26 +797,129 @@ class RhidComplianceService
     }
 
     /**
+     * Copia profunda via JSON para snapshot antes do merge (apenas auditoria local).
+     *
      * @param  array<string, mixed>  $row
      * @return array<string, mixed>
      */
-    protected function mergePersonNestedIntoBankHourRow(array $row): array
+    protected function deepCopyRowForRhidMergeLog(array $row): array
     {
+        $json = json_encode($row, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+        if ($json === false || $json === '') {
+            return $row;
+        }
+        $decoded = json_decode($json, true);
+
+        return is_array($decoded) ? $decoded : $row;
+    }
+
+    /**
+     * Campos relevantes para comparar se o merge alterou algo (evita log em massa).
+     *
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    protected function snapshotForRhidMergeLog(array $row): array
+    {
+        $out = [];
+        foreach (['idPerson', 'id', 'id_funcionario', 'strPersonName', 'personName', 'name', 'nome', 'departmentName', 'roleName', 'idDepartment', 'idPersonRole', 'registration', 'matricula', 'cpf', 'pis'] as $k) {
+            if (array_key_exists($k, $row)) {
+                $out[$k] = $row[$k];
+            }
+        }
+        foreach (['person', 'Person', 'pessoa', 'Pessoa'] as $nk) {
+            if (! isset($row[$nk]) || ! is_array($row[$nk])) {
+                continue;
+            }
+            $inner = $row[$nk];
+            $nested = [];
+            foreach (['id', 'strPersonName', 'personName', 'name', 'nome', 'departmentName', 'roleName', 'idDepartment', 'idPersonRole'] as $ik) {
+                if (array_key_exists($ik, $inner)) {
+                    $nested[$ik] = $inner[$ik];
+                }
+            }
+            if ($nested !== []) {
+                $out[$nk] = $nested;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $after
+     */
+    protected function logRhidPersonRowMerge(string $context, array $before, array $after): void
+    {
+        if (! app()->environment('local')) {
+            return;
+        }
+
+        $fullAudit = (bool) config('rhid.merge_audit_full', false);
+        if (! $fullAudit) {
+            $snapB = $this->snapshotForRhidMergeLog($before);
+            $snapA = $this->snapshotForRhidMergeLog($after);
+            if (json_encode($snapB) === json_encode($snapA)) {
+                return;
+            }
+        }
+
+        $encodePayload = function (array $data) use ($fullAudit): string {
+            $payload = $fullAudit ? $data : $this->snapshotForRhidMergeLog($data);
+            $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+            if ($json === false) {
+                return '{"_error":"json_encode falhou"}';
+            }
+            if (strlen($json) > 65536) {
+                return substr($json, 0, 65536).'…[truncado]';
+            }
+
+            return $json;
+        };
+
+        Log::debug('RHID merge person row (antes/depois)', [
+            'context' => $context,
+            'before_json' => $encodePayload($before),
+            'after_json' => $encodePayload($after),
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    protected function mergePersonNestedIntoBankHourRow(array $row, ?string $auditContext = null): array
+    {
+        $before = $this->deepCopyRowForRhidMergeLog($row);
+
         $nestedKeys = ['person', 'Person', 'pessoa', 'Pessoa'];
-        $lift = [
+        /** Campos de texto: cadastro em `person` tem precedencia sobre a raiz (alinha com telas RHID). */
+        $stringLift = [
             'nome', 'name', 'strNome', 'strName', 'strPersonName', 'personName',
             'socialName', 'strSocialName',
             'registration', 'matricula', 'strMatricula', 'cpf', 'pis', 'strPis',
-            'departmentName', 'idDepartment', 'roleName', 'idPersonRole',
+            'departmentName', 'roleName',
         ];
+        /** IDs: so preenche na raiz se ainda vazios (evita trocar id incorretamente). */
+        $idLift = ['idDepartment', 'idPersonRole'];
         foreach ($nestedKeys as $nk) {
             if (! isset($row[$nk]) || ! is_array($row[$nk])) {
                 continue;
             }
             $inner = $row[$nk];
-            foreach ($lift as $f) {
+            foreach ($stringLift as $f) {
+                if (! isset($inner[$f]) || $inner[$f] === null || $inner[$f] === '') {
+                    continue;
+                }
+                if (is_string($inner[$f]) && trim($inner[$f]) === '') {
+                    continue;
+                }
+                $row[$f] = $inner[$f];
+            }
+            foreach ($idLift as $f) {
                 $empty = ! array_key_exists($f, $row) || $row[$f] === null || $row[$f] === '';
-                if ($empty && isset($inner[$f]) && $inner[$f] !== null && $inner[$f] !== '') {
+                if ($empty && isset($inner[$f]) && ($inner[$f] !== null && $inner[$f] !== '')) {
                     $row[$f] = $inner[$f];
                 }
             }
@@ -810,6 +928,8 @@ class RhidComplianceService
                 $row['idPerson'] = (int) $inner['id'];
             }
         }
+
+        $this->logRhidPersonRowMerge($auditContext ?? 'mergePersonNestedIntoBankHourRow', $before, $row);
 
         return $row;
     }
