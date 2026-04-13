@@ -97,9 +97,10 @@ const justFilterPeople = ref('');
 const justFilterShifts = ref('');
 const justFilterJustificationTypes = ref('');
 const justResult = ref(null);
-/** Linhas de todo o periodo carregadas para graficos (multi-pagina) */
+/** Periodo completo (multi-pagina RHID); tabela e graficos derivam disto */
 const justAnalyticsRows = ref([]);
-const justAnalyticsLoading = ref(false);
+/** True apos concluir uma listagem (mesmo com 0 registros) */
+const justListLoaded = ref(false);
 const justAnalyticsMeta = ref({
     pagesLoaded: 0,
     truncated: false,
@@ -126,28 +127,29 @@ const parseIdList = (raw) => {
     return ids.length ? ids : null;
 };
 
+const justPageSize = computed(() => Math.min(500, Math.max(1, Number(justMaxSize.value) || 100)));
+
 const justRows = computed(() => {
-    const r = justResult.value;
-    if (!r || !Array.isArray(r.data)) {
+    const all = justAnalyticsRows.value;
+    if (!all.length) {
         return [];
     }
-    return r.data;
+    const size = justPageSize.value;
+    const start = justPage.value * size;
+    return all.slice(start, start + size);
 });
 
 const justRecordsTotal = computed(() => {
-    const t = justResult.value?.recordsTotal;
-    return typeof t === 'number' ? t : null;
+    const n = justAnalyticsRows.value.length;
+    return justListLoaded.value ? n : null;
 });
 
 const canJustPrevPage = computed(() => justPage.value > 0);
 
 const canJustNextPage = computed(() => {
-    const total = justRecordsTotal.value;
-    const size = Number(justMaxSize.value) || 100;
+    const total = justAnalyticsRows.value.length;
+    const size = justPageSize.value;
     const page = justPage.value;
-    if (total == null) {
-        return justRows.value.length >= size;
-    }
     return (page + 1) * size < total;
 });
 
@@ -786,7 +788,10 @@ const buildJustificationsBody = (pageOverride) => {
     return body;
 };
 
-const fetchJustifications = async () => {
+/**
+ * Carrega todo o periodo no RHID (multi-pagina), tipos e pessoas para graficos e tabela paginada localmente.
+ */
+const loadJustificationsFullPeriod = async () => {
     if (!props.configured) {
         return;
     }
@@ -799,79 +804,9 @@ const fetchJustifications = async () => {
     }
     loading.value = true;
     clearErr();
-    try {
-        const { data } = await axios.post(route('client.rhid.api.justifications.list'), buildJustificationsBody());
-        justResult.value = data;
-    } catch (e) {
-        handleError(e);
-    } finally {
-        loading.value = false;
-    }
-};
-
-const loadJustifications = async () => {
-    justPage.value = 0;
-    await fetchJustifications();
-};
-
-const justGoPrev = async () => {
-    if (!canJustPrevPage.value) {
-        return;
-    }
-    justPage.value -= 1;
-    await fetchJustifications();
-};
-
-const justGoNext = async () => {
-    if (!canJustNextPage.value) {
-        return;
-    }
-    justPage.value += 1;
-    await fetchJustifications();
-};
-
-const justificationApprovalLabel = (row) => {
-    if (row?.approvalStatusStr2) {
-        return row.approvalStatusStr2;
-    }
-    const s = row?.approvalStatus ?? row?._approvalStatus;
-    return s != null ? String(s) : '—';
-};
-
-const closeJustChartDrilldown = () => {
-    justChartDrilldown.value = null;
-};
-
-const justRowToDrillLine = (row) => {
-    const pid = row?.idPerson;
-    const tmap = justificationTypeMap.value;
-    const pmap = personDeptMapForJust.value;
-    return {
-        name: row?.name ?? '—',
-        personId: pid != null && Number.isFinite(Number(pid)) ? Number(pid) : null,
-        tipo: justificationTypeLabel(row?.idJustificationType, tmap),
-        dept: departmentLabelForJustification(pid, pmap),
-        ini: row?.inicioStrColumn ?? row?.inicioStr ?? '—',
-        fim: row?.fimStrColumn ?? row?.fimStr ?? '—',
-        status: justificationApprovalLabel(row),
-        justificativa: row?.justificativa ?? '—',
-    };
-};
-
-const loadJustificationsAnalyticsFull = async () => {
-    if (!props.configured) {
-        return;
-    }
-    const iniStr = toRhidYmd(justIniDate.value);
-    const fimStr = toRhidYmd(justFimDate.value);
-    if (!/^\d{8}$/.test(iniStr) || !/^\d{8}$/.test(fimStr)) {
-        clearErr();
-        err.value = 'Informe data inicial e final validas (periodo em formato completo).';
-        return;
-    }
-    justAnalyticsLoading.value = true;
-    clearErr();
+    justListLoaded.value = false;
     justAnalyticsRows.value = [];
+    justResult.value = null;
     justAnalyticsMeta.value = {
         pagesLoaded: 0,
         truncated: false,
@@ -918,11 +853,65 @@ const loadJustificationsAnalyticsFull = async () => {
             recordsTotalFromApi: recordsTotal,
         };
         justAnalyticsRows.value = merged;
+        justResult.value = {
+            data: merged,
+            recordsTotal: merged.length,
+            recordsFiltered: merged.length,
+            source: 'justifications.periodo_completo',
+        };
+        justListLoaded.value = true;
     } catch (e) {
         handleError(e);
     } finally {
-        justAnalyticsLoading.value = false;
+        loading.value = false;
     }
+};
+
+const loadJustifications = async () => {
+    justPage.value = 0;
+    await loadJustificationsFullPeriod();
+};
+
+const justGoPrev = () => {
+    if (!canJustPrevPage.value) {
+        return;
+    }
+    justPage.value -= 1;
+};
+
+const justGoNext = () => {
+    if (!canJustNextPage.value) {
+        return;
+    }
+    justPage.value += 1;
+};
+
+const justificationApprovalLabel = (row) => {
+    if (row?.approvalStatusStr2) {
+        return row.approvalStatusStr2;
+    }
+    const s = row?.approvalStatus ?? row?._approvalStatus;
+    return s != null ? String(s) : '—';
+};
+
+const closeJustChartDrilldown = () => {
+    justChartDrilldown.value = null;
+};
+
+const justRowToDrillLine = (row) => {
+    const pid = row?.idPerson;
+    const tmap = justificationTypeMap.value;
+    const pmap = personDeptMapForJust.value;
+    return {
+        name: row?.name ?? '—',
+        personId: pid != null && Number.isFinite(Number(pid)) ? Number(pid) : null,
+        tipo: justificationTypeLabel(row?.idJustificationType, tmap),
+        dept: departmentLabelForJustification(pid, pmap),
+        ini: row?.inicioStrColumn ?? row?.inicioStr ?? '—',
+        fim: row?.fimStrColumn ?? row?.fimStr ?? '—',
+        status: justificationApprovalLabel(row),
+        justificativa: row?.justificativa ?? '—',
+    };
 };
 
 const justTypeSlices = computed(() => {
@@ -1450,9 +1439,6 @@ const justStatusBarChart = computed(() => {
 
             <p v-if="err" class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ err }}</p>
             <p v-if="loading" class="text-sm text-slate-500">Carregando...</p>
-            <p v-if="justAnalyticsLoading" class="text-sm font-medium text-talents-800">
-                Carregando periodo completo para graficos…
-            </p>
 
             <div v-show="tab === 'punches'" class="space-y-3">
                 <PrimaryButton type="button" :disabled="loading" @click="loadLastPunches">Atualizar marcacoes</PrimaryButton>
@@ -1777,16 +1763,13 @@ const justStatusBarChart = computed(() => {
                     <SecondaryButton type="button" :disabled="loading || !canJustPrevPage" @click="justGoPrev">
                         Pagina anterior
                     </SecondaryButton>
-                    <SecondaryButton type="button" :disabled="loading || !canJustNextPage" @click="justGoNext">
+                    <SecondaryButton type="button" :disabled="!canJustNextPage" @click="justGoNext">
                         Proxima pagina
-                    </SecondaryButton>
-                    <SecondaryButton type="button" :disabled="loading || justAnalyticsLoading" @click="loadJustificationsAnalyticsFull">
-                        Carregar periodo para graficos
                     </SecondaryButton>
                 </div>
                 <p class="text-xs text-slate-500">
-                    Graficos usam todas as paginas do periodo (ate {{ JUST_ANALYTICS_MAX_PAGES }} paginas). Setor vem do cadastro
-                    de colaboradores (ate 500 na primeira consulta).
+                    Ao listar, o periodo completo e carregado (ate {{ JUST_ANALYTICS_MAX_PAGES }} paginas no RHID); a tabela abaixo
+                    pagina localmente. Graficos e setor usam o mesmo conjunto; cadastro de pessoas limitado a 500 na consulta.
                 </p>
                 <div
                     v-if="justAnalyticsRows.length"
@@ -1922,9 +1905,11 @@ const justStatusBarChart = computed(() => {
                         </tbody>
                     </table>
                 </div>
-                <p v-else-if="justResult && !loading" class="text-sm text-slate-500">Nenhuma justificativa neste periodo ou filtros.</p>
+                <p v-else-if="justListLoaded && !justAnalyticsRows.length && !loading" class="text-sm text-slate-500">
+                    Nenhuma justificativa neste periodo ou filtros.
+                </p>
                 <RhidResponsePanel
-                    v-if="justResult && tab === 'justifications'"
+                    v-if="justListLoaded && justResult && tab === 'justifications'"
                     :data="justResult"
                     title="Resposta completa (suporte)"
                 />
