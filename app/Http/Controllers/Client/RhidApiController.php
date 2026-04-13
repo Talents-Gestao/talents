@@ -83,12 +83,21 @@ class RhidApiController extends Controller
             'companies' => ['nullable', 'array'],
             'companies.*' => ['integer'],
             'costcenters' => ['nullable', 'array'],
+            'costcenters.*' => ['integer'],
             'departments' => ['nullable', 'array'],
+            'departments.*' => ['integer'],
             'personroles' => ['nullable', 'array'],
+            'personroles.*' => ['integer'],
             'people' => ['nullable', 'array'],
+            'people.*' => ['integer'],
             'shifts' => ['nullable', 'array'],
+            'shifts.*' => ['integer'],
             'justificationTypes' => ['nullable', 'array'],
+            'justificationTypes.*' => ['integer'],
         ]);
+
+        $payload['page'] = (int) ($payload['page'] ?? 0);
+        $payload['maxSize'] = (int) ($payload['maxSize'] ?? 100);
 
         return $this->jsonOrError(fn () => $compliance->listJustifications($company, $request->user(), $payload));
     }

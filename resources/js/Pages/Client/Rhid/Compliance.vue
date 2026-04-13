@@ -69,9 +69,64 @@ const peopleRows = computed(() => extractListItems(peopleList.value));
 const tabs = [
     { id: 'punches', label: 'Marcacoes' },
     { id: 'bank', label: 'Banco de horas' },
+    { id: 'justifications', label: 'Justificativas' },
     { id: 'reports', label: 'Relatorios' },
     { id: 'collaborators', label: 'Colaboradores' },
 ];
+
+const justIniDate = ref(monthFirst);
+const justFimDate = ref(monthLast);
+const justPage = ref(0);
+const justMaxSize = ref(100);
+const justFilterCompanies = ref('');
+const justFilterCostcenters = ref('');
+const justFilterDepartments = ref('');
+const justFilterPersonroles = ref('');
+const justFilterPeople = ref('');
+const justFilterShifts = ref('');
+const justFilterJustificationTypes = ref('');
+const justResult = ref(null);
+
+const parseIdList = (raw) => {
+    const t = String(raw ?? '').trim();
+    if (!t) {
+        return null;
+    }
+    const parts = t.split(/[\s,;]+/);
+    const ids = [];
+    for (const p of parts) {
+        const n = parseInt(p.trim(), 10);
+        if (!Number.isNaN(n)) {
+            ids.push(n);
+        }
+    }
+    return ids.length ? ids : null;
+};
+
+const justRows = computed(() => {
+    const r = justResult.value;
+    if (!r || !Array.isArray(r.data)) {
+        return [];
+    }
+    return r.data;
+});
+
+const justRecordsTotal = computed(() => {
+    const t = justResult.value?.recordsTotal;
+    return typeof t === 'number' ? t : null;
+});
+
+const canJustPrevPage = computed(() => justPage.value > 0);
+
+const canJustNextPage = computed(() => {
+    const total = justRecordsTotal.value;
+    const size = Number(justMaxSize.value) || 100;
+    const page = justPage.value;
+    if (total == null) {
+        return justRows.value.length >= size;
+    }
+    return (page + 1) * size < total;
+});
 
 const clearErr = () => {
     err.value = null;
@@ -679,6 +734,74 @@ const downloadReport = () => {
         `?guid=${encodeURIComponent(reportGuid.value)}&format=${encodeURIComponent(reportFormato.value)}`;
     window.open(url, '_blank');
 };
+
+const buildJustificationsBody = () => {
+    const body = {
+        ini: toRhidYmd(justIniDate.value),
+        fim: toRhidYmd(justFimDate.value),
+        page: justPage.value,
+        maxSize: Math.min(500, Math.max(1, Number(justMaxSize.value) || 100)),
+    };
+    const add = (key, r) => {
+        const arr = parseIdList(r.value);
+        if (arr) {
+            body[key] = arr;
+        }
+    };
+    add('companies', justFilterCompanies);
+    add('costcenters', justFilterCostcenters);
+    add('departments', justFilterDepartments);
+    add('personroles', justFilterPersonroles);
+    add('people', justFilterPeople);
+    add('shifts', justFilterShifts);
+    add('justificationTypes', justFilterJustificationTypes);
+    return body;
+};
+
+const fetchJustifications = async () => {
+    if (!props.configured) {
+        return;
+    }
+    loading.value = true;
+    clearErr();
+    try {
+        const { data } = await axios.post(route('client.rhid.api.justifications.list'), buildJustificationsBody());
+        justResult.value = data;
+    } catch (e) {
+        handleError(e);
+    } finally {
+        loading.value = false;
+    }
+};
+
+const loadJustifications = async () => {
+    justPage.value = 0;
+    await fetchJustifications();
+};
+
+const justGoPrev = async () => {
+    if (!canJustPrevPage.value) {
+        return;
+    }
+    justPage.value -= 1;
+    await fetchJustifications();
+};
+
+const justGoNext = async () => {
+    if (!canJustNextPage.value) {
+        return;
+    }
+    justPage.value += 1;
+    await fetchJustifications();
+};
+
+const justificationApprovalLabel = (row) => {
+    if (row?.approvalStatusStr2) {
+        return row.approvalStatusStr2;
+    }
+    const s = row?.approvalStatus ?? row?._approvalStatus;
+    return s != null ? String(s) : '—';
+};
 </script>
 
 <template>
@@ -988,6 +1111,172 @@ const downloadReport = () => {
                 </div>
                 <p v-else-if="bankResult && !loading" class="text-sm text-slate-500">Nenhum registro retornado.</p>
                 <RhidResponsePanel v-if="bankResult" :data="bankResult" title="Resposta completa (suporte)" />
+            </div>
+
+            <div v-show="tab === 'justifications'" class="space-y-4">
+                <p class="text-sm text-slate-600">
+                    Listagem alinhada ao endpoint RHID
+                    <code class="rounded bg-slate-100 px-1 text-xs">POST customerdb/justification.svc/list</code>
+                    — parametros <code class="text-xs">ini</code> e <code class="text-xs">fim</code> em formato AnoMesDia
+                    (YYYYMMDD). Filtros opcionais aceitam um ou varios IDs separados por virgula ou espaco.
+                </p>
+                <div class="grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                        <InputLabel value="Data inicial (ini)" />
+                        <input
+                            v-model="justIniDate"
+                            type="date"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Data final (fim)" />
+                        <input
+                            v-model="justFimDate"
+                            type="date"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Registros por pagina (maxSize)" />
+                        <input
+                            v-model.number="justMaxSize"
+                            type="number"
+                            min="1"
+                            max="500"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                        />
+                    </div>
+                    <div class="flex items-end gap-2 pb-0.5">
+                        <p class="text-xs text-slate-500">
+                            Pagina {{ justPage + 1
+                            }}<span v-if="justRecordsTotal != null"> · Total {{ justRecordsTotal }} registro(s)</span>
+                        </p>
+                    </div>
+                    <div>
+                        <InputLabel value="Empresas (companies)" />
+                        <input
+                            v-model="justFilterCompanies"
+                            type="text"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                            placeholder="ex.: 1 ou 1, 2"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Centros de custo (costcenters)" />
+                        <input
+                            v-model="justFilterCostcenters"
+                            type="text"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                            placeholder="opcional"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Departamentos (departments)" />
+                        <input
+                            v-model="justFilterDepartments"
+                            type="text"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                            placeholder="opcional"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Cargos (personroles)" />
+                        <input
+                            v-model="justFilterPersonroles"
+                            type="text"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                            placeholder="opcional"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Funcionarios (people)" />
+                        <input
+                            v-model="justFilterPeople"
+                            type="text"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                            placeholder="opcional"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Horarios (shifts)" />
+                        <input
+                            v-model="justFilterShifts"
+                            type="text"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                            placeholder="opcional"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Tipos de justificativa (justificationTypes)" />
+                        <input
+                            v-model="justFilterJustificationTypes"
+                            type="text"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                            placeholder="opcional"
+                        />
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <PrimaryButton type="button" :disabled="loading" @click="loadJustifications">Listar justificativas</PrimaryButton>
+                    <SecondaryButton type="button" :disabled="loading || !canJustPrevPage" @click="justGoPrev">
+                        Pagina anterior
+                    </SecondaryButton>
+                    <SecondaryButton type="button" :disabled="loading || !canJustNextPage" @click="justGoNext">
+                        Proxima pagina
+                    </SecondaryButton>
+                </div>
+                <div v-if="justRows.length" class="overflow-x-auto rounded border border-slate-200">
+                    <table class="min-w-full text-left text-sm">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="whitespace-nowrap p-2">ID</th>
+                                <th class="whitespace-nowrap p-2">PIS</th>
+                                <th class="whitespace-nowrap p-2">Nome</th>
+                                <th class="whitespace-nowrap p-2">Inicio</th>
+                                <th class="whitespace-nowrap p-2">Fim</th>
+                                <th class="whitespace-nowrap p-2">Justificativa</th>
+                                <th class="min-w-[12rem] p-2">Descricao</th>
+                                <th class="whitespace-nowrap p-2">Status</th>
+                                <th class="whitespace-nowrap p-2">Tipo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(row, ji) in justRows" :key="row.id ?? ji" class="border-t border-slate-100">
+                                <td class="whitespace-nowrap p-2 font-mono text-xs">{{ row.id ?? '—' }}</td>
+                                <td class="whitespace-nowrap p-2 text-slate-600">{{ row.pis ?? '—' }}</td>
+                                <td class="max-w-[10rem] p-2 font-medium text-slate-800">
+                                    <Link
+                                        v-if="row.idPerson != null"
+                                        :href="route('client.rhid.collaborators.show', row.idPerson)"
+                                        class="text-talents-800 hover:underline"
+                                    >
+                                        {{ row.name ?? '—' }}
+                                    </Link>
+                                    <span v-else>{{ row.name ?? '—' }}</span>
+                                </td>
+                                <td class="whitespace-nowrap p-2 text-slate-700">{{ row.inicioStrColumn ?? row.inicioStr ?? '—' }}</td>
+                                <td class="whitespace-nowrap p-2 text-slate-700">{{ row.fimStrColumn ?? row.fimStr ?? '—' }}</td>
+                                <td class="max-w-[14rem] truncate p-2 text-slate-700" :title="row.justificativa || ''">
+                                    {{ row.justificativa ?? '—' }}
+                                </td>
+                                <td class="max-w-[14rem] truncate p-2 text-slate-600" :title="row.description || ''">
+                                    {{ row.description ?? '—' }}
+                                </td>
+                                <td class="whitespace-nowrap p-2 text-slate-600">{{ justificationApprovalLabel(row) }}</td>
+                                <td class="whitespace-nowrap p-2 text-slate-600">
+                                    {{ row.idJustificationType != null ? `#${row.idJustificationType}` : '—' }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p v-else-if="justResult && !loading" class="text-sm text-slate-500">Nenhuma justificativa neste periodo ou filtros.</p>
+                <RhidResponsePanel
+                    v-if="justResult && tab === 'justifications'"
+                    :data="justResult"
+                    title="Resposta completa (suporte)"
+                />
             </div>
 
             <div v-show="tab === 'reports'" class="space-y-3">
