@@ -77,4 +77,17 @@ return [
     */
     'merge_audit_full' => filter_var(env('RHID_MERGE_AUDIT_FULL', false), FILTER_VALIDATE_BOOL),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Listagem de justificativas (POST justification.svc/list)
+    |--------------------------------------------------------------------------
+    |
+    | Por padrao enviamos ini/fim como string compacta yyyyMMdd (8 digitos), como
+    | na documentacao Control iD. Se o servidor RHID retornar erro de DateTime
+    | (.NET / cultura pt-BR), defina RHID_JUSTIFICATION_LIST_DATES_BR=true para
+    | enviar ini/fim como dd/MM/yyyy.
+    |
+    */
+    'justification_list_dates_br' => filter_var(env('RHID_JUSTIFICATION_LIST_DATES_BR', true), FILTER_VALIDATE_BOOL),
+
 ];

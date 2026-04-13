@@ -7,6 +7,10 @@ export function toRhidYmd(htmlDate) {
     if (!htmlDate) {
         return '';
     }
+    const digits = String(htmlDate).replace(/\D/g, '').slice(0, 8);
+    if (digits.length === 8) {
+        return digits;
+    }
     return String(htmlDate).replace(/-/g, '');
 }
 

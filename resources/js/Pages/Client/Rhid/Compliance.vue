@@ -739,8 +739,8 @@ const buildJustificationsBody = () => {
     const iniStr = toRhidYmd(justIniDate.value);
     const fimStr = toRhidYmd(justFimDate.value);
     const body = {
-        ini: /^\d{8}$/.test(iniStr) ? parseInt(iniStr, 10) : iniStr,
-        fim: /^\d{8}$/.test(fimStr) ? parseInt(fimStr, 10) : fimStr,
+        ini: iniStr,
+        fim: fimStr,
         page: justPage.value,
         maxSize: Math.min(500, Math.max(1, Number(justMaxSize.value) || 100)),
     };
@@ -1127,7 +1127,8 @@ const justificationApprovalLabel = (row) => {
                     Listagem alinhada ao endpoint RHID
                     <code class="rounded bg-slate-100 px-1 text-xs">POST customerdb/justification.svc/list</code>
                     — parametros <code class="text-xs">ini</code> e <code class="text-xs">fim</code> em formato AnoMesDia
-                    (YYYYMMDD). Filtros opcionais aceitam um ou varios IDs separados por virgula ou espaco.
+                    (YYYYMMDD no navegador; o backend envia ao RHID conforme configuracao, ex. compacto ou
+                    dd/MM/yyyy). Filtros opcionais aceitam um ou varios IDs separados por virgula ou espaco.
                 </p>
                 <div class="grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
