@@ -89,9 +89,10 @@ export function formatRhidDotNetDate(val) {
 }
 
 /**
- * Saldo de banco de horas: a API RHID envia minutos (inteiro, pode ser negativo).
+ * Saldo de banco de horas: a API envia minutos (inteiro, pode ser negativo).
+ * Exibicao alinhada ao espelho RHID (formato HH:mm — horas totais, nao relogio 24h).
  * @param {unknown} totalMinutes
- * @returns {string} ex.: "-9h 53min", "3h 54min", "0h 00min"
+ * @returns {string} ex.: "-9:53", "3:54", "-51:33", "0:00"
  */
 export function formatRhidBankBalanceMinutes(totalMinutes) {
     if (totalMinutes == null || totalMinutes === '') {
@@ -105,7 +106,7 @@ export function formatRhidBankBalanceMinutes(totalMinutes) {
     const abs = Math.round(Math.abs(n));
     const h = Math.floor(abs / 60);
     const m = abs % 60;
-    return `${sign}${h}h ${String(m).padStart(2, '0')}min`;
+    return `${sign}${h}:${String(m).padStart(2, '0')}`;
 }
 
 const BANK_NUMERIC_KEYS = [

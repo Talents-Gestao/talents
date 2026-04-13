@@ -882,7 +882,7 @@ const downloadReport = () => {
                     >
                         <h3 class="mb-1 text-sm font-semibold text-slate-800">Distribuicao de saldo</h3>
                         <p class="mb-3 text-xs text-slate-500">
-                            Colaboradores por faixa de saldo (minutos) na data de referencia.
+                            Colaboradores por faixa de saldo (HH:mm, mesmo conceito do espelho RHID) na data de referencia.
                             <span class="font-medium text-talents-800"> Clique numa fatia</span> para ver a lista.
                         </p>
                         <apexchart
@@ -951,7 +951,7 @@ const downloadReport = () => {
                                 <th class="whitespace-nowrap p-2">Nome social</th>
                                 <th class="whitespace-nowrap p-2">Matricula</th>
                                 <th class="whitespace-nowrap p-2">CPF</th>
-                                <th class="whitespace-nowrap p-2">Saldo BH (h / min)</th>
+                                <th class="whitespace-nowrap p-2">Saldo BH (HH:mm)</th>
                                 <th class="whitespace-nowrap p-2">Departamento</th>
                                 <th class="whitespace-nowrap p-2">Cargo</th>
                             </tr>
