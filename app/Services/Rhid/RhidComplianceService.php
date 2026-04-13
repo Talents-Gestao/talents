@@ -822,7 +822,7 @@ class RhidComplianceService
     protected function snapshotForRhidMergeLog(array $row): array
     {
         $out = [];
-        foreach (['idPerson', 'id', 'id_funcionario', 'strPersonName', 'personName', 'name', 'nome', 'departmentName', 'roleName', 'idDepartment', 'idPersonRole', 'registration', 'matricula', 'cpf', 'pis'] as $k) {
+        foreach (['idPerson', 'id', 'id_funcionario', 'strPersonName', 'personName', 'name', 'nome', 'departmentName', 'roleName', 'idDepartment', 'idPersonRole', 'registration', 'matricula', 'cpf', 'pis', 'strSaldoBancoHoras', 'saldoBancoHoras'] as $k) {
             if (array_key_exists($k, $row)) {
                 $out[$k] = $row[$k];
             }
@@ -833,7 +833,7 @@ class RhidComplianceService
             }
             $inner = $row[$nk];
             $nested = [];
-            foreach (['id', 'strPersonName', 'personName', 'name', 'nome', 'departmentName', 'roleName', 'idDepartment', 'idPersonRole'] as $ik) {
+            foreach (['id', 'strPersonName', 'personName', 'name', 'nome', 'departmentName', 'roleName', 'idDepartment', 'idPersonRole', 'strSaldoBancoHoras', 'saldoBancoHoras'] as $ik) {
                 if (array_key_exists($ik, $inner)) {
                     $nested[$ik] = $inner[$ik];
                 }
@@ -900,9 +900,13 @@ class RhidComplianceService
             'socialName', 'strSocialName',
             'registration', 'matricula', 'strMatricula', 'cpf', 'pis', 'strPis',
             'departmentName', 'roleName',
+            /** Saldo BH: a raiz de person_banco_horas pode divergir do espelho RHID; o cadastro em `person` costuma bater com a tela. */
+            'strSaldoBancoHoras', 'strSaldo', 'strBanco',
         ];
         /** IDs: so preenche na raiz se ainda vazios (evita trocar id incorretamente). */
         $idLift = ['idDepartment', 'idPersonRole'];
+        /** Minutos / saldo numerico no aninhado tem precedencia sobre a raiz (mesmo raciocinio dos nomes). */
+        $numericBankLift = ['saldoBancoHoras', 'bancoHoras', 'saldo', 'minutesBank', 'balance', 'totalBancoHoras'];
         foreach ($nestedKeys as $nk) {
             if (! isset($row[$nk]) || ! is_array($row[$nk])) {
                 continue;
@@ -916,6 +920,18 @@ class RhidComplianceService
                     continue;
                 }
                 $row[$f] = $inner[$f];
+            }
+            foreach ($numericBankLift as $f) {
+                if (! array_key_exists($f, $inner)) {
+                    continue;
+                }
+                $v = $inner[$f];
+                if ($v === null || $v === '') {
+                    continue;
+                }
+                if (is_numeric($v)) {
+                    $row[$f] = 0 + $v;
+                }
             }
             foreach ($idLift as $f) {
                 $empty = ! array_key_exists($f, $row) || $row[$f] === null || $row[$f] === '';

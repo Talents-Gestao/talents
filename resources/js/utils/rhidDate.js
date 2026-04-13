@@ -115,9 +115,58 @@ const BANK_NUMERIC_KEYS = [
     'minutesBank',
     'balance',
     'totalBancoHoras',
-    'strBanco',
-    'strSaldo',
 ];
+
+/** Texto de saldo na API (na raiz ou em `person` aninhado). */
+const BANK_STR_KEYS = ['strSaldoBancoHoras', 'strSaldo', 'strBanco'];
+
+/**
+ * person_banco_horas as vezes traz saldo coerente com o espelho RHID apenas em `person`;
+ * a raiz pode trazer outro campo numerico (ex.: divergencia de -1936 min vs +02:59 na tela).
+ *
+ * @param {Record<string, unknown>|null|undefined} row
+ * @returns {Record<string, unknown>}
+ */
+function mergeRhidPersonNestedBankIntoRow(row) {
+    if (row == null || typeof row !== 'object') {
+        return /** @type {Record<string, unknown>} */ ({});
+    }
+    const nest = row.person || row.Person;
+    if (!nest || typeof nest !== 'object') {
+        return /** @type {Record<string, unknown>} */ ({ ...row });
+    }
+    const merged = { ...row };
+    for (const k of BANK_STR_KEYS) {
+        const v = nest[k];
+        if (v != null && String(v).trim() !== '') {
+            merged[k] = v;
+        }
+    }
+    for (const k of BANK_NUMERIC_KEYS) {
+        const v = nest[k];
+        if (v != null && v !== '') {
+            const n = Number(v);
+            if (Number.isFinite(n)) {
+                merged[k] = v;
+            }
+        }
+    }
+    return merged;
+}
+
+/**
+ * @param {Record<string, unknown>} row
+ * @returns {string|undefined}
+ */
+function pickFirstRhidBankStrRaw(row) {
+    for (const k of BANK_STR_KEYS) {
+        const v = row[k];
+        if (v != null && String(v).trim() !== '') {
+            return String(v).trim();
+        }
+    }
+    return undefined;
+}
 
 /**
  * Minutos numéricos do saldo BH (mesma ordem de leitura que a UI de tabela).
@@ -128,9 +177,10 @@ export function parseRhidBankBalanceMinutes(row) {
     if (row == null || typeof row !== 'object') {
         return null;
     }
-    const strRaw = row.strSaldoBancoHoras;
-    if (strRaw != null && String(strRaw).trim() !== '') {
-        const raw = String(strRaw).trim();
+    row = mergeRhidPersonNestedBankIntoRow(row);
+    const strRaw = pickFirstRhidBankStrRaw(row);
+    if (strRaw != null && strRaw !== '') {
+        const raw = strRaw;
         const neg = /^-/.test(raw);
         const s = raw.replace(/^-/, '');
         const hm = s.match(/^(\d{1,3}):(\d{2})$/);
@@ -211,9 +261,13 @@ export function pickRhidPersonDisplayName(row) {
  * @returns {string}
  */
 export function formatRhidBankBalanceDisplay(row) {
-    const strRaw = row?.strSaldoBancoHoras;
-    if (strRaw != null && String(strRaw).trim() !== '') {
-        const s = String(strRaw).trim();
+    if (row == null || typeof row !== 'object') {
+        return '—';
+    }
+    row = mergeRhidPersonNestedBankIntoRow(row);
+    const strRaw = pickFirstRhidBankStrRaw(row);
+    if (strRaw != null && strRaw !== '') {
+        const s = strRaw;
         if (/[hHmM]/.test(s) || /\d{1,3}:\d{2}/.test(s)) {
             return s;
         }
