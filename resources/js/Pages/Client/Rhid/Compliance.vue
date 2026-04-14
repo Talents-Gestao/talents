@@ -89,6 +89,7 @@ const espelhoImportsPage = ref(null);
 /** Ultimo import criado ou detalhe expandido */
 const espelhoLastImport = ref(null);
 const espelhoDetailLoading = ref(false);
+const espelhoBatchProgress = ref('');
 
 const ESPELHO_FIELD_OPTIONS = [
     { value: 'DIA_DA_SEMANA', label: 'Dia da semana' },
@@ -837,7 +838,7 @@ const validateEspelhoPeriod = () => {
     return null;
 };
 
-const buildEspelhoPayload = () => {
+const buildEspelhoPayload = (personIdsOverride = null) => {
     const fields =
         espelhoSelectedFields.value.length > 0
             ? [...espelhoSelectedFields.value]
@@ -849,7 +850,7 @@ const buildEspelhoPayload = () => {
         fontSizeHeaderSmall: 8,
         fontSizeFooter: 8,
         fontName: 'Helvetica',
-        listIdStr: parseIdList(espelhoFilterPeople) ?? [],
+        listIdStr: personIdsOverride ?? parseIdList(espelhoFilterPeople) ?? [],
         listCompanyStr: parseIdList(espelhoFilterCompanies) ?? [],
         listDepartmentStr: parseIdList(espelhoFilterDepartments) ?? [],
         listCostCenterStr: parseIdList(espelhoFilterCostcenters) ?? [],
@@ -993,6 +994,67 @@ const saveEspelhoToTalents = async () => {
         });
         espelhoLastImport.value = data.import;
         await pollEspelhoImportUntilDone(data.import.id);
+        await loadEspelhoImports();
+    } catch (e) {
+        handleError(e);
+    } finally {
+        loading.value = false;
+    }
+};
+
+const gerarEspelhoGuidByPersonId = async (idPerson) => {
+    const body = buildEspelhoPayload([idPerson]);
+    const { data: startData } = await axios.post(route('client.rhid.api.reports.start'), body);
+    const guid = startData.guid || '';
+    if (!guid) {
+        throw new Error(`Nao foi possivel obter GUID para colaborador ${idPerson}.`);
+    }
+    for (let i = 0; i < 120; i++) {
+        const { data } = await axios.get(route('client.rhid.api.reports.status'), {
+            params: { guid },
+        });
+        const p = Number(data.percent);
+        if (p === 100) {
+            return guid;
+        }
+        if (data.error) {
+            throw new Error(String(data.error));
+        }
+        await new Promise((r) => setTimeout(r, 1500));
+    }
+    throw new Error(`Timeout ao aguardar GUID ${guid} para colaborador ${idPerson}.`);
+};
+
+const saveEspelhoTodosToTalents = async () => {
+    if (!props.configured) {
+        err.value = 'Configure a integracao RHID antes de salvar os espelhos.';
+        return;
+    }
+    const ids = parseIdList(espelhoFilterPeople.value) ?? [];
+    if (!ids.length) {
+        err.value =
+            'Para salvar todos, preencha Funcionarios (listIdStr) com os IDs RHID separados por virgula.';
+        return;
+    }
+    clearErr();
+    loading.value = true;
+    espelhoBatchProgress.value = '';
+    try {
+        const total = ids.length;
+        for (let i = 0; i < total; i++) {
+            const idPerson = ids[i];
+            espelhoBatchProgress.value = `Processando ${i + 1}/${total} (ID ${idPerson})...`;
+            const guid = await gerarEspelhoGuidByPersonId(idPerson);
+            const { data } = await axios.post(route('client.rhid.api.espelhos.store'), {
+                guid,
+                id_person: idPerson,
+                ini: toRhidYmd(espelhoIniDate.value),
+                fim: toRhidYmd(espelhoFimDate.value),
+            });
+            espelhoLastImport.value = data.import;
+            await pollEspelhoImportUntilDone(data.import.id);
+        }
+        espelhoBatchProgress.value = `Concluido: ${total} colaborador(es) processado(s).`;
         await loadEspelhoImports();
     } catch (e) {
         handleError(e);
@@ -2330,6 +2392,9 @@ const justStatusBarChart = computed(() => {
                     <PrimaryButton type="button" :disabled="loading" @click="saveEspelhoToTalents">
                         Salvar no Talents e extrair
                     </PrimaryButton>
+                    <SecondaryButton type="button" :disabled="loading" @click="saveEspelhoTodosToTalents">
+                        Salvar todos (lote)
+                    </SecondaryButton>
                 </div>
                 <p v-if="espelhoGuid" class="text-sm text-slate-600">
                     GUID:
@@ -2337,6 +2402,7 @@ const justStatusBarChart = computed(() => {
                     <span v-if="espelhoPercent !== null" class="ml-2">Percentual: {{ espelhoPercent }}%</span>
                     <span v-if="espelhoPolling" class="ml-2 text-amber-700">Gerando...</span>
                 </p>
+                <p v-if="espelhoBatchProgress" class="text-sm text-slate-600">{{ espelhoBatchProgress }}</p>
                 <RhidResponsePanel v-if="espelhoPanelData" :data="espelhoPanelData" title="Status / resposta" />
 
                 <div v-if="espelhoLastImport" class="rounded-md border border-slate-200 bg-white p-3 text-sm shadow-sm">
