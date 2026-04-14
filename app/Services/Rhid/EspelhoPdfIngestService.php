@@ -29,7 +29,6 @@ class EspelhoPdfIngestService
         }
 
         $fullPath = $disk->path($import->storage_path);
-        $python = (string) config('rhid.espelho_python');
         $workdir = (string) config('rhid.espelho_parser_workdir');
         $timeout = (float) config('rhid.espelho_parse_timeout_seconds');
 
@@ -40,36 +39,50 @@ class EspelhoPdfIngestService
             return;
         }
 
-        $process = new Process(
-            [
-                $python,
-                '-m',
-                'rhid_espelho_parser',
-                $fullPath,
-                '--id-person',
-                (string) $import->id_person,
-                '--period-ini',
-                $import->period_ini->format('Y-m-d'),
-                '--period-fim',
-                $import->period_fim->format('Y-m-d'),
-            ],
-            $workdir,
-            null,
-            null,
-            $timeout,
-        );
-        $process->setIdleTimeout($timeout);
+        $command = [
+            '__PYTHON__',
+            '-m',
+            'rhid_espelho_parser',
+            $fullPath,
+            '--id-person',
+            (string) $import->id_person,
+            '--period-ini',
+            $import->period_ini->format('Y-m-d'),
+            '--period-fim',
+            $import->period_fim->format('Y-m-d'),
+        ];
 
-        try {
-            $process->mustRun();
-        } catch (ProcessFailedException $e) {
-            $err = trim($process->getErrorOutput() ?: $process->getOutput() ?: $e->getMessage());
-            $this->fail($import, 'Parser Python falhou: '.$err);
+        $lastErr = '';
+        $out = '';
+        foreach ($this->pythonBinariesToTry() as $python) {
+            $argv = $command;
+            $argv[0] = $python;
+            $process = new Process($argv, $workdir, null, null, $timeout);
+            $process->setIdleTimeout($timeout);
+            try {
+                $process->mustRun();
+                $out = trim($process->getOutput());
+                $lastErr = '';
+                break;
+            } catch (ProcessFailedException $e) {
+                $lastErr = trim($process->getErrorOutput() ?: $process->getOutput() ?: $e->getMessage());
+                if (! $this->isPythonNotFoundFailure($process, $lastErr)) {
+                    $this->fail($import, 'Parser Python falhou: '.$lastErr);
+
+                    return;
+                }
+            }
+        }
+        if ($lastErr !== '' && $out === '') {
+            $this->fail(
+                $import,
+                'Python nao encontrado. Instale python3 e pymupdf no servidor ou defina RHID_ESPELHO_PYTHON (ex.: /usr/bin/python3). Detalhe: '.$lastErr,
+            );
 
             return;
         }
 
-        $out = trim($process->getOutput());
+        $out = trim($out);
         if ($out === '') {
             $this->fail($import, 'Parser Python nao retornou JSON em stdout.');
 
@@ -126,6 +139,33 @@ class EspelhoPdfIngestService
             $import->raw_extract_json = $out;
             $import->save();
         });
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function pythonBinariesToTry(): array
+    {
+        $primary = trim((string) config('rhid.espelho_python'));
+        $fallbacks = PHP_OS_FAMILY === 'Windows'
+            ? ['python3', 'python']
+            : ['python3', 'python'];
+        $merged = $primary !== '' ? array_merge([$primary], $fallbacks) : $fallbacks;
+
+        return array_values(array_unique(array_filter($merged)));
+    }
+
+    private function isPythonNotFoundFailure(Process $process, string $stderrOrMsg): bool
+    {
+        if ($process->getExitCode() === 127) {
+            return true;
+        }
+        $m = strtolower($stderrOrMsg);
+
+        return str_contains($m, 'not found')
+            || str_contains($m, 'no such file or directory')
+            || str_contains($m, 'cannot find')
+            || (bool) preg_match('/\bpython\\d*:?\\s*not found/i', $stderrOrMsg);
     }
 
     private function fail(RhidEspelhoImport $import, string $message): void

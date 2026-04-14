@@ -69,7 +69,14 @@ return [
     | Parser Python do espelho (PDF salvo localmente)
     |--------------------------------------------------------------------------
     */
-    'espelho_python' => env('RHID_ESPELHO_PYTHON', 'python'),
+    /*
+     * Em Linux/Docker costuma existir apenas `python3`; no Windows costuma ser `python`.
+     * Sobrescreva com RHID_ESPELHO_PYTHON=/usr/bin/python3.12 se necessario.
+     */
+    'espelho_python' => env(
+        'RHID_ESPELHO_PYTHON',
+        PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3',
+    ),
 
     'espelho_parser_workdir' => env(
         'RHID_ESPELHO_PARSER_WORKDIR',
