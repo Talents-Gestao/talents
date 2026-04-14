@@ -6,6 +6,7 @@ use App\Exceptions\RhidApiException;
 use App\Exceptions\RhidDomainChoiceRequiredException;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Services\Rhid\RhidAuthService;
 use App\Services\Rhid\RhidComplianceService;
 use App\Services\Rhid\RhidDeviceService;
 use App\Services\Rhid\RhidMonitoringService;
@@ -319,7 +320,7 @@ class RhidApiController extends Controller
         return $this->jsonOrError(fn () => $reports->guidStatus($company, $request->user(), $guid));
     }
 
-    public function downloadReport(Request $request, RhidReportService $reports): JsonResponse|Response
+    public function downloadReport(Request $request, RhidReportService $reports, RhidAuthService $auth): JsonResponse|Response
     {
         $company = $this->company($request);
         $data = $request->validate([
@@ -337,15 +338,56 @@ class RhidApiController extends Controller
             return response()->json(['message' => 'Falha ao baixar arquivo no RHID.'], 422);
         }
 
+        $body = $r->body();
+        $wantInlineHtml = $request->boolean('inline') && strtoupper($data['format']) === 'HTML';
+
+        if ($wantInlineHtml) {
+            if ($body === '') {
+                return response()->json(['message' => 'Arquivo HTML vazio retornado pelo RHID.'], 422);
+            }
+            $body = $this->injectRhidHtmlBaseForPreview($body, $auth->baseUrl($company));
+
+            return response($body, 200, [
+                'Content-Type' => 'text/html; charset=UTF-8',
+                'Content-Disposition' => 'inline; filename="rhid-espelho.html"',
+                'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            ]);
+        }
+
         $filename = 'rhid-'.$data['guid'].'.'.strtolower($data['format']);
         if ($data['format'] === 'PDF2') {
             $filename = 'rhid-'.$data['guid'].'.pdf';
         }
 
-        return response($r->body(), 200, [
+        return response($body, 200, [
             'Content-Type' => $r->header('Content-Type') ?: 'application/octet-stream',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
+    }
+
+    /**
+     * O HTML do espelho costuma referenciar CSS/JS com URLs relativas ao host do RHID.
+     * Dentro de um iframe (blob ou mesmo dominio do Talents), sem <base> a pagina fica em branco.
+     */
+    private function injectRhidHtmlBaseForPreview(string $html, string $rhidBaseUrl): string
+    {
+        if (preg_match('/<base\s[^>]*\bhref\s*=/i', $html)) {
+            return $html;
+        }
+        $base = rtrim($rhidBaseUrl, '/').'/';
+        $tag = '<base href="'.htmlspecialchars($base, ENT_QUOTES, 'UTF-8').'">';
+        if (preg_match('/<head\b[^>]*>/i', $html, $m, PREG_OFFSET_CAPTURE)) {
+            $pos = $m[0][1] + strlen($m[0][0]);
+
+            return substr($html, 0, $pos).$tag.substr($html, $pos);
+        }
+        if (preg_match('/<html\b[^>]*>/i', $html, $m, PREG_OFFSET_CAPTURE)) {
+            $pos = $m[0][1] + strlen($m[0][0]);
+
+            return substr($html, 0, $pos).'<head><meta charset="UTF-8">'.$tag.'</head>'.substr($html, $pos);
+        }
+
+        return '<!DOCTYPE html><html><head><meta charset="UTF-8">'.$tag.'</head><body>'.$html.'</body></html>';
     }
 
     public function exportAfd(Request $request, RhidReportService $reports): JsonResponse|Response

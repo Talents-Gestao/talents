@@ -818,22 +818,48 @@ const validateEspelhoPeriod = () => {
 };
 
 const revokeEspelhoPreview = () => {
-    if (espelhoPreviewUrl.value) {
-        URL.revokeObjectURL(espelhoPreviewUrl.value);
-        espelhoPreviewUrl.value = null;
+    const u = espelhoPreviewUrl.value;
+    if (u && u.startsWith('blob:')) {
+        URL.revokeObjectURL(u);
     }
+    espelhoPreviewUrl.value = null;
 };
 
+/**
+ * Busca HTML com ?inline=1: o backend injeta <base href="...RHID..."> para CSS/JS relativos
+ * funcionarem no iframe (sem isso a visualizacao fica em branco).
+ */
 const loadEspelhoPreviewBlob = async () => {
     if (!espelhoGuid.value) {
         return;
     }
     revokeEspelhoPreview();
-    const { data } = await axios.get(route('client.rhid.api.reports.download'), {
-        params: { guid: espelhoGuid.value, format: 'HTML' },
-        responseType: 'blob',
+    const url = route('client.rhid.api.reports.download');
+    const { data, status } = await axios.get(url, {
+        params: { guid: espelhoGuid.value, format: 'HTML', inline: '1' },
+        responseType: 'text',
+        validateStatus: (s) => s === 200 || s === 422,
     });
-    espelhoPreviewUrl.value = URL.createObjectURL(data);
+    if (status === 422) {
+        let msg = 'Nao foi possivel carregar o HTML do espelho.';
+        try {
+            const j = typeof data === 'string' ? JSON.parse(data) : data;
+            if (j?.message) {
+                msg = j.message;
+            }
+        } catch {
+            /* ignore */
+        }
+        err.value = msg;
+        return;
+    }
+    const html = typeof data === 'string' ? data : '';
+    if (!html.trim()) {
+        err.value = 'O RHID devolveu HTML vazio para o espelho.';
+        return;
+    }
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    espelhoPreviewUrl.value = URL.createObjectURL(blob);
 };
 
 const openEspelhoPreviewInPage = async () => {
