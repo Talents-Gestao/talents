@@ -7,7 +7,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
     extractListItems,
     formatRhidBankBalanceDisplay,
@@ -82,6 +82,11 @@ const espelhoFilterPersonroles = ref('');
 const espelhoFilterShifts = ref('');
 const espelhoPolling = ref(false);
 const espelhoPollCancelRequested = ref(false);
+/** Listagem paginada de imports (Laravel paginator JSON) */
+const espelhoImportsPage = ref(null);
+/** Ultimo import criado ou detalhe expandido */
+const espelhoLastImport = ref(null);
+const espelhoDetailLoading = ref(false);
 
 const ESPELHO_FIELD_OPTIONS = [
     { value: 'DIA_DA_SEMANA', label: 'Dia da semana' },
@@ -91,6 +96,21 @@ const ESPELHO_FIELD_OPTIONS = [
 ];
 
 const isAdmin = computed(() => page.props.auth?.user?.role === 'company_admin');
+
+const espelhoSinglePersonId = computed(() => {
+    const ids = parseIdList(espelhoFilterPeople.value);
+    if (!ids || ids.length !== 1) {
+        return null;
+    }
+    return ids[0];
+});
+
+const canSaveEspelhoToTalents = computed(
+    () =>
+        Boolean(espelhoGuid.value) &&
+        Number(espelhoPercent.value) === 100 &&
+        espelhoSinglePersonId.value != null,
+);
 
 const bankRows = computed(() => {
     const r = bankResult.value;
@@ -908,6 +928,113 @@ const downloadEspelho = () => {
 const cancelEspelhoPoll = () => {
     espelhoPollCancelRequested.value = true;
 };
+
+const loadEspelhoImports = async () => {
+    if (!props.configured || !isAdmin.value) {
+        return;
+    }
+    try {
+        const { data } = await axios.get(route('client.rhid.api.espelhos.imports.index'), {
+            params: { per_page: 15 },
+        });
+        espelhoImportsPage.value = data;
+    } catch (e) {
+        handleError(e);
+    }
+};
+
+const pollEspelhoImportUntilDone = async (importId) => {
+    for (let i = 0; i < 90; i++) {
+        const { data } = await axios.get(route('client.rhid.api.espelhos.imports.show', importId));
+        const imp = data.import;
+        espelhoLastImport.value = imp;
+        if (imp.parse_status === 'ok' || imp.parse_status === 'failed') {
+            return imp;
+        }
+        await new Promise((r) => setTimeout(r, 2000));
+    }
+    return espelhoLastImport.value;
+};
+
+const saveEspelhoToTalents = async () => {
+    if (!props.configured) {
+        return;
+    }
+    if (!canSaveEspelhoToTalents.value) {
+        err.value =
+            'Aguarde 100% no GUID e informe exatamente um ID de funcionario em Filtros opcionais (listIdStr) para vincular o PDF.';
+        return;
+    }
+    clearErr();
+    loading.value = true;
+    try {
+        const { data } = await axios.post(route('client.rhid.api.espelhos.store'), {
+            guid: espelhoGuid.value,
+            id_person: espelhoSinglePersonId.value,
+            ini: toRhidYmd(espelhoIniDate.value),
+            fim: toRhidYmd(espelhoFimDate.value),
+        });
+        espelhoLastImport.value = data.import;
+        await pollEspelhoImportUntilDone(data.import.id);
+        await loadEspelhoImports();
+    } catch (e) {
+        handleError(e);
+    } finally {
+        loading.value = false;
+    }
+};
+
+const reparseEspelhoImport = async (importId) => {
+    if (!importId) {
+        return;
+    }
+    clearErr();
+    try {
+        await axios.post(route('client.rhid.api.espelhos.imports.reparse', importId));
+        await pollEspelhoImportUntilDone(importId);
+        await loadEspelhoImports();
+        if (espelhoLastImport.value?.id === importId) {
+            /* espelhoLastImport atualizado pelo poll */
+        }
+    } catch (e) {
+        handleError(e);
+    }
+};
+
+const syncParseEspelhoImportNow = async (importId) => {
+    if (!importId) {
+        return;
+    }
+    clearErr();
+    espelhoDetailLoading.value = true;
+    try {
+        const { data } = await axios.post(route('client.rhid.api.espelhos.imports.parse-sync', importId));
+        espelhoLastImport.value = data.import;
+        await loadEspelhoImports();
+    } catch (e) {
+        handleError(e);
+    } finally {
+        espelhoDetailLoading.value = false;
+    }
+};
+
+const showEspelhoImportRow = async (importId) => {
+    if (!importId) {
+        return;
+    }
+    try {
+        const { data } = await axios.get(route('client.rhid.api.espelhos.imports.show', importId));
+        espelhoLastImport.value = data.import;
+    } catch (e) {
+        handleError(e);
+    }
+};
+
+watch(tab, (t) => {
+    if (t === 'espelho') {
+        loadEspelhoImports();
+    }
+});
 
 /**
  * @param {number|undefined} pageOverride — se omitido, usa justPage (listagem paginada)
@@ -2066,8 +2193,11 @@ const justStatusBarChart = computed(() => {
 
             <div v-show="tab === 'espelho'" class="space-y-3">
                 <p class="text-sm text-slate-600">
-                    Espelho de ponto em PDF (RHID): use Gerar espelho para solicitar o relatorio e aguardar ate 100%; em seguida abra o arquivo com Download. Periodo maximo de 31 dias. Por padrao so
-                    funcionarios ativos (limite de licenca).
+                    Espelho de ponto em PDF (RHID): use Gerar espelho para solicitar o relatorio e aguardar ate 100%; em seguida use Download PDF ou
+                    <strong class="font-medium">Salvar no Talents</strong>
+                    para guardar o arquivo e extrair as linhas por dia (Python). Para salvar vinculado a um colaborador, informe
+                    <strong class="font-medium">exatamente um</strong>
+                    ID em Funcionarios (listIdStr). Periodo maximo de 31 dias. Por padrao so funcionarios ativos (limite de licenca).
                 </p>
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
@@ -2176,6 +2306,13 @@ const justStatusBarChart = computed(() => {
                     >
                         Download PDF
                     </PrimaryButton>
+                    <PrimaryButton
+                        type="button"
+                        :disabled="loading || !canSaveEspelhoToTalents"
+                        @click="saveEspelhoToTalents"
+                    >
+                        Salvar no Talents e extrair
+                    </PrimaryButton>
                 </div>
                 <p v-if="espelhoGuid" class="text-sm text-slate-600">
                     GUID:
@@ -2184,6 +2321,93 @@ const justStatusBarChart = computed(() => {
                     <span v-if="espelhoPolling" class="ml-2 text-amber-700">Gerando...</span>
                 </p>
                 <RhidResponsePanel v-if="espelhoPanelData" :data="espelhoPanelData" title="Status / resposta" />
+
+                <div v-if="espelhoLastImport" class="rounded-md border border-slate-200 bg-white p-3 text-sm shadow-sm">
+                    <h3 class="font-medium text-slate-800">Ultimo import no Talents</h3>
+                    <p class="mt-1 text-slate-600">
+                        Import #{{ espelhoLastImport.id }} — colaborador RHID
+                        <code class="rounded bg-slate-100 px-1">{{ espelhoLastImport.id_person }}</code>
+                        — {{ espelhoLastImport.period_ini }} a {{ espelhoLastImport.period_fim }} — parse:
+                        <span
+                            :class="{
+                                'text-emerald-700': espelhoLastImport.parse_status === 'ok',
+                                'text-amber-700': espelhoLastImport.parse_status === 'pending',
+                                'text-red-700': espelhoLastImport.parse_status === 'failed',
+                            }"
+                        >
+                            {{ espelhoLastImport.parse_status }}
+                        </span>
+                    </p>
+                    <p v-if="espelhoLastImport.parse_error" class="mt-1 text-red-700">
+                        {{ espelhoLastImport.parse_error }}
+                    </p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        <a
+                            :href="route('client.rhid.api.espelhos.imports.file', espelhoLastImport.id)"
+                            class="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            target="_blank"
+                            rel="noopener"
+                        >
+                            Abrir PDF salvo
+                        </a>
+                        <SecondaryButton type="button" @click="reparseEspelhoImport(espelhoLastImport.id)">
+                            Reprocessar (fila)
+                        </SecondaryButton>
+                        <SecondaryButton
+                            type="button"
+                            :disabled="espelhoDetailLoading"
+                            @click="syncParseEspelhoImportNow(espelhoLastImport.id)"
+                        >
+                            Processar agora (sync)
+                        </SecondaryButton>
+                    </div>
+                    <div v-if="espelhoLastImport.days?.length" class="mt-3 max-h-96 overflow-auto rounded border border-slate-100">
+                        <table class="min-w-full text-xs">
+                            <thead class="sticky top-0 bg-slate-50">
+                                <tr>
+                                    <th class="p-2 text-left font-medium text-slate-700">Data</th>
+                                    <th class="p-2 text-left font-medium text-slate-700">Texto (extracao)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="d in espelhoLastImport.days" :key="d.id" class="border-t border-slate-100">
+                                    <td class="whitespace-nowrap p-2 text-slate-800">{{ d.ref_date }}</td>
+                                    <td class="max-w-xl whitespace-pre-wrap p-2 text-slate-700">
+                                        {{ d.row_json?.text ?? JSON.stringify(d.row_json ?? {}) }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div v-if="espelhoImportsPage?.data?.length" class="rounded-md border border-slate-200 bg-slate-50/80 p-3 text-sm">
+                    <h3 class="font-medium text-slate-800">Imports recentes</h3>
+                    <table class="mt-2 min-w-full text-xs">
+                        <thead>
+                            <tr class="text-left text-slate-600">
+                                <th class="p-2">#</th>
+                                <th class="p-2">Pessoa</th>
+                                <th class="p-2">Periodo</th>
+                                <th class="p-2">Parse</th>
+                                <th class="p-2">Acoes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="row in espelhoImportsPage.data" :key="row.id" class="border-t border-slate-200">
+                                <td class="p-2">{{ row.id }}</td>
+                                <td class="p-2">{{ row.id_person }}</td>
+                                <td class="whitespace-nowrap p-2">{{ row.period_ini }} — {{ row.period_fim }}</td>
+                                <td class="p-2">{{ row.parse_status }}</td>
+                                <td class="p-2">
+                                    <button type="button" class="text-blue-700 underline" @click="showEspelhoImportRow(row.id)">
+                                        Ver detalhe
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div v-show="tab === 'reports'" class="space-y-3">

@@ -97,6 +97,50 @@ class RhidReportService
     }
 
     /**
+     * Corpo do arquivo após save_file (HTML/PDF), com o mesmo desembrulho JSON que o painel usa ao baixar espelho.
+     *
+     * @throws RhidApiException
+     */
+    public function downloadSaveFileBody(Company $company, ?User $user, string $format, string $guid): string
+    {
+        $r = $this->downloadSaveFile($company, $user, $format, $guid);
+        if ($r->failed()) {
+            throw RhidApiException::fromResponse($r, 'save_file');
+        }
+        $raw = (string) $r->body();
+        if (trim($raw) === '') {
+            throw new RhidApiException('Arquivo vazio retornado pelo RHID (save_file).', $r->status());
+        }
+
+        return $this->unwrapSaveFilePayload($raw);
+    }
+
+    /**
+     * Alguns tenants devolvem o arquivo dentro de um envelope JSON em vez de binário/HTML cru.
+     */
+    public function unwrapSaveFilePayload(string $body): string
+    {
+        $t = trim($body);
+        if ($t === '' || $t[0] !== '{') {
+            return $body;
+        }
+        $j = json_decode($t, true);
+        if (! is_array($j)) {
+            return $body;
+        }
+        foreach (['html', 'Html', 'HTML', 'content', 'Content', 'file', 'File'] as $k) {
+            if (isset($j[$k]) && is_string($j[$k]) && trim($j[$k]) !== '') {
+                return $j[$k];
+            }
+        }
+        if (isset($j['d']) && is_string($j['d']) && trim($j['d']) !== '') {
+            return $j['d'];
+        }
+
+        return $body;
+    }
+
+    /**
      * @return array{0: string, 1: string} [origin, referer]
      */
     private function rhidPortalHeaders(Company $company): array

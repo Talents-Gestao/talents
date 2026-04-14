@@ -5,15 +5,21 @@ namespace App\Http\Controllers\Client;
 use App\Exceptions\RhidApiException;
 use App\Exceptions\RhidDomainChoiceRequiredException;
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessRhidEspelhoParseJob;
 use App\Models\Company;
+use App\Models\RhidEspelhoImport;
+use App\Services\Rhid\EspelhoPdfIngestService;
 use App\Services\Rhid\RhidAuthService;
 use App\Services\Rhid\RhidComplianceService;
 use App\Services\Rhid\RhidDeviceService;
+use App\Services\Rhid\RhidEspelhoService;
 use App\Services\Rhid\RhidMonitoringService;
 use App\Services\Rhid\RhidReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RhidApiController extends Controller
 {
@@ -542,5 +548,153 @@ class RhidApiController extends Controller
             'ok' => $r->successful(),
             'status' => $r->status(),
         ]);
+    }
+
+    /**
+     * Grava o PDF do espelho no storage e enfileira o parse Python (apos GUID em 100%).
+     */
+    public function storeEspelhoPdf(Request $request, RhidEspelhoService $espelho): JsonResponse|Response
+    {
+        $company = $this->company($request);
+        $data = $request->validate([
+            'guid' => ['required', 'string', 'max:64'],
+            'id_person' => ['required', 'integer', 'min:1'],
+            'ini' => ['required', 'string'],
+            'fim' => ['required', 'string'],
+        ]);
+
+        try {
+            $import = $espelho->storePdfFromGuid(
+                $company,
+                $request->user(),
+                $data['guid'],
+                (int) $data['id_person'],
+                $data['ini'],
+                $data['fim'],
+            );
+        } catch (RhidApiException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'import' => $this->espelhoImportSummary($import),
+        ]);
+    }
+
+    public function listEspelhoImports(Request $request): JsonResponse|Response
+    {
+        $company = $this->company($request);
+        $q = RhidEspelhoImport::query()
+            ->where('company_id', $company->id)
+            ->orderByDesc('id');
+
+        if ($request->filled('id_person')) {
+            $q->where('id_person', (int) $request->query('id_person'));
+        }
+
+        $pageSize = min(50, max(5, (int) $request->query('per_page', 15)));
+
+        return response()->json($q->paginate($pageSize));
+    }
+
+    public function showEspelhoImport(Request $request, int $import): JsonResponse|Response
+    {
+        $company = $this->company($request);
+        $row = RhidEspelhoImport::query()
+            ->where('company_id', $company->id)
+            ->whereKey($import)
+            ->with(['days' => fn ($q) => $q->orderBy('ref_date')])
+            ->firstOrFail();
+
+        return response()->json([
+            'import' => $this->espelhoImportDetail($row),
+        ]);
+    }
+
+    public function reparseEspelhoImport(Request $request, int $import): JsonResponse|Response
+    {
+        $company = $this->company($request);
+        $row = RhidEspelhoImport::query()
+            ->where('company_id', $company->id)
+            ->whereKey($import)
+            ->firstOrFail();
+
+        ProcessRhidEspelhoParseJob::dispatch($row->id);
+
+        return response()->json([
+            'message' => 'Reprocessamento enfileirado.',
+            'import_id' => $row->id,
+        ]);
+    }
+
+    public function syncParseEspelhoImport(Request $request, int $import, EspelhoPdfIngestService $ingest): JsonResponse|Response
+    {
+        $company = $this->company($request);
+        $row = RhidEspelhoImport::query()
+            ->where('company_id', $company->id)
+            ->whereKey($import)
+            ->firstOrFail();
+
+        $ingest->parseAndPersist($row);
+        $row->refresh();
+
+        return response()->json([
+            'import' => $this->espelhoImportDetail($row->load(['days' => fn ($q) => $q->orderBy('ref_date')])),
+        ]);
+    }
+
+    public function downloadEspelhoImportFile(Request $request, int $import): JsonResponse|Response|StreamedResponse
+    {
+        $company = $this->company($request);
+        $row = RhidEspelhoImport::query()
+            ->where('company_id', $company->id)
+            ->whereKey($import)
+            ->firstOrFail();
+
+        $disk = Storage::disk('local');
+        if (! $disk->exists($row->storage_path)) {
+            return response()->json(['message' => 'Arquivo nao encontrado.'], 404);
+        }
+
+        $name = basename($row->storage_path);
+
+        return $disk->response($row->storage_path, $name, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function espelhoImportSummary(RhidEspelhoImport $import): array
+    {
+        return [
+            'id' => $import->id,
+            'id_person' => $import->id_person,
+            'period_ini' => $import->period_ini->format('Y-m-d'),
+            'period_fim' => $import->period_fim->format('Y-m-d'),
+            'guid' => $import->guid,
+            'parse_status' => $import->parse_status,
+            'parse_error' => $import->parse_error,
+            'parsed_at' => $import->parsed_at?->toIso8601String(),
+            'created_at' => $import->created_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function espelhoImportDetail(RhidEspelhoImport $import): array
+    {
+        $base = $this->espelhoImportSummary($import);
+        $base['days'] = $import->relationLoaded('days')
+            ? $import->days->map(fn ($d) => [
+                'id' => $d->id,
+                'ref_date' => $d->ref_date->format('Y-m-d'),
+                'row_json' => $d->row_json,
+            ])->values()->all()
+            : [];
+
+        return $base;
     }
 }

@@ -80,6 +80,12 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
             Route::post('reports/start', [RhidApiController::class, 'startReport'])->name('reports.start');
             Route::get('reports/status', [RhidApiController::class, 'reportStatus'])->name('reports.status');
             Route::get('reports/download', [RhidApiController::class, 'downloadReport'])->name('reports.download');
+            Route::post('espelhos/store', [RhidApiController::class, 'storeEspelhoPdf'])->name('espelhos.store');
+            Route::get('espelhos/imports', [RhidApiController::class, 'listEspelhoImports'])->name('espelhos.imports.index');
+            Route::get('espelhos/imports/{import}', [RhidApiController::class, 'showEspelhoImport'])->name('espelhos.imports.show')->whereNumber('import');
+            Route::post('espelhos/imports/{import}/reparse', [RhidApiController::class, 'reparseEspelhoImport'])->name('espelhos.imports.reparse')->whereNumber('import');
+            Route::post('espelhos/imports/{import}/parse-sync', [RhidApiController::class, 'syncParseEspelhoImport'])->name('espelhos.imports.parse-sync')->whereNumber('import');
+            Route::get('espelhos/imports/{import}/file', [RhidApiController::class, 'downloadEspelhoImportFile'])->name('espelhos.imports.file')->whereNumber('import');
             Route::post('afd/export', [RhidApiController::class, 'exportAfd'])->name('afd.export');
             Route::get('last-punches', [RhidApiController::class, 'lastPunches'])->name('last-punches');
             Route::get('devices', [RhidApiController::class, 'devices'])->name('devices.index');

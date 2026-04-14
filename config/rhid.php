@@ -66,6 +66,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Parser Python do espelho (PDF salvo localmente)
+    |--------------------------------------------------------------------------
+    */
+    'espelho_python' => env('RHID_ESPELHO_PYTHON', 'python'),
+
+    'espelho_parser_workdir' => env(
+        'RHID_ESPELHO_PARSER_WORKDIR',
+        base_path('tools/rhid-espelho-parser'),
+    ),
+
+    'espelho_parse_timeout_seconds' => (int) env('RHID_ESPELHO_PARSE_TIMEOUT', 120),
+
+    /*
+    |--------------------------------------------------------------------------
     | Auditoria local do merge person (banco de horas / detalhe colaborador)
     |--------------------------------------------------------------------------
     |

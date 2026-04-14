@@ -45,6 +45,11 @@ class Company extends Model
         return $this->hasMany(RhidAuditLog::class);
     }
 
+    public function rhidEspelhoImports(): HasMany
+    {
+        return $this->hasMany(RhidEspelhoImport::class);
+    }
+
     public function rhidConfigured(): bool
     {
         return filled($this->rhid_email) && filled($this->rhid_password);

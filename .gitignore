@@ -22,3 +22,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Python (parser espelho / ferramentas)
+__pycache__/
+*.py[cod]
