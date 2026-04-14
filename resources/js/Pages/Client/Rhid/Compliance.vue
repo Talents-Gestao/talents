@@ -101,14 +101,9 @@ const ESPELHO_FIELD_OPTIONS = [
 const isAdmin = computed(() => page.props.auth?.user?.role === 'company_admin');
 
 const espelhoTargetPersonId = computed(() => {
-    const manual = String(espelhoVinculoPersonId.value ?? '').trim();
-    if (manual !== '') {
-        const n = parseInt(manual, 10);
-        if (!Number.isNaN(n) && n >= 1) {
-            return n;
-        }
-
-        return null;
+    const manualIds = parseIdList(espelhoVinculoPersonId.value);
+    if (manualIds?.length === 1) {
+        return manualIds[0];
     }
     const ids = parseIdList(espelhoFilterPeople.value);
     if (ids?.length === 1) {
@@ -850,12 +845,12 @@ const buildEspelhoPayload = (personIdsOverride = null) => {
         fontSizeHeaderSmall: 8,
         fontSizeFooter: 8,
         fontName: 'Helvetica',
-        listIdStr: personIdsOverride ?? parseIdList(espelhoFilterPeople) ?? [],
-        listCompanyStr: parseIdList(espelhoFilterCompanies) ?? [],
-        listDepartmentStr: parseIdList(espelhoFilterDepartments) ?? [],
-        listCostCenterStr: parseIdList(espelhoFilterCostcenters) ?? [],
-        listPersonRoleStr: parseIdList(espelhoFilterPersonroles) ?? [],
-        listShiftStr: parseIdList(espelhoFilterShifts) ?? [],
+        listIdStr: personIdsOverride ?? parseIdList(espelhoFilterPeople.value) ?? [],
+        listCompanyStr: parseIdList(espelhoFilterCompanies.value) ?? [],
+        listDepartmentStr: parseIdList(espelhoFilterDepartments.value) ?? [],
+        listCostCenterStr: parseIdList(espelhoFilterCostcenters.value) ?? [],
+        listPersonRoleStr: parseIdList(espelhoFilterPersonroles.value) ?? [],
+        listShiftStr: parseIdList(espelhoFilterShifts.value) ?? [],
     };
     /** @type {Record<string, unknown>} */
     const body = {
@@ -979,8 +974,12 @@ const saveEspelhoToTalents = async () => {
         return;
     }
     if (espelhoTargetPersonId.value == null) {
-        err.value =
-            'Informe o ID RHID do colaborador no campo abaixo, ou preencha Funcionarios (listIdStr) com exatamente um ID.';
+        const many =
+            (parseIdList(espelhoVinculoPersonId.value)?.length ?? 0) > 1 ||
+            (parseIdList(espelhoFilterPeople.value)?.length ?? 0) > 1;
+        err.value = many
+            ? 'Varios IDs informados: use o botao Salvar todos (lote). Para salvar um unico PDF, deixe apenas um ID no campo ou nos filtros.'
+            : 'Informe exatamente um ID RHID no campo acima ou em Funcionarios (listIdStr) nos filtros opcionais.';
         return;
     }
     clearErr();
@@ -1030,10 +1029,12 @@ const saveEspelhoTodosToTalents = async () => {
         err.value = 'Configure a integracao RHID antes de salvar os espelhos.';
         return;
     }
-    const ids = parseIdList(espelhoFilterPeople.value) ?? [];
+    const fromFilters = parseIdList(espelhoFilterPeople.value) ?? [];
+    const fromManual = parseIdList(espelhoVinculoPersonId.value) ?? [];
+    const ids = [...new Set([...fromFilters, ...fromManual])];
     if (!ids.length) {
         err.value =
-            'Para salvar todos, preencha Funcionarios (listIdStr) com os IDs RHID separados por virgula.';
+            'Para salvar todos, informe os IDs RHID separados por virgula no campo "ID RHID do colaborador" acima ou em Funcionarios (listIdStr) nos filtros opcionais.';
         return;
     }
     clearErr();
@@ -2369,15 +2370,16 @@ const justStatusBarChart = computed(() => {
                     </div>
                 </details>
                 <div class="max-w-md">
-                    <InputLabel value="ID RHID do colaborador (para Salvar no Talents)" />
+                    <InputLabel value="IDs RHID (Salvar no Talents / lote)" />
                     <input
                         v-model="espelhoVinculoPersonId"
                         type="text"
-                        inputmode="numeric"
                         class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-sm"
-                        placeholder="ex: 12345"
+                        placeholder="Um ID ou varios: 12345 ou 10, 20, 30"
                     />
-                    <p class="mt-1 text-xs text-slate-500">Deve ser o mesmo funcionario usado ao gerar o espelho (um ID).</p>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Salvar um: um ID (igual ao espelho gerado). Salvar todos (lote): varios IDs separados por virgula aqui ou em Funcionarios nos filtros acima.
+                    </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <PrimaryButton type="button" :disabled="loading" @click="gerarEspelhoCompleto">
