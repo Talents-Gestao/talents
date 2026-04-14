@@ -338,12 +338,16 @@ class RhidApiController extends Controller
             return response()->json(['message' => 'Falha ao baixar arquivo no RHID.'], 422);
         }
 
-        $body = $r->body();
+        $body = $this->unwrapRhidSaveFilePayload((string) $r->body());
         $wantInlineHtml = $request->boolean('inline') && strtoupper($data['format']) === 'HTML';
 
         if ($wantInlineHtml) {
-            if ($body === '') {
-                return response()->json(['message' => 'Arquivo HTML vazio retornado pelo RHID.'], 422);
+            if (trim($body) === '') {
+                return response()->json([
+                    'message' => 'Arquivo HTML vazio retornado pelo RHID ao baixar o espelho. '
+                        .'Aguarde alguns segundos apos 100% e tente de novo, ou use Download.',
+                    'rhid_status' => $r->status(),
+                ], 422);
             }
             $body = $this->injectRhidHtmlBaseForPreview($body, $auth->baseUrl($company));
 
@@ -363,6 +367,31 @@ class RhidApiController extends Controller
             'Content-Type' => $r->header('Content-Type') ?: 'application/octet-stream',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
+    }
+
+    /**
+     * Alguns tenants devolvem o arquivo dentro de um envelope JSON em vez de HTML cru.
+     */
+    private function unwrapRhidSaveFilePayload(string $body): string
+    {
+        $t = trim($body);
+        if ($t === '' || $t[0] !== '{') {
+            return $body;
+        }
+        $j = json_decode($t, true);
+        if (! is_array($j)) {
+            return $body;
+        }
+        foreach (['html', 'Html', 'HTML', 'content', 'Content', 'file', 'File'] as $k) {
+            if (isset($j[$k]) && is_string($j[$k]) && trim($j[$k]) !== '') {
+                return $j[$k];
+            }
+        }
+        if (isset($j['d']) && is_string($j['d']) && trim($j['d']) !== '') {
+            return $j['d'];
+        }
+
+        return $body;
     }
 
     /**

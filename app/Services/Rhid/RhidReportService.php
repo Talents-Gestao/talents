@@ -66,9 +66,55 @@ class RhidReportService
 
     /**
      * Baixa arquivo gerado (PDF/CSV/HTML).
+     *
+     * O save_file do RHID costuma exigir POST com corpo JSON (ex.: []) e cabecalhos de portal;
+     * sem isso a resposta pode vir 200 com corpo vazio. Para HTML, tenta variantes de format e
+     * pequenas esperas (corrida apos percent 100).
      */
     public function downloadSaveFile(Company $company, ?User $user, string $format, string $guid): Response
     {
+        $formats = strtoupper($format) === 'HTML'
+            ? ['HTML', 'Html', 'html']
+            : [$format];
+
+        $last = null;
+        foreach ($formats as $fmt) {
+            for ($attempt = 0; $attempt < 3; $attempt++) {
+                $last = $this->saveFileRequest($company, $user, $fmt, $guid);
+                if ($last->failed()) {
+                    break;
+                }
+                if (trim((string) $last->body()) !== '') {
+                    return $last;
+                }
+                if ($attempt < 2) {
+                    usleep(500_000);
+                }
+            }
+        }
+
+        return $last ?? $this->saveFileRequest($company, $user, $format, $guid);
+    }
+
+    /**
+     * @return array{0: string, 1: string} [origin, referer]
+     */
+    private function rhidPortalHeaders(Company $company): array
+    {
+        $base = rtrim($company->rhid_base_url ?: config('rhid.base_url'), '/');
+        $parts = parse_url($base) ?: [];
+        $scheme = $parts['scheme'] ?? 'https';
+        $host = $parts['host'] ?? 'www.rhid.com.br';
+        $origin = $scheme.'://'.$host;
+        $referer = $base.'/';
+
+        return [$origin, $referer];
+    }
+
+    private function saveFileRequest(Company $company, ?User $user, string $format, string $guid): Response
+    {
+        [$origin, $referer] = $this->rhidPortalHeaders($company);
+
         return $this->client->request(
             $company,
             $user,
@@ -79,10 +125,16 @@ class RhidReportService
                     'format' => $format,
                     'guid' => $guid,
                 ],
+                'raw_body' => '[]',
+                'content_type' => 'application/json',
                 'as_json' => false,
                 'expect_json' => false,
                 'accept' => '*/*',
                 'timeout' => (int) config('rhid.report_timeout'),
+                'headers' => [
+                    'Origin' => $origin,
+                    'Referer' => $referer,
+                ],
                 'auditAction' => 'rhid.report.save_file',
             ],
         );
