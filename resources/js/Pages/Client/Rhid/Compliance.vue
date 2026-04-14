@@ -824,6 +824,18 @@ const revokeEspelhoPreview = () => {
     }
 };
 
+const loadEspelhoPreviewBlob = async () => {
+    if (!espelhoGuid.value) {
+        return;
+    }
+    revokeEspelhoPreview();
+    const { data } = await axios.get(route('client.rhid.api.reports.download'), {
+        params: { guid: espelhoGuid.value, format: 'HTML' },
+        responseType: 'blob',
+    });
+    espelhoPreviewUrl.value = URL.createObjectURL(data);
+};
+
 const openEspelhoPreviewInPage = async () => {
     if (!props.configured || !espelhoGuid.value) {
         return;
@@ -838,13 +850,8 @@ const openEspelhoPreviewInPage = async () => {
     }
     loading.value = true;
     clearErr();
-    revokeEspelhoPreview();
     try {
-        const { data } = await axios.get(route('client.rhid.api.reports.download'), {
-            params: { guid: espelhoGuid.value, format: 'HTML' },
-            responseType: 'blob',
-        });
-        espelhoPreviewUrl.value = URL.createObjectURL(data);
+        await loadEspelhoPreviewBlob();
     } catch (e) {
         handleError(e);
     } finally {
@@ -897,7 +904,8 @@ const buildEspelhoPayload = () => {
     return body;
 };
 
-const startEspelhoReport = async () => {
+/** Inicia o relatorio, acompanha ate100% e, se for HTML, abre a visualizacao na pagina */
+const gerarEspelhoCompleto = async () => {
     if (!props.configured) {
         return;
     }
@@ -907,63 +915,21 @@ const startEspelhoReport = async () => {
         return;
     }
     revokeEspelhoPreview();
-    loading.value = true;
-    clearErr();
+    espelhoPollCancelRequested.value = false;
     espelhoGuid.value = '';
     espelhoPercent.value = null;
     espelhoPanelData.value = null;
-    try {
-        const { data } = await axios.post(route('client.rhid.api.reports.start'), buildEspelhoPayload());
-        espelhoGuid.value = data.guid || '';
-        espelhoPanelData.value = data;
-    } catch (e) {
-        handleError(e);
-    } finally {
-        loading.value = false;
-    }
-};
-
-const pollEspelhoStatus = async () => {
-    if (!espelhoGuid.value) {
-        return;
-    }
-    loading.value = true;
     clearErr();
-    try {
-        const { data } = await axios.get(route('client.rhid.api.reports.status'), {
-            params: { guid: espelhoGuid.value },
-        });
-        espelhoPercent.value = data.percent ?? null;
-        espelhoPanelData.value = data;
-    } catch (e) {
-        handleError(e);
-    } finally {
-        loading.value = false;
-    }
-};
-
-const downloadEspelho = () => {
-    if (!espelhoGuid.value) {
-        return;
-    }
-    const url =
-        route('client.rhid.api.reports.download') +
-        `?guid=${encodeURIComponent(espelhoGuid.value)}&format=${encodeURIComponent(espelhoFormato.value)}`;
-    window.open(url, '_blank');
-};
-
-const cancelEspelhoPoll = () => {
-    espelhoPollCancelRequested.value = true;
-};
-
-const pollEspelhoUntilReady = async () => {
-    if (!espelhoGuid.value) {
-        return;
-    }
-    espelhoPollCancelRequested.value = false;
     espelhoPolling.value = true;
-    clearErr();
+    loading.value = true;
     try {
+        const { data: startData } = await axios.post(route('client.rhid.api.reports.start'), buildEspelhoPayload());
+        espelhoGuid.value = startData.guid || '';
+        espelhoPanelData.value = startData;
+        if (!espelhoGuid.value) {
+            err.value = 'Nao foi possivel obter o GUID do RHID.';
+            return;
+        }
         for (let i = 0; i < 120; i++) {
             if (espelhoPollCancelRequested.value) {
                 break;
@@ -983,11 +949,37 @@ const pollEspelhoUntilReady = async () => {
             }
             await new Promise((r) => setTimeout(r, 1500));
         }
+        if (
+            !espelhoPollCancelRequested.value &&
+            Number(espelhoPercent.value) === 100 &&
+            espelhoFormato.value === 'HTML'
+        ) {
+            try {
+                await loadEspelhoPreviewBlob();
+            } catch (e) {
+                handleError(e);
+            }
+        }
     } catch (e) {
         handleError(e);
     } finally {
         espelhoPolling.value = false;
+        loading.value = false;
     }
+};
+
+const downloadEspelho = () => {
+    if (!espelhoGuid.value) {
+        return;
+    }
+    const url =
+        route('client.rhid.api.reports.download') +
+        `?guid=${encodeURIComponent(espelhoGuid.value)}&format=${encodeURIComponent(espelhoFormato.value)}`;
+    window.open(url, '_blank');
+};
+
+const cancelEspelhoPoll = () => {
+    espelhoPollCancelRequested.value = true;
 };
 
 /**
@@ -2148,8 +2140,8 @@ const justStatusBarChart = computed(() => {
             <div v-show="tab === 'espelho'" class="space-y-3">
                 <p class="text-sm text-slate-600">
                     O RHID nao expoe marcações do espelho como JSON; o fluxo oficial gera PDF ou HTML.
-                    Com formato HTML e processamento em 100%, pode ver o espelho abaixo sem baixar arquivo.
-                    Periodo maximo de 31 dias. Por padrao so funcionarios ativos (limite de licenca).
+                    Use Gerar espelho: o sistema pede o relatorio, aguarda ficar pronto e, em HTML, mostra na
+                    pagina. Periodo maximo de 31 dias. Por padrao so funcionarios ativos (limite de licenca).
                 </p>
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
@@ -2253,35 +2245,25 @@ const justStatusBarChart = computed(() => {
                     </div>
                 </details>
                 <div class="flex flex-wrap gap-2">
-                    <PrimaryButton type="button" :disabled="loading" @click="startEspelhoReport">
-                        1 — Iniciar (obter GUID)
+                    <PrimaryButton type="button" :disabled="loading" @click="gerarEspelhoCompleto">
+                        Gerar espelho
                     </PrimaryButton>
-                    <PrimaryButton type="button" :disabled="loading || !espelhoGuid" @click="pollEspelhoStatus">
-                        2 — Atualizar status
-                    </PrimaryButton>
+                    <SecondaryButton type="button" :disabled="!espelhoPolling" @click="cancelEspelhoPoll">
+                        Cancelar
+                    </SecondaryButton>
                     <PrimaryButton
                         type="button"
-                        :disabled="loading || espelhoPolling || !espelhoGuid"
-                        @click="pollEspelhoUntilReady"
+                        :disabled="!espelhoGuid || Number(espelhoPercent) !== 100"
+                        @click="downloadEspelho"
                     >
-                        Acompanhar ate 100%
-                    </PrimaryButton>
-                    <SecondaryButton
-                        type="button"
-                        :disabled="!espelhoPolling"
-                        @click="cancelEspelhoPoll"
-                    >
-                        Parar acompanhamento
-                    </SecondaryButton>
-                    <PrimaryButton type="button" :disabled="!espelhoGuid" @click="downloadEspelho">
-                        3 — Download
+                        Download
                     </PrimaryButton>
                     <SecondaryButton
                         type="button"
                         :disabled="loading || !espelhoCanPreviewInline"
                         @click="openEspelhoPreviewInPage"
                     >
-                        Ver espelho na pagina
+                        Atualizar visualizacao
                     </SecondaryButton>
                 </div>
                 <div v-if="espelhoPreviewUrl" class="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -2299,7 +2281,7 @@ const justStatusBarChart = computed(() => {
                     GUID:
                     <code class="rounded bg-slate-100 px-1">{{ espelhoGuid }}</code>
                     <span v-if="espelhoPercent !== null" class="ml-2">Percentual: {{ espelhoPercent }}%</span>
-                    <span v-if="espelhoPolling" class="ml-2 text-amber-700">Acompanhando...</span>
+                    <span v-if="espelhoPolling" class="ml-2 text-amber-700">Gerando...</span>
                 </p>
                 <RhidResponsePanel v-if="espelhoPanelData" :data="espelhoPanelData" title="Status / resposta" />
             </div>
