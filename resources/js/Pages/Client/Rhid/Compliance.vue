@@ -718,6 +718,32 @@ const loadCollaborators = async () => {
     }
 };
 
+/** IDs de todos os colaboradores retornados pelo cadastro RHID (person.svc/a), com paginacao. */
+const fetchAllRhidPersonIdsFromApi = async () => {
+    const maxSize = 500;
+    const all = new Set();
+    const maxPages = 200;
+    for (let page = 0; page < maxPages; page++) {
+        const { data } = await axios.get(route('client.rhid.api.people.index'), {
+            params: { page, maxSize },
+        });
+        const rows = extractListItems(data);
+        if (!rows.length) {
+            break;
+        }
+        for (const row of rows) {
+            const id = rhidPersonId(row);
+            if (id != null) {
+                all.add(id);
+            }
+        }
+        if (rows.length < maxSize) {
+            break;
+        }
+    }
+    return [...all].sort((a, b) => a - b);
+};
+
 const buildReportPayload = () => {
     const base = {
         formatoSaida: reportFormato.value,
@@ -1029,18 +1055,28 @@ const saveEspelhoTodosToTalents = async () => {
         err.value = 'Configure a integracao RHID antes de salvar os espelhos.';
         return;
     }
-    const fromFilters = parseIdList(espelhoFilterPeople.value) ?? [];
-    const fromManual = parseIdList(espelhoVinculoPersonId.value) ?? [];
-    const ids = [...new Set([...fromFilters, ...fromManual])];
-    if (!ids.length) {
-        err.value =
-            'Para salvar todos, informe os IDs RHID separados por virgula no campo "ID RHID do colaborador" acima ou em Funcionarios (listIdStr) nos filtros opcionais.';
+    const periodErr = validateEspelhoPeriod();
+    if (periodErr) {
+        err.value = periodErr;
         return;
     }
+    const fromFilters = parseIdList(espelhoFilterPeople.value) ?? [];
+    const fromManual = parseIdList(espelhoVinculoPersonId.value) ?? [];
+    let ids = [...new Set([...fromFilters, ...fromManual])];
     clearErr();
     loading.value = true;
     espelhoBatchProgress.value = '';
     try {
+        if (!ids.length) {
+            espelhoBatchProgress.value = 'Buscando colaboradores no RHID...';
+            ids = await fetchAllRhidPersonIdsFromApi();
+        }
+        if (!ids.length) {
+            espelhoBatchProgress.value = '';
+            err.value =
+                'Nenhum colaborador retornado pela API RHID. Verifique a integracao ou informe IDs manualmente.';
+            return;
+        }
         const total = ids.length;
         for (let i = 0; i < total; i++) {
             const idPerson = ids[i];
@@ -2378,7 +2414,9 @@ const justStatusBarChart = computed(() => {
                         placeholder="Um ID ou varios: 12345 ou 10, 20, 30"
                     />
                     <p class="mt-1 text-xs text-slate-500">
-                        Salvar um: um ID (igual ao espelho gerado). Salvar todos (lote): varios IDs separados por virgula aqui ou em Funcionarios nos filtros acima.
+                        Salvar um: um ID. Lote: varios IDs (virgula) aqui ou em Funcionarios nos filtros. Se deixar vazio,
+                        <strong class="font-medium">Salvar todos (lote)</strong>
+                        busca automaticamente todos os colaboradores do cadastro RHID (ate 500 por pagina).
                     </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
