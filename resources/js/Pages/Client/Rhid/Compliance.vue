@@ -7,7 +7,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import {
     extractListItems,
     formatRhidBankBalanceDisplay,
@@ -71,8 +71,6 @@ const espelhoPercent = ref(null);
 const espelhoPanelData = ref(null);
 const espelhoIniDate = ref(monthFirst);
 const espelhoFimDate = ref(monthLast);
-/** HTML permite ver o espelho na pagina; PDF continua disponivel para arquivo */
-const espelhoFormato = ref('HTML');
 /** '' = todos; 1 = ativos; 2 = inativos — padrao ativos (evita exceder limite da licenca RHID) */
 const espelhoStatus = ref('1');
 const espelhoSelectedFields = ref(['TODAS_MARCACOES', 'ENTRADAS_SAIDAS']);
@@ -84,15 +82,6 @@ const espelhoFilterPersonroles = ref('');
 const espelhoFilterShifts = ref('');
 const espelhoPolling = ref(false);
 const espelhoPollCancelRequested = ref(false);
-/** Blob URL do HTML do espelho para iframe (sem download) */
-const espelhoPreviewUrl = ref(null);
-
-const espelhoCanPreviewInline = computed(
-    () =>
-        Boolean(espelhoGuid.value) &&
-        Number(espelhoPercent.value) === 100 &&
-        espelhoFormato.value === 'HTML',
-);
 
 const ESPELHO_FIELD_OPTIONS = [
     { value: 'DIA_DA_SEMANA', label: 'Dia da semana' },
@@ -817,82 +806,6 @@ const validateEspelhoPeriod = () => {
     return null;
 };
 
-const revokeEspelhoPreview = () => {
-    const u = espelhoPreviewUrl.value;
-    if (u && u.startsWith('blob:')) {
-        URL.revokeObjectURL(u);
-    }
-    espelhoPreviewUrl.value = null;
-};
-
-/**
- * Busca HTML com ?inline=1: o backend injeta <base href="...RHID..."> para CSS/JS relativos
- * funcionarem no iframe (sem isso a visualizacao fica em branco).
- */
-const loadEspelhoPreviewBlob = async () => {
-    if (!espelhoGuid.value) {
-        return;
-    }
-    revokeEspelhoPreview();
-    const url = route('client.rhid.api.reports.download');
-    const { data, status } = await axios.get(url, {
-        params: { guid: espelhoGuid.value, format: 'HTML', inline: '1' },
-        responseType: 'text',
-        validateStatus: (s) => s === 200 || s === 422,
-    });
-    if (status === 422) {
-        let msg = 'Nao foi possivel carregar o HTML do espelho.';
-        try {
-            const j = typeof data === 'string' ? JSON.parse(data) : data;
-            if (j?.message) {
-                msg = j.message;
-            }
-        } catch {
-            /* ignore */
-        }
-        err.value = msg;
-        return;
-    }
-    const html = typeof data === 'string' ? data : '';
-    if (!html.trim()) {
-        err.value = 'O RHID devolveu HTML vazio para o espelho.';
-        return;
-    }
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    espelhoPreviewUrl.value = URL.createObjectURL(blob);
-};
-
-const openEspelhoPreviewInPage = async () => {
-    if (!props.configured || !espelhoGuid.value) {
-        return;
-    }
-    if (espelhoFormato.value !== 'HTML') {
-        err.value = 'Para ver na pagina, gere o relatorio com formato HTML (PDF abre como arquivo).';
-        return;
-    }
-    if (Number(espelhoPercent.value) !== 100) {
-        err.value = 'Aguarde o processamento chegar a 100% antes de visualizar.';
-        return;
-    }
-    loading.value = true;
-    clearErr();
-    try {
-        await loadEspelhoPreviewBlob();
-    } catch (e) {
-        handleError(e);
-    } finally {
-        loading.value = false;
-    }
-};
-
-onBeforeUnmount(() => {
-    revokeEspelhoPreview();
-});
-
-watch(espelhoFormato, () => {
-    revokeEspelhoPreview();
-});
-
 const buildEspelhoPayload = () => {
     const fields =
         espelhoSelectedFields.value.length > 0
@@ -914,7 +827,7 @@ const buildEspelhoPayload = () => {
     };
     /** @type {Record<string, unknown>} */
     const body = {
-        formatoSaida: espelhoFormato.value,
+        formatoSaida: 'PDF',
         ini: toRhidYmd(espelhoIniDate.value),
         fim: toRhidYmd(espelhoFimDate.value),
         relatorio: 'espelho',
@@ -930,7 +843,7 @@ const buildEspelhoPayload = () => {
     return body;
 };
 
-/** Inicia o relatorio, acompanha ate100% e, se for HTML, abre a visualizacao na pagina */
+/** Inicia o relatorio em PDF e acompanha ate o processamento chegar a 100% */
 const gerarEspelhoCompleto = async () => {
     if (!props.configured) {
         return;
@@ -940,7 +853,6 @@ const gerarEspelhoCompleto = async () => {
         err.value = periodErr;
         return;
     }
-    revokeEspelhoPreview();
     espelhoPollCancelRequested.value = false;
     espelhoGuid.value = '';
     espelhoPercent.value = null;
@@ -975,17 +887,6 @@ const gerarEspelhoCompleto = async () => {
             }
             await new Promise((r) => setTimeout(r, 1500));
         }
-        if (
-            !espelhoPollCancelRequested.value &&
-            Number(espelhoPercent.value) === 100 &&
-            espelhoFormato.value === 'HTML'
-        ) {
-            try {
-                await loadEspelhoPreviewBlob();
-            } catch (e) {
-                handleError(e);
-            }
-        }
     } catch (e) {
         handleError(e);
     } finally {
@@ -1000,7 +901,7 @@ const downloadEspelho = () => {
     }
     const url =
         route('client.rhid.api.reports.download') +
-        `?guid=${encodeURIComponent(espelhoGuid.value)}&format=${encodeURIComponent(espelhoFormato.value)}`;
+        `?guid=${encodeURIComponent(espelhoGuid.value)}&format=${encodeURIComponent('PDF')}`;
     window.open(url, '_blank');
 };
 
@@ -2165,19 +2066,10 @@ const justStatusBarChart = computed(() => {
 
             <div v-show="tab === 'espelho'" class="space-y-3">
                 <p class="text-sm text-slate-600">
-                    O RHID nao expoe marcações do espelho como JSON; o fluxo oficial gera PDF ou HTML.
-                    Use Gerar espelho: o sistema pede o relatorio, aguarda ficar pronto e, em HTML, mostra na
-                    pagina. Periodo maximo de 31 dias. Por padrao so funcionarios ativos (limite de licenca).
+                    Espelho de ponto em PDF (RHID): use Gerar espelho para solicitar o relatorio e aguardar ate 100%; em seguida abra o arquivo com Download. Periodo maximo de 31 dias. Por padrao so
+                    funcionarios ativos (limite de licenca).
                 </p>
-                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <div>
-                        <InputLabel value="Formato de saida" />
-                        <select v-model="espelhoFormato" class="mt-1 w-full rounded-md border border-slate-300 text-sm">
-                            <option value="PDF">PDF</option>
-                            <option value="HTML">HTML</option>
-                        </select>
-                        <p class="mt-1 text-xs text-slate-500">HTML: visualizar na pagina. PDF: arquivo para impressao.</p>
-                    </div>
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
                         <InputLabel value="Status dos funcionarios" />
                         <select v-model="espelhoStatus" class="mt-1 w-full rounded-md border border-slate-300 text-sm">
@@ -2282,26 +2174,8 @@ const justStatusBarChart = computed(() => {
                         :disabled="!espelhoGuid || Number(espelhoPercent) !== 100"
                         @click="downloadEspelho"
                     >
-                        Download
+                        Download PDF
                     </PrimaryButton>
-                    <SecondaryButton
-                        type="button"
-                        :disabled="loading || !espelhoCanPreviewInline"
-                        @click="openEspelhoPreviewInPage"
-                    >
-                        Atualizar visualizacao
-                    </SecondaryButton>
-                </div>
-                <div v-if="espelhoPreviewUrl" class="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <p class="text-sm font-medium text-slate-800">Visualizacao (HTML)</p>
-                        <SecondaryButton type="button" @click="revokeEspelhoPreview">Fechar</SecondaryButton>
-                    </div>
-                    <iframe
-                        :src="espelhoPreviewUrl"
-                        class="h-[min(70vh,36rem)] w-full rounded border border-slate-200 bg-white"
-                        title="Espelho de ponto RHID"
-                    />
                 </div>
                 <p v-if="espelhoGuid" class="text-sm text-slate-600">
                     GUID:
