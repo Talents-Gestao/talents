@@ -97,8 +97,9 @@ class EspelhoPdfIngestService
         }
 
         $schema = $data['schema_version'] ?? null;
-        if ($schema !== 1 && $schema !== '1') {
-            $this->fail($import, 'schema_version do parser nao suportado.');
+        $schemaOk = $schema === 1 || $schema === '1' || $schema === 2 || $schema === '2';
+        if (! $schemaOk) {
+            $this->fail($import, 'schema_version do parser nao suportado (esperado 1 ou 2).');
 
             return;
         }

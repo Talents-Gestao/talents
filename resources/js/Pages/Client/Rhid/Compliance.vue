@@ -2309,7 +2309,7 @@ const justStatusBarChart = computed(() => {
 
             <div v-show="tab === 'espelho'" class="space-y-3">
                                <p class="text-sm text-slate-600">
-                    Espelho de ponto em PDF (RHID): use Gerar espelho e aguarde 100%; depois use Download PDF ou Salvar no Talents (grava o PDF e extrai texto por dia).
+                    Espelho de ponto em PDF (RHID): use Gerar espelho e aguarde 100%; depois use Download PDF ou Salvar no Talents (grava o PDF e processa com o mesmo pipeline do cartão TALENTS6: pdfplumber, colaboradores e marcações por dia).
                     Informe o ID RHID do colaborador no campo abaixo (ou um unico ID em Funcionarios nos filtros opcionais). Periodo maximo de 31 dias.
                 </p>
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

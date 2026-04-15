@@ -47,7 +47,7 @@ RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --opti
 COPY . .
 COPY --from=frontend /app/public/build ./public/build
 
-# Parser do espelho RHID (EspelhoPdfIngestService): PyMuPDF + pdfplumber
+# Parser do espelho RHID (EspelhoPdfIngestService): pdfplumber + cartao_pdf_parser (paridade TALENTS6)
 RUN apk add --no-cache python3 py3-pip \
     && python3 -m pip install --break-system-packages --no-cache-dir -r tools/rhid-espelho-parser/requirements.txt
 

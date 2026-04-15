@@ -1,84 +1,109 @@
 from __future__ import annotations
 
-import json
-import os
-import subprocess
-import sys
 from datetime import date
 from pathlib import Path
 
-import fitz
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _make_sample_pdf(target: Path) -> None:
-    doc = fitz.open()
-    page = doc.new_page()
-    text = """ESPelho de Ponto
-Nome: Fulano de Tal
-Empresa: ACME
+def test_build_days_from_t6_colaboradores() -> None:
+    from rhid_espelho_parser.extract import build_days_from_t6_colaboradores
 
-14/04/2026  Entrada 08:00  Saida 12:00  Entrada 13:00  Saida 18:00
-15/04/2026  Falta justificada
-"""
-    page.insert_text((72, 72), text, fontsize=11)
-    doc.save(target)
-    doc.close()
+    colabs = [
+        {
+            "nome": "Fulano",
+            "cpf": "",
+            "departamento": "X",
+            "cargo": "Y",
+            "marcacoes": [
+                {
+                    "dia": "14/04/2026",
+                    "dia_semana": "TER",
+                    "marcacoes": "08:00 12:00",
+                    "justificativas": "",
+                },
+            ],
+        },
+        {
+            "nome": "Ciclano",
+            "cpf": "",
+            "departamento": "",
+            "cargo": "",
+            "marcacoes": [
+                {
+                    "dia": "14/04/2026",
+                    "dia_semana": "TER",
+                    "marcacoes": "09:00 18:00",
+                    "justificativas": "",
+                },
+            ],
+        },
+    ]
+    days = build_days_from_t6_colaboradores(colabs)
+    assert len(days) == 1
+    d0 = days[0]
+    assert d0["date"] == "2026-04-14"
+    assert d0["schema"] == "t6"
+    assert "text" in d0
+    assert len(d0["colaboradores"]) == 2
 
 
-def test_parse_groups_by_brazilian_date(tmp_path: Path) -> None:
-    pdf = tmp_path / "sample.pdf"
-    _make_sample_pdf(pdf)
+def test_parse_espelho_pdf_schema2_mocked(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pdf = tmp_path / "x.pdf"
+    pdf.write_bytes(b"%PDF-1.4\n")
+
+    from rhid_espelho_parser.cartao_pdf_parser import CartaoPontoLido
+    import rhid_espelho_parser.extract as extract_mod
+
+    def fake_extrair(_b: bytes) -> list:
+        return [
+            {
+                "nome": "Fulano",
+                "cpf": "",
+                "departamento": "",
+                "cargo": "",
+                "marcacoes": [
+                    {
+                        "dia": "01/03/2026",
+                        "dia_semana": "DOM",
+                        "marcacoes": "07:00",
+                        "justificativas": "",
+                    },
+                ],
+            },
+        ]
+
+    def fake_ler(_b: bytes):
+        c = CartaoPontoLido()
+        c.paginas = []
+        c.texto_total = ""
+        c.total_tabelas = 0
+        c.total_linhas_tabela = 0
+        return c
+
+    monkeypatch.setattr(extract_mod, "extrair_dados_cartao_ponto", fake_extrair)
+    monkeypatch.setattr(extract_mod, "ler_cartao_ponto_pdf", fake_ler)
 
     from rhid_espelho_parser.extract import parse_espelho_pdf
 
     out = parse_espelho_pdf(
         pdf,
         id_person=99,
-        period_ini=date(2026, 4, 1),
-        period_fim=date(2026, 4, 30),
+        period_ini=date(2026, 3, 1),
+        period_fim=date(2026, 3, 31),
     )
-    assert out["schema_version"] == 1
+    assert out["schema_version"] == 2
     assert out["id_person"] == 99
-    assert len(out["days"]) >= 2
-    dates = {d["date"] for d in out["days"]}
-    assert "2026-04-14" in dates
-    assert "2026-04-15" in dates
+    assert len(out["colaboradores"]) == 1
+    assert len(out["days"]) == 1
+    assert out["days"][0]["date"] == "2026-03-01"
+    assert out["summary"]["day_count"] == 1
 
 
-def test_cli_stdout_json(tmp_path: Path) -> None:
-    pdf = tmp_path / "cli.pdf"
-    _make_sample_pdf(pdf)
-    env = {**os.environ, "PYTHONPATH": str(ROOT)}
-    r = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "rhid_espelho_parser",
-            str(pdf),
-            "--id-person",
-            "1",
-            "--period-ini",
-            "2026-04-01",
-            "--period-fim",
-            "2026-04-30",
-        ],
-        cwd=str(ROOT),
-        env=env,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    data = json.loads(r.stdout)
-    assert data["schema_version"] == 1
-    assert data["id_person"] == 1
-    assert "marcacoes_espelho" in data
-    assert "marcacoes_espelho_count" in data
-
-
-def test_preencher_campos_marcacao_espelho_columns() -> None:
-    from rhid_espelho_parser.marcacoes_espelho import _preencher_campos_marcacao_pdf_linha
+def test_preencher_campos_marcacao_cartao_pdf_parser() -> None:
+    from rhid_espelho_parser.cartao_pdf_parser import _preencher_campos_marcacao_pdf_linha
 
     row = {
         "TODAS_MARCACOES": "07:00 12:00",

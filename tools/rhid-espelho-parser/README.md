@@ -1,6 +1,6 @@
 # Parser de espelho RHID (PDF)
 
-Extrai texto do PDF e agrupa linhas por data (`dd/mm/aaaa` ou ISO). Ajuste `extract.py` conforme o layout real do seu tenant.
+Paridade com o projeto **TALENTS6** (`cartao_pdf_parser.py`): **pdfplumber**, `extrair_dados_cartao_ponto` (texto + tabelas, normalização de horários), montagem de `days` agregados por data para o Laravel.
 
 ## Uso
 
@@ -9,9 +9,9 @@ pip install -r requirements.txt
 python3 -m rhid_espelho_parser /caminho/espelho.pdf --id-person 123 --period-ini 2026-04-01 --period-fim 2026-04-30
 ```
 
-No servidor (Docker/Linux), o Laravel usa por padrao `python3`. Ajuste `RHID_ESPELHO_PYTHON` no `.env` se o binario tiver outro nome (ex.: `/usr/bin/python3.12`).
+No servidor (Docker/Linux), o Laravel usa por padrão `/usr/bin/python3`. Ajuste `RHID_ESPELHO_PYTHON` no `.env` se necessário.
 
-Saida: JSON em stdout (`schema_version: 1`).
+Saída: JSON em stdout com **`schema_version`: 2**, campos `colaboradores`, `days` (uma entrada por data com `text` e `colaboradores[]`), `summary` / `meta`.
 
 ## Testes
 

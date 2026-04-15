@@ -1,3 +1,7 @@
+"""
+Parser do espelho/cartão RHID — paridade com TALENTS6 (cartao_pdf_parser).
+Usa pdfplumber e extrair_dados_cartao_ponto; monta days agregados por data para o Laravel.
+"""
 from __future__ import annotations
 
 import re
@@ -5,49 +9,82 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-import fitz
-
-RE_DATE_BR = re.compile(r"\b(\d{2}/\d{2}/\d{4})\b")
-RE_DATE_ISO = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
-
-
-def _parse_date_token(token: str) -> date | None:
-    token = token.strip()
-    if RE_DATE_ISO.match(token):
-        try:
-            return datetime.strptime(token, "%Y-%m-%d").date()
-        except ValueError:
-            return None
-    m = RE_DATE_BR.match(token)
-    if m:
-        try:
-            return datetime.strptime(m.group(1), "%d/%m/%Y").date()
-        except ValueError:
-            return None
-    return None
+from .cartao_pdf_parser import (
+    extrair_dados_cartao_ponto,
+    ler_cartao_ponto_pdf,
+)
 
 
-def _first_date_in_line(line: str) -> date | None:
-    for m in RE_DATE_ISO.finditer(line):
-        d = _parse_date_token(m.group(1))
-        if d:
-            return d
-    for m in RE_DATE_BR.finditer(line):
-        d = _parse_date_token(m.group(1))
-        if d:
-            return d
-    return None
-
-
-def extract_pdf_text(path: Path) -> str:
-    doc = fitz.open(path)
-    parts: list[str] = []
+def _dia_br_para_iso(dia: str) -> str | None:
+    """Converte dia dd/mm/aaaa (ou retorno do parser T6) para YYYY-MM-DD."""
+    if not dia or not str(dia).strip():
+        return None
+    s = str(dia).strip()
+    m = re.match(
+        r"^(\d{1,2})/(\d{1,2})/(\d{2,4})$",
+        s,
+    )
+    if not m:
+        return None
+    d, M, y = m.groups()
+    d, M = int(d), int(M)
+    yi = int(y)
+    if len(y) == 2:
+        yi = 2000 + yi if yi < 50 else 1900 + yi
     try:
-        for page in doc:
-            parts.append(page.get_text("text"))
-    finally:
-        doc.close()
-    return "\n".join(parts)
+        return date(yi, M, d).isoformat()
+    except ValueError:
+        return None
+
+
+def build_days_from_t6_colaboradores(colaboradores: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Uma entrada por ref_date (unique no Laravel), com colaboradores[] e text para a UI.
+    """
+    by_date: dict[str, list[dict[str, Any]]] = {}
+    for colab in colaboradores:
+        nome = (colab.get("nome") or "").strip()
+        for m in colab.get("marcacoes") or []:
+            if not isinstance(m, dict):
+                continue
+            dia_raw = m.get("dia") or ""
+            iso = _dia_br_para_iso(str(dia_raw))
+            if not iso:
+                continue
+            frag: dict[str, Any] = {
+                "nome": nome,
+                "cpf": colab.get("cpf") or "",
+                "departamento": colab.get("departamento") or "",
+                "cargo": colab.get("cargo") or "",
+                "dia_semana": m.get("dia_semana") or "",
+                "marcacoes": m.get("marcacoes") or "",
+                "justificativas": m.get("justificativas") or "",
+            }
+            by_date.setdefault(iso, []).append(frag)
+
+    days_out: list[dict[str, Any]] = []
+    for iso in sorted(by_date.keys()):
+        frags = by_date[iso]
+        lines: list[str] = []
+        for f in frags:
+            bits = [f.get("nome") or "", f.get("dia_semana") or "", f.get("marcacoes") or ""]
+            j = (f.get("justificativas") or "").strip()
+            if j:
+                bits.append(j)
+            line = " ".join(b for b in bits if b).strip()
+            if line:
+                lines.append(line)
+        text = " | ".join(lines) if len(lines) > 1 else (lines[0] if lines else "")
+        days_out.append(
+            {
+                "date": iso,
+                "ref_date": iso,
+                "schema": "t6",
+                "text": text,
+                "colaboradores": frags,
+            }
+        )
+    return days_out
 
 
 def parse_espelho_pdf(
@@ -58,76 +95,36 @@ def parse_espelho_pdf(
     period_fim: date | None = None,
 ) -> dict[str, Any]:
     """
-    Extrai blocos por dia usando linhas que contenham datas (dd/mm/aaaa ou ISO).
-    Layout exato do RHID pode variar; ajuste regex aqui com PDFs reais.
+    Extrai dados no mesmo pipeline do TALENTS6 (extrair_dados_cartao_ponto).
+    schema_version 2: colaboradores + days derivados para EspelhoPdfIngestService.
     """
-    raw = extract_pdf_text(path)
-    lines = [ln.strip() for ln in raw.splitlines()]
-    lines = [ln for ln in lines if ln]
-
-    days: list[dict[str, Any]] = []
-    header_lines: list[str] = []
-    current: date | None = None
-    bucket: list[str] = []
-
-    for ln in lines:
-        d = _first_date_in_line(ln)
-        if d:
-            if current is not None and bucket:
-                days.append(
-                    {
-                        "date": current.isoformat(),
-                        "raw_lines": bucket[:],
-                        "text": "\n".join(bucket),
-                    }
-                )
-            current = d
-            bucket = [ln]
-        elif current is None:
-            header_lines.append(ln)
-        else:
-            bucket.append(ln)
-
-    if current is not None and bucket:
-        days.append(
-            {
-                "date": current.isoformat(),
-                "raw_lines": bucket[:],
-                "text": "\n".join(bucket),
-            }
-        )
+    pdf_bytes = path.read_bytes()
+    colaboradores = extrair_dados_cartao_ponto(pdf_bytes)
+    cartao = ler_cartao_ponto_pdf(pdf_bytes)
+    days = build_days_from_t6_colaboradores(colaboradores)
 
     person_name: str | None = None
-    for h in header_lines[:40]:
-        if "nome" in h.lower() and ":" in h:
-            person_name = h.split(":", 1)[-1].strip() or None
-            break
+    if colaboradores:
+        person_name = (colaboradores[0].get("nome") or "").strip() or None
 
-    marcacoes_espelho: list[dict[str, Any]] = []
-    marcacoes_espelho_aviso: str | None = None
-    try:
-        from .marcacoes_espelho import extrair_marcacoes_do_espelho_pdf
-
-        marcacoes_espelho = extrair_marcacoes_do_espelho_pdf(path.read_bytes())
-    except ImportError:
-        marcacoes_espelho_aviso = "pdfplumber nao instalado; instale com: pip install pdfplumber"
-    except RuntimeError as e:
-        marcacoes_espelho_aviso = str(e)
-    except Exception as e:
-        marcacoes_espelho_aviso = f"extracao tabelas: {e}"
-
-    out: dict[str, Any] = {
-        "schema_version": 1,
+    return {
+        "schema_version": 2,
         "id_person": id_person,
         "person_name": person_name,
         "period_ini": period_ini.isoformat() if period_ini else None,
         "period_fim": period_fim.isoformat() if period_fim else None,
-        "header_text": "\n".join(header_lines[:200]),
+        "colaboradores": colaboradores,
         "days": days,
-        "summary": {"line_count": len(lines), "day_count": len(days)},
-        "marcacoes_espelho": marcacoes_espelho,
-        "marcacoes_espelho_count": len(marcacoes_espelho),
+        "summary": {
+            "line_count": sum(len(p.texto_por_linha) for p in cartao.paginas),
+            "day_count": len(days),
+            "colaborador_count": len(colaboradores),
+            "total_paginas": len(cartao.paginas),
+            "total_tabelas": cartao.total_tabelas,
+            "total_linhas_tabela": cartao.total_linhas_tabela,
+        },
+        "meta": {
+            "parser": "cartao_pdf_parser.TALENTS6",
+            "texto_total_len": len(cartao.texto_total or ""),
+        },
     }
-    if marcacoes_espelho_aviso:
-        out["marcacoes_espelho_aviso"] = marcacoes_espelho_aviso
-    return out
