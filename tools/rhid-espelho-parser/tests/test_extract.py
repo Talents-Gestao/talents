@@ -48,6 +48,30 @@ def test_build_days_from_t6_colaboradores() -> None:
     assert d0["schema"] == "t6"
     assert "text" in d0
     assert len(d0["colaboradores"]) == 2
+    fulano = next(c for c in d0["colaboradores"] if c["nome"] == "Fulano")
+    assert fulano["ent_1"] == "08:00"
+    assert fulano["sai_1"] == "12:00"
+    assert fulano["ent_2"] == ""
+    ciclano = next(c for c in d0["colaboradores"] if c["nome"] == "Ciclano")
+    assert ciclano["ent_1"] == "09:00"
+    assert ciclano["sai_1"] == "18:00"
+
+
+def test_marcacoes_string_to_ent_sai_slots() -> None:
+    from rhid_espelho_parser.extract import marcacoes_string_to_ent_sai_slots
+
+    s = marcacoes_string_to_ent_sai_slots("07:30 11:30 12:30 17:00 18:00 22:00")
+    assert s["ent_1"] == "07:30"
+    assert s["sai_1"] == "11:30"
+    assert s["ent_2"] == "12:30"
+    assert s["sai_2"] == "17:00"
+    assert s["ent_3"] == "18:00"
+    assert s["sai_3"] == "22:00"
+    assert s["ent_4"] == ""
+    assert s["sai_4"] == ""
+
+    empty = marcacoes_string_to_ent_sai_slots("")
+    assert all(empty[k] == "" for k in empty)
 
 
 def test_parse_espelho_pdf_schema2_mocked(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

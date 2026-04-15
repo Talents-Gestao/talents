@@ -119,6 +119,90 @@ const espelhoIsReadyForDownload = computed(() => {
     return Boolean(espelhoGuid.value) && !Number.isNaN(p) && p >= 100;
 });
 
+/** Pares ENT.n/SAÍ.n alinhados ao parser Python (`marcacoes_string_to_ent_sai_slots`) */
+const ESPELHO_SLOT_KEYS = ['ent_1', 'sai_1', 'ent_2', 'sai_2', 'ent_3', 'sai_3', 'ent_4', 'sai_4'];
+
+const espelhoSlotColumns = [
+    { key: 'ent_1', label: 'ENT. 1' },
+    { key: 'sai_1', label: 'SAÍ. 1' },
+    { key: 'ent_2', label: 'ENT. 2' },
+    { key: 'sai_2', label: 'SAÍ. 2' },
+    { key: 'ent_3', label: 'ENT. 3' },
+    { key: 'sai_3', label: 'SAÍ. 3' },
+    { key: 'ent_4', label: 'ENT. 4' },
+    { key: 'sai_4', label: 'SAÍ. 4' },
+];
+
+/**
+ * @param {Record<string, unknown>|null|undefined} frag — fragmento em `row_json.colaboradores[]`
+ * @returns {Record<string, string>}
+ */
+const espelhoMarcacaoSlots = (frag) => {
+    const out = {};
+    for (const k of ESPELHO_SLOT_KEYS) {
+        const v = frag?.[k];
+        out[k] = v != null && String(v).trim() !== '' ? String(v).trim() : '';
+    }
+    const needsFallback = ESPELHO_SLOT_KEYS.every((k) => !out[k]);
+    if (needsFallback && frag?.marcacoes) {
+        const times = String(frag.marcacoes).match(/\b\d{2}:\d{2}\b/g) || [];
+        for (let i = 0; i < Math.min(8, times.length); i += 1) {
+            const pair = Math.floor(i / 2) + 1;
+            const key = i % 2 === 0 ? `ent_${pair}` : `sai_${pair}`;
+            out[key] = times[i];
+        }
+    }
+    return out;
+};
+
+/** Nome / CPF / período para o bloco de resumo (primeiro fragmento parseado) */
+const espelhoExtractHeader = computed(() => {
+    const imp = espelhoLastImport.value;
+    const empty = {
+        nome: '—',
+        cpf: '—',
+        period_ini: imp?.period_ini ?? '',
+        period_fim: imp?.period_fim ?? '',
+    };
+    if (!imp?.days?.length) {
+        return empty;
+    }
+    const rj = imp.days[0].row_json;
+    const colabs = rj?.colaboradores;
+    const first = Array.isArray(colabs) && colabs.length ? colabs[0] : null;
+    return {
+        nome: (first?.nome && String(first.nome).trim()) || '—',
+        cpf: (first?.cpf && String(first.cpf).trim()) || '—',
+        period_ini: imp.period_ini ?? '',
+        period_fim: imp.period_fim ?? '',
+    };
+});
+
+/** Uma linha por (dia × colaborador no PDF) para a tabela de marcações */
+const espelhoPunchTableRows = computed(() => {
+    const imp = espelhoLastImport.value;
+    if (!imp?.days?.length) {
+        return [];
+    }
+    const rows = [];
+    for (const d of imp.days) {
+        const rj = d.row_json || {};
+        const colabs = Array.isArray(rj.colaboradores) ? rj.colaboradores : [];
+        if (!colabs.length) {
+            rows.push({ ref_date: d.ref_date, nome: '', fragment: {} });
+            continue;
+        }
+        for (const c of colabs) {
+            rows.push({
+                ref_date: d.ref_date,
+                nome: (c.nome && String(c.nome).trim()) || '—',
+                fragment: c,
+            });
+        }
+    }
+    return rows;
+});
+
 const bankRows = computed(() => {
     const r = bankResult.value;
     if (!r || !Array.isArray(r.rows)) {
@@ -2484,24 +2568,65 @@ const justStatusBarChart = computed(() => {
                             Processar agora (sync)
                         </SecondaryButton>
                     </div>
-                    <div v-if="espelhoLastImport.days?.length" class="mt-3 max-h-96 overflow-auto rounded border border-slate-100">
+                    <div
+                        v-if="espelhoLastImport.parse_status === 'ok'"
+                        class="mt-3 grid gap-2 rounded-md border border-slate-100 bg-slate-50/80 p-3 text-slate-800 sm:grid-cols-3"
+                    >
+                        <div>
+                            <span class="text-xs font-medium text-slate-500">NOME</span>
+                            <p class="mt-0.5 font-medium">{{ espelhoExtractHeader.nome }}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs font-medium text-slate-500">CPF</span>
+                            <p class="mt-0.5 font-mono text-sm">{{ espelhoExtractHeader.cpf }}</p>
+                        </div>
+                        <div class="sm:col-span-1">
+                            <span class="text-xs font-medium text-slate-500">PERIODO</span>
+                            <p class="mt-0.5 whitespace-nowrap">
+                                {{ espelhoExtractHeader.period_ini }} — {{ espelhoExtractHeader.period_fim }}
+                            </p>
+                        </div>
+                    </div>
+                    <div v-if="espelhoPunchTableRows.length" class="mt-3 max-h-96 overflow-auto rounded border border-slate-100">
                         <table class="min-w-full text-xs">
                             <thead class="sticky top-0 bg-slate-50">
                                 <tr>
-                                    <th class="p-2 text-left font-medium text-slate-700">Data</th>
-                                    <th class="p-2 text-left font-medium text-slate-700">Texto (extracao)</th>
+                                    <th class="p-2 text-left font-medium text-slate-700">Dia</th>
+                                    <th class="p-2 text-left font-medium text-slate-700">Nome</th>
+                                    <th
+                                        v-for="col in espelhoSlotColumns"
+                                        :key="col.key"
+                                        class="whitespace-nowrap p-2 text-left font-medium text-slate-700"
+                                    >
+                                        {{ col.label }}
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="d in espelhoLastImport.days" :key="d.id" class="border-t border-slate-100">
-                                    <td class="whitespace-nowrap p-2 text-slate-800">{{ d.ref_date }}</td>
-                                    <td class="max-w-xl whitespace-pre-wrap p-2 text-slate-700">
-                                        {{ d.row_json?.text ?? JSON.stringify(d.row_json ?? {}) }}
+                                <tr
+                                    v-for="(pr, prIdx) in espelhoPunchTableRows"
+                                    :key="`${pr.ref_date}-${prIdx}`"
+                                    class="border-t border-slate-100"
+                                >
+                                    <td class="whitespace-nowrap p-2 text-slate-800">{{ pr.ref_date }}</td>
+                                    <td class="max-w-[10rem] truncate p-2 text-slate-700" :title="pr.nome">{{ pr.nome }}</td>
+                                    <td
+                                        v-for="col in espelhoSlotColumns"
+                                        :key="col.key"
+                                        class="whitespace-nowrap p-2 font-mono text-slate-800"
+                                    >
+                                        {{ espelhoMarcacaoSlots(pr.fragment)[col.key] || '—' }}
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
+                    <p
+                        v-else-if="espelhoLastImport.days?.length && espelhoLastImport.parse_status === 'ok'"
+                        class="mt-2 text-xs text-slate-500"
+                    >
+                        Nenhuma linha de marcação extraída para exibir (verifique o PDF ou reprocessar).
+                    </p>
                 </div>
 
                 <div v-if="espelhoImportsPage?.data?.length" class="rounded-md border border-slate-200 bg-slate-50/80 p-3 text-sm">

@@ -14,6 +14,29 @@ from .cartao_pdf_parser import (
     ler_cartao_ponto_pdf,
 )
 
+_RE_HHMM = re.compile(r"\b(\d{2}:\d{2})\b")
+
+
+def marcacoes_string_to_ent_sai_slots(marcacoes_str: str) -> dict[str, str]:
+    """
+    Mapeia até 8 horários HH:MM na ordem para ENT.1/SAÍ.1 … ENT.4/SAÍ.4.
+    Índice par = entrada, ímpar = saída (par ordenado no espelho normalizado).
+    """
+    out: dict[str, str] = {}
+    for i in range(1, 5):
+        out[f"ent_{i}"] = ""
+        out[f"sai_{i}"] = ""
+    if not marcacoes_str or not str(marcacoes_str).strip():
+        return out
+    times = _RE_HHMM.findall(str(marcacoes_str).strip())
+    for idx, t in enumerate(times[:8]):
+        pair = idx // 2 + 1
+        if idx % 2 == 0:
+            out[f"ent_{pair}"] = t
+        else:
+            out[f"sai_{pair}"] = t
+    return out
+
 
 def _dia_br_para_iso(dia: str) -> str | None:
     """Converte dia dd/mm/aaaa (ou retorno do parser T6) para YYYY-MM-DD."""
@@ -51,15 +74,17 @@ def build_days_from_t6_colaboradores(colaboradores: list[dict[str, Any]]) -> lis
             iso = _dia_br_para_iso(str(dia_raw))
             if not iso:
                 continue
+            marc_raw = m.get("marcacoes") or ""
             frag: dict[str, Any] = {
                 "nome": nome,
                 "cpf": colab.get("cpf") or "",
                 "departamento": colab.get("departamento") or "",
                 "cargo": colab.get("cargo") or "",
                 "dia_semana": m.get("dia_semana") or "",
-                "marcacoes": m.get("marcacoes") or "",
+                "marcacoes": marc_raw,
                 "justificativas": m.get("justificativas") or "",
             }
+            frag.update(marcacoes_string_to_ent_sai_slots(str(marc_raw)))
             by_date.setdefault(iso, []).append(frag)
 
     days_out: list[dict[str, Any]] = []
