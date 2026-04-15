@@ -70,13 +70,17 @@ return [
     |--------------------------------------------------------------------------
     */
     /*
-     * Em Linux/Docker costuma existir apenas `python3`; no Windows costuma ser `python`.
+     * Em Linux/Docker use caminho absoluto se o PHP-FPM tiver PATH minimo (Coolify).
      * Sobrescreva com RHID_ESPELHO_PYTHON=/usr/bin/python3.12 se necessario.
      */
-    'espelho_python' => env(
-        'RHID_ESPELHO_PYTHON',
-        PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3',
-    ),
+    'espelho_python' => (function () {
+        $v = env('RHID_ESPELHO_PYTHON');
+        if (is_string($v) && $v !== '') {
+            return $v;
+        }
+
+        return PHP_OS_FAMILY === 'Windows' ? 'python' : '/usr/bin/python3';
+    })(),
 
     'espelho_parser_workdir' => env(
         'RHID_ESPELHO_PARSER_WORKDIR',

@@ -148,8 +148,15 @@ class EspelhoPdfIngestService
     {
         $primary = trim((string) config('rhid.espelho_python'));
         $fallbacks = PHP_OS_FAMILY === 'Windows'
-            ? ['python3', 'python']
-            : ['python3', 'python'];
+            ? ['python', 'python3', 'py']
+            : [
+                '/usr/bin/python3',
+                '/usr/local/bin/python3',
+                'python3',
+                '/usr/bin/python3.12',
+                '/usr/bin/python3.11',
+                'python',
+            ];
         $merged = $primary !== '' ? array_merge([$primary], $fallbacks) : $fallbacks;
 
         return array_values(array_unique(array_filter($merged)));
@@ -165,6 +172,7 @@ class EspelhoPdfIngestService
         return str_contains($m, 'not found')
             || str_contains($m, 'no such file or directory')
             || str_contains($m, 'cannot find')
+            || str_contains($m, 'exec: line 0:')
             || (bool) preg_match('/\bpython\\d*:?\\s*not found/i', $stderrOrMsg);
     }
 
