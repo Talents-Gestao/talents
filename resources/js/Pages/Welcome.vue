@@ -345,16 +345,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         >
                             Se marcou menos de 6 itens, sua empresa ainda está vulnerável.
                         </p>
-
-                        <div class="mt-6 flex justify-center">
-                            <button
-                                type="button"
-                                class="w-full rounded-full border-2 border-talents-600 bg-talents-50 px-8 py-3 text-sm font-bold text-talents-800 shadow-sm transition hover:bg-talents-100 sm:w-auto"
-                                @click="showContactModal = true"
-                            >
-                                Entre em contato com um especialista
-                            </button>
-                        </div>
                     </div>
                 </div>
             </section>
