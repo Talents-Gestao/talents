@@ -57,14 +57,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
                 <img src="/images/logo.png" alt="Talents" class="h-10 w-auto" />
                 <nav class="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
-                    <a href="#contato" class="text-sm font-semibold text-talents-700 hover:underline"> Fale conosco </a>
-                    <button
-                        type="button"
-                        class="text-sm font-semibold text-talents-700 hover:underline"
-                        @click="showContactModal = true"
-                    >
-                        Formulário rápido
-                    </button>
                     <Link
                         v-if="canRegister && !$page.props.auth.user"
                         :href="route('register')"
@@ -106,14 +98,26 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         monitoramento, com rastreabilidade para o PGR.
                     </p>
 
-                    <div class="mt-6 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 md:text-base">
-                        <span class="rounded-md border-l-4 border-red-500 bg-white/80 px-2 py-1 shadow-sm">IDENTIFICAR</span>
-                        <span class="text-slate-400">→</span>
-                        <span class="rounded-md border-l-4 border-amber-400 bg-white/80 px-2 py-1 shadow-sm">📊 AVALIAR</span>
-                        <span class="text-slate-400">→</span>
-                        <span class="rounded-md border-l-4 border-emerald-500 bg-white/80 px-2 py-1 shadow-sm">⚙️ IMPLEMENTAR</span>
-                        <span class="text-slate-400">→</span>
-                        <span class="rounded-md border-l-4 border-blue-500 bg-white/80 px-2 py-1 shadow-sm">📈 MONITORAR</span>
+                    <div class="mt-6 flex flex-wrap items-center gap-2 md:gap-3">
+                        <span
+                            class="inline-flex items-center rounded-full border-2 border-talents-600 bg-talents-50 px-4 py-2 text-sm font-bold text-talents-800 shadow-sm"
+                            >IDENTIFICAR</span
+                        >
+                        <span class="text-talents-400">→</span>
+                        <span
+                            class="inline-flex items-center rounded-full border-2 border-talents-600 bg-talents-50 px-4 py-2 text-sm font-bold text-talents-800 shadow-sm"
+                            >📊 AVALIAR</span
+                        >
+                        <span class="text-talents-400">→</span>
+                        <span
+                            class="inline-flex items-center rounded-full border-2 border-talents-600 bg-talents-50 px-4 py-2 text-sm font-bold text-talents-800 shadow-sm"
+                            >⚙️ IMPLEMENTAR</span
+                        >
+                        <span class="text-talents-400">→</span>
+                        <span
+                            class="inline-flex items-center rounded-full border-2 border-talents-600 bg-talents-50 px-4 py-2 text-sm font-bold text-talents-800 shadow-sm"
+                            >📈 MONITORAR</span
+                        >
                     </div>
 
                     <blockquote class="mt-6 border-l-4 border-talents-600 pl-4 text-lg italic text-slate-700">
@@ -122,32 +126,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     </blockquote>
 
                     <div class="mt-8 flex flex-wrap gap-4">
-                        <Link
-                            v-if="canLogin && !$page.props.auth.user"
-                            :href="route('login')"
-                            class="rounded-full bg-talents-600 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-talents-700"
-                        >
-                            Ver na prática
-                        </Link>
-                        <Link
-                            v-if="canRegister && !$page.props.auth.user"
-                            :href="route('register')"
-                            class="rounded-full border-2 border-talents-600 px-6 py-3 text-sm font-bold text-talents-700 transition hover:bg-talents-50"
-                        >
-                            Começar agora
-                        </Link>
-                        <a
-                            href="#contato"
-                            class="rounded-full border-2 border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-slate-50"
-                        >
-                            Fale conosco
-                        </a>
                         <button
                             type="button"
-                            class="rounded-full border-2 border-talents-600 px-6 py-3 text-sm font-bold text-talents-700 transition hover:bg-talents-50"
+                            class="rounded-full bg-talents-600 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-talents-700"
                             @click="showContactModal = true"
                         >
-                            Abrir formulário
+                            Ver na prática
                         </button>
                     </div>
                     <p class="mt-6 text-sm text-slate-500">
@@ -301,12 +285,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             >
                                 Acessar a plataforma
                             </Link>
-                            <a
-                                href="#contato"
-                                class="rounded-full border-2 border-talents-600 px-5 py-2.5 text-sm font-bold text-talents-700 transition hover:bg-talents-50"
+                            <button
+                                type="button"
+                                class="rounded-full border-2 border-talents-600 bg-talents-50 px-5 py-2.5 text-sm font-bold text-talents-800 shadow-sm transition hover:bg-talents-100"
+                                @click="showContactModal = true"
                             >
-                                Fale conosco
-                            </a>
+                                Fale com um especialista
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -356,20 +341,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             Se marcou menos de 6 itens, sua empresa ainda pode estar vulnerável. Vamos conversar.
                         </p>
 
-                        <div class="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                        <div class="mt-6 flex justify-center">
                             <button
                                 type="button"
-                                class="w-full rounded-full bg-talents-600 px-8 py-3 text-sm font-bold text-white shadow-md transition hover:bg-talents-700 sm:w-auto"
+                                class="w-full rounded-full border-2 border-talents-600 bg-talents-50 px-8 py-3 text-sm font-bold text-talents-800 shadow-sm transition hover:bg-talents-100 sm:w-auto"
                                 @click="showContactModal = true"
                             >
-                                Entre em contato
+                                Entre em contato com um especialista
                             </button>
-                            <a
-                                href="#contato"
-                                class="w-full rounded-full border-2 border-talents-600 px-8 py-3 text-center text-sm font-bold text-talents-700 hover:bg-talents-50 sm:w-auto"
-                            >
-                                Ir ao formulário na página
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -492,7 +471,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     @click.stop
                 >
                     <div class="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
-                        <h3 class="text-lg font-bold text-slate-900">Entre em contato</h3>
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-900">Ver na prática</h3>
+                            <p class="text-sm text-slate-600">Fale com um especialista Talents</p>
+                        </div>
                         <button
                             type="button"
                             class="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
