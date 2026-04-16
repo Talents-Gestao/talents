@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 
 defineProps({
     canLogin: Boolean,
@@ -16,18 +16,6 @@ const form = useForm({
     company: '',
     message: '',
 });
-
-const maturity = ref({
-    responsavel: false,
-    formalizouPgr: false,
-    classificouExposicao: false,
-    planoAcao: false,
-    treinouLiderancas: false,
-    monitoraIndicadores: false,
-});
-
-const maturityCount = computed(() => Object.values(maturity.value).filter(Boolean).length);
-const maturityVulnerable = computed(() => maturityCount.value < 6);
 
 const submitInterest = () => {
     form.post(route('landing.interest'), {
@@ -298,53 +286,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 Fale com um especialista
                             </button>
                         </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Checklist -->
-            <section class="border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
-                <div class="mx-auto max-w-3xl px-4">
-                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">CHECKLIST DE MATURIDADE</h2>
-                    <p class="mx-auto mt-3 max-w-xl text-center text-sm text-slate-500">
-                        Marque o que se aplica à sua organização.
-                    </p>
-
-                    <div class="surface-card mt-8 space-y-4 p-6 shadow-md sm:p-8">
-                        <label class="flex cursor-pointer gap-3 text-slate-700">
-                            <input v-model="maturity.responsavel" type="checkbox" class="mt-1 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
-                            <span>Possui responsável pela gestão de riscos psicossociais?</span>
-                        </label>
-                        <label class="flex cursor-pointer gap-3 text-slate-700">
-                            <input v-model="maturity.formalizouPgr" type="checkbox" class="mt-1 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
-                            <span>Formalizou esses riscos no PGR?</span>
-                        </label>
-                        <label class="flex cursor-pointer gap-3 text-slate-700">
-                            <input v-model="maturity.classificouExposicao" type="checkbox" class="mt-1 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
-                            <span>Classificou nível de exposição?</span>
-                        </label>
-                        <label class="flex cursor-pointer gap-3 text-slate-700">
-                            <input v-model="maturity.planoAcao" type="checkbox" class="mt-1 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
-                            <span>Possui plano de ação estruturado?</span>
-                        </label>
-                        <label class="flex cursor-pointer gap-3 text-slate-700">
-                            <input v-model="maturity.treinouLiderancas" type="checkbox" class="mt-1 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
-                            <span>Treinou lideranças?</span>
-                        </label>
-                        <label class="flex cursor-pointer gap-3 text-slate-700">
-                            <input v-model="maturity.monitoraIndicadores" type="checkbox" class="mt-1 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
-                            <span>Monitora indicadores humanos?</span>
-                        </label>
-
-                        <p class="mt-6 border-t border-slate-200 pt-6 text-center text-sm font-medium text-slate-600">
-                            Itens marcados: <strong class="text-slate-900">{{ maturityCount }}</strong> / 6
-                        </p>
-                        <p
-                            v-if="maturityVulnerable"
-                            class="rounded-lg bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-900"
-                        >
-                            Se marcou menos de 6 itens, sua empresa ainda está vulnerável.
-                        </p>
                     </div>
                 </div>
             </section>
