@@ -8,6 +8,7 @@ use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
 
 class LandingInterestMail extends Mailable
 {
@@ -22,10 +23,16 @@ class LandingInterestMail extends Mailable
 
     public function envelope(): Envelope
     {
+        $safeName = Str::of($this->submitterName)
+            ->replaceMatches('/[\r\n\x00]+/', ' ')
+            ->trim()
+            ->limit(200)
+            ->toString();
+
         return new Envelope(
-            subject: 'Novo interesse na Talents — '.$this->submitterName,
+            subject: 'Novo interesse na Talents — '.$safeName,
             replyTo: [
-                new Address($this->submitterEmail, $this->submitterName),
+                new Address($this->submitterEmail, $safeName !== '' ? $safeName : null),
             ],
         );
     }

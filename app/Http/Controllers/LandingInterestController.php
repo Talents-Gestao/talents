@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\LandingInterestMail;
+use App\Models\MailSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +13,8 @@ class LandingInterestController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
+        MailSetting::applyToRuntimeConfig();
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
