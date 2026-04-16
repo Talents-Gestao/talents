@@ -5,6 +5,17 @@ import { Head, Link } from '@inertiajs/vue3';
 defineProps({
     submissions: Object,
 });
+
+function mailErrorPresent(value) {
+    return value !== null && value !== undefined && String(value).trim() !== '';
+}
+
+function mailErrorText(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+    return typeof value === 'string' ? value : String(value);
+}
 </script>
 
 <template>
@@ -66,16 +77,16 @@ defineProps({
                                     Enviado
                                 </span>
                                 <span
-                                    v-else-if="s.mail_error"
+                                    v-else-if="mailErrorPresent(s.mail_error)"
                                     class="inline-flex max-w-[14rem] flex-col gap-1"
-                                    :title="s.mail_error"
+                                    :title="mailErrorText(s.mail_error)"
                                 >
                                     <span
                                         class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900"
                                     >
                                         Falha SMTP
                                     </span>
-                                    <span class="text-xs text-gray-500 line-clamp-2">{{ s.mail_error }}</span>
+                                    <span class="text-xs text-gray-500 line-clamp-2">{{ mailErrorText(s.mail_error) }}</span>
                                 </span>
                                 <span v-else class="text-gray-400">—</span>
                             </td>

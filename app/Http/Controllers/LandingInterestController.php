@@ -63,7 +63,7 @@ class LandingInterestController extends Controller
                 'exception' => $e,
             ]);
             $submission->update([
-                'mail_error' => Str::limit($e->getMessage(), 2000),
+                'mail_error' => Str::limit(mb_scrub((string) $e->getMessage(), 'UTF-8'), 2000),
             ]);
         }
 
