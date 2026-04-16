@@ -74,6 +74,11 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
             Route::get('person-bank-hours/all', [RhidApiController::class, 'allPersonBankHours'])->name('person-bank-hours.all');
             Route::get('people', [RhidApiController::class, 'listPeople'])->name('people.index');
             Route::get('people/{id}', [RhidApiController::class, 'showPerson'])->name('people.show')->whereNumber('id');
+            Route::put('people/{id}/schedule-preference', [RhidApiController::class, 'updatePersonSchedulePreference'])
+                ->name('people.schedule-preference.update')
+                ->whereNumber('id');
+            Route::post('people/schedule-preferences/batch', [RhidApiController::class, 'batchPersonSchedulePreferences'])
+                ->name('people.schedule-preferences.batch');
             Route::get('departments', [RhidApiController::class, 'listDepartments'])->name('departments.index');
             Route::get('person-roles', [RhidApiController::class, 'listPersonRoles'])->name('person-roles.index');
             Route::post('person-shift/mass', [RhidApiController::class, 'massPersonShift'])->name('person-shift.mass');

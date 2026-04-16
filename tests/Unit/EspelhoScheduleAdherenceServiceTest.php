@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Services\Rhid\EspelhoScheduleAdherenceService;
 use App\Services\Rhid\PunchScheduleSettingsService;
+use App\Services\Rhid\RhidPersonSchedulePreferenceService;
 use PHPUnit\Framework\TestCase;
 
 class EspelhoScheduleAdherenceServiceTest extends TestCase
@@ -13,7 +14,10 @@ class EspelhoScheduleAdherenceServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->svc = new EspelhoScheduleAdherenceService(new PunchScheduleSettingsService);
+        $this->svc = new EspelhoScheduleAdherenceService(
+            new PunchScheduleSettingsService,
+            new RhidPersonSchedulePreferenceService,
+        );
     }
 
     public function test_diff_minutes(): void
@@ -81,5 +85,30 @@ class EspelhoScheduleAdherenceServiceTest extends TestCase
             'sai_2' => '17:00',
         ];
         $this->assertNull($this->svc->analyzeDayFragment($frag, $day, 0));
+    }
+
+    public function test_analyze_day_uses_second_lunch_when_configured(): void
+    {
+        $day = [
+            'ativo' => true,
+            'entrada' => '08:00',
+            'saida_almoco' => '11:30',
+            'volta_almoco' => '12:30',
+            'almoco2_inicio' => '13:00',
+            'almoco2_fim' => '14:00',
+            'saida' => '18:00',
+        ];
+        $settings = ['segundo_almoco' => true];
+        $frag = [
+            'ent_1' => '08:00',
+            'sai_1' => '13:00',
+            'ent_2' => '14:00',
+            'sai_2' => '18:00',
+        ];
+        $r = $this->svc->analyzeDayFragment($frag, $day, 0, $settings, true);
+        $this->assertNotNull($r);
+        $this->assertSame(0, $r['atraso_saida_almoco_minutos']);
+        $this->assertSame(0, $r['atraso_volta_almoco_minutos']);
+        $this->assertFalse($r['tem_infracao_almoco']);
     }
 }

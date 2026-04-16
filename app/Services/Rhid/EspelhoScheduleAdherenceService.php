@@ -14,9 +14,6 @@ class EspelhoScheduleAdherenceService
 
     public const TOP_RANK = 10;
 
-    /** Tolerancia fixa na analise de aderencia (minutos); nao usa o valor da configuracao de horarios. */
-    public const ADHERENCE_TOLERANCE_MINUTES = 10;
-
     /** ISO-8601: 1 = seg … 7 = dom — alinhado a PunchScheduleSettingsService::DAY_KEYS */
     private const DAY_KEY_BY_ISO = [
         1 => 'seg',
@@ -30,6 +27,7 @@ class EspelhoScheduleAdherenceService
 
     public function __construct(
         private readonly PunchScheduleSettingsService $scheduleSettings,
+        private readonly RhidPersonSchedulePreferenceService $personSchedulePreferences,
     ) {}
 
     /**
@@ -42,9 +40,11 @@ class EspelhoScheduleAdherenceService
         ?int $idPerson = null,
     ): array {
         $settings = $this->scheduleSettings->getForCompany($company);
-        $tolerance = self::ADHERENCE_TOLERANCE_MINUTES;
+        $tolerance = $this->toleranceMinutes($settings);
 
         $days = $this->loadDedupedDays($company->id, $ini, $fim, $idPerson);
+
+        $prefMap = $this->personSchedulePreferences->secondLunchMapForCompany($company->id);
 
         $byPerson = [];
 
@@ -75,7 +75,8 @@ class EspelhoScheduleAdherenceService
                 $nome = '—';
             }
 
-            $analysis = $this->analyzeDayFragment($fragment, $daySchedule, $tolerance);
+            $useSecond = $prefMap[$idPersonRow] ?? false;
+            $analysis = $this->analyzeDayFragment($fragment, $daySchedule, $tolerance, $settings, $useSecond);
             if ($analysis === null) {
                 if (! isset($byPerson[$idPersonRow])) {
                     $byPerson[$idPersonRow] = $this->emptyPersonAgg($idPersonRow, $nome);
@@ -160,7 +161,8 @@ class EspelhoScheduleAdherenceService
         int $idPerson,
     ): array {
         $settings = $this->scheduleSettings->getForCompany($company);
-        $tolerance = self::ADHERENCE_TOLERANCE_MINUTES;
+        $tolerance = $this->toleranceMinutes($settings);
+        $useSecond = $this->personSchedulePreferences->getUseSecondLunchInterval($company, $idPerson);
         $days = $this->loadDedupedDays($company->id, $ini, $fim, $idPerson);
 
         $rows = [];
@@ -193,7 +195,7 @@ class EspelhoScheduleAdherenceService
 
             if (! $escalaAtiva) {
                 $situacao = 'sem_escala';
-            } elseif ($fragment === null || $this->analyzeDayFragment($fragment, $daySchedule, $tolerance) === null) {
+            } elseif ($fragment === null || $this->analyzeDayFragment($fragment, $daySchedule, $tolerance, $settings, $useSecond) === null) {
                 $situacao = 'insuficiente';
             } else {
                 $situacao = 'analisavel';
@@ -282,12 +284,45 @@ class EspelhoScheduleAdherenceService
     }
 
     /**
+     * Horarios esperados de saida/volta do almoco (1º ou 2º intervalo) conforme configuracao da empresa e preferencia do colaborador.
+     *
+     * @param  array<string, mixed>  $daySchedule  Um dia de settings['dias'][*]
+     * @param  array<string, mixed>  $scheduleSettings  Settings normalizados completos (incl. segundo_almoco)
+     * @return array{0: string, 1: string}|null [saida, volta] em HH:mm
+     */
+    public function expectedLunchTimesFromDay(array $daySchedule, array $scheduleSettings, bool $useSecond): ?array
+    {
+        if ($useSecond && ! empty($scheduleSettings['segundo_almoco'])) {
+            $a = $daySchedule['almoco2_inicio'] ?? null;
+            $b = $daySchedule['almoco2_fim'] ?? null;
+            if (is_string($a) && is_string($b)
+                && preg_match('/^\d{2}:\d{2}$/', $a) && preg_match('/^\d{2}:\d{2}$/', $b)) {
+                return [$a, $b];
+            }
+        }
+
+        $a = $daySchedule['saida_almoco'] ?? null;
+        $b = $daySchedule['volta_almoco'] ?? null;
+        if (! is_string($a) || ! is_string($b)) {
+            return null;
+        }
+
+        return [$a, $b];
+    }
+
+    /**
      * @param  array<string, mixed>  $fragment
      * @param  array<string, mixed>  $daySchedule
+     * @param  array<string, mixed>  $scheduleSettings  Settings completos para resolver 1º vs 2º almoco
      * @return array<string, mixed>|null null = insuficiente / não aplicável
      */
-    public function analyzeDayFragment(array $fragment, array $daySchedule, int $tolerance): ?array
-    {
+    public function analyzeDayFragment(
+        array $fragment,
+        array $daySchedule,
+        int $tolerance,
+        array $scheduleSettings = [],
+        bool $useSecondLunchInterval = false,
+    ): ?array {
         $ent1 = $this->normalizeSlot($fragment['ent_1'] ?? null);
         $sai1 = $this->normalizeSlot($fragment['sai_1'] ?? null);
         $ent2 = $this->normalizeSlot($fragment['ent_2'] ?? null);
@@ -298,12 +333,15 @@ class EspelhoScheduleAdherenceService
         }
 
         $entradaEsp = $daySchedule['entrada'] ?? null;
-        $saidaAlmocoEsp = $daySchedule['saida_almoco'] ?? null;
-        $voltaAlmocoEsp = $daySchedule['volta_almoco'] ?? null;
-
-        if (! is_string($entradaEsp) || ! is_string($saidaAlmocoEsp) || ! is_string($voltaAlmocoEsp)) {
+        if (! is_string($entradaEsp)) {
             return null;
         }
+
+        $lunchPair = $this->expectedLunchTimesFromDay($daySchedule, $scheduleSettings, $useSecondLunchInterval);
+        if ($lunchPair === null) {
+            return null;
+        }
+        [$saidaAlmocoEsp, $voltaAlmocoEsp] = $lunchPair;
 
         $T = $tolerance;
 

@@ -186,7 +186,7 @@ class EspelhoScheduleAdherenceApiTest extends TestCase
             ]))
             ->assertOk()
             ->assertJsonPath('id_person', 100)
-            ->assertJsonPath('tolerancia_minutos', 10)
+            ->assertJsonPath('tolerancia_minutos', 0)
             ->assertJsonPath('dias.0.situacao', 'analisavel')
             ->assertJsonPath('dias.0.ent_1', '09:00');
     }

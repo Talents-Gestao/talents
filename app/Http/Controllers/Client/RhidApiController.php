@@ -19,6 +19,7 @@ use App\Services\Rhid\RhidComplianceService;
 use App\Services\Rhid\RhidDeviceService;
 use App\Services\Rhid\RhidEspelhoService;
 use App\Services\Rhid\RhidMonitoringService;
+use App\Services\Rhid\RhidPersonSchedulePreferenceService;
 use App\Services\Rhid\RhidReportService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -297,11 +298,60 @@ class RhidApiController extends Controller
     /**
      * Detalhe de um colaborador (GET customerdb/person.svc/a/{id}).
      */
-    public function showPerson(Request $request, RhidComplianceService $compliance, int $id): JsonResponse|Response
-    {
+    public function showPerson(
+        Request $request,
+        RhidComplianceService $compliance,
+        RhidPersonSchedulePreferenceService $schedulePrefs,
+        int $id,
+    ): JsonResponse|Response {
         $company = $this->company($request);
 
-        return $this->jsonOrError(fn () => $compliance->getPersonDetail($company, $request->user(), $id));
+        return $this->jsonOrError(function () use ($company, $request, $compliance, $schedulePrefs, $id) {
+            $data = $compliance->getPersonDetail($company, $request->user(), $id);
+            $data['schedulePreference'] = [
+                'use_second_lunch_interval' => $schedulePrefs->getUseSecondLunchInterval($company, $id),
+            ];
+
+            return $data;
+        });
+    }
+
+    public function batchPersonSchedulePreferences(
+        Request $request,
+        RhidPersonSchedulePreferenceService $prefs,
+    ): JsonResponse {
+        $company = $this->company($request);
+        $v = $request->validate([
+            'id_people' => ['required', 'array', 'min:1', 'max:500'],
+            'id_people.*' => ['integer', 'min:1'],
+            'use_second_lunch_interval' => ['required', 'boolean'],
+        ]);
+
+        $n = $prefs->setBatch($company, $v['id_people'], $v['use_second_lunch_interval']);
+
+        return response()->json([
+            'ok' => true,
+            'updated' => $n,
+        ]);
+    }
+
+    public function updatePersonSchedulePreference(
+        Request $request,
+        RhidPersonSchedulePreferenceService $prefs,
+        int $id,
+    ): JsonResponse {
+        $company = $this->company($request);
+        $v = $request->validate([
+            'use_second_lunch_interval' => ['required', 'boolean'],
+        ]);
+        $prefs->setForPerson($company, $id, $v['use_second_lunch_interval']);
+
+        return response()->json([
+            'ok' => true,
+            'schedulePreference' => [
+                'use_second_lunch_interval' => $prefs->getUseSecondLunchInterval($company, $id),
+            ],
+        ]);
     }
 
     public function massPersonShift(Request $request, RhidComplianceService $compliance): JsonResponse|Response

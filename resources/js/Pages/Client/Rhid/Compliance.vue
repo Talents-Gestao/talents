@@ -82,6 +82,11 @@ const lastPunchesUpdatedAt = ref(null);
 const scheduleForm = ref(defaultScheduleForm());
 const scheduleLoading = ref(false);
 const scheduleSaving = ref(false);
+/** Lote: segundo intervalo de almoco por ID RHID */
+const schedulePrefBatchIds = ref('');
+const schedulePrefBatchSecond = ref(false);
+const schedulePrefBatchSaving = ref(false);
+const schedulePrefBatchMsg = ref(null);
 
 const bankDateHtml = ref(todayHtmlDate());
 const bankResult = ref(null);
@@ -1099,6 +1104,31 @@ const savePunchScheduleSettings = async () => {
         handleError(e);
     } finally {
         scheduleSaving.value = false;
+    }
+};
+
+const submitSchedulePreferenceBatch = async () => {
+    if (!props.configured) {
+        return;
+    }
+    const ids = parseIdList(schedulePrefBatchIds.value);
+    if (!ids?.length) {
+        schedulePrefBatchMsg.value = 'Informe ao menos um ID RHID (um por linha ou separados por virgula).';
+        return;
+    }
+    schedulePrefBatchSaving.value = true;
+    schedulePrefBatchMsg.value = null;
+    clearErr();
+    try {
+        const { data } = await axios.post(route('client.rhid.api.people.schedule-preferences.batch'), {
+            id_people: ids,
+            use_second_lunch_interval: schedulePrefBatchSecond.value,
+        });
+        schedulePrefBatchMsg.value = `Atualizado: ${data.updated} colaborador(es).`;
+    } catch (e) {
+        handleError(e);
+    } finally {
+        schedulePrefBatchSaving.value = false;
     }
 };
 
@@ -2627,8 +2657,8 @@ const justStatusBarChart = computed(() => {
                         <p class="mt-1 text-xs text-slate-500">
                             Periodo:
                             {{ formatEspelhoAdherenceYmdToPt(espelhoAdherenceMarksData.periodo?.ini) }} a
-                            {{ formatEspelhoAdherenceYmdToPt(espelhoAdherenceMarksData.periodo?.fim) }} · Tolerancia fixa:
-                            {{ espelhoAdherenceMarksData.tolerancia_minutos }} min · Import mais recente por dia
+                            {{ formatEspelhoAdherenceYmdToPt(espelhoAdherenceMarksData.periodo?.fim) }} · Tolerancia:
+                            {{ espelhoAdherenceMarksData.tolerancia_minutos }} min (config.) · Import mais recente por dia
                         </p>
                         <div
                             v-if="espelhoAdherenceMarksData.dias?.length"
@@ -2878,9 +2908,47 @@ const justStatusBarChart = computed(() => {
                                 class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
                             />
                             <p class="mt-1 text-xs text-slate-500">
-                                Referencia guardada para a empresa; a subaba Aderencia usa tolerancia fixa de 10 minutos na
-                                analise (independente deste valor).
+                                Usada na analise de aderencia (atrasos em torno dos horarios de saida/volta do almoco e
+                                duracao do intervalo).
                             </p>
+                        </div>
+
+                        <div
+                            class="max-w-2xl rounded-lg border border-slate-200 bg-slate-50/80 p-4"
+                        >
+                            <h4 class="text-sm font-semibold text-slate-800">Intervalo de almoco por colaborador (lote)</h4>
+                            <p class="mt-1 text-xs text-slate-600">
+                                Defina quem usa o <span class="font-medium">segundo intervalo</span> (horarios
+                                <span class="font-medium">Inicio 2º / Fim 2º</span> por dia, com
+                                <span class="font-medium">Segundo intervalo de almoco</span> ativo acima). Os demais usam
+                                saida/volta do primeiro intervalo. IDs sao os do RHID (mesmo da lista de colaboradores).
+                            </p>
+                            <div class="mt-3">
+                                <InputLabel value="IDs RHID (varios)" />
+                                <textarea
+                                    v-model="schedulePrefBatchIds"
+                                    rows="4"
+                                    class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-sm shadow-sm"
+                                    placeholder="Ex.: 1001&#10;1002, 1003"
+                                />
+                            </div>
+                            <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-800">
+                                <input
+                                    v-model="schedulePrefBatchSecond"
+                                    type="checkbox"
+                                    class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
+                                />
+                                Usar segundo intervalo de almoco (marque) / primeiro intervalo (desmarque e aplicar)
+                            </label>
+                            <p v-if="schedulePrefBatchMsg" class="mt-2 text-xs text-emerald-800">{{ schedulePrefBatchMsg }}</p>
+                            <PrimaryButton
+                                type="button"
+                                class="mt-3"
+                                :disabled="schedulePrefBatchSaving || scheduleLoading"
+                                @click="submitSchedulePreferenceBatch"
+                            >
+                                Aplicar em lote
+                            </PrimaryButton>
                         </div>
 
                         <div class="space-y-4">
@@ -3030,9 +3098,10 @@ const justStatusBarChart = computed(() => {
                             <span class="font-medium">Marcacoes (espelho)</span>) com os horarios definidos na subaba
                             <span class="font-medium">Configuracao de horarios</span> desta mesma area. Convencao de 4
                             batidas por dia (ENT.1 / SAI.1 / ENT.2 / SAI.2). Dias sem quatro horarios extraidos ou sem dia
-                            util configurado sao ignorados ou contados como insuficientes. A tolerancia na analise e
-                            fixa de 10 minutos. Em caso de varios imports para o mesmo dia, usa-se o mais recente. Clique no
-                            nome do colaborador para ver as marcacoes do espelho no periodo.
+                            util configurado sao ignorados ou contados como insuficientes. A tolerancia (minutos) vem da
+                            configuracao de horarios; o intervalo de almoco esperado (1º ou 2º) segue a preferencia definida
+                            no perfil do colaborador ou em lote nesta area. Em caso de varios imports para o mesmo dia,
+                            usa-se o mais recente. Clique no nome para ver as marcacoes do espelho no periodo.
                         </p>
                         <div class="mt-3 flex flex-wrap items-end gap-3">
                             <div>

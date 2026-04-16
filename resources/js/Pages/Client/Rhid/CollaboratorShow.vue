@@ -34,6 +34,10 @@ const expandedImportId = ref(null);
 const expandedImportDetail = ref(null);
 const espelhoDetailLoading = ref(false);
 
+/** Preferencia Talents: 1º vs 2º intervalo de almoco na aderencia */
+const schedulePrefSecond = ref(false);
+const schedulePrefSaving = ref(false);
+
 const ESPELHO_SLOT_KEYS = ['ent_1', 'sai_1', 'ent_2', 'sai_2', 'ent_3', 'sai_3', 'ent_4', 'sai_4'];
 
 const espelhoSlotColumns = [
@@ -164,10 +168,32 @@ const loadDetail = async () => {
     try {
         const { data } = await axios.get(route('client.rhid.api.people.show', props.personId));
         detail.value = data;
+        schedulePrefSecond.value = Boolean(data.schedulePreference?.use_second_lunch_interval);
     } catch (e) {
         handleError(e);
     } finally {
         loading.value = false;
+    }
+};
+
+const saveSchedulePreference = async () => {
+    if (!props.configured) {
+        return;
+    }
+    schedulePrefSaving.value = true;
+    clearErr();
+    try {
+        const { data } = await axios.put(
+            route('client.rhid.api.people.schedule-preference.update', props.personId),
+            { use_second_lunch_interval: schedulePrefSecond.value },
+        );
+        if (data?.schedulePreference) {
+            schedulePrefSecond.value = Boolean(data.schedulePreference.use_second_lunch_interval);
+        }
+    } catch (e) {
+        handleError(e);
+    } finally {
+        schedulePrefSaving.value = false;
     }
 };
 
@@ -343,6 +369,33 @@ onMounted(async () => {
                             <dd class="text-slate-800">{{ detail.statusStr ?? detail.status ?? '—' }}</dd>
                         </div>
                     </dl>
+                </div>
+            </div>
+
+            <div
+                v-if="detail"
+                class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+            >
+                <h3 class="mb-2 text-sm font-semibold text-slate-800">Aderencia (Talents)</h3>
+                <p class="mb-3 text-xs text-slate-600">
+                    Na analise de aderencia (Compliance &gt; Marcacoes &gt; Aderencia), as batidas SAI.1 / ENT.2 sao
+                    comparadas ao horario de almoco esperado. Marque abaixo se este colaborador usa o
+                    <span class="font-medium">segundo intervalo de almoco</span> definido na configuracao de horarios da
+                    empresa (requer horarios &quot;Inicio 2º / Fim 2º&quot; por dia). Caso contrario, usa-se o primeiro
+                    intervalo (saida/volta do almoco).
+                </p>
+                <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
+                    <input
+                        v-model="schedulePrefSecond"
+                        type="checkbox"
+                        class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
+                    />
+                    Usar segundo intervalo de almoco na aderencia
+                </label>
+                <div class="mt-3">
+                    <PrimaryButton type="button" :disabled="schedulePrefSaving || loading" @click="saveSchedulePreference">
+                        Salvar preferencia
+                    </PrimaryButton>
                 </div>
             </div>
 
