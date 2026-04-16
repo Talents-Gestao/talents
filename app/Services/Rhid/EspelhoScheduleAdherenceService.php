@@ -12,7 +12,7 @@ class EspelhoScheduleAdherenceService
 {
     public const MAX_RANGE_DAYS = 93;
 
-    public const TOP_RANK = 20;
+    public const TOP_RANK = 10;
 
     /** ISO-8601: 1 = seg … 7 = dom — alinhado a PunchScheduleSettingsService::DAY_KEYS */
     private const DAY_KEY_BY_ISO = [

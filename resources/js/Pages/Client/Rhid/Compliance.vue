@@ -5,7 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import {
@@ -1122,6 +1122,208 @@ const loadEspelhoScheduleAdherence = async () => {
         espelhoAdherenceLoading.value = false;
     }
 };
+
+/** Rankings e graficos: ate 10 colaboradores por painel (alinhado ao backend TOP_RANK). */
+const ESPELHO_ADHERENCE_CHART_TOP = 10;
+
+const truncateAdherenceChartName = (name) => {
+    const n = String(name ?? '—');
+    return n.length > 36 ? `${n.slice(0, 34)}…` : n;
+};
+
+const espelhoAdherenceEntradaTopRows = computed(() => {
+    const r = espelhoAdherenceResult.value?.ranking_atrasos_entrada;
+    if (!Array.isArray(r)) {
+        return [];
+    }
+    return r.slice(0, ESPELHO_ADHERENCE_CHART_TOP);
+});
+
+const espelhoAdherenceEntradaPiorDiaRows = computed(() => {
+    const r = espelhoAdherenceResult.value?.ranking_atrasos_entrada;
+    if (!Array.isArray(r) || r.length === 0) {
+        return [];
+    }
+    return [...r]
+        .sort(
+            (a, b) =>
+                (b.maior_atraso_entrada_minutos ?? 0) - (a.maior_atraso_entrada_minutos ?? 0),
+        )
+        .slice(0, ESPELHO_ADHERENCE_CHART_TOP);
+});
+
+const espelhoAdherenceAlmocoTopRows = computed(() => {
+    const r = espelhoAdherenceResult.value?.ranking_infracoes_almoco;
+    if (!Array.isArray(r)) {
+        return [];
+    }
+    return r.slice(0, ESPELHO_ADHERENCE_CHART_TOP);
+});
+
+const openAdherenceFromEntradaTotalChart = (_event, _chartContext, config) => {
+    const i = config?.dataPointIndex;
+    if (i == null || i < 0) {
+        return;
+    }
+    const row = espelhoAdherenceEntradaTopRows.value[i];
+    if (row?.id_person != null) {
+        router.visit(route('client.rhid.collaborators.show', row.id_person));
+    }
+};
+
+const openAdherenceFromEntradaPiorDiaChart = (_event, _chartContext, config) => {
+    const i = config?.dataPointIndex;
+    if (i == null || i < 0) {
+        return;
+    }
+    const row = espelhoAdherenceEntradaPiorDiaRows.value[i];
+    if (row?.id_person != null) {
+        router.visit(route('client.rhid.collaborators.show', row.id_person));
+    }
+};
+
+const openAdherenceFromAlmocoChart = (_event, _chartContext, config) => {
+    const i = config?.dataPointIndex;
+    if (i == null || i < 0) {
+        return;
+    }
+    const row = espelhoAdherenceAlmocoTopRows.value[i];
+    if (row?.id_person != null) {
+        router.visit(route('client.rhid.collaborators.show', row.id_person));
+    }
+};
+
+const espelhoAdherenceChartEntradaTotal = computed(() => {
+    const rows = espelhoAdherenceEntradaTopRows.value;
+    const categories = rows.map((row) => truncateAdherenceChartName(row.nome));
+    const data = rows.map((row) => Number(row.total_atraso_entrada_minutos ?? 0));
+    const empty = data.length === 0;
+    const options = {
+        chart: {
+            type: 'bar',
+            toolbar: { show: true },
+            zoom: { enabled: true },
+            fontFamily: 'Figtree, sans-serif',
+            foreColor: '#334155',
+            events: {
+                dataPointSelection: openAdherenceFromEntradaTotalChart,
+            },
+        },
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                borderRadius: 4,
+                barHeight: '72%',
+                dataLabels: { position: 'right' },
+            },
+        },
+        colors: ['#0d9488'],
+        dataLabels: {
+            enabled: true,
+            style: { fontSize: '11px', colors: ['#334155'] },
+        },
+        xaxis: { categories },
+        yaxis: { labels: { maxWidth: 220 } },
+        tooltip: {
+            y: {
+                formatter: (val) => `${val} min — clique para abrir o colaborador`,
+            },
+        },
+        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
+    };
+    return { series: [{ name: 'Minutos', data }], options, empty };
+});
+
+const espelhoAdherenceChartEntradaPiorDia = computed(() => {
+    const rows = espelhoAdherenceEntradaPiorDiaRows.value;
+    const categories = rows.map((row) => truncateAdherenceChartName(row.nome));
+    const data = rows.map((row) => Number(row.maior_atraso_entrada_minutos ?? 0));
+    const empty = data.length === 0;
+    const options = {
+        chart: {
+            type: 'bar',
+            toolbar: { show: true },
+            zoom: { enabled: true },
+            fontFamily: 'Figtree, sans-serif',
+            foreColor: '#334155',
+            events: {
+                dataPointSelection: openAdherenceFromEntradaPiorDiaChart,
+            },
+        },
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                borderRadius: 4,
+                barHeight: '72%',
+                dataLabels: { position: 'right' },
+            },
+        },
+        colors: ['#ea580c'],
+        dataLabels: {
+            enabled: true,
+            style: { fontSize: '11px', colors: ['#334155'] },
+        },
+        xaxis: { categories },
+        yaxis: { labels: { maxWidth: 220 } },
+        tooltip: {
+            y: {
+                formatter: (val) => `${val} min no pior dia — clique para abrir o colaborador`,
+            },
+        },
+        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
+    };
+    return { series: [{ name: 'Minutos', data }], options, empty };
+});
+
+const espelhoAdherenceChartAlmoco = computed(() => {
+    const rows = espelhoAdherenceAlmocoTopRows.value;
+    const categories = rows.map((row) => truncateAdherenceChartName(row.nome));
+    const data = rows.map(
+        (row) =>
+            Number(row.total_minutos_atraso_saida_almoco ?? 0) +
+            Number(row.total_minutos_atraso_volta_almoco ?? 0),
+    );
+    const diasExtra = rows.map((row) => Number(row.dias_com_infracao_almoco ?? 0));
+    const empty = data.length === 0;
+    const options = {
+        chart: {
+            type: 'bar',
+            toolbar: { show: true },
+            zoom: { enabled: true },
+            fontFamily: 'Figtree, sans-serif',
+            foreColor: '#334155',
+            events: {
+                dataPointSelection: openAdherenceFromAlmocoChart,
+            },
+        },
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                borderRadius: 4,
+                barHeight: '72%',
+                dataLabels: { position: 'right' },
+            },
+        },
+        colors: ['#7c3aed'],
+        dataLabels: {
+            enabled: true,
+            style: { fontSize: '11px', colors: ['#334155'] },
+        },
+        xaxis: { categories },
+        yaxis: { labels: { maxWidth: 220 } },
+        tooltip: {
+            y: {
+                formatter: (val, opts) => {
+                    const idx = opts.dataPointIndex;
+                    const d = diasExtra[idx] ?? 0;
+                    return `${val} min (saída+volta); ${d} dia(s) c/ infração — clique para o perfil`;
+                },
+            },
+        },
+        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
+    };
+    return { series: [{ name: 'Minutos', data }], options, empty };
+});
 
 watch(
     [tab, punchesSubTab],
@@ -2738,11 +2940,78 @@ const justStatusBarChart = computed(() => {
                                 Tolerancia: {{ espelhoAdherenceResult.resumo.tolerancia_minutos }} min · Dias analisados:
                                 {{ espelhoAdherenceResult.resumo.dias_registro_analisados }}
                             </p>
-                            <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                            <p class="mt-3 text-xs text-slate-500">
+                                Dashboard: ate {{ ESPELHO_ADHERENCE_CHART_TOP }} colaboradores por grafico. Passe o rato para
+                                detalhes; use a barra do grafico para exportar (PNG/SVG) ou ampliar. Clique numa barra para
+                                abrir o perfil do colaborador.
+                            </p>
+                            <div class="mt-4 grid gap-4 xl:grid-cols-3">
+                                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                                    <h4 class="mb-1 text-sm font-semibold text-slate-800">Atraso na 1ª entrada (total)</h4>
+                                    <p class="mb-3 text-xs text-slate-500">
+                                        Soma dos minutos de atraso na entrada no periodo (top
+                                        {{ ESPELHO_ADHERENCE_CHART_TOP }}).
+                                    </p>
+                                    <apexchart
+                                        v-if="!espelhoAdherenceChartEntradaTotal.empty"
+                                        type="bar"
+                                        :height="
+                                            Math.max(
+                                                260,
+                                                (espelhoAdherenceChartEntradaTotal.series[0]?.data?.length ?? 0) * 36,
+                                            )
+                                        "
+                                        :options="espelhoAdherenceChartEntradaTotal.options"
+                                        :series="espelhoAdherenceChartEntradaTotal.series"
+                                    />
+                                    <p v-else class="text-sm text-slate-500">Sem dados para o grafico.</p>
+                                </div>
+                                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                                    <h4 class="mb-1 text-sm font-semibold text-slate-800">Pior dia — atraso na entrada</h4>
+                                    <p class="mb-3 text-xs text-slate-500">
+                                        Maior atraso num unico dia (1ª entrada), top
+                                        {{ ESPELHO_ADHERENCE_CHART_TOP }}.
+                                    </p>
+                                    <apexchart
+                                        v-if="!espelhoAdherenceChartEntradaPiorDia.empty"
+                                        type="bar"
+                                        :height="
+                                            Math.max(
+                                                260,
+                                                (espelhoAdherenceChartEntradaPiorDia.series[0]?.data?.length ?? 0) * 36,
+                                            )
+                                        "
+                                        :options="espelhoAdherenceChartEntradaPiorDia.options"
+                                        :series="espelhoAdherenceChartEntradaPiorDia.series"
+                                    />
+                                    <p v-else class="text-sm text-slate-500">Sem dados para o grafico.</p>
+                                </div>
+                                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                                    <h4 class="mb-1 text-sm font-semibold text-slate-800">Infrações de almoço (min)</h4>
+                                    <p class="mb-3 text-xs text-slate-500">
+                                        Total min (saída para almoço + volta), top
+                                        {{ ESPELHO_ADHERENCE_CHART_TOP }} (mesma ordenação da tabela).
+                                    </p>
+                                    <apexchart
+                                        v-if="!espelhoAdherenceChartAlmoco.empty"
+                                        type="bar"
+                                        :height="
+                                            Math.max(260, (espelhoAdherenceChartAlmoco.series[0]?.data?.length ?? 0) * 36)
+                                        "
+                                        :options="espelhoAdherenceChartAlmoco.options"
+                                        :series="espelhoAdherenceChartAlmoco.series"
+                                    />
+                                    <p v-else class="text-sm text-slate-500">Sem dados para o grafico.</p>
+                                </div>
+                            </div>
+                            <div class="mt-6 grid gap-4 lg:grid-cols-2">
                                 <div>
                                     <h4 class="mb-2 text-xs font-semibold uppercase text-slate-700">
-                                        Maiores atrasos (entrada)
+                                        Maiores atrasos (entrada) — detalhe
                                     </h4>
+                                    <p class="mb-2 text-xs text-slate-500">
+                                        Listagem alinhada ao ranking (ate {{ ESPELHO_ADHERENCE_CHART_TOP }} linhas).
+                                    </p>
                                     <div class="overflow-x-auto rounded border border-slate-200 text-sm">
                                         <table class="min-w-full text-left">
                                             <thead class="bg-slate-50 text-xs">
@@ -2782,11 +3051,13 @@ const justStatusBarChart = computed(() => {
                                     </p>
                                 </div>
                                 <div>
-                                    <h4 class="mb-2 text-xs font-semibold uppercase text-slate-700">Infracoes de almoco</h4>
+                                    <h4 class="mb-2 text-xs font-semibold uppercase text-slate-700">
+                                        Infracoes de almoco — detalhe
+                                    </h4>
                                     <p class="mb-2 text-xs text-slate-500">
                                         Ordenacao: mais dias com problema; depois soma dos atrasos em minutos (saida para
                                         almoco + volta). Infracoes so por duracao (almoco curto/longo) podem ter 0 min
-                                        nessa soma.
+                                        nessa soma. Listagem ate {{ ESPELHO_ADHERENCE_CHART_TOP }} linhas.
                                     </p>
                                     <div class="overflow-x-auto rounded border border-slate-200 text-sm">
                                         <table class="min-w-full text-left">
