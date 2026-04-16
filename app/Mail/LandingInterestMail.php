@@ -17,6 +17,7 @@ class LandingInterestMail extends Mailable
     public function __construct(
         public string $submitterName,
         public string $submitterEmail,
+        public ?string $phone,
         public ?string $company,
         public ?string $message,
     ) {}

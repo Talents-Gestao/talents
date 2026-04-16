@@ -30,6 +30,7 @@ class LandingInterestSubmissionController extends Controller
             'id' => $s->id,
             'name' => self::asUtf8String($s->name, ''),
             'email' => self::asUtf8String($s->email, ''),
+            'phone' => self::asUtf8String($s->phone),
             'company' => self::asUtf8String($s->company),
             'message' => self::asUtf8String($s->message),
             'mail_sent_at' => $s->mail_sent_at?->toIso8601String(),

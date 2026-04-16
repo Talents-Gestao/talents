@@ -20,6 +20,7 @@ class LandingInterestTest extends TestCase
         $response = $this->from('/')->post(route('landing.interest'), [
             'name' => ' João Silva ',
             'email' => 'joao@example.com',
+            'phone' => ' (11) 98888-7777 ',
             'company' => ' ACME ',
             'message' => ' Gostaria de uma demo. ',
         ]);
@@ -30,6 +31,7 @@ class LandingInterestTest extends TestCase
         $this->assertDatabaseHas('landing_interest_submissions', [
             'name' => 'João Silva',
             'email' => 'joao@example.com',
+            'phone' => '(11) 98888-7777',
             'company' => 'ACME',
             'message' => 'Gostaria de uma demo.',
         ]);
@@ -41,6 +43,7 @@ class LandingInterestTest extends TestCase
         Mail::assertSent(LandingInterestMail::class, function (LandingInterestMail $mail) {
             return $mail->submitterName === 'João Silva'
                 && $mail->submitterEmail === 'joao@example.com'
+                && $mail->phone === '(11) 98888-7777'
                 && $mail->company === 'ACME'
                 && $mail->message === 'Gostaria de uma demo.';
         });
@@ -61,6 +64,7 @@ class LandingInterestTest extends TestCase
         Mail::assertSent(LandingInterestMail::class, function (LandingInterestMail $mail) {
             return $mail->submitterName === 'Maria'
                 && $mail->submitterEmail === 'maria@example.com'
+                && $mail->phone === null
                 && $mail->company === null
                 && $mail->message === null;
         });

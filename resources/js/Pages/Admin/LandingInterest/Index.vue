@@ -42,6 +42,7 @@ function mailErrorText(value) {
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Data</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Nome</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">E-mail</th>
+                            <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Telefone</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Empresa</th>
                             <th class="min-w-[12rem] px-4 py-3 text-left font-medium text-gray-700">Mensagem</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">E-mail aviso</th>
@@ -65,6 +66,7 @@ function mailErrorText(value) {
                                     s.email
                                 }}</a>
                             </td>
+                            <td class="whitespace-nowrap px-4 py-3 text-gray-700">{{ s.phone || '—' }}</td>
                             <td class="max-w-xs truncate px-4 py-3">{{ s.company || '—' }}</td>
                             <td class="max-w-md px-4 py-3">
                                 <span class="line-clamp-3 whitespace-pre-wrap">{{ s.message || '—' }}</span>

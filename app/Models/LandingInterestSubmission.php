@@ -9,6 +9,7 @@ class LandingInterestSubmission extends Model
     protected $fillable = [
         'name',
         'email',
+        'phone',
         'company',
         'message',
         'mail_sent_at',

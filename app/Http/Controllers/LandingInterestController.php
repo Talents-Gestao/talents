@@ -20,18 +20,21 @@ class LandingInterestController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:40'],
             'company' => ['nullable', 'string', 'max:255'],
             'message' => ['nullable', 'string', 'max:5000'],
         ]);
 
         $name = trim($data['name']);
         $email = trim($data['email']);
+        $phone = isset($data['phone']) && $data['phone'] !== '' ? trim($data['phone']) : null;
         $company = isset($data['company']) && $data['company'] !== '' ? trim($data['company']) : null;
         $message = isset($data['message']) && $data['message'] !== '' ? trim($data['message']) : null;
 
         $submission = LandingInterestSubmission::query()->create([
             'name' => $name,
             'email' => $email,
+            'phone' => $phone,
             'company' => $company,
             'message' => $message,
         ]);
@@ -50,6 +53,7 @@ class LandingInterestController extends Controller
             Mail::to($recipients)->send(new LandingInterestMail(
                 submitterName: $name,
                 submitterEmail: $email,
+                phone: $phone,
                 company: $company,
                 message: $message,
             ));
