@@ -75,5 +75,11 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(max(1, $max))->by($request->ip().':'.$token);
         });
+
+        RateLimiter::for('public-landing-interest', function (Request $request) {
+            $max = (int) config('public_rate_limits.landing_interest_per_minute', 5);
+
+            return Limit::perMinute(max(1, $max))->by($request->ip());
+        });
     }
 }

@@ -1,10 +1,24 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 
 defineProps({
     canLogin: Boolean,
     canRegister: Boolean,
 });
+
+const form = useForm({
+    name: '',
+    email: '',
+    company: '',
+    message: '',
+});
+
+const submitInterest = () => {
+    form.post(route('landing.interest'), {
+        preserveScroll: true,
+        onSuccess: () => form.reset('name', 'email', 'company', 'message'),
+    });
+};
 </script>
 
 <template>
@@ -173,6 +187,90 @@ defineProps({
                             </Link>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <section id="contato" class="border-t border-white/30 bg-white/30 py-16 backdrop-blur-sm">
+                <div class="mx-auto max-w-2xl px-4">
+                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Quer conhecer mais a Talents?</h2>
+                    <p class="mx-auto mt-3 max-w-xl text-center text-slate-600">
+                        Deixe seus dados e, se quiser, uma mensagem. Entraremos em contato.
+                    </p>
+
+                    <div
+                        v-if="$page.props.flash?.success"
+                        class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm text-emerald-800"
+                    >
+                        {{ $page.props.flash.success }}
+                    </div>
+                    <div
+                        v-if="$page.props.flash?.error"
+                        class="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-800"
+                    >
+                        {{ $page.props.flash.error }}
+                    </div>
+
+                    <form class="surface-card mt-8 space-y-5 p-6 shadow-md sm:p-8" @submit.prevent="submitInterest">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700" for="interest-name">Nome</label>
+                            <input
+                                id="interest-name"
+                                v-model="form.name"
+                                type="text"
+                                required
+                                autocomplete="name"
+                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                            <p v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700" for="interest-email">E-mail</label>
+                            <input
+                                id="interest-email"
+                                v-model="form.email"
+                                type="email"
+                                required
+                                autocomplete="email"
+                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                            <p v-if="form.errors.email" class="mt-1 text-sm text-red-600">{{ form.errors.email }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700" for="interest-company"
+                                >Empresa <span class="font-normal text-slate-500">(opcional)</span></label
+                            >
+                            <input
+                                id="interest-company"
+                                v-model="form.company"
+                                type="text"
+                                autocomplete="organization"
+                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                            <p v-if="form.errors.company" class="mt-1 text-sm text-red-600">{{ form.errors.company }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700" for="interest-message"
+                                >Mensagem <span class="font-normal text-slate-500">(opcional)</span></label
+                            >
+                            <textarea
+                                id="interest-message"
+                                v-model="form.message"
+                                rows="4"
+                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                placeholder="Conte um pouco do que você busca ou deixe em branco."
+                            />
+                            <p v-if="form.errors.message" class="mt-1 text-sm text-red-600">{{ form.errors.message }}</p>
+                        </div>
+                        <div class="pt-2">
+                            <button
+                                type="submit"
+                                class="w-full rounded-full bg-talents-600 px-6 py-3 text-sm font-bold text-white shadow-md transition hover:bg-talents-700 disabled:opacity-60 sm:w-auto"
+                                :disabled="form.processing"
+                            >
+                                {{ form.processing ? 'Enviando…' : 'Enviar interesse' }}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </section>
         </main>

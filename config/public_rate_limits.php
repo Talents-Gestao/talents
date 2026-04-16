@@ -16,4 +16,7 @@ return [
 
     /** POST /denuncia/{token}/p/{protocol}/mensagem */
     'complaint_reporter_message_per_minute' => 30,
+
+    /** POST /interesse (formulário da landing) */
+    'landing_interest_per_minute' => 5,
 ];

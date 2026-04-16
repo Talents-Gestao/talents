@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\LandingInterestController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -10,6 +11,10 @@ Route::get('/', function () {
         'canRegister' => Route::has('register'),
     ]);
 });
+
+Route::post('/interesse', [LandingInterestController::class, 'store'])
+    ->middleware('throttle:public-landing-interest')
+    ->name('landing.interest');
 
 Route::get('/dashboard', function () {
     $user = auth()->user();
