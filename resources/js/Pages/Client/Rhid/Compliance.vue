@@ -5,7 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import {
@@ -144,6 +144,11 @@ const espelhoAdherenceIni = ref(monthFirst);
 const espelhoAdherenceFim = ref(monthLast);
 const espelhoAdherenceLoading = ref(false);
 const espelhoAdherenceResult = ref(null);
+/** Modal: marcacoes do espelho no periodo da analise */
+const espelhoAdherenceMarksOpen = ref(false);
+const espelhoAdherenceMarksLoading = ref(false);
+const espelhoAdherenceMarksError = ref(null);
+const espelhoAdherenceMarksData = ref(null);
 
 const espelhoParseLabel = (s) => {
     if (s === 'ok') {
@@ -1123,6 +1128,62 @@ const loadEspelhoScheduleAdherence = async () => {
     }
 };
 
+const formatEspelhoAdherenceYmdToPt = (ymd) => {
+    if (!ymd || typeof ymd !== 'string') {
+        return '—';
+    }
+    const p = ymd.split('-');
+    if (p.length !== 3) {
+        return ymd;
+    }
+    return `${p[2]}/${p[1]}/${p[0]}`;
+};
+
+const espelhoAdherenceSituacaoLabel = (code) => {
+    if (code === 'sem_escala') {
+        return 'Sem escala (dia nao util)';
+    }
+    if (code === 'insuficiente') {
+        return 'Insuficiente (4 batidas)';
+    }
+    if (code === 'analisavel') {
+        return 'Analisavel';
+    }
+    return code ?? '—';
+};
+
+const closeEspelhoAdherenceMarksModal = () => {
+    espelhoAdherenceMarksOpen.value = false;
+    espelhoAdherenceMarksError.value = null;
+    espelhoAdherenceMarksData.value = null;
+};
+
+const openEspelhoAdherenceMarksModal = async (row) => {
+    if (row?.id_person == null) {
+        return;
+    }
+    espelhoAdherenceMarksOpen.value = true;
+    espelhoAdherenceMarksLoading.value = true;
+    espelhoAdherenceMarksError.value = null;
+    espelhoAdherenceMarksData.value = null;
+    clearErr();
+    try {
+        const { data } = await axios.get(route('client.rhid.api.espelhos.schedule-adherence.marks'), {
+            params: {
+                ini: espelhoAdherenceIni.value,
+                fim: espelhoAdherenceFim.value,
+                id_person: row.id_person,
+            },
+        });
+        espelhoAdherenceMarksData.value = data;
+    } catch (e) {
+        espelhoAdherenceMarksError.value =
+            e?.response?.data?.message ?? e?.message ?? 'Nao foi possivel carregar as marcacoes.';
+    } finally {
+        espelhoAdherenceMarksLoading.value = false;
+    }
+};
+
 /** Rankings e graficos: ate 10 colaboradores por painel (alinhado ao backend TOP_RANK). */
 const ESPELHO_ADHERENCE_CHART_TOP = 10;
 
@@ -1167,7 +1228,7 @@ const openAdherenceFromEntradaTotalChart = (_event, _chartContext, config) => {
     }
     const row = espelhoAdherenceEntradaTopRows.value[i];
     if (row?.id_person != null) {
-        router.visit(route('client.rhid.collaborators.show', row.id_person));
+        openEspelhoAdherenceMarksModal(row);
     }
 };
 
@@ -1178,7 +1239,7 @@ const openAdherenceFromEntradaPiorDiaChart = (_event, _chartContext, config) => 
     }
     const row = espelhoAdherenceEntradaPiorDiaRows.value[i];
     if (row?.id_person != null) {
-        router.visit(route('client.rhid.collaborators.show', row.id_person));
+        openEspelhoAdherenceMarksModal(row);
     }
 };
 
@@ -1189,7 +1250,7 @@ const openAdherenceFromAlmocoChart = (_event, _chartContext, config) => {
     }
     const row = espelhoAdherenceAlmocoTopRows.value[i];
     if (row?.id_person != null) {
-        router.visit(route('client.rhid.collaborators.show', row.id_person));
+        openEspelhoAdherenceMarksModal(row);
     }
 };
 
@@ -1226,7 +1287,7 @@ const espelhoAdherenceChartEntradaTotal = computed(() => {
         yaxis: { labels: { maxWidth: 220 } },
         tooltip: {
             y: {
-                formatter: (val) => `${val} min — clique para abrir o colaborador`,
+                formatter: (val) => `${val} min — clique para ver marcacoes`,
             },
         },
         states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
@@ -1267,7 +1328,7 @@ const espelhoAdherenceChartEntradaPiorDia = computed(() => {
         yaxis: { labels: { maxWidth: 220 } },
         tooltip: {
             y: {
-                formatter: (val) => `${val} min no pior dia — clique para abrir o colaborador`,
+                formatter: (val) => `${val} min no pior dia — clique para ver marcacoes`,
             },
         },
         states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
@@ -1316,7 +1377,7 @@ const espelhoAdherenceChartAlmoco = computed(() => {
                 formatter: (val, opts) => {
                     const idx = opts.dataPointIndex;
                     const d = diasExtra[idx] ?? 0;
-                    return `${val} min (saída+volta); ${d} dia(s) c/ infração — clique para o perfil`;
+                    return `${val} min (saída+volta); ${d} dia(s) c/ infração — clique para ver marcacoes`;
                 },
             },
         },
@@ -2551,6 +2612,69 @@ const justStatusBarChart = computed(() => {
                 </div>
             </Modal>
 
+            <Modal :show="espelhoAdherenceMarksOpen" max-width="3xl" @close="closeEspelhoAdherenceMarksModal">
+                <div class="p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Marcacoes do espelho (periodo da analise)</h3>
+                    <p v-if="espelhoAdherenceMarksLoading" class="mt-2 text-sm text-slate-500">Carregando…</p>
+                    <p v-else-if="espelhoAdherenceMarksError" class="mt-2 text-sm text-red-700">
+                        {{ espelhoAdherenceMarksError }}
+                    </p>
+                    <template v-else-if="espelhoAdherenceMarksData">
+                        <p class="mt-1 text-sm text-slate-600">
+                            {{ espelhoAdherenceMarksData.nome }}
+                            <span class="font-mono text-slate-500"> · ID {{ espelhoAdherenceMarksData.id_person }}</span>
+                        </p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            Periodo:
+                            {{ formatEspelhoAdherenceYmdToPt(espelhoAdherenceMarksData.periodo?.ini) }} a
+                            {{ formatEspelhoAdherenceYmdToPt(espelhoAdherenceMarksData.periodo?.fim) }} · Tolerancia fixa:
+                            {{ espelhoAdherenceMarksData.tolerancia_minutos }} min · Import mais recente por dia
+                        </p>
+                        <div
+                            v-if="espelhoAdherenceMarksData.dias?.length"
+                            class="mt-4 max-h-[min(32rem,70vh)] overflow-auto rounded-lg border border-slate-200"
+                        >
+                            <table class="min-w-full text-left text-sm">
+                                <thead
+                                    class="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600"
+                                >
+                                    <tr>
+                                        <th class="whitespace-nowrap p-2">Data</th>
+                                        <th class="whitespace-nowrap p-2">ENT.1</th>
+                                        <th class="whitespace-nowrap p-2">SAI.1</th>
+                                        <th class="whitespace-nowrap p-2">ENT.2</th>
+                                        <th class="whitespace-nowrap p-2">SAI.2</th>
+                                        <th class="whitespace-nowrap p-2">Situacao</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="(d, di) in espelhoAdherenceMarksData.dias"
+                                        :key="di"
+                                        class="border-t border-slate-100"
+                                    >
+                                        <td class="whitespace-nowrap p-2 text-slate-800">
+                                            {{ formatEspelhoAdherenceYmdToPt(d.ref_date) }}
+                                        </td>
+                                        <td class="whitespace-nowrap p-2 font-mono tabular-nums">{{ d.ent_1 ?? '—' }}</td>
+                                        <td class="whitespace-nowrap p-2 font-mono tabular-nums">{{ d.sai_1 ?? '—' }}</td>
+                                        <td class="whitespace-nowrap p-2 font-mono tabular-nums">{{ d.ent_2 ?? '—' }}</td>
+                                        <td class="whitespace-nowrap p-2 font-mono tabular-nums">{{ d.sai_2 ?? '—' }}</td>
+                                        <td class="p-2 text-slate-700">{{ espelhoAdherenceSituacaoLabel(d.situacao) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p v-else class="mt-4 text-sm text-slate-500">
+                            Nenhum dia de espelho encontrado para este colaborador no periodo.
+                        </p>
+                    </template>
+                    <div class="mt-4 flex justify-end">
+                        <SecondaryButton type="button" @click="closeEspelhoAdherenceMarksModal">Fechar</SecondaryButton>
+                    </div>
+                </div>
+            </Modal>
+
             <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
                 <button
                     v-for="t in tabs"
@@ -2754,7 +2878,8 @@ const justStatusBarChart = computed(() => {
                                 class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
                             />
                             <p class="mt-1 text-xs text-slate-500">
-                                Margem para atrasos e analise de almoco (aderencia espelho vs horarios).
+                                Referencia guardada para a empresa; a subaba Aderencia usa tolerancia fixa de 10 minutos na
+                                analise (independente deste valor).
                             </p>
                         </div>
 
@@ -2905,8 +3030,9 @@ const justStatusBarChart = computed(() => {
                             <span class="font-medium">Marcacoes (espelho)</span>) com os horarios definidos na subaba
                             <span class="font-medium">Configuracao de horarios</span> desta mesma area. Convencao de 4
                             batidas por dia (ENT.1 / SAI.1 / ENT.2 / SAI.2). Dias sem quatro horarios extraidos ou sem dia
-                            util configurado sao ignorados ou contados como insuficientes. A tolerancia (minutos) vem da
-                            configuracao de horarios. Em caso de varios imports para o mesmo dia, usa-se o mais recente.
+                            util configurado sao ignorados ou contados como insuficientes. A tolerancia na analise e
+                            fixa de 10 minutos. Em caso de varios imports para o mesmo dia, usa-se o mais recente. Clique no
+                            nome do colaborador para ver as marcacoes do espelho no periodo.
                         </p>
                         <div class="mt-3 flex flex-wrap items-end gap-3">
                             <div>
@@ -2943,7 +3069,7 @@ const justStatusBarChart = computed(() => {
                             <p class="mt-3 text-xs text-slate-500">
                                 Dashboard: ate {{ ESPELHO_ADHERENCE_CHART_TOP }} colaboradores por grafico. Passe o rato para
                                 detalhes; use a barra do grafico para exportar (PNG/SVG) ou ampliar. Clique numa barra para
-                                abrir o perfil do colaborador.
+                                ver as marcacoes do espelho no periodo.
                             </p>
                             <div class="mt-4 grid gap-4 xl:grid-cols-3">
                                 <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -3029,12 +3155,13 @@ const justStatusBarChart = computed(() => {
                                                     class="border-t border-slate-100"
                                                 >
                                                     <td class="p-2">
-                                                        <Link
-                                                            :href="route('client.rhid.collaborators.show', row.id_person)"
-                                                            class="text-talents-800 hover:underline"
+                                                        <button
+                                                            type="button"
+                                                            class="text-left font-medium text-talents-800 hover:underline"
+                                                            @click="openEspelhoAdherenceMarksModal(row)"
                                                         >
                                                             {{ row.nome }}
-                                                        </Link>
+                                                        </button>
                                                     </td>
                                                     <td class="p-2 font-mono text-xs">{{ row.id_person }}</td>
                                                     <td class="p-2">{{ row.total_atraso_entrada_minutos }}</td>
@@ -3076,12 +3203,13 @@ const justStatusBarChart = computed(() => {
                                                     class="border-t border-slate-100"
                                                 >
                                                     <td class="p-2">
-                                                        <Link
-                                                            :href="route('client.rhid.collaborators.show', row.id_person)"
-                                                            class="text-talents-800 hover:underline"
+                                                        <button
+                                                            type="button"
+                                                            class="text-left font-medium text-talents-800 hover:underline"
+                                                            @click="openEspelhoAdherenceMarksModal(row)"
                                                         >
                                                             {{ row.nome }}
-                                                        </Link>
+                                                        </button>
                                                     </td>
                                                     <td class="p-2 font-mono text-xs">{{ row.id_person }}</td>
                                                     <td class="p-2">{{ row.dias_com_infracao_almoco }}</td>

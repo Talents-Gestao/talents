@@ -89,6 +89,7 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
             Route::post('espelhos/imports/{import}/parse-sync', [RhidApiController::class, 'syncParseEspelhoImport'])->name('espelhos.imports.parse-sync')->whereNumber('import');
             Route::get('espelhos/imports/{import}/file', [RhidApiController::class, 'downloadEspelhoImportFile'])->name('espelhos.imports.file')->whereNumber('import');
             Route::get('espelhos/schedule-adherence', [RhidApiController::class, 'espelhoScheduleAdherence'])->name('espelhos.schedule-adherence');
+            Route::get('espelhos/schedule-adherence/marks', [RhidApiController::class, 'espelhoScheduleAdherenceMarks'])->name('espelhos.schedule-adherence.marks');
             Route::post('afd/export', [RhidApiController::class, 'exportAfd'])->name('afd.export');
             Route::get('last-punches', [RhidApiController::class, 'lastPunches'])->name('last-punches');
             Route::get('punch-schedule-settings', [RhidApiController::class, 'punchScheduleSettings'])->name('punch-schedule-settings.show');

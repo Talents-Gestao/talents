@@ -14,6 +14,9 @@ class EspelhoScheduleAdherenceService
 
     public const TOP_RANK = 10;
 
+    /** Tolerancia fixa na analise de aderencia (minutos); nao usa o valor da configuracao de horarios. */
+    public const ADHERENCE_TOLERANCE_MINUTES = 10;
+
     /** ISO-8601: 1 = seg … 7 = dom — alinhado a PunchScheduleSettingsService::DAY_KEYS */
     private const DAY_KEY_BY_ISO = [
         1 => 'seg',
@@ -39,7 +42,7 @@ class EspelhoScheduleAdherenceService
         ?int $idPerson = null,
     ): array {
         $settings = $this->scheduleSettings->getForCompany($company);
-        $tolerance = $this->toleranceMinutes($settings);
+        $tolerance = self::ADHERENCE_TOLERANCE_MINUTES;
 
         $days = $this->loadDedupedDays($company->id, $ini, $fim, $idPerson);
 
@@ -142,6 +145,81 @@ class EspelhoScheduleAdherenceService
             ],
             'ranking_atrasos_entrada' => $rankingAtrasos,
             'ranking_infracoes_almoco' => $rankingAlmoco,
+        ];
+    }
+
+    /**
+     * Marcacoes do espelho (import mais recente por dia) para um colaborador no periodo — ex.: modal de aderencia.
+     *
+     * @return array<string, mixed>
+     */
+    public function personMarksForAdherencePeriod(
+        Company $company,
+        CarbonInterface $ini,
+        CarbonInterface $fim,
+        int $idPerson,
+    ): array {
+        $settings = $this->scheduleSettings->getForCompany($company);
+        $tolerance = self::ADHERENCE_TOLERANCE_MINUTES;
+        $days = $this->loadDedupedDays($company->id, $ini, $fim, $idPerson);
+
+        $rows = [];
+        $nome = '—';
+
+        foreach ($days as $item) {
+            /** @var RhidEspelhoDay $day */
+            $day = $item['day'];
+            $rowJson = is_array($day->row_json) ? $day->row_json : [];
+            $fragment = $this->pickFragment($rowJson, $idPerson);
+
+            $refDate = Carbon::parse($day->ref_date)->startOfDay();
+            $isoDow = (int) $refDate->format('N');
+            $dayKey = self::DAY_KEY_BY_ISO[$isoDow] ?? null;
+
+            if ($fragment !== null) {
+                $n = trim((string) ($fragment['nome'] ?? ''));
+                if ($n !== '') {
+                    $nome = $n;
+                }
+            }
+
+            $daySchedule = ($dayKey !== null) ? ($settings['dias'][$dayKey] ?? null) : null;
+            $escalaAtiva = is_array($daySchedule) && ! empty($daySchedule['ativo']);
+
+            $ent1 = $fragment !== null ? $this->normalizeSlot($fragment['ent_1'] ?? null) : null;
+            $sai1 = $fragment !== null ? $this->normalizeSlot($fragment['sai_1'] ?? null) : null;
+            $ent2 = $fragment !== null ? $this->normalizeSlot($fragment['ent_2'] ?? null) : null;
+            $sai2 = $fragment !== null ? $this->normalizeSlot($fragment['sai_2'] ?? null) : null;
+
+            if (! $escalaAtiva) {
+                $situacao = 'sem_escala';
+            } elseif ($fragment === null || $this->analyzeDayFragment($fragment, $daySchedule, $tolerance) === null) {
+                $situacao = 'insuficiente';
+            } else {
+                $situacao = 'analisavel';
+            }
+
+            $rows[] = [
+                'ref_date' => $refDate->toDateString(),
+                'ent_1' => $ent1,
+                'sai_1' => $sai1,
+                'ent_2' => $ent2,
+                'sai_2' => $sai2,
+                'situacao' => $situacao,
+            ];
+        }
+
+        usort($rows, static fn (array $a, array $b): int => strcmp($a['ref_date'], $b['ref_date']));
+
+        return [
+            'id_person' => $idPerson,
+            'nome' => $nome,
+            'periodo' => [
+                'ini' => $ini->toDateString(),
+                'fim' => $fim->toDateString(),
+            ],
+            'tolerancia_minutos' => $tolerance,
+            'dias' => $rows,
         ];
     }
 

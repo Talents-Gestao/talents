@@ -527,6 +527,32 @@ class RhidApiController extends Controller
         return response()->json($adherence->aggregateForCompany($company, $ini, $fim, $idPerson));
     }
 
+    public function espelhoScheduleAdherenceMarks(Request $request, EspelhoScheduleAdherenceService $adherence): JsonResponse
+    {
+        $company = $this->company($request);
+        $v = $request->validate([
+            'ini' => ['required', 'date'],
+            'fim' => ['required', 'date', 'after_or_equal:ini'],
+            'id_person' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $ini = Carbon::parse($v['ini'])->startOfDay();
+        $fim = Carbon::parse($v['fim'])->startOfDay();
+        $span = $ini->diffInDays($fim) + 1;
+        if ($span > EspelhoScheduleAdherenceService::MAX_RANGE_DAYS) {
+            return response()->json([
+                'message' => 'Periodo maximo de '.EspelhoScheduleAdherenceService::MAX_RANGE_DAYS.' dias.',
+            ], 422);
+        }
+
+        return response()->json($adherence->personMarksForAdherencePeriod(
+            $company,
+            $ini,
+            $fim,
+            (int) $v['id_person'],
+        ));
+    }
+
     public function devices(Request $request, RhidDeviceService $devices): JsonResponse|Response
     {
         $company = $this->company($request);
