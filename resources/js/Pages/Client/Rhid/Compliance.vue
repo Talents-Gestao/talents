@@ -2783,6 +2783,11 @@ const justStatusBarChart = computed(() => {
                                 </div>
                                 <div>
                                     <h4 class="mb-2 text-xs font-semibold uppercase text-slate-700">Infracoes de almoco</h4>
+                                    <p class="mb-2 text-xs text-slate-500">
+                                        Ordenacao: mais dias com problema; depois soma dos atrasos em minutos (saida para
+                                        almoco + volta). Infracoes so por duracao (almoco curto/longo) podem ter 0 min
+                                        nessa soma.
+                                    </p>
                                     <div class="overflow-x-auto rounded border border-slate-200 text-sm">
                                         <table class="min-w-full text-left">
                                             <thead class="bg-slate-50 text-xs">
@@ -2790,7 +2795,7 @@ const justStatusBarChart = computed(() => {
                                                     <th class="p-2">Nome</th>
                                                     <th class="p-2">ID</th>
                                                     <th class="p-2">Dias c/ problema</th>
-                                                    <th class="p-2">Pts</th>
+                                                    <th class="p-2">Total min atraso</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -2809,7 +2814,12 @@ const justStatusBarChart = computed(() => {
                                                     </td>
                                                     <td class="p-2 font-mono text-xs">{{ row.id_person }}</td>
                                                     <td class="p-2">{{ row.dias_com_infracao_almoco }}</td>
-                                                    <td class="p-2">{{ row.pontos_almoco }}</td>
+                                                    <td class="p-2">
+                                                        {{
+                                                            (row.total_minutos_atraso_saida_almoco ?? 0) +
+                                                            (row.total_minutos_atraso_volta_almoco ?? 0)
+                                                        }}
+                                                    </td>
                                                 </tr>
                                             </tbody>
                                         </table>

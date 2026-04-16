@@ -99,7 +99,6 @@ class EspelhoScheduleAdherenceService
             }
             $byPerson[$idPersonRow]['total_minutos_atraso_saida_almoco'] += $analysis['atraso_saida_almoco_minutos'];
             $byPerson[$idPersonRow]['total_minutos_atraso_volta_almoco'] += $analysis['atraso_volta_almoco_minutos'];
-            $byPerson[$idPersonRow]['pontos_almoco'] += $analysis['pontos_infracao_almoco'];
         }
 
         $rankingAtrasos = array_values(array_filter($byPerson, fn (array $p): bool => $p['dias_analisados'] > 0));
@@ -116,12 +115,15 @@ class EspelhoScheduleAdherenceService
         $rankingAtrasos = array_slice($rankingAtrasos, 0, self::TOP_RANK);
 
         $rankingAlmoco = array_values(array_filter($byPerson, fn (array $p): bool => $p['dias_analisados'] > 0));
-        usort($rankingAlmoco, function (array $a, array $b): int {
+        $minTotaisAlmoco = static function (array $p): int {
+            return (int) ($p['total_minutos_atraso_saida_almoco'] + $p['total_minutos_atraso_volta_almoco']);
+        };
+        usort($rankingAlmoco, function (array $a, array $b) use ($minTotaisAlmoco): int {
             if ($a['dias_com_infracao_almoco'] !== $b['dias_com_infracao_almoco']) {
                 return $b['dias_com_infracao_almoco'] <=> $a['dias_com_infracao_almoco'];
             }
-            if ($a['pontos_almoco'] !== $b['pontos_almoco']) {
-                return $b['pontos_almoco'] <=> $a['pontos_almoco'];
+            if ($minTotaisAlmoco($a) !== $minTotaisAlmoco($b)) {
+                return $minTotaisAlmoco($b) <=> $minTotaisAlmoco($a);
             }
 
             return strcasecmp($a['nome'], $b['nome']);
@@ -255,7 +257,6 @@ class EspelhoScheduleAdherenceService
         $saidaCedo = $mSai1 < $mSaidaAlm - $T;
 
         $temInfracao = $atrasoSaidaAlmoco > 0 || $atrasoVoltaAlmoco > 0 || $almocoCurto || $almocoLongo || $saidaCedo;
-        $pontos = $atrasoSaidaAlmoco + $atrasoVoltaAlmoco + ($almocoCurto ? 30 : 0) + ($almocoLongo ? 30 : 0) + ($saidaCedo ? 15 : 0);
 
         return [
             'atraso_entrada_minutos' => $atrasoEntrada,
@@ -265,7 +266,6 @@ class EspelhoScheduleAdherenceService
             'almoco_longo' => $almocoLongo,
             'saida_almoco_cedo' => $saidaCedo,
             'tem_infracao_almoco' => $temInfracao,
-            'pontos_infracao_almoco' => $pontos,
         ];
     }
 
@@ -281,7 +281,6 @@ class EspelhoScheduleAdherenceService
             'dias_com_infracao_almoco' => 0,
             'total_minutos_atraso_saida_almoco' => 0,
             'total_minutos_atraso_volta_almoco' => 0,
-            'pontos_almoco' => 0,
         ];
     }
 
