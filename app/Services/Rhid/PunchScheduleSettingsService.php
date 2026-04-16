@@ -23,6 +23,7 @@ class PunchScheduleSettingsService
         return [
             'segundo_trabalho' => false,
             'segundo_almoco' => false,
+            'tolerancia_minutos' => 15,
             'dias' => $dias,
         ];
     }
@@ -57,6 +58,8 @@ class PunchScheduleSettingsService
         }
         $base['segundo_trabalho'] = (bool) ($stored['segundo_trabalho'] ?? false);
         $base['segundo_almoco'] = (bool) ($stored['segundo_almoco'] ?? false);
+        $tm = $stored['tolerancia_minutos'] ?? 15;
+        $base['tolerancia_minutos'] = is_numeric($tm) ? max(0, min(120, (int) $tm)) : 15;
         $inDays = $stored['dias'] ?? [];
         foreach (self::DAY_KEYS as $k) {
             $base['dias'][$k] = $this->mergeDay(is_array($inDays[$k] ?? null) ? $inDays[$k] : []);

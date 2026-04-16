@@ -12,6 +12,7 @@ use App\Models\Company;
 use App\Models\RhidEspelhoBatch;
 use App\Models\RhidEspelhoImport;
 use App\Services\Rhid\EspelhoPdfIngestService;
+use App\Services\Rhid\EspelhoScheduleAdherenceService;
 use App\Services\Rhid\PunchScheduleSettingsService;
 use App\Services\Rhid\RhidAuthService;
 use App\Services\Rhid\RhidComplianceService;
@@ -19,6 +20,7 @@ use App\Services\Rhid\RhidDeviceService;
 use App\Services\Rhid\RhidEspelhoService;
 use App\Services\Rhid\RhidMonitoringService;
 use App\Services\Rhid\RhidReportService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -500,6 +502,29 @@ class RhidApiController extends Controller
         $schedule->saveForCompany($company, $validated);
 
         return response()->json(['settings' => $schedule->getForCompany($company)]);
+    }
+
+    public function espelhoScheduleAdherence(Request $request, EspelhoScheduleAdherenceService $adherence): JsonResponse
+    {
+        $company = $this->company($request);
+        $v = $request->validate([
+            'ini' => ['required', 'date'],
+            'fim' => ['required', 'date', 'after_or_equal:ini'],
+            'id_person' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $ini = Carbon::parse($v['ini'])->startOfDay();
+        $fim = Carbon::parse($v['fim'])->startOfDay();
+        $span = $ini->diffInDays($fim) + 1;
+        if ($span > EspelhoScheduleAdherenceService::MAX_RANGE_DAYS) {
+            return response()->json([
+                'message' => 'Periodo maximo de '.EspelhoScheduleAdherenceService::MAX_RANGE_DAYS.' dias.',
+            ], 422);
+        }
+
+        $idPerson = isset($v['id_person']) ? (int) $v['id_person'] : null;
+
+        return response()->json($adherence->aggregateForCompany($company, $ini, $fim, $idPerson));
     }
 
     public function devices(Request $request, RhidDeviceService $devices): JsonResponse|Response

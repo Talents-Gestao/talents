@@ -32,6 +32,7 @@ class UpdatePunchScheduleSettingsRequest extends FormRequest
         $rules = [
             'segundo_trabalho' => ['required', 'boolean'],
             'segundo_almoco' => ['required', 'boolean'],
+            'tolerancia_minutos' => ['nullable', 'integer', 'min:0', 'max:120'],
             'dias' => ['required', 'array'],
         ];
 
