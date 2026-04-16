@@ -253,6 +253,8 @@ class RhidApiController extends Controller
         $query = $request->validate([
             'page' => ['nullable', 'integer', 'min:0'],
             'maxSize' => ['nullable', 'integer', 'min:1', 'max:500'],
+            /** 1 = ativos, 2 = inativos — repassado ao GET person.svc/a quando suportado */
+            'status' => ['nullable', 'integer', 'in:1,2'],
         ]);
 
         return $this->jsonOrError(fn () => $compliance->listPersons($company, $request->user(), $query));

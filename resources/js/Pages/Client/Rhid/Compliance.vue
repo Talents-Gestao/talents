@@ -316,6 +316,30 @@ const rhidPersonId = (row) => {
     return Number.isFinite(n) ? n : null;
 };
 
+/** RHID: 1 = ativo, 2 = inativo (mesmo conceito do filtro do espelho). */
+const isRhidPersonRowClearlyInactive = (row) => {
+    if (!row || typeof row !== 'object') {
+        return false;
+    }
+    const s = row.status;
+    if (s === 2 || s === '2') {
+        return true;
+    }
+    const st = String(row.statusStr ?? '').toLowerCase();
+    return st.includes('inativ');
+};
+
+/** Erros de espelho em branco / inativo — nao devem interromper o lote inteiro. */
+const shouldSkipEspelhoBatchErrorMessage = (msg) => {
+    const m = String(msg ?? '').toLowerCase();
+    return (
+        m.includes('arquivo vazio') ||
+        m.includes('save_file') ||
+        m.includes('nao e um pdf valido') ||
+        m.includes('não é um pdf válido')
+    );
+};
+
 const bankHasOptionalFilters = () =>
     [bankFilterCompanies, bankFilterCostcenters, bankFilterDepartments, bankFilterPerson, bankFilterPersonroles].some(
         (r) => String(r.value ?? '').trim() !== '',
@@ -802,20 +826,26 @@ const loadCollaborators = async () => {
     }
 };
 
-/** IDs de todos os colaboradores retornados pelo cadastro RHID (person.svc/a), com paginacao. */
+/**
+ * IDs de colaboradores ativos (status=1 na API quando suportado + exclusao por linha inativa).
+ * Evita incluir inativos que geram espelho/PDF em branco no RHID.
+ */
 const fetchAllRhidPersonIdsFromApi = async () => {
     const maxSize = 500;
     const all = new Set();
     const maxPages = 200;
     for (let page = 0; page < maxPages; page++) {
         const { data } = await axios.get(route('client.rhid.api.people.index'), {
-            params: { page, maxSize },
+            params: { page, maxSize, status: 1 },
         });
         const rows = extractListItems(data);
         if (!rows.length) {
             break;
         }
         for (const row of rows) {
+            if (isRhidPersonRowClearlyInactive(row)) {
+                continue;
+            }
             const id = rhidPersonId(row);
             if (id != null) {
                 all.add(id);
@@ -1154,8 +1184,23 @@ const saveEspelhoTodosToTalents = async () => {
     espelhoBatchProgress.value = '';
     try {
         if (!ids.length) {
-            espelhoBatchProgress.value = 'Buscando colaboradores no RHID...';
+            espelhoBatchProgress.value = 'Buscando colaboradores ativos no RHID...';
             ids = await fetchAllRhidPersonIdsFromApi();
+        } else {
+            espelhoBatchProgress.value = 'Filtrando apenas colaboradores ativos (RHID)...';
+            const activeSet = new Set(await fetchAllRhidPersonIdsFromApi());
+            const before = ids.length;
+            ids = ids.filter((id) => activeSet.has(id));
+            if (!ids.length) {
+                espelhoBatchProgress.value = '';
+                err.value =
+                    'Nenhum dos IDs informados esta entre os colaboradores ativos retornados pelo RHID. Remova inativos ou deixe o filtro vazio para buscar todos os ativos.';
+                return;
+            }
+            if (before > ids.length) {
+                espelhoBatchProgress.value = `Ignorados ${before - ids.length} ID(s) inativos ou ausentes do cadastro ativo.`;
+                await new Promise((r) => setTimeout(r, 1200));
+            }
         }
         if (!ids.length) {
             espelhoBatchProgress.value = '';
@@ -1164,23 +1209,43 @@ const saveEspelhoTodosToTalents = async () => {
             return;
         }
         const total = ids.length;
+        const skippedIds = [];
+        let doneOk = 0;
         for (let i = 0; i < total; i++) {
             const idPerson = ids[i];
             espelhoBatchProgress.value = `Processando ${i + 1}/${total} (ID ${idPerson})...`;
-            const guid = await gerarEspelhoGuidByPersonId(idPerson);
-            const { data } = await axios.post(route('client.rhid.api.espelhos.store'), {
-                guid,
-                id_person: idPerson,
-                ini: toRhidYmd(espelhoIniDate.value),
-                fim: toRhidYmd(espelhoFimDate.value),
-            });
-            espelhoLastImport.value = data.import;
-            await pollEspelhoImportUntilDone(data.import.id);
+            try {
+                const guid = await gerarEspelhoGuidByPersonId(idPerson);
+                const { data } = await axios.post(route('client.rhid.api.espelhos.store'), {
+                    guid,
+                    id_person: idPerson,
+                    ini: toRhidYmd(espelhoIniDate.value),
+                    fim: toRhidYmd(espelhoFimDate.value),
+                });
+                espelhoLastImport.value = data.import;
+                await pollEspelhoImportUntilDone(data.import.id);
+                doneOk += 1;
+            } catch (e) {
+                const msg = e.response?.data?.message || e.message || '';
+                if (shouldSkipEspelhoBatchErrorMessage(msg)) {
+                    skippedIds.push(idPerson);
+                    espelhoBatchProgress.value = `Pulado ID ${idPerson} (espelho vazio ou invalido no RHID). Continuando...`;
+                    await new Promise((r) => setTimeout(r, 400));
+                    continue;
+                }
+                throw e;
+            }
             if (i < total - 1) {
                 await new Promise((r) => setTimeout(r, 800));
             }
         }
-        espelhoBatchProgress.value = `Concluido: ${total} colaborador(es) processado(s).`;
+        const skipPart =
+            skippedIds.length > 0
+                ? ` Pulados (sem PDF valido no RHID): ${skippedIds.length}${
+                      skippedIds.length <= 20 ? ` — IDs: ${skippedIds.join(', ')}` : '.'
+                  }`
+                : '';
+        espelhoBatchProgress.value = `Concluido: ${doneOk} colaborador(es) importado(s).${skipPart}`;
         await loadEspelhoImports();
     } catch (e) {
         handleError(e);
