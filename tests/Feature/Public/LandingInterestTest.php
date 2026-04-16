@@ -3,12 +3,16 @@
 namespace Tests\Feature\Public;
 
 use App\Mail\LandingInterestMail;
+use App\Models\LandingInterestSubmission;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class LandingInterestTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_landing_interest_sends_mail_and_redirects_with_success(): void
     {
         Mail::fake();
@@ -22,6 +26,17 @@ class LandingInterestTest extends TestCase
 
         $response->assertRedirect('/');
         $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('landing_interest_submissions', [
+            'name' => 'João Silva',
+            'email' => 'joao@example.com',
+            'company' => 'ACME',
+            'message' => 'Gostaria de uma demo.',
+        ]);
+
+        $row = LandingInterestSubmission::query()->where('email', 'joao@example.com')->first();
+        $this->assertNotNull($row->mail_sent_at);
+        $this->assertNull($row->mail_error);
 
         Mail::assertSent(LandingInterestMail::class, function (LandingInterestMail $mail) {
             return $mail->submitterName === 'João Silva'
@@ -41,6 +56,8 @@ class LandingInterestTest extends TestCase
         ]);
 
         $response->assertRedirect('/');
+        $response->assertSessionHas('success');
+
         Mail::assertSent(LandingInterestMail::class, function (LandingInterestMail $mail) {
             return $mail->submitterName === 'Maria'
                 && $mail->submitterEmail === 'maria@example.com'

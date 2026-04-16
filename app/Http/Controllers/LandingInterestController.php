@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Mail\LandingInterestMail;
+use App\Models\LandingInterestSubmission;
 use App\Models\MailSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class LandingInterestController extends Controller
 {
@@ -27,13 +29,21 @@ class LandingInterestController extends Controller
         $company = isset($data['company']) && $data['company'] !== '' ? trim($data['company']) : null;
         $message = isset($data['message']) && $data['message'] !== '' ? trim($data['message']) : null;
 
+        $submission = LandingInterestSubmission::query()->create([
+            'name' => $name,
+            'email' => $email,
+            'company' => $company,
+            'message' => $message,
+        ]);
+
         $recipients = config('landing.interest_recipients', []);
         if ($recipients === []) {
-            Log::warning('Landing interest: lista de destinatários vazia.');
+            Log::warning('Landing interest: lista de destinatários vazia.', ['submission_id' => $submission->id]);
+            $submission->update([
+                'mail_error' => 'Lista de destinatários vazia (configuração).',
+            ]);
 
-            return back()
-                ->withInput()
-                ->with('error', 'Não foi possível enviar sua mensagem no momento. Tente novamente mais tarde.');
+            return back()->with('success', 'Recebemos seu interesse. Em breve entraremos em contato.');
         }
 
         try {
@@ -43,14 +53,18 @@ class LandingInterestController extends Controller
                 company: $company,
                 message: $message,
             ));
+            $submission->forceFill([
+                'mail_sent_at' => now(),
+                'mail_error' => null,
+            ])->save();
         } catch (\Throwable $e) {
             Log::error('Landing interest: falha ao enviar e-mail.', [
+                'submission_id' => $submission->id,
                 'exception' => $e,
             ]);
-
-            return back()
-                ->withInput()
-                ->with('error', 'Não foi possível enviar sua mensagem no momento. Tente novamente mais tarde.');
+            $submission->update([
+                'mail_error' => Str::limit($e->getMessage(), 2000),
+            ]);
         }
 
         return back()->with('success', 'Recebemos seu interesse. Em breve entraremos em contato.');
