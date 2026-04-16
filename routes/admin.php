@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ActionPlanAdminController;
 use App\Http\Controllers\Admin\AiSettingsController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\LandingInterestSubmissionController;
 use App\Http\Controllers\Admin\MailSettingsController;
 use App\Http\Controllers\Admin\MethodologyCompanyController;
 use App\Http\Controllers\Admin\MethodologyController as AdminMethodologyController;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/interessados-landing', [LandingInterestSubmissionController::class, 'index'])
+        ->name('landing-interest.index');
     Route::resource('calendario-estrategico', AdminStrategicCalendarController::class)
         ->except(['show'])
         ->names([

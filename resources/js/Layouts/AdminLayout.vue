@@ -13,6 +13,7 @@ import {
     DocumentDuplicateIcon,
     Cog6ToothIcon,
     CreditCardIcon,
+    EnvelopeOpenIcon,
     HomeIcon,
     UserCircleIcon,
 } from '@heroicons/vue/24/outline';
@@ -41,6 +42,13 @@ import {
                 :active="route().current('admin.dashboard')"
                 :icon="HomeIcon"
                 label="Painel"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                :href="route('admin.landing-interest.index')"
+                :active="route().current('admin.landing-interest.*')"
+                :icon="EnvelopeOpenIcon"
+                label="Interessados"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

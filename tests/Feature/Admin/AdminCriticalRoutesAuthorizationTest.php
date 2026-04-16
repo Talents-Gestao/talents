@@ -77,4 +77,18 @@ class AdminCriticalRoutesAuthorizationTest extends TestCase
             ->get('/admin/dashboard')
             ->assertForbidden();
     }
+
+    public function test_company_admin_cannot_access_admin_landing_interest_index(): void
+    {
+        $this->actingAs($this->makeCompanyAdminUser())
+            ->get('/admin/interessados-landing')
+            ->assertForbidden();
+    }
+
+    public function test_super_admin_can_access_admin_landing_interest_index(): void
+    {
+        $this->actingAs(User::factory()->superAdmin()->create())
+            ->get('/admin/interessados-landing')
+            ->assertOk();
+    }
 }
