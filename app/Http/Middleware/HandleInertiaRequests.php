@@ -25,16 +25,29 @@ class HandleInertiaRequests extends Middleware
         $user = $request->user();
 
         $companyPayload = null;
-        if ($user && $user->company_id) {
-            $company = $user->relationLoaded('company')
-                ? $user->company
-                : $user->company()->first();
+        $permissions = [];
 
-            if ($company) {
-                $companyPayload = array_merge($company->toArray(), [
-                    'has_methodology' => $company->hasMethodologyEnabled(),
-                    'has_strategic_calendar' => $company->hasStrategicCalendarEnabled(),
-                ]);
+        if ($user) {
+            if ($user->isCompanyUser()) {
+                $user->loadMissing(['company', 'permissions']);
+            } else {
+                $user->loadMissing('company');
+            }
+
+            $permissions = $user->permissionMatrixForFrontend();
+
+            if ($user->company_id) {
+                $company = $user->relationLoaded('company')
+                    ? $user->company
+                    : $user->company()->first();
+
+                if ($company) {
+                    $companyPayload = array_merge($company->toArray(), [
+                        'has_methodology' => $company->hasMethodologyEnabled(),
+                        'has_strategic_calendar' => $company->hasStrategicCalendarEnabled(),
+                        'active_permission_modules' => $company->activePermissionModuleValues(),
+                    ]);
+                }
             }
         }
 
@@ -49,6 +62,7 @@ class HandleInertiaRequests extends Middleware
                         'role' => $user->role->value,
                         'company_id' => $user->company_id,
                         'company' => $companyPayload,
+                        'permissions' => $permissions,
                     ]
                     : null,
             ],

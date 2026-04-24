@@ -169,7 +169,15 @@ const deleteCompany = () => {
         </div>
 
         <div class="mt-8 surface-card p-6 text-slate-900">
-            <h3 class="font-semibold text-talents-700">Usuários</h3>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h3 class="font-semibold text-talents-700">Usuários</h3>
+                <Link
+                    :href="route('admin.companies.users.index', company.id)"
+                    class="text-sm font-medium text-talents-700 hover:underline"
+                >
+                    Gerir utilizadores
+                </Link>
+            </div>
             <ul class="mt-4 space-y-1 text-sm">
                 <li v-for="u in company.users" :key="u.id">{{ u.name }} — {{ u.email }} ({{ u.role }})</li>
             </ul>

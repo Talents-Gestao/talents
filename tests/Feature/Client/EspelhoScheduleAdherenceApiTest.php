@@ -34,6 +34,7 @@ class EspelhoScheduleAdherenceApiTest extends TestCase
     public function test_rejects_range_over_max_days(): void
     {
         $company = Company::query()->create(['name' => 'E']);
+        $this->subscribeCompanyToNr1($company);
         $admin = User::factory()->companyAdmin($company->id)->create();
 
         $this->actingAs($admin)
@@ -47,6 +48,7 @@ class EspelhoScheduleAdherenceApiTest extends TestCase
     public function test_aggregate_uses_espelho_and_settings(): void
     {
         $company = Company::query()->create(['name' => 'Emp']);
+        $this->subscribeCompanyToNr1($company);
         $admin = User::factory()->companyAdmin($company->id)->create();
 
         $dias = [];
@@ -125,6 +127,7 @@ class EspelhoScheduleAdherenceApiTest extends TestCase
     public function test_schedule_adherence_marks_returns_days_for_person(): void
     {
         $company = Company::query()->create(['name' => 'Emp']);
+        $this->subscribeCompanyToNr1($company);
         $admin = User::factory()->companyAdmin($company->id)->create();
 
         $dias = [];

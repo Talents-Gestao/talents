@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActionPlanAdminController;
 use App\Http\Controllers\Admin\AiSettingsController;
 use App\Http\Controllers\Admin\CompanyController;
+use App\Http\Controllers\Admin\CompanyUserController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\LandingInterestSubmissionController;
 use App\Http\Controllers\Admin\MailSettingsController;
@@ -38,6 +39,12 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         ->name('companies.surveys.action-plan.update');
     Route::post('companies/{company}/surveys/{survey}/ai-analysis', [ActionPlanAdminController::class, 'generateAiAnalysis'])
         ->name('companies.surveys.ai-analysis');
+    Route::get('companies/{company}/users', [CompanyUserController::class, 'index'])->name('companies.users.index');
+    Route::get('companies/{company}/users/create', [CompanyUserController::class, 'create'])->name('companies.users.create');
+    Route::post('companies/{company}/users', [CompanyUserController::class, 'store'])->name('companies.users.store');
+    Route::get('companies/{company}/users/{user}/edit', [CompanyUserController::class, 'edit'])->name('companies.users.edit');
+    Route::match(['put', 'patch'], 'companies/{company}/users/{user}', [CompanyUserController::class, 'update'])->name('companies.users.update');
+    Route::delete('companies/{company}/users/{user}', [CompanyUserController::class, 'destroy'])->name('companies.users.destroy');
     Route::resource('companies', CompanyController::class);
     Route::post('companies/{company}/templates/{template}', [CompanyController::class, 'attachTemplate'])->name('companies.templates.attach');
     Route::delete('companies/{company}/templates/{template}', [CompanyController::class, 'detachTemplate'])->name('companies.templates.detach');

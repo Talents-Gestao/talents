@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureCompanyAccess;
 use App\Http\Middleware\EnsureCompanyAdmin;
+use App\Http\Middleware\EnsureModulePermission;
 use App\Http\Middleware\EnsureStrategicCalendarAccess;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -43,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'company' => EnsureCompanyAccess::class,
             'company_admin' => EnsureCompanyAdmin::class,
             'strategic_calendar' => EnsureStrategicCalendarAccess::class,
+            'can.module' => EnsureModulePermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

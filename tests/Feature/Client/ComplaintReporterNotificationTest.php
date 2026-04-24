@@ -26,6 +26,8 @@ class ComplaintReporterNotificationTest extends TestCase
             'complaints_public_token' => (string) Str::uuid(),
         ]);
 
+        $this->subscribeCompanyToNr1($company);
+
         $user = User::factory()->companyAdmin($company->id)->create();
 
         $protocol = (string) Str::uuid();
@@ -64,6 +66,8 @@ class ComplaintReporterNotificationTest extends TestCase
             'complaints_public_token' => (string) Str::uuid(),
         ]);
 
+        $this->subscribeCompanyToNr1($company);
+
         $user = User::factory()->companyAdmin($company->id)->create();
 
         $protocol = (string) Str::uuid();
@@ -98,6 +102,8 @@ class ComplaintReporterNotificationTest extends TestCase
             'is_active' => true,
             'complaints_public_token' => (string) Str::uuid(),
         ]);
+
+        $this->subscribeCompanyToNr1($company);
 
         $user = User::factory()->companyAdmin($company->id)->create();
 
@@ -135,6 +141,8 @@ class ComplaintReporterNotificationTest extends TestCase
             'is_active' => true,
             'complaints_public_token' => (string) Str::uuid(),
         ]);
+
+        $this->subscribeCompanyToNr1($company);
 
         $user = User::factory()->companyAdmin($company->id)->create();
 

@@ -18,43 +18,68 @@ use App\Http\Controllers\Client\StrategicCalendarController as ClientStrategicCa
 use App\Http\Controllers\Client\SurveyController;
 use App\Http\Controllers\Client\SurveyResultsController;
 use App\Http\Controllers\Client\TrainingController;
+use App\Http\Controllers\Client\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('client.')->group(function () {
     Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
-    Route::resource('departments', DepartmentController::class)->except(['show']);
-    Route::resource('positions', PositionController::class)->except(['show']);
-    Route::post('import/departments', [ImportController::class, 'departments'])->name('import.departments');
-    Route::resource('surveys', SurveyController::class);
-    Route::get('surveys/{survey}/results', [SurveyResultsController::class, 'show'])->name('surveys.results');
-    Route::post('surveys/{survey}/ai-analysis', [SurveyResultsController::class, 'generateAiAnalysis'])->name('surveys.ai-analysis');
-    Route::post('surveys/{survey}/recalculate', [SurveyResultsController::class, 'recalculate'])->name('surveys.recalculate');
-    Route::get('surveys/{survey}/action-plan', [ActionPlanController::class, 'show'])->name('surveys.action-plan');
-    Route::patch('action-plan-items/{item}', [ActionPlanController::class, 'updateItem'])->name('action-plan-items.update');
-    Route::get('surveys/{survey}/reports/executive', [ReportController::class, 'executive'])->name('surveys.reports.executive');
-    Route::get('surveys/{survey}/reports/technical', [ReportController::class, 'technical'])->name('surveys.reports.technical');
-    Route::get('surveys/{survey}/export/json', [ExportController::class, 'json'])->name('surveys.export.json');
-    Route::get('surveys/{survey}/export/csv', [ExportController::class, 'csv'])->name('surveys.export.csv');
 
-    Route::get('capacitacao', [TrainingController::class, 'index'])->name('training.index');
+    Route::middleware(['company_admin', 'can.module:usuarios'])->group(function () {
+        Route::resource('usuarios', UserController::class)->parameters(['usuarios' => 'user'])->except(['show']);
+    });
 
-    Route::middleware('strategic_calendar')->group(function () {
+    Route::middleware('can.module:departamentos_cargos')->group(function () {
+        Route::resource('departments', DepartmentController::class)->except(['show']);
+        Route::post('import/departments', [ImportController::class, 'departments'])->name('import.departments');
+        Route::resource('positions', PositionController::class)->except(['show']);
+    });
+
+    Route::middleware('can.module:pesquisas')->group(function () {
+        Route::resource('surveys', SurveyController::class);
+        Route::get('surveys/{survey}/results', [SurveyResultsController::class, 'show'])->name('surveys.results');
+    });
+
+    Route::middleware('can.module:pesquisas,edit')->group(function () {
+        Route::post('surveys/{survey}/ai-analysis', [SurveyResultsController::class, 'generateAiAnalysis'])->name('surveys.ai-analysis');
+        Route::post('surveys/{survey}/recalculate', [SurveyResultsController::class, 'recalculate'])->name('surveys.recalculate');
+    });
+
+    Route::middleware('can.module:planos_acao')->group(function () {
+        Route::get('surveys/{survey}/action-plan', [ActionPlanController::class, 'show'])->name('surveys.action-plan');
+        Route::patch('action-plan-items/{item}', [ActionPlanController::class, 'updateItem'])->name('action-plan-items.update');
+    });
+
+    Route::middleware('can.module:relatorios')->group(function () {
+        Route::get('surveys/{survey}/reports/executive', [ReportController::class, 'executive'])->name('surveys.reports.executive');
+        Route::get('surveys/{survey}/reports/technical', [ReportController::class, 'technical'])->name('surveys.reports.technical');
+        Route::get('surveys/{survey}/export/json', [ExportController::class, 'json'])->name('surveys.export.json');
+        Route::get('surveys/{survey}/export/csv', [ExportController::class, 'csv'])->name('surveys.export.csv');
+    });
+
+    Route::middleware('can.module:capacitacao')->group(function () {
+        Route::get('capacitacao', [TrainingController::class, 'index'])->name('training.index');
+    });
+
+    Route::middleware(['strategic_calendar', 'can.module:calendario_estrategico'])->group(function () {
         Route::get('calendario-estrategico', [ClientStrategicCalendarController::class, 'index'])->name('strategic-calendar.index');
     });
 
-    Route::prefix('metodologia')->name('metodologia.')->group(function () {
+    Route::middleware('can.module:metodologia')->prefix('metodologia')->name('metodologia.')->group(function () {
         Route::get('/', [ClientMethodologyController::class, 'index'])->name('index');
         Route::get('pesquisa-satisfacao/{survey}/results', [MethodologySurveyResultsController::class, 'show'])->name('pesquisa-satisfacao.results');
         Route::get('pesquisa-satisfacao/{survey}/export/csv', [MethodologySurveyResultsController::class, 'exportCsv'])->name('pesquisa-satisfacao.export.csv');
         Route::resource('pesquisa-satisfacao', MethodologySurveyController::class)
             ->parameters(['pesquisa-satisfacao' => 'survey']);
     });
-    Route::get('complaints', [ComplaintController::class, 'index'])->name('complaints.index');
-    Route::get('complaints/{complaint}', [ComplaintController::class, 'show'])->name('complaints.show');
-    Route::patch('complaints/{complaint}/status', [ComplaintController::class, 'updateStatus'])->name('complaints.status');
-    Route::post('complaints/{complaint}/messages', [ComplaintController::class, 'storeMessage'])->name('complaints.messages.store');
 
-    Route::middleware('company_admin')->prefix('rhid')->name('rhid.')->group(function () {
+    Route::middleware('can.module:denuncias')->group(function () {
+        Route::get('complaints', [ComplaintController::class, 'index'])->name('complaints.index');
+        Route::get('complaints/{complaint}', [ComplaintController::class, 'show'])->name('complaints.show');
+        Route::patch('complaints/{complaint}/status', [ComplaintController::class, 'updateStatus'])->name('complaints.status');
+        Route::post('complaints/{complaint}/messages', [ComplaintController::class, 'storeMessage'])->name('complaints.messages.store');
+    });
+
+    Route::middleware('can.module:rhid')->prefix('rhid')->name('rhid.')->group(function () {
         Route::get('compliance', [RhidComplianceController::class, 'index'])->name('compliance.index');
         Route::get('collaborators/{person}', [RhidComplianceController::class, 'collaboratorShow'])
             ->name('collaborators.show')

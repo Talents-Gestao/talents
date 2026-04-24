@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PermissionModule;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -159,5 +160,56 @@ class Company extends Model
     public function activeSubscription(): ?Subscription
     {
         return $this->subscriptions()->where('status', 'active')->latest()->first();
+    }
+
+    public function subscriptionHasModuleKey(string $key): bool
+    {
+        $subscription = $this->activeSubscription();
+
+        if (! $subscription) {
+            return false;
+        }
+
+        $subscription->loadMissing('plan.modules');
+
+        if (! $subscription->plan) {
+            return false;
+        }
+
+        return $subscription->plan->modules->contains('key', $key);
+    }
+
+    public function hasModuleEnabled(PermissionModule $module): bool
+    {
+        return match ($module) {
+            PermissionModule::Pesquisas,
+            PermissionModule::PlanosAcao,
+            PermissionModule::Denuncias,
+            PermissionModule::DepartamentosCargos,
+            PermissionModule::Relatorios,
+            PermissionModule::ConfiguracoesEmpresa,
+            PermissionModule::Usuarios,
+            PermissionModule::Capacitacao => $this->subscriptionHasModuleKey(Module::KEY_NR1),
+            PermissionModule::Metodologia => $this->hasMethodologyEnabled(),
+            PermissionModule::CalendarioEstrategico => $this->hasStrategicCalendarEnabled(),
+            PermissionModule::Rhid => $this->subscriptionHasModuleKey(Module::KEY_NR1),
+        };
+    }
+
+    /**
+     * Valores de PermissionModule ativos para esta empresa (plano / configuração).
+     *
+     * @return list<string>
+     */
+    public function activePermissionModuleValues(): array
+    {
+        $out = [];
+        foreach (PermissionModule::all() as $m) {
+            if ($this->hasModuleEnabled($m)) {
+                $out[] = $m->value;
+            }
+        }
+
+        return $out;
     }
 }

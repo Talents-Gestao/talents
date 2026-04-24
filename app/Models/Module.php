@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Module extends Model
 {
+    /** @var string Módulo base NR-1 (pesquisas, denúncias, estrutura, etc.) */
+    public const KEY_NR1 = 'nr1';
+
     /** @var string Chave usada em planos e em Company::hasMethodologyEnabled() */
     public const KEY_METODOLOGIA = 'metodologia';
 

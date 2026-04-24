@@ -22,6 +22,7 @@ class PersonSchedulePreferenceApiTest extends TestCase
     public function test_batch_sets_second_lunch_for_multiple_people(): void
     {
         $company = Company::query()->create(['name' => 'C']);
+        $this->subscribeCompanyToNr1($company);
         $admin = User::factory()->companyAdmin($company->id)->create();
 
         $this->actingAs($admin)
@@ -43,6 +44,7 @@ class PersonSchedulePreferenceApiTest extends TestCase
     public function test_batch_clears_when_false(): void
     {
         $company = Company::query()->create(['name' => 'C2']);
+        $this->subscribeCompanyToNr1($company);
         $admin = User::factory()->companyAdmin($company->id)->create();
 
         $this->actingAs($admin)

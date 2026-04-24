@@ -25,6 +25,8 @@ class ComplaintDecryptionTest extends TestCase
             'complaints_public_token' => (string) Str::uuid(),
         ]);
 
+        $this->subscribeCompanyToNr1($company);
+
         $user = User::factory()->companyAdmin($company->id)->create();
 
         $protocol = (string) Str::uuid();

@@ -26,6 +26,7 @@ class PunchScheduleSettingsApiTest extends TestCase
     public function test_company_admin_gets_default_settings_when_none_saved(): void
     {
         $company = Company::query()->create(['name' => 'Empresa A']);
+        $this->subscribeCompanyToNr1($company);
         $admin = User::factory()->companyAdmin($company->id)->create();
 
         $this->actingAs($admin)
@@ -39,6 +40,7 @@ class PunchScheduleSettingsApiTest extends TestCase
     public function test_company_admin_can_persist_punch_schedule_settings(): void
     {
         $company = Company::query()->create(['name' => 'Empresa B']);
+        $this->subscribeCompanyToNr1($company);
         $admin = User::factory()->companyAdmin($company->id)->create();
 
         $body = [
@@ -142,6 +144,8 @@ class PunchScheduleSettingsApiTest extends TestCase
     {
         $companyA = Company::query()->create(['name' => 'A']);
         $companyB = Company::query()->create(['name' => 'B']);
+        $this->subscribeCompanyToNr1($companyA);
+        $this->subscribeCompanyToNr1($companyB);
         $adminA = User::factory()->companyAdmin($companyA->id)->create();
         $adminB = User::factory()->companyAdmin($companyB->id)->create();
 

@@ -33,6 +33,7 @@ class UserFactory extends Factory
             'remember_token' => Str::random(10),
             'role' => UserRole::CompanyUser,
             'company_id' => null,
+            'is_active' => true,
         ];
     }
 

@@ -24,6 +24,8 @@ trait CreatesSurveyFixtures
             'complaints_public_token' => (string) Str::uuid(),
         ]);
 
+        $this->subscribeCompanyToNr1($company);
+
         $template = SurveyTemplate::query()->create([
             'title' => 'Template fixture',
             'description' => null,

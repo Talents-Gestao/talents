@@ -4,7 +4,10 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import SidebarLayout from '@/Components/SidebarLayout.vue';
 import SidebarNavItem from '@/Components/SidebarNavItem.vue';
+import { usePermissions } from '@/composables/usePermissions';
 import { Link } from '@inertiajs/vue3';
+
+const { can } = usePermissions();
 import {
     AcademicCapIcon,
     BriefcaseIcon,
@@ -16,6 +19,7 @@ import {
     RocketLaunchIcon,
     ShieldExclamationIcon,
     UserCircleIcon,
+    UsersIcon,
 } from '@heroicons/vue/24/outline';
 </script>
 
@@ -45,6 +49,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="can('pesquisas', 'view')"
                 :href="route('client.surveys.index')"
                 :active="route().current('client.surveys.*')"
                 :icon="ClipboardDocumentListIcon"
@@ -52,7 +57,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
-                v-if="$page.props.auth.user?.company?.has_methodology"
+                v-if="can('metodologia', 'view')"
                 :href="route('client.metodologia.index')"
                 :active="route().current('client.metodologia.*')"
                 :icon="RocketLaunchIcon"
@@ -60,7 +65,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
-                v-if="$page.props.auth.user?.company?.has_strategic_calendar"
+                v-if="can('calendario_estrategico', 'view')"
                 :href="route('client.strategic-calendar.index')"
                 :active="route().current('client.strategic-calendar.*')"
                 :icon="CalendarDaysIcon"
@@ -68,6 +73,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="can('departamentos_cargos', 'view')"
                 :href="route('client.departments.index')"
                 :active="route().current('client.departments.*')"
                 :icon="BuildingOfficeIcon"
@@ -75,6 +81,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="can('departamentos_cargos', 'view')"
                 :href="route('client.positions.index')"
                 :active="route().current('client.positions.*')"
                 :icon="BriefcaseIcon"
@@ -82,6 +89,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="can('denuncias', 'view')"
                 :href="route('client.complaints.index')"
                 :active="route().current('client.complaints.*')"
                 :icon="ShieldExclamationIcon"
@@ -89,6 +97,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="can('capacitacao', 'view')"
                 :href="route('client.training.index')"
                 :active="route().current('client.training.*')"
                 :icon="AcademicCapIcon"
@@ -97,11 +106,19 @@ import {
                 badge="Em breve"
             />
             <SidebarNavItem
-                v-if="$page.props.auth.user?.role === 'company_admin'"
+                v-if="can('rhid', 'view')"
                 :href="route('client.rhid.compliance.index')"
                 :active="route().current('client.rhid.*')"
                 :icon="FingerPrintIcon"
                 label="RHID / Ponto"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                v-if="$page.props.auth.user?.role === 'company_admin'"
+                :href="route('client.usuarios.index')"
+                :active="route().current('client.usuarios.*')"
+                :icon="UsersIcon"
+                label="Utilizadores"
                 :collapsed="collapsed"
             />
         </template>

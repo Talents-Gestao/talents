@@ -1,8 +1,11 @@
 <script setup>
 import DashboardBootstrapCalendar from '@/Components/DashboardBootstrapCalendar.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
+import { usePermissions } from '@/composables/usePermissions';
 import { Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
+
+const { can } = usePermissions();
 
 const copied = ref(false);
 
@@ -46,13 +49,14 @@ const healthLevelLabel = (level) => {
                 <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Atalhos</p>
                 <div class="surface-glass space-y-3 p-4 text-sm text-slate-700">
                     <Link
+                        v-if="can('pesquisas', 'view')"
                         :href="route('client.surveys.index')"
                         class="block font-medium text-talents-800 hover:underline"
                     >
                         Pesquisas NR1
                     </Link>
                     <Link
-                        v-if="$page.props.auth.user?.company?.has_strategic_calendar"
+                        v-if="can('calendario_estrategico', 'view')"
                         :href="route('client.strategic-calendar.index')"
                         class="block font-medium text-talents-800 hover:underline"
                     >
@@ -65,7 +69,7 @@ const healthLevelLabel = (level) => {
             </div>
         </template>
 
-        <div v-if="dashboardCalendar" class="mb-10">
+        <div v-if="dashboardCalendar && can('calendario_estrategico', 'view')" class="mb-10">
             <DashboardBootstrapCalendar
                 :items="dashboardCalendar.items"
                 :year="dashboardCalendar.year"
@@ -79,7 +83,7 @@ const healthLevelLabel = (level) => {
             />
         </div>
 
-        <div class="grid gap-6 sm:grid-cols-3">
+        <div v-if="can('pesquisas', 'view')" class="grid gap-6 sm:grid-cols-3">
             <div class="surface-card p-6">
                 <p class="text-sm text-slate-500">Pesquisas ativas</p>
                 <p class="mt-2 text-3xl font-bold tabular-nums text-talents-800">{{ activeSurveys }}</p>
@@ -104,7 +108,7 @@ const healthLevelLabel = (level) => {
             </div>
         </div>
 
-        <div v-if="complaintsPublicUrl" class="surface-card mt-8 p-6">
+        <div v-if="complaintsPublicUrl && can('denuncias', 'view')" class="surface-card mt-8 p-6">
             <h3 class="text-sm font-semibold text-slate-900">Link público — Canal de denúncias</h3>
             <p class="mt-1 text-xs text-slate-600">Compartilhe com colaboradores (Lei 14.457/2022). Acesso sigiloso com protocolo.</p>
             <p class="mt-3 break-all rounded-lg bg-slate-50 p-2 font-mono text-xs text-slate-800">{{ complaintsPublicUrl }}</p>
@@ -119,13 +123,14 @@ const healthLevelLabel = (level) => {
 
         <div class="mt-8 flex flex-wrap gap-3">
             <Link
-                v-if="$page.props.auth.user?.company?.has_strategic_calendar"
+                v-if="can('calendario_estrategico', 'view')"
                 :href="route('client.strategic-calendar.index')"
                 class="inline-flex rounded-md border border-talents-300 bg-white px-4 py-2 text-sm font-semibold text-talents-800 hover:bg-talents-50"
             >
                 Calendário estratégico
             </Link>
             <Link
+                v-if="can('pesquisas', 'view')"
                 :href="route('client.surveys.index')"
                 class="inline-flex rounded-md bg-talents-700 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-800"
             >

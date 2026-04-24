@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Client;
 
+use App\Enums\PermissionAction;
+use App\Enums\PermissionModule;
 use App\Enums\UserRole;
 use App\Models\Company;
 use App\Models\User;
+use App\Models\UserPermission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -15,6 +18,7 @@ class RhidComplianceAccessTest extends TestCase
     public function test_company_admin_can_open_rhid_compliance(): void
     {
         $company = Company::query()->create(['name' => 'Empresa Teste']);
+        $this->subscribeCompanyToNr1($company);
         $admin = User::factory()->companyAdmin($company->id)->create();
 
         $this->withoutVite();
@@ -27,6 +31,7 @@ class RhidComplianceAccessTest extends TestCase
     public function test_company_admin_can_open_rhid_collaborator_page(): void
     {
         $company = Company::query()->create(['name' => 'Empresa Teste']);
+        $this->subscribeCompanyToNr1($company);
         $admin = User::factory()->companyAdmin($company->id)->create();
 
         $this->withoutVite();
@@ -39,6 +44,7 @@ class RhidComplianceAccessTest extends TestCase
     public function test_company_user_cannot_open_rhid_compliance(): void
     {
         $company = Company::query()->create(['name' => 'Empresa Teste']);
+        $this->subscribeCompanyToNr1($company);
         $user = User::factory()->create([
             'company_id' => $company->id,
             'role' => UserRole::CompanyUser,
@@ -52,6 +58,7 @@ class RhidComplianceAccessTest extends TestCase
     public function test_company_user_cannot_open_rhid_collaborator_page(): void
     {
         $company = Company::query()->create(['name' => 'Empresa Teste 2']);
+        $this->subscribeCompanyToNr1($company);
         $user = User::factory()->create([
             'company_id' => $company->id,
             'role' => UserRole::CompanyUser,
@@ -60,5 +67,26 @@ class RhidComplianceAccessTest extends TestCase
         $this->actingAs($user)
             ->get(route('client.rhid.collaborators.show', ['person' => 1]))
             ->assertForbidden();
+    }
+
+    public function test_company_user_with_rhid_view_permission_can_open_compliance(): void
+    {
+        $this->withoutVite();
+
+        $company = Company::query()->create(['name' => 'Empresa RHID Perm']);
+        $this->subscribeCompanyToNr1($company);
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::CompanyUser,
+        ]);
+        UserPermission::query()->create([
+            'user_id' => $user->id,
+            'module' => PermissionModule::Rhid->value,
+            'action' => PermissionAction::View->value,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('client.rhid.compliance.index'))
+            ->assertOk();
     }
 }
