@@ -25,13 +25,13 @@ const steps = [
     },
     {
         id: 3,
-        label: 'Mapeamento Psicológico',
+        label: 'Mapeamento Psicossocial',
         available: false,
         title: 'Em desenvolvimento',
     },
     {
         id: 4,
-        label: 'Mapeamento COP',
+        label: 'Mapeamento Comportamental',
         available: false,
         title: 'Em desenvolvimento',
     },

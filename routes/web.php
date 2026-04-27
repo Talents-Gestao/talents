@@ -19,6 +19,27 @@ Route::get('/nr-1', function () {
     ]);
 })->name('landing.nr1');
 
+Route::get('/diagnostico-comportamental', function () {
+    return Inertia::render('DiagnosticoComportamental', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+    ]);
+})->name('landing.diagnostico');
+
+Route::get('/contratacao-de-talentos', function () {
+    return Inertia::render('ContratacaoTalentos', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+    ]);
+})->name('landing.contratacao');
+
+Route::get('/direcionamento-estrategico', function () {
+    return Inertia::render('DirecionamentoEstrategico', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+    ]);
+})->name('landing.direcionamento');
+
 Route::post('/interesse', [LandingInterestController::class, 'store'])
     ->middleware('throttle:public-landing-interest')
     ->name('landing.interest');

@@ -53,7 +53,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <header class="sticky top-0 z-20 border-b border-white/40 bg-white/70 shadow-sm backdrop-blur-md">
             <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
                 <Link href="/" class="inline-flex items-center gap-3">
-                    <img src="/images/logo.png" alt="Talents" class="h-10 w-auto" />
+                    <img src="/images/logo.png" alt="Talents" class="h-16 w-auto md:h-20" />
                 </Link>
                 <nav class="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
                     <Link href="/" class="text-sm font-semibold text-talents-700 hover:underline"> Início </Link>
@@ -152,7 +152,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
                     <blockquote class="mt-6 border-l-4 border-talents-600 pl-4 text-lg italic text-slate-700">
                         Gestão de risco psicossocial não é evento.
-                        <span class="font-semibold not-italic">É processo.</span>
+                        <span class="font-semibold not-italic">É processo contínuo.</span>
                     </blockquote>
 
                     <nav
@@ -206,7 +206,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         <div class="surface-card border-l-4 border-talents-600 p-6 shadow-md">
                             <h3 class="text-lg font-semibold text-slate-900">Governança do processo</h3>
                             <p class="mt-2 text-sm leading-relaxed text-slate-600">
-                                Campanhas com janela de resposta, acompanhamento de participação e regras de privacidade — para que
+                                Campanhas com período de resposta, acompanhamento de participação e regras de privacidade — para que
                                 o dado seja útil à decisão e defensável em auditoria, sem expor quem respondeu.
                             </p>
                         </div>
@@ -284,7 +284,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         <div>
                             <h3 class="font-semibold text-slate-900">Processamento e indicadores</h3>
                             <p class="mt-2 text-sm leading-relaxed text-slate-600">
-                                Ao encerrar a janela, os resultados são consolidados em indicadores e visualizações por corte.
+                                Ao encerrar o período, os resultados são consolidados em indicadores e visualizações por corte.
                                 Quando aplicável, é possível recalcular ou aprofundar análises para sustentar a discussão técnica
                                 com o time de SST.
                             </p>
@@ -310,7 +310,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <div class="mx-auto max-w-6xl px-4">
                     <h2 class="text-2xl font-bold text-slate-900 md:text-3xl">Relatórios e parecer técnico</h2>
                     <p class="mt-4 max-w-3xl text-slate-600">
-                        Depois da coleta, a organização precisa <strong>interpretar</strong> e <strong>formalizar</strong> o achado
+                        Depois da coleta, a organização precisa <strong>interpretar</strong> e <strong>formalizar</strong> o resultado
                         para integrar ao PGR e às instâncias de decisão. A Talents oferece saídas em formatos distintos para cada
                         público — sem misturar “slide para diretoria” com “detalhe para SST”.
                     </p>
@@ -338,13 +338,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             </p>
                         </div>
                     </div>
-                    <div class="mt-8 rounded-xl border border-talents-200 bg-talents-50/80 p-6 text-sm text-slate-700">
-                        <p class="font-semibold text-slate-900">Análise assistida (quando disponível no seu plano)</p>
-                        <p class="mt-2 leading-relaxed">
-                            Em alguns cenários é possível gerar análises com apoio de IA sobre os resultados da pesquisa — sempre
-                            como apoio à leitura humana, não como substituto do julgamento técnico ou legal.
-                        </p>
-                    </div>
                 </div>
             </section>
 
@@ -359,7 +352,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     <li class="surface-card flex gap-3 p-5 shadow-md">
                         <CheckIcon class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
                         <div>
-                            <p class="font-semibold text-slate-900">Priorização a partir dos achados</p>
+                            <p class="font-semibold text-slate-900">Priorização a partir dos resultados</p>
                             <p class="mt-1 text-sm text-slate-600">
                                 Itens ligados aos fatores e cortes mais críticos — para que esforço e orçamento sigam o risco, não o
                                 ruído.
@@ -481,6 +474,42 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 <li>Reavaliar periodicamente</li>
                                 <li>Atualizar plano de ação</li>
                             </ul>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="scroll-mt-24 border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
+                <div class="mx-auto max-w-6xl px-4">
+                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Por que contratar, benefícios e resultados</h2>
+                    <p class="mx-auto mt-3 max-w-3xl text-center text-slate-600">
+                        A Talents conecta metodologia, governança e acompanhamento contínuo para transformar riscos psicossociais em
+                        decisões práticas para RH, SESMT e liderança.
+                    </p>
+                    <div class="mt-10 grid gap-6 md:grid-cols-3">
+                        <article class="surface-card p-6 shadow-md">
+                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Por que contratar</p>
+                            <h3 class="mt-2 text-lg font-semibold text-slate-900">Condução técnica com clareza</h3>
+                            <p class="mt-3 text-sm leading-relaxed text-slate-600">
+                                Estrutura para cumprir o ciclo da NR-1 com método replicável, documentação consistente e linguagem que
+                                facilita o alinhamento entre áreas técnicas e gestão.
+                            </p>
+                        </article>
+                        <article class="surface-card p-6 shadow-md">
+                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Benefícios</p>
+                            <h3 class="mt-2 text-lg font-semibold text-slate-900">Rotina de gestão mais organizada</h3>
+                            <p class="mt-3 text-sm leading-relaxed text-slate-600">
+                                Campanhas estruturadas, leituras por recorte e priorização objetiva reduzem ruído operacional e
+                                aceleram a tomada de decisão sobre as medidas mais críticas.
+                            </p>
+                        </article>
+                        <article class="surface-card p-6 shadow-md">
+                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Resultados</p>
+                            <h3 class="mt-2 text-lg font-semibold text-slate-900">Evidências para ação contínua</h3>
+                            <p class="mt-3 text-sm leading-relaxed text-slate-600">
+                                Relatórios e trilha de acompanhamento deixam o progresso visível no tempo, sustentando auditorias e
+                                reforçando a cultura de prevenção com foco em melhoria contínua.
+                            </p>
                         </article>
                     </div>
                 </div>
