@@ -376,32 +376,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         <p class="mx-auto mt-4 max-w-2xl text-sm text-slate-600">
                             Faça parte dessa rede e descubra como alinhar cultura, estratégia e performance de forma prática.
                         </p>
-                        <div class="mx-auto mt-8 grid max-w-4xl grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                            <div class="flex h-20 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3">
-                                <img src="/images/clientes/fortex.png" alt="Fortex" class="max-h-10 w-auto object-contain" />
-                            </div>
-                            <div class="flex h-20 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3">
-                                <img src="/images/clientes/maismais.png" alt="Mais Mais" class="max-h-10 w-auto object-contain" />
-                            </div>
-                            <div class="flex h-20 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3">
-                                <img src="/images/clientes/multibor.png" alt="Multibor" class="max-h-10 w-auto object-contain" />
-                            </div>
-                            <div class="flex h-20 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3">
-                                <img src="/images/clientes/pasqualino.png" alt="Pasqualino" class="max-h-10 w-auto object-contain" />
-                            </div>
-                            <div class="flex h-20 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3">
-                                <img src="/images/clientes/passeg.png" alt="PASSEG" class="max-h-10 w-auto object-contain" />
-                            </div>
-                            <div class="flex h-20 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3">
-                                <img src="/images/clientes/ramep.jpg" alt="Ramep" class="max-h-10 w-auto object-contain" />
-                            </div>
-                            <div class="flex h-20 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3">
-                                <img src="/images/clientes/soem.png" alt="SOEM" class="max-h-10 w-auto object-contain" />
-                            </div>
-                            <div class="flex h-20 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3">
-                                <img src="/images/clientes/wizzard.png" alt="Wizzard" class="max-h-10 w-auto object-contain" />
-                            </div>
-                        </div>
                         <a
                             href="https://wa.me/5511975703032"
                             target="_blank"
@@ -410,6 +384,81 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         >
                             Falar com a Talents
                         </a>
+                    </div>
+
+                    <div class="mx-auto mt-8 grid max-w-4xl grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                        <div
+                            class="group flex h-20 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/90 px-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-talents-300 hover:shadow-md"
+                        >
+                            <img
+                                src="/images/clientes/fortex.png"
+                                alt="Fortex"
+                                class="max-h-10 w-auto object-contain transition duration-200 group-hover:scale-105"
+                            />
+                        </div>
+                        <div
+                            class="group flex h-20 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/90 px-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-talents-300 hover:shadow-md"
+                        >
+                            <img
+                                src="/images/clientes/maismais.png"
+                                alt="Mais Mais"
+                                class="max-h-10 w-auto object-contain transition duration-200 group-hover:scale-105"
+                            />
+                        </div>
+                        <div
+                            class="group flex h-20 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/90 px-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-talents-300 hover:shadow-md"
+                        >
+                            <img
+                                src="/images/clientes/multibor.png"
+                                alt="Multibor"
+                                class="max-h-10 w-auto object-contain transition duration-200 group-hover:scale-105"
+                            />
+                        </div>
+                        <div
+                            class="group flex h-20 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/90 px-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-talents-300 hover:shadow-md"
+                        >
+                            <img
+                                src="/images/clientes/pasqualino.png"
+                                alt="Pasqualino"
+                                class="max-h-10 w-auto object-contain transition duration-200 group-hover:scale-105"
+                            />
+                        </div>
+                        <div
+                            class="group flex h-20 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/90 px-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-talents-300 hover:shadow-md"
+                        >
+                            <img
+                                src="/images/clientes/passeg.png"
+                                alt="PASSEG"
+                                class="max-h-10 w-auto object-contain transition duration-200 group-hover:scale-105"
+                            />
+                        </div>
+                        <div
+                            class="group flex h-20 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/90 px-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-talents-300 hover:shadow-md"
+                        >
+                            <img
+                                src="/images/clientes/ramep.jpg"
+                                alt="Ramep"
+                                class="max-h-10 w-auto object-contain transition duration-200 group-hover:scale-105"
+                            />
+                        </div>
+                        <div
+                            class="group flex h-20 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/90 px-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-talents-300 hover:shadow-md"
+                        >
+                            <img
+                                src="/images/clientes/soem.png"
+                                alt="SOEM"
+                                class="max-h-10 w-auto object-contain transition duration-200 group-hover:scale-105"
+                            />
+                        </div>
+                        <div
+                            class="group flex h-20 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/90 px-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-talents-300 hover:shadow-md"
+                        >
+                            <img
+                                src="/images/clientes/wizzard.png"
+                                alt="Wizzard"
+                                class="max-h-10 w-auto object-contain transition duration-200 group-hover:scale-105"
+                            />
+                        </div>
                     </div>
                 </div>
             </section>
