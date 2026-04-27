@@ -284,6 +284,111 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </section>
 
             <section class="py-16">
+                <div class="mx-auto max-w-6xl px-4">
+                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">O que fazemos</h2>
+                    <p class="mx-auto mt-3 max-w-3xl text-center text-slate-600">
+                        Encontramos, conectamos e desenvolvemos talentos para gerar resultados sustentáveis nas empresas.
+                    </p>
+                    <div class="mt-10 grid gap-6 md:grid-cols-2">
+                        <article class="surface-card-soft p-6">
+                            <h3 class="text-lg font-semibold text-slate-900">Consultoria Talents</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Entrevistas com líderes e equipes, diagnóstico estratégico, engenharia de cargos, avaliação
+                                comportamental e acompanhamento contínuo para fortalecer cultura e performance.
+                            </p>
+                        </article>
+                        <article class="surface-card-soft p-6">
+                            <h3 class="text-lg font-semibold text-slate-900">Produtos e entregáveis</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Soluções práticas para diagnóstico, contratação, direcionamento estratégico e gestão de riscos
+                                psicossociais em um mesmo ecossistema.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="py-16">
+                <div class="mx-auto max-w-6xl px-4">
+                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Como recrutamos</h2>
+                    <p class="mx-auto mt-3 max-w-2xl text-center text-slate-600">
+                        Um processo estruturado, humano e orientado a dados.
+                    </p>
+                    <div class="mt-10 grid gap-6 md:grid-cols-3">
+                        <article class="surface-card-soft p-6">
+                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Etapa 01</p>
+                            <h3 class="mt-2 text-lg font-semibold text-slate-900">Mapeamento da vaga</h3>
+                            <p class="mt-2 text-sm text-slate-600">
+                                Alinhamos perfil técnico, comportamental e contexto da operação com a liderança.
+                            </p>
+                        </article>
+                        <article class="surface-card-soft p-6">
+                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Etapa 02</p>
+                            <h3 class="mt-2 text-lg font-semibold text-slate-900">Seleção qualificada</h3>
+                            <p class="mt-2 text-sm text-slate-600">
+                                Avaliação estruturada para priorizar aderência, potencial e consistência na decisão.
+                            </p>
+                        </article>
+                        <article class="surface-card-soft p-6">
+                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Etapa 03</p>
+                            <h3 class="mt-2 text-lg font-semibold text-slate-900">Acompanhamento de integração</h3>
+                            <p class="mt-2 text-sm text-slate-600">
+                                Suporte na entrada para acelerar adaptação e reduzir risco de retrabalho.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="py-16">
+                <div class="mx-auto max-w-6xl px-4">
+                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Nossos diferenciais</h2>
+                    <div class="mt-10 grid gap-6 md:grid-cols-3">
+                        <article class="surface-card-soft p-6">
+                            <h3 class="text-lg font-semibold text-slate-900">Rede de talentos qualificados</h3>
+                            <p class="mt-2 text-sm text-slate-600">
+                                Acesso a perfis com aderência real ao contexto do cliente.
+                            </p>
+                        </article>
+                        <article class="surface-card-soft p-6">
+                            <h3 class="text-lg font-semibold text-slate-900">Processo personalizado</h3>
+                            <p class="mt-2 text-sm text-slate-600">
+                                Metodologia flexível para diferentes fases de negócio e maturidade de gestão.
+                            </p>
+                        </article>
+                        <article class="surface-card-soft p-6">
+                            <h3 class="text-lg font-semibold text-slate-900">Agilidade com precisão</h3>
+                            <p class="mt-2 text-sm text-slate-600">
+                                Decisões mais rápidas sem abrir mão de qualidade técnica e humana.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="py-16">
+                <div class="mx-auto max-w-6xl px-4">
+                    <div class="surface-card-soft p-8 text-center md:p-10">
+                        <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Nossos clientes</p>
+                        <h2 class="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
+                            Empresas que confiam na Talents para transformar sua gestão de pessoas
+                        </h2>
+                        <p class="mx-auto mt-4 max-w-2xl text-sm text-slate-600">
+                            Faça parte dessa rede e descubra como alinhar cultura, estratégia e performance de forma prática.
+                        </p>
+                        <a
+                            href="https://wa.me/5511975703032"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="btn-primary mt-6"
+                        >
+                            Falar com a Talents
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="py-16">
                 <div class="mx-auto grid max-w-6xl gap-8 px-4 lg:grid-cols-2 lg:items-center">
                     <div class="surface-card-soft p-8">
                         <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Prazer, Suzane Pasqualino</p>
