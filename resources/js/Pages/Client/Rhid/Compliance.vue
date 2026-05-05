@@ -25,7 +25,7 @@ import {
     buildPersonDepartmentMapFromPayload,
     chartColorAt,
     departmentLabelForJustification,
-    isAtestadoHeuristic,
+    isAtestadoByKeyword,
     justificationTypeLabel,
     JUST_ANALYTICS_MAX_PAGES,
     JUST_MAX_DEPT_CHART,
@@ -1177,7 +1177,7 @@ const loadOverviewData = async () => {
         const chunk = Array.isArray(jdata?.data) ? jdata.data : [];
         const recordsTotal = typeof jdata?.recordsTotal === 'number' ? jdata.recordsTotal : chunk.length;
         overviewJustTotal.value = recordsTotal;
-        overviewJustAtestados.value = chunk.filter((r) => isAtestadoHeuristic(r, tmap)).length;
+        overviewJustAtestados.value = chunk.filter((r) => isAtestadoByKeyword(r, tmap)).length;
         overviewJustNote.value =
             chunk.length >= 500 && recordsTotal > chunk.length
                 ? 'Atestados: contagem na primeira pagina da amostra; refine o periodo na aba Justificativas para o detalhe completo.'
@@ -2231,11 +2231,11 @@ const justTypeSlices = computed(() => {
 const justAtestadoSlices = computed(() => {
     const rows = justAnalyticsRows.value;
     const tmap = justificationTypeMap.value;
-    const at = rows.filter((r) => isAtestadoHeuristic(r, tmap));
-    const rest = rows.filter((r) => !isAtestadoHeuristic(r, tmap));
+    const at = rows.filter((r) => isAtestadoByKeyword(r, tmap));
+    const rest = rows.filter((r) => !isAtestadoByKeyword(r, tmap));
     const out = [];
     if (at.length) {
-        out.push({ label: 'Atestados (heuristica)', color: '#dc2626', rows: at });
+        out.push({ label: 'Atestados', color: '#dc2626', rows: at });
     }
     if (rest.length) {
         out.push({ label: 'Outras justificativas', color: '#64748b', rows: rest });
@@ -2245,7 +2245,7 @@ const justAtestadoSlices = computed(() => {
 
 const justAtestadoCount = computed(() => {
     const tmap = justificationTypeMap.value;
-    return justAnalyticsRows.value.filter((r) => isAtestadoHeuristic(r, tmap)).length;
+    return justAnalyticsRows.value.filter((r) => isAtestadoByKeyword(r, tmap)).length;
 });
 
 const openJustDrilldownFromTypeDonut = (_event, _chartContext, config) => {
@@ -2323,7 +2323,7 @@ const openJustDrilldownFromAtestadoDonut = (_event, _chartContext, config) => {
     const lines = s.rows.map(justRowToDrillLine).sort((a, b) => a.name.localeCompare(b.name, 'pt'));
     justChartDrilldown.value = {
         title: s.label,
-        subtitle: `${s.rows.length} registro(s) · atestado por nome do tipo ou texto`,
+        subtitle: `${s.rows.length} registro(s) · tipo ou texto contém «atest»`,
         lines,
     };
 };
@@ -3588,9 +3588,9 @@ const justStatusBarChart = computed(() => {
                         </p>
                     </div>
                     <div class="rounded-lg border border-rose-100 bg-rose-50/80 p-4 shadow-sm">
-                        <p class="text-xs font-medium uppercase text-rose-800">Atestados (heuristica)</p>
+                        <p class="text-xs font-medium uppercase text-rose-800">Atestados</p>
                         <p class="mt-1 text-2xl font-semibold text-rose-900">{{ justAtestadoCount }}</p>
-                        <p class="mt-1 text-xs text-rose-700">Nome do tipo ou texto contem "atest"</p>
+                        <p class="mt-1 text-xs text-rose-700">Quando o tipo ou a descrição mencionam atestado</p>
                     </div>
                     <div
                         v-if="justAnalyticsMeta.truncated"
@@ -3616,7 +3616,9 @@ const justStatusBarChart = computed(() => {
                     </div>
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                         <h3 class="mb-1 text-sm font-semibold text-slate-800">Atestado vs outras</h3>
-                        <p class="mb-3 text-xs text-slate-500">Heuristica por palavra-chave no tipo ou texto.</p>
+                        <p class="mb-3 text-xs text-slate-500">
+                            Separação por tipo ou texto que contém «atest» (demais entram em outras justificativas).
+                        </p>
                         <apexchart
                             v-if="!justAtestadoDonutChart.empty"
                             type="donut"

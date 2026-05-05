@@ -93,12 +93,12 @@ export function departmentLabelForJustification(personId, personMap) {
 }
 
 /**
- * Heuristica: tipo ou texto contem "atest" (case-insensitive).
+ * Considera atestado quando o tipo ou justificativa/descrição contém "atest" (sem distinguir maiúsculas).
  *
  * @param {Record<string, unknown>} row
  * @param {Record<string, Record<string, unknown>>|null|undefined} typeMap
  */
-export function isAtestadoHeuristic(row, typeMap) {
+export function isAtestadoByKeyword(row, typeMap) {
     const tid = row?.idJustificationType;
     const tl = justificationTypeLabel(tid, typeMap);
     if (/atest/i.test(tl)) {
