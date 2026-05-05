@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AiSetting;
 use App\Models\MailSetting;
+use App\Models\SolidesSetting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -28,6 +29,15 @@ class SettingsController extends Controller
         if (! $mailRow) {
             $mailRow = MailSetting::query()->create([
                 'port' => 587,
+                'is_enabled' => false,
+            ]);
+        }
+
+        $solidesRow = SolidesSetting::query()->first();
+        if (! $solidesRow) {
+            $solidesRow = SolidesSetting::query()->create([
+                'base_url' => config('solides.base_url'),
+                'locale' => config('solides.locale', 'pt-BR'),
                 'is_enabled' => false,
             ]);
         }
@@ -56,6 +66,17 @@ class SettingsController extends Controller
                 'from_address' => $mailRow->from_address,
                 'from_name' => $mailRow->from_name,
                 'is_enabled' => $mailRow->is_enabled,
+            ],
+            'solidesSettings' => [
+                'id' => $solidesRow->id,
+                'base_url' => $solidesRow->base_url,
+                'locale' => $solidesRow->locale,
+                'is_enabled' => $solidesRow->is_enabled,
+                'api_token_set' => filled($solidesRow->getRawOriginal('api_token')),
+                'api_token_readable' => $solidesRow->canDecrypt('api_token'),
+                'last_tested_at' => $solidesRow->last_tested_at?->toIso8601String(),
+                'last_test_status' => $solidesRow->last_test_status,
+                'last_test_message' => $solidesRow->last_test_message,
             ],
         ]);
     }

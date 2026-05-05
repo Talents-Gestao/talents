@@ -11,9 +11,10 @@ const props = defineProps({
     tab: { type: String, default: 'ia' },
     aiSettings: Object,
     mailSettings: Object,
+    solidesSettings: Object,
 });
 
-const tabQuery = computed(() => (props.tab === 'mail' ? 'mail' : 'ia'));
+const tabQuery = computed(() => (['ia', 'mail', 'solides'].includes(props.tab) ? props.tab : 'ia'));
 
 const aiForm = useForm({
     provider: props.aiSettings.provider,
@@ -37,6 +38,13 @@ const mailForm = useForm({
 
 const testMailForm = useForm({
     test_to: '',
+});
+
+const solidesForm = useForm({
+    base_url: props.solidesSettings.base_url ?? 'https://app.solides.com',
+    locale: props.solidesSettings.locale ?? 'pt-BR',
+    api_token: '',
+    is_enabled: props.solidesSettings.is_enabled ?? false,
 });
 
 const submitAi = () => {
@@ -63,6 +71,22 @@ const testConnection = () => {
 
 const sendTestMail = () => {
     testMailForm.post(route('admin.settings.mail.test'), { preserveScroll: true });
+};
+
+const submitSolides = () => {
+    solidesForm.put(route('admin.settings.solides.update'));
+};
+
+const testSolidesConnection = () => {
+    router.post(
+        route('admin.settings.solides.test'),
+        {
+            base_url: solidesForm.base_url,
+            locale: solidesForm.locale,
+            api_token: solidesForm.api_token || null,
+        },
+        { preserveScroll: true },
+    );
 };
 
 const setTab = (name) => {
@@ -128,6 +152,17 @@ const setTab = (name) => {
                 @click="setTab('mail')"
             >
                 E-mail (SMTP)
+            </button>
+            <button
+                type="button"
+                :class="
+                    tabQuery === 'solides'
+                        ? 'rounded-md bg-talents-100 px-4 py-2 text-sm font-medium text-talents-900'
+                        : 'rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100'
+                "
+                @click="setTab('solides')"
+            >
+                Sólides
             </button>
         </div>
 
@@ -269,6 +304,80 @@ const setTab = (name) => {
                 <SecondaryButton type="submit" :disabled="testMailForm.processing">Enviar e-mail de teste</SecondaryButton>
             </form>
         </div>
+
+        <form
+            v-show="tabQuery === 'solides'"
+            class="surface-card mt-6 max-w-2xl space-y-4 p-6 text-slate-900"
+            @submit.prevent="submitSolides"
+        >
+            <h3 class="text-lg font-semibold text-gray-900">Sólides (Integração)</h3>
+            <p class="text-sm text-gray-600">Configuração global da API Sólides no admin para habilitar a conexão inicial.</p>
+
+            <label class="flex items-center gap-2 text-sm">
+                <input v-model="solidesForm.is_enabled" type="checkbox" class="rounded border-gray-300 text-talents-600 focus:ring-talents-500" />
+                Integração Sólides habilitada globalmente
+            </label>
+
+            <div>
+                <InputLabel for="solides_base_url" value="Base URL" />
+                <TextInput id="solides_base_url" v-model="solidesForm.base_url" class="mt-1 block w-full" required />
+                <p class="mt-1 text-xs text-gray-500">Ex.: https://app.solides.com</p>
+            </div>
+
+            <div>
+                <InputLabel for="solides_locale" value="Locale" />
+                <select
+                    id="solides_locale"
+                    v-model="solidesForm.locale"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option value="pt-BR">pt-BR</option>
+                    <option value="es">es</option>
+                    <option value="en">en</option>
+                </select>
+            </div>
+
+            <div>
+                <InputLabel for="solides_api_token" value="Token da API" />
+                <TextInput
+                    id="solides_api_token"
+                    v-model="solidesForm.api_token"
+                    type="password"
+                    class="mt-1 block w-full"
+                    autocomplete="off"
+                    :placeholder="solidesSettings.api_token_set ? 'Deixe em branco para manter o token atual' : 'Cole o token da Sólides'"
+                />
+                <p v-if="solidesSettings.api_token_set" class="mt-1 text-xs text-gray-500">Um token já está salvo (criptografado).</p>
+                <p v-if="solidesSettings.api_token_set && solidesSettings.api_token_readable === false" class="mt-1 text-xs text-amber-700">
+                    O token salvo está ilegível com a APP_KEY atual. Salve novamente para corrigir.
+                </p>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+                <PrimaryButton :disabled="solidesForm.processing">Salvar Sólides</PrimaryButton>
+                <SecondaryButton type="button" :disabled="solidesForm.processing" @click="testSolidesConnection">
+                    Testar conexão
+                </SecondaryButton>
+            </div>
+
+            <div
+                v-if="solidesSettings.last_tested_at || solidesSettings.last_test_message"
+                class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700"
+            >
+                <p>
+                    <span class="font-medium">Último teste:</span>
+                    {{ solidesSettings.last_tested_at ? new Date(solidesSettings.last_tested_at).toLocaleString('pt-BR') : 'não realizado' }}
+                </p>
+                <p>
+                    <span class="font-medium">Status:</span>
+                    {{ solidesSettings.last_test_status === 'ok' ? 'ok' : 'falha' }}
+                </p>
+                <p v-if="solidesSettings.last_test_message">
+                    <span class="font-medium">Mensagem:</span>
+                    {{ solidesSettings.last_test_message }}
+                </p>
+            </div>
+        </form>
 
     </AdminLayout>
 </template>
