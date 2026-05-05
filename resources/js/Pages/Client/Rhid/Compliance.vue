@@ -11,6 +11,7 @@ import axios from 'axios';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
     extractListItems,
+    formatApiDatePtBr,
     formatRhidBankBalanceDisplay,
     formatRhidBankBalanceMinutes,
     monthRangeHtmlDates,
@@ -982,6 +983,31 @@ const overviewAdherenceWorstEntrada = computed(() => {
         return [];
     }
     return r.slice(0, 5);
+});
+
+/** Pré-visualização na visão geral: últimas linhas da mesma amostra que o cartão numérico */
+const overviewPunchPreviewRows = computed(() =>
+    overviewPunchRows.value.slice(0, 5).map((row) => {
+        const dataRaw = pickPunchDataRaw(row);
+        return {
+            nome: pickPunchNome(row),
+            dataDisplay: formatPunchDateTimePtBr(dataRaw),
+            personId: pickPunchPersonId(row),
+        };
+    }),
+);
+
+const overviewBankNegativeCount = computed(() =>
+    overviewBankNumericRows.value.reduce((n, row) => {
+        const m = parseRhidBankBalanceMinutes(row);
+        return m !== null && m < 0 ? n + 1 : n;
+    }, 0),
+);
+
+/** Mesmo intervalo usado em aderência e justificativas na visão geral (mês corrente) */
+const overviewCalendarRangeLabel = computed(() => {
+    const { first, last } = monthRangeHtmlDates();
+    return `${formatApiDatePtBr(first)} – ${formatApiDatePtBr(last)}`;
 });
 
 const PUNCH_TOP_N = 10;
@@ -2752,9 +2778,12 @@ const justDeptBarChart = computed(() => {
                 v-show="tab === 'overview'"
                 :overview-loading="overviewLoading"
                 :overview-loaded-at="overviewLoadedAt"
+                :overview-calendar-range-label="overviewCalendarRangeLabel"
                 :overview-punch-rows-length="overviewPunchRows.length"
                 :overview-punch-distinct="overviewPunchDistinct"
+                :overview-punch-preview-rows="overviewPunchPreviewRows"
                 :overview-bank-numeric-rows-length="overviewBankNumericRows.length"
+                :overview-bank-negative-count="overviewBankNegativeCount"
                 :overview-bank-avg-minutes="overviewBankAvgMinutes"
                 :overview-bank-worst-three="overviewBankWorstThree"
                 :overview-adherence="overviewAdherence"
@@ -2773,6 +2802,7 @@ const justDeptBarChart = computed(() => {
                 @go-bank="tab = 'bank'"
                 @go-justifications="tab = 'justifications'"
                 @go-espelho="tab = 'punches'; punchesSubTab = 'espelho'"
+                @go-collaborators="tab = 'collaborators'"
             />
 
             <div v-show="tab === 'punches'" class="space-y-4">
