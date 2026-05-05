@@ -1111,7 +1111,6 @@ const overviewAdherencePrevLoaded = computed(() => overviewAdherencePrevious.val
 
 const overviewJustPrevLoaded = computed(() => overviewJustTotalPrevious.value != null);
 
-const PUNCH_TOP_N = 10;
 const PUNCH_HOUR_BUCKET_LABELS = ['0h–5h', '6h–11h', '12h–17h', '18h–23h'];
 
 const punchHourBucketIndex = (hour) => {
@@ -1129,48 +1128,6 @@ const punchHourBucketIndex = (hour) => {
     }
     return 3;
 };
-
-const punchTopCollaboratorsChart = computed(() => {
-    const map = new Map();
-    for (const r of punchDashboardRows.value) {
-        const label = r.nome;
-        map.set(label, (map.get(label) ?? 0) + 1);
-    }
-    const entries = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, PUNCH_TOP_N);
-    const categories = entries.map(([name]) => name);
-    const data = entries.map(([, c]) => c);
-    const empty = data.length === 0;
-    const options = {
-        chart: {
-            type: 'bar',
-            toolbar: { show: false },
-            fontFamily: 'Figtree, sans-serif',
-            foreColor: '#334155',
-        },
-        plotOptions: {
-            bar: {
-                horizontal: true,
-                borderRadius: 4,
-                barHeight: '72%',
-                dataLabels: { position: 'right' },
-            },
-        },
-        colors: ['#0d9488'],
-        dataLabels: {
-            enabled: true,
-            style: { fontSize: '11px', colors: ['#334155'] },
-        },
-        xaxis: { categories },
-        yaxis: { labels: { maxWidth: 220 } },
-        tooltip: { y: { formatter: (val) => `${val} marcação(ões)` } },
-        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
-    };
-    return {
-        series: [{ name: 'Marcações', data }],
-        options,
-        empty,
-    };
-});
 
 const punchHourDistributionChart = computed(() => {
     const counts = [0, 0, 0, 0];
@@ -3066,21 +3023,7 @@ const justDeptBarChart = computed(() => {
                     </div>
 
                     <div class="grid gap-4 lg:grid-cols-2">
-                        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-1">
-                            <h3 class="mb-1 text-sm font-semibold text-slate-800">Top colaboradores</h3>
-                            <p class="mb-3 text-xs text-slate-500">
-                                Contagem de linhas por nome nesta amostra (até {{ PUNCH_TOP_N }}).
-                            </p>
-                            <apexchart
-                                v-if="!punchTopCollaboratorsChart.empty"
-                                type="bar"
-                                :height="Math.max(280, (punchTopCollaboratorsChart.series[0]?.data?.length ?? 0) * 36)"
-                                :options="punchTopCollaboratorsChart.options"
-                                :series="punchTopCollaboratorsChart.series"
-                            />
-                            <p v-else class="text-sm text-slate-500">Sem dados para o gráfico.</p>
-                        </div>
-                        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-1">
+                        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
                             <h3 class="mb-1 text-sm font-semibold text-slate-800">Marcações por faixa de hora</h3>
                             <p class="mb-3 text-xs text-slate-500">
                                 Quando a data/hora puder ser interpretada, a hora da marcação é agrupada em faixas.
