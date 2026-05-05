@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\MethodologyController as AdminMethodologyControll
 use App\Http\Controllers\Admin\MethodologyFormTemplateController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\SolidesCurriculumController;
 use App\Http\Controllers\Admin\SolidesSettingsController;
 use App\Http\Controllers\Admin\StrategicCalendarController as AdminStrategicCalendarController;
 use App\Http\Controllers\Admin\SurveyTemplateController;
@@ -56,6 +57,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::post('settings/ai/test', [AiSettingsController::class, 'test'])->name('settings.ai.test');
     Route::put('settings/solides', [SolidesSettingsController::class, 'update'])->name('settings.solides.update');
     Route::post('settings/solides/test', [SolidesSettingsController::class, 'test'])->name('settings.solides.test');
+    Route::get('solides/curriculos', [SolidesCurriculumController::class, 'index'])->name('solides.curriculos.index');
     Route::put('settings/mail', [MailSettingsController::class, 'update'])->name('settings.mail.update');
     Route::post('settings/mail/test', [MailSettingsController::class, 'test'])->name('settings.mail.test');
     Route::get('ai-settings', [AiSettingsController::class, 'edit'])->name('ai-settings.edit');

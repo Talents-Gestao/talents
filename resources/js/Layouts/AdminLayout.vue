@@ -11,6 +11,7 @@ import {
     BuildingOffice2Icon,
     CalendarDaysIcon,
     DocumentDuplicateIcon,
+    DocumentTextIcon,
     Cog6ToothIcon,
     CreditCardIcon,
     EnvelopeOpenIcon,
@@ -87,6 +88,13 @@ import {
                 :active="route().current('admin.strategic-calendar.*')"
                 :icon="CalendarDaysIcon"
                 label="Calendário estratégico"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                :href="route('admin.solides.curriculos.index')"
+                :active="route().current('admin.solides.*')"
+                :icon="DocumentTextIcon"
+                label="Sólides — Currículos"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

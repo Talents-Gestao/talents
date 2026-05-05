@@ -106,4 +106,34 @@ class SolidesClient
             'endpoint' => $testedEndpoint,
         ];
     }
+
+    /**
+     * Lista currículos (GET /curriculos). Por padrão envia ocultar_foto=SIM para reduzir payload.
+     *
+     * @param  array<string, mixed>  $query  data_inicial, data_final (dd/mm/aaaa), page, ocultar_foto
+     * @return list<array<string, mixed>>
+     */
+    public function getCurriculos(array $query = []): array
+    {
+        $query = array_merge(['ocultar_foto' => 'SIM'], array_filter(
+            $query,
+            fn ($v) => $v !== null && $v !== ''
+        ));
+
+        $response = $this->request('GET', 'curriculos', ['query' => $query]);
+
+        if ($response->failed()) {
+            throw new \RuntimeException(
+                'Sólides (currículos): HTTP '.$response->status().' — '.Str::limit($response->body(), 400)
+            );
+        }
+
+        $json = $response->json();
+        if (! is_array($json)) {
+            return [];
+        }
+
+        /** @var list<array<string, mixed>> $json */
+        return $json;
+    }
 }
