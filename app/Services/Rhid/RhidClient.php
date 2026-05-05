@@ -35,7 +35,7 @@ class RhidClient
         array $options = [],
     ): Response {
         if (! $company->rhidConfigured()) {
-            throw new RhidApiException('Integracao RHID nao configurada para esta empresa.');
+            throw new RhidApiException('Integração RHID não configurada para esta empresa.');
         }
 
         $auditAction = $options['auditAction'] ?? 'rhid.request';
@@ -83,7 +83,7 @@ class RhidClient
                         ? $pending->post($url, is_array($body) ? $body : [])
                         : $pending->post($url)),
                 'PUT' => $pending->put($url, is_array($body) ? $body : []),
-                default => throw new RhidApiException('Metodo HTTP nao suportado: '.$method),
+                default => throw new RhidApiException('Método HTTP não suportado: '.$method),
             };
         } catch (ConnectionException $e) {
             throw new RhidApiException(

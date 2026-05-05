@@ -52,7 +52,7 @@ class RhidEspelhoService
             }
         }
         if (substr($binary, 0, 4) !== '%PDF') {
-            throw new RhidApiException('Resposta do RHID nao e um PDF valido. Tente novamente ou use outro formato no portal.');
+            throw new RhidApiException('Resposta do RHID não é um PDF válido. Tente novamente ou use outro formato no portal.');
         }
 
         $relativePath = sprintf(

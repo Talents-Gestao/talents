@@ -36,11 +36,11 @@ const emit = defineEmits([
 <template>
     <div class="space-y-4">
         <p class="text-sm text-slate-600">
-            Resumo do mes corrente e ultimas leituras. Use as abas abaixo para detalhar ou filtrar.
+            Resumo do mês corrente e últimas leituras. Use as abas abaixo para detalhar ou filtrar.
         </p>
         <div class="flex flex-wrap items-center gap-3">
             <PrimaryButton type="button" :disabled="overviewLoading" @click="emit('refresh')">
-                Atualizar visao geral
+                Atualizar visão geral
             </PrimaryButton>
             <p v-if="overviewLoadedAt" class="text-xs text-slate-500">
                 Atualizado em
@@ -55,13 +55,13 @@ const emit = defineEmits([
         <p v-if="overviewLoading" class="text-sm text-slate-500">Carregando indicadores…</p>
         <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p class="text-xs font-medium uppercase text-slate-500">Ultimas marcacoes (amostra)</p>
+                <p class="text-xs font-medium uppercase text-slate-500">Últimas marcações (amostra)</p>
                 <p class="mt-1 text-2xl font-semibold text-slate-900">{{ overviewPunchRowsLength }}</p>
                 <p class="mt-1 text-sm text-slate-600">
                     {{ overviewPunchDistinct }} colaborador(es) distintos na amostra
                 </p>
                 <PrimaryButton type="button" class="mt-3" @click="emit('go-punches-dashboard')">
-                    Ver painel de marcacoes
+                    Ver painel de marcações
                 </PrimaryButton>
             </div>
             <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -69,8 +69,8 @@ const emit = defineEmits([
                 <p v-if="overviewBankNumericRowsLength" class="mt-1 text-2xl font-semibold text-slate-900">
                     {{ formatRhidBankBalanceMinutes(overviewBankAvgMinutes ?? 0) }}
                 </p>
-                <p v-else class="mt-1 text-sm text-slate-500">Sem saldos numericos na consulta rapida.</p>
-                <p class="mt-1 text-xs text-slate-500">Media entre colaboradores com saldo numerico</p>
+                <p v-else class="mt-1 text-sm text-slate-500">Sem saldos numéricos na consulta rápida.</p>
+                <p class="mt-1 text-xs text-slate-500">Média entre colaboradores com saldo numérico</p>
                 <div v-if="overviewBankWorstThree.length" class="mt-2 text-sm text-slate-700">
                     <p class="text-xs font-medium text-rose-800">Piores saldos</p>
                     <ul class="mt-1 list-inside list-disc">
@@ -90,7 +90,7 @@ const emit = defineEmits([
                 <PrimaryButton type="button" class="mt-3" @click="emit('go-bank')">Abrir banco de horas</PrimaryButton>
             </div>
             <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p class="text-xs font-medium uppercase text-slate-500">Aderência (mes)</p>
+                <p class="text-xs font-medium uppercase text-slate-500">Aderência (mês)</p>
                 <p v-if="overviewAdherence?.resumo" class="mt-1 text-sm text-slate-700">
                     {{ overviewAdherence.resumo.dias_registro_analisados }} dia(s) de registro analisados ·
                     {{ overviewAdherence.resumo.colaboradores_com_dados ?? '—' }} colaborador(es) com dados
@@ -106,7 +106,7 @@ const emit = defineEmits([
                 </PrimaryButton>
             </div>
             <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p class="text-xs font-medium uppercase text-slate-500">Justificativas (mes)</p>
+                <p class="text-xs font-medium uppercase text-slate-500">Justificativas (mês)</p>
                 <p class="mt-1 text-2xl font-semibold text-slate-900">
                     {{ overviewJustTotal != null ? overviewJustTotal : '—' }}
                 </p>
@@ -127,7 +127,7 @@ const emit = defineEmits([
                         :href="route('client.rhid.settings.edit')"
                         class="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
                     >
-                        Configurar horarios da empresa
+                        Configurar horários da empresa
                     </Link>
                 </div>
             </div>

@@ -260,7 +260,7 @@ class RhidComplianceService
         }
 
         if (! is_array($row) || ! isset($row['id'])) {
-            throw new RhidApiException('Colaborador nao encontrado na API RHID.', $r->status());
+            throw new RhidApiException('Colaborador não encontrado na API RHID.', $r->status());
         }
 
         $row = $this->mergePersonNestedIntoBankHourRow($row, 'person.show.'.$id);
@@ -1179,7 +1179,7 @@ class RhidComplianceService
 
         $json = $response->json();
         if (! is_array($json)) {
-            throw new RhidApiException('Resposta RHID invalida (nao JSON).', $response->status());
+            throw new RhidApiException('Resposta RHID inválida (não JSON).', $response->status());
         }
 
         return $json;

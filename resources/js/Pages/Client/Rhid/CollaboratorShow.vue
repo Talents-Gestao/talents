@@ -34,7 +34,7 @@ const expandedImportId = ref(null);
 const expandedImportDetail = ref(null);
 const espelhoDetailLoading = ref(false);
 
-/** Preferencia Talents: 1º vs 2º intervalo de almoco na aderência */
+/** Preferência Talents: 1º vs 2º intervalo de almoço na aderência */
 const schedulePrefSecond = ref(false);
 const schedulePrefSaving = ref(false);
 
@@ -291,8 +291,8 @@ onMounted(async () => {
             v-if="!configured"
             class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900"
         >
-            <p class="font-semibold">Integracao nao configurada</p>
-            <p class="mt-1">Cadastre e-mail e senha da API RHID nas configuracoes.</p>
+            <p class="font-semibold">Integração não configurada</p>
+            <p class="mt-1">Cadastre e-mail e senha da API RHID nas configurações.</p>
         </div>
 
         <div v-else class="space-y-6">
@@ -304,7 +304,7 @@ onMounted(async () => {
                 class="grid gap-4 md:grid-cols-2"
             >
                 <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <h3 class="mb-3 text-sm font-semibold text-slate-800">Identificacao</h3>
+                    <h3 class="mb-3 text-sm font-semibold text-slate-800">Identificação</h3>
                     <dl class="space-y-2 text-sm">
                         <div class="flex justify-between gap-4 border-b border-slate-100 pb-2">
                             <dt class="text-slate-500">Nome</dt>
@@ -315,7 +315,7 @@ onMounted(async () => {
                             <dd class="font-mono text-xs text-slate-800">{{ detail.id ?? personId }}</dd>
                         </div>
                         <div class="flex justify-between gap-4 border-b border-slate-100 pb-2">
-                            <dt class="text-slate-500">Matricula / PIS</dt>
+                            <dt class="text-slate-500">Matrícula / PIS</dt>
                             <dd class="text-slate-800">
                                 {{ detail.registration ?? detail.matricula ?? detail.pis ?? '—' }}
                             </dd>
@@ -338,7 +338,7 @@ onMounted(async () => {
                 </div>
 
                 <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <h3 class="mb-3 text-sm font-semibold text-slate-800">Vinculo</h3>
+                    <h3 class="mb-3 text-sm font-semibold text-slate-800">Vínculo</h3>
                     <dl class="space-y-2 text-sm">
                         <div class="flex justify-between gap-4 border-b border-slate-100 pb-2">
                             <dt class="text-slate-500">Empresa</dt>
@@ -361,7 +361,7 @@ onMounted(async () => {
                             </dd>
                         </div>
                         <div class="flex justify-between gap-4 border-b border-slate-100 pb-2">
-                            <dt class="text-slate-500">Admissao</dt>
+                            <dt class="text-slate-500">Admissão</dt>
                             <dd class="text-slate-800">{{ admissaoLabel }}</dd>
                         </div>
                         <div class="flex justify-between gap-4">
@@ -378,11 +378,11 @@ onMounted(async () => {
             >
                 <h3 class="mb-2 text-sm font-semibold text-slate-800">Aderência (Talents)</h3>
                 <p class="mb-3 text-xs text-slate-600">
-                    Na analise de aderência (Compliance &gt; Marcacoes &gt; Aderência), as batidas SAI.1 / ENT.2 sao
-                    comparadas ao horario de almoco esperado. Marque abaixo se este colaborador usa o
-                    <span class="font-medium">segundo intervalo de almoco</span> definido na configuracao de horarios da
-                    empresa (requer horarios &quot;Inicio 2º / Fim 2º&quot; por dia). Caso contrario, usa-se o primeiro
-                    intervalo (saida/volta do almoco).
+                    Na análise de aderência (Compliance &gt; Marcações &gt; Aderência), as batidas SAI.1 / ENT.2 são
+                    comparadas ao horário de almoço esperado. Marque abaixo se este colaborador usa o
+                    <span class="font-medium">segundo intervalo de almoço</span> definido na configuração de horários da
+                    empresa (requer horários &quot;Início 2º / Fim 2º&quot; por dia). Caso contrário, usa-se o primeiro
+                    intervalo (saída/volta do almoço).
                 </p>
                 <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
                     <input
@@ -390,20 +390,20 @@ onMounted(async () => {
                         type="checkbox"
                         class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
                     />
-                    Usar segundo intervalo de almoco na aderência
+                    Usar segundo intervalo de almoço na aderência
                 </label>
                 <div class="mt-3">
                     <PrimaryButton type="button" :disabled="schedulePrefSaving || loading" @click="saveSchedulePreference">
-                        Salvar preferencia
+                        Salvar preferência
                     </PrimaryButton>
                 </div>
             </div>
 
             <div v-if="detail" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 class="mb-3 text-sm font-semibold text-slate-800">Banco de horas (referencia)</h3>
+                <h3 class="mb-3 text-sm font-semibold text-slate-800">Banco de horas (referência)</h3>
                 <div class="mb-4 flex max-w-md flex-wrap items-end gap-3">
                     <div>
-                        <InputLabel value="Data de referencia" />
+                        <InputLabel value="Data de referência" />
                         <input
                             v-model="bankDateHtml"
                             type="date"
@@ -424,9 +424,9 @@ onMounted(async () => {
             <div v-if="detail" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 class="mb-2 text-sm font-semibold text-slate-800">Espelhos importados</h3>
                 <p class="mb-3 text-xs text-slate-500">
-                    Dados trazidos do RHID pela area Compliance; o periodo abaixo esta no calendario brasileiro.
+                    Dados trazidos do RHID pela área Compliance; o período abaixo está no calendário brasileiro.
                 </p>
-                <p v-if="espelhoListLoading" class="text-sm text-slate-500">Carregando importacoes…</p>
+                <p v-if="espelhoListLoading" class="text-sm text-slate-500">Carregando importações…</p>
                 <p v-else-if="!espelhoImportsPage?.data?.length" class="text-sm text-slate-500">
                     Nenhum espelho importado ainda para este colaborador.
                 </p>
@@ -476,7 +476,7 @@ onMounted(async () => {
                                                 expandedImportId === row.id
                                                     ? 'Fechar'
                                                     : row.parse_status === 'ok'
-                                                      ? 'Marcacoes'
+                                                      ? 'Marcações'
                                                       : 'Detalhes'
                                             }}
                                         </SecondaryButton>
@@ -489,7 +489,7 @@ onMounted(async () => {
                                             v-else-if="expandedImportDetail?.parse_status === 'pending'"
                                             class="text-sm text-amber-800"
                                         >
-                                            Leitura do PDF ainda em fila; atualize a pagina em instantes.
+                                            Leitura do PDF ainda em fila; atualize a página em instantes.
                                         </p>
                                         <p v-else-if="expandedImportDetail?.parse_error" class="text-sm text-red-700">
                                             {{ expandedImportDetail.parse_error }}
@@ -529,7 +529,7 @@ onMounted(async () => {
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <p v-else class="text-sm text-slate-500">Sem marcacoes extraidas neste periodo.</p>
+                                        <p v-else class="text-sm text-slate-500">Sem marcações extraídas neste período.</p>
                                     </td>
                                 </tr>
                             </template>

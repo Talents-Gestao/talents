@@ -258,7 +258,7 @@ class RhidReportService
 
         $json = $response->json();
         if (! is_array($json)) {
-            throw new RhidApiException('Resposta invalida ao iniciar relatorio RHID (nao JSON).', $response->status());
+            throw new RhidApiException('Resposta inválida ao iniciar relatório RHID (não JSON).', $response->status());
         }
 
         $guid = $this->extractPontoStartGuid($json);

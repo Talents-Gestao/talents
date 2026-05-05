@@ -23,7 +23,7 @@ class EspelhoPdfIngestService
 
         $disk = Storage::disk('local');
         if (! $disk->exists($import->storage_path)) {
-            $this->fail($import, 'Arquivo PDF nao encontrado no storage.');
+            $this->fail($import, 'Arquivo PDF não encontrado no storage.');
 
             return;
         }
@@ -76,7 +76,7 @@ class EspelhoPdfIngestService
         if ($lastErr !== '' && $out === '') {
             $this->fail(
                 $import,
-                'Python nao encontrado. Instale python3 e pymupdf no servidor ou defina RHID_ESPELHO_PYTHON (ex.: /usr/bin/python3). Detalhe: '.$lastErr,
+                'Python não encontrado. Instale python3 e pymupdf no servidor ou defina RHID_ESPELHO_PYTHON (ex.: /usr/bin/python3). Detalhe: '.$lastErr,
             );
 
             return;
@@ -84,7 +84,7 @@ class EspelhoPdfIngestService
 
         $out = trim($out);
         if ($out === '') {
-            $this->fail($import, 'Parser Python nao retornou JSON em stdout.');
+            $this->fail($import, 'Parser Python não retornou JSON em stdout.');
 
             return;
         }
@@ -99,7 +99,7 @@ class EspelhoPdfIngestService
         $schema = $data['schema_version'] ?? null;
         $schemaOk = $schema === 1 || $schema === '1' || $schema === 2 || $schema === '2';
         if (! $schemaOk) {
-            $this->fail($import, 'schema_version do parser nao suportado (esperado 1 ou 2).');
+            $this->fail($import, 'schema_version do parser não suportado (esperado 1 ou 2).');
 
             return;
         }

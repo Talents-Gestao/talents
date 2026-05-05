@@ -31,12 +31,12 @@ class RhidEspelhoBatchRunner
 
         $company = Company::query()->find($batch->company_id);
         if (! $company) {
-            $this->failBatch($batch, 'Empresa nao encontrada.');
+            $this->failBatch($batch, 'Empresa não encontrada.');
 
             return;
         }
         if (! $batch->user_id) {
-            $this->failBatch($batch, 'Usuario do lote nao informado.');
+            $this->failBatch($batch, 'Usuário do lote não informado.');
 
             return;
         }
@@ -136,7 +136,7 @@ class RhidEspelhoBatchRunner
         $s = $batch->succeeded;
         $k = $batch->skipped;
 
-        return "Importados {$s} PDF(s)".($k > 0 ? "; ignorados {$k} sem espelho valido." : '.');
+        return "Importados {$s} PDF(s)".($k > 0 ? "; ignorados {$k} sem espelho válido." : '.');
     }
 
     private function shouldSkipPerson(string $message): bool

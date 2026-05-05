@@ -46,7 +46,7 @@ const supportMode = ref(false);
 
 const lastPunches = ref([]);
 
-/** Painel | aderência | espelho | export (relatorios RHID) */
+/** Painel | aderência | espelho | export (relatórios RHID) */
 const punchesSubTab = ref('dashboard');
 const lastPunchesUpdatedAt = ref(null);
 
@@ -58,7 +58,7 @@ const bankFilterCostcenters = ref('');
 const bankFilterDepartments = ref('');
 const bankFilterPerson = ref('');
 const bankFilterPersonroles = ref('');
-/** Filtros amigaveis (valores = id RHID ou '') */
+/** Filtros amigáveis (valores = id RHID ou '') */
 const bankSelDepartment = ref('');
 const bankSelPersonRole = ref('');
 const bankSelPerson = ref('');
@@ -91,13 +91,13 @@ const reportJsonOverride = ref('');
 const reportIni = computed(() => toRhidYmd(reportIniDate.value));
 const reportFim = computed(() => toRhidYmd(reportFimDate.value));
 
-/** Espelho de ponto (POST report.svc/ponto — mesmas rotas que Relatorios) */
+/** Espelho de ponto (POST report.svc/ponto — mesmas rotas que Relatórios) */
 const espelhoGuid = ref('');
 const espelhoPercent = ref(null);
 const espelhoPanelData = ref(null);
 const espelhoIniDate = ref(monthFirst);
 const espelhoFimDate = ref(monthLast);
-/** '' = todos; 1 = ativos; 2 = inativos — padrao ativos (evita exceder limite da licenca RHID) */
+/** '' = todos; 1 = ativos; 2 = inativos — padrão ativos (evita exceder limite da licença RHID) */
 const espelhoStatus = ref('1');
 const espelhoSelectedFields = ref(['TODAS_MARCACOES', 'ENTRADAS_SAIDAS']);
 const espelhoFilterPeople = ref('');
@@ -108,11 +108,11 @@ const espelhoFilterPersonroles = ref('');
 const espelhoFilterShifts = ref('');
 const espelhoPolling = ref(false);
 const espelhoPollCancelRequested = ref(false);
-/** ID RHID do colaborador para vincular ao PDF salvo (alternativa a um unico ID em Filtros opcionais) */
+/** ID RHID do colaborador para vincular ao PDF salvo (alternativa a um único ID em Filtros opcionais) */
 const espelhoVinculoPersonId = ref('');
 /** Listagem paginada de imports (Laravel paginator JSON) */
 const espelhoImportsPage = ref(null);
-/** Ultimo import criado ou detalhe expandido */
+/** Último import criado ou detalhe expandido */
 const espelhoLastImport = ref(null);
 const espelhoDetailLoading = ref(false);
 const espelhoBatchProgress = ref('');
@@ -124,12 +124,12 @@ const espelhoBatchRemote = ref(null);
 const espelhoBatchPollAbort = ref(false);
 const espelhoShowTechnicalPanel = ref(false);
 
-/** Aderência espelho importado vs horarios da empresa */
+/** Aderência espelho importado vs horários da empresa */
 const espelhoAdherenceIni = ref(monthFirst);
 const espelhoAdherenceFim = ref(monthLast);
 const espelhoAdherenceLoading = ref(false);
 const espelhoAdherenceResult = ref(null);
-/** Modal: marcacoes do espelho no periodo da analise */
+/** Modal: marcações do espelho no período da análise */
 const espelhoAdherenceMarksOpen = ref(false);
 const espelhoAdherenceMarksLoading = ref(false);
 const espelhoAdherenceMarksError = ref(null);
@@ -150,9 +150,9 @@ const espelhoParseLabel = (s) => {
 
 const ESPELHO_FIELD_OPTIONS = [
     { value: 'DIA_DA_SEMANA', label: 'Dia da semana' },
-    { value: 'TODAS_MARCACOES', label: 'Todas as marcacoes' },
-    { value: 'ENTRADAS_SAIDAS', label: 'Entradas / saidas' },
-    { value: 'MARCACOES_DESCONSIDERADAS', label: 'Marcacoes desconsideradas' },
+    { value: 'TODAS_MARCACOES', label: 'Todas as marcações' },
+    { value: 'ENTRADAS_SAIDAS', label: 'Entradas / saídas' },
+    { value: 'MARCACOES_DESCONSIDERADAS', label: 'Marcações desconsideradas' },
 ];
 
 const isAdmin = computed(() => page.props.auth?.user?.role === 'company_admin');
@@ -170,7 +170,7 @@ const espelhoTargetPersonId = computed(() => {
     return null;
 });
 
-/** Percentual do RHID pode vir como numero ou string */
+/** Percentual do RHID pode vir como número ou string */
 const espelhoIsReadyForDownload = computed(() => {
     const p = Number(espelhoPercent.value);
     return Boolean(espelhoGuid.value) && !Number.isNaN(p) && p >= 100;
@@ -287,8 +287,8 @@ const bankRows = computed(() => {
 const peopleRows = computed(() => extractListItems(peopleList.value));
 
 const tabs = [
-    { id: 'overview', label: 'Visao geral' },
-    { id: 'punches', label: 'Marcacoes e aderência' },
+    { id: 'overview', label: 'Visão geral' },
+    { id: 'punches', label: 'Marcações e aderência' },
     { id: 'bank', label: 'Banco de horas' },
     { id: 'justifications', label: 'Justificativas' },
     { id: 'collaborators', label: 'Colaboradores' },
@@ -333,9 +333,9 @@ watch(
 );
 
 const justResult = ref(null);
-/** Periodo completo (multi-pagina RHID); tabela e graficos derivam disto */
+/** Período completo (multi-página RHID); tabela e gráficos derivam disto */
 const justAnalyticsRows = ref([]);
-/** True apos concluir uma listagem (mesmo com 0 registros) */
+/** True após concluir uma listagem (mesmo com 0 registros) */
 const justListLoaded = ref(false);
 const justAnalyticsMeta = ref({
     pagesLoaded: 0,
@@ -394,7 +394,7 @@ const clearErr = () => {
 };
 
 const handleError = (e) => {
-    err.value = e.response?.data?.message || e.message || 'Erro na requisicao';
+    err.value = e.response?.data?.message || e.message || 'Erro na requisição';
 };
 
 const personDisplayName = (row) =>
@@ -409,7 +409,7 @@ const bankDisplayValue = formatRhidBankBalanceDisplay;
 /**
  * ID do colaborador no RHID (mesmo usado em GET person.svc/a/{id} e na rota do perfil).
  * Preferir `id` na raiz: na lista de pessoas o link do perfil usa `row.id`; `idPerson` pode
- * divergir em alguns payloads e o lote de preferencia gravaria outro id_person.
+ * divergir em alguns payloads e o lote de preferência gravaria outro id_person.
  */
 const rhidPersonId = (row) => {
     const raw = row?.id != null && row?.id !== '' ? row.id : row?.idPerson;
@@ -447,7 +447,7 @@ const MAX_DEPT_CHART = 12;
 const TOP_DEBIT_N = 10;
 const TOP_CREDIT_N = 10;
 
-/** Detalhe ao clicar num grafico: lista de colaboradores */
+/** Detalhe ao clicar num gráfico: lista de colaboradores */
 const bankChartDrilldown = ref(null);
 
 const closeBankChartDrilldown = () => {
@@ -467,14 +467,14 @@ const bankRowToDrillLine = (row) => {
     };
 };
 
-/** Fatias do donut com linhas para drill-down (mesma ordem do grafico). */
+/** Fatias do donut com linhas para drill-down (mesma ordem do gráfico). */
 const bankDonutSlices = computed(() => {
     const rows = bankRows.value;
     const defs = [
         { label: 'Saldo negativo', color: '#ef4444', test: (m) => m !== null && m < 0 },
         { label: 'Saldo zero', color: '#94a3b8', test: (m) => m !== null && m === 0 },
         { label: 'Saldo positivo', color: '#10b981', test: (m) => m !== null && m > 0 },
-        { label: 'Sem dado numerico', color: '#f59e0b', test: (m) => m === null },
+        { label: 'Sem dado numérico', color: '#f59e0b', test: (m) => m === null },
     ];
     const out = [];
     for (const d of defs) {
@@ -567,7 +567,7 @@ const bankDonutChart = computed(() => {
     return { series, options };
 });
 
-/** Barras de departamento com media e lista de colaboradores. */
+/** Barras de departamento com média e lista de colaboradores. */
 const bankDeptSlices = computed(() => {
     const map = new Map();
     for (const row of bankRows.value) {
@@ -638,7 +638,7 @@ const openBankDrilldownFromDept = (_event, _chartContext, config) => {
     const avgRounded = Math.round(slice.avg);
     bankChartDrilldown.value = {
         title: slice.name,
-        subtitle: `Data ${bankDateHtml.value} · Media ${formatRhidBankBalanceMinutes(avgRounded)} (${slice.count} colaborador(es) com saldo numerico neste agrupamento)`,
+        subtitle: `Data ${bankDateHtml.value} · Média ${formatRhidBankBalanceMinutes(avgRounded)} (${slice.count} colaborador(es) com saldo numérico neste agrupamento)`,
         lines,
     };
 };
@@ -674,7 +674,7 @@ const bankDeptAvgChart = computed(() => {
         xaxis: { categories },
         tooltip: {
             y: {
-                formatter: (val) => `${formatRhidBankBalanceMinutes(val)} (media) — clique para listar`,
+                formatter: (val) => `${formatRhidBankBalanceMinutes(val)} (média) — clique para listar`,
             },
         },
         yaxis: { labels: { maxWidth: 200 } },
@@ -1039,7 +1039,7 @@ const punchTopCollaboratorsChart = computed(() => {
         states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
     };
     return {
-        series: [{ name: 'Marcacoes', data }],
+        series: [{ name: 'Marcações', data }],
         options,
         empty,
     };
@@ -1070,7 +1070,7 @@ const punchHourDistributionChart = computed(() => {
         states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
     };
     return {
-        series: [{ name: 'Marcacoes', data: counts }],
+        series: [{ name: 'Marcações', data: counts }],
         options,
         empty,
     };
@@ -1180,7 +1180,7 @@ const loadOverviewData = async () => {
         overviewJustAtestados.value = chunk.filter((r) => isAtestadoByKeyword(r, tmap)).length;
         overviewJustNote.value =
             chunk.length >= 500 && recordsTotal > chunk.length
-                ? 'Atestados: contagem na primeira pagina da amostra; refine o periodo na aba Justificativas para o detalhe completo.'
+                ? 'Atestados: contagem na primeira página da amostra; refine o período na aba Justificativas para o detalhe completo.'
                 : '';
         overviewLoadedAt.value = new Date();
     } catch (e) {
@@ -1225,13 +1225,13 @@ const formatEspelhoAdherenceYmdToPt = (ymd) => {
 
 const espelhoAdherenceSituacaoLabel = (code) => {
     if (code === 'sem_escala') {
-        return 'Sem escala (dia nao util)';
+        return 'Sem escala (dia não útil)';
     }
     if (code === 'insuficiente') {
         return 'Insuficiente (4 batidas)';
     }
     if (code === 'analisavel') {
-        return 'Analisavel';
+        return 'Analisável';
     }
     return code ?? '—';
 };
@@ -1262,13 +1262,13 @@ const openEspelhoAdherenceMarksModal = async (row) => {
         espelhoAdherenceMarksData.value = data;
     } catch (e) {
         espelhoAdherenceMarksError.value =
-            e?.response?.data?.message ?? e?.message ?? 'Nao foi possivel carregar as marcacoes.';
+            e?.response?.data?.message ?? e?.message ?? 'Não foi possível carregar as marcações.';
     } finally {
         espelhoAdherenceMarksLoading.value = false;
     }
 };
 
-/** Rankings e graficos: ate 10 colaboradores por painel (alinhado ao backend TOP_RANK). */
+/** Rankings e gráficos: até 10 colaboradores por painel (alinhado ao backend TOP_RANK). */
 const ESPELHO_ADHERENCE_CHART_TOP = 10;
 
 const truncateAdherenceChartName = (name) => {
@@ -1371,7 +1371,7 @@ const espelhoAdherenceChartEntradaTotal = computed(() => {
         yaxis: { labels: { maxWidth: 220 } },
         tooltip: {
             y: {
-                formatter: (val) => `${val} min — clique para ver marcacoes`,
+                formatter: (val) => `${val} min — clique para ver marcações`,
             },
         },
         states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
@@ -1412,7 +1412,7 @@ const espelhoAdherenceChartEntradaPiorDia = computed(() => {
         yaxis: { labels: { maxWidth: 220 } },
         tooltip: {
             y: {
-                formatter: (val) => `${val} min no pior dia — clique para ver marcacoes`,
+                formatter: (val) => `${val} min no pior dia — clique para ver marcações`,
             },
         },
         states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
@@ -1461,7 +1461,7 @@ const espelhoAdherenceChartAlmoco = computed(() => {
                 formatter: (val, opts) => {
                     const idx = opts.dataPointIndex;
                     const d = diasExtra[idx] ?? 0;
-                    return `${val} min (saída+volta); ${d} dia(s) c/ infração — clique para ver marcacoes`;
+                    return `${val} min (saída+volta); ${d} dia(s) c/ infração — clique para ver marcações`;
                 },
             },
         },
@@ -1584,7 +1584,7 @@ const loadCollaborators = async () => {
 };
 
 /**
- * IDs de colaboradores ativos (status=1 na API quando suportado + exclusao por linha inativa).
+ * IDs de colaboradores ativos (status=1 na API quando suportado + exclusão por linha inativa).
  * Evita incluir inativos que geram espelho/PDF em branco no RHID.
  */
 const fetchAllRhidPersonIdsFromApi = async () => {
@@ -1645,7 +1645,7 @@ const buildReportPayload = () => {
         base.listColumns = ['strHorarioContratualSimples', 'horasTotalNaoExtra'];
         base.listPersonInfo = ['Person.name', 'Person.pis'];
     }
-    /** Somente ativos por padrao: relatorios de ponto incluem muitos inativos e podem estourar o limite da licenca */
+    /** Somente ativos por padrão: relatórios de ponto incluem muitos inativos e podem estourar o limite da licença */
     base.status = '1';
     return base;
 };
@@ -1674,7 +1674,7 @@ const startReport = async () => {
         reportPanelData.value = data;
     } catch (e) {
         if (e instanceof SyntaxError) {
-            err.value = 'JSON invalido no campo avancado.';
+            err.value = 'JSON inválido no campo avançado.';
         } else {
             handleError(e);
         }
@@ -1718,14 +1718,14 @@ const validateEspelhoPeriod = () => {
     const a = new Date(`${ini}T12:00:00`);
     const b = new Date(`${fim}T12:00:00`);
     if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
-        return 'Datas invalidas.';
+        return 'Datas inválidas.';
     }
     if (b < a) {
         return 'A data final deve ser igual ou posterior a inicial.';
     }
     const daysInclusive = Math.floor((b - a) / 86400000) + 1;
     if (daysInclusive > 31) {
-        return 'Periodo maximo de 1 mes: ate 31 dias entre a data inicial e a final (conforme API RHID).';
+        return 'Período máximo de 1 mês: até 31 dias entre a data inicial e a final (conforme API RHID).';
     }
     return null;
 };
@@ -1784,7 +1784,7 @@ const buildEspelhoBatchMeta = () => ({
     },
 });
 
-/** Inicia o relatorio em PDF e acompanha ate o processamento chegar a 100% */
+/** Inicia o relatório em PDF e acompanha até o processamento chegar a 100% */
 const gerarEspelhoCompleto = async () => {
     if (!props.configured) {
         return;
@@ -1806,7 +1806,7 @@ const gerarEspelhoCompleto = async () => {
         espelhoGuid.value = startData.guid || '';
         espelhoPanelData.value = startData;
         if (!espelhoGuid.value) {
-            err.value = 'Nao foi possivel obter o GUID do RHID.';
+            err.value = 'Não foi possível obter o GUID do RHID.';
             return;
         }
         for (let i = 0; i < 120; i++) {
@@ -1879,7 +1879,7 @@ const pollEspelhoImportUntilDone = async (importId) => {
 
 const saveEspelhoToTalents = async () => {
     if (!props.configured) {
-        err.value = 'Configure a integracao RHID antes de salvar o espelho.';
+        err.value = 'Configure a integração RHID antes de salvar o espelho.';
         return;
     }
     if (!espelhoIsReadyForDownload.value) {
@@ -1891,7 +1891,7 @@ const saveEspelhoToTalents = async () => {
             (parseIdList(espelhoVinculoPersonId.value)?.length ?? 0) > 1 ||
             (parseIdList(espelhoFilterPeople.value)?.length ?? 0) > 1;
         err.value = many
-            ? 'Varios colaboradores selecionados: use Importar todos ou deixe apenas um ID no campo ou nos filtros opcionais.'
+            ? 'Vários colaboradores selecionados: use Importar todos ou deixe apenas um ID no campo ou nos filtros opcionais.'
             : 'Informe um ID de colaborador no campo acima ou nos filtros opcionais.';
         return;
     }
@@ -1929,7 +1929,7 @@ const pollEspelhoBatchUntilDone = async (batchId) => {
         if (b.status === 'completed' || b.status === 'failed') {
             espelhoBatchPhase.value = 'done';
             espelhoBatchProgress.value =
-                b.message || (b.status === 'failed' ? 'Nao foi possivel concluir o lote.' : 'Lote concluido.');
+                b.message || (b.status === 'failed' ? 'Não foi possível concluir o lote.' : 'Lote concluído.');
             await loadEspelhoImports();
             return;
         }
@@ -1939,7 +1939,7 @@ const pollEspelhoBatchUntilDone = async (batchId) => {
 
 const saveEspelhoTodosToTalents = async () => {
     if (!props.configured) {
-        err.value = 'Configure a integracao RHID antes de importar os espelhos.';
+        err.value = 'Configure a integração RHID antes de importar os espelhos.';
         return;
     }
     const periodErr = validateEspelhoPeriod();
@@ -1967,7 +1967,7 @@ const saveEspelhoTodosToTalents = async () => {
             if (!ids.length) {
                 espelhoBatchPhase.value = 'idle';
                 err.value =
-                    'Nenhum dos IDs informados esta entre os colaboradores ativos. Ajuste a lista ou deixe em branco para importar todos os ativos.';
+                    'Nenhum dos IDs informados está entre os colaboradores ativos. Ajuste a lista ou deixe em branco para importar todos os ativos.';
                 return;
             }
             if (before > ids.length) {
@@ -1977,7 +1977,7 @@ const saveEspelhoTodosToTalents = async () => {
         }
         if (!ids.length) {
             espelhoBatchPhase.value = 'idle';
-            err.value = 'Nenhum colaborador ativo encontrado. Verifique a integracao ou informe IDs.';
+            err.value = 'Nenhum colaborador ativo encontrado. Verifique a integração ou informe IDs.';
             return;
         }
         espelhoBatchPhase.value = 'starting';
@@ -2083,7 +2083,7 @@ const buildJustificationsBody = (pageOverride) => {
 };
 
 /**
- * Carrega todo o periodo no RHID (multi-pagina), tipos e pessoas para graficos e tabela paginada localmente.
+ * Carrega todo o período no RHID (multi-página), tipos e pessoas para gráficos e tabela paginada localmente.
  */
 const loadJustificationsFullPeriod = async () => {
     if (!props.configured) {
@@ -2093,7 +2093,7 @@ const loadJustificationsFullPeriod = async () => {
     const fimStr = toRhidYmd(justFimDate.value);
     if (!/^\d{8}$/.test(iniStr) || !/^\d{8}$/.test(fimStr)) {
         clearErr();
-        err.value = 'Informe data inicial e final validas (periodo em formato completo).';
+        err.value = 'Informe data inicial e final válidas (período em formato completo).';
         return;
     }
     loading.value = true;
@@ -2260,7 +2260,7 @@ const openJustDrilldownFromTypeDonut = (_event, _chartContext, config) => {
     const lines = s.rows.map(justRowToDrillLine).sort((a, b) => a.name.localeCompare(b.name, 'pt'));
     justChartDrilldown.value = {
         title: s.label,
-        subtitle: `${s.rows.length} registro(s) no periodo · por tipo`,
+        subtitle: `${s.rows.length} registro(s) no período · por tipo`,
         lines,
     };
 };
@@ -2405,7 +2405,7 @@ const openJustDrilldownFromTopPerson = (_event, _chartContext, config) => {
     const lines = s.rows.map(justRowToDrillLine).sort((a, b) => a.ini.localeCompare(b.ini, 'pt'));
     justChartDrilldown.value = {
         title: s.name,
-        subtitle: `${s.rows.length} justificativa(s) no periodo`,
+        subtitle: `${s.rows.length} justificativa(s) no período`,
         lines,
     };
 };
@@ -2435,7 +2435,7 @@ const justTopPersonBarChart = computed(() => {
             style: { fontSize: '11px', colors: ['#334155'] },
         },
         xaxis: { categories },
-        tooltip: { y: { formatter: (val) => `${val} ocorrencia(s) — clique para listar` } },
+        tooltip: { y: { formatter: (val) => `${val} ocorrência(s) — clique para listar` } },
         yaxis: { labels: { maxWidth: 200 } },
         states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
     };
@@ -2551,7 +2551,7 @@ const justDeptBarChart = computed(() => {
                         :href="route('client.rhid.settings.edit')"
                         class="text-sm font-medium text-talents-700 hover:underline"
                     >
-                        Configuracao RHID
+                        Configuração RHID
                     </Link>
                 </div>
             </div>
@@ -2561,14 +2561,14 @@ const justDeptBarChart = computed(() => {
             v-if="!configured"
             class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900"
         >
-            <p class="font-semibold">Integracao nao configurada</p>
-            <p class="mt-1">Cadastre e-mail e senha da API RHID para usar este modulo.</p>
+            <p class="font-semibold">Integração não configurada</p>
+            <p class="mt-1">Cadastre e-mail e senha da API RHID para usar este módulo.</p>
             <Link
                 v-if="isAdmin"
                 :href="route('client.rhid.settings.edit')"
                 class="mt-3 inline-block text-sm font-bold text-talents-800 underline"
             >
-                Abrir configuracoes
+                Abrir configurações
             </Link>
         </div>
 
@@ -2629,7 +2629,7 @@ const justDeptBarChart = computed(() => {
                                     <th class="whitespace-nowrap p-2">Colaborador</th>
                                     <th class="whitespace-nowrap p-2">Tipo</th>
                                     <th class="whitespace-nowrap p-2">Setor</th>
-                                    <th class="whitespace-nowrap p-2">Inicio</th>
+                                    <th class="whitespace-nowrap p-2">Início</th>
                                     <th class="whitespace-nowrap p-2">Fim</th>
                                     <th class="whitespace-nowrap p-2">Status</th>
                                 </tr>
@@ -2667,7 +2667,7 @@ const justDeptBarChart = computed(() => {
 
             <Modal :show="espelhoAdherenceMarksOpen" max-width="3xl" @close="closeEspelhoAdherenceMarksModal">
                 <div class="p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Marcacoes do espelho (periodo da analise)</h3>
+                    <h3 class="text-lg font-semibold text-slate-900">Marcações do espelho (período da análise)</h3>
                     <p v-if="espelhoAdherenceMarksLoading" class="mt-2 text-sm text-slate-500">Carregando…</p>
                     <p v-else-if="espelhoAdherenceMarksError" class="mt-2 text-sm text-red-700">
                         {{ espelhoAdherenceMarksError }}
@@ -2678,9 +2678,9 @@ const justDeptBarChart = computed(() => {
                             <span class="font-mono text-slate-500"> · ID {{ espelhoAdherenceMarksData.id_person }}</span>
                         </p>
                         <p class="mt-1 text-xs text-slate-500">
-                            Periodo:
+                            Período:
                             {{ formatEspelhoAdherenceYmdToPt(espelhoAdherenceMarksData.periodo?.ini) }} a
-                            {{ formatEspelhoAdherenceYmdToPt(espelhoAdherenceMarksData.periodo?.fim) }} · Tolerancia:
+                            {{ formatEspelhoAdherenceYmdToPt(espelhoAdherenceMarksData.periodo?.fim) }} · Tolerância:
                             {{ espelhoAdherenceMarksData.tolerancia_minutos }} min (config.) · Import mais recente por dia
                         </p>
                         <div
@@ -2719,7 +2719,7 @@ const justDeptBarChart = computed(() => {
                             </table>
                         </div>
                         <p v-else class="mt-4 text-sm text-slate-500">
-                            Nenhum dia de espelho encontrado para este colaborador no periodo.
+                            Nenhum dia de espelho encontrado para este colaborador no período.
                         </p>
                     </template>
                     <div class="mt-4 flex justify-end">
@@ -2799,7 +2799,7 @@ const justDeptBarChart = computed(() => {
                         "
                         @click="punchesSubTab = 'adherence'"
                     >
-                        Aderência ao horario
+                        Aderência ao horário
                     </button>
                     <button
                         type="button"
@@ -2811,7 +2811,7 @@ const justDeptBarChart = computed(() => {
                         "
                         @click="punchesSubTab = 'espelho'"
                     >
-                        Espelho e importacao
+                        Espelho e importação
                     </button>
                     <button
                         type="button"
@@ -2823,17 +2823,17 @@ const justDeptBarChart = computed(() => {
                         "
                         @click="punchesSubTab = 'export'"
                     >
-                        Exportar relatorio (RHID)
+                        Exportar relatório (RHID)
                     </button>
                 </div>
 
                 <div v-show="punchesSubTab === 'dashboard'" class="space-y-4">
                     <div class="flex flex-wrap items-center gap-3">
                         <PrimaryButton type="button" :disabled="loading" @click="loadLastPunches">
-                            Atualizar marcacoes
+                            Atualizar marcações
                         </PrimaryButton>
                         <p v-if="lastPunchesUpdatedAt" class="text-sm text-slate-600">
-                            Ultima atualizacao:
+                            Última atualização:
                             {{
                                 lastPunchesUpdatedAt.toLocaleString('pt-BR', {
                                     dateStyle: 'short',
@@ -2861,7 +2861,7 @@ const justDeptBarChart = computed(() => {
                         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                             <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Painel</p>
                             <p class="mt-1 text-sm text-slate-700">
-                                Ultimas marcacoes registradas no RHID (amostra para acompanhamento rapido).
+                                Últimas marcações registradas no RHID (amostra para acompanhamento rápido).
                             </p>
                             <p v-if="supportMode" class="mt-1 text-xs text-slate-500">
                                 Endpoint:
@@ -2874,7 +2874,7 @@ const justDeptBarChart = computed(() => {
                         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-1">
                             <h3 class="mb-1 text-sm font-semibold text-slate-800">Top colaboradores</h3>
                             <p class="mb-3 text-xs text-slate-500">
-                                Contagem de linhas por nome nesta amostra (ate {{ PUNCH_TOP_N }}).
+                                Contagem de linhas por nome nesta amostra (até {{ PUNCH_TOP_N }}).
                             </p>
                             <apexchart
                                 v-if="!punchTopCollaboratorsChart.empty"
@@ -2883,12 +2883,12 @@ const justDeptBarChart = computed(() => {
                                 :options="punchTopCollaboratorsChart.options"
                                 :series="punchTopCollaboratorsChart.series"
                             />
-                            <p v-else class="text-sm text-slate-500">Sem dados para o grafico.</p>
+                            <p v-else class="text-sm text-slate-500">Sem dados para o gráfico.</p>
                         </div>
                         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-1">
-                            <h3 class="mb-1 text-sm font-semibold text-slate-800">Marcacoes por faixa de hora</h3>
+                            <h3 class="mb-1 text-sm font-semibold text-slate-800">Marcações por faixa de hora</h3>
                             <p class="mb-3 text-xs text-slate-500">
-                                Quando a data/hora puder ser interpretada, a hora da marcacao e agrupada em faixas.
+                                Quando a data/hora puder ser interpretada, a hora da marcação é agrupada em faixas.
                             </p>
                             <apexchart
                                 v-if="!punchHourDistributionChart.empty"
@@ -2898,7 +2898,7 @@ const justDeptBarChart = computed(() => {
                                 :series="punchHourDistributionChart.series"
                             />
                             <p v-else class="text-sm text-slate-500">
-                                Nenhuma hora reconhecida nos registros (formato de data variavel).
+                                Nenhuma hora reconhecida nos registros (formato de data variável).
                             </p>
                         </div>
                     </div>
@@ -2938,16 +2938,16 @@ const justDeptBarChart = computed(() => {
 
                 <div v-show="punchesSubTab === 'adherence'" class="space-y-4">
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <h3 class="text-sm font-semibold text-slate-800">Aderência: espelho importado vs horarios da empresa</h3>
+                        <h3 class="text-sm font-semibold text-slate-800">Aderência: espelho importado vs horários da empresa</h3>
                         <p class="mt-1 text-xs leading-relaxed text-slate-600">
-                            Compara os PDFs de espelho ja importados (sub-aba <span class="font-medium">Espelho e importacao</span>)
-                            com os horarios cadastrados em
+                            Compara os PDFs de espelho já importados (sub-aba <span class="font-medium">Espelho e importação</span>)
+                            com os horários cadastrados em
                             <Link
                                 v-if="isAdmin"
                                 :href="route('client.rhid.settings.edit')"
                                 class="font-medium text-talents-800 underline"
-                            >Configuracao RHID</Link><span v-else class="font-medium">Configuracao RHID</span>.
-                            Convencao de 4 batidas por dia. Clique no nome para ver as marcacoes do espelho no periodo.
+                            >Configuração RHID</Link><span v-else class="font-medium">Configuração RHID</span>.
+                            Convenção de 4 batidas por dia. Clique no nome para ver as marcações do espelho no período.
                         </p>
                         <div class="mt-3 flex flex-wrap items-end gap-3">
                             <div>
@@ -2977,20 +2977,20 @@ const justDeptBarChart = computed(() => {
                         <p v-if="espelhoAdherenceLoading" class="mt-2 text-sm text-slate-500">Calculando…</p>
                         <template v-else-if="espelhoAdherenceResult?.resumo">
                             <p class="mt-2 text-xs text-slate-600">
-                                Periodo: {{ espelhoAdherenceResult.resumo.ini }} a {{ espelhoAdherenceResult.resumo.fim }} ·
-                                Tolerancia: {{ espelhoAdherenceResult.resumo.tolerancia_minutos }} min · Dias analisados:
+                                Período: {{ espelhoAdherenceResult.resumo.ini }} a {{ espelhoAdherenceResult.resumo.fim }} ·
+                                Tolerância: {{ espelhoAdherenceResult.resumo.tolerancia_minutos }} min · Dias analisados:
                                 {{ espelhoAdherenceResult.resumo.dias_registro_analisados }}
                             </p>
                             <p class="mt-3 text-xs text-slate-500">
-                                Dashboard: ate {{ ESPELHO_ADHERENCE_CHART_TOP }} colaboradores por grafico. Passe o rato para
-                                detalhes; use a barra do grafico para exportar (PNG/SVG) ou ampliar. Clique numa barra para
-                                ver as marcacoes do espelho no periodo.
+                                Dashboard: até {{ ESPELHO_ADHERENCE_CHART_TOP }} colaboradores por gráfico. Passe o mouse para
+                                detalhes; use a barra do gráfico para exportar (PNG/SVG) ou ampliar. Clique numa barra para
+                                ver as marcações do espelho no período.
                             </p>
                             <div class="mt-4 grid gap-4 xl:grid-cols-3">
                                 <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                                     <h4 class="mb-1 text-sm font-semibold text-slate-800">Atraso na 1ª entrada (total)</h4>
                                     <p class="mb-3 text-xs text-slate-500">
-                                        Soma dos minutos de atraso na entrada no periodo (top
+                                        Soma dos minutos de atraso na entrada no período (top
                                         {{ ESPELHO_ADHERENCE_CHART_TOP }}).
                                     </p>
                                     <apexchart
@@ -3005,12 +3005,12 @@ const justDeptBarChart = computed(() => {
                                         :options="espelhoAdherenceChartEntradaTotal.options"
                                         :series="espelhoAdherenceChartEntradaTotal.series"
                                     />
-                                    <p v-else class="text-sm text-slate-500">Sem dados para o grafico.</p>
+                                    <p v-else class="text-sm text-slate-500">Sem dados para o gráfico.</p>
                                 </div>
                                 <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                                     <h4 class="mb-1 text-sm font-semibold text-slate-800">Pior dia — atraso na entrada</h4>
                                     <p class="mb-3 text-xs text-slate-500">
-                                        Maior atraso num unico dia (1ª entrada), top
+                                        Maior atraso num único dia (1ª entrada), top
                                         {{ ESPELHO_ADHERENCE_CHART_TOP }}.
                                     </p>
                                     <apexchart
@@ -3025,7 +3025,7 @@ const justDeptBarChart = computed(() => {
                                         :options="espelhoAdherenceChartEntradaPiorDia.options"
                                         :series="espelhoAdherenceChartEntradaPiorDia.series"
                                     />
-                                    <p v-else class="text-sm text-slate-500">Sem dados para o grafico.</p>
+                                    <p v-else class="text-sm text-slate-500">Sem dados para o gráfico.</p>
                                 </div>
                                 <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                                     <h4 class="mb-1 text-sm font-semibold text-slate-800">Infrações de almoço (min)</h4>
@@ -3042,7 +3042,7 @@ const justDeptBarChart = computed(() => {
                                         :options="espelhoAdherenceChartAlmoco.options"
                                         :series="espelhoAdherenceChartAlmoco.series"
                                     />
-                                    <p v-else class="text-sm text-slate-500">Sem dados para o grafico.</p>
+                                    <p v-else class="text-sm text-slate-500">Sem dados para o gráfico.</p>
                                 </div>
                             </div>
                             <div class="mt-6 grid gap-4 lg:grid-cols-2">
@@ -3051,7 +3051,7 @@ const justDeptBarChart = computed(() => {
                                         Maiores atrasos (entrada) — detalhe
                                     </h4>
                                     <p class="mb-2 text-xs text-slate-500">
-                                        Listagem alinhada ao ranking (ate {{ ESPELHO_ADHERENCE_CHART_TOP }} linhas).
+                                        Listagem alinhada ao ranking (até {{ ESPELHO_ADHERENCE_CHART_TOP }} linhas).
                                     </p>
                                     <div class="overflow-x-auto rounded border border-slate-200 text-sm">
                                         <table class="min-w-full text-left">
@@ -3089,17 +3089,17 @@ const justDeptBarChart = computed(() => {
                                         v-if="!espelhoAdherenceResult.ranking_atrasos_entrada?.length"
                                         class="mt-1 text-xs text-slate-500"
                                     >
-                                        Nenhum dia analisavel no periodo (importe espelhos e configure dias uteis).
+                                        Nenhum dia analisável no período (importe espelhos e configure dias úteis).
                                     </p>
                                 </div>
                                 <div>
                                     <h4 class="mb-2 text-xs font-semibold uppercase text-slate-700">
-                                        Infracoes de almoco — detalhe
+                                        Infrações de almoço — detalhe
                                     </h4>
                                     <p class="mb-2 text-xs text-slate-500">
-                                        Ordenacao: mais dias com problema; depois soma dos atrasos em minutos (saida para
-                                        almoco + volta). Infracoes so por duracao (almoco curto/longo) podem ter 0 min
-                                        nessa soma. Listagem ate {{ ESPELHO_ADHERENCE_CHART_TOP }} linhas.
+                                        Ordenação: mais dias com problema; depois soma dos atrasos em minutos (saída para
+                                        almoço + volta). Infrações só por duração (almoço curto/longo) podem ter 0 min
+                                        nessa soma. Listagem até {{ ESPELHO_ADHERENCE_CHART_TOP }} linhas.
                                     </p>
                                     <div class="overflow-x-auto rounded border border-slate-200 text-sm">
                                         <table class="min-w-full text-left">
@@ -3142,7 +3142,7 @@ const justDeptBarChart = computed(() => {
                                         v-if="!espelhoAdherenceResult.ranking_infracoes_almoco?.length"
                                         class="mt-1 text-xs text-slate-500"
                                     >
-                                        Nenhum dia analisavel ou sem infracoes no ranking.
+                                        Nenhum dia analisável ou sem infrações no ranking.
                                     </p>
                                 </div>
                             </div>
@@ -3153,11 +3153,11 @@ const justDeptBarChart = computed(() => {
 
             <div v-show="tab === 'bank'" class="space-y-4">
                 <p class="text-sm text-slate-600">
-                    Consulte o banco de horas na data de referencia. Sem filtros opcionais, todos os colaboradores retornados
-                    pela API sao agregados. Use os filtros para refinar por departamento, cargo ou colaborador.
+                    Consulte o banco de horas na data de referência. Sem filtros opcionais, todos os colaboradores retornados
+                    pela API são agregados. Use os filtros para refinar por departamento, cargo ou colaborador.
                 </p>
                 <p v-if="supportMode" class="text-xs text-slate-500">
-                    API RHID person_banco_horas · parametro date (YYYYMMDD). Agregacao no servidor pode depender de
+                    API RHID person_banco_horas · parâmetro date (YYYYMMDD). Agregação no servidor pode depender de
                     RHID_BANK_HOURS_AGGREGATE.
                 </p>
                 <div class="flex flex-wrap items-center gap-2">
@@ -3167,7 +3167,7 @@ const justDeptBarChart = computed(() => {
                 </div>
                 <div class="grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
-                        <InputLabel value="Data de referencia" />
+                        <InputLabel value="Data de referência" />
                         <input
                             v-model="bankDateHtml"
                             type="date"
@@ -3223,7 +3223,7 @@ const justDeptBarChart = computed(() => {
                         </select>
                     </div>
                     <div v-if="supportMode" class="sm:col-span-2 lg:col-span-3">
-                        <p class="text-xs font-medium text-slate-700">Filtros avancados (ID numerico RHID)</p>
+                        <p class="text-xs font-medium text-slate-700">Filtros avançados (ID numérico RHID)</p>
                         <div class="mt-2 grid gap-3 sm:grid-cols-2">
                             <div>
                                 <InputLabel value="Empresa (companies)" />
@@ -3250,16 +3250,16 @@ const justDeptBarChart = computed(() => {
                 </div>
                 <PrimaryButton type="button" :disabled="loading" @click="loadBankHours">Consultar banco de horas</PrimaryButton>
                 <p v-if="bankResult?.source" class="text-xs text-slate-500">
-                    Fonte: {{ bankResult.source }} · Data referencia: {{ bankResult.date }}
+                    Fonte: {{ bankResult.source }} · Data referência: {{ bankResult.date }}
                 </p>
 
                 <div v-if="bankRows.length" class="grid gap-4 lg:grid-cols-3">
                     <div
                         class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-3"
                     >
-                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Distribuicao de saldo</h3>
+                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Distribuição de saldo</h3>
                         <p class="mb-3 text-xs text-slate-500">
-                            Colaboradores por faixa de saldo (HH:mm, mesmo conceito do espelho RHID) na data de referencia.
+                            Colaboradores por faixa de saldo (HH:mm, mesmo conceito do espelho RHID) na data de referência.
                             <span class="font-medium text-talents-800"> Clique numa fatia</span> para ver a lista.
                         </p>
                         <apexchart
@@ -3269,12 +3269,12 @@ const justDeptBarChart = computed(() => {
                             :options="bankDonutChart.options"
                             :series="bankDonutChart.series"
                         />
-                        <p v-else class="text-sm text-slate-500">Sem dados para o grafico.</p>
+                        <p v-else class="text-sm text-slate-500">Sem dados para o gráfico.</p>
                     </div>
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Media de saldo por departamento</h3>
+                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Média de saldo por departamento</h3>
                         <p class="mb-3 text-xs text-slate-500">
-                            Apenas linhas com saldo numerico; ate 12 departamentos + Outros.
+                            Apenas linhas com saldo numérico; até 12 departamentos + Outros.
                             <span class="font-medium text-talents-800"> Clique numa barra</span> para listar os colaboradores.
                         </p>
                         <apexchart
@@ -3285,7 +3285,7 @@ const justDeptBarChart = computed(() => {
                             :series="bankDeptAvgChart.series"
                         />
                         <p v-else class="text-sm text-slate-500">
-                            Nenhum saldo numerico para agrupar por departamento.
+                            Nenhum saldo numérico para agrupar por departamento.
                         </p>
                     </div>
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -3373,11 +3373,11 @@ const justDeptBarChart = computed(() => {
 
             <div v-show="tab === 'justifications'" class="space-y-4">
                 <p class="text-sm text-slate-600">
-                    Liste justificativas do periodo, com graficos e tabela. Escolha datas e, se quiser, refine por
+                    Liste justificativas do período, com gráficos e tabela. Escolha datas e, se quiser, refine por
                     departamento, cargo ou colaborador.
                 </p>
                 <p v-if="supportMode" class="text-xs text-slate-500">
-                    POST justification.svc/list · ini/fim YYYYMMDD. Erro de referencia nula: informe empresa (companies)
+                    POST justification.svc/list · ini/fim YYYYMMDD. Erro de referência nula: informe empresa (companies)
                     ou RHID_JUSTIFICATION_LIST_DEFAULT_COMPANY_ID no servidor.
                 </p>
                 <div class="grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -3398,7 +3398,7 @@ const justDeptBarChart = computed(() => {
                         />
                     </div>
                     <div>
-                        <InputLabel value="Registros por pagina (maxSize)" />
+                        <InputLabel value="Registros por página (maxSize)" />
                         <input
                             v-model.number="justMaxSize"
                             type="number"
@@ -3409,7 +3409,7 @@ const justDeptBarChart = computed(() => {
                     </div>
                     <div class="flex items-end gap-2 pb-0.5">
                         <p class="text-xs text-slate-500">
-                            Pagina {{ justPage + 1
+                            Página {{ justPage + 1
                             }}<span v-if="justRecordsTotal != null"> · Total {{ justRecordsTotal }} registro(s)</span>
                         </p>
                     </div>
@@ -3432,7 +3432,7 @@ const justDeptBarChart = computed(() => {
                         />
                     </div>
                     <div class="sm:col-span-2">
-                        <InputLabel value="Departamentos (Ctrl+clique para varios)" />
+                        <InputLabel value="Departamentos (Ctrl+clique para vários)" />
                         <select
                             v-model="justMultiDepartments"
                             multiple
@@ -3448,7 +3448,7 @@ const justDeptBarChart = computed(() => {
                         </select>
                     </div>
                     <div class="sm:col-span-2">
-                        <InputLabel value="Cargos (Ctrl+clique para varios)" />
+                        <InputLabel value="Cargos (Ctrl+clique para vários)" />
                         <select
                             v-model="justMultiPersonroles"
                             multiple
@@ -3464,7 +3464,7 @@ const justDeptBarChart = computed(() => {
                         </select>
                     </div>
                     <div class="sm:col-span-2">
-                        <InputLabel value="Colaboradores (Ctrl+clique para varios)" />
+                        <InputLabel value="Colaboradores (Ctrl+clique para vários)" />
                         <select
                             v-model="justMultiPeople"
                             multiple
@@ -3480,7 +3480,7 @@ const justDeptBarChart = computed(() => {
                         </select>
                     </div>
                     <div v-if="supportMode">
-                        <InputLabel value="Horarios / turnos (IDs)" />
+                        <InputLabel value="Horários / turnos (IDs)" />
                         <input
                             v-model="justFilterShifts"
                             type="text"
@@ -3501,22 +3501,22 @@ const justDeptBarChart = computed(() => {
                 <div class="flex flex-wrap gap-2">
                     <PrimaryButton type="button" :disabled="loading" @click="loadJustifications">Listar justificativas</PrimaryButton>
                     <SecondaryButton type="button" :disabled="loading || !canJustPrevPage" @click="justGoPrev">
-                        Pagina anterior
+                        Página anterior
                     </SecondaryButton>
                     <SecondaryButton type="button" :disabled="!canJustNextPage" @click="justGoNext">
-                        Proxima pagina
+                        Próxima página
                     </SecondaryButton>
                 </div>
                 <p class="text-xs text-slate-500">
-                    Ao listar, o periodo completo e carregado (ate {{ JUST_ANALYTICS_MAX_PAGES }} paginas no RHID); a tabela abaixo
-                    pagina localmente. Graficos e setor usam o mesmo conjunto; cadastro de pessoas limitado a 500 na consulta.
+                    Ao listar, o período completo é carregado (até {{ JUST_ANALYTICS_MAX_PAGES }} páginas no RHID); a tabela abaixo
+                    pagina localmente. Gráficos e setor usam o mesmo conjunto; cadastro de pessoas limitado a 500 na consulta.
                 </p>
                 <div
                     v-if="justAnalyticsRows.length"
                     class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
                 >
                     <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                        <p class="text-xs font-medium uppercase text-slate-500">Total no periodo</p>
+                        <p class="text-xs font-medium uppercase text-slate-500">Total no período</p>
                         <p class="mt-1 text-2xl font-semibold text-slate-900">{{ justAnalyticsMeta.mergedTotal }}</p>
                         <p
                             v-if="supportMode && justAnalyticsMeta.recordsTotalFromApi != null"
@@ -3534,7 +3534,7 @@ const justDeptBarChart = computed(() => {
                         v-if="justAnalyticsMeta.truncated"
                         class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:col-span-2 lg:col-span-2"
                     >
-                        Limite de paginas atingido — estreite o periodo ou os filtros para carregar tudo.
+                        Limite de páginas atingido — estreite o período ou os filtros para carregar tudo.
                     </div>
                 </div>
                 <div v-if="justAnalyticsRows.length" class="grid gap-4 lg:grid-cols-2">
@@ -3568,7 +3568,7 @@ const justDeptBarChart = computed(() => {
                     </div>
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                         <h3 class="mb-1 text-sm font-semibold text-slate-800">Top colaboradores</h3>
-                        <p class="mb-3 text-xs text-slate-500">Mais justificativas no periodo ({{ JUST_TOP_COLLABORATORS }}).</p>
+                        <p class="mb-3 text-xs text-slate-500">Mais justificativas no período ({{ JUST_TOP_COLLABORATORS }}).</p>
                         <apexchart
                             v-if="!justTopPersonBarChart.empty"
                             type="bar"
@@ -3581,7 +3581,7 @@ const justDeptBarChart = computed(() => {
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                         <h3 class="mb-1 text-sm font-semibold text-slate-800">Por setor (departamento)</h3>
                         <p class="mb-3 text-xs text-slate-500">
-                            Ate {{ JUST_MAX_DEPT_CHART }} setores + Outros. Clique na barra para listar.
+                            Até {{ JUST_MAX_DEPT_CHART }} setores + Outros. Clique na barra para listar.
                         </p>
                         <apexchart
                             v-if="!justDeptBarChart.empty"
@@ -3600,10 +3600,10 @@ const justDeptBarChart = computed(() => {
                                 <th class="whitespace-nowrap p-2">ID</th>
                                 <th class="whitespace-nowrap p-2">PIS</th>
                                 <th class="whitespace-nowrap p-2">Nome</th>
-                                <th class="whitespace-nowrap p-2">Inicio</th>
+                                <th class="whitespace-nowrap p-2">Início</th>
                                 <th class="whitespace-nowrap p-2">Fim</th>
                                 <th class="whitespace-nowrap p-2">Justificativa</th>
-                                <th class="min-w-[12rem] p-2">Descricao</th>
+                                <th class="min-w-[12rem] p-2">Descrição</th>
                                 <th class="whitespace-nowrap p-2">Status</th>
                                 <th class="whitespace-nowrap p-2">Tipo</th>
                             </tr>
@@ -3639,7 +3639,7 @@ const justDeptBarChart = computed(() => {
                     </table>
                 </div>
                 <p v-else-if="justListLoaded && !justAnalyticsRows.length && !loading" class="text-sm text-slate-500">
-                    Nenhuma justificativa neste periodo ou filtros.
+                    Nenhuma justificativa neste período ou filtros.
                 </p>
                 <RhidResponsePanel
                     v-if="supportMode && justListLoaded && justResult && tab === 'justifications'"
@@ -3662,7 +3662,7 @@ const justDeptBarChart = computed(() => {
                         <p class="font-medium">
                             <template v-if="espelhoPolling">Gerando espelho no RHID…</template>
                             <template v-else-if="espelhoBatchPhase === 'resolving' || espelhoBatchPhase === 'starting'"
-                                >Preparando importacao…</template
+                                >Preparando importação…</template
                             >
                             <template v-else-if="espelhoBatchPhase === 'polling'">Importando PDFs em segundo plano…</template>
                             <template v-else>Processando…</template>
@@ -3684,13 +3684,13 @@ const justDeptBarChart = computed(() => {
                     </div>
                 </div>
                 <p class="text-sm leading-relaxed text-slate-600">
-                    Gere o espelho de ponto no periodo escolhido, baixe o PDF ou importe para o Talents. A leitura das
-                    marcacoes continua em segundo plano apos o PDF ser salvo. Periodo de ate 31 dias.
+                    Gere o espelho de ponto no período escolhido, baixe o PDF ou importe para o Talents. A leitura das
+                    marcações continua em segundo plano após o PDF ser salvo. Período de até 31 dias.
                 </p>
 
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
-                        <InputLabel value="Status dos funcionarios" />
+                        <InputLabel value="Status dos funcionários" />
                         <select v-model="espelhoStatus" class="mt-1 w-full rounded-md border border-slate-300 text-sm">
                             <option value="">Todos</option>
                             <option value="1">Ativos</option>
@@ -3715,7 +3715,7 @@ const justDeptBarChart = computed(() => {
                     </div>
                 </div>
                 <div>
-                    <InputLabel value="Colunas do relatorio" />
+                    <InputLabel value="Colunas do relatório" />
                     <div class="mt-2 flex flex-wrap gap-3">
                         <label
                             v-for="opt in ESPELHO_FIELD_OPTIONS"
@@ -3775,7 +3775,7 @@ const justDeptBarChart = computed(() => {
                             />
                         </div>
                         <div>
-                            <InputLabel value="Horarios (turnos)" />
+                            <InputLabel value="Horários (turnos)" />
                             <input
                                 v-model="espelhoFilterShifts"
                                 type="text"
@@ -3785,7 +3785,7 @@ const justDeptBarChart = computed(() => {
                     </div>
                 </details>
                 <div class="max-w-md">
-                    <InputLabel value="Colaboradores (importacao individual ou lista)" />
+                    <InputLabel value="Colaboradores (importação individual ou lista)" />
                     <input
                         v-model="espelhoVinculoPersonId"
                         type="text"
@@ -3793,7 +3793,7 @@ const justDeptBarChart = computed(() => {
                         placeholder="Ex.: 12345 ou 10, 20, 30"
                     />
                     <p class="mt-1 text-xs text-slate-500">
-                        Um ID para importar um unico espelho. Varias IDs separadas por virgula, ou deixe em branco e use
+                        Um ID para importar um único espelho. Várias IDs separadas por vírgula, ou deixe em branco e use
                         <strong class="font-medium">Importar todos</strong> para todos os colaboradores ativos.
                     </p>
                 </div>
@@ -3836,7 +3836,7 @@ const justDeptBarChart = computed(() => {
                 </details>
 
                 <div v-if="espelhoLastImport" class="rounded-md border border-slate-200 bg-white p-3 text-sm shadow-sm">
-                    <h3 class="font-medium text-slate-800">Ultima importacao</h3>
+                    <h3 class="font-medium text-slate-800">Última importação</h3>
                     <p class="mt-1 text-slate-600">
                         Registro #{{ espelhoLastImport.id }} — colaborador
                         <code class="rounded bg-slate-100 px-1">{{ espelhoLastImport.id_person }}</code>
@@ -3971,7 +3971,7 @@ const justDeptBarChart = computed(() => {
             <div v-show="tab === 'punches' && punchesSubTab === 'export'" class="space-y-3">
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
-                        <InputLabel value="Formato de saida" />
+                        <InputLabel value="Formato de saída" />
                         <select v-model="reportFormato" class="mt-1 w-full rounded-md border border-slate-300 text-sm">
                             <option value="PDF">PDF</option>
                             <option value="PDF2">PDF2</option>
@@ -3980,10 +3980,10 @@ const justDeptBarChart = computed(() => {
                         </select>
                     </div>
                     <div>
-                        <InputLabel value="Tipo de relatorio" />
+                        <InputLabel value="Tipo de relatório" />
                         <select v-model="reportNome" class="mt-1 w-full rounded-md border border-slate-300 text-sm">
                             <option value="espelho">Espelho de ponto</option>
-                            <option value="cartao">Cartao de ponto</option>
+                            <option value="cartao">Cartão de ponto</option>
                         </select>
                     </div>
                     <div>
@@ -4004,7 +4004,7 @@ const justDeptBarChart = computed(() => {
                     </div>
                 </div>
                 <details v-if="supportMode" class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
-                    <summary class="cursor-pointer font-medium text-slate-800">JSON avancado (opcional)</summary>
+                    <summary class="cursor-pointer font-medium text-slate-800">JSON avançado (opcional)</summary>
                     <textarea
                         v-model="reportJsonOverride"
                         class="mt-2 w-full rounded-md border border-slate-300 font-mono text-xs"
@@ -4013,7 +4013,7 @@ const justDeptBarChart = computed(() => {
                     />
                 </details>
                 <div class="flex flex-wrap gap-2">
-                    <PrimaryButton type="button" :disabled="loading" @click="startReport">Iniciar relatorio</PrimaryButton>
+                    <PrimaryButton type="button" :disabled="loading" @click="startReport">Iniciar relatório</PrimaryButton>
                     <PrimaryButton type="button" :disabled="loading || !reportGuid" @click="pollReportStatus">
                         Atualizar status
                     </PrimaryButton>
@@ -4024,7 +4024,7 @@ const justDeptBarChart = computed(() => {
                     <span v-if="reportPercent !== null" class="ml-2">Percentual: {{ reportPercent }}%</span>
                 </p>
                 <p v-else-if="reportGuid" class="text-sm text-slate-600">
-                    Relatorio em processamento<span v-if="reportPercent !== null"> ({{ reportPercent }}%)</span>.
+                    Relatório em processamento<span v-if="reportPercent !== null"> ({{ reportPercent }}%)</span>.
                 </p>
                 <RhidResponsePanel
                     v-if="supportMode && reportPanelData"
@@ -4035,7 +4035,7 @@ const justDeptBarChart = computed(() => {
 
             <div v-show="tab === 'collaborators'" class="space-y-3">
                 <p class="text-sm text-slate-600">
-                    Lista os colaboradores cadastrados no RHID (ate 500 por consulta).
+                    Lista os colaboradores cadastrados no RHID (até 500 por consulta).
                 </p>
                 <PrimaryButton type="button" :disabled="loading" @click="loadCollaborators">Carregar colaboradores</PrimaryButton>
                 <div v-if="peopleRows.length" class="overflow-x-auto rounded border border-slate-200">

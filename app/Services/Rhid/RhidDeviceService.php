@@ -143,7 +143,7 @@ class RhidDeviceService
 
         $json = $response->json();
         if (! is_array($json)) {
-            throw new RhidApiException('Resposta RHID invalida (nao JSON).', $response->status());
+            throw new RhidApiException('Resposta RHID inválida (não JSON).', $response->status());
         }
 
         return $json;

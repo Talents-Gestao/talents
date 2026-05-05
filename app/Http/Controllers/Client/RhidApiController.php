@@ -65,7 +65,7 @@ class RhidApiController extends Controller
             report($e);
 
             return response()->json([
-                'message' => 'Falha na integracao com o RHID. Verifique os logs do servidor ou tente novamente.',
+                'message' => 'Falha na integração com o RHID. Verifique os logs do servidor ou tente novamente.',
                 'debug_message' => config('app.debug') ? $e->getMessage() : null,
                 'debug_type' => config('app.debug') ? $e::class : null,
             ], 500, [], $jsonFlags);
@@ -850,7 +850,7 @@ class RhidApiController extends Controller
 
         $disk = Storage::disk('local');
         if (! $disk->exists($row->storage_path)) {
-            return response()->json(['message' => 'Arquivo nao encontrado.'], 404);
+            return response()->json(['message' => 'Arquivo não encontrado.'], 404);
         }
 
         $name = basename($row->storage_path);

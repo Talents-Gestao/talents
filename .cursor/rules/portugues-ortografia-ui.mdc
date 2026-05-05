@@ -1,0 +1,12 @@
+---
+description: Textos de interface em português (Brasil) com ortografia correta
+globs: "**/*.{vue,php,blade.php}"
+alwaysApply: true
+---
+
+# Cópia em português (PT-BR)
+
+Em strings visíveis ao utilizador, comentários de produto e mensagens de erro:
+
+- Use acentuação e cedilha corretas (ex.: não, são, configuração, período, marcações, horário/horários, importação, relatório, integração, descrição, início, funcionários, páginas, válidas, gráficos, tolerância, última/últimas, atualização, mês, visão, referência, seleção, coleção, vírgula, saída, útil/úteis, também, até quando for preposição, é quando for verbo). **Substantivo** «análise» leva acento; **imperativo/indicativo** de *analisar* («analise», «analisar») não acenta o *i*.
+- Não altere nomes de propriedades de API, chaves JSON, rotas, nem identificadores de código só para “acentuar”; só o texto apresentado ao utilizador.

@@ -75,7 +75,7 @@ const testConnection = async () => {
         testOk.value = data.ok === true;
         testMessage.value = data.message || (data.ok ? 'OK' : 'Falha');
         if (data.needs_domain && data.domains?.length) {
-            testMessage.value += ' — Escolha um dominio e salve nas configuracoes.';
+            testMessage.value += ' — Escolha um domínio e salve nas configurações.';
         }
     } catch (e) {
         testOk.value = false;
@@ -99,12 +99,12 @@ onMounted(() => {
 </script>
 
 <template>
-    <Head title="RHID — Configuracao" />
+    <Head title="RHID — Configuração" />
 
     <ClientLayout>
         <template #header>
             <div class="flex flex-wrap items-center justify-between gap-4">
-                <h2 class="text-xl font-semibold leading-tight text-talents-900">Integracao RHID (Control iD)</h2>
+                <h2 class="text-xl font-semibold leading-tight text-talents-900">Integração RHID (Control iD)</h2>
                 <Link
                     :href="route('client.rhid.compliance.index')"
                     class="text-sm font-medium text-talents-700 hover:underline"
@@ -119,7 +119,7 @@ onMounted(() => {
                 <p class="text-sm text-slate-600">
                     Credenciais da API
                     <code class="rounded bg-slate-100 px-1 text-xs">https://www.rhid.com.br/v2</code>
-                    . O token e renovado automaticamente (cache ~3,5h).
+                    . O token é renovado automaticamente (cache ~3,5h).
                 </p>
 
                 <form class="mt-6 space-y-4" @submit.prevent="submit">
@@ -155,11 +155,11 @@ onMounted(() => {
                             autocomplete="new-password"
                             placeholder="Deixe em branco para manter a atual"
                         />
-                        <p v-if="settings.has_password" class="mt-1 text-xs text-slate-500">Senha ja cadastrada.</p>
+                        <p v-if="settings.has_password" class="mt-1 text-xs text-slate-500">Senha já cadastrada.</p>
                         <InputError class="mt-1" :message="form.errors.rhid_password" />
                     </div>
                     <div>
-                        <InputLabel for="rhid_domain" value="Dominio (multi-cliente)" />
+                        <InputLabel for="rhid_domain" value="Domínio (multi-cliente)" />
                         <TextInput
                             id="rhid_domain"
                             v-model="form.rhid_domain"
@@ -178,7 +178,7 @@ onMounted(() => {
                             :disabled="testing"
                             @click="testConnection"
                         >
-                            {{ testing ? 'Testando...' : 'Testar conexao' }}
+                            {{ testing ? 'Testando...' : 'Testar conexão' }}
                         </button>
                     </div>
                     <p
@@ -195,13 +195,13 @@ onMounted(() => {
                 v-if="configured"
                 class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
             >
-                <h3 class="text-lg font-semibold text-slate-900">Horarios da empresa (aderência)</h3>
+                <h3 class="text-lg font-semibold text-slate-900">Horários da empresa (aderência)</h3>
                 <p class="mt-2 text-sm text-slate-600">
-                    Defina no Talents os horarios de referencia da jornada e intervalos. Esses dados ficam na plataforma e
-                    sao usados na analise de aderência (espelho importado vs escala). Eles nao sao enviados ao RHID.
+                    Defina no Talents os horários de referência da jornada e intervalos. Esses dados ficam na plataforma e
+                    são usados na análise de aderência (espelho importado vs escala). Eles não são enviados ao RHID.
                 </p>
                 <p v-if="scheduleErr" class="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-800">{{ scheduleErr }}</p>
-                <p v-if="scheduleLoading" class="mt-3 text-sm text-slate-500">Carregando configuracao...</p>
+                <p v-if="scheduleLoading" class="mt-3 text-sm text-slate-500">Carregando configuração...</p>
                 <div v-else class="mt-6 space-y-4">
                     <div class="flex flex-wrap gap-6">
                         <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
@@ -210,7 +210,7 @@ onMounted(() => {
                                 type="checkbox"
                                 class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
                             />
-                            Segundo horario de trabalho no mesmo dia
+                            Segundo horário de trabalho no mesmo dia
                         </label>
                         <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
                             <input
@@ -218,12 +218,12 @@ onMounted(() => {
                                 type="checkbox"
                                 class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
                             />
-                            Segundo intervalo de almoco
+                            Segundo intervalo de almoço
                         </label>
                     </div>
 
                     <div class="max-w-xs">
-                        <InputLabel value="Tolerancia (minutos)" />
+                        <InputLabel value="Tolerância (minutos)" />
                         <input
                             v-model.number="scheduleForm.tolerancia_minutos"
                             type="number"
@@ -232,17 +232,17 @@ onMounted(() => {
                             class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
                         />
                         <p class="mt-1 text-xs text-slate-500">
-                            Usada na analise de aderência (atrasos em torno dos horarios de saida/volta do almoco e
-                            duracao do intervalo).
+                            Usada na análise de aderência (atrasos em torno dos horários de saída/volta do almoço e
+                            duração do intervalo).
                         </p>
                     </div>
 
                     <div class="max-w-2xl rounded-lg border border-slate-200 bg-slate-50/80 p-4">
-                        <h4 class="text-sm font-semibold text-slate-800">Intervalo de almoco por colaborador (lote)</h4>
+                        <h4 class="text-sm font-semibold text-slate-800">Intervalo de almoço por colaborador (lote)</h4>
                         <p class="mt-1 text-xs text-slate-600">
-                            Escolha <span class="font-medium">quem participa</span> do horario (por nome). Exige
-                            <span class="font-medium">Segundo intervalo de almoco</span> ativo e horarios &quot;Inicio 2º /
-                            Fim 2º&quot; nos dias uteis quando for aplicar o 2º intervalo.
+                            Escolha <span class="font-medium">quem participa</span> do horário (por nome). Exige
+                            <span class="font-medium">Segundo intervalo de almoço</span> ativo e horários &quot;Início 2º /
+                            Fim 2º&quot; nos dias úteis quando for aplicar o 2º intervalo.
                         </p>
                         <div class="mt-4 space-y-3 rounded-md border border-slate-200 bg-white p-3">
                             <p class="text-xs font-medium text-slate-700">O que aplicar aos selecionados</p>
@@ -253,10 +253,10 @@ onMounted(() => {
                                     class="mt-0.5 rounded border-slate-300 text-talents-700 focus:ring-talents-600"
                                 />
                                 <span>
-                                    <span class="font-medium">Segundo intervalo de almoco</span>
-                                    (comparar batidas com Inicio 2º / Fim 2º). Desmarque para voltar todos os
-                                    selecionados ao <span class="font-medium">primeiro intervalo</span> (saida/volta
-                                    do almoco).
+                                    <span class="font-medium">Segundo intervalo de almoço</span>
+                                    (comparar batidas com Início 2º / Fim 2º). Desmarque para voltar todos os
+                                    selecionados ao <span class="font-medium">primeiro intervalo</span> (saída/volta
+                                    do almoço).
                                 </span>
                             </label>
                         </div>
@@ -279,8 +279,8 @@ onMounted(() => {
                                 v-if="schedulePrefBatchSecond && !scheduleForm.segundo_almoco"
                                 class="mt-3 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900"
                             >
-                                Ative tambem <span class="font-medium">Segundo intervalo de almoco</span> acima para
-                                que o 2º horario exista na escala.
+                                Ative também <span class="font-medium">Segundo intervalo de almoço</span> acima para
+                                que o 2º horário exista na escala.
                             </p>
                             <div class="mt-3">
                                 <InputLabel value="Filtrar por nome" />
@@ -304,7 +304,7 @@ onMounted(() => {
                                     class="text-xs font-medium text-slate-600 underline"
                                     @click="clearSchedulePrefPicks"
                                 >
-                                    Limpar selecao
+                                    Limpar seleção
                                 </button>
                                 <span class="text-xs text-slate-500">
                                     {{ schedulePrefBatchPicked.length }} selecionado(s) ·
@@ -334,12 +334,12 @@ onMounted(() => {
                             </div>
                         </template>
                         <div class="mt-4">
-                            <InputLabel value="Opcional: IDs RHID (colecao com a selecao acima)" />
+                            <InputLabel value="Opcional: IDs RHID (coleção com a seleção acima)" />
                             <textarea
                                 v-model="schedulePrefBatchIds"
                                 rows="2"
                                 class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-xs shadow-sm"
-                                placeholder="Um ou mais IDs extra, separados por virgula ou linha"
+                                placeholder="Um ou mais IDs extra, separados por vírgula ou linha"
                             />
                         </div>
                         <p v-if="schedulePrefBatchMsg" class="mt-3 text-xs text-emerald-800">{{ schedulePrefBatchMsg }}</p>
@@ -383,7 +383,7 @@ onMounted(() => {
                                     />
                                 </div>
                                 <div>
-                                    <label class="text-xs font-medium text-slate-600">Saida para almoco</label>
+                                    <label class="text-xs font-medium text-slate-600">Saída para almoço</label>
                                     <input
                                         :value="scheduleForm.dias[day.key].saida_almoco || ''"
                                         type="time"
@@ -392,7 +392,7 @@ onMounted(() => {
                                     />
                                 </div>
                                 <div>
-                                    <label class="text-xs font-medium text-slate-600">Volta do almoco</label>
+                                    <label class="text-xs font-medium text-slate-600">Volta do almoço</label>
                                     <input
                                         :value="scheduleForm.dias[day.key].volta_almoco || ''"
                                         type="time"
@@ -401,7 +401,7 @@ onMounted(() => {
                                     />
                                 </div>
                                 <div>
-                                    <label class="text-xs font-medium text-slate-600">Saida</label>
+                                    <label class="text-xs font-medium text-slate-600">Saída</label>
                                     <input
                                         :value="scheduleForm.dias[day.key].saida || ''"
                                         type="time"
@@ -415,7 +415,7 @@ onMounted(() => {
                                 class="mt-3 grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-2"
                             >
                                 <div>
-                                    <label class="text-xs font-medium text-slate-600">Inicio 2º almoco</label>
+                                    <label class="text-xs font-medium text-slate-600">Início 2º almoço</label>
                                     <input
                                         :value="scheduleForm.dias[day.key].almoco2_inicio || ''"
                                         type="time"
@@ -424,7 +424,7 @@ onMounted(() => {
                                     />
                                 </div>
                                 <div>
-                                    <label class="text-xs font-medium text-slate-600">Fim 2º almoco</label>
+                                    <label class="text-xs font-medium text-slate-600">Fim 2º almoço</label>
                                     <input
                                         :value="scheduleForm.dias[day.key].almoco2_fim || ''"
                                         type="time"
@@ -449,7 +449,7 @@ onMounted(() => {
                                     />
                                 </div>
                                 <div>
-                                    <label class="text-xs font-medium text-slate-600">Saida 2º trabalho</label>
+                                    <label class="text-xs font-medium text-slate-600">Saída 2º trabalho</label>
                                     <input
                                         :value="scheduleForm.dias[day.key].trabalho2_saida || ''"
                                         type="time"
@@ -475,7 +475,7 @@ onMounted(() => {
             </div>
 
             <p v-else class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                Configure e salve as credenciais RHID acima para editar horarios da empresa.
+                Configure e salve as credenciais RHID acima para editar horários da empresa.
             </p>
         </div>
     </ClientLayout>

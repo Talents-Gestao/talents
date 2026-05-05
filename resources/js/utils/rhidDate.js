@@ -122,7 +122,7 @@ export function formatRhidDotNetDate(val) {
 
 /**
  * Saldo de banco de horas: a API envia minutos (inteiro, pode ser negativo).
- * Exibicao alinhada ao espelho RHID (formato HH:mm — horas totais, nao relogio 24h).
+ * Exibição alinhada ao espelho RHID (formato HH:mm — horas totais, não relógio 24h).
  * @param {unknown} totalMinutes
  * @returns {string} ex.: "-9:53", "3:54", "-51:33", "0:00"
  */
