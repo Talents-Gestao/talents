@@ -14,6 +14,9 @@ class EspelhoScheduleAdherenceService
 
     public const TOP_RANK = 10;
 
+    /** Destaques na API/UI: colaboradores com melhor / pior aderência às marcações esperadas (entrada + almoço). */
+    public const HIGHLIGHT_RANK = 5;
+
     /** ISO-8601: 1 = seg … 7 = dom — alinhado a PunchScheduleSettingsService::DAY_KEYS */
     private const DAY_KEY_BY_ISO = [
         1 => 'seg',
@@ -137,6 +140,38 @@ class EspelhoScheduleAdherenceService
         });
         $rankingAlmoco = array_slice($rankingAlmoco, 0, self::TOP_RANK);
 
+        $highlightsPool = array_values(array_filter($byPerson, fn (array $p): bool => $p['dias_analisados'] > 0));
+        $highlightRows = array_map(fn (array $p): array => $this->buildAdherenceHighlightRow($p), $highlightsPool);
+
+        $rankingPiorAderencia = $highlightRows;
+        usort($rankingPiorAderencia, function (array $a, array $b): int {
+            if ($a['total_minutos_penalidade'] !== $b['total_minutos_penalidade']) {
+                return $b['total_minutos_penalidade'] <=> $a['total_minutos_penalidade'];
+            }
+            if ($a['dias_com_infracao_almoco'] !== $b['dias_com_infracao_almoco']) {
+                return $b['dias_com_infracao_almoco'] <=> $a['dias_com_infracao_almoco'];
+            }
+
+            return strcasecmp($a['nome'], $b['nome']);
+        });
+        $rankingPiorAderencia = array_slice($rankingPiorAderencia, 0, self::HIGHLIGHT_RANK);
+
+        $rankingMelhorAderencia = $highlightRows;
+        usort($rankingMelhorAderencia, function (array $a, array $b): int {
+            if ($a['total_minutos_penalidade'] !== $b['total_minutos_penalidade']) {
+                return $a['total_minutos_penalidade'] <=> $b['total_minutos_penalidade'];
+            }
+            if ($a['dias_com_infracao_almoco'] !== $b['dias_com_infracao_almoco']) {
+                return $a['dias_com_infracao_almoco'] <=> $b['dias_com_infracao_almoco'];
+            }
+            if ($a['dias_analisados'] !== $b['dias_analisados']) {
+                return $b['dias_analisados'] <=> $a['dias_analisados'];
+            }
+
+            return strcasecmp($a['nome'], $b['nome']);
+        });
+        $rankingMelhorAderencia = array_slice($rankingMelhorAderencia, 0, self::HIGHLIGHT_RANK);
+
         // Soma por colaborador (vários × mesmo dia civil); também contamos dias civis distintos com análise OK.
         $diasAnalisadosTotal = array_sum(array_column($byPerson, 'dias_analisados'));
         $diasCalendarioDistintos = count($datasCalendarioComAnalise);
@@ -152,6 +187,30 @@ class EspelhoScheduleAdherenceService
             ],
             'ranking_atrasos_entrada' => $rankingAtrasos,
             'ranking_infracoes_almoco' => $rankingAlmoco,
+            'ranking_pior_aderencia_marcacoes' => $rankingPiorAderencia,
+            'ranking_melhor_aderencia_marcacoes' => $rankingMelhorAderencia,
+        ];
+    }
+
+    /**
+     * Linha agregada para destaque de aderência (entrada + minutos de atraso no almoço; dias com qualquer infração de almoço).
+     *
+     * @param  array<string, mixed>  $p  Retorno de emptyPersonAgg + campos preenchidos
+     * @return array<string, mixed>
+     */
+    private function buildAdherenceHighlightRow(array $p): array
+    {
+        $alm = (int) ($p['total_minutos_atraso_saida_almoco'] + $p['total_minutos_atraso_volta_almoco']);
+        $ent = (int) $p['total_atraso_entrada_minutos'];
+
+        return [
+            'id_person' => $p['id_person'],
+            'nome' => $p['nome'],
+            'dias_analisados' => (int) $p['dias_analisados'],
+            'dias_com_infracao_almoco' => (int) $p['dias_com_infracao_almoco'],
+            'total_atraso_entrada_minutos' => $ent,
+            'total_minutos_atraso_almoco' => $alm,
+            'total_minutos_penalidade' => $ent + $alm,
         ];
     }
 

@@ -1392,6 +1392,19 @@ const openEspelhoAdherenceMarksModal = async (row) => {
 /** Rankings e gráficos: até 10 colaboradores por painel (alinhado ao backend TOP_RANK). */
 const ESPELHO_ADHERENCE_CHART_TOP = 10;
 
+/** Destaques melhor/pior aderência às marcações esperadas (backend HIGHLIGHT_RANK). */
+const ESPELHO_ADHERENCE_HIGHLIGHT_N = 5;
+
+const espelhoAdherenceRankingPiorMarcacoes = computed(() => {
+    const r = espelhoAdherenceResult.value?.ranking_pior_aderencia_marcacoes;
+    return Array.isArray(r) ? r : [];
+});
+
+const espelhoAdherenceRankingMelhorMarcacoes = computed(() => {
+    const r = espelhoAdherenceResult.value?.ranking_melhor_aderencia_marcacoes;
+    return Array.isArray(r) ? r : [];
+});
+
 const truncateAdherenceChartName = (name) => {
     const n = String(name ?? '—');
     return n.length > 36 ? `${n.slice(0, 34)}…` : n;
@@ -3089,6 +3102,88 @@ const justDeptBarChart = computed(() => {
                                         :series="espelhoAdherenceChartAlmoco.series"
                                     />
                                     <p v-else class="text-sm text-slate-500">Sem dados para o gráfico.</p>
+                                </div>
+                            </div>
+                            <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                                <div class="rounded-xl border border-rose-200 bg-rose-50/50 p-4 shadow-sm">
+                                    <h4 class="mb-1 text-sm font-semibold text-rose-950">
+                                        Precisam de atenção (marcações vs. escala)
+                                    </h4>
+                                    <p class="mb-3 text-xs text-rose-900/85">
+                                        Até {{ ESPELHO_ADHERENCE_HIGHLIGHT_N }} colaboradores com maior soma de minutos de
+                                        atraso na entrada e no almoço no período. Clique no nome para ver as marcações no
+                                        espelho.
+                                    </p>
+                                    <ol
+                                        v-if="espelhoAdherenceRankingPiorMarcacoes.length"
+                                        class="list-decimal space-y-2.5 pl-4 text-sm text-slate-900"
+                                    >
+                                        <li
+                                            v-for="row in espelhoAdherenceRankingPiorMarcacoes"
+                                            :key="'adh-pior-' + row.id_person"
+                                            class="marker:font-medium"
+                                        >
+                                            <button
+                                                type="button"
+                                                class="text-left font-medium text-talents-800 hover:underline"
+                                                @click="openEspelhoAdherenceMarksModal(row)"
+                                            >
+                                                {{ row.nome }}
+                                            </button>
+                                            <span class="mt-0.5 block text-xs text-slate-600">
+                                                {{ row.total_minutos_penalidade }} min no período (entrada:
+                                                {{ row.total_atraso_entrada_minutos }} · almoço:
+                                                {{ row.total_minutos_atraso_almoco }}) ·
+                                                {{ row.dias_analisados }}
+                                                dia(s) analisável(is)                                                <template v-if="row.dias_com_infracao_almoco">
+                                                    · {{ row.dias_com_infracao_almoco }} dia(s) c/ infração de almoço
+                                                </template>
+                                            </span>
+                                        </li>
+                                    </ol>
+                                    <p v-else class="text-sm text-slate-500">
+                                        Nenhum colaborador com dias analisáveis no período.
+                                    </p>
+                                </div>
+                                <div class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm">
+                                    <h4 class="mb-1 text-sm font-semibold text-emerald-950">
+                                        Seguem a escala com mais aderência
+                                    </h4>
+                                    <p class="mb-3 text-xs text-emerald-900/85">
+                                        Até {{ ESPELHO_ADHERENCE_HIGHLIGHT_N }} colaboradores com menor soma de minutos de
+                                        atraso (entrada + almoço). Em empate, favorece quem tem mais dias analisáveis no
+                                        período.
+                                    </p>
+                                    <ol
+                                        v-if="espelhoAdherenceRankingMelhorMarcacoes.length"
+                                        class="list-decimal space-y-2.5 pl-4 text-sm text-slate-900"
+                                    >
+                                        <li
+                                            v-for="row in espelhoAdherenceRankingMelhorMarcacoes"
+                                            :key="'adh-melhor-' + row.id_person"
+                                            class="marker:font-medium"
+                                        >
+                                            <button
+                                                type="button"
+                                                class="text-left font-medium text-talents-800 hover:underline"
+                                                @click="openEspelhoAdherenceMarksModal(row)"
+                                            >
+                                                {{ row.nome }}
+                                            </button>
+                                            <span class="mt-0.5 block text-xs text-slate-600">
+                                                {{ row.total_minutos_penalidade }} min no período (entrada:
+                                                {{ row.total_atraso_entrada_minutos }} · almoço:
+                                                {{ row.total_minutos_atraso_almoco }}) ·
+                                                {{ row.dias_analisados }}
+                                                dia(s) analisável(is)                                                <template v-if="row.dias_com_infracao_almoco">
+                                                    · {{ row.dias_com_infracao_almoco }} dia(s) c/ infração de almoço
+                                                </template>
+                                            </span>
+                                        </li>
+                                    </ol>
+                                    <p v-else class="text-sm text-slate-500">
+                                        Nenhum colaborador com dias analisáveis no período.
+                                    </p>
                                 </div>
                             </div>
                             <div class="mt-6 grid gap-4 lg:grid-cols-2">

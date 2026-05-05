@@ -102,27 +102,30 @@ class EspelhoScheduleAdherenceApiTest extends TestCase
             ],
         ]);
 
-        $this->actingAs($admin)
+        $full = $this->actingAs($admin)
             ->getJson(route('client.rhid.api.espelhos.schedule-adherence', [
                 'ini' => '2026-04-01',
                 'fim' => '2026-04-30',
             ]))
             ->assertOk()
             ->assertJsonPath('resumo.dias_registro_analisados', 1)
-            ->assertJsonPath('resumo.dias_calendario_distintos', 1);
+            ->assertJsonPath('resumo.dias_calendario_distintos', 1)
+            ->json();
 
-        $rows = $this->actingAs($admin)
-            ->getJson(route('client.rhid.api.espelhos.schedule-adherence', [
-                'ini' => '2026-04-01',
-                'fim' => '2026-04-30',
-            ]))
-            ->json('ranking_atrasos_entrada');
+        $rows = $full['ranking_atrasos_entrada'];
 
         $this->assertIsArray($rows);
         $this->assertNotEmpty($rows);
         $hit = collect($rows)->firstWhere('id_person', 100);
         $this->assertNotNull($hit);
         $this->assertSame(60, $hit['total_atraso_entrada_minutos']);
+
+        $this->assertArrayHasKey('ranking_pior_aderencia_marcacoes', $full);
+        $this->assertArrayHasKey('ranking_melhor_aderencia_marcacoes', $full);
+        $this->assertCount(1, $full['ranking_pior_aderencia_marcacoes']);
+        $this->assertCount(1, $full['ranking_melhor_aderencia_marcacoes']);
+        $this->assertSame(60, $full['ranking_pior_aderencia_marcacoes'][0]['total_minutos_penalidade']);
+        $this->assertSame('Colab Teste', $full['ranking_melhor_aderencia_marcacoes'][0]['nome']);
     }
 
     public function test_schedule_adherence_marks_returns_days_for_person(): void
