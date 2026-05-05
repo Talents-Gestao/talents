@@ -18,6 +18,7 @@ import {
     parseRhidBankBalanceMinutes,
     pickRhidPersonDisplayName,
     formatPeriodPtBr,
+    previousMonthRangeHtmlDates,
     todayHtmlDate,
     toRhidYmd,
 } from '@/utils/rhidDate';
@@ -77,6 +78,12 @@ const overviewAdherence = ref(null);
 const overviewJustTotal = ref(null);
 const overviewJustAtestados = ref(null);
 const overviewJustNote = ref('');
+/** Comparação mês anterior (visão geral): saldo médio no último dia do mês civil anterior */
+const overviewBankRowsPrevMonthEnd = ref(null);
+const overviewAdherencePrevious = ref(null);
+const overviewJustTotalPrevious = ref(null);
+const overviewJustAtestadosPrevious = ref(null);
+const overviewJustNotePrevious = ref('');
 
 const peopleList = ref(null);
 
@@ -1010,6 +1017,85 @@ const overviewCalendarRangeLabel = computed(() => {
     return `${formatApiDatePtBr(first)} – ${formatApiDatePtBr(last)}`;
 });
 
+const overviewPreviousCalendarRangeLabel = computed(() => {
+    const { first, last } = previousMonthRangeHtmlDates();
+    return `${formatApiDatePtBr(first)} – ${formatApiDatePtBr(last)}`;
+});
+
+/** Data de referência da média de saldo “mês anterior” (último dia civil do mês passado) */
+const overviewBankPrevAnchorLabel = computed(() => formatApiDatePtBr(previousMonthRangeHtmlDates().last));
+
+const overviewBankPrevNumericRows = computed(() => {
+    const rows = overviewBankRowsPrevMonthEnd.value;
+    if (!Array.isArray(rows)) {
+        return [];
+    }
+    return rows.filter((row) => parseRhidBankBalanceMinutes(row) !== null);
+});
+
+const overviewBankPrevAvgMinutes = computed(() => {
+    const rows = overviewBankPrevNumericRows.value;
+    if (!rows.length) {
+        return null;
+    }
+    const sum = rows.reduce((acc, row) => acc + (parseRhidBankBalanceMinutes(row) ?? 0), 0);
+    return Math.round(sum / rows.length);
+});
+
+/** Diferença da média de saldo (hoje − último dia do mês anterior), em minutos */
+const overviewBankAvgMomDeltaMinutes = computed(() => {
+    const cur = overviewBankAvgMinutes.value;
+    const prev = overviewBankPrevAvgMinutes.value;
+    if (cur == null || prev == null) {
+        return null;
+    }
+    return cur - prev;
+});
+
+const overviewJustTotalMomDelta = computed(() => {
+    const cur = overviewJustTotal.value;
+    const prev = overviewJustTotalPrevious.value;
+    if (typeof cur !== 'number' || typeof prev !== 'number') {
+        return null;
+    }
+    return cur - prev;
+});
+
+const overviewJustAtestadosMomDelta = computed(() => {
+    const cur = overviewJustAtestados.value;
+    const prev = overviewJustAtestadosPrevious.value;
+    if (typeof cur !== 'number' || typeof prev !== 'number') {
+        return null;
+    }
+    return cur - prev;
+});
+
+const overviewAdherenceDiasMomDelta = computed(() => {
+    const cur = overviewAdherence.value?.resumo?.dias_registro_analisados;
+    const prev = overviewAdherencePrevious.value?.resumo?.dias_registro_analisados;
+    if (typeof cur !== 'number' || typeof prev !== 'number') {
+        return null;
+    }
+    return cur - prev;
+});
+
+const overviewAdherenceColabsMomDelta = computed(() => {
+    const cur = overviewAdherence.value?.resumo?.colaboradores_com_dados;
+    const prev = overviewAdherencePrevious.value?.resumo?.colaboradores_com_dados;
+    if (typeof cur !== 'number' || typeof prev !== 'number') {
+        return null;
+    }
+    return cur - prev;
+});
+
+const overviewBankPrevNumericRowsLength = computed(() => overviewBankPrevNumericRows.value.length);
+
+const overviewBankPrevLoaded = computed(() => overviewBankRowsPrevMonthEnd.value !== null);
+
+const overviewAdherencePrevLoaded = computed(() => overviewAdherencePrevious.value != null);
+
+const overviewJustPrevLoaded = computed(() => overviewJustTotalPrevious.value != null);
+
 const PUNCH_TOP_N = 10;
 const PUNCH_HOUR_BUCKET_LABELS = ['0h–5h', '6h–11h', '12h–17h', '18h–23h'];
 
@@ -1176,12 +1262,19 @@ const loadOverviewData = async () => {
     }
     overviewLoading.value = true;
     clearErr();
+    overviewBankRowsPrevMonthEnd.value = null;
+    overviewAdherencePrevious.value = null;
+    overviewJustTotalPrevious.value = null;
+    overviewJustAtestadosPrevious.value = null;
+    overviewJustNotePrevious.value = '';
     try {
         const { first: mFirst, last: mLast } = monthRangeHtmlDates();
-        const dateParam = toRhidYmd(todayHtmlDate()) || todayHtmlDate();
+        const { first: pFirst, last: pLast } = previousMonthRangeHtmlDates();
+        const dateParamToday = toRhidYmd(todayHtmlDate()) || todayHtmlDate();
+        const dateParamPrevMonthEnd = toRhidYmd(pLast) || pLast.replace(/\D/g, '').slice(0, 8);
         const [punchRes, bankRes, adhRes, typesRes] = await Promise.all([
             axios.get(route('client.rhid.api.last-punches')),
-            axios.get(route('client.rhid.api.person-bank-hours.all'), { params: { date: dateParam } }),
+            axios.get(route('client.rhid.api.person-bank-hours.all'), { params: { date: dateParamToday } }),
             axios.get(route('client.rhid.api.espelhos.schedule-adherence'), {
                 params: { ini: mFirst, fim: mLast },
             }),
@@ -1193,13 +1286,32 @@ const loadOverviewData = async () => {
 
         const iniStr = toRhidYmd(mFirst);
         const fimStr = toRhidYmd(mLast);
+        const piStr = toRhidYmd(pFirst);
+        const pfStr = toRhidYmd(pLast);
         const tmap = buildJustificationTypeMapFromPayload(typesRes.data);
-        const { data: jdata } = await axios.post(route('client.rhid.api.justifications.list'), {
+
+        const justCurReq = axios.post(route('client.rhid.api.justifications.list'), {
             ini: iniStr,
             fim: fimStr,
             page: 0,
             maxSize: 500,
         });
+        const momReqs = [
+            axios.get(route('client.rhid.api.person-bank-hours.all'), { params: { date: dateParamPrevMonthEnd } }),
+            axios.get(route('client.rhid.api.espelhos.schedule-adherence'), { params: { ini: pFirst, fim: pLast } }),
+            axios.post(route('client.rhid.api.justifications.list'), {
+                ini: piStr,
+                fim: pfStr,
+                page: 0,
+                maxSize: 500,
+            }),
+        ];
+
+        const overviewBatch = await Promise.allSettled([justCurReq, ...momReqs]);
+        if (overviewBatch[0].status !== 'fulfilled') {
+            throw overviewBatch[0].reason;
+        }
+        const jdata = overviewBatch[0].value.data;
         const chunk = Array.isArray(jdata?.data) ? jdata.data : [];
         const recordsTotal = typeof jdata?.recordsTotal === 'number' ? jdata.recordsTotal : chunk.length;
         overviewJustTotal.value = recordsTotal;
@@ -1208,6 +1320,26 @@ const loadOverviewData = async () => {
             chunk.length >= 500 && recordsTotal > chunk.length
                 ? 'Atestados: contagem na primeira página da amostra; refine o período na aba Justificativas para o detalhe completo.'
                 : '';
+
+        if (overviewBatch[1].status === 'fulfilled') {
+            const rows = overviewBatch[1].value.data?.rows;
+            overviewBankRowsPrevMonthEnd.value = Array.isArray(rows) ? rows : [];
+        }
+        if (overviewBatch[2].status === 'fulfilled') {
+            overviewAdherencePrevious.value = overviewBatch[2].value.data;
+        }
+        if (overviewBatch[3].status === 'fulfilled') {
+            const jd = overviewBatch[3].value.data;
+            const ch2 = Array.isArray(jd?.data) ? jd.data : [];
+            const rt2 = typeof jd?.recordsTotal === 'number' ? jd.recordsTotal : ch2.length;
+            overviewJustTotalPrevious.value = rt2;
+            overviewJustAtestadosPrevious.value = ch2.filter((r) => isAtestadoByKeyword(r, tmap)).length;
+            overviewJustNotePrevious.value =
+                ch2.length >= 500 && rt2 > ch2.length
+                    ? 'Mês anterior: atestados só na primeira página — abra Justificativas com o período completo.'
+                    : '';
+        }
+
         overviewLoadedAt.value = new Date();
     } catch (e) {
         handleError(e);
@@ -2779,6 +2911,22 @@ const justDeptBarChart = computed(() => {
                 :overview-loading="overviewLoading"
                 :overview-loaded-at="overviewLoadedAt"
                 :overview-calendar-range-label="overviewCalendarRangeLabel"
+                :overview-previous-calendar-range-label="overviewPreviousCalendarRangeLabel"
+                :overview-adherence-previous="overviewAdherencePrevious"
+                :overview-adherence-prev-loaded="overviewAdherencePrevLoaded"
+                :overview-adherence-dias-mom-delta="overviewAdherenceDiasMomDelta"
+                :overview-adherence-colabs-mom-delta="overviewAdherenceColabsMomDelta"
+                :overview-bank-prev-anchor-label="overviewBankPrevAnchorLabel"
+                :overview-bank-prev-avg-minutes="overviewBankPrevAvgMinutes"
+                :overview-bank-prev-numeric-rows-length="overviewBankPrevNumericRowsLength"
+                :overview-bank-prev-loaded="overviewBankPrevLoaded"
+                :overview-bank-avg-mom-delta-minutes="overviewBankAvgMomDeltaMinutes"
+                :overview-just-total-previous="overviewJustTotalPrevious"
+                :overview-just-atestados-previous="overviewJustAtestadosPrevious"
+                :overview-just-note-previous="overviewJustNotePrevious"
+                :overview-just-prev-loaded="overviewJustPrevLoaded"
+                :overview-just-total-mom-delta="overviewJustTotalMomDelta"
+                :overview-just-atestados-mom-delta="overviewJustAtestadosMomDelta"
                 :overview-punch-rows-length="overviewPunchRows.length"
                 :overview-punch-distinct="overviewPunchDistinct"
                 :overview-punch-preview-rows="overviewPunchPreviewRows"

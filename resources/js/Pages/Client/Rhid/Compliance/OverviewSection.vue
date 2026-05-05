@@ -7,6 +7,22 @@ defineProps({
     overviewLoading: { type: Boolean, required: true },
     overviewLoadedAt: { type: Object, default: null },
     overviewCalendarRangeLabel: { type: String, required: true },
+    overviewPreviousCalendarRangeLabel: { type: String, required: true },
+    overviewAdherencePrevious: { type: Object, default: null },
+    overviewAdherencePrevLoaded: { type: Boolean, required: true },
+    overviewAdherenceDiasMomDelta: { type: [Number, null], default: null },
+    overviewAdherenceColabsMomDelta: { type: [Number, null], default: null },
+    overviewBankPrevAnchorLabel: { type: String, required: true },
+    overviewBankPrevAvgMinutes: { type: [Number, null], default: null },
+    overviewBankPrevNumericRowsLength: { type: Number, required: true },
+    overviewBankPrevLoaded: { type: Boolean, required: true },
+    overviewBankAvgMomDeltaMinutes: { type: [Number, null], default: null },
+    overviewJustTotalPrevious: { type: [Number, null], default: null },
+    overviewJustAtestadosPrevious: { type: [Number, null], default: null },
+    overviewJustNotePrevious: { type: String, default: '' },
+    overviewJustPrevLoaded: { type: Boolean, required: true },
+    overviewJustTotalMomDelta: { type: [Number, null], default: null },
+    overviewJustAtestadosMomDelta: { type: [Number, null], default: null },
     overviewPunchRowsLength: { type: Number, required: true },
     overviewPunchDistinct: { type: Number, required: true },
     overviewPunchPreviewRows: {
@@ -38,6 +54,18 @@ const emit = defineEmits([
     'go-espelho',
     'go-collaborators',
 ]);
+
+/** Exibe variação inteira com sinal (pt-BR) */
+const signedIntTxt = (n) => {
+    if (n == null || Number.isNaN(Number(n))) {
+        return null;
+    }
+    const v = Number(n);
+    if (v === 0) {
+        return '0';
+    }
+    return v > 0 ? `+${v}` : `${v}`;
+};
 </script>
 
 <template>
@@ -46,6 +74,13 @@ const emit = defineEmits([
             Indicadores rápidos alinhados ao <span class="font-medium text-slate-800">mês corrente</span>
             ({{ overviewCalendarRangeLabel }}) para aderência e justificativas; banco de horas na
             <span class="font-medium text-slate-800">data de hoje</span>; marcações pela última leitura do RHID.
+        </p>
+        <p class="text-xs leading-relaxed text-slate-500">
+            <span class="font-medium text-slate-600">Comparação com o mês anterior:</span>
+            justificativas e aderência usam o <span class="font-medium">mês civil anterior completo</span>
+            ({{ overviewPreviousCalendarRangeLabel }}). No banco de horas, comparamos a média de
+            <span class="font-medium">hoje</span> com a média do <span class="font-medium">último dia</span> desse mês
+            anterior (referência fixa — não é média do mês inteiro).
         </p>
         <div class="flex flex-wrap items-center gap-3">
             <PrimaryButton type="button" :disabled="overviewLoading" @click="emit('refresh')">
@@ -108,6 +143,34 @@ const emit = defineEmits([
                 >
                     {{ overviewBankNegativeCount }} com saldo negativo — vale rever na aba Banco de horas
                 </p>
+                <template v-if="overviewBankPrevLoaded">
+                    <p
+                        v-if="overviewBankPrevNumericRowsLength"
+                        class="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-600"
+                    >
+                        <span class="font-medium text-slate-700">Mês anterior</span>
+                        (saldo em {{ overviewBankPrevAnchorLabel }}, último dia civil): média
+                        {{ formatRhidBankBalanceMinutes(overviewBankPrevAvgMinutes ?? 0) }}
+                        · {{ overviewBankPrevNumericRowsLength }} colaborador(es)
+                    </p>
+                    <p v-else class="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500">
+                        Referência do mês anterior ({{ overviewBankPrevAnchorLabel }}): sem saldos numéricos.
+                    </p>
+                    <p
+                        v-if="
+                            overviewBankAvgMomDeltaMinutes != null &&
+                            overviewBankPrevNumericRowsLength &&
+                            overviewBankNumericRowsLength
+                        "
+                        class="mt-1 text-xs font-medium text-slate-700"
+                    >
+                        Δ média (hoje − referência):
+                        {{ formatRhidBankBalanceMinutes(overviewBankAvgMomDeltaMinutes) }}
+                    </p>
+                </template>
+                <p v-else class="mt-2 text-xs text-amber-800">
+                    Comparação de saldo com o mês anterior indisponível nesta atualização.
+                </p>
                 <div v-if="overviewBankWorstThree.length" class="mt-2 text-sm text-slate-700">
                     <p class="text-xs font-medium text-rose-800">Piores saldos (top 3)</p>
                     <ul class="mt-1 list-inside list-disc">
@@ -135,6 +198,31 @@ const emit = defineEmits([
                 </p>
                 <p v-else class="mt-2 text-sm text-slate-500">
                     Sem agregado para este período — importe espelhos e analise na sub-aba Aderência.
+                </p>
+                <template v-if="overviewAdherencePrevLoaded && overviewAdherencePrevious?.resumo">
+                    <p class="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-600">
+                        <span class="font-medium text-slate-700">Mês anterior</span>
+                        ({{ overviewPreviousCalendarRangeLabel }}):
+                        {{ overviewAdherencePrevious.resumo.dias_registro_analisados }} dia(s) ·
+                        {{ overviewAdherencePrevious.resumo.colaboradores_com_dados ?? '—' }} colaborador(es)
+                    </p>
+                    <p
+                        v-if="overviewAdherenceDiasMomDelta != null || overviewAdherenceColabsMomDelta != null"
+                        class="mt-1 text-xs font-medium text-slate-700"
+                    >
+                        <template v-if="overviewAdherenceDiasMomDelta != null">
+                            Δ dias: {{ signedIntTxt(overviewAdherenceDiasMomDelta) }}
+                        </template>
+                        <template v-if="overviewAdherenceDiasMomDelta != null && overviewAdherenceColabsMomDelta != null">
+                            ·
+                        </template>
+                        <template v-if="overviewAdherenceColabsMomDelta != null">
+                            Δ colaboradores: {{ signedIntTxt(overviewAdherenceColabsMomDelta) }}
+                        </template>
+                    </p>
+                </template>
+                <p v-else-if="overviewAdherence?.resumo" class="mt-2 text-xs text-amber-800">
+                    Comparação de aderência com o mês anterior indisponível nesta atualização.
                 </p>
                 <ul v-if="overviewAdherenceWorstEntrada.length" class="mt-2 space-y-1 text-sm text-slate-700">
                     <li v-for="(rw, ri) in overviewAdherenceWorstEntrada" :key="ri" class="flex flex-wrap gap-x-1">
@@ -166,6 +254,32 @@ const emit = defineEmits([
                     {{ overviewJustAtestados != null ? overviewJustAtestados : '—' }}
                 </p>
                 <p v-if="overviewJustNote" class="mt-1 text-xs text-amber-800">{{ overviewJustNote }}</p>
+                <template v-if="overviewJustPrevLoaded">
+                    <p class="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-600">
+                        <span class="font-medium text-slate-700">Mês anterior</span>
+                        — total RHID: {{ overviewJustTotalPrevious != null ? overviewJustTotalPrevious : '—' }}
+                        · atestados (1.ª página):
+                        {{ overviewJustAtestadosPrevious != null ? overviewJustAtestadosPrevious : '—' }}
+                    </p>
+                    <p
+                        v-if="overviewJustTotalMomDelta != null || overviewJustAtestadosMomDelta != null"
+                        class="mt-1 text-xs font-medium text-slate-700"
+                    >
+                        <template v-if="overviewJustTotalMomDelta != null">
+                            Δ total: {{ signedIntTxt(overviewJustTotalMomDelta) }}
+                        </template>
+                        <template v-if="overviewJustTotalMomDelta != null && overviewJustAtestadosMomDelta != null">
+                            ·
+                        </template>
+                        <template v-if="overviewJustAtestadosMomDelta != null">
+                            Δ atestados (amostra): {{ signedIntTxt(overviewJustAtestadosMomDelta) }}
+                        </template>
+                    </p>
+                    <p v-if="overviewJustNotePrevious" class="mt-1 text-xs text-amber-800">{{ overviewJustNotePrevious }}</p>
+                </template>
+                <p v-else class="mt-2 text-xs text-amber-800">
+                    Comparação de justificativas com o mês anterior indisponível nesta atualização.
+                </p>
                 <PrimaryButton type="button" class="mt-3" @click="emit('go-justifications')">
                     Ver justificativas
                 </PrimaryButton>

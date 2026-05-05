@@ -64,6 +64,21 @@ export function monthRangeHtmlDates() {
     return { first, last };
 }
 
+/** @returns {{ first: string, last: string }} primeiro e último dia do mês civil anterior ao atual */
+export function previousMonthRangeHtmlDates() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const pad = (n) => String(n).padStart(2, '0');
+    const lastOfPrev = new Date(y, m, 0);
+    const py = lastOfPrev.getFullYear();
+    const pm = lastOfPrev.getMonth();
+    const first = `${py}-${pad(pm + 1)}-01`;
+    const lastDay = lastOfPrev.getDate();
+    const last = `${py}-${pad(pm + 1)}-${pad(lastDay)}`;
+    return { first, last };
+}
+
 /** @returns {string} data HTML de hoje */
 export function todayHtmlDate() {
     const d = new Date();
