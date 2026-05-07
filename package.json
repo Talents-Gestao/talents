@@ -26,6 +26,7 @@
         "apexcharts": "^5.10.4",
         "bootstrap": "^5.3.3",
         "marked": "^17.0.5",
+        "vue-draggable-plus": "^0.6.1",
         "vue3-apexcharts": "^1.11.1"
     }
 }

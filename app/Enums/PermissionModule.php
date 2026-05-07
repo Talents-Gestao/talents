@@ -15,6 +15,7 @@ enum PermissionModule: string
     case ConfiguracoesEmpresa = 'configuracoes_empresa';
     case Usuarios = 'usuarios';
     case Capacitacao = 'capacitacao';
+    case Tarefas = 'tarefas';
 
     public function label(): string
     {
@@ -30,6 +31,7 @@ enum PermissionModule: string
             self::ConfiguracoesEmpresa => 'Configurações da empresa',
             self::Usuarios => 'Utilizadores',
             self::Capacitacao => 'Capacitação',
+            self::Tarefas => 'Tarefas',
         };
     }
 
@@ -50,6 +52,7 @@ enum PermissionModule: string
             self::ConfiguracoesEmpresa,
             self::Usuarios,
             self::Capacitacao,
+            self::Tarefas,
         ];
     }
 }

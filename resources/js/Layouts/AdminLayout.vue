@@ -10,6 +10,7 @@ import {
     BeakerIcon,
     BuildingOffice2Icon,
     CalendarDaysIcon,
+    ViewColumnsIcon,
     DocumentDuplicateIcon,
     DocumentTextIcon,
     Cog6ToothIcon,
@@ -88,6 +89,13 @@ import {
                 :active="route().current('admin.strategic-calendar.*')"
                 :icon="CalendarDaysIcon"
                 label="Calendário estratégico"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                :href="route('admin.tarefas.quadros.index')"
+                :active="route().current('admin.tarefas.*')"
+                :icon="ViewColumnsIcon"
+                label="Tarefas"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

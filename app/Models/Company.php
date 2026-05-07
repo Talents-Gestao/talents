@@ -30,6 +30,7 @@ class Company extends Model
         'rhid_password',
         'rhid_domain',
         'strategic_calendar_access',
+        'tasks_access',
     ];
 
     protected function casts(): array
@@ -38,7 +39,13 @@ class Company extends Model
             'is_active' => 'boolean',
             'rhid_password' => 'encrypted',
             'strategic_calendar_access' => 'boolean',
+            'tasks_access' => 'boolean',
         ];
+    }
+
+    public function taskBoards(): HasMany
+    {
+        return $this->hasMany(TaskBoard::class);
     }
 
     public function rhidAuditLogs(): HasMany
@@ -157,6 +164,22 @@ class Company extends Model
         return $subscription->plan->modules->contains('key', Module::KEY_CALENDARIO_ESTRATEGICO);
     }
 
+    /**
+     * Módulo Tarefas: override na empresa ou chave no plano da assinatura ativa.
+     */
+    public function hasTasksEnabled(): bool
+    {
+        if ($this->tasks_access === false) {
+            return false;
+        }
+
+        if ($this->tasks_access === true) {
+            return true;
+        }
+
+        return $this->subscriptionHasModuleKey(Module::KEY_TAREFAS);
+    }
+
     public function activeSubscription(): ?Subscription
     {
         return $this->subscriptions()->where('status', 'active')->latest()->first();
@@ -193,6 +216,7 @@ class Company extends Model
             PermissionModule::Metodologia => $this->hasMethodologyEnabled(),
             PermissionModule::CalendarioEstrategico => $this->hasStrategicCalendarEnabled(),
             PermissionModule::Rhid => $this->subscriptionHasModuleKey(Module::KEY_NR1),
+            PermissionModule::Tarefas => $this->hasTasksEnabled(),
         };
     }
 

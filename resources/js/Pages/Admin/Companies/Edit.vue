@@ -18,6 +18,13 @@ const accessMode = () => {
     return 'inherit';
 };
 
+const tasksAccessMode = () => {
+    const v = props.company.tasks_access;
+    if (v === true) return 'enabled';
+    if (v === false) return 'disabled';
+    return 'inherit';
+};
+
 const form = useForm({
     name: props.company.name,
     contact_email: props.company.contact_email ?? '',
@@ -33,6 +40,7 @@ const form = useForm({
     employee_count_estimate: props.company.employee_count_estimate,
     is_active: props.company.is_active,
     strategic_calendar_access_mode: accessMode(),
+    tasks_access_mode: tasksAccessMode(),
     plan_id: props.activePlanId ?? null,
 });
 
@@ -142,6 +150,21 @@ const submit = () => {
                 <select
                     id="strategic_calendar_access_mode"
                     v-model="form.strategic_calendar_access_mode"
+                    class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option value="inherit">Seguir o plano</option>
+                    <option value="enabled">Forçar habilitado</option>
+                    <option value="disabled">Forçar desabilitado</option>
+                </select>
+            </div>
+            <div>
+                <InputLabel for="tasks_access_mode" value="Tarefas (Kanban)" />
+                <p class="mt-0.5 text-xs text-gray-500">
+                    Por padrão segue o plano (módulo «tarefas»). Pode forçar por empresa.
+                </p>
+                <select
+                    id="tasks_access_mode"
+                    v-model="form.tasks_access_mode"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
                     <option value="inherit">Seguir o plano</option>

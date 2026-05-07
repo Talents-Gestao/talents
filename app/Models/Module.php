@@ -16,6 +16,9 @@ class Module extends Model
     /** @var string Calendário estratégico (eventos e ritos Talents) */
     public const KEY_CALENDARIO_ESTRATEGICO = 'calendario_estrategico';
 
+    /** @var string Quadros Kanban / Tarefas */
+    public const KEY_TAREFAS = 'tarefas';
+
     protected $fillable = ['key', 'name', 'description'];
 
     public function plans(): BelongsToMany

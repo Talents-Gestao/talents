@@ -18,6 +18,12 @@ use App\Http\Controllers\Client\StrategicCalendarController as ClientStrategicCa
 use App\Http\Controllers\Client\SurveyController;
 use App\Http\Controllers\Client\SurveyResultsController;
 use App\Http\Controllers\Client\TrainingController;
+use App\Http\Controllers\Client\Tasks\BoardController as ClientTasksBoardController;
+use App\Http\Controllers\Client\Tasks\CardAttachmentController as ClientTasksCardAttachmentController;
+use App\Http\Controllers\Client\Tasks\CardChecklistItemController as ClientTasksCardChecklistItemController;
+use App\Http\Controllers\Client\Tasks\CardCommentController as ClientTasksCardCommentController;
+use App\Http\Controllers\Client\Tasks\CardController as ClientTasksCardController;
+use App\Http\Controllers\Client\Tasks\CardMoveController as ClientTasksCardMoveController;
 use App\Http\Controllers\Client\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -132,5 +138,16 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
             Route::post('devices/{id}/id-cloud', [RhidApiController::class, 'enableIdCloud'])->name('devices.id-cloud');
             Route::post('sync/force-all', [RhidApiController::class, 'forceResyncAll'])->name('sync.force-all');
         });
+    });
+
+    Route::middleware('can.module:tarefas')->prefix('tarefas')->name('tarefas.')->group(function () {
+        Route::get('/', [ClientTasksBoardController::class, 'index'])->name('index');
+        Route::patch('cards/{card}', [ClientTasksCardController::class, 'update'])->name('cards.update');
+        Route::post('cards/{card}/mover', [ClientTasksCardMoveController::class, 'store'])->name('cards.move');
+        Route::post('cards/{card}/comentarios', [ClientTasksCardCommentController::class, 'store'])->name('cards.comentarios.store');
+        Route::patch('checklist-itens/{item}', [ClientTasksCardChecklistItemController::class, 'update'])->name('checklist-itens.update');
+        Route::post('cards/{card}/anexos', [ClientTasksCardAttachmentController::class, 'store'])->name('cards.anexos.store');
+        Route::delete('anexos/{attachment}', [ClientTasksCardAttachmentController::class, 'destroy'])->name('anexos.destroy');
+        Route::get('{board}', [ClientTasksBoardController::class, 'show'])->name('show')->whereNumber('board');
     });
 });

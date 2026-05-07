@@ -7,6 +7,8 @@ use App\Http\Middleware\EnsureStrategicCalendarAccess;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\LogInertiaRequestTiming;
+use App\Jobs\RemindUpcomingTaskDueDatesJob;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -49,4 +51,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
-    })->create();
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        $schedule->job(new RemindUpcomingTaskDueDatesJob)->dailyAt('08:00');
+    })
+    ->create();

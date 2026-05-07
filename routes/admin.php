@@ -16,6 +16,18 @@ use App\Http\Controllers\Admin\SolidesCurriculumController;
 use App\Http\Controllers\Admin\SolidesSettingsController;
 use App\Http\Controllers\Admin\StrategicCalendarController as AdminStrategicCalendarController;
 use App\Http\Controllers\Admin\SurveyTemplateController;
+use App\Http\Controllers\Admin\Tasks\BoardActivationController as TasksBoardActivationController;
+use App\Http\Controllers\Admin\Tasks\ProcessTemplateController as TasksProcessTemplateController;
+use App\Http\Controllers\Admin\Tasks\TaskBoardAttachmentController;
+use App\Http\Controllers\Admin\Tasks\TaskBoardCardController;
+use App\Http\Controllers\Admin\Tasks\TaskBoardChecklistController;
+use App\Http\Controllers\Admin\Tasks\TaskBoardChecklistItemController;
+use App\Http\Controllers\Admin\Tasks\TaskBoardCommentController;
+use App\Http\Controllers\Admin\Tasks\TaskBoardController as TasksTaskBoardController;
+use App\Http\Controllers\Admin\Tasks\TaskBoardLabelController;
+use App\Http\Controllers\Admin\Tasks\TaskBoardListController;
+use App\Http\Controllers\Admin\Tasks\TemplateCardController as TasksTemplateCardController;
+use App\Http\Controllers\Admin\Tasks\TemplateListController as TasksTemplateListController;
 use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
 use Illuminate\Support\Facades\Route;
 
@@ -70,4 +82,50 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::delete('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'detachTemplate'])->name('companies.methodology-templates.detach');
     Route::resource('methodology-templates', MethodologyFormTemplateController::class)
         ->parameters(['methodology-templates' => 'template']);
+
+    Route::prefix('tarefas')->name('tarefas.')->group(function () {
+        Route::resource('processos', TasksProcessTemplateController::class)
+            ->parameters(['processos' => 'template']);
+
+        Route::post('processos/{template}/listas', [TasksTemplateListController::class, 'store'])->name('processos.listas.store');
+        Route::patch('processo-listas/{template_list}', [TasksTemplateListController::class, 'update'])->name('processo-listas.update');
+        Route::delete('processo-listas/{template_list}', [TasksTemplateListController::class, 'destroy'])->name('processo-listas.destroy');
+
+        Route::post('processo-listas/{template_list}/cards', [TasksTemplateCardController::class, 'store'])->name('processo-listas.cards.store');
+        Route::patch('processo-cards/{template_card}', [TasksTemplateCardController::class, 'update'])->name('processo-cards.update');
+        Route::delete('processo-cards/{template_card}', [TasksTemplateCardController::class, 'destroy'])->name('processo-cards.destroy');
+
+        Route::get('quadros/ativar', [TasksBoardActivationController::class, 'create'])->name('quadros.ativar');
+        Route::post('processos/{template}/ativar', [TasksBoardActivationController::class, 'store'])->name('processos.ativar');
+
+        Route::resource('quadros', TasksTaskBoardController::class)
+            ->only(['index', 'create', 'store', 'show', 'destroy'])
+            ->parameters(['quadros' => 'board']);
+
+        Route::post('quadros/{board}/listas', [TaskBoardListController::class, 'store'])->name('quadros.listas.store');
+        Route::patch('listas/{list}', [TaskBoardListController::class, 'update'])->name('listas.update');
+        Route::delete('listas/{list}', [TaskBoardListController::class, 'destroy'])->name('listas.destroy');
+
+        Route::post('listas/{list}/cards', [TaskBoardCardController::class, 'store'])->name('listas.cards.store');
+        Route::patch('cards/{card}', [TaskBoardCardController::class, 'update'])->name('cards.update');
+        Route::post('cards/{card}/mover', [TaskBoardCardController::class, 'move'])->name('cards.move');
+        Route::delete('cards/{card}', [TaskBoardCardController::class, 'destroy'])->name('cards.destroy');
+
+        Route::post('quadros/{board}/labels', [TaskBoardLabelController::class, 'store'])->name('quadros.labels.store');
+        Route::patch('labels/{label}', [TaskBoardLabelController::class, 'update'])->name('labels.update');
+        Route::delete('labels/{label}', [TaskBoardLabelController::class, 'destroy'])->name('labels.destroy');
+
+        Route::post('cards/{card}/checklists', [TaskBoardChecklistController::class, 'store'])->name('cards.checklists.store');
+        Route::delete('checklists/{checklist}', [TaskBoardChecklistController::class, 'destroy'])->name('checklists.destroy');
+
+        Route::post('checklists/{checklist}/itens', [TaskBoardChecklistItemController::class, 'store'])->name('checklists.itens.store');
+        Route::patch('checklist-itens/{item}', [TaskBoardChecklistItemController::class, 'update'])->name('checklist-itens.update');
+        Route::delete('checklist-itens/{item}', [TaskBoardChecklistItemController::class, 'destroy'])->name('checklist-itens.destroy');
+
+        Route::post('cards/{card}/anexos', [TaskBoardAttachmentController::class, 'store'])->name('cards.anexos.store');
+        Route::delete('anexos/{attachment}', [TaskBoardAttachmentController::class, 'destroy'])->name('anexos.destroy');
+
+        Route::post('cards/{card}/comentarios', [TaskBoardCommentController::class, 'store'])->name('cards.comentarios.store');
+        Route::delete('comentarios/{comment}', [TaskBoardCommentController::class, 'destroy'])->name('comentarios.destroy');
+    });
 });

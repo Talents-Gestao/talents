@@ -3,8 +3,15 @@
 namespace App\Providers;
 
 use App\Models\MailSetting;
+use App\Models\TaskBoard;
+use App\Models\TaskCard;
+use App\Models\TaskComment;
+use App\Policies\TaskBoardPolicy;
+use App\Policies\TaskCardPolicy;
+use App\Policies\TaskCommentPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
@@ -25,6 +32,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(TaskBoard::class, TaskBoardPolicy::class);
+        Gate::policy(TaskCard::class, TaskCardPolicy::class);
+        Gate::policy(TaskComment::class, TaskCommentPolicy::class);
+
         Vite::prefetch(concurrency: 3);
 
         try {

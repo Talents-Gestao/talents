@@ -43,6 +43,14 @@ class TalentsSeeder extends Seeder
             ]
         );
 
+        $tarefas = Module::query()->firstOrCreate(
+            ['key' => Module::KEY_TAREFAS],
+            [
+                'name' => 'Tarefas',
+                'description' => 'Quadros Kanban e processos partilhados com empresas.',
+            ]
+        );
+
         $plan = Plan::query()->firstOrCreate(
             ['slug' => 'nr1-pro'],
             [
@@ -54,7 +62,7 @@ class TalentsSeeder extends Seeder
             ]
         );
 
-        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id]);
+        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id]);
 
         $admin = User::query()->firstOrCreate(
             ['email' => 'admin@talents.local'],

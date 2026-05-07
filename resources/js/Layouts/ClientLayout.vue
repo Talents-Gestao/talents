@@ -13,6 +13,7 @@ import {
     BriefcaseIcon,
     BuildingOfficeIcon,
     CalendarDaysIcon,
+    ViewColumnsIcon,
     ClipboardDocumentListIcon,
     FingerPrintIcon,
     HomeIcon,
@@ -70,6 +71,14 @@ import {
                 :active="route().current('client.strategic-calendar.*')"
                 :icon="CalendarDaysIcon"
                 label="Calendário estratégico"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                v-if="can('tarefas', 'view')"
+                :href="route('client.tarefas.index')"
+                :active="route().current('client.tarefas.*')"
+                :icon="ViewColumnsIcon"
+                label="Tarefas"
                 :collapsed="collapsed"
             />
             <SidebarNavItem
