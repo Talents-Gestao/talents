@@ -19,6 +19,7 @@ use App\Http\Controllers\Client\SurveyController;
 use App\Http\Controllers\Client\SurveyResultsController;
 use App\Http\Controllers\Client\TrainingController;
 use App\Http\Controllers\Client\Tasks\BoardController as ClientTasksBoardController;
+use App\Http\Controllers\Client\Tasks\BoardFavoriteController as ClientTasksBoardFavoriteController;
 use App\Http\Controllers\Client\Tasks\CardAttachmentController as ClientTasksCardAttachmentController;
 use App\Http\Controllers\Client\Tasks\CardChecklistItemController as ClientTasksCardChecklistItemController;
 use App\Http\Controllers\Client\Tasks\CardCommentController as ClientTasksCardCommentController;
@@ -148,6 +149,8 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::patch('checklist-itens/{item}', [ClientTasksCardChecklistItemController::class, 'update'])->name('checklist-itens.update');
         Route::post('cards/{card}/anexos', [ClientTasksCardAttachmentController::class, 'store'])->name('cards.anexos.store');
         Route::delete('anexos/{attachment}', [ClientTasksCardAttachmentController::class, 'destroy'])->name('anexos.destroy');
+        Route::post('{board}/favoritar', [ClientTasksBoardFavoriteController::class, 'store'])->name('favoritar')->whereNumber('board');
+        Route::delete('{board}/favoritar', [ClientTasksBoardFavoriteController::class, 'destroy'])->name('desfavoritar')->whereNumber('board');
         Route::get('{board}', [ClientTasksBoardController::class, 'show'])->name('show')->whereNumber('board');
     });
 });

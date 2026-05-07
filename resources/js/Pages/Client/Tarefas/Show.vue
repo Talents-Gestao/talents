@@ -1,4 +1,5 @@
 <script setup>
+import BoardHeader from '@/Components/Tasks/BoardHeader.vue';
 import CardModal from '@/Components/Tasks/CardModal.vue';
 import KanbanBoard from '@/Components/Tasks/KanbanBoard.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
@@ -28,15 +29,17 @@ function refreshBoard() {
 
     <ClientLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <h2 class="text-xl font-semibold text-gray-900">{{ boardPayload.name }}</h2>
-                <a :href="route('client.tarefas.index')" class="text-sm text-talents-700 underline">
-                    Voltar
-                </a>
-            </div>
+            <h2 class="text-xl font-semibold text-gray-900">Tarefas</h2>
         </template>
 
-        <div class="p-4">
+        <div class="space-y-4 p-4">
+            <BoardHeader
+                :board-payload="boardPayload"
+                :is-admin="false"
+                :company-users="companyUsers || []"
+                @refresh="refreshBoard"
+            />
+
             <KanbanBoard :board-payload="boardPayload" :is-admin="false" @open-card="openCard" @refresh="refreshBoard" />
 
             <CardModal

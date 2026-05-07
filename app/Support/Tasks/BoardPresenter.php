@@ -6,6 +6,8 @@ use App\Models\TaskBoard;
 use App\Models\TaskCard;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 final class BoardPresenter
 {
@@ -19,6 +21,7 @@ final class BoardPresenter
             'lists.cards' => fn ($q) => $q->where('is_archived', false)->orderBy('position'),
             'lists' => fn ($q) => $q->where('is_archived', false)->orderBy('position'),
             'labels',
+            'members:id,name,email',
         ]);
 
         return self::serializeBoard($board, false);
@@ -37,6 +40,7 @@ final class BoardPresenter
                 $q->visibleToCompany()->orderBy('position');
             },
             'labels',
+            'members:id,name,email',
         ]);
 
         return self::serializeBoard($board, true);
@@ -56,6 +60,24 @@ final class BoardPresenter
             'position' => $l->position,
         ]);
 
+        $members = $board->relationLoaded('members')
+            ? $board->members->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'role' => $u->pivot->role ?? null,
+            ])->values()
+            : collect();
+
+        $userId = Auth::id();
+        $isStarred = false;
+        if ($userId) {
+            $isStarred = DB::table('task_board_user_favorites')
+                ->where('board_id', $board->id)
+                ->where('user_id', $userId)
+                ->exists();
+        }
+
         return [
             'id' => $board->id,
             'name' => $board->name,
@@ -65,9 +87,11 @@ final class BoardPresenter
             'company' => $board->company ? ['id' => $board->company->id, 'name' => $board->company->name] : null,
             'is_archived' => $board->is_archived,
             'is_internal' => $board->company_id === null,
+            'is_starred' => $isStarred,
             'client_mode' => $clientMode,
             'lists' => $lists,
             'labels' => $labels,
+            'members' => $members,
         ];
     }
 

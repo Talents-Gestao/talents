@@ -28,8 +28,10 @@ use App\Http\Controllers\Admin\Tasks\TaskBoardChecklistController;
 use App\Http\Controllers\Admin\Tasks\TaskBoardChecklistItemController;
 use App\Http\Controllers\Admin\Tasks\TaskBoardCommentController;
 use App\Http\Controllers\Admin\Tasks\TaskBoardController as TasksTaskBoardController;
+use App\Http\Controllers\Admin\Tasks\TaskBoardFavoriteController;
 use App\Http\Controllers\Admin\Tasks\TaskBoardLabelController;
 use App\Http\Controllers\Admin\Tasks\TaskBoardListController;
+use App\Http\Controllers\Admin\Tasks\TaskBoardMemberController;
 use App\Http\Controllers\Admin\Tasks\TemplateCardController as TasksTemplateCardController;
 use App\Http\Controllers\Admin\Tasks\TemplateListController as TasksTemplateListController;
 use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
@@ -143,5 +145,11 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
         Route::post('cards/{card}/comentarios', [TaskBoardCommentController::class, 'store'])->name('cards.comentarios.store');
         Route::delete('comentarios/{comment}', [TaskBoardCommentController::class, 'destroy'])->name('comentarios.destroy');
+
+        Route::post('quadros/{board}/favoritar', [TaskBoardFavoriteController::class, 'store'])->name('quadros.favoritar');
+        Route::delete('quadros/{board}/favoritar', [TaskBoardFavoriteController::class, 'destroy'])->name('quadros.desfavoritar');
+
+        Route::post('quadros/{board}/membros', [TaskBoardMemberController::class, 'store'])->name('quadros.membros.store');
+        Route::delete('quadros/{board}/membros/{user}', [TaskBoardMemberController::class, 'destroy'])->name('quadros.membros.destroy');
     });
 });
