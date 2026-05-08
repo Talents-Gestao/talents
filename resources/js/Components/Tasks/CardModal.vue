@@ -9,7 +9,7 @@ import {
     PaperClipIcon,
 } from '@heroicons/vue/24/outline';
 import { router, useForm } from '@inertiajs/vue3';
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     show: Boolean,
@@ -22,6 +22,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'refresh']);
+const activeTab = ref('details');
 
 const cardUpdate = useForm({
     title: '',
@@ -40,6 +41,7 @@ watch(
     () => props.card,
     (c) => {
         if (!c) return;
+        activeTab.value = 'details';
         cardUpdate.title = c.title || '';
         cardUpdate.description = c.description || '';
         cardUpdate.visibility = c.visibility || 'inherit';
@@ -171,125 +173,131 @@ function formatDateTime(value) {
 </script>
 
 <template>
-    <Modal :show="show" max-width="2xl" @close="emit('close')">
-        <div
-            v-if="card"
-            class="flex max-h-[85vh] flex-col overflow-hidden rounded-xl bg-white"
-        >
-            <div class="space-y-5 overflow-y-auto p-6">
-                <div class="space-y-4">
-                    <div class="space-y-1">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Editar cartão</p>
-                    <InputLabel value="Título" />
-                    <TextInput
-                        v-model="cardUpdate.title"
-                        class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
-                    />
-                </div>
-                <div class="space-y-1">
-                    <InputLabel value="Descrição" />
-                    <textarea
-                        v-model="cardUpdate.description"
-                        rows="4"
-                        class="mt-1 w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
-                    />
-                </div>
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div>
-                        <InputLabel value="Início" />
-                        <TextInput
-                            v-model="cardUpdate.start_date"
-                            type="date"
-                            class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none"
-                        />
-                    </div>
-                    <div>
-                        <InputLabel value="Vencimento" />
-                        <TextInput
-                            v-model="cardUpdate.due_date"
-                            type="date"
-                            class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none"
-                        />
-                    </div>
-                </div>
-
-                <div v-if="isAdmin && visibilityCardOptions.length">
-                    <InputLabel value="Visibilidade do cartão" />
-                    <select
-                        v-model="cardUpdate.visibility"
-                        class="mt-1 block w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
+    <Modal :show="show" max-width="lg" @close="emit('close')">
+        <div v-if="card" class="flex max-h-[85vh] flex-col overflow-hidden rounded-xl bg-white">
+            <div class="border-b border-slate-100 px-6 pt-5">
+                <p class="text-sm font-semibold text-slate-900">Planejar atividade</p>
+                <div class="mt-4 flex items-center gap-5 text-xs">
+                    <button
+                        type="button"
+                        class="border-b-2 pb-2 font-medium transition"
+                        :class="activeTab === 'details' ? 'border-talents-600 text-talents-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                        @click="activeTab = 'details'"
                     >
-                        <option v-for="o in visibilityCardOptions" :key="o.value" :value="o.value">
-                            {{ o.label }}
-                        </option>
-                    </select>
+                        Detalhes
+                    </button>
+                    <button
+                        type="button"
+                        class="border-b-2 pb-2 font-medium transition"
+                        :class="activeTab === 'comments' ? 'border-talents-600 text-talents-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                        @click="activeTab = 'comments'"
+                    >
+                        Comentários {{ (card.comments || []).length ? `${(card.comments || []).length}` : '' }}
+                    </button>
                 </div>
+            </div>
 
-                <div v-if="isAdmin" class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div class="md:col-span-2">
-                        <InputLabel value="Empresa responsável (cliente)" />
+            <div v-if="activeTab === 'details'" class="space-y-4 overflow-y-auto p-6">
+                <div class="space-y-4 rounded-lg border border-slate-100 p-4">
+                    <div class="space-y-1">
+                        <InputLabel value="Título" />
+                        <TextInput
+                            v-model="cardUpdate.title"
+                            class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
+                        />
+                    </div>
+                    <div class="space-y-1">
+                        <InputLabel value="Descrição" />
+                        <textarea
+                            v-model="cardUpdate.description"
+                            rows="4"
+                            class="mt-1 w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
+                        />
+                    </div>
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div>
+                            <InputLabel value="Início" />
+                            <TextInput
+                                v-model="cardUpdate.start_date"
+                                type="date"
+                                class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Vencimento" />
+                            <TextInput
+                                v-model="cardUpdate.due_date"
+                                type="date"
+                                class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div v-if="isAdmin && visibilityCardOptions.length">
+                        <InputLabel value="Visibilidade do cartão" />
                         <select
-                            v-model="cardUpdate.company_id"
+                            v-model="cardUpdate.visibility"
                             class="mt-1 block w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
                         >
-                            <option value="">Não compartilhar com empresa</option>
-                            <option v-for="c in companies" :key="c.id" :value="c.id">
-                                {{ c.name }}
+                            <option v-for="o in visibilityCardOptions" :key="o.value" :value="o.value">
+                                {{ o.label }}
                             </option>
                         </select>
-                        <p class="mt-1 text-xs text-slate-500">
-                            Quando definida, a tarefa aparece para essa empresa no portal cliente.
-                        </p>
                     </div>
-                    <div>
-                        <InputLabel value="Membros" />
-                        <div
-                            class="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm"
-                        >
-                            <label
-                                v-for="u in usersForSelectedCompany"
-                                :key="u.id"
-                                class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
+
+                    <div v-if="isAdmin" class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div class="md:col-span-2">
+                            <InputLabel value="Empresa responsável (cliente)" />
+                            <select
+                                v-model="cardUpdate.company_id"
+                                class="mt-1 block w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
                             >
-                                <input v-model="cardUpdate.member_ids" type="checkbox" :value="u.id" />
-                                {{ u.name }}
-                            </label>
-                            <p v-if="!usersForSelectedCompany.length" class="text-xs text-slate-500">
-                                Selecione uma empresa para listar os responsáveis.
+                                <option value="">Não compartilhar com empresa</option>
+                                <option v-for="c in companies" :key="c.id" :value="c.id">
+                                    {{ c.name }}
+                                </option>
+                            </select>
+                            <p class="mt-1 text-xs text-slate-500">
+                                Quando definida, a tarefa aparece para essa empresa no portal cliente.
                             </p>
                         </div>
-                    </div>
-                    <div>
-                        <InputLabel value="Etiquetas" />
-                        <div
-                            class="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm"
-                        >
-                            <label
-                                v-for="l in boardPayload.labels"
-                                :key="l.id"
-                                class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
-                            >
-                                <input v-model="cardUpdate.label_ids" type="checkbox" :value="l.id" />
-                                <span
-                                    class="inline-block h-3 w-3 rounded"
-                                    :style="{ backgroundColor: l.color }"
-                                />
-                                {{ l.name || l.color }}
-                            </label>
+                        <div>
+                            <InputLabel value="Membros" />
+                            <div class="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm">
+                                <label
+                                    v-for="u in usersForSelectedCompany"
+                                    :key="u.id"
+                                    class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
+                                >
+                                    <input v-model="cardUpdate.member_ids" type="checkbox" :value="u.id" />
+                                    {{ u.name }}
+                                </label>
+                                <p v-if="!usersForSelectedCompany.length" class="text-xs text-slate-500">
+                                    Selecione uma empresa para listar os responsáveis.
+                                </p>
+                            </div>
                         </div>
-                        <button
-                            type="button"
-                            class="mt-1 text-xs text-talents-700 underline"
-                            @click="newLabel"
-                        >
-                            + Criar etiqueta
-                        </button>
+                        <div>
+                            <InputLabel value="Etiquetas" />
+                            <div class="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm">
+                                <label
+                                    v-for="l in boardPayload.labels"
+                                    :key="l.id"
+                                    class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
+                                >
+                                    <input v-model="cardUpdate.label_ids" type="checkbox" :value="l.id" />
+                                    <span class="inline-block h-3 w-3 rounded" :style="{ backgroundColor: l.color }" />
+                                    {{ l.name || l.color }}
+                                </label>
+                            </div>
+                            <button type="button" class="mt-1 text-xs text-talents-700 underline" @click="newLabel">
+                                + Criar etiqueta
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                </div>
-
-                <div class="space-y-2 border-t border-slate-100 pt-4">
+                <div class="space-y-2 rounded-lg border border-slate-100 p-4">
                     <h4 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
                         <CheckCircleIcon class="h-4 w-4 text-slate-500" />
                         Checklist
@@ -303,15 +311,13 @@ function formatDateTime(value) {
                                     class="rounded border-slate-300"
                                     @change="toggleItem(it)"
                                 />
-                                <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{
-                                    it.text
-                                }}</span>
+                                <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{ it.text }}</span>
                             </li>
                         </template>
                     </ul>
                 </div>
 
-                <div class="space-y-2 border-t border-slate-100 pt-4">
+                <div class="space-y-2 rounded-lg border border-slate-100 p-4">
                     <h4 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
                         <PaperClipIcon class="h-4 w-4 text-slate-500" />
                         Anexos
@@ -319,19 +325,19 @@ function formatDateTime(value) {
                     <input type="file" class="mt-2 block text-sm" @change="uploadAttachment" />
                     <ul class="mt-2 space-y-1 text-xs">
                         <li v-for="a in card.attachments || []" :key="a.id">
-                            <a :href="a.url" target="_blank" class="text-talents-700 underline">{{
-                                a.original_name
-                            }}</a>
+                            <a :href="a.url" target="_blank" class="text-talents-700 underline">{{ a.original_name }}</a>
                         </li>
                     </ul>
                 </div>
+            </div>
 
-                <div class="space-y-2 border-t border-slate-100 pt-4">
+            <div v-else class="overflow-y-auto p-6">
+                <div class="space-y-2 rounded-lg border border-slate-100 p-4">
                     <h4 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
                         <ChatBubbleOvalLeftEllipsisIcon class="h-4 w-4 text-slate-500" />
                         Comentários
                     </h4>
-                    <ul class="mt-2 max-h-40 space-y-2 overflow-y-auto text-sm">
+                    <ul class="mt-2 max-h-52 space-y-2 overflow-y-auto text-sm">
                         <li v-for="c in card.comments || []" :key="c.id" class="rounded-md border border-slate-200 bg-slate-50/70 p-2">
                             <span class="font-medium">{{ c.user?.name }}</span>
                             <span class="text-xs text-slate-500"> · {{ formatDateTime(c.created_at) }}</span>
@@ -340,18 +346,20 @@ function formatDateTime(value) {
                     </ul>
                     <textarea
                         v-model="commentForm.body"
-                        rows="2"
+                        rows="3"
                         class="mt-2 w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
-                        placeholder="Escrever comentário…"
+                        placeholder="Escrever comentário..."
                     />
-                    <PrimaryButton
-                        type="button"
-                        class="mt-2"
-                        :disabled="commentForm.processing"
-                        @click="submitComment"
-                    >
-                        Comentar
-                    </PrimaryButton>
+                    <div class="flex justify-end">
+                        <PrimaryButton
+                            type="button"
+                            class="mt-1"
+                            :disabled="commentForm.processing"
+                            @click="submitComment"
+                        >
+                            Comentar
+                        </PrimaryButton>
+                    </div>
                 </div>
             </div>
 
@@ -361,10 +369,10 @@ function formatDateTime(value) {
                     class="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                     @click="emit('close')"
                 >
-                    Fechar
+                    Cancelar
                 </button>
                 <PrimaryButton type="button" :disabled="cardUpdate.processing" @click="saveCard">
-                    Salvar
+                    Salvar alterações
                 </PrimaryButton>
             </div>
         </div>
