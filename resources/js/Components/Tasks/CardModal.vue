@@ -153,7 +153,14 @@ function newLabel() {
         { name: 'Nova', color },
         {
             preserveScroll: true,
-            onSuccess: () => emit('refresh'),
+            preserveState: true,
+            onSuccess: () => {
+                router.reload({
+                    only: ['boardPayload'],
+                    preserveState: true,
+                    preserveScroll: true,
+                });
+            },
         },
     );
 }
