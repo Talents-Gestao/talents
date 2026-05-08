@@ -26,3 +26,6 @@ Thumbs.db
 # Python (parser espelho / ferramentas)
 __pycache__/
 *.py[cod]
+
+# Arquivos temporários (mensagens de commit, etc.)
+.commitmsg.tmp
