@@ -28,6 +28,25 @@ class TaskBoardChecklistController extends Controller
         return back()->with('success', 'Checklist criada.');
     }
 
+    public function update(Request $request, TaskChecklist $checklist): RedirectResponse
+    {
+        $data = $request->validate([
+            'is_completed' => ['required', 'boolean'],
+        ]);
+
+        $checklist->update([
+            'is_completed' => (bool) $data['is_completed'],
+        ]);
+
+        if ($checklist->items()->exists()) {
+            $checklist->items()->update([
+                'is_completed' => (bool) $data['is_completed'],
+            ]);
+        }
+
+        return back()->with('success', 'Checklist atualizada.');
+    }
+
     public function destroy(TaskChecklist $checklist): RedirectResponse
     {
         $checklist->delete();

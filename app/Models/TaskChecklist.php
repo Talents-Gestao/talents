@@ -12,12 +12,14 @@ class TaskChecklist extends Model
         'task_card_id',
         'name',
         'position',
+        'is_completed',
     ];
 
     protected function casts(): array
     {
         return [
             'position' => 'float',
+            'is_completed' => 'boolean',
         ];
     }
 

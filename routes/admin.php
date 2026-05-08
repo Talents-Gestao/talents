@@ -135,6 +135,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('labels/{label}', [TaskBoardLabelController::class, 'destroy'])->name('labels.destroy');
 
         Route::post('cards/{card}/checklists', [TaskBoardChecklistController::class, 'store'])->name('cards.checklists.store');
+        Route::patch('checklists/{checklist}', [TaskBoardChecklistController::class, 'update'])->name('checklists.update');
         Route::delete('checklists/{checklist}', [TaskBoardChecklistController::class, 'destroy'])->name('checklists.destroy');
 
         Route::post('checklists/{checklist}/itens', [TaskBoardChecklistItemController::class, 'store'])->name('checklists.itens.store');

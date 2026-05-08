@@ -71,8 +71,9 @@ function checklistStats(checklist) {
     const items = checklist?.items || [];
     const total = items.length;
     const completed = items.filter((item) => item.is_completed).length;
-    const percent = total ? Math.round((completed / total) * 100) : 0;
-    const done = total > 0 && completed === total;
+    const doneByItems = total > 0 && completed === total;
+    const done = total > 0 ? doneByItems : !!checklist?.is_completed;
+    const percent = done ? 100 : total ? Math.round((completed / total) * 100) : 0;
 
     return { total, completed, percent, done };
 }
@@ -205,7 +206,20 @@ function saveInlineEditItem(item) {
 function toggleChecklistCompletion(checklist) {
     if (!checklist || !checklist.id) return;
     const stats = checklistStats(checklist);
-    if (!stats.total) return;
+
+    if (!stats.total) {
+        if (!props.isAdmin) return;
+        router.patch(
+            route('admin.tarefas.checklists.update', checklist.id),
+            { is_completed: !stats.done },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => reloadBoardPayloadAndSyncCard(),
+            },
+        );
+        return;
+    }
 
     const targetValue = !stats.done;
     const items = checklist.items || [];
