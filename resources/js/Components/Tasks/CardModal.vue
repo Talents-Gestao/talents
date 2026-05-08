@@ -3,6 +3,11 @@ import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import {
+    ChatBubbleOvalLeftEllipsisIcon,
+    CheckCircleIcon,
+    PaperClipIcon,
+} from '@heroicons/vue/24/outline';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, watch } from 'vue';
 
@@ -150,32 +155,61 @@ function newLabel() {
         },
     );
 }
+
+function formatDateTime(value) {
+    if (!value) return '';
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return value;
+    return dt.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
 </script>
 
 <template>
     <Modal :show="show" max-width="2xl" @close="emit('close')">
-        <div v-if="card" class="space-y-4 p-6">
-            <div class="space-y-3">
-                <div>
+        <div
+            v-if="card"
+            class="flex max-h-[85vh] flex-col overflow-hidden rounded-xl bg-white"
+        >
+            <div class="space-y-5 overflow-y-auto p-6">
+                <div class="space-y-4">
+                    <div class="space-y-1">
+                    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Editar cartão</p>
                     <InputLabel value="Título" />
-                    <TextInput v-model="cardUpdate.title" class="mt-1 w-full" />
+                    <TextInput
+                        v-model="cardUpdate.title"
+                        class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
+                    />
                 </div>
-                <div>
+                <div class="space-y-1">
                     <InputLabel value="Descrição" />
                     <textarea
                         v-model="cardUpdate.description"
                         rows="4"
-                        class="mt-1 w-full rounded-md border border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        class="mt-1 w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
                     />
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div>
                         <InputLabel value="Início" />
-                        <TextInput v-model="cardUpdate.start_date" type="date" class="mt-1 w-full" />
+                        <TextInput
+                            v-model="cardUpdate.start_date"
+                            type="date"
+                            class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none"
+                        />
                     </div>
                     <div>
                         <InputLabel value="Vencimento" />
-                        <TextInput v-model="cardUpdate.due_date" type="date" class="mt-1 w-full" />
+                        <TextInput
+                            v-model="cardUpdate.due_date"
+                            type="date"
+                            class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none"
+                        />
                     </div>
                 </div>
 
@@ -183,7 +217,7 @@ function newLabel() {
                     <InputLabel value="Visibilidade do cartão" />
                     <select
                         v-model="cardUpdate.visibility"
-                        class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                        class="mt-1 block w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
                     >
                         <option v-for="o in visibilityCardOptions" :key="o.value" :value="o.value">
                             {{ o.label }}
@@ -196,7 +230,7 @@ function newLabel() {
                         <InputLabel value="Empresa responsável (cliente)" />
                         <select
                             v-model="cardUpdate.company_id"
-                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                            class="mt-1 block w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
                         >
                             <option value="">Não compartilhar com empresa</option>
                             <option v-for="c in companies" :key="c.id" :value="c.id">
@@ -210,12 +244,12 @@ function newLabel() {
                     <div>
                         <InputLabel value="Membros" />
                         <div
-                            class="mt-1 max-h-32 space-y-1 overflow-y-auto rounded border border-slate-200 p-2 text-sm"
+                            class="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm"
                         >
                             <label
                                 v-for="u in usersForSelectedCompany"
                                 :key="u.id"
-                                class="flex items-center gap-2"
+                                class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
                             >
                                 <input v-model="cardUpdate.member_ids" type="checkbox" :value="u.id" />
                                 {{ u.name }}
@@ -228,9 +262,13 @@ function newLabel() {
                     <div>
                         <InputLabel value="Etiquetas" />
                         <div
-                            class="mt-1 max-h-32 space-y-1 overflow-y-auto rounded border border-slate-200 p-2 text-sm"
+                            class="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm"
                         >
-                            <label v-for="l in boardPayload.labels" :key="l.id" class="flex items-center gap-2">
+                            <label
+                                v-for="l in boardPayload.labels"
+                                :key="l.id"
+                                class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
+                            >
                                 <input v-model="cardUpdate.label_ids" type="checkbox" :value="l.id" />
                                 <span
                                     class="inline-block h-3 w-3 rounded"
@@ -249,64 +287,84 @@ function newLabel() {
                     </div>
                 </div>
 
-                <PrimaryButton type="button" :disabled="cardUpdate.processing" @click="saveCard">
-                    Guardar cartão
-                </PrimaryButton>
-            </div>
+                </div>
 
-            <div class="border-t border-slate-200 pt-4">
-                <h4 class="font-semibold text-slate-800">Checklist</h4>
-                <ul class="mt-2 space-y-1 text-sm">
-                    <template v-for="cl in card.checklists || []" :key="cl.id">
-                        <li v-for="it in cl.items || []" :key="it.id" class="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                :checked="it.is_completed"
-                                class="rounded border-slate-300"
-                                @change="toggleItem(it)"
-                            />
-                            <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{
-                                it.text
-                            }}</span>
+                <div class="space-y-2 border-t border-slate-100 pt-4">
+                    <h4 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                        <CheckCircleIcon class="h-4 w-4 text-slate-500" />
+                        Checklist
+                    </h4>
+                    <ul class="mt-2 space-y-1 text-sm">
+                        <template v-for="cl in card.checklists || []" :key="cl.id">
+                            <li v-for="it in cl.items || []" :key="it.id" class="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    :checked="it.is_completed"
+                                    class="rounded border-slate-300"
+                                    @change="toggleItem(it)"
+                                />
+                                <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{
+                                    it.text
+                                }}</span>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+
+                <div class="space-y-2 border-t border-slate-100 pt-4">
+                    <h4 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                        <PaperClipIcon class="h-4 w-4 text-slate-500" />
+                        Anexos
+                    </h4>
+                    <input type="file" class="mt-2 block text-sm" @change="uploadAttachment" />
+                    <ul class="mt-2 space-y-1 text-xs">
+                        <li v-for="a in card.attachments || []" :key="a.id">
+                            <a :href="a.url" target="_blank" class="text-talents-700 underline">{{
+                                a.original_name
+                            }}</a>
                         </li>
-                    </template>
-                </ul>
+                    </ul>
+                </div>
+
+                <div class="space-y-2 border-t border-slate-100 pt-4">
+                    <h4 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                        <ChatBubbleOvalLeftEllipsisIcon class="h-4 w-4 text-slate-500" />
+                        Comentários
+                    </h4>
+                    <ul class="mt-2 max-h-40 space-y-2 overflow-y-auto text-sm">
+                        <li v-for="c in card.comments || []" :key="c.id" class="rounded-md border border-slate-200 bg-slate-50/70 p-2">
+                            <span class="font-medium">{{ c.user?.name }}</span>
+                            <span class="text-xs text-slate-500"> · {{ formatDateTime(c.created_at) }}</span>
+                            <p class="mt-1 whitespace-pre-wrap text-slate-800">{{ c.body }}</p>
+                        </li>
+                    </ul>
+                    <textarea
+                        v-model="commentForm.body"
+                        rows="2"
+                        class="mt-2 w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
+                        placeholder="Escrever comentário…"
+                    />
+                    <PrimaryButton
+                        type="button"
+                        class="mt-2"
+                        :disabled="commentForm.processing"
+                        @click="submitComment"
+                    >
+                        Comentar
+                    </PrimaryButton>
+                </div>
             </div>
 
-            <div class="border-t border-slate-200 pt-4">
-                <h4 class="font-semibold text-slate-800">Anexos</h4>
-                <input type="file" class="mt-2 block text-sm" @change="uploadAttachment" />
-                <ul class="mt-2 space-y-1 text-xs">
-                    <li v-for="a in card.attachments || []" :key="a.id">
-                        <a :href="a.url" target="_blank" class="text-talents-700 underline">{{
-                            a.original_name
-                        }}</a>
-                    </li>
-                </ul>
-            </div>
-
-            <div class="border-t border-slate-200 pt-4">
-                <h4 class="font-semibold text-slate-800">Comentários</h4>
-                <ul class="mt-2 max-h-40 space-y-2 overflow-y-auto text-sm">
-                    <li v-for="c in card.comments || []" :key="c.id" class="rounded bg-slate-50 p-2">
-                        <span class="font-medium">{{ c.user?.name }}</span>
-                        <span class="text-xs text-slate-500"> · {{ c.created_at }}</span>
-                        <p class="mt-1 whitespace-pre-wrap text-slate-800">{{ c.body }}</p>
-                    </li>
-                </ul>
-                <textarea
-                    v-model="commentForm.body"
-                    rows="2"
-                    class="mt-2 w-full rounded-md border border-slate-300 text-sm"
-                    placeholder="Escrever comentário…"
-                />
-                <PrimaryButton
+            <div class="sticky bottom-0 flex items-center justify-end gap-2 border-t border-slate-200 bg-white/95 px-6 py-4 backdrop-blur">
+                <button
                     type="button"
-                    class="mt-2"
-                    :disabled="commentForm.processing"
-                    @click="submitComment"
+                    class="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    @click="emit('close')"
                 >
-                    Comentar
+                    Fechar
+                </button>
+                <PrimaryButton type="button" :disabled="cardUpdate.processing" @click="saveCard">
+                    Salvar
                 </PrimaryButton>
             </div>
         </div>
