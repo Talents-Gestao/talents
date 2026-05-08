@@ -37,8 +37,9 @@ const cardUpdate = useForm({
 
 const commentForm = useForm({ body: '', mentioned_user_ids: [] });
 const checklistForm = useForm({ name: '' });
-const checklistItemDrafts = ref({});
 const checklistBulkProcessing = ref({});
+const editingChecklistItemId = ref(null);
+const editingChecklistItemText = ref('');
 
 watch(
     () => props.card,
@@ -164,19 +165,37 @@ function createChecklist() {
     });
 }
 
-function createChecklistItem(checklistId) {
-    if (!props.isAdmin || !checklistId) return;
-    const text = (checklistItemDrafts.value[checklistId] || '').trim();
-    if (!text) return;
+function startInlineEditItem(item) {
+    if (!item || !item.id) return;
+    editingChecklistItemId.value = item.id;
+    editingChecklistItemText.value = item.text || '';
+}
 
-    router.post(
-        route('admin.tarefas.checklists.itens.store', checklistId),
+function cancelInlineEditItem() {
+    editingChecklistItemId.value = null;
+    editingChecklistItemText.value = '';
+}
+
+function saveInlineEditItem(item) {
+    if (!item || !item.id) return;
+    const text = editingChecklistItemText.value.trim();
+    if (!text || text === item.text) {
+        cancelInlineEditItem();
+        return;
+    }
+
+    const url = props.isAdmin
+        ? route('admin.tarefas.checklist-itens.update', item.id)
+        : route('client.tarefas.checklist-itens.update', item.id);
+
+    router.patch(
+        url,
         { text },
         {
             preserveScroll: true,
             preserveState: true,
             onSuccess: () => {
-                checklistItemDrafts.value[checklistId] = '';
+                cancelInlineEditItem();
                 reloadBoardPayloadAndSyncCard();
             },
         },
@@ -397,24 +416,24 @@ function formatDateTime(value) {
                                         class="rounded border-slate-300"
                                         @change="toggleItem(it)"
                                     />
-                                    <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{ it.text }}</span>
+                                    <TextInput
+                                        v-if="editingChecklistItemId === it.id"
+                                        v-model="editingChecklistItemText"
+                                        class="h-8 w-full border-slate-200 bg-white text-sm shadow-none"
+                                        @keydown.enter.prevent="saveInlineEditItem(it)"
+                                        @keydown.esc.prevent="cancelInlineEditItem"
+                                        @blur="saveInlineEditItem(it)"
+                                    />
+                                    <button
+                                        v-else
+                                        type="button"
+                                        class="w-full text-left"
+                                        @click="startInlineEditItem(it)"
+                                    >
+                                        <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{ it.text }}</span>
+                                    </button>
                                 </li>
                             </ul>
-
-                            <div v-if="isAdmin" class="mt-2 flex gap-2">
-                                <TextInput
-                                    v-model="checklistItemDrafts[cl.id]"
-                                    class="w-full border-slate-200 bg-white text-sm shadow-none"
-                                    placeholder="Novo item"
-                                />
-                                <button
-                                    type="button"
-                                    class="rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                                    @click="createChecklistItem(cl.id)"
-                                >
-                                    Adicionar
-                                </button>
-                            </div>
                         </div>
                     </div>
 
