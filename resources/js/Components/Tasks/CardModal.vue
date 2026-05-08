@@ -386,7 +386,7 @@ function formatDateTime(value) {
                                 <button
                                     type="button"
                                     class="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                                    :disabled="checklistBulkProcessing[cl.id] || !checklistStats(cl).total"
+                                    :disabled="checklistBulkProcessing[cl.id]"
                                     @click="toggleChecklistCompletion(cl)"
                                 >
                                     {{ checklistStats(cl).done ? 'Reabrir checklist' : 'Concluir checklist' }}
