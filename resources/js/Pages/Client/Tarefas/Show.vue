@@ -20,6 +20,16 @@ function openCard(card) {
     modalOpen.value = true;
 }
 
+function syncSelectedCard(cardId) {
+    const freshCard = (props.boardPayload?.lists || [])
+        .flatMap((list) => list.cards || [])
+        .find((card) => Number(card.id) === Number(cardId));
+
+    if (freshCard) {
+        selectedCard.value = freshCard;
+    }
+}
+
 function refreshBoard() {
     router.visit(route('client.tarefas.show', props.boardPayload.id), { preserveScroll: true });
 }
@@ -141,6 +151,7 @@ function formatDate(value) {
                 :is-admin="false"
                 @close="modalOpen = false"
                 @refresh="refreshBoard"
+                @sync-card="syncSelectedCard"
             />
         </div>
     </ClientLayout>

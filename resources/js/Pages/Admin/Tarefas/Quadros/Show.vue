@@ -23,6 +23,16 @@ function openCard(card) {
     modalOpen.value = true;
 }
 
+function syncSelectedCard(cardId) {
+    const freshCard = (props.boardPayload?.lists || [])
+        .flatMap((list) => list.cards || [])
+        .find((card) => Number(card.id) === Number(cardId));
+
+    if (freshCard) {
+        selectedCard.value = freshCard;
+    }
+}
+
 function refreshBoard() {
     router.visit(route('admin.tarefas.quadros.show', props.boardPayload.id), {
         preserveScroll: true,
@@ -134,6 +144,7 @@ function formatDate(value) {
             :visibility-card-options="visibilityCardOptions || []"
             @close="modalOpen = false"
             @refresh="refreshBoard"
+            @sync-card="syncSelectedCard"
         />
     </AdminLayout>
 </template>

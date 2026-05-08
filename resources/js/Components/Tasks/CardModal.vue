@@ -21,7 +21,7 @@ const props = defineProps({
     visibilityCardOptions: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(['close', 'refresh']);
+const emit = defineEmits(['close', 'refresh', 'sync-card']);
 const activeTab = ref('details');
 
 const cardUpdate = useForm({
@@ -98,6 +98,16 @@ function saveCard() {
     }
 }
 
+function reloadBoardPayloadAndSyncCard() {
+    if (!props.card) return;
+    router.reload({
+        only: ['boardPayload'],
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: () => emit('sync-card', props.card.id),
+    });
+}
+
 function submitComment() {
     if (!props.card || !commentForm.body.trim()) return;
     const url = props.isAdmin
@@ -109,11 +119,7 @@ function submitComment() {
         preserveState: true,
         onSuccess: () => {
             commentForm.reset('body');
-            router.reload({
-                only: ['boardPayload'],
-                preserveState: true,
-                preserveScroll: true,
-            });
+            reloadBoardPayloadAndSyncCard();
         },
     });
 }
@@ -128,7 +134,8 @@ function toggleItem(item) {
         { is_completed: !item.is_completed },
         {
             preserveScroll: true,
-            onSuccess: () => emit('refresh'),
+            preserveState: true,
+            onSuccess: () => reloadBoardPayloadAndSyncCard(),
         },
     );
 }
@@ -141,11 +148,7 @@ function createChecklist() {
         preserveState: true,
         onSuccess: () => {
             checklistForm.reset('name');
-            router.reload({
-                only: ['boardPayload'],
-                preserveState: true,
-                preserveScroll: true,
-            });
+            reloadBoardPayloadAndSyncCard();
         },
     });
 }
@@ -163,11 +166,7 @@ function createChecklistItem(checklistId) {
             preserveState: true,
             onSuccess: () => {
                 checklistItemDrafts.value[checklistId] = '';
-                router.reload({
-                    only: ['boardPayload'],
-                    preserveState: true,
-                    preserveScroll: true,
-                });
+                reloadBoardPayloadAndSyncCard();
             },
         },
     );
@@ -187,7 +186,8 @@ function uploadAttachment(e) {
     router.post(url, fd, {
         forceFormData: true,
         preserveScroll: true,
-        onSuccess: () => emit('refresh'),
+        preserveState: true,
+        onSuccess: () => reloadBoardPayloadAndSyncCard(),
     });
     e.target.value = '';
 }
@@ -201,13 +201,7 @@ function newLabel() {
         {
             preserveScroll: true,
             preserveState: true,
-            onSuccess: () => {
-                router.reload({
-                    only: ['boardPayload'],
-                    preserveState: true,
-                    preserveScroll: true,
-                });
-            },
+            onSuccess: () => reloadBoardPayloadAndSyncCard(),
         },
     );
 }
