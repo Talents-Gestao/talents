@@ -83,8 +83,14 @@ const overallChecklistStats = computed(() => {
     const totals = checklists.reduce(
         (acc, checklist) => {
             const stats = checklistStats(checklist);
-            acc.total += stats.total;
-            acc.completed += stats.completed;
+            if (stats.total > 0) {
+                acc.total += stats.total;
+                acc.completed += stats.completed;
+            } else {
+                // Checklist sem itens também conta como uma etapa no progresso geral.
+                acc.total += 1;
+                acc.completed += stats.done ? 1 : 0;
+            }
             return acc;
         },
         { total: 0, completed: 0 },
