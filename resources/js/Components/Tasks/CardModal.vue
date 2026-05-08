@@ -36,6 +36,8 @@ const cardUpdate = useForm({
 });
 
 const commentForm = useForm({ body: '', mentioned_user_ids: [] });
+const checklistForm = useForm({ name: '' });
+const checklistItemDrafts = ref({});
 
 watch(
     () => props.card,
@@ -104,9 +106,14 @@ function submitComment() {
 
     commentForm.post(url, {
         preserveScroll: true,
+        preserveState: true,
         onSuccess: () => {
             commentForm.reset('body');
-            emit('refresh');
+            router.reload({
+                only: ['boardPayload'],
+                preserveState: true,
+                preserveScroll: true,
+            });
         },
     });
 }
@@ -122,6 +129,46 @@ function toggleItem(item) {
         {
             preserveScroll: true,
             onSuccess: () => emit('refresh'),
+        },
+    );
+}
+
+function createChecklist() {
+    if (!props.isAdmin || !props.card || !checklistForm.name.trim()) return;
+
+    checklistForm.post(route('admin.tarefas.cards.checklists.store', props.card.id), {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            checklistForm.reset('name');
+            router.reload({
+                only: ['boardPayload'],
+                preserveState: true,
+                preserveScroll: true,
+            });
+        },
+    });
+}
+
+function createChecklistItem(checklistId) {
+    if (!props.isAdmin || !checklistId) return;
+    const text = (checklistItemDrafts.value[checklistId] || '').trim();
+    if (!text) return;
+
+    router.post(
+        route('admin.tarefas.checklists.itens.store', checklistId),
+        { text },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                checklistItemDrafts.value[checklistId] = '';
+                router.reload({
+                    only: ['boardPayload'],
+                    preserveState: true,
+                    preserveScroll: true,
+                });
+            },
         },
     );
 }
@@ -309,19 +356,64 @@ function formatDateTime(value) {
                         <CheckCircleIcon class="h-4 w-4 text-slate-500" />
                         Checklist
                     </h4>
-                    <ul class="mt-2 space-y-1 text-sm">
-                        <template v-for="cl in card.checklists || []" :key="cl.id">
-                            <li v-for="it in cl.items || []" :key="it.id" class="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    :checked="it.is_completed"
-                                    class="rounded border-slate-300"
-                                    @change="toggleItem(it)"
+                    <div v-if="isAdmin" class="flex gap-2">
+                        <TextInput
+                            v-model="checklistForm.name"
+                            class="w-full border-slate-200 bg-white text-sm shadow-none"
+                            placeholder="Nome da checklist"
+                        />
+                        <button
+                            type="button"
+                            class="rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            @click="createChecklist"
+                        >
+                            Criar
+                        </button>
+                    </div>
+
+                    <div class="mt-2 space-y-3">
+                        <div
+                            v-for="cl in card.checklists || []"
+                            :key="cl.id"
+                            class="rounded-md border border-slate-200 p-2"
+                        >
+                            <p class="text-xs font-semibold text-slate-700">{{ cl.name }}</p>
+                            <ul class="mt-2 space-y-1 text-sm">
+                                <li
+                                    v-for="it in cl.items || []"
+                                    :key="it.id"
+                                    class="flex items-center gap-2"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        :checked="it.is_completed"
+                                        class="rounded border-slate-300"
+                                        @change="toggleItem(it)"
+                                    />
+                                    <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{ it.text }}</span>
+                                </li>
+                            </ul>
+
+                            <div v-if="isAdmin" class="mt-2 flex gap-2">
+                                <TextInput
+                                    v-model="checklistItemDrafts[cl.id]"
+                                    class="w-full border-slate-200 bg-white text-sm shadow-none"
+                                    placeholder="Novo item"
                                 />
-                                <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{ it.text }}</span>
-                            </li>
-                        </template>
-                    </ul>
+                                <button
+                                    type="button"
+                                    class="rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                    @click="createChecklistItem(cl.id)"
+                                >
+                                    Adicionar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p v-if="!(card.checklists || []).length" class="text-xs text-slate-500">
+                        Nenhuma checklist criada ainda.
+                    </p>
                 </div>
 
                 <div class="space-y-2 rounded-lg border border-slate-100 p-4">
