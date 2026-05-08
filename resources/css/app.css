@@ -93,3 +93,17 @@
         @apply mt-1 w-full rounded-xl border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500;
     }
 }
+
+@layer utilities {
+    /**
+     * Esconde a barra de rolagem nativa (ex.: sidebar) mantendo scroll por roda/trackpad.
+     */
+    .scrollbar-none {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .scrollbar-none::-webkit-scrollbar {
+        display: none;
+    }
+}

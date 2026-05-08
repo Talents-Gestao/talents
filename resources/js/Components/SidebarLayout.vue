@@ -88,7 +88,9 @@ const hasAside = computed(() => Boolean(slots.aside));
                     <slot name="logo" :collapsed="collapsed" />
                 </div>
 
-                <nav class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-4">
+                <nav
+                    class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-2 py-4 scrollbar-none"
+                >
                     <div class="flex flex-col gap-1">
                         <slot name="navigation" :collapsed="collapsed" />
                     </div>
