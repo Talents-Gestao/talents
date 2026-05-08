@@ -1,0 +1,8 @@
+fix(tarefas): tolerar tabela de favoritos ainda inexistente no quadro
+
+- BoardPresenter agora verifica Schema::hasTable e captura QueryException
+  antes de consultar `task_board_user_favorites`, evitando 500 em
+  ambientes onde a migration ainda não foi aplicada (Coolify).
+- TaskBoardFavoriteController e BoardFavoriteController também checam
+  Schema::hasTable antes de gravar/remover favoritos, devolvendo back()
+  com aviso amigável em vez de explodir.

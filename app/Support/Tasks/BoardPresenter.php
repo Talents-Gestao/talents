@@ -8,6 +8,8 @@ use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 final class BoardPresenter
 {
@@ -69,14 +71,7 @@ final class BoardPresenter
             ])->values()
             : collect();
 
-        $userId = Auth::id();
-        $isStarred = false;
-        if ($userId) {
-            $isStarred = DB::table('task_board_user_favorites')
-                ->where('board_id', $board->id)
-                ->where('user_id', $userId)
-                ->exists();
-        }
+        $isStarred = self::isBoardStarredBy($board->id, Auth::id());
 
         return [
             'id' => $board->id,
@@ -181,5 +176,31 @@ final class BoardPresenter
             ->orderBy('name')
             ->get(['id', 'name', 'email'])
             ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'email' => $u->email]);
+    }
+
+    /**
+     * Verifica se o usuário marcou o quadro como favorito.
+     *
+     * Tolerante à ausência da tabela (caso a migration ainda não tenha
+     * sido aplicada no ambiente), evitando 500 ao acessar o quadro.
+     */
+    private static function isBoardStarredBy(int $boardId, ?int $userId): bool
+    {
+        if (! $userId) {
+            return false;
+        }
+
+        try {
+            if (! Schema::hasTable('task_board_user_favorites')) {
+                return false;
+            }
+
+            return DB::table('task_board_user_favorites')
+                ->where('board_id', $boardId)
+                ->where('user_id', $userId)
+                ->exists();
+        } catch (Throwable $e) {
+            return false;
+        }
     }
 }

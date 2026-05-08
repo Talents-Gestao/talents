@@ -7,11 +7,16 @@ use App\Models\TaskBoard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class BoardFavoriteController extends Controller
 {
     public function store(Request $request, TaskBoard $board): RedirectResponse
     {
+        if (! Schema::hasTable('task_board_user_favorites')) {
+            return back()->with('error', 'Recurso de favoritos indisponível: execute as migrations.');
+        }
+
         DB::table('task_board_user_favorites')->updateOrInsert(
             ['board_id' => $board->id, 'user_id' => $request->user()->id],
             ['updated_at' => now(), 'created_at' => now()],
@@ -22,6 +27,10 @@ class BoardFavoriteController extends Controller
 
     public function destroy(Request $request, TaskBoard $board): RedirectResponse
     {
+        if (! Schema::hasTable('task_board_user_favorites')) {
+            return back();
+        }
+
         DB::table('task_board_user_favorites')
             ->where('board_id', $board->id)
             ->where('user_id', $request->user()->id)
