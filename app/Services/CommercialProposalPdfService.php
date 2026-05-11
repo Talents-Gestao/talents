@@ -113,6 +113,7 @@ class CommercialProposalPdfService
         $candidates = [
             base_path('logo.png'),
             base_path('../logo.png'),
+            public_path('images/logo.png'),
             public_path('logo.png'),
         ];
 
