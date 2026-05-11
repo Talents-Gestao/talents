@@ -1,13 +1,23 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
-import { Head, Link, router } from '@inertiajs/vue3';
-import { reactive } from 'vue';
+import {
+    DocumentArrowDownIcon,
+    DocumentTextIcon,
+    PencilSquareIcon,
+    PlusIcon,
+    TrashIcon,
+} from '@heroicons/vue/24/outline';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { nextTick, reactive, ref } from 'vue';
+
+const inertiaPage = usePage();
 
 const props = defineProps({
     proposals: { type: Object, required: true },
     sellers: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
+    templates: { type: Array, default: () => [] },
 });
 
 const filterState = reactive({
@@ -38,6 +48,41 @@ const destroy = (proposal) => {
 };
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
+
+const contractModalOpen = ref(false);
+const contractProposal = ref(null);
+const contractTemplateId = ref('');
+
+const openContractModal = (proposal) => {
+    contractProposal.value = proposal;
+    contractTemplateId.value = props.templates[0]?.id ? String(props.templates[0].id) : '';
+    contractModalOpen.value = true;
+};
+
+const closeContractModal = () => {
+    contractModalOpen.value = false;
+    contractProposal.value = null;
+};
+
+const submitContract = () => {
+    if (!contractProposal.value || !contractTemplateId.value) return;
+    router.post(
+        route('admin.comercial.propostas.contratos.store', contractProposal.value.id),
+        { template_id: Number(contractTemplateId.value) },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                nextTick(() => {
+                    const id = inertiaPage.props.flash?.contract_id;
+                    if (id) {
+                        window.open(route('admin.comercial.contratos.pdf', id), '_blank');
+                    }
+                    closeContractModal();
+                });
+            },
+        },
+    );
+};
 </script>
 
 <template>
@@ -52,9 +97,11 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '
                 </div>
                 <Link
                     :href="route('admin.comercial.propostas.create')"
-                    class="inline-flex items-center rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
+                    class="inline-flex items-center gap-1.5 rounded-xl bg-talents-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
+                    title="Nova proposta"
                 >
-                    Nova proposta
+                    <PlusIcon class="h-4 w-4" />
+                    Nova
                 </Link>
             </div>
         </template>
@@ -146,33 +193,45 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '
                             </td>
                             <td class="px-4 py-3 text-right text-xs text-slate-500">{{ formatDate(p.created_at) }}</td>
                             <td class="px-4 py-3 text-right">
-                                <div class="inline-flex items-center gap-2">
+                                <div class="inline-flex items-center justify-end gap-0.5">
                                     <Link
                                         :href="route('admin.comercial.propostas.edit', p.id)"
-                                        class="text-talents-700 hover:underline"
+                                        class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                                        title="Editar"
                                     >
-                                        Editar
+                                        <PencilSquareIcon class="h-4 w-4" />
                                     </Link>
                                     <a
                                         :href="route('admin.comercial.propostas.pdf', p.id)"
-                                        class="text-slate-700 hover:underline"
+                                        class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                                        title="PDF da proposta"
+                                        target="_blank"
+                                        rel="noopener"
                                     >
-                                        PDF
+                                        <DocumentArrowDownIcon class="h-4 w-4" />
                                     </a>
                                     <button
                                         type="button"
-                                        class="text-rose-600 hover:underline"
+                                        class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+                                        title="Gerar contrato"
+                                        :disabled="!templates.length"
+                                        @click="openContractModal(p)"
+                                    >
+                                        <DocumentTextIcon class="h-4 w-4" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="rounded-lg p-1.5 text-slate-500 transition hover:bg-rose-50 hover:text-rose-700"
+                                        title="Excluir"
                                         @click="destroy(p)"
                                     >
-                                        Excluir
+                                        <TrashIcon class="h-4 w-4" />
                                     </button>
                                 </div>
                             </td>
                         </tr>
                         <tr v-if="!proposals.data.length">
-                            <td colspan="8" class="px-4 py-10 text-center text-slate-500">
-                                Nenhuma proposta encontrada.
-                            </td>
+                            <td colspan="8" class="px-4 py-10 text-center text-slate-500">Nenhuma proposta encontrada.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -193,6 +252,50 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '
                         v-html="link.label"
                     />
                 </template>
+            </div>
+        </div>
+
+        <div
+            v-if="contractModalOpen"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            role="dialog"
+            aria-modal="true"
+            @click.self="closeContractModal"
+        >
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-900">Gerar contrato</h3>
+                <p class="mt-1 text-sm text-slate-600">
+                    Proposta <span class="font-mono text-xs">{{ contractProposal?.code }}</span>
+                </p>
+                <div v-if="!templates.length" class="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    Nenhum modelo ativo. Cadastre em Comercial → Configurações → aba Contratos.
+                </div>
+                <div v-else class="mt-4">
+                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Modelo</label>
+                    <select
+                        v-model="contractTemplateId"
+                        class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    >
+                        <option v-for="t in templates" :key="t.id" :value="String(t.id)">{{ t.name }}</option>
+                    </select>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                        @click="closeContractModal"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
+                        :disabled="!templates.length || !contractTemplateId"
+                        @click="submitContract"
+                    >
+                        Gerar contrato
+                    </button>
+                </div>
             </div>
         </div>
     </AdminLayout>

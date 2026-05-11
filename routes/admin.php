@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Admin\ActionPlanAdminController;
 use App\Http\Controllers\Admin\AiSettingsController;
+use App\Http\Controllers\Admin\Commercial\ContractController as CommercialContractController;
+use App\Http\Controllers\Admin\Commercial\ContractTemplateController as CommercialContractTemplateController;
 use App\Http\Controllers\Admin\Commercial\DashboardController as CommercialDashboardController;
 use App\Http\Controllers\Admin\Commercial\PreviewController as CommercialPreviewController;
 use App\Http\Controllers\Admin\Commercial\ProposalController as CommercialProposalController;
@@ -96,6 +98,16 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::patch('vendedores/{user}', [CommercialSettingsController::class, 'toggleSeller'])->name('settings.sellers.toggle');
         Route::post('propostas/preview', [CommercialPreviewController::class, 'calculate'])->name('propostas.preview');
         Route::get('propostas/{proposal}/pdf', [CommercialProposalController::class, 'pdf'])->name('propostas.pdf');
+        Route::post('propostas/{proposal}/contratos', [CommercialContractController::class, 'store'])
+            ->name('propostas.contratos.store');
+        Route::get('contratos/{contract}/pdf', [CommercialContractController::class, 'pdf'])
+            ->name('contratos.pdf');
+        Route::get('contract-templates/{template}/docx', [CommercialContractTemplateController::class, 'downloadDocx'])
+            ->name('contract-templates.docx');
+        Route::resource('contract-templates', CommercialContractTemplateController::class)
+            ->only(['store', 'update', 'destroy'])
+            ->parameters(['contract-templates' => 'template'])
+            ->names('contract-templates');
         Route::resource('propostas', CommercialProposalController::class)
             ->except(['show'])
             ->parameters(['propostas' => 'proposal']);

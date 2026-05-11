@@ -18,6 +18,8 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/fonts
+/storage/app/dompdf-tmp
 /vendor
 Homestead.json
 Homestead.yaml

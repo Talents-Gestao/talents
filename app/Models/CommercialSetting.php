@@ -55,6 +55,8 @@ class CommercialSetting extends Model
             'palestras_multiplier' => 'integer',
 
             'pdf_validade_dias' => 'integer',
+
+            'default_prazo_dias' => 'integer',
         ];
     }
 

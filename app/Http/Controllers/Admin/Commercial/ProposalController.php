@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Commercial;
 
 use App\Http\Controllers\Controller;
+use App\Models\CommercialContractTemplate;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSetting;
 use App\Models\User;
@@ -10,7 +11,6 @@ use App\Services\CommercialPricingService;
 use App\Services\CommercialProposalPdfService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -55,6 +55,10 @@ class ProposalController extends Controller
             'proposals' => $proposals,
             'sellers' => $this->sellersOptions(),
             'filters' => $request->only(['search', 'seller_id', 'status']),
+            'templates' => CommercialContractTemplate::active()
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->all(),
         ]);
     }
 
@@ -89,7 +93,11 @@ class ProposalController extends Controller
     {
         return Inertia::render('Admin/Comercial/Propostas/Form', [
             'mode' => 'edit',
-            'proposal' => $proposal->load('seller:id,name'),
+            'proposal' => $proposal->load([
+                'seller:id,name',
+                'contracts' => fn ($q) => $q->orderByDesc('generated_at')
+                    ->select(['id', 'proposal_id', 'code', 'template_name_snapshot', 'generated_at']),
+            ]),
             'sellers' => $this->sellersOptions(),
             'settings' => $this->publicSettings(),
         ]);

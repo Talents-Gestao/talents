@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Commercial;
 
 use App\Http\Controllers\Controller;
+use App\Models\CommercialContractTemplate;
 use App\Models\CommercialSetting;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +19,18 @@ class SettingsController extends Controller
 
         return Inertia::render('Admin/Comercial/Configuracoes', [
             'settings' => $settings->toArray(),
+            'contractTemplates' => CommercialContractTemplate::query()
+                ->orderBy('name')
+                ->get()
+                ->map(fn (CommercialContractTemplate $t) => [
+                    'id' => $t->id,
+                    'name' => $t->name,
+                    'source_type' => $t->source_type,
+                    'body_html' => $t->body_html,
+                    'is_active' => (bool) $t->is_active,
+                    'has_docx' => (bool) $t->docx_path,
+                ])
+                ->all(),
             'users' => User::query()
                 ->whereNull('company_id')
                 ->orderBy('name')
@@ -106,6 +119,16 @@ class SettingsController extends Controller
             'pdf_validade_dias' => ['nullable', 'integer', 'min:1', 'max:365'],
             'pdf_observacoes' => ['nullable', 'string', 'max:2000'],
             'pdf_aceite_texto' => ['nullable', 'string', 'max:1000'],
+
+            // Dados da empresa (contratos / placeholders)
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'company_cnpj' => ['nullable', 'string', 'max:32'],
+            'company_address' => ['nullable', 'string', 'max:500'],
+            'company_city_state' => ['nullable', 'string', 'max:255'],
+            'company_phone' => ['nullable', 'string', 'max:64'],
+            'company_email' => ['nullable', 'email', 'max:255'],
+            'default_payment_terms' => ['nullable', 'string', 'max:5000'],
+            'default_prazo_dias' => ['nullable', 'integer', 'min:0', 'max:3650'],
         ]);
 
         $settings = CommercialSetting::current();

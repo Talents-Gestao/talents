@@ -122,6 +122,12 @@ const downloadPdf = () => {
     window.open(route('admin.comercial.propostas.pdf', props.proposal.id), '_blank');
 };
 
+const openContractPdf = (contractId) => {
+    window.open(route('admin.comercial.contratos.pdf', contractId), '_blank');
+};
+
+const formatContractDate = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR') : '—');
+
 const isEdit = computed(() => props.mode === 'edit');
 const titleText = computed(() => (isEdit.value ? `Proposta ${props.proposal?.code}` : 'Nova proposta'));
 
@@ -413,6 +419,34 @@ const services = computed(() => [
                             <span class="text-xs text-slate-500">— a data de fechamento será registrada agora.</span>
                         </label>
                     </div>
+                </section>
+
+                <section v-if="isEdit" class="surface-card p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Contratos gerados</h3>
+                    <p class="mt-1 text-xs text-slate-500">Histórico de contratos PDF gerados a partir desta proposta.</p>
+                    <ul
+                        v-if="proposal?.contracts?.length"
+                        class="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-200"
+                    >
+                        <li
+                            v-for="c in proposal.contracts"
+                            :key="c.id"
+                            class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
+                        >
+                            <div>
+                                <div class="font-mono text-xs font-semibold text-slate-800">{{ c.code }}</div>
+                                <div class="text-xs text-slate-500">{{ c.template_name_snapshot }} · {{ formatContractDate(c.generated_at) }}</div>
+                            </div>
+                            <button
+                                type="button"
+                                class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-talents-700 hover:bg-talents-50"
+                                @click="openContractPdf(c.id)"
+                            >
+                                PDF
+                            </button>
+                        </li>
+                    </ul>
+                    <p v-else class="mt-4 text-sm text-slate-500">Nenhum contrato gerado ainda. Use a listagem de propostas para gerar.</p>
                 </section>
             </div>
 

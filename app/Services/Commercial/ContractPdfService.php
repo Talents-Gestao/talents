@@ -1,33 +1,26 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Commercial;
 
-use App\Models\CommercialProposal;
-use App\Models\CommercialSetting;
-use App\Services\Commercial\CommercialProposalServiceLines;
 use App\Support\TalentsLogoDataUri;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\File;
 
-class CommercialProposalPdfService
+class ContractPdfService
 {
-    public function generate(CommercialProposal $proposal): \Barryvdh\DomPDF\PDF
+    public function render(string $contentHtml, string $code, ?\DateTimeInterface $generatedAt = null): \Barryvdh\DomPDF\PDF
     {
-        $proposal->loadMissing('seller:id,name,email');
-        $settings = CommercialSetting::current();
-
         $this->ensureDompdfWritableDirs();
 
         $fontDir = storage_path('fonts');
         $tempDir = storage_path('app/dompdf-tmp');
         $chroot = realpath(base_path()) ?: base_path();
 
-        $pdf = Pdf::loadView('reports.commercial-proposal', [
-            'proposal' => $proposal,
-            'settings' => $settings,
+        $pdf = Pdf::loadView('reports.commercial-contract', [
+            'content_html' => $contentHtml,
+            'code' => $code,
+            'generatedAt' => $generatedAt ?? now(),
             'logoBase64' => TalentsLogoDataUri::get(),
-            'services' => CommercialProposalServiceLines::forProposal($proposal),
-            'validityDate' => now()->copy()->addDays((int) $settings->pdf_validade_dias),
         ]);
 
         $pdf->setOption('fontDir', $fontDir);
@@ -38,9 +31,11 @@ class CommercialProposalPdfService
         return $pdf->setPaper('a4');
     }
 
-    /**
-     * DomPDF grava métricas de fonte e imagens temporárias; sem pastas graváveis o render falha (500).
-     */
+    public function output(string $contentHtml, string $code, ?\DateTimeInterface $generatedAt = null): string
+    {
+        return $this->render($contentHtml, $code, $generatedAt)->output();
+    }
+
     private function ensureDompdfWritableDirs(): void
     {
         foreach ([storage_path('fonts'), storage_path('app/dompdf-tmp')] as $dir) {

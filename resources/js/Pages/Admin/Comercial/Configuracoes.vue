@@ -1,14 +1,23 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import ContractTemplatesManager from '@/Pages/Admin/Comercial/ContractTemplatesManager.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
     settings: { type: Object, required: true },
     users: { type: Array, default: () => [] },
+    contractTemplates: { type: Array, default: () => [] },
 });
 
 const tab = ref('faixas');
+
+onMounted(() => {
+    const q = new URLSearchParams(window.location.search).get('tab');
+    if (q && ['faixas', 'fixos', 'pdf', 'vendedores', 'empresa', 'contratos'].includes(q)) {
+        tab.value = q;
+    }
+});
 
 const form = useForm({
     profiler_tier1_max: props.settings.profiler_tier1_max,
@@ -56,6 +65,15 @@ const form = useForm({
     pdf_validade_dias: props.settings.pdf_validade_dias,
     pdf_observacoes: props.settings.pdf_observacoes ?? '',
     pdf_aceite_texto: props.settings.pdf_aceite_texto ?? '',
+
+    company_name: props.settings.company_name ?? '',
+    company_cnpj: props.settings.company_cnpj ?? '',
+    company_address: props.settings.company_address ?? '',
+    company_city_state: props.settings.company_city_state ?? '',
+    company_phone: props.settings.company_phone ?? '',
+    company_email: props.settings.company_email ?? '',
+    default_payment_terms: props.settings.default_payment_terms ?? '',
+    default_prazo_dias: props.settings.default_prazo_dias ?? '',
 });
 
 const submit = () => {
@@ -85,6 +103,8 @@ const tabs = [
     { id: 'faixas', label: 'Faixas por funcionários' },
     { id: 'fixos', label: 'Valores fixos' },
     { id: 'pdf', label: 'PDF' },
+    { id: 'empresa', label: 'Empresa' },
+    { id: 'contratos', label: 'Contratos' },
     { id: 'vendedores', label: 'Vendedores' },
 ];
 
@@ -311,7 +331,85 @@ const tableConfig = computed(() => [
                 </section>
             </template>
 
-            <div v-if="tab !== 'vendedores'" class="flex justify-end">
+            <!-- Tab: Empresa (contratos / placeholders Talents) -->
+            <template v-if="tab === 'empresa'">
+                <section class="surface-card p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Dados da empresa (Talents)</h3>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Usados nos placeholders de contrato (empresa_nome, forma_pagamento, prazo_dias, etc.).
+                    </p>
+                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Razão social / Nome</label>
+                            <input
+                                v-model="form.company_name"
+                                type="text"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">CNPJ</label>
+                            <input
+                                v-model="form.company_cnpj"
+                                type="text"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Telefone</label>
+                            <input
+                                v-model="form.company_phone"
+                                type="text"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">E-mail</label>
+                            <input
+                                v-model="form.company_email"
+                                type="email"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Endereço</label>
+                            <input
+                                v-model="form.company_address"
+                                type="text"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Cidade / UF</label>
+                            <input
+                                v-model="form.company_city_state"
+                                type="text"
+                                placeholder="São Paulo — SP"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Forma de pagamento padrão</label>
+                            <textarea
+                                v-model="form.default_payment_terms"
+                                rows="4"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div class="max-w-xs">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Prazo padrão (dias)</label>
+                            <input
+                                v-model.number="form.default_prazo_dias"
+                                type="number"
+                                min="0"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                    </div>
+                </section>
+            </template>
+
+            <div v-if="tab !== 'vendedores' && tab !== 'contratos'" class="flex justify-end">
                 <button
                     type="submit"
                     :disabled="form.processing"
@@ -321,6 +419,10 @@ const tableConfig = computed(() => [
                 </button>
             </div>
         </form>
+
+        <div v-if="tab === 'contratos'" class="mt-6">
+            <ContractTemplatesManager :templates="contractTemplates" />
+        </div>
 
         <section v-if="tab === 'vendedores'" class="surface-card mt-6 p-6">
             <h3 class="text-lg font-semibold text-slate-900">Vendedores comerciais</h3>

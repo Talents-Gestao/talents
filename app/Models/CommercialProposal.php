@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CommercialProposal extends Model
 {
@@ -48,6 +49,11 @@ class CommercialProposal extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(CommercialContract::class, 'proposal_id');
     }
 
     public function scopeClosed(Builder $query): Builder
