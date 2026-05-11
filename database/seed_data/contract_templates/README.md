@@ -1,16 +1,19 @@
-# Modelos de contrato (seed)
+# Modelos de contrato
 
-Arquivos `.docx` de referência usados pelo `ContractTemplateSeeder`.
+## Fonte oficial do texto (HTML)
 
-Esta pasta fica **fora de `storage/`** para que o volume Docker de produção (`talents_storage` montado em `storage/`) não apague os ficheiros presentes na imagem.
+O conteúdo dos **três modelos padrão** é definido em código em `App\Support\CanonicalContractTemplates`: texto enxuto com **apenas placeholders** (`{{servicos_detalhada_html}}`, `{{total_reais}}`, etc.), **sem** tabelas de preço fixas do Word.
 
-## Texto dinâmico igual à proposta
+Os ficheiros `.docx` nesta pasta são **arquivo de referência** (versões antigas). O `ContractTemplateSeeder` **já não** converte DOCX para HTML no deploy.
 
-Depois do seed, **edite o modelo em HTML** (aba Contratos) e substitua listagens fixas de serviços por placeholders:
+## Atualizar manualmente no servidor
 
-- **`{{servicos_detalhada_html}}`** — tabela só com serviços **contratados**, detalhe com quantidade de funcionários onde aplicável (igual ao PDF da proposta).
-- **`{{servicos_lista_html}}`** — lista com marcadores, mesmo critério.
-- **`{{svc_bloco_palestras_html}}`** — só aparece se **Palestras** estiver marcada na proposta; caso contrário fica vazio. Idem `svc_bloco_contratacao_html`, `svc_bloco_direcionamento_html`, etc.
-- Metadados da proposta: `{{proposta_codigo}}`, `{{proposta_emitida_em}}`, `{{proposta_observacoes}}`, `{{comissao_reais}}`, `{{vendedor_email}}`.
+```bash
+php artisan commercial:sync-canonical-contract-templates
+```
 
-Lista completa na UI ao editar modelo → painel **Placeholders**.
+Idempotente: sobrescreve o `body_html` dos três nomes padrão pelos textos canónicos.
+
+## Volume Docker
+
+Esta pasta fica **fora de `storage/`** para não ser substituída pelo volume `talents_storage` em produção.
