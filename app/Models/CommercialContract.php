@@ -13,6 +13,7 @@ class CommercialContract extends Model
     {
         return [
             'generated_at' => 'datetime',
+            'zapsign_sent_at' => 'datetime',
         ];
     }
 

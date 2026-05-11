@@ -106,6 +106,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('propostas.contratos.store');
         Route::get('contratos/{contract}/pdf', [CommercialContractController::class, 'pdf'])
             ->name('contratos.pdf');
+        Route::post('contratos/{contract}/zapsign', [CommercialContractController::class, 'sendZapSign'])
+            ->name('contratos.zapsign');
         Route::get('contract-templates/{template}/docx', [CommercialContractTemplateController::class, 'downloadDocx'])
             ->name('contract-templates.docx');
         Route::get('contract-templates/{template}/editor', [CommercialContractTemplateController::class, 'editor'])

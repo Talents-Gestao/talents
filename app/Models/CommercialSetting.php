@@ -57,6 +57,9 @@ class CommercialSetting extends Model
             'pdf_validade_dias' => 'integer',
 
             'default_prazo_dias' => 'integer',
+
+            'zapsign_api_token' => 'encrypted',
+            'zapsign_send_automatic_email' => 'boolean',
         ];
     }
 

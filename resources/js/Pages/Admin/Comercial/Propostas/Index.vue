@@ -9,7 +9,7 @@ import {
     TrashIcon,
 } from '@heroicons/vue/24/outline';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { nextTick, reactive, ref } from 'vue';
+import { computed, nextTick, reactive, ref } from 'vue';
 
 const inertiaPage = usePage();
 
@@ -18,6 +18,7 @@ const props = defineProps({
     sellers: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
     templates: { type: Array, default: () => [] },
+    zapsign_configured: { type: Boolean, default: false },
 });
 
 const filterState = reactive({
@@ -52,33 +53,99 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '
 const contractModalOpen = ref(false);
 const contractProposal = ref(null);
 const contractTemplateId = ref('');
+const generatedContractId = ref(null);
+const generatedTemplateName = ref('');
+const contractGenerating = ref(false);
+const zapsignSending = ref(false);
+const zapsignSent = ref(false);
+const zapsignSignUrl = ref('');
+
+const selectedTemplateName = computed(() => {
+    const id = Number(contractTemplateId.value);
+    return props.templates.find((t) => t.id === id)?.name ?? '';
+});
+
+const pdfPreviewUrl = computed(() => {
+    if (!generatedContractId.value) return '';
+    try {
+        return new URL(
+            route('admin.comercial.contratos.pdf', generatedContractId.value),
+            window.location.origin,
+        ).href;
+    } catch {
+        return '';
+    }
+});
 
 const openContractModal = (proposal) => {
     contractProposal.value = proposal;
     contractTemplateId.value = props.templates[0]?.id ? String(props.templates[0].id) : '';
+    generatedContractId.value = null;
+    generatedTemplateName.value = '';
+    zapsignSent.value = false;
+    zapsignSignUrl.value = '';
     contractModalOpen.value = true;
 };
 
 const closeContractModal = () => {
     contractModalOpen.value = false;
     contractProposal.value = null;
+    generatedContractId.value = null;
+    generatedTemplateName.value = '';
+    zapsignSent.value = false;
+    zapsignSignUrl.value = '';
 };
 
 const submitContract = () => {
     if (!contractProposal.value || !contractTemplateId.value) return;
+    contractGenerating.value = true;
+    zapsignSent.value = false;
+    zapsignSignUrl.value = '';
     router.post(
         route('admin.comercial.propostas.contratos.store', contractProposal.value.id),
         { template_id: Number(contractTemplateId.value) },
         {
             preserveScroll: true,
-            onSuccess: () => {
+            onFinish: () => {
+                contractGenerating.value = false;
+            },
+            onSuccess: (page) => {
                 nextTick(() => {
-                    const id = inertiaPage.props.flash?.contract_id;
+                    const id = page.props.flash?.contract_id;
                     if (id) {
-                        window.open(route('admin.comercial.contratos.pdf', id), '_blank');
+                        generatedContractId.value = id;
+                        generatedTemplateName.value = selectedTemplateName.value;
                     }
-                    closeContractModal();
                 });
+            },
+        },
+    );
+};
+
+const openPdfNewTab = () => {
+    if (!generatedContractId.value) return;
+    window.open(route('admin.comercial.contratos.pdf', generatedContractId.value), '_blank', 'noopener');
+};
+
+const sendZapSign = () => {
+    if (!generatedContractId.value || zapsignSending.value || zapsignSent.value) return;
+    zapsignSending.value = true;
+    router.post(
+        route('admin.comercial.contratos.zapsign', generatedContractId.value),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                zapsignSending.value = false;
+            },
+            onSuccess: (page) => {
+                const url = page.props.flash?.zapsign_sign_url;
+                if (url) {
+                    zapsignSignUrl.value = url;
+                }
+                if (page.props.flash?.success && !page.props.flash?.error) {
+                    zapsignSent.value = true;
+                }
             },
         },
     );
@@ -262,40 +329,115 @@ const submitContract = () => {
             aria-modal="true"
             @click.self="closeContractModal"
         >
-            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div
+                class="max-h-[92vh] w-full overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+                :class="generatedContractId ? 'max-w-4xl' : 'max-w-md'"
+            >
                 <h3 class="text-lg font-semibold text-slate-900">Gerar contrato</h3>
                 <p class="mt-1 text-sm text-slate-600">
                     Proposta <span class="font-mono text-xs">{{ contractProposal?.code }}</span>
                 </p>
-                <div v-if="!templates.length" class="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    Nenhum modelo ativo. Cadastre em Comercial → Configurações → aba Contratos.
+
+                <div
+                    v-if="inertiaPage.props.flash?.error"
+                    class="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-900"
+                >
+                    {{ inertiaPage.props.flash.error }}
                 </div>
-                <div v-else class="mt-4">
-                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Modelo</label>
-                    <select
-                        v-model="contractTemplateId"
-                        class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                    >
-                        <option v-for="t in templates" :key="t.id" :value="String(t.id)">{{ t.name }}</option>
-                    </select>
+                <div
+                    v-if="inertiaPage.props.flash?.success && generatedContractId"
+                    class="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+                >
+                    {{ inertiaPage.props.flash.success }}
                 </div>
-                <div class="mt-6 flex justify-end gap-2">
-                    <button
-                        type="button"
-                        class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                        @click="closeContractModal"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
-                        :disabled="!templates.length || !contractTemplateId"
-                        @click="submitContract"
-                    >
-                        Gerar contrato
-                    </button>
-                </div>
+
+                <template v-if="!generatedContractId">
+                    <div v-if="!templates.length" class="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                        Nenhum modelo ativo. Cadastre em Comercial → Configurações → aba Contratos.
+                    </div>
+                    <div v-else class="mt-4">
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Modelo</label>
+                        <select
+                            v-model="contractTemplateId"
+                            class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        >
+                            <option v-for="t in templates" :key="t.id" :value="String(t.id)">{{ t.name }}</option>
+                        </select>
+                    </div>
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button
+                            type="button"
+                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            @click="closeContractModal"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
+                            :disabled="!templates.length || !contractTemplateId || contractGenerating"
+                            @click="submitContract"
+                        >
+                            {{ contractGenerating ? 'Gerando…' : 'Gerar contrato' }}
+                        </button>
+                    </div>
+                </template>
+
+                <template v-else>
+                    <div class="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-800">
+                        <span class="font-medium text-slate-600">Modelo:</span>
+                        {{ generatedTemplateName || '—' }}
+                    </div>
+
+                    <div class="mt-4">
+                        <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Pré-visualização</p>
+                        <iframe
+                            :key="pdfPreviewUrl"
+                            :src="pdfPreviewUrl"
+                            title="Pré-visualização do contrato"
+                            class="mt-2 h-[min(70vh,560px)] w-full min-h-[320px] rounded-xl border border-slate-200 bg-slate-100"
+                        />
+                    </div>
+
+                    <div v-if="!zapsign_configured" class="mt-3 text-xs text-amber-800">
+                        Configure o token ZapSign em Comercial → Configurações → PDF para habilitar o envio à assinatura.
+                    </div>
+                    <div v-if="zapsignSignUrl" class="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                        <span class="text-slate-600">Link do 1º signatário:</span>
+                        <a
+                            :href="zapsignSignUrl"
+                            class="ml-1 font-medium text-talents-700 underline break-all"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >{{ zapsignSignUrl }}</a>
+                    </div>
+
+                    <div class="mt-6 flex flex-wrap justify-end gap-2">
+                        <button
+                            type="button"
+                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            @click="closeContractModal"
+                        >
+                            Fechar
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            @click="openPdfNewTab"
+                        >
+                            Abrir PDF em nova aba
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                            :disabled="!zapsign_configured || zapsignSending || zapsignSent"
+                            :title="zapsignSent ? 'Este contrato já foi enviado ao ZapSign nesta sessão.' : ''"
+                            @click="sendZapSign"
+                        >
+                            {{ zapsignSending ? 'Enviando…' : zapsignSent ? 'Enviado ao ZapSign' : 'Enviar ao ZapSign' }}
+                        </button>
+                    </div>
+                </template>
             </div>
         </div>
     </AdminLayout>

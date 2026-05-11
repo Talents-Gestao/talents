@@ -51,6 +51,8 @@ class ProposalController extends Controller
 
         $proposals = $q->paginate(15)->withQueryString();
 
+        $commercialSettings = CommercialSetting::current();
+
         return Inertia::render('Admin/Comercial/Propostas/Index', [
             'proposals' => $proposals,
             'sellers' => $this->sellersOptions(),
@@ -59,6 +61,7 @@ class ProposalController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name'])
                 ->all(),
+            'zapsign_configured' => filled(trim((string) ($commercialSettings->zapsign_api_token ?? ''))),
         ]);
     }
 

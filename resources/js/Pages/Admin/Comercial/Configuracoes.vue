@@ -66,6 +66,9 @@ const form = useForm({
     pdf_observacoes: props.settings.pdf_observacoes ?? '',
     pdf_aceite_texto: props.settings.pdf_aceite_texto ?? '',
 
+    zapsign_api_token: '',
+    zapsign_api_base_url: props.settings.zapsign_api_base_url ?? 'https://api.zapsign.com.br/api/v1',
+    zapsign_send_automatic_email: props.settings.zapsign_send_automatic_email !== false,
 });
 
 const submit = () => {
@@ -319,6 +322,52 @@ const tableConfig = computed(() => [
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             />
                         </div>
+                    </div>
+                </section>
+
+                <section class="surface-card p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">ZapSign — assinatura eletrônica</h3>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Token de API para enviar contratos gerados à ZapSign. Documentação:
+                        <a
+                            href="https://docs.zapsign.com.br/documentos/criar-documento"
+                            class="font-medium text-talents-700 underline hover:text-talents-800"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >criar documento</a>.
+                    </p>
+
+                    <div class="mt-4 grid gap-4 max-w-xl">
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Token da API</label>
+                            <input
+                                v-model="form.zapsign_api_token"
+                                type="password"
+                                autocomplete="new-password"
+                                class="mt-1 w-full rounded-xl border-slate-300 font-mono text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                :placeholder="settings.zapsign_api_token_set ? 'Deixe em branco para manter o token atual' : 'Cole o token ZapSign'"
+                            />
+                            <p v-if="settings.zapsign_api_token_set" class="mt-1 text-xs text-emerald-700">
+                                Token já configurado (oculto). Preencha apenas para substituir.
+                            </p>
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">URL base da API</label>
+                            <input
+                                v-model="form.zapsign_api_base_url"
+                                type="url"
+                                class="mt-1 w-full rounded-xl border-slate-300 font-mono text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                placeholder="https://api.zapsign.com.br/api/v1"
+                            />
+                        </div>
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                                v-model="form.zapsign_send_automatic_email"
+                                type="checkbox"
+                                class="rounded border-slate-300 text-talents-600 focus:ring-talents-500"
+                            />
+                            Enviar e-mail automático aos signatários (quando suportado pela ZapSign)
+                        </label>
                     </div>
                 </section>
             </template>

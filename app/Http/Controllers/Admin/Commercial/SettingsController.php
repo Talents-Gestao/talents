@@ -16,9 +16,12 @@ class SettingsController extends Controller
     public function edit(): Response
     {
         $settings = CommercialSetting::current();
+        $settingsPayload = $settings->toArray();
+        unset($settingsPayload['zapsign_api_token']);
+        $settingsPayload['zapsign_api_token_set'] = filled(trim((string) ($settings->zapsign_api_token ?? '')));
 
         return Inertia::render('Admin/Comercial/Configuracoes', [
-            'settings' => $settings->toArray(),
+            'settings' => $settingsPayload,
             'contractTemplates' => CommercialContractTemplate::query()
                 ->orderBy('name')
                 ->select(['id', 'name', 'source_type', 'is_active', 'docx_path'])
@@ -133,7 +136,17 @@ class SettingsController extends Controller
             'company_contract_signatory_cpf' => ['nullable', 'string', 'max:32'],
             'default_payment_terms' => ['nullable', 'string', 'max:5000'],
             'default_prazo_dias' => ['nullable', 'integer', 'min:0', 'max:3650'],
+
+            'zapsign_api_token' => ['nullable', 'string', 'max:8192'],
+            'zapsign_api_base_url' => ['nullable', 'string', 'max:255'],
+            'zapsign_send_automatic_email' => ['nullable', 'boolean'],
         ]);
+
+        if ($request->filled('zapsign_api_token')) {
+            $data['zapsign_api_token'] = $request->string('zapsign_api_token')->toString();
+        } else {
+            unset($data['zapsign_api_token']);
+        }
 
         $settings = CommercialSetting::current();
         $settings->fill($data);
