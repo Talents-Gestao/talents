@@ -38,6 +38,8 @@ const PLACEHOLDERS = [
     '{{servicos_detalhada_html}}',
     '{{total_reais}}',
     '{{total_extenso}}',
+    '{{salario_bruto_reais}}',
+    '{{salario_bruto_extenso}}',
     '{{comissao_percent}}',
     '{{comissao_reais}}',
     // Por serviço: substituir palestras / pesquisas / etc. no contrato específico

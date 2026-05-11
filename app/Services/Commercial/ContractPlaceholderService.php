@@ -86,6 +86,12 @@ class ContractPlaceholderService
         $dataHojePorExtenso = $this->dataHojePorExtenso();
         $cidadeAssinaturaCurta = $this->cidadeAssinaturaCurta($forum);
 
+        $salarioCents = (int) ($proposal->svc_contratacao_salario_cents ?? 0);
+        $salarioBrutoReais = $salarioCents > 0
+            ? 'R$ '.number_format($salarioCents / 100, 2, ',', '.')
+            : '—';
+        $salarioBrutoExtenso = $salarioCents > 0 ? BrlExtenso::fromCents($salarioCents) : '—';
+
         $emitida = $proposal->created_at;
         $emitidaFmt = $emitida ? $emitida->timezone(config('app.timezone'))->format('d/m/Y') : '—';
 
@@ -105,6 +111,9 @@ class ContractPlaceholderService
 
             'total_reais' => $totalReais,
             'total_extenso' => BrlExtenso::fromCents($totalCents),
+
+            'salario_bruto_reais' => $salarioBrutoReais,
+            'salario_bruto_extenso' => $salarioBrutoExtenso,
 
             'empresa_nome' => (string) ($settings->company_name ?? ''),
             'empresa_cnpj' => (string) ($settings->company_cnpj ?? ''),

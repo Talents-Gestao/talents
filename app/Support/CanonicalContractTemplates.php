@@ -84,27 +84,171 @@ HTML;
     private static function contratacaoTalentos(): string
     {
         return <<<'HTML'
-<h2 style="font-size:14px;color:#4a2070;margin:16px 0 8px;text-transform:uppercase;">1. Das partes</h2>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;"><strong>CONTRATANTE:</strong> {{cliente_nome}}, CNPJ {{cliente_cnpj}}, e-mail {{cliente_email}}, telefone {{cliente_telefone}}, doravante <strong>CONTRATANTE</strong>.</p>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;"><strong>CONTRATADA:</strong> {{empresa_nome}}, CNPJ {{empresa_cnpj}}, {{empresa_endereco}} — {{empresa_email}} / {{empresa_telefone}}, doravante <strong>CONTRATADA</strong>.</p>
+<h1 style="font-size:15px;color:#4a2070;margin:0 0 14px;text-align:center;text-transform:uppercase;letter-spacing:0.04em;">Contratação de talentos</h1>
 
-<h2 style="font-size:14px;color:#4a2070;margin:16px 0 8px;text-transform:uppercase;">2. Do objeto — contratação / recrutamento</h2>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;">A CONTRATADA prestará à CONTRATANTE os serviços de recrutamento e seleção / contratação de talentos <strong>na forma contratada na proposta nº {{proposta_codigo}}</strong> (emitida em {{proposta_emitida_em}}, válida até {{validade_data}}). Os serviços efetivos, quantidades e valores são unicamente os da proposta:</p>
-<p style="font-size:11px;line-height:1.5;color:#64748b;margin:8px 0;">Destaque do pacote de contratação (quando contratado na proposta):</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Contratante:</strong> {{cliente_nome}}, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº {{cliente_cnpj}}, com sede em {{cliente_endereco}}, neste ato representada por {{cliente_representante}}, doravante denominada <strong>CONTRATANTE</strong>.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Contratada:</strong> {{empresa_nome}}, CNPJ sob o nº {{empresa_cnpj}}, com sede em {{empresa_endereco}}, e-mail {{empresa_email}}, telefone {{empresa_telefone}}, {{empresa_representacao}}, doravante denominada <strong>CONTRATADA</strong>.</p>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:14px 0;" />
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 1 – Objeto</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">O presente contrato tem como objeto a prestação de serviços especializados de Contratação de Talentos, com atuação estratégica na atração, identificação e avaliação de profissionais, conduzidos pela CONTRATADA, com base em metodologia própria que integra análise comportamental, alinhamento estratégico e critérios técnicos de avaliação.</p>
+<p style="font-size:11px;line-height:1.45;color:#64748b;margin-top:8px;">Referência comercial: <strong>Proposta Comercial nº {{proposta_codigo}}</strong> (emitida em {{proposta_emitida_em}}, válida até {{validade_data}}).</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 2 – Escopo dos serviços</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">A CONTRATADA realizará:</p>
+<ul style="margin:6px 0 12px;padding-left:18px;font-size:11px;line-height:1.5;color:#0f172a;">
+<li>Alinhamento de perfil com a CONTRATANTE;</li>
+<li>Estruturação da vaga (engenharia de cargo);</li>
+<li>Divulgação estratégica;</li>
+<li>Triagem de currículos;</li>
+<li>Entrevistas comportamentais;</li>
+<li>Análise técnica (quando aplicável);</li>
+<li>Apresentação de candidatos finalistas.</li>
+</ul>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Parágrafo único:</strong> O processo contempla a apresentação de candidatos qualificados, conforme aderência ao perfil e condições de mercado.</p>
+<p style="font-size:11px;line-height:1.45;color:#64748b;margin-top:10px;">Discriminação contratual e valores na proposta:</p>
 {{svc_bloco_contratacao_html}}
 {{servicos_detalhada_html}}
-<p style="font-size:11px;line-height:1.5;color:#0f172a;margin-top:12px;"><strong>Valor total:</strong> {{total_reais}} (<em>{{total_extenso}}</em>).</p>
 
-<h2 style="font-size:14px;color:#4a2070;margin:16px 0 8px;text-transform:uppercase;">3. Pagamento e prazo</h2>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;">{{forma_pagamento}}</p>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;">Prazo em dias (referência): {{prazo_dias}}</p>
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 3 – Prazo</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">O prazo médio para condução do processo é de 30 dias úteis, podendo variar conforme:</p>
+<ul style="margin:6px 0 12px;padding-left:18px;font-size:11px;line-height:1.5;color:#0f172a;">
+<li>Complexidade da vaga;</li>
+<li>Agilidade de retorno da CONTRATANTE;</li>
+<li>Condições do mercado.</li>
+</ul>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Este contrato entra em vigor na data de sua assinatura até o preenchimento da(s) vaga(s) solicitada(s), observados os seguintes prazos de referência:</p>
+<table style="width:100%;border-collapse:collapse;margin:10px 0;font-size:10px;color:#0f172a;">
+<tr style="background:#f8fafc;"><th style="border:1px solid #e2e8f0;padding:6px;text-align:left;">Etapa</th><th style="border:1px solid #e2e8f0;padding:6px;text-align:left;">Prazo estimado</th><th style="border:1px solid #e2e8f0;padding:6px;text-align:left;">Observação</th></tr>
+<tr><td style="border:1px solid #e2e8f0;padding:6px;vertical-align:top;">Engenharia de Cargos + início da triagem</td><td style="border:1px solid #e2e8f0;padding:6px;">3 dias úteis após recebimento das informações da vaga</td><td style="border:1px solid #e2e8f0;padding:6px;">Depende do briefing completo da CONTRATANTE</td></tr>
+<tr><td style="border:1px solid #e2e8f0;padding:6px;vertical-align:top;">Apresentação dos primeiros finalistas</td><td style="border:1px solid #e2e8f0;padding:6px;">30 dias úteis após subir as vagas em nosso sistema</td><td style="border:1px solid #e2e8f0;padding:6px;">Sujeito à disponibilidade do mercado, faixa salarial e complexidade da vaga</td></tr>
+<tr><td style="border:1px solid #e2e8f0;padding:6px;vertical-align:top;">Feedback da CONTRATANTE sobre os perfis enviados</td><td style="border:1px solid #e2e8f0;padding:6px;">Até 2 dias úteis</td><td style="border:1px solid #e2e8f0;padding:6px;">Obrigação da CONTRATANTE (Cl. 6)</td></tr>
+</table>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>§ Único:</strong> Os prazos ficam suspensos em caso de atraso no fornecimento de informações, ausência de feedback ou alteração do escopo por parte da CONTRATANTE, retomando a contagem após regularização.</p>
 
-<h2 style="font-size:14px;color:#4a2070;margin:16px 0 8px;text-transform:uppercase;">4. Comercial</h2>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;">{{vendedor_nome}} — {{vendedor_email}}. Comissão: {{comissao_percent}}% ({{comissao_reais}}).</p>
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 4 – Valor e forma de pagamento</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Pelos serviços prestados, a CONTRATANTE pagará à CONTRATADA a quantia correspondente a <strong>1 (um) salário bruto mensal</strong> do cargo contratado, tomando como referência de perfil e valores o informado na proposta (<strong>{{salario_bruto_reais}}</strong> — <em>{{salario_bruto_extenso}}</em>, quando aplicável). O pagamento poderá ser realizado mediante PIX, boleto bancário ou cartão de crédito, observando-se também o detalhamento comercial abaixo.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Forma de pagamento:</strong></p>
+<ul style="margin:6px 0 12px;padding-left:18px;font-size:11px;line-height:1.5;color:#0f172a;">
+<li>50% na abertura da vaga;</li>
+<li>50% na contratação do candidato.</li>
+</ul>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Condições complementares parametrizadas (empresa / proposta):</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">{{forma_pagamento}}</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Dados para pagamento:</strong> e-mail {{empresa_email}} — CNPJ {{empresa_cnpj}}.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>§ 1º</strong> O início dos trabalhos está condicionado ao pagamento da primeira parcela.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>§ 2º</strong> O valor será calculado com base no salário bruto acordado entre a CONTRATANTE e o candidato contratado, independentemente do valor inicialmente previsto para a vaga.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>§ 3º</strong> A CONTRATANTE obriga-se a comunicar imediatamente qualquer reajuste de salário inicial acordado com o candidato, sob pena de multa de 1 (um) salário sobre o valor da vaga.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;margin-top:8px;"><strong>Total da proposta vinculada (referência):</strong> {{total_reais}} (<em>{{total_extenso}}</em>).</p>
 
-<h2 style="font-size:14px;color:#4a2070;margin:16px 0 8px;text-transform:uppercase;">5. Foro</h2>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;">Foro de {{cidade_estado}}.</p>
-<p style="font-size:11px;line-height:1.45;color:#0f172a;margin-top:24px;">{{cidade_estado}}, {{data_hoje}}.</p>
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 5 – Garantia de reposição</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">A CONTRATADA concede garantia de 1 (uma) reposição por vaga contratada no prazo de até 90 (noventa) dias, contados a partir da contratação do candidato.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">A reposição será realizada independentemente do motivo do desligamento do candidato, incluindo casos de não adaptação, desempenho ou desligamento por iniciativa da CONTRATANTE.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Parágrafo único:</strong> A garantia será válida desde que as condições originais da vaga sejam mantidas, incluindo cargo, remuneração, benefícios e escopo da função.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 6 – Responsabilidades da contratante e da contratada</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>A CONTRATANTE compromete-se a:</strong></p>
+<ul style="margin:6px 0 12px;padding-left:18px;font-size:11px;line-height:1.5;color:#0f172a;">
+<li>Fornecer informações claras sobre a vaga;</li>
+<li>Realizar feedbacks dentro dos prazos acordados;</li>
+<li>Participar das etapas decisórias do processo;</li>
+<li>Fornecer as informações completas da vaga (cargo, salário, requisitos, modelo de trabalho) no ato da abertura;</li>
+<li>Realizar os pagamentos conforme Cláusula 4;</li>
+<li>Fornecer feedback em até 2 (dois) dias úteis após o envio de perfis ou qualquer solicitação da CONTRATADA;</li>
+<li>Comunicar imediatamente qualquer alteração nas condições da vaga (salário, escopo, modelo de trabalho);</li>
+<li>A ausência de resposta por mais de 5 (cinco) dias úteis será considerada desistência tácita do processo, sendo devida a cobrança pelas etapas já concluídas.</li>
+</ul>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>A CONTRATADA compromete-se a:</strong></p>
+<ul style="margin:6px 0 12px;padding-left:18px;font-size:11px;line-height:1.5;color:#0f172a;">
+<li>Realizar os processos de recrutamento conforme as necessidades da CONTRATANTE;</li>
+<li>Garantir confidencialidade das informações;</li>
+<li>Suporte pós-contratação por até 3 meses (1 substituição inclusa);</li>
+<li>Comunicar formalmente a CONTRATANTE, em até 2 dias úteis, caso a faixa salarial definida ou o perfil da vaga seja incompatível com o mercado, apresentando alternativas viáveis;</li>
+<li>Não encerrar o processo sem prévia comunicação formal por escrito à CONTRATANTE.</li>
+</ul>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 7 – Responsabilidade estratégica do processo</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">A CONTRATADA assegura a condução estratégica e técnica do processo de recrutamento e seleção, com base em metodologia própria e critérios de alta performance, visando a identificação e apresentação de talentos alinhados às necessidades da CONTRATANTE.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">A decisão de contratação, bem como fatores relacionados à proposta, aderência final e negociação, é de responsabilidade exclusiva da CONTRATANTE, não sendo possível atribuir à CONTRATADA responsabilidade por eventuais não efetivações.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 8 – Alterações na vaga</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Qualquer alteração relevante no perfil, remuneração, escopo ou requisitos da vaga após o início do processo poderá impactar prazos e condições comerciais.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">A CONTRATADA poderá, mediante avaliação, readequar valores e prazos ou considerar a vaga como novo processo.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 9 – Prazo e atratividade da vaga</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">A CONTRATADA conduzirá o processo seletivo pelo prazo máximo de 90 (noventa) dias, período no qual realizará esforços contínuos de atração, triagem e apresentação de candidatos compatíveis com o perfil definido.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Caso, durante este período, não haja aderência de candidatos em função de fatores relacionados à atratividade da vaga — tais como remuneração, benefícios, escopo ou condições de mercado — a CONTRATADA poderá sugerir ajustes estratégicos à CONTRATANTE.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>§ 1º</strong> Na hipótese de a CONTRATANTE optar por não realizar ajustes nas condições da vaga, o processo será automaticamente encerrado ao final do prazo de 90 (noventa) dias.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>§ 2º</strong> A eventual reabertura da vaga após o encerramento será considerada uma nova contratação, sujeita a nova proposta comercial.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>§ 3º</strong> Caso a faixa salarial, o modelo de trabalho ou o perfil definido pela CONTRATANTE sejam identificados como incompatíveis com o mercado de trabalho vigente, a CONTRATADA deverá:</p>
+<ul style="margin:6px 0 12px;padding-left:18px;font-size:11px;line-height:1.5;color:#0f172a;">
+<li>Notificar formalmente a CONTRATANTE em até 30 (trinta) dias úteis, apresentando dados de mercado que justifiquem a incompatibilidade;</li>
+<li>Propor alternativas (ajuste da faixa salarial, revisão do perfil, mudança de escopo da vaga);</li>
+<li>Aguardar manifestação formal da CONTRATANTE em até 5 (cinco) dias úteis antes de qualquer suspensão ou encerramento do processo.</li>
+</ul>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>§ 4º</strong> A permanência de condições incompatíveis com o mercado, após notificação formal da CONTRATADA e recusa de ajuste pela CONTRATANTE, não gerará direito a reembolso pelos serviços já realizados.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 10 – Contratação indireta</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Caso a CONTRATANTE contrate, direta ou indiretamente, candidato apresentado pela CONTRATADA no prazo de até 12 meses, será devido o valor integral do contrato.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 11 – Contratação externa</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Caso a CONTRATANTE opte por contratar candidato por outros meios após a assinatura do contrato e início dos trabalhos pela CONTRATADA, será devido o valor correspondente a 50% (cinquenta por cento) do valor total contratado para a vaga, a título de compensação pelos serviços já executados abaixo:</p>
+<ul style="margin:6px 0 12px;padding-left:18px;font-size:11px;line-height:1.5;color:#0f172a;">
+<li>Alinhamento de perfil com a CONTRATANTE;</li>
+<li>Estruturação da vaga (engenharia de cargo);</li>
+<li>Divulgação estratégica;</li>
+<li>Triagem de currículos.</li>
+</ul>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 12 – Desistência da contratante</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Em caso de desistência da CONTRATANTE após o início dos trabalhos, independentemente do motivo:</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Será devido o pagamento de 50% (cinquenta por cento) do valor total do salário da vaga anunciada, a título de compensação pelos serviços já executados abaixo:</p>
+<ul style="margin:6px 0 12px;padding-left:18px;font-size:11px;line-height:1.5;color:#0f172a;">
+<li>Alinhamento de perfil com a CONTRATANTE;</li>
+<li>Estruturação da vaga (engenharia de cargo);</li>
+<li>Divulgação estratégica;</li>
+<li>Triagem de currículos.</li>
+</ul>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 13 – Abrangência do contrato</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">O presente contrato estabelece as condições gerais para a prestação de serviços de recrutamento e seleção pela CONTRATADA, podendo ser aplicado a uma ou mais vagas solicitadas pela CONTRATANTE ao longo de sua vigência.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Cada nova vaga será formalizada por meio de alinhamento entre as partes, contendo definição de perfil, condições da vaga e valores aplicáveis, podendo ocorrer por proposta comercial, e-mail, mensagem eletrônica ou outro meio formal de comunicação.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Parágrafo único:</strong> As condições estabelecidas neste contrato serão aplicáveis a todas as vagas solicitadas pela contratante e conduzidas pela CONTRATADA.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 14 – Confidencialidade</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Ambas as partes se comprometem a manter sigilo sobre todas as informações trocadas durante a execução deste contrato.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 15 – Vigência</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">O presente contrato terá vigência inicial de 12 (doze) meses, contados a partir da data de sua assinatura, sendo automaticamente renovado por iguais períodos, salvo manifestação contrária de qualquer das partes mediante aviso prévio de 30 (trinta) dias.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Durante sua vigência, a CONTRATANTE poderá solicitar a abertura de vagas, que serão conduzidas pela CONTRATADA conforme as condições estabelecidas neste contrato.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">A rescisão não isenta a CONTRATANTE das obrigações financeiras referentes aos processos já iniciados.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 16 – Rescisão</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">O contrato poderá ser rescindido por qualquer das partes mediante comunicação formal, respeitando-se as condições financeiras previstas nas cláusulas anteriores.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Parágrafo único:</strong> A rescisão não isenta a CONTRATANTE das obrigações financeiras referentes aos processos já iniciados.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 17 – Foro</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Fica eleito o foro da comarca de {{foro_comarca}}, com renúncia de qualquer outro, por mais privilegiado que seja.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 18 – Disposições finais</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Este contrato reflete a integralidade do acordo entre as partes, substituindo quaisquer entendimentos anteriores.</p>
+
+<p style="font-size:11px;line-height:1.45;color:#64748b;margin-top:16px;">Responsável comercial: {{vendedor_nome}} ({{vendedor_email}}). Comissão: {{comissao_percent}}% ({{comissao_reais}}). Observações: {{proposta_observacoes}}</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:24px 0 12px;text-transform:uppercase;letter-spacing:0.06em;">Assinaturas</h2>
+<table style="width:100%;margin-top:8px;font-size:11px;color:#0f172a;border-collapse:collapse;">
+<tr><td style="width:50%;vertical-align:top;padding:12px 8px;border-top:1px solid #cbd5e1;">
+<p style="margin:0;">______________________________________</p>
+<p style="margin:8px 0 0;"><strong>CONTRATANTE</strong></p>
+<p style="margin:6px 0 0;font-size:10px;color:#64748b;">{{cliente_representante}} — {{cliente_representante_cargo}}</p>
+</td><td style="width:50%;vertical-align:top;padding:12px 8px;border-top:1px solid #cbd5e1;">
+<p style="margin:0;">______________________________________</p>
+<p style="margin:8px 0 0;"><strong>TALENTS – GESTÃO DE PESSOAS</strong></p>
+<p style="margin:6px 0 0;">{{empresa_nome}}</p>
+<p style="margin:4px 0 0;font-size:10px;color:#64748b;">{{empresa_signatario_nome}} · CPF {{empresa_signatario_cpf}}</p>
+</td></tr>
+</table>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;margin-top:20px;text-align:center;">{{cidade_assinatura_curta}}, {{data_hoje_por_extenso}}.</p>
 HTML;
     }
 
