@@ -20,6 +20,8 @@ const formInitial = props.proposal
           client_cnpj: props.proposal.client_cnpj ?? '',
           client_email: props.proposal.client_email ?? '',
           client_phone: props.proposal.client_phone ?? '',
+          client_address: props.proposal.client_address ?? '',
+          client_representative: props.proposal.client_representative ?? '',
           indication: props.proposal.indication ?? '',
           employee_count: props.proposal.employee_count ?? 0,
           seller_id: props.proposal.seller_id ?? '',
@@ -41,6 +43,8 @@ const formInitial = props.proposal
           client_cnpj: '',
           client_email: '',
           client_phone: '',
+          client_address: '',
+          client_representative: '',
           indication: '',
           employee_count: 0,
           seller_id: '',
@@ -218,6 +222,24 @@ const services = computed(() => [
                                 <input
                                     v-model="form.client_phone"
                                     type="text"
+                                    class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                />
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Endereço da sede (contrato)</label>
+                                <input
+                                    v-model="form.client_address"
+                                    type="text"
+                                    placeholder="Logradouro, número, bairro, cidade — UF, CEP"
+                                    class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                />
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Representante legal (contrato)</label>
+                                <input
+                                    v-model="form.client_representative"
+                                    type="text"
+                                    placeholder="Nome completo do signatário pela Contratante"
                                     class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                                 />
                             </div>

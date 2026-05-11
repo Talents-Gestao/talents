@@ -23,33 +23,61 @@ final class CanonicalContractTemplates
     private static function consultoria(): string
     {
         return <<<'HTML'
-<h2 style="font-size:14px;color:#4a2070;margin:16px 0 8px;text-transform:uppercase;">1. Das partes</h2>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;"><strong>CONTRATANTE:</strong> {{cliente_nome}}, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº {{cliente_cnpj}}, com sede na forma de seus registros, neste ato representada na forma de seu documento social, doravante denominada simplesmente <strong>CONTRATANTE</strong>.</p>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;"><strong>CONTRATADA:</strong> {{empresa_nome}}, inscrita no CNPJ {{empresa_cnpj}}, com sede em {{empresa_endereco}}, e-mail {{empresa_email}}, telefone {{empresa_telefone}}, doravante denominada <strong>CONTRATADA</strong>.</p>
+<h1 style="font-size:15px;color:#4a2070;margin:0 0 14px;text-align:center;text-transform:uppercase;letter-spacing:0.04em;">Contrato de prestação de serviços de consultoria Talents</h1>
 
-<h2 style="font-size:14px;color:#4a2070;margin:16px 0 8px;text-transform:uppercase;">2. Do objeto</h2>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;">O presente instrumento tem por objeto a prestação à CONTRATANTE dos serviços de consultoria e correlatos <strong>descritos na proposta comercial nº {{proposta_codigo}}</strong>, emitida em {{proposta_emitida_em}}, válida até {{validade_data}}, conforme especificação técnica e valores abaixo, os quais integram o presente contrato como se aqui estivessem transcritos.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>CONTRATANTE:</strong> {{cliente_nome}}, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº {{cliente_cnpj}}, com sede em {{cliente_endereco}}, neste ato representada por {{cliente_representante}}, doravante denominada <strong>CONTRATANTE</strong>.</p>
 
-<h2 style="font-size:14px;color:#4a2070;margin:16px 0 8px;text-transform:uppercase;">3. Dos serviços contratados e valores</h2>
-<p style="font-size:11px;line-height:1.5;color:#64748b;">Somente constam deste instrumento os serviços efetivamente contratados na proposta e seus respectivos valores (alinhados ao PDF da proposta):</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>CONTRATADA:</strong> {{empresa_nome}}, CNPJ nº {{empresa_cnpj}}, com sede em {{empresa_endereco}}, e-mail {{empresa_email}}, telefone {{empresa_telefone}}, {{empresa_representacao}}, doravante denominada <strong>CONTRATADA</strong>.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula primeira – Objeto</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">O presente contrato tem como objeto a prestação de serviços de consultoria de gestão de pessoas, nos termos da <strong>Proposta Comercial nº {{proposta_codigo}}</strong> (emitida em {{proposta_emitida_em}}, com referência de validade conforme parametrização comercial), incluindo, conforme contratado, dentre outras entregas da natureza abaixo:</p>
+<ul style="margin:8px 0 12px;padding-left:18px;font-size:11px;line-height:1.5;color:#0f172a;">
+<li>Pesquisa de satisfação dos colaboradores;</li>
+<li>Aplicação de mapeamento comportamental;</li>
+<li>Entrega de relatório de mapeamento comportamental individual completo;</li>
+<li>Análise do relatório de mapeamento comportamental individual (conforme plano contratado);</li>
+<li>Devolutiva individual ou em grupo (conforme plano contratado);</li>
+<li>Engenharia de cargos e relatório Matcher (conforme plano contratado).</li>
+</ul>
+<p style="font-size:11px;line-height:1.5;color:#64748b;">A discriminação contratual efetiva, valores e totais — somente o que constar na proposta:</p>
 {{servicos_detalhada_html}}
-<p style="font-size:11px;line-height:1.5;color:#0f172a;margin-top:12px;"><strong>Honorário total do contrato:</strong> {{total_reais}} (<em>{{total_extenso}}</em>).</p>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;">Quantidade de colaboradores considerada na proposta (quando aplicável): <strong>{{numero_funcionarios}}</strong>.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;margin-top:10px;"><strong>Honorário total:</strong> {{total_reais}} (<em>{{total_extenso}}</em>). Colaboradores considerados na proposta (quando aplicável): <strong>{{numero_funcionarios}}</strong>.</p>
+<p style="font-size:11px;line-height:1.45;color:#64748b;">Lista resumida dos serviços contratados: {{servicos_rotulos}}.</p>
 
-<h2 style="font-size:14px;color:#4a2070;margin:16px 0 8px;text-transform:uppercase;">4. Da comissão comercial (quando houver)</h2>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;">Quando aplicável à operação: percentual {{comissao_percent}}%, correspondente a {{comissao_reais}}, conforme proposta. Responsável comercial: {{vendedor_nome}} ({{vendedor_email}}).</p>
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula segunda – Prazo</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Este contrato tem início na data de assinatura e permanecerá vigente até a conclusão dos serviços contratados. Referência de prazo operacional (dias), quando aplicável à condição comercial: <strong>{{prazo_dias}}</strong>.</p>
 
-<h2 style="font-size:14px;color:#4a2070;margin:16px 0 8px;text-transform:uppercase;">5. Do pagamento e prazo</h2>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;"><strong>Forma de pagamento:</strong> {{forma_pagamento}}</p>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;"><strong>Prazo / condição complementar (dias):</strong> {{prazo_dias}}</p>
-<p style="font-size:11px;line-height:1.5;color:#64748b;">Observações da proposta (quando houver): {{proposta_observacoes}}</p>
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula terceira – Valor e forma de pagamento</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">A CONTRATANTE compromete-se a pagar à CONTRATADA os valores conforme plano e tabela da proposta acima.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Forma de pagamento e condições:</strong></p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">{{forma_pagamento}}</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Dados para pagamento (referência):</strong> e-mail {{empresa_email}} — CNPJ {{empresa_cnpj}}.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Os valores e condições apresentados neste instrumento têm validade de <strong>{{validade_proposta_dias}}</strong> dias a contar da data de envio à CONTRATANTE (parâmetro comercial alinhado ao PDF da proposta; validade calculada até {{validade_data}}). Após esse prazo, poderão ser revistos.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">§ 1º Em caso de inadimplência, os valores serão acrescidos de multa de 5% e juros de 1% ao mês sobre o saldo devedor.</p>
 
-<h2 style="font-size:14px;color:#4a2070;margin:16px 0 8px;text-transform:uppercase;">6. Das informações adicionais</h2>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;"><strong>Indicação / origem do lead:</strong> {{proposta_indicacao}}</p>
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula quarta – Obrigações da contratada</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">A CONTRATADA compromete-se a: (1) aplicar os mapeamentos comportamentais conforme os serviços contratados e as metodologias e ferramentas utilizadas; (2) entregar os relatórios de mapeamentos comportamentais individuais completos; (3) analisar os mapeamentos comportamentais individuais conforme os serviços contratados; (4) realizar as devolutivas individuais ou em grupo conforme os serviços contratados; (5) garantir confidencialidade sobre as informações coletadas; (6) reaplicar o mapeamento caso necessário, conforme frequência contratada (por exemplo, 6 meses ou 1 ano), para fins de acompanhar a evolução comportamental de cada colaborador.</p>
 
-<h2 style="font-size:14px;color:#4a2070;margin:16px 0 8px;text-transform:uppercase;">7. Do foro e assinatura</h2>
-<p style="font-size:11px;line-height:1.5;color:#0f172a;">Fica eleito o foro da comarca de {{cidade_estado}}, com renúncia a qualquer outro, por mais privilegiado que seja.</p>
-<p style="font-size:11px;line-height:1.45;color:#0f172a;margin-top:24px;">{{cidade_estado}}, {{data_hoje}}.</p>
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula quinta – Obrigações da contratante</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">A CONTRATANTE compromete-se a: (1) fornecer dados corretos e completos dos participantes avaliados; (2) efetuar o pagamento conforme as condições acordadas; (3) não compartilhar ou distribuir os relatórios com terceiros sem autorização da CONTRATADA.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula sexta – Confidencialidade</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Ambas as partes obrigam-se a manter em sigilo todas as informações a que tiverem acesso em razão deste contrato, inclusive relatórios e perfis comportamentais dos avaliados.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula sétima – Propriedade intelectual</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Todos os materiais, metodologias, relatórios e documentos utilizados ou entregues pela CONTRATADA são de sua exclusiva propriedade intelectual, sendo vedada a cópia, reprodução ou utilização para outros fins sem autorização expressa.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula oitava – Rescisão</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">O contrato poderá ser rescindido por qualquer das partes mediante aviso prévio de 15 dias, desde que não haja pendência de serviços ou pagamentos. Em caso de rescisão, serão devidos os valores proporcionais aos serviços efetivamente prestados.</p>
+
+<h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula nona – Foro</h2>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">Para dirimir quaisquer dúvidas oriundas deste contrato, as partes elegem o foro da comarca de {{foro_comarca}}, com exclusão de qualquer outro, por mais privilegiado que seja.</p>
+
+<p style="font-size:11px;line-height:1.55;color:#64748b;margin-top:14px;">Indicação / origem do lead (quando houver): {{proposta_indicacao}}. Observações da proposta: {{proposta_observacoes}}. Comissão comercial (quando houver): {{comissao_percent}}% ({{comissao_reais}}). Responsável comercial: {{vendedor_nome}} ({{vendedor_email}}).</p>
+
+<p style="font-size:11px;line-height:1.55;color:#0f172a;margin-top:28px;text-align:center;">________________________________________<br /><strong>CONTRATANTE</strong></p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;margin-top:28px;text-align:center;">________________________________________<br /><strong>CONTRATADA — {{empresa_nome}}</strong></p>
+<p style="font-size:11px;line-height:1.45;color:#0f172a;margin-top:16px;">{{cidade_estado}}, {{data_hoje}}.</p>
 HTML;
     }
 

@@ -72,6 +72,8 @@ const form = useForm({
     company_city_state: props.settings.company_city_state ?? '',
     company_phone: props.settings.company_phone ?? '',
     company_email: props.settings.company_email ?? '',
+    company_representative_line: props.settings.company_representative_line ?? '',
+    company_forum_city_state: props.settings.company_forum_city_state ?? '',
     default_payment_terms: props.settings.default_payment_terms ?? '',
     default_prazo_dias: props.settings.default_prazo_dias ?? '',
 });
@@ -385,6 +387,24 @@ const tableConfig = computed(() => [
                                 v-model="form.company_city_state"
                                 type="text"
                                 placeholder="São Paulo — SP"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Representação legal no contrato (Contratada)</label>
+                            <textarea
+                                v-model="form.company_representative_line"
+                                rows="3"
+                                placeholder='Ex.: neste ato representada por Fulana de Tal, CPF nº 000.000.000-00, conforme contrato social.'
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Foro (comarca)</label>
+                            <input
+                                v-model="form.company_forum_city_state"
+                                type="text"
+                                placeholder="Várzea Paulista – SP (deixe em branco para usar Cidade/UF ou o padrão legal)"
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             />
                         </div>

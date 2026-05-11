@@ -197,6 +197,8 @@ class ProposalController extends Controller
             'client_cnpj' => ['nullable', 'string', 'max:18'],
             'client_email' => ['nullable', 'email', 'max:255'],
             'client_phone' => ['nullable', 'string', 'max:32'],
+            'client_address' => ['nullable', 'string', 'max:500'],
+            'client_representative' => ['nullable', 'string', 'max:255'],
             'indication' => ['nullable', 'string', 'max:255'],
             'employee_count' => ['required', 'integer', 'min:0', 'max:100000'],
 

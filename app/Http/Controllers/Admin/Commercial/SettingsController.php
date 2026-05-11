@@ -127,6 +127,8 @@ class SettingsController extends Controller
             'company_city_state' => ['nullable', 'string', 'max:255'],
             'company_phone' => ['nullable', 'string', 'max:64'],
             'company_email' => ['nullable', 'email', 'max:255'],
+            'company_representative_line' => ['nullable', 'string', 'max:5000'],
+            'company_forum_city_state' => ['nullable', 'string', 'max:255'],
             'default_payment_terms' => ['nullable', 'string', 'max:5000'],
             'default_prazo_dias' => ['nullable', 'integer', 'min:0', 'max:3650'],
         ]);

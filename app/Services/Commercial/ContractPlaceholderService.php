@@ -35,6 +35,23 @@ class ContractPlaceholderService
         $p = $settings->default_prazo_dias;
         $prazoDias = $p !== null && $p !== '' ? (string) $p : '—';
 
+        $clientAddr = trim((string) ($proposal->client_address ?? ''));
+        $clientRepr = trim((string) ($proposal->client_representative ?? ''));
+        $empReprLine = trim((string) ($settings->company_representative_line ?? ''));
+        $empRepr = $empReprLine !== ''
+            ? $empReprLine
+            : 'neste ato representada na forma de seus documentos societários';
+
+        $forum = trim((string) ($settings->company_forum_city_state ?? ''));
+        if ($forum === '') {
+            $forum = trim((string) ($settings->company_city_state ?? ''));
+        }
+        if ($forum === '') {
+            $forum = 'Várzea Paulista – SP';
+        }
+
+        $validadeDiasNum = max(1, (int) ($settings->pdf_validade_dias ?? 10));
+
         $emitida = $proposal->created_at;
         $emitidaFmt = $emitida ? $emitida->timezone(config('app.timezone'))->format('d/m/Y') : '—';
 
@@ -43,7 +60,8 @@ class ContractPlaceholderService
             'cliente_cnpj' => $proposal->client_cnpj ?? '',
             'cliente_email' => $proposal->client_email ?? '',
             'cliente_telefone' => $proposal->client_phone ?? '',
-            'cliente_endereco' => '—',
+            'cliente_endereco' => $clientAddr !== '' ? $clientAddr : '—',
+            'cliente_representante' => $clientRepr !== '' ? $clientRepr : '—',
             'numero_funcionarios' => (string) ($proposal->employee_count ?? 0),
 
             'servicos_lista' => $servicosLista,
@@ -59,9 +77,12 @@ class ContractPlaceholderService
             'empresa_endereco' => (string) ($settings->company_address ?? ''),
             'empresa_telefone' => (string) ($settings->company_phone ?? ''),
             'empresa_email' => (string) ($settings->company_email ?? ''),
+            'empresa_representacao' => $empRepr,
             'cidade_estado' => (string) ($settings->company_city_state ?? ''),
+            'foro_comarca' => $forum,
             'forma_pagamento' => (string) ($settings->default_payment_terms ?? ''),
             'prazo_dias' => $prazoDias,
+            'validade_proposta_dias' => (string) $validadeDiasNum,
 
             'vendedor_nome' => $proposal->seller?->name ?? '—',
             'vendedor_email' => $proposal->seller?->email ?? '—',
