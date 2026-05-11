@@ -4,7 +4,8 @@ import Link from '@tiptap/extension-link';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import { router } from '@inertiajs/vue3';
-import { onBeforeUnmount, reactive } from 'vue';
+import axios from 'axios';
+import { onBeforeUnmount, reactive, ref } from 'vue';
 
 const props = defineProps({
     templates: { type: Array, default: () => [] },
@@ -44,6 +45,8 @@ const modal = reactive({
     docx_file: null,
 });
 
+const editorBodyLoading = ref(false);
+
 const editor = useEditor({
     extensions: [
         StarterKit.configure({ heading: { levels: [2, 3, 4] } }),
@@ -72,17 +75,26 @@ const openCreate = () => {
     queueMicrotask(() => editor.value?.commands.setContent('<p></p>'));
 };
 
-const openEdit = (t) => {
-    modal.editing = t;
+const openEdit = async (t) => {
+    modal.editing = { id: t.id, name: t.name, source_type: t.source_type, is_active: t.is_active, has_docx: t.has_docx };
     modal.name = t.name;
     modal.source_type = t.source_type;
     modal.is_active = !!t.is_active;
     modal.docx_file = null;
     modal.open = true;
-    queueMicrotask(() => {
-        const html = t.body_html && t.source_type === 'html' ? t.body_html : '<p></p>';
-        editor.value?.commands.setContent(html);
-    });
+    editorBodyLoading.value = true;
+    try {
+        const { data } = await axios.get(route('admin.comercial.contract-templates.editor', t.id));
+        const html =
+            data.source_type === 'html' && data.body_html && String(data.body_html).trim() !== ''
+                ? data.body_html
+                : '<p></p>';
+        queueMicrotask(() => editor.value?.commands.setContent(html));
+    } catch {
+        queueMicrotask(() => editor.value?.commands.setContent('<p></p>'));
+    } finally {
+        editorBodyLoading.value = false;
+    }
 };
 
 const closeModal = () => {
@@ -242,7 +254,8 @@ const docxUrl = (t) => route('admin.comercial.contract-templates.docx', t.id);
 
                         <div v-if="modal.source_type === 'html'" class="space-y-2">
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Conteúdo</label>
-                            <div v-if="editor" class="flex flex-wrap gap-1 rounded-t-xl border border-b-0 border-slate-200 bg-slate-50 p-2">
+                            <p v-if="editorBodyLoading" class="text-sm text-slate-500">Carregando conteúdo do modelo…</p>
+                            <div v-if="editor && !editorBodyLoading" class="flex flex-wrap gap-1 rounded-t-xl border border-b-0 border-slate-200 bg-slate-50 p-2">
                                 <button
                                     type="button"
                                     class="rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-white"
@@ -293,7 +306,7 @@ const docxUrl = (t) => route('admin.comercial.contract-templates.docx', t.id);
                                     Num.
                                 </button>
                             </div>
-                            <editor-content v-if="editor" :editor="editor" />
+                            <editor-content v-if="editor && !editorBodyLoading" :editor="editor" />
                         </div>
 
                         <div v-else class="space-y-2">
@@ -318,7 +331,8 @@ const docxUrl = (t) => route('admin.comercial.contract-templates.docx', t.id);
                             </button>
                             <button
                                 type="button"
-                                class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700"
+                                class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
+                                :disabled="editorBodyLoading"
                                 @click="submitModal"
                             >
                                 Salvar modelo

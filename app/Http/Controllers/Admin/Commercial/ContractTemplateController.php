@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Commercial;
 
 use App\Http\Controllers\Controller;
 use App\Models\CommercialContractTemplate;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -11,6 +12,23 @@ use Illuminate\Validation\Rule;
 
 class ContractTemplateController extends Controller
 {
+    /**
+     * Corpo HTML completo para o editor (evita enviar longtext na página de Configurações).
+     */
+    public function editor(CommercialContractTemplate $template): JsonResponse
+    {
+        @ini_set('memory_limit', '512M');
+
+        return response()->json([
+            'id' => $template->id,
+            'name' => $template->name,
+            'source_type' => $template->source_type,
+            'is_active' => (bool) $template->is_active,
+            'has_docx' => (bool) $template->docx_path,
+            'body_html' => $template->body_html ?? '',
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request, null);

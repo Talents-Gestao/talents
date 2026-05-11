@@ -21,12 +21,12 @@ class SettingsController extends Controller
             'settings' => $settings->toArray(),
             'contractTemplates' => CommercialContractTemplate::query()
                 ->orderBy('name')
+                ->select(['id', 'name', 'source_type', 'is_active', 'docx_path'])
                 ->get()
                 ->map(fn (CommercialContractTemplate $t) => [
                     'id' => $t->id,
                     'name' => $t->name,
                     'source_type' => $t->source_type,
-                    'body_html' => $t->body_html,
                     'is_active' => (bool) $t->is_active,
                     'has_docx' => (bool) $t->docx_path,
                 ])
