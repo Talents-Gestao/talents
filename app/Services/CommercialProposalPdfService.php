@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSetting;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\File;
 
 class CommercialProposalPdfService
 {
@@ -13,13 +14,36 @@ class CommercialProposalPdfService
         $proposal->loadMissing('seller:id,name,email');
         $settings = CommercialSetting::current();
 
-        return Pdf::loadView('reports.commercial-proposal', [
+        $this->ensureDompdfWritableDirs();
+
+        $fontDir = storage_path('fonts');
+        $tempDir = storage_path('app/dompdf-tmp');
+        $chroot = realpath(base_path()) ?: base_path();
+
+        $pdf = Pdf::loadView('reports.commercial-proposal', [
             'proposal' => $proposal,
             'settings' => $settings,
             'logoBase64' => $this->logoBase64(),
             'services' => $this->buildServiceLines($proposal),
             'validityDate' => now()->copy()->addDays((int) $settings->pdf_validade_dias),
-        ])->setPaper('a4');
+        ]);
+
+        $pdf->setOption('fontDir', $fontDir);
+        $pdf->setOption('fontCache', $fontDir);
+        $pdf->setOption('tempDir', $tempDir);
+        $pdf->setOption('chroot', $chroot);
+
+        return $pdf->setPaper('a4');
+    }
+
+    /**
+     * DomPDF grava métricas de fonte e imagens temporárias; sem pastas graváveis o render falha (500).
+     */
+    private function ensureDompdfWritableDirs(): void
+    {
+        foreach ([storage_path('fonts'), storage_path('app/dompdf-tmp')] as $dir) {
+            File::ensureDirectoryExists($dir);
+        }
     }
 
     /**

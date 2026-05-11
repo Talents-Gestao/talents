@@ -131,7 +131,7 @@ class ProposalController extends Controller
 
         return $pdfService
             ->generate($proposal)
-            ->download("proposta-{$proposal->code}.pdf");
+            ->stream("proposta-{$proposal->code}.pdf");
     }
 
     /**
