@@ -11,17 +11,54 @@ const props = defineProps({
     templates: { type: Array, default: () => [] },
 });
 
+/** Placeholders alinhados ao PDF da proposta (só serviços contratados; quantidades nos detalhes). */
 const PLACEHOLDERS = [
+    // Cliente / proposta
     '{{cliente_nome}}',
     '{{cliente_cnpj}}',
     '{{cliente_email}}',
     '{{cliente_telefone}}',
     '{{cliente_endereco}}',
     '{{numero_funcionarios}}',
+    '{{proposta_codigo}}',
+    '{{proposta_emitida_em}}',
+    '{{proposta_indicacao}}',
+    '{{proposta_observacoes}}',
+    '{{validade_data}}',
+    '{{data_hoje}}',
+    // Serviços (apenas contratados na proposta)
     '{{servicos_lista}}',
+    '{{servicos_lista_html}}',
+    '{{servicos_rotulos}}',
     '{{servicos_detalhada_html}}',
     '{{total_reais}}',
     '{{total_extenso}}',
+    '{{comissao_percent}}',
+    '{{comissao_reais}}',
+    // Por serviço: substituir palestras / pesquisas / etc. no contrato específico
+    '{{svc_ativo_palestras}}',
+    '{{svc_detalhe_palestras}}',
+    '{{svc_valor_palestras}}',
+    '{{svc_linha_palestras}}',
+    '{{svc_bloco_palestras_html}}',
+    '{{svc_ativo_pesquisas}}',
+    '{{svc_detalhe_pesquisas}}',
+    '{{svc_valor_pesquisas}}',
+    '{{svc_linha_pesquisas}}',
+    '{{svc_bloco_pesquisas_html}}',
+    '{{svc_ativo_profiler}}',
+    '{{svc_bloco_profiler_html}}',
+    '{{svc_ativo_devolutiva}}',
+    '{{svc_bloco_devolutiva_html}}',
+    '{{svc_ativo_nr1}}',
+    '{{svc_bloco_nr1_html}}',
+    '{{svc_ativo_nr1_implantacao}}',
+    '{{svc_bloco_nr1_implantacao_html}}',
+    '{{svc_ativo_contratacao}}',
+    '{{svc_bloco_contratacao_html}}',
+    '{{svc_ativo_direcionamento}}',
+    '{{svc_bloco_direcionamento_html}}',
+    // Talents / comercial
     '{{empresa_nome}}',
     '{{empresa_cnpj}}',
     '{{empresa_endereco}}',
@@ -31,9 +68,7 @@ const PLACEHOLDERS = [
     '{{forma_pagamento}}',
     '{{prazo_dias}}',
     '{{vendedor_nome}}',
-    '{{validade_data}}',
-    '{{data_hoje}}',
-    '{{proposta_codigo}}',
+    '{{vendedor_email}}',
 ];
 
 const modal = reactive({

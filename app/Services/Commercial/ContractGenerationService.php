@@ -69,7 +69,8 @@ class ContractGenerationService
         foreach ($keys as $key) {
             $token = '{{'.$key.'}}';
             $val = $map[$key];
-            if ($key === 'servicos_detalhada_html') {
+            // Fragmentos HTML (tabelas, listas, blocos por serviço): não escapar de novo
+            if (str_ends_with($key, '_html')) {
                 $search[] = $token;
                 $replace[] = $val;
             } else {
