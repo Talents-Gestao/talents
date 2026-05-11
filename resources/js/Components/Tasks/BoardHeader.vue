@@ -12,6 +12,8 @@ const props = defineProps({
     boardPayload: { type: Object, required: true },
     isAdmin: { type: Boolean, default: false },
     companyUsers: { type: Array, default: () => [] },
+    /** Quando false, não repete o nome do quadro (ex.: já exibido num hero acima). */
+    showBoardTitle: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['refresh']);
@@ -165,7 +167,9 @@ function saveBoardName() {
                     </button>
                 </form>
             </template>
-            <h2 v-else class="truncate text-base font-semibold text-slate-900 sm:text-lg">{{ boardPayload.name }}</h2>
+            <h2 v-else-if="showBoardTitle" class="truncate text-base font-semibold text-slate-900 sm:text-lg">
+                {{ boardPayload.name }}
+            </h2>
 
             <button
                 v-if="isAdmin && !editingName"

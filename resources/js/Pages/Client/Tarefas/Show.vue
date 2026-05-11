@@ -84,6 +84,7 @@ function formatDate(value) {
             <BoardHeader
                 :board-payload="boardPayload"
                 :is-admin="false"
+                :show-board-title="false"
                 :company-users="companyUsers || []"
                 @refresh="refreshBoard"
             />
