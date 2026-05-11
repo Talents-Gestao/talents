@@ -4,15 +4,14 @@
     <meta charset="utf-8">
     <title>Proposta Comercial — {{ $proposal->code }}</title>
     <style>
-        @page { margin: 16mm 16mm 18mm 16mm; }
-        * { box-sizing: border-box; }
+        @page { margin: 16mm 16mm 22mm 16mm; }
         body {
             font-family: DejaVu Sans, sans-serif;
             font-size: 12px;
             color: #0f172a;
             line-height: 1.5;
             margin: 0;
-            padding: 0 0 32mm;
+            padding: 0;
         }
         .top-stripe {
             height: 5mm;
@@ -32,9 +31,9 @@
             color: #94a3b8;
             text-transform: uppercase;
             letter-spacing: 0.06em;
-            font-weight: 600;
+            font-weight: bold;
         }
-        .meta-val { font-size: 12px; color: #0f172a; font-weight: 600; }
+        .meta-val { font-size: 12px; color: #0f172a; font-weight: bold; }
         h1 {
             font-size: 26px;
             font-weight: 700;
@@ -66,7 +65,7 @@
             padding: 2px 10px;
             border-radius: 999px;
             font-size: 10px;
-            font-weight: 600;
+            font-weight: bold;
             border: 1px solid #cbd5e1;
             background: #fff;
             color: #475569;
@@ -80,9 +79,9 @@
             font-size: 9px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            font-weight: 600;
+            font-weight: bold;
         }
-        .grid .value { color: #0f172a; font-size: 12px; font-weight: 600; margin-top: 2px; }
+        .grid .value { color: #0f172a; font-size: 12px; font-weight: bold; margin-top: 2px; }
         table.services { width: 100%; border-collapse: collapse; margin-top: 10px; }
         table.services th, table.services td {
             border-bottom: 1px solid #f1f5f9;
@@ -98,10 +97,7 @@
             font-weight: 700;
             border-bottom: 1px solid #4a2070;
         }
-        table.services td.value, table.services th.value {
-            text-align: right;
-            font-variant-numeric: tabular-nums;
-        }
+        table.services td.value, table.services th.value { text-align: right; }
         table.services tr.total td {
             background: transparent;
             font-weight: 700;
@@ -149,34 +145,29 @@
             font-size: 10px;
             color: #475569;
         }
+        .footer-wrap { margin-top: 40px; page-break-inside: avoid; }
         .footer-meta {
-            position: fixed;
-            bottom: 15mm;
-            left: 0;
-            right: 0;
             text-align: center;
             font-size: 8px;
             color: #94a3b8;
+            padding: 10px 0 8px;
         }
         .footer-band {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 12mm;
+            width: 100%;
             background: #4a2070;
             color: #fff;
             font-size: 10px;
+            padding: 10px 0;
         }
-        .footer-band table { width: 100%; height: 100%; border-collapse: collapse; }
-        .footer-band td { vertical-align: middle; padding: 0 16mm; color: #fff; font-weight: 600; }
+        .footer-band table { width: 100%; border-collapse: collapse; }
+        .footer-band td { vertical-align: middle; padding: 6px 20px; color: #fff; font-weight: bold; }
         .footer-band .col-left { text-align: left; }
         .footer-band .col-right { text-align: right; }
     </style>
 </head>
 <body>
     @php
-        $brl = fn (int $cents) => 'R$ '.number_format($cents / 100, 2, ',', '.');
+        $brl = fn ($cents) => 'R$ '.number_format(((int) $cents) / 100, 2, ',', '.');
     @endphp
 
     <div class="top-stripe"></div>
@@ -317,23 +308,24 @@
                     <div class="line">Cliente — {{ $proposal->client_name }}</div>
                 </td>
                 <td>
-                    <div class="line">Talents &mdash; {{ optional($proposal->seller)->name ?? 'Responsável Comercial' }}</div>
+                    <div class="line">Talents — {{ optional($proposal->seller)->name ?? 'Responsável Comercial' }}</div>
                 </td>
             </tr>
         </table>
     </div>
 
-    <div class="footer-meta">
-        Proposta {{ $proposal->code }} &mdash; gerada em {{ now()->format('d/m/Y H:i') }} &mdash; documento válido com assinatura.
-    </div>
-
-    <div class="footer-band">
-        <table>
-            <tr>
-                <td class="col-left">WhatsApp (11) 97570-3032</td>
-                <td class="col-right">contato@talentsgestao.com</td>
-            </tr>
-        </table>
+    <div class="footer-wrap">
+        <div class="footer-meta">
+            Proposta {{ $proposal->code }} — gerada em {{ now()->format('d/m/Y H:i') }} — documento válido com assinatura.
+        </div>
+        <div class="footer-band">
+            <table>
+                <tr>
+                    <td class="col-left">WhatsApp (11) 97570-3032</td>
+                    <td class="col-right">contato@talentsgestao.com</td>
+                </tr>
+            </table>
+        </div>
     </div>
 </body>
 </html>
