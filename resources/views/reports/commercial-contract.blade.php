@@ -4,14 +4,16 @@
     <meta charset="utf-8">
     <title>Contrato — {{ $code }}</title>
     <style>
-        @page { margin: 12mm 16mm 12mm 16mm; }
+        /* Margem inferior maior reserva espaço para o rodapé fixo (DomPDF) */
+        @page { margin: 12mm 16mm 22mm 16mm; }
         body {
             font-family: DejaVu Sans, sans-serif;
             font-size: 12px;
             color: #0f172a;
             line-height: 1.45;
             margin: 0;
-            padding: 0;
+            padding: 0 0 6mm;
+            box-sizing: border-box;
         }
         .top-stripe {
             height: 3mm;
@@ -36,7 +38,18 @@
         .meta-val { font-size: 12px; color: #0f172a; font-weight: bold; }
         .contract-body { margin-top: 4px; }
         .contract-body table { border-collapse: collapse; }
-        .footer-wrap { margin-top: 22px; page-break-inside: avoid; }
+        /* Rodapé colado ao rodapé físico da página (pouco texto ou última página) */
+        .footer-wrap {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            page-break-inside: avoid;
+            z-index: 10;
+        }
         .footer-meta {
             text-align: center;
             font-size: 8px;
@@ -57,32 +70,34 @@
     </style>
 </head>
 <body>
-    <div class="top-stripe"></div>
+    <div class="doc-main">
+        <div class="top-stripe"></div>
 
-    <div class="header">
-        <table>
-            <tr>
-                <td style="width: 48%;">
-                    @if($logoBase64)
-                        <img src="{{ $logoBase64 }}" alt="Talents">
-                    @endif
-                </td>
-                <td class="meta">
-                    <div class="meta-row">
-                        <span class="meta-lbl">Contrato</span>
-                        <span class="meta-val">{{ $code }}</span>
-                    </div>
-                    <div class="meta-row">
-                        <span class="meta-lbl">Emitido em</span>
-                        <span class="meta-val">{{ $generatedAt->format('d/m/Y') }}</span>
-                    </div>
-                </td>
-            </tr>
-        </table>
-    </div>
+        <div class="header">
+            <table>
+                <tr>
+                    <td style="width: 48%;">
+                        @if($logoBase64)
+                            <img src="{{ $logoBase64 }}" alt="Talents">
+                        @endif
+                    </td>
+                    <td class="meta">
+                        <div class="meta-row">
+                            <span class="meta-lbl">Contrato</span>
+                            <span class="meta-val">{{ $code }}</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-lbl">Emitido em</span>
+                            <span class="meta-val">{{ $generatedAt->format('d/m/Y') }}</span>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
 
-    <div class="contract-body">
-        {!! $content_html !!}
+        <div class="contract-body">
+            {!! $content_html !!}
+        </div>
     </div>
 
     <div class="footer-wrap">
@@ -98,5 +113,6 @@
             </table>
         </div>
     </div>
+
 </body>
 </html>

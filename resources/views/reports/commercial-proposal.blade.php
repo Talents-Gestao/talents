@@ -4,14 +4,15 @@
     <meta charset="utf-8">
     <title>Proposta Comercial — {{ $proposal->code }}</title>
     <style>
-        @page { margin: 12mm 14mm 12mm 14mm; }
+        @page { margin: 12mm 14mm 22mm 14mm; }
         body {
             font-family: DejaVu Sans, sans-serif;
             font-size: 12px;
             color: #0f172a;
             line-height: 1.4;
             margin: 0;
-            padding: 0;
+            padding: 0 0 6mm;
+            box-sizing: border-box;
         }
         .top-stripe {
             height: 3mm;
@@ -120,7 +121,17 @@
             border-left-color: #06b6d4;
             color: #475569;
         }
-        .footer-wrap { margin-top: 18px; page-break-inside: avoid; }
+        .footer-wrap {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            page-break-inside: avoid;
+            z-index: 10;
+        }
         .footer-meta {
             text-align: center;
             font-size: 8px;
@@ -145,6 +156,7 @@
         $brl = fn ($cents) => 'R$ '.number_format(((int) $cents) / 100, 2, ',', '.');
     @endphp
 
+    <div class="doc-main">
     <div class="top-stripe"></div>
 
     <div class="header">
@@ -261,6 +273,8 @@
             {!! nl2br(e($proposal->notes)) !!}
         </div>
     @endif
+
+    </div>
 
     <div class="footer-wrap">
         <div class="footer-meta">
