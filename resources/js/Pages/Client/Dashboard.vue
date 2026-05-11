@@ -1,10 +1,16 @@
 <script setup>
+import EmptyState from '@/Components/Dashboard/EmptyState.vue';
+import HealthBadge from '@/Components/Dashboard/HealthBadge.vue';
+import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
+import SectionHeader from '@/Components/Dashboard/SectionHeader.vue';
+import StatCard from '@/Components/Dashboard/StatCard.vue';
 import StrategicCalendarWidget from '@/Components/StrategicCalendarWidget.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { usePermissions } from '@/composables/usePermissions';
-import { Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, Link, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
+const page = usePage();
 const { can } = usePermissions();
 
 const copied = ref(false);
@@ -18,18 +24,48 @@ const copyDenuncia = async (url) => {
     }, 2000);
 };
 
-defineProps({
+const props = defineProps({
     activeSurveys: Number,
     lastSurvey: Object,
     overallRisk: Object,
+    lastCampaign: {
+        type: Object,
+        default: () => ({ completion_rate: null, section_results: [] }),
+    },
+    pendingComplaintsCount: { type: Number, default: 0 },
+    openActionPlanCount: { type: Number, default: 0 },
+    openActionPlanItems: { type: Array, default: () => [] },
+    pendingTasks: { type: Array, default: () => [] },
+    upcomingCalendar: { type: Array, default: null },
+    calendarKindLabels: { type: Object, default: () => ({}) },
+    actionPlanHref: { type: String, default: null },
     complaintsPublicUrl: { type: String, default: null },
     dashboardCalendar: { type: Object, default: null },
 });
 
-const healthLevelLabel = (level) => {
-    if (level === 'green') return 'Saudável';
-    if (level === 'yellow') return 'Atenção';
-    return 'Crítico';
+const companyName = computed(() => page.props.company?.name ?? '');
+
+const todayLabel = computed(() =>
+    new Date().toLocaleDateString('pt-BR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    }),
+);
+
+const formatShortDate = (iso) => {
+    if (!iso) return '—';
+    try {
+        return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    } catch {
+        return '—';
+    }
+};
+
+const kindLabel = (kind) => {
+    const k = typeof kind === 'object' && kind?.value !== undefined ? kind.value : kind;
+    return props.calendarKindLabels?.[k] ?? k;
 };
 </script>
 
@@ -39,8 +75,10 @@ const healthLevelLabel = (level) => {
     <ClientLayout>
         <template #header>
             <div>
+                <p class="text-sm capitalize text-slate-500">{{ todayLabel }}</p>
                 <p class="text-sm text-slate-500">Olá, {{ $page.props.auth.user.name }}</p>
-                <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Painel NR-1</h2>
+                <h2 class="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900">Painel NR-1</h2>
+                <p v-if="companyName" class="mt-1 text-sm text-slate-600">{{ companyName }}</p>
             </div>
         </template>
 
@@ -56,20 +94,212 @@ const healthLevelLabel = (level) => {
                         Pesquisas NR1
                     </Link>
                     <Link
+                        v-if="can('planos_acao', 'view') && actionPlanHref"
+                        :href="actionPlanHref"
+                        class="block font-medium text-talents-800 hover:underline"
+                    >
+                        Plano de ação
+                    </Link>
+                    <Link
+                        v-if="can('denuncias', 'view')"
+                        :href="route('client.complaints.index')"
+                        class="block font-medium text-talents-800 hover:underline"
+                    >
+                        Denúncias
+                    </Link>
+                    <Link
+                        v-if="can('tarefas', 'view')"
+                        :href="route('client.tarefas.index')"
+                        class="block font-medium text-talents-800 hover:underline"
+                    >
+                        Tarefas
+                    </Link>
+                    <Link
                         v-if="can('calendario_estrategico', 'view')"
                         :href="route('client.strategic-calendar.index')"
                         class="block font-medium text-talents-800 hover:underline"
                     >
                         Calendário estratégico
                     </Link>
-                    <Link :href="route('profile.edit')" class="block font-medium text-talents-800 hover:underline">
-                        Perfil
-                    </Link>
+                    <Link :href="route('profile.edit')" class="block font-medium text-talents-800 hover:underline"> Perfil </Link>
                 </div>
             </div>
         </template>
 
-        <div v-if="dashboardCalendar && can('calendario_estrategico', 'view')" class="mb-10">
+        <!-- Hero última campanha -->
+        <div v-if="can('pesquisas', 'view')" class="surface-card-dark border-slate-700/40 p-6 sm:p-8">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Última campanha NR-1</p>
+                    <h3 class="mt-2 text-xl font-semibold text-white sm:text-2xl">
+                        {{ lastSurvey?.title ?? 'Nenhuma campanha ainda' }}
+                    </h3>
+                    <div v-if="overallRisk" class="mt-4 flex flex-wrap items-center gap-3">
+                        <span class="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white ring-1 ring-white/20">
+                            Média {{ Number(overallRisk.average_score).toFixed(1) }} / 100
+                        </span>
+                        <HealthBadge :risk-level="overallRisk.risk_level" />
+                    </div>
+                    <div v-if="lastCampaign.completion_rate !== null && lastCampaign.completion_rate !== undefined" class="mt-5 max-w-md">
+                        <p class="text-xs font-medium text-slate-400">Taxa de conclusão das respostas</p>
+                        <ProgressBar
+                            class="mt-2"
+                            label="Conclusão"
+                            dark
+                            :value="lastCampaign.completion_rate"
+                            :display-value="`${Number(lastCampaign.completion_rate).toFixed(1)}%`"
+                            bar-class="bg-emerald-400"
+                        />
+                    </div>
+                </div>
+                <div class="flex shrink-0 flex-col gap-2">
+                    <Link
+                        v-if="lastSurvey"
+                        :href="route('client.surveys.results', lastSurvey.id)"
+                        class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-talents-900 shadow-sm transition hover:bg-slate-100"
+                    >
+                        Ver resultados
+                    </Link>
+                    <Link
+                        v-if="can('pesquisas', 'view')"
+                        :href="route('client.surveys.index')"
+                        class="inline-flex items-center justify-center rounded-xl border border-white/30 px-4 py-2 text-sm font-semibold text-white/95 hover:bg-white/10"
+                    >
+                        Todas as pesquisas
+                    </Link>
+                </div>
+            </div>
+            <div v-if="!lastSurvey" class="mt-6 rounded-xl border border-white/20 bg-white/5 px-4 py-5 text-sm text-slate-200">
+                <p class="font-medium text-white">Comece criando uma campanha</p>
+                <p class="mt-1 text-slate-300">Assim que existir uma pesquisa, o resumo de saúde aparece aqui.</p>
+                <Link
+                    :href="route('client.surveys.index')"
+                    class="mt-3 inline-flex text-sm font-semibold text-white underline decoration-white/40 hover:decoration-white"
+                >
+                    Ir para pesquisas
+                </Link>
+            </div>
+        </div>
+
+        <!-- KPIs + seções críticas -->
+        <div class="mt-8 grid gap-6 lg:grid-cols-3">
+            <div class="grid gap-4 sm:grid-cols-3 lg:col-span-2 lg:grid-cols-3">
+                <StatCard
+                    v-if="can('pesquisas', 'view')"
+                    label="Pesquisas ativas"
+                    :value="activeSurveys"
+                    :detail-href="route('client.surveys.index')"
+                    detail-label="Abrir"
+                />
+                <StatCard
+                    v-if="can('planos_acao', 'view')"
+                    label="Itens de plano em aberto"
+                    :value="openActionPlanCount"
+                    :detail-href="actionPlanHref || route('client.surveys.index')"
+                    detail-label="Plano de ação"
+                />
+                <StatCard
+                    v-if="can('denuncias', 'view')"
+                    label="Denúncias pendentes"
+                    :value="pendingComplaintsCount"
+                    :detail-href="route('client.complaints.index')"
+                    detail-label="Ver denúncias"
+                />
+            </div>
+
+            <div v-if="can('pesquisas', 'view')" class="surface-card border-slate-200/70 p-5">
+                <SectionHeader title="Seções com menor saúde" subtitle="Top 3 (última campanha)" />
+                <ul v-if="lastCampaign.section_results?.length" class="mt-3 space-y-3">
+                    <li v-for="(row, idx) in lastCampaign.section_results" :key="idx" class="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <p class="text-sm font-semibold text-slate-900">{{ row.section_name }}</p>
+                            <HealthBadge :risk-level="row.risk_level" />
+                        </div>
+                        <p class="mt-1 text-xs text-slate-600">Média {{ Number(row.average_score).toFixed(1) }}</p>
+                    </li>
+                </ul>
+                <EmptyState
+                    v-else
+                    class="mt-2 border-0 bg-transparent py-6"
+                    title="Sem resultados por seção"
+                    description="Disponível após a campanha ter respostas e cálculo de resultados."
+                />
+            </div>
+        </div>
+
+        <!-- Próximos dias + tarefas -->
+        <div class="mt-8 grid gap-6 lg:grid-cols-2">
+            <div v-if="upcomingCalendar && can('calendario_estrategico', 'view')" class="surface-card border-slate-200/70 p-5">
+                <SectionHeader title="Próximos 7 dias" subtitle="Calendário estratégico">
+                    <template #action>
+                        <Link :href="route('client.strategic-calendar.index')" class="text-xs font-semibold text-talents-700 hover:underline">
+                            Ver calendário
+                        </Link>
+                    </template>
+                </SectionHeader>
+                <ul v-if="upcomingCalendar.length" class="mt-3 space-y-3 text-sm">
+                    <li v-for="item in upcomingCalendar" :key="item.id" class="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                        <p class="text-xs font-medium text-slate-500">{{ formatShortDate(item.occurs_on) }}</p>
+                        <p class="mt-0.5 font-medium text-slate-900">{{ item.title }}</p>
+                        <p class="mt-0.5 text-xs text-talents-700">{{ kindLabel(item.kind) }}</p>
+                    </li>
+                </ul>
+                <EmptyState v-else class="mt-2 border-0 bg-transparent py-6" title="Sem eventos nesta semana" />
+            </div>
+
+            <div v-if="can('tarefas', 'view')" class="surface-card border-slate-200/70 p-5">
+                <SectionHeader title="Minhas tarefas" subtitle="Atribuídas a si, em aberto">
+                    <template #action>
+                        <Link :href="route('client.tarefas.index')" class="text-xs font-semibold text-talents-700 hover:underline"> Quadros </Link>
+                    </template>
+                </SectionHeader>
+                <ul v-if="pendingTasks?.length" class="mt-3 space-y-2 text-sm">
+                    <li v-for="t in pendingTasks" :key="t.id" class="rounded-xl bg-slate-50 px-3 py-2">
+                        <p class="font-medium text-slate-900">{{ t.title }}</p>
+                        <p class="text-xs text-slate-500">
+                            <span v-if="t.list_title">{{ t.list_title }}</span>
+                            <span v-if="t.due_date"> · vence {{ formatShortDate(t.due_date) }}</span>
+                        </p>
+                    </li>
+                </ul>
+                <EmptyState v-else class="mt-2 border-0 bg-transparent py-6" title="Sem tarefas atribuídas" />
+            </div>
+        </div>
+
+        <!-- Plano de ação itens -->
+        <div v-if="can('planos_acao', 'view') && openActionPlanItems?.length" class="mt-8 surface-card border-slate-200/70 p-5">
+            <SectionHeader title="Próximos itens do plano de ação" subtitle="Em aberto na sua empresa">
+                <template #action>
+                    <Link v-if="actionPlanHref" :href="actionPlanHref" class="text-xs font-semibold text-talents-700 hover:underline">
+                        Abrir plano
+                    </Link>
+                </template>
+            </SectionHeader>
+            <ul class="mt-3 divide-y divide-slate-100 text-sm">
+                <li v-for="it in openActionPlanItems" :key="it.id" class="flex flex-wrap items-center justify-between gap-2 py-2">
+                    <div>
+                        <p class="font-medium text-slate-900">{{ it.title }}</p>
+                        <p class="text-xs text-slate-500">{{ it.survey_title }} · {{ it.status === 'in_progress' ? 'Em progresso' : 'Pendente' }}</p>
+                    </div>
+                    <span v-if="it.due_date" class="text-xs text-slate-500">Prazo {{ formatShortDate(it.due_date) }}</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Denúncias link -->
+        <div v-if="complaintsPublicUrl && can('denuncias', 'view')" class="surface-card mt-8 border-slate-200/70 p-5">
+            <SectionHeader title="Canal de denúncias" subtitle="Lei 14.457/2022 — link público para colaboradores" />
+            <p class="mt-2 break-all rounded-lg bg-slate-50 p-2 font-mono text-xs text-slate-800">{{ complaintsPublicUrl }}</p>
+            <button
+                type="button"
+                class="mt-3 rounded-lg border border-talents-200 bg-white px-3 py-1.5 text-sm font-medium text-talents-800 hover:bg-talents-50"
+                @click="copyDenuncia(complaintsPublicUrl)"
+            >
+                {{ copied ? 'Copiado!' : 'Copiar link' }}
+            </button>
+        </div>
+
+        <div v-if="dashboardCalendar && can('calendario_estrategico', 'view')" class="mt-10">
             <StrategicCalendarWidget
                 :items="dashboardCalendar.items"
                 :year="dashboardCalendar.year"
@@ -81,61 +311,6 @@ const healthLevelLabel = (level) => {
                 full-page-label="Ver detalhes"
                 dashboard-route="client.dashboard"
             />
-        </div>
-
-        <div v-if="can('pesquisas', 'view')" class="grid gap-6 sm:grid-cols-3">
-            <div class="surface-card p-6">
-                <p class="text-sm text-slate-500">Pesquisas ativas</p>
-                <p class="mt-2 text-3xl font-bold tabular-nums text-talents-800">{{ activeSurveys }}</p>
-            </div>
-            <div class="surface-card p-6 sm:col-span-2">
-                <p class="text-sm text-slate-500">Última campanha</p>
-                <p v-if="lastSurvey" class="mt-2 text-lg font-semibold text-talents-900">{{ lastSurvey.title }}</p>
-                <p v-else class="mt-2 text-slate-500">Nenhuma campanha ainda.</p>
-                <div v-if="overallRisk" class="mt-4 flex flex-wrap items-center gap-3">
-                    <span class="rounded-full bg-talents-100 px-3 py-1 text-sm font-medium text-talents-900">
-                        Média de saúde (0–100): {{ Number(overallRisk.average_score).toFixed(1) }}
-                    </span>
-                    <span class="rounded-full bg-slate-100 px-3 py-1 text-sm">{{ healthLevelLabel(overallRisk.risk_level) }}</span>
-                    <Link
-                        v-if="lastSurvey"
-                        :href="route('client.surveys.results', lastSurvey.id)"
-                        class="text-sm font-semibold text-talents-700 hover:underline"
-                    >
-                        Ver resultados
-                    </Link>
-                </div>
-            </div>
-        </div>
-
-        <div v-if="complaintsPublicUrl && can('denuncias', 'view')" class="surface-card mt-8 p-6">
-            <h3 class="text-sm font-semibold text-slate-900">Link público — Canal de denúncias</h3>
-            <p class="mt-1 text-xs text-slate-600">Compartilhe com colaboradores (Lei 14.457/2022). Acesso sigiloso com protocolo.</p>
-            <p class="mt-3 break-all rounded-lg bg-slate-50 p-2 font-mono text-xs text-slate-800">{{ complaintsPublicUrl }}</p>
-            <button
-                type="button"
-                class="mt-3 rounded-md border border-talents-300 px-3 py-1.5 text-sm font-medium text-talents-800 hover:bg-talents-50"
-                @click="copyDenuncia(complaintsPublicUrl)"
-            >
-                {{ copied ? 'Copiado!' : 'Copiar link' }}
-            </button>
-        </div>
-
-        <div class="mt-8 flex flex-wrap gap-3">
-            <Link
-                v-if="can('calendario_estrategico', 'view')"
-                :href="route('client.strategic-calendar.index')"
-                class="inline-flex rounded-md border border-talents-300 bg-white px-4 py-2 text-sm font-semibold text-talents-800 hover:bg-talents-50"
-            >
-                Calendário estratégico
-            </Link>
-            <Link
-                v-if="can('pesquisas', 'view')"
-                :href="route('client.surveys.index')"
-                class="inline-flex rounded-md bg-talents-700 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-800"
-            >
-                Ir para pesquisas NR1
-            </Link>
         </div>
     </ClientLayout>
 </template>
