@@ -23,6 +23,8 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'refresh', 'sync-card']);
 const activeTab = ref('details');
+/** Evita voltar para "Detalhes" quando o mesmo cartão é só recarregado (ex.: após criar etiqueta). */
+const lastOpenedCardId = ref(null);
 
 const cardUpdate = useForm({
     title: '',
@@ -41,11 +43,25 @@ const checklistBulkProcessing = ref({});
 const editingChecklistItemId = ref(null);
 const editingChecklistItemText = ref('');
 
+const showNewLabelForm = ref(false);
+const newLabelDraft = ref({ name: '', color: '#3b82f6' });
+const editingLabelId = ref(null);
+const labelEditDraft = ref({ name: '', color: '' });
+
 watch(
     () => props.card,
     (c) => {
-        if (!c) return;
-        activeTab.value = 'details';
+        if (!c) {
+            lastOpenedCardId.value = null;
+            return;
+        }
+        const id = Number(c.id);
+        if (lastOpenedCardId.value !== id) {
+            lastOpenedCardId.value = id;
+            activeTab.value = 'details';
+            showNewLabelForm.value = false;
+            editingLabelId.value = null;
+        }
         cardUpdate.title = c.title || '';
         cardUpdate.description = c.description || '';
         cardUpdate.visibility = c.visibility || 'inherit';
@@ -291,18 +307,93 @@ function uploadAttachment(e) {
     e.target.value = '';
 }
 
-function newLabel() {
+function randomLabelColor() {
+    return `#${Math.floor(Math.random() * 0xffffff)
+        .toString(16)
+        .padStart(6, '0')}`;
+}
+
+function openNewLabelForm() {
     if (!props.isAdmin || !props.card) return;
-    const color = '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+    newLabelDraft.value = { name: '', color: randomLabelColor() };
+    showNewLabelForm.value = true;
+}
+
+function cancelNewLabelForm() {
+    showNewLabelForm.value = false;
+}
+
+function submitNewLabel() {
+    if (!props.isAdmin || !props.card) return;
+    const name = newLabelDraft.value.name.trim();
+    if (!name) return;
+
     router.post(
         route('admin.tarefas.quadros.labels.store', props.boardPayload.id),
-        { name: 'Nova', color },
+        { name, color: newLabelDraft.value.color },
         {
             preserveScroll: true,
             preserveState: true,
-            onSuccess: () => reloadBoardPayloadAndSyncCard(),
+            onSuccess: () => {
+                showNewLabelForm.value = false;
+                reloadBoardPayloadAndSyncCard();
+            },
         },
     );
+}
+
+function startLabelEdit(label) {
+    if (!label?.id) return;
+    editingLabelId.value = label.id;
+    labelEditDraft.value = {
+        name: label.name || '',
+        color: label.color || '#64748b',
+    };
+}
+
+function cancelLabelEdit() {
+    editingLabelId.value = null;
+    labelEditDraft.value = { name: '', color: '' };
+}
+
+function saveLabelEdit(label) {
+    if (!label?.id) return;
+    const name = labelEditDraft.value.name.trim();
+
+    router.patch(
+        route('admin.tarefas.labels.update', label.id),
+        { name: name || null, color: labelEditDraft.value.color },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                cancelLabelEdit();
+                reloadBoardPayloadAndSyncCard();
+            },
+        },
+    );
+}
+
+function deleteLabel(label) {
+    if (!label?.id || !props.isAdmin) return;
+    const display = (label.name || '').trim() || 'sem nome';
+    if (
+        !window.confirm(
+            `Excluir a etiqueta "${display}"? Ela será removida de todas as tarefas deste quadro.`,
+        )
+    ) {
+        return;
+    }
+
+    router.delete(route('admin.tarefas.labels.destroy', label.id), {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            cardUpdate.label_ids = (cardUpdate.label_ids || []).filter((id) => Number(id) !== Number(label.id));
+            if (editingLabelId.value === label.id) cancelLabelEdit();
+            reloadBoardPayloadAndSyncCard();
+        },
+    });
 }
 
 function formatDateTime(value) {
@@ -555,19 +646,110 @@ function formatDateTime(value) {
                         </div>
                         <div>
                             <InputLabel value="Etiquetas" />
-                            <div class="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm">
-                                <label
+                            <div class="mt-1 max-h-52 space-y-2 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm">
+                                <div
                                     v-for="l in boardPayload.labels"
                                     :key="l.id"
-                                    class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
+                                    class="rounded px-1 py-1 hover:bg-white"
                                 >
-                                    <input v-model="cardUpdate.label_ids" type="checkbox" :value="l.id" />
-                                    <span class="inline-block h-3 w-3 rounded" :style="{ backgroundColor: l.color }" />
-                                    {{ l.name || l.color }}
-                                </label>
+                                    <div v-if="editingLabelId === l.id" class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                                        <input
+                                            v-model="labelEditDraft.color"
+                                            type="color"
+                                            class="h-9 w-14 cursor-pointer rounded border border-slate-200 bg-white p-0.5"
+                                        />
+                                        <TextInput
+                                            v-model="labelEditDraft.name"
+                                            class="min-w-0 flex-1 border-slate-200 bg-white text-sm shadow-none"
+                                            placeholder="Nome"
+                                        />
+                                        <div class="flex shrink-0 gap-1">
+                                            <button
+                                                type="button"
+                                                class="rounded border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+                                                @click="saveLabelEdit(l)"
+                                            >
+                                                Salvar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-50"
+                                                @click="cancelLabelEdit"
+                                            >
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div v-else class="flex items-start gap-2">
+                                        <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded py-0.5">
+                                            <input v-model="cardUpdate.label_ids" type="checkbox" :value="l.id" />
+                                            <span
+                                                class="inline-block h-3 w-3 shrink-0 rounded"
+                                                :style="{ backgroundColor: l.color }"
+                                            />
+                                            <span class="truncate">{{ l.name || l.color }}</span>
+                                        </label>
+                                        <div class="flex shrink-0 gap-1">
+                                            <button
+                                                type="button"
+                                                class="text-[11px] text-talents-700 underline"
+                                                @click="startLabelEdit(l)"
+                                            >
+                                                Editar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="text-[11px] text-red-600 underline"
+                                                @click="deleteLabel(l)"
+                                            >
+                                                Excluir
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p v-if="!(boardPayload.labels || []).length" class="text-xs text-slate-500">
+                                    Nenhuma etiqueta no quadro.
+                                </p>
                             </div>
-                            <button type="button" class="mt-1 text-xs text-talents-700 underline" @click="newLabel">
-                                + Criar etiqueta
+                            <div v-if="showNewLabelForm" class="mt-2 space-y-2 rounded-md border border-slate-200 bg-white p-2">
+                                <TextInput
+                                    v-model="newLabelDraft.name"
+                                    class="w-full border-slate-200 text-sm shadow-none"
+                                    placeholder="Nome da etiqueta"
+                                />
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-slate-600">Cor</span>
+                                    <input
+                                        v-model="newLabelDraft.color"
+                                        type="color"
+                                        class="h-9 w-14 cursor-pointer rounded border border-slate-200 p-0.5"
+                                    />
+                                </div>
+                                <div class="flex gap-2">
+                                    <button
+                                        type="button"
+                                        class="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                        @click="submitNewLabel"
+                                    >
+                                        Criar etiqueta
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+                                        @click="cancelNewLabelForm"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Informe um nome antes de criar.</p>
+                            </div>
+                            <button
+                                v-else
+                                type="button"
+                                class="mt-1 text-xs text-talents-700 underline"
+                                @click="openNewLabelForm"
+                            >
+                                + Nova etiqueta
                             </button>
                         </div>
                     </div>
