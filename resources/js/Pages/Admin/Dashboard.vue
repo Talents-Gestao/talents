@@ -110,15 +110,20 @@ const calendarEventDaysFromToday = computed(() => {
     return Math.round((e0 - t0) / 86400000);
 });
 
-/** Texto curto para contextualizar a data do evento vs. hoje. */
-const calendarEventRelativeHint = computed(() => {
+function capitalizeFirst(str) {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/** Chip discreto que situa o evento no tempo sem repetir a data inteira. */
+const calendarEventChip = computed(() => {
     const n = calendarEventDaysFromToday.value;
-    if (n === null || n === undefined) return '';
-    if (n === 0) return 'Este evento está agendado para hoje.';
-    if (n === 1) return 'Este evento é amanhã.';
-    if (n > 1) return `Faltam ${n} dias para o dia do evento (a contar a partir de hoje).`;
-    if (n < 0) return 'Data do evento no passado — ajuste no calendário se for erro.';
-    return '';
+    if (n === null || n === undefined) return null;
+    if (n === 0) return { label: 'Hoje', tone: 'today' };
+    if (n === 1) return { label: 'Amanhã', tone: 'soon' };
+    if (n > 1 && n <= 7) return { label: `Em ${n} dias`, tone: 'soon' };
+    if (n < 0) return { label: 'No passado', tone: 'past' };
+    return { label: `Em ${n} dias`, tone: 'far' };
 });
 
 const calendarKindLabel = (kind) => {
@@ -130,12 +135,14 @@ const formatEventLong = (item) => {
     const d = parseOccurrenceDate(item?.occurs_on);
     if (!d) return '';
     try {
-        return d.toLocaleDateString('pt-BR', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-        });
+        return capitalizeFirst(
+            d.toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+            }),
+        );
     } catch {
         return '';
     }
@@ -160,9 +167,8 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
         <template #header>
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Painel executivo</p>
+                    <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Painel</p>
                     <h2 class="mt-0.5 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">Visão geral Talents</h2>
-                    <p class="mt-1 text-sm text-slate-500">Resumo operacional — datas de eventos aparecem no destaque roxo com o dia agendado.</p>
                 </div>
                 <Link
                     v-if="Number(stats.pending_complaints_total) > 0"
@@ -200,82 +206,110 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
         <!-- Hero + status (estilo cartões principais) -->
         <div class="mb-8 grid gap-4 lg:grid-cols-3">
             <div class="dashboard-hero lg:col-span-2">
-                <div class="dashboard-hero-blob -right-16 -top-16 h-48 w-48" />
-                <div class="dashboard-hero-blob-accent -bottom-20 left-1/4 h-40 w-40" />
-                <div class="relative flex flex-wrap items-start justify-between gap-6">
-                    <div class="flex min-w-0 flex-1 gap-4">
-                        <div
-                            class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-lg font-bold tracking-tight text-white ring-2 ring-white/30 backdrop-blur-sm"
-                            aria-hidden="true"
+                <div class="dashboard-hero-blob -right-24 -top-24 h-56 w-56 opacity-70" />
+                <div class="dashboard-hero-blob-accent -bottom-24 left-1/3 h-48 w-48 opacity-60" />
+
+                <div class="relative flex flex-col gap-7">
+                    <!-- Saudação -->
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex min-w-0 items-center gap-3.5">
+                            <div
+                                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/12 text-sm font-semibold tracking-wide text-white ring-1 ring-white/25"
+                                aria-hidden="true"
+                            >
+                                {{ userInitials }}
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">Bem-vindo</p>
+                                <p class="mt-0.5 truncate text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                                    {{ greeting.prefix }},
+                                    <span class="font-bold">{{ greeting.first }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <Link
+                            :href="route('admin.strategic-calendar.index')"
+                            class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white/90 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
+                            aria-label="Abrir calendário estratégico"
                         >
-                            {{ userInitials }}
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-xs font-semibold uppercase tracking-wider text-white/65">Saudação</p>
-                            <p class="mt-1 text-base font-medium text-white/90 sm:text-lg">
-                                {{ greeting.prefix }},
-                                <span class="block text-2xl font-bold leading-tight text-white sm:inline sm:text-3xl sm:font-bold">
-                                    {{ greeting.first }}
-                                </span>
-                            </p>
-                            <template v-if="nextCalendarEvent">
-                                <p class="mt-5 text-xs font-semibold uppercase tracking-wider text-white/70">Próximo no calendário estratégico</p>
-                                <div
-                                    class="mt-2 rounded-2xl border border-white/25 bg-white/15 px-4 py-3 shadow-inner backdrop-blur-sm ring-1 ring-white/10"
-                                >
-                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-white/80">Data agendada no calendário</p>
-                                    <p class="mt-1 font-serif text-2xl font-bold capitalize leading-snug text-white sm:text-3xl">
-                                        {{ formatEventLong(nextCalendarEvent) }}
-                                    </p>
-                                    <p v-if="calendarEventRelativeHint" class="mt-2 text-sm font-medium text-white/90">
-                                        {{ calendarEventRelativeHint }}
-                                    </p>
-                                </div>
-                                <h3 class="mt-4 text-lg font-bold leading-snug text-white sm:text-xl">{{ nextCalendarEvent.title }}</h3>
-                                <p class="mt-1 text-xs text-white/75">
-                                    {{ calendarKindLabel(nextCalendarEvent.kind) }}
-                                    <span v-if="nextCalendarEvent.company"> · {{ nextCalendarEvent.company.name }}</span>
-                                </p>
-                            </template>
-                            <template v-else>
-                                <h3 class="mt-5 text-xl font-bold leading-snug sm:text-2xl">Sem eventos nos próximos 7 dias</h3>
-                                <p class="mt-2 max-w-md text-sm text-white/85">
-                                    Quando existir um item no calendário estratégico para esta semana, a data agendada aparece aqui em destaque.
-                                </p>
-                            </template>
-                        </div>
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                        </Link>
                     </div>
-                    <Link
-                        :href="route('admin.strategic-calendar.index')"
-                        class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-talents-700 shadow-lg transition hover:scale-105 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-white/80"
-                        aria-label="Abrir calendário estratégico"
-                    >
-                        <svg class="h-5 w-5 translate-x-px" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                    </Link>
+
+                    <div class="h-px w-full bg-white/15" />
+
+                    <!-- Próximo evento -->
+                    <div v-if="nextCalendarEvent" class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                            <span class="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">Próximo evento</span>
+                            <span
+                                v-if="calendarEventChip"
+                                class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide"
+                                :class="{
+                                    'bg-white text-talents-700': calendarEventChip.tone === 'today',
+                                    'bg-white/15 text-white ring-1 ring-white/25':
+                                        calendarEventChip.tone === 'soon' || calendarEventChip.tone === 'far',
+                                    'bg-rose-500/20 text-rose-100 ring-1 ring-rose-300/40': calendarEventChip.tone === 'past',
+                                }"
+                            >
+                                {{ calendarEventChip.label }}
+                            </span>
+                        </div>
+
+                        <h3 class="mt-2 font-serif text-2xl font-bold leading-tight text-white sm:text-3xl">
+                            {{ nextCalendarEvent.title }}
+                        </h3>
+
+                        <p class="mt-2.5 flex items-center gap-2 text-sm text-white/85 sm:text-base">
+                            <svg class="h-4 w-4 shrink-0 text-white/65" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M6.75 3v2.25M17.25 3v2.25M3.75 8.25h16.5M5.25 5.25h13.5A1.5 1.5 0 0120.25 6.75v12.75A1.5 1.5 0 0118.75 21H5.25a1.5 1.5 0 01-1.5-1.5V6.75a1.5 1.5 0 011.5-1.5z"
+                                />
+                            </svg>
+                            <span>{{ formatEventLong(nextCalendarEvent) }}</span>
+                        </p>
+
+                        <p class="mt-1.5 text-xs text-white/65">
+                            {{ calendarKindLabel(nextCalendarEvent.kind) }}
+                            <span v-if="nextCalendarEvent.company"> · {{ nextCalendarEvent.company.name }}</span>
+                        </p>
+                    </div>
+
+                    <div v-else class="min-w-0">
+                        <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">Próximo evento</p>
+                        <h3 class="mt-2 font-serif text-2xl font-semibold leading-tight text-white sm:text-3xl">
+                            Sem eventos nos próximos 7 dias
+                        </h3>
+                        <p class="mt-2 max-w-md text-sm text-white/75">
+                            Quando existir um item no calendário estratégico desta semana, a data aparece aqui — em destaque, com o dia agendado.
+                        </p>
+                    </div>
                 </div>
             </div>
 
             <div class="dashboard-accent-dark text-white">
-                <div class="dashboard-hero-blob right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 bg-talents-500/25" />
+                <div class="dashboard-hero-blob right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 bg-talents-500/20" />
                 <div class="relative">
-                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Resumo rápido</p>
-                    <h3 class="mt-2 text-lg font-bold">Alertas NR-1</h3>
-                    <div class="mt-5 space-y-4">
-                        <div class="flex items-center justify-between gap-2 rounded-2xl bg-white/5 px-3 py-2.5 ring-1 ring-white/10">
-                            <span class="text-sm text-slate-300">Empresas críticas</span>
-                            <span class="text-2xl font-bold tabular-nums text-rose-400">{{ criticalCount }}</span>
+                    <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">Alertas NR-1</p>
+                    <h3 class="mt-1.5 text-base font-semibold text-white">Resumo rápido</h3>
+                    <div class="mt-5 space-y-2.5">
+                        <div class="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 ring-1 ring-white/10">
+                            <span class="text-sm text-white/75">Empresas críticas</span>
+                            <span class="text-xl font-bold tabular-nums text-rose-300">{{ criticalCount }}</span>
                         </div>
-                        <div class="flex items-center justify-between gap-2 rounded-2xl bg-white/5 px-3 py-2.5 ring-1 ring-white/10">
-                            <span class="text-sm text-slate-300">Denúncias abertas</span>
-                            <span class="text-2xl font-bold tabular-nums text-amber-300">{{ stats.pending_complaints_total }}</span>
+                        <div class="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 ring-1 ring-white/10">
+                            <span class="text-sm text-white/75">Denúncias abertas</span>
+                            <span class="text-xl font-bold tabular-nums text-amber-200">{{ stats.pending_complaints_total }}</span>
                         </div>
                     </div>
                 </div>
                 <Link
                     :href="route('admin.companies.index')"
-                    class="relative mt-6 inline-flex w-full items-center justify-center rounded-xl bg-white/10 py-2.5 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:bg-white/20"
+                    class="relative mt-6 inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 py-2.5 text-sm font-semibold text-white/90 transition hover:bg-white/15 hover:text-white"
                 >
                     Ver empresas
                 </Link>
