@@ -155,50 +155,6 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
             </div>
         </template>
 
-        <template #aside>
-            <div
-                class="dashboard-accent-dark h-full min-h-[14rem] text-white lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:rounded-none lg:border-l-0"
-            >
-                <div class="dashboard-hero-blob -right-10 -top-10 h-32 w-32 bg-talents-500/25" />
-                <div class="relative flex flex-col gap-4">
-                    <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">Leads recentes</p>
-                            <h3 class="mt-1.5 text-base font-semibold text-white">
-                                Interessados
-                                <span class="text-white/55">·</span>
-                                follow-up
-                            </h3>
-                        </div>
-                        <Link
-                            :href="route('admin.landing-interest.index')"
-                            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/90 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
-                            aria-label="Ver todos os leads"
-                        >
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                            </svg>
-                        </Link>
-                    </div>
-
-                    <ul v-if="recentLeads?.length" class="max-h-[min(70vh,32rem)] space-y-2 overflow-y-auto pr-1 text-sm scrollbar-none">
-                        <li
-                            v-for="lead in recentLeads"
-                            :key="lead.id"
-                            class="rounded-xl px-3 py-2.5 ring-1 ring-white/10 transition hover:bg-white/5"
-                        >
-                            <p class="truncate font-medium leading-snug text-white">{{ lead.name }}</p>
-                            <p class="mt-0.5 truncate text-xs text-white/70">{{ lead.email }}</p>
-                            <p v-if="lead.company" class="mt-1 truncate text-xs text-white/55">{{ lead.company }}</p>
-                        </li>
-                    </ul>
-                    <div v-else class="rounded-xl px-3 py-6 text-center text-sm text-white/65 ring-1 ring-white/10">
-                        Sem leads pendentes
-                    </div>
-                </div>
-            </div>
-        </template>
-
         <!-- Hero + status (estilo cartões principais) -->
         <div class="mb-8 grid gap-4 lg:grid-cols-3">
             <div class="dashboard-hero lg:col-span-2">
@@ -483,6 +439,29 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                         </li>
                     </ul>
                     <EmptyState v-else class="mt-2 border-0 bg-transparent py-6" title="Sem denúncias pendentes" />
+                </div>
+
+                <div class="dashboard-panel-compact">
+                    <div class="flex items-start justify-between gap-3">
+                        <SectionHeader title="Leads recentes" subtitle="Interessados · follow-up" />
+                        <Link
+                            :href="route('admin.landing-interest.index')"
+                            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-talents-300 hover:bg-talents-50 hover:text-talents-700 focus:outline-none focus:ring-2 focus:ring-talents-500/30"
+                            aria-label="Ver todos os leads"
+                        >
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                        </Link>
+                    </div>
+                    <ul v-if="recentLeads?.length" class="mt-3 divide-y divide-slate-100 text-sm">
+                        <li v-for="lead in recentLeads" :key="lead.id" class="py-2.5 first:pt-0 last:pb-0">
+                            <p class="truncate font-medium text-slate-900">{{ lead.name }}</p>
+                            <p class="mt-0.5 truncate text-xs text-slate-500">{{ lead.email }}</p>
+                            <p v-if="lead.company" class="mt-0.5 truncate text-xs text-slate-400">{{ lead.company }}</p>
+                        </li>
+                    </ul>
+                    <EmptyState v-else class="mt-2 border-0 bg-transparent py-6" title="Sem leads pendentes" />
                 </div>
             </div>
         </div>

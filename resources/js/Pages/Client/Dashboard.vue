@@ -123,7 +123,7 @@ const attentionTotal = computed(() => {
         </template>
 
         <template #aside>
-            <div class="space-y-4 lg:h-full lg:overflow-y-auto lg:px-5 lg:pb-8 lg:pt-8">
+            <div class="space-y-4">
                 <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Atalhos</p>
                 <div class="surface-glass space-y-3 p-4 text-sm text-slate-700">
                     <Link

@@ -151,14 +151,14 @@ const hasAside = computed(() => Boolean(slots.aside));
                     <slot name="header" />
                 </header>
 
-                <div class="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row lg:items-stretch">
+                <div class="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
                     <main class="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
                         <slot />
                     </main>
 
                     <aside
                         v-if="hasAside"
-                        class="shrink-0 border-t border-slate-200/50 px-4 py-5 lg:flex lg:min-h-0 lg:w-80 lg:flex-col lg:border-t-0 lg:bg-transparent lg:px-0 lg:py-0"
+                        class="shrink-0 border-t border-slate-200/50 bg-slate-50/40 px-4 py-5 backdrop-blur-sm lg:w-80 lg:border-l lg:border-t-0 lg:px-5"
                     >
                         <slot name="aside" />
                     </aside>
