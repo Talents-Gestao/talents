@@ -2107,6 +2107,23 @@ const syncParseEspelhoImportNow = async (importId) => {
     }
 };
 
+/**
+ * Atalho a partir do painel de diagnostico (sub-aba Aderencia):
+ * reprocessa de forma sincrona um import pendente/falho e recarrega a agregacao.
+ */
+const syncParseAdherenceImportAndRefresh = async (importId) => {
+    if (!importId) {
+        return;
+    }
+    clearErr();
+    try {
+        await axios.post(route('client.rhid.api.espelhos.imports.parse-sync', importId));
+        await loadEspelhoScheduleAdherence();
+    } catch (e) {
+        handleError(e);
+    }
+};
+
 const showEspelhoImportRow = async (importId) => {
     if (!importId) {
         return;
@@ -3060,6 +3077,156 @@ const justDeptBarChart = computed(() => {
                                     {{ espelhoAdherenceResult.resumo.dias_registro_analisados }}
                                 </span>
                             </p>
+
+                            <!-- Diagnóstico: explica por que zerou e oferece ações -->
+                            <div
+                                v-if="espelhoAdherenceResult.diagnostics"
+                                class="mt-3 rounded-xl border p-3 text-xs shadow-sm"
+                                :class="
+                                    espelhoAdherenceResult.diagnostics.hint
+                                        ? 'border-amber-200 bg-amber-50'
+                                        : 'border-emerald-200 bg-emerald-50'
+                                "
+                            >
+                                <div class="flex flex-wrap items-start gap-3">
+                                    <span
+                                        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                                        :class="
+                                            espelhoAdherenceResult.diagnostics.hint
+                                                ? 'bg-amber-100 text-amber-700'
+                                                : 'bg-emerald-100 text-emerald-700'
+                                        "
+                                    >
+                                        <svg
+                                            v-if="espelhoAdherenceResult.diagnostics.hint"
+                                            class="h-4 w-4"
+                                            viewBox="0 0 20 20"
+                                            fill="currentColor"
+                                        >
+                                            <path
+                                                fill-rule="evenodd"
+                                                d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                                                clip-rule="evenodd"
+                                            />
+                                        </svg>
+                                        <svg v-else class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <path
+                                                fill-rule="evenodd"
+                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                                                clip-rule="evenodd"
+                                            />
+                                        </svg>
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <p
+                                            class="font-semibold"
+                                            :class="
+                                                espelhoAdherenceResult.diagnostics.hint
+                                                    ? 'text-amber-900'
+                                                    : 'text-emerald-900'
+                                            "
+                                        >
+                                            <template v-if="espelhoAdherenceResult.diagnostics.hint">
+                                                Diagnóstico do período
+                                            </template>
+                                            <template v-else>Tudo certo</template>
+                                        </p>
+                                        <p
+                                            v-if="espelhoAdherenceResult.diagnostics.hint"
+                                            class="mt-1 leading-relaxed text-amber-900"
+                                        >
+                                            {{ espelhoAdherenceResult.diagnostics.hint }}
+                                        </p>
+                                        <p v-else class="mt-1 text-emerald-900">
+                                            Imports parseados, horários configurados e dias úteis cobertos.
+                                        </p>
+                                        <ul class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-700">
+                                            <li>
+                                                <span class="font-semibold">Imports:</span>
+                                                {{ espelhoAdherenceResult.diagnostics.imports_no_periodo ?? 0 }}
+                                            </li>
+                                            <li v-if="espelhoAdherenceResult.diagnostics.imports_por_status">
+                                                <span class="font-semibold text-emerald-800">OK:</span>
+                                                {{ espelhoAdherenceResult.diagnostics.imports_por_status.ok ?? 0 }}
+                                            </li>
+                                            <li v-if="(espelhoAdherenceResult.diagnostics.imports_por_status?.pending ?? 0) > 0">
+                                                <span class="font-semibold text-amber-800">Pendentes:</span>
+                                                {{ espelhoAdherenceResult.diagnostics.imports_por_status.pending }}
+                                            </li>
+                                            <li v-if="(espelhoAdherenceResult.diagnostics.imports_por_status?.failed ?? 0) > 0">
+                                                <span class="font-semibold text-rose-800">Falhas:</span>
+                                                {{ espelhoAdherenceResult.diagnostics.imports_por_status.failed }}
+                                            </li>
+                                            <li>
+                                                <span class="font-semibold">Dias úteis configurados:</span>
+                                                {{ espelhoAdherenceResult.diagnostics.dias_uteis_configurados ?? 0 }}
+                                            </li>
+                                            <li>
+                                                <span class="font-semibold">Dias úteis no período:</span>
+                                                {{ espelhoAdherenceResult.diagnostics.dias_uteis_no_periodo ?? 0 }}
+                                            </li>
+                                            <li v-if="!espelhoAdherenceResult.diagnostics.horarios_configurados">
+                                                <span class="font-semibold text-rose-800">
+                                                    Horários da empresa: NÃO configurados
+                                                </span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div
+                                    v-if="(espelhoAdherenceResult.diagnostics.ultimos_problemas || []).length"
+                                    class="mt-3 rounded-lg border border-amber-200 bg-white/70 p-2"
+                                >
+                                    <p class="mb-1 text-[11px] font-semibold text-amber-900">
+                                        Imports com pendência ou falha (até 5 mais recentes)
+                                    </p>
+                                    <ul class="space-y-1">
+                                        <li
+                                            v-for="imp in espelhoAdherenceResult.diagnostics.ultimos_problemas"
+                                            :key="imp.id"
+                                            class="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-white/80 px-2 py-1.5"
+                                        >
+                                            <span
+                                                class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+                                                :class="
+                                                    imp.parse_status === 'failed'
+                                                        ? 'bg-rose-100 text-rose-800'
+                                                        : 'bg-amber-100 text-amber-800'
+                                                "
+                                            >
+                                                {{ imp.parse_status }}
+                                            </span>
+                                            <span class="font-mono tabular-nums text-slate-700">#{{ imp.id }}</span>
+                                            <Link
+                                                v-if="imp.id_person"
+                                                :href="route('client.rhid.collaborators.show', imp.id_person)"
+                                                class="text-talents-800 hover:underline"
+                                            >
+                                                pessoa {{ imp.id_person }}
+                                            </Link>
+                                            <span v-else class="text-slate-600">pessoa —</span>
+                                            <span class="text-slate-600">
+                                                {{ imp.period_ini }} → {{ imp.period_fim }}
+                                            </span>
+                                            <span
+                                                v-if="imp.parse_error_short"
+                                                class="basis-full text-[11px] italic text-rose-800"
+                                                :title="imp.parse_error_short"
+                                            >
+                                                {{ imp.parse_error_short }}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                class="ml-auto rounded-md border border-talents-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-talents-800 hover:bg-talents-50"
+                                                @click="syncParseAdherenceImportAndRefresh(imp.id)"
+                                            >
+                                                Reprocessar agora
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
                             <p class="mt-3 text-xs text-slate-500">
                                 Dashboard: até {{ ESPELHO_ADHERENCE_CHART_TOP }} colaboradores por gráfico. Passe o mouse para
                                 detalhes; use a barra do gráfico para exportar (PNG/SVG) ou ampliar. Clique numa barra para

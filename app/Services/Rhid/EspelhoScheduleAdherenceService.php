@@ -4,6 +4,7 @@ namespace App\Services\Rhid;
 
 use App\Models\Company;
 use App\Models\RhidEspelhoDay;
+use App\Models\RhidEspelhoImport;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -175,6 +176,18 @@ class EspelhoScheduleAdherenceService
         // Soma por colaborador (vários × mesmo dia civil); também contamos dias civis distintos com análise OK.
         $diasAnalisadosTotal = array_sum(array_column($byPerson, 'dias_analisados'));
         $diasCalendarioDistintos = count($datasCalendarioComAnalise);
+        $diasInsuficientesTotal = array_sum(array_column($byPerson, 'dias_insuficientes'));
+
+        $diagnostics = $this->buildDiagnostics(
+            $company,
+            $ini,
+            $fim,
+            $settings,
+            $idPerson,
+            $diasCalendarioDistintos,
+            $diasInsuficientesTotal,
+            count($byPerson),
+        );
 
         return [
             'resumo' => [
@@ -183,13 +196,165 @@ class EspelhoScheduleAdherenceService
                 'tolerancia_minutos' => $tolerance,
                 'dias_registro_analisados' => $diasAnalisadosTotal,
                 'dias_calendario_distintos' => $diasCalendarioDistintos,
+                'dias_insuficientes_total' => $diasInsuficientesTotal,
                 'colaboradores_com_dados' => count(array_filter($byPerson, fn ($p) => $p['dias_analisados'] > 0 || $p['dias_insuficientes'] > 0)),
             ],
             'ranking_atrasos_entrada' => $rankingAtrasos,
             'ranking_infracoes_almoco' => $rankingAlmoco,
             'ranking_pior_aderencia_marcacoes' => $rankingPiorAderencia,
             'ranking_melhor_aderencia_marcacoes' => $rankingMelhorAderencia,
+            'diagnostics' => $diagnostics,
         ];
+    }
+
+    /**
+     * Diagnostico do periodo: ajuda a UI a explicar "por que zerou" — status dos imports, configuracao de horarios,
+     * dias uteis configurados, e uma dica do problema mais provavel.
+     *
+     * @param  array<string, mixed>  $settings  Settings normalizados de horarios da empresa
+     * @return array<string, mixed>
+     */
+    public function buildDiagnostics(
+        Company $company,
+        CarbonInterface $ini,
+        CarbonInterface $fim,
+        array $settings,
+        ?int $idPerson,
+        int $diasCalendarioDistintos,
+        int $diasInsuficientesTotal,
+        int $colaboradoresAtingidos,
+    ): array {
+        $importsBase = RhidEspelhoImport::query()
+            ->where('company_id', $company->id)
+            ->where(function ($q) use ($ini, $fim): void {
+                $q->whereBetween('period_ini', [$ini->toDateString(), $fim->toDateString()])
+                    ->orWhereBetween('period_fim', [$ini->toDateString(), $fim->toDateString()])
+                    ->orWhere(function ($q2) use ($ini, $fim): void {
+                        $q2->where('period_ini', '<=', $ini->toDateString())
+                            ->where('period_fim', '>=', $fim->toDateString());
+                    });
+            });
+
+        if ($idPerson !== null) {
+            $importsBase->where('id_person', $idPerson);
+        }
+
+        $importsCount = (clone $importsBase)->count();
+        $statusBreakdown = (clone $importsBase)
+            ->selectRaw('parse_status, COUNT(*) as c')
+            ->groupBy('parse_status')
+            ->pluck('c', 'parse_status')
+            ->toArray();
+        $porStatus = [
+            'ok' => (int) ($statusBreakdown['ok'] ?? 0),
+            'pending' => (int) ($statusBreakdown['pending'] ?? 0),
+            'failed' => (int) ($statusBreakdown['failed'] ?? 0),
+        ];
+
+        $ultimosProblemas = (clone $importsBase)
+            ->whereIn('parse_status', ['pending', 'failed'])
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get(['id', 'id_person', 'period_ini', 'period_fim', 'parse_status', 'parse_error', 'created_at'])
+            ->map(static function ($r): array {
+                $err = (string) ($r->parse_error ?? '');
+
+                return [
+                    'id' => (int) $r->id,
+                    'id_person' => (int) $r->id_person,
+                    'period_ini' => optional($r->period_ini)->toDateString(),
+                    'period_fim' => optional($r->period_fim)->toDateString(),
+                    'parse_status' => (string) $r->parse_status,
+                    'parse_error_short' => $err !== '' ? mb_substr($err, 0, 220) : null,
+                    'created_at' => optional($r->created_at)->toIso8601String(),
+                ];
+            })
+            ->all();
+
+        $diasConfigurados = 0;
+        $diasAtivosKeys = [];
+        foreach (PunchScheduleSettingsService::DAY_KEYS as $k) {
+            $d = $settings['dias'][$k] ?? null;
+            if (is_array($d) && ! empty($d['ativo']) && is_string($d['entrada'] ?? null)) {
+                $diasConfigurados++;
+                $diasAtivosKeys[] = $k;
+            }
+        }
+
+        $diasUteisNoPeriodo = 0;
+        $cursor = $ini->copy()->startOfDay();
+        $end = $fim->copy()->startOfDay();
+        while ($cursor->lte($end)) {
+            $iso = (int) $cursor->format('N');
+            $k = self::DAY_KEY_BY_ISO[$iso] ?? null;
+            if ($k !== null && in_array($k, $diasAtivosKeys, true)) {
+                $diasUteisNoPeriodo++;
+            }
+            $cursor->addDay();
+        }
+
+        $temHorarios = $diasConfigurados > 0;
+
+        $hint = $this->buildDiagnosticHint(
+            $importsCount,
+            $porStatus,
+            $temHorarios,
+            $diasUteisNoPeriodo,
+            $diasCalendarioDistintos,
+            $diasInsuficientesTotal,
+            $colaboradoresAtingidos,
+        );
+
+        return [
+            'imports_no_periodo' => $importsCount,
+            'imports_por_status' => $porStatus,
+            'ultimos_problemas' => $ultimosProblemas,
+            'horarios_configurados' => $temHorarios,
+            'dias_uteis_configurados' => $diasConfigurados,
+            'dias_uteis_no_periodo' => $diasUteisNoPeriodo,
+            'tolerancia_minutos' => $this->toleranceMinutes($settings),
+            'hint' => $hint,
+        ];
+    }
+
+    /**
+     * @param  array{ok:int,pending:int,failed:int}  $porStatus
+     */
+    private function buildDiagnosticHint(
+        int $importsCount,
+        array $porStatus,
+        bool $temHorarios,
+        int $diasUteisNoPeriodo,
+        int $diasCalendarioDistintos,
+        int $diasInsuficientesTotal,
+        int $colaboradoresAtingidos,
+    ): ?string {
+        if ($importsCount === 0) {
+            return 'Nenhum espelho importado para este período. Importe PDFs na sub-aba "Espelho e importação".';
+        }
+        if ($porStatus['pending'] > 0 && $porStatus['ok'] === 0) {
+            return $porStatus['pending'].' import(s) ainda em processamento (fila). Confirme que o worker da fila está ativo no servidor (queue:work) e aguarde alguns segundos, ou use "Reprocessar agora" para parsear sob demanda.';
+        }
+        if ($porStatus['failed'] > 0 && $porStatus['ok'] === 0) {
+            return $porStatus['failed'].' import(s) falharam no parser. Veja o erro abaixo — comum: Python/pymupdf não instalado no container.';
+        }
+        if (! $temHorarios) {
+            return 'Horários da empresa não foram configurados — sem escala não há como medir aderência. Acesse "Configurar horários da empresa".';
+        }
+        if ($diasUteisNoPeriodo === 0) {
+            return 'Nenhum dia útil ativo dentro do período selecionado (segundo a escala da empresa). Ajuste o período ou ative dias da semana na configuração.';
+        }
+        if ($porStatus['ok'] > 0 && $colaboradoresAtingidos === 0) {
+            return 'Imports concluídos, mas não há colaboradores casados com o conteúdo do PDF. Reprocesse o import ou verifique se o id_person bate com o cabeçalho do espelho.';
+        }
+        if ($porStatus['ok'] > 0 && $diasInsuficientesTotal > 0 && $diasCalendarioDistintos === 0) {
+            return 'Os PDFs foram lidos, mas todos os dias estão com menos de 4 batidas (ent_1/sai_1/ent_2/sai_2). Verifique se o espelho está com as marcações completas.';
+        }
+        if ($porStatus['ok'] > 0 && $diasCalendarioDistintos === 0) {
+            return 'Imports OK mas nenhum dia foi analisável (sem combinação válida entre marcações do PDF e escala da empresa).';
+        }
+
+        return null;
     }
 
     /**
