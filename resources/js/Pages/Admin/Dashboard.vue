@@ -141,9 +141,9 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                 <Link
                     v-if="Number(stats.pending_complaints_total) > 0"
                     :href="route('admin.companies.index')"
-                    class="group relative inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-4 py-2 text-sm font-bold text-white shadow-md transition hover:bg-amber-600 hover:shadow-lg"
+                    class="dashboard-header-cta group"
                 >
-                    <span class="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-amber-700 ring-2 ring-amber-500">
+                    <span class="dashboard-header-cta-badge">
                         {{ stats.pending_complaints_total }}
                     </span>
                     Denúncias pendentes
@@ -170,11 +170,9 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
 
         <!-- Hero + status (estilo cartões principais) -->
         <div class="mb-8 grid gap-4 lg:grid-cols-3">
-            <div
-                class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-talents-600 via-violet-600 to-amber-500 p-6 text-white shadow-xl sm:p-8 lg:col-span-2"
-            >
-                <div class="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
-                <div class="pointer-events-none absolute -bottom-20 left-1/4 h-40 w-40 rounded-full bg-amber-300/20 blur-2xl" />
+            <div class="dashboard-hero lg:col-span-2">
+                <div class="dashboard-hero-blob -right-16 -top-16 h-48 w-48" />
+                <div class="dashboard-hero-blob-accent -bottom-20 left-1/4 h-40 w-40" />
                 <div class="relative flex flex-wrap items-start justify-between gap-6">
                     <div class="flex min-w-0 flex-1 gap-4">
                         <div
@@ -213,10 +211,8 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                 </div>
             </div>
 
-            <div
-                class="relative flex flex-col justify-between overflow-hidden rounded-3xl bg-slate-900 p-6 text-white shadow-xl ring-1 ring-slate-700/50 transition hover:shadow-2xl sm:p-7"
-            >
-                <div class="pointer-events-none absolute right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 rounded-full bg-indigo-500/30 blur-2xl" />
+            <div class="dashboard-accent-dark text-white">
+                <div class="dashboard-hero-blob right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 bg-talents-500/25" />
                 <div class="relative">
                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Resumo rápido</p>
                     <h3 class="mt-2 text-lg font-bold">Alertas NR-1</h3>
@@ -277,7 +273,7 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
         <!-- Zona principal + lateral -->
         <div class="mt-8 grid gap-8 lg:grid-cols-3">
             <div class="space-y-8 lg:col-span-2">
-                <div class="surface-card border-slate-200/70 p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6">
+                <div class="dashboard-panel">
                     <SectionHeader
                         variant="panel"
                         title="Saúde organizacional"
@@ -301,7 +297,7 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                         </div>
                         <aside
                             v-if="riskDonutTotal > 0"
-                            class="flex w-full shrink-0 flex-col justify-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-5 lg:w-60 lg:border-0 lg:bg-transparent lg:p-0 lg:pl-2"
+                            class="dashboard-chart-aside gap-4 lg:w-60 lg:border-0 lg:bg-transparent lg:p-0 lg:pl-2"
                         >
                             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Legenda</p>
                             <ul class="space-y-3">
@@ -340,13 +336,13 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                     </div>
                 </div>
 
-                <div class="surface-card border-slate-200/70 p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6">
+                <div class="dashboard-panel">
                     <SectionHeader title="Empresas com saúde crítica" subtitle="Última campanha — nível vermelho" />
                     <ul v-if="criticalCompanies?.length" class="mt-4 divide-y divide-slate-100">
                         <li
                             v-for="c in criticalCompanies"
                             :key="c.id"
-                            class="flex flex-wrap items-center justify-between gap-3 rounded-xl py-3 transition first:pt-0 hover:bg-slate-50/80 sm:px-2"
+                            class="flex flex-wrap items-center justify-between gap-3 rounded-xl py-3 transition first:pt-0 hover:bg-talents-50/70 sm:px-2"
                         >
                             <div class="min-w-0">
                                 <Link
@@ -373,7 +369,7 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
             </div>
 
             <div class="space-y-6">
-                <div class="surface-card border-slate-200/70 p-5">
+                <div class="dashboard-panel-compact">
                     <SectionHeader title="Próximos 7 dias" subtitle="Calendário estratégico" />
                     <ul v-if="upcomingCalendar?.length" class="mt-2 space-y-3 text-sm">
                         <li v-for="item in upcomingCalendar" :key="item.id" class="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
@@ -397,7 +393,7 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                     />
                 </div>
 
-                <div class="surface-card border-slate-200/70 p-5">
+                <div class="dashboard-panel-compact">
                     <SectionHeader title="Leads recentes" subtitle="E-mail ainda não enviado (follow-up)">
                         <template #action>
                             <Link :href="route('admin.landing-interest.index')" class="text-xs font-semibold text-talents-700 hover:underline">
@@ -406,7 +402,7 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                         </template>
                     </SectionHeader>
                     <ul v-if="recentLeads?.length" class="mt-3 space-y-3 text-sm">
-                        <li v-for="lead in recentLeads" :key="lead.id" class="rounded-xl bg-slate-50/80 px-3 py-2">
+                        <li v-for="lead in recentLeads" :key="lead.id" class="dashboard-inset-row">
                             <p class="font-medium text-slate-900">{{ lead.name }}</p>
                             <p class="text-xs text-slate-600">{{ lead.email }}</p>
                             <p v-if="lead.company" class="mt-1 text-xs text-slate-500">{{ lead.company }}</p>
@@ -415,7 +411,7 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                     <EmptyState v-else class="mt-2 border-0 bg-transparent py-6" title="Sem leads pendentes" />
                 </div>
 
-                <div class="surface-card border-slate-200/70 p-5">
+                <div class="dashboard-panel-compact">
                     <SectionHeader title="Renovações (30 dias)" subtitle="Assinaturas ativas a terminar" />
                     <ul v-if="subscriptionsDueSoon?.length" class="mt-3 space-y-2 text-sm">
                         <li v-for="sub in subscriptionsDueSoon" :key="sub.id">
@@ -431,7 +427,7 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                     <EmptyState v-else class="mt-2 border-0 bg-transparent py-6" title="Sem renovações próximas" />
                 </div>
 
-                <div class="surface-card border-slate-200/70 p-5">
+                <div class="dashboard-panel-compact">
                     <SectionHeader title="Denúncias por empresa" subtitle="Top 5 — pendentes" />
                     <ul v-if="pendingComplaints?.length" class="mt-3 space-y-2 text-sm">
                         <li v-for="row in pendingComplaints" :key="row.company_id" class="flex justify-between gap-2">

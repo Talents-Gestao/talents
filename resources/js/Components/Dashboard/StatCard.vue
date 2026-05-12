@@ -38,10 +38,10 @@ const deltaText = computed(() => {
 
 <template>
     <div
-        class="surface-card flex min-h-[7.5rem] flex-col justify-between border-slate-200/70 p-5 text-slate-900"
+        class="dashboard-stat-card flex min-h-[7.5rem] flex-col justify-between text-slate-900"
         :class="
             interactive
-                ? 'transition-all duration-200 hover:-translate-y-0.5 hover:border-talents-200/90 hover:shadow-lg focus-within:ring-2 focus-within:ring-talents-400/30'
+                ? 'transition-all duration-200 hover:-translate-y-0.5 hover:border-talents-200/90 hover:shadow-md focus-within:ring-2 focus-within:ring-talents-400/30'
                 : ''
         "
     >

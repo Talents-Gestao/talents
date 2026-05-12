@@ -138,12 +138,10 @@ const barChartSeries = computed(() => [
                     <button
                         v-if="stalledCount > 0"
                         type="button"
-                        class="relative inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100"
+                        class="dashboard-soft-badge"
                         @click="listTab = 'stalled'"
                     >
-                        <span
-                            class="flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-bold text-white"
-                        >
+                        <span class="dashboard-soft-badge-count">
                             {{ stalledCount }}
                         </span>
                         Estagnadas
@@ -175,10 +173,8 @@ const barChartSeries = computed(() => [
 
         <!-- Destaque + ação rápida -->
         <div class="mb-8 grid gap-4 lg:grid-cols-3">
-            <div
-                class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-talents-600 via-violet-700 to-indigo-800 p-6 text-white shadow-xl sm:p-8 lg:col-span-2"
-            >
-                <div class="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full bg-fuchsia-400/20 blur-3xl" />
+            <div class="dashboard-hero lg:col-span-2">
+                <div class="dashboard-hero-blob-accent right-0 top-0 h-40 w-40 translate-x-1/4 -translate-y-1/4" />
                 <div class="relative flex flex-wrap items-start justify-between gap-6">
                     <div class="flex min-w-0 gap-4">
                         <div
@@ -208,7 +204,7 @@ const barChartSeries = computed(() => [
             </div>
             <button
                 type="button"
-                class="flex flex-col justify-between rounded-3xl bg-slate-900 p-6 text-left text-white shadow-xl ring-1 ring-slate-700/60 transition hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-talents-400"
+                class="dashboard-accent-dark text-white focus:outline-none focus:ring-2 focus:ring-talents-400/50"
                 @click="listTab = 'stalled'"
             >
                 <div>
@@ -216,7 +212,7 @@ const barChartSeries = computed(() => [
                     <h3 class="mt-2 text-lg font-bold">Propostas paradas</h3>
                     <p class="mt-2 text-sm text-slate-400">Abertas há mais de 30 dias sem fecho.</p>
                 </div>
-                <p class="mt-6 font-serif text-4xl font-bold text-amber-400">{{ stalledCount }}</p>
+                <p class="mt-6 font-serif text-4xl font-bold text-highlight">{{ stalledCount }}</p>
                 <span class="mt-2 text-sm font-semibold text-white/90">Toque para ver a lista →</span>
             </button>
         </div>
@@ -252,7 +248,7 @@ const barChartSeries = computed(() => [
 
         <div class="mt-2 text-xs text-slate-500">
             Comissão no período:
-            <span class="font-semibold text-violet-700">{{ formatBRL(kpis.commission_total_cents) }}</span>
+            <span class="font-semibold text-talents-700">{{ formatBRL(kpis.commission_total_cents) }}</span>
             <span v-if="deltas?.commission_total_cents !== null && deltas?.commission_total_cents !== undefined" class="ml-2">
                 <span
                     :class="
@@ -268,7 +264,7 @@ const barChartSeries = computed(() => [
             </span>
         </div>
 
-        <div class="mt-8 surface-card border-slate-200/70 p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6">
+        <div class="dashboard-panel mt-8">
             <SectionHeader
                 variant="panel"
                 title="Relatório de fechamentos"
@@ -281,7 +277,7 @@ const barChartSeries = computed(() => [
                 </div>
                 <aside
                     v-if="monthlyClosings?.length"
-                    class="flex w-full shrink-0 flex-col justify-center rounded-2xl border border-slate-100 bg-slate-50/90 p-5 lg:w-64"
+                    class="dashboard-chart-aside lg:w-64"
                 >
                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Por mês</p>
                     <ul class="mt-3 max-h-64 space-y-2.5 overflow-y-auto text-sm">
@@ -306,10 +302,10 @@ const barChartSeries = computed(() => [
             </div>
         </div>
 
-        <div class="mt-8 surface-card border-slate-200/70 p-5 sm:p-6">
+        <div class="dashboard-panel mt-8">
             <SectionHeader variant="panel" title="Resumo por serviço" subtitle="Orçado = criadas no período · Fechado = data de fecho no período · Conversão = coorte criada no período" />
             <div class="mt-4 space-y-4">
-                <div v-for="row in byService" :key="row.label" class="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 transition hover:border-talents-100 hover:shadow-md">
+                <div v-for="row in byService" :key="row.label" class="dashboard-inset-card">
                     <div class="flex flex-wrap items-start justify-between gap-2">
                         <p class="font-semibold text-slate-900">{{ row.label }}</p>
                         <span class="text-xs font-medium text-slate-500">Conversão {{ Number(row.conversion_rate).toFixed(1) }}%</span>
@@ -319,34 +315,34 @@ const barChartSeries = computed(() => [
                         label="Orçado (valor do serviço)"
                         :value="(100 * row.budget_total_cents) / maxServiceBudget"
                         :display-value="`${formatBRL(row.budget_total_cents)} · ${row.budget_count} prop.`"
-                        bar-class="bg-slate-400"
+                        bar-class="bg-talents-400"
                     />
                     <ProgressBar
                         class="mt-2"
                         label="Fechado (valor do serviço)"
                         :value="(100 * row.closed_total_cents) / maxServiceClosed"
                         :display-value="`${formatBRL(row.closed_total_cents)} · ${row.closed_count} prop.`"
-                        bar-class="bg-emerald-600"
+                        bar-class="bg-talents-700"
                     />
                 </div>
                 <EmptyState v-if="!byService.length" title="Sem serviços" />
             </div>
         </div>
 
-        <div class="mt-8 surface-card border-slate-200/70 p-5 sm:p-6">
-            <div class="flex flex-wrap gap-2 border-b border-slate-100 pb-3">
+        <div class="dashboard-panel-static mt-8">
+            <div class="flex flex-wrap gap-2 border-b border-talents-100/80 pb-3">
                 <button
                     type="button"
-                    class="rounded-lg px-3 py-1.5 text-sm font-semibold transition"
-                    :class="listTab === 'recent' ? 'bg-talents-100 text-talents-900' : 'text-slate-600 hover:bg-slate-50'"
+                    class="dashboard-tab"
+                    :class="listTab === 'recent' ? 'dashboard-tab-active' : 'dashboard-tab-inactive'"
                     @click="listTab = 'recent'"
                 >
                     Últimas propostas
                 </button>
                 <button
                     type="button"
-                    class="rounded-lg px-3 py-1.5 text-sm font-semibold transition"
-                    :class="listTab === 'stalled' ? 'bg-amber-100 text-amber-900' : 'text-slate-600 hover:bg-slate-50'"
+                    class="dashboard-tab"
+                    :class="listTab === 'stalled' ? 'dashboard-tab-warn-active' : 'dashboard-tab-inactive'"
                     @click="listTab = 'stalled'"
                 >
                     Estagnadas (+30 dias)
@@ -367,7 +363,7 @@ const barChartSeries = computed(() => [
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        <tr v-for="p in recent" :key="p.id" class="hover:bg-slate-50">
+                        <tr v-for="p in recent" :key="p.id" class="transition hover:bg-talents-50/50">
                             <td class="py-2 pr-3 font-mono text-xs text-slate-600">
                                 <Link :href="route('admin.comercial.propostas.edit', p.id)" class="hover:underline">
                                     {{ p.code }}
@@ -380,7 +376,7 @@ const barChartSeries = computed(() => [
                             <td class="px-3 py-2">
                                 <span
                                     class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
-                                    :class="p.is_closed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                                    :class="p.is_closed ? 'bg-emerald-100 text-emerald-800' : 'bg-talents-100 text-talents-800'"
                                 >
                                     {{ p.is_closed ? 'Fechada' : 'Em aberto' }}
                                 </span>
@@ -406,7 +402,7 @@ const barChartSeries = computed(() => [
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        <tr v-for="p in pendingProposals" :key="p.id" class="hover:bg-slate-50">
+                        <tr v-for="p in pendingProposals" :key="p.id" class="transition hover:bg-talents-50/50">
                             <td class="py-2 pr-3 font-mono text-xs text-slate-600">
                                 <Link :href="route('admin.comercial.propostas.edit', p.id)" class="hover:underline">
                                     {{ p.code }}
@@ -425,7 +421,7 @@ const barChartSeries = computed(() => [
             </div>
         </div>
 
-        <div class="mt-8 surface-card border-slate-200/70 p-5 sm:p-6">
+        <div class="dashboard-panel-static mt-8">
             <SectionHeader title="Todos os vendedores" subtitle="Orçado vs fechado no período" />
             <div class="mt-4 overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -439,7 +435,7 @@ const barChartSeries = computed(() => [
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        <tr v-for="row in bySeller" :key="row.seller_id">
+                        <tr v-for="row in bySeller" :key="row.seller_id" class="transition hover:bg-talents-50/50">
                             <td class="py-2 pr-3 font-medium text-slate-800">{{ row.name }}</td>
                             <td class="px-3 py-2 text-right tabular-nums text-xs text-slate-600">
                                 {{ Number(row.conversion_rate).toFixed(1) }}%
@@ -449,10 +445,10 @@ const barChartSeries = computed(() => [
                                 <div class="text-xs text-slate-500">{{ row.budget_count }} prop.</div>
                             </td>
                             <td class="px-3 py-2 text-right tabular-nums">
-                                <div class="text-emerald-700">{{ formatBRL(row.closed_total_cents) }}</div>
+                                <div class="text-talents-800">{{ formatBRL(row.closed_total_cents) }}</div>
                                 <div class="text-xs text-slate-500">{{ row.closed_count }} fecho(s)</div>
                             </td>
-                            <td class="px-3 py-2 text-right tabular-nums text-violet-700">
+                            <td class="px-3 py-2 text-right tabular-nums text-talents-700">
                                 {{ formatBRL(row.commission_total_cents) }}
                             </td>
                         </tr>

@@ -118,11 +118,9 @@ const attentionTotal = computed(() => {
                 <Link
                     v-if="attentionTotal > 0"
                     :href="can('denuncias', 'view') ? route('client.complaints.index') : route('client.tarefas.index')"
-                    class="relative inline-flex items-center gap-2 rounded-2xl bg-talents-600 px-4 py-2 text-sm font-bold text-white shadow-md transition hover:bg-talents-700 hover:shadow-lg"
+                    class="dashboard-header-cta"
                 >
-                    <span
-                        class="absolute -right-1 -top-1 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[11px] font-bold text-talents-900 ring-2 ring-white"
-                    >
+                    <span class="dashboard-header-cta-badge">
                         {{ attentionTotal }}
                     </span>
                     Pendências
@@ -178,10 +176,10 @@ const attentionTotal = computed(() => {
         <div class="mt-2 grid gap-4 lg:grid-cols-3">
             <div
                 v-if="can('calendario_estrategico', 'view') && upcomingCalendar?.length && nextCalendarItem"
-                class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-6 text-white shadow-xl sm:p-7"
+                class="dashboard-hero"
                 :class="can('pesquisas', 'view') ? '' : 'lg:col-span-3'"
             >
-                <div class="pointer-events-none absolute -left-10 bottom-0 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
+                <div class="dashboard-hero-blob -left-10 bottom-0 h-32 w-32 bg-white/15" />
                 <div class="relative">
                     <p class="text-xs font-bold uppercase tracking-wider text-white/90">Próximo no calendário</p>
                     <h3 class="mt-2 font-serif text-xl font-bold leading-snug sm:text-2xl">{{ nextCalendarItem.title }}</h3>
@@ -189,7 +187,7 @@ const attentionTotal = computed(() => {
                     <p class="mt-1 text-xs text-white/85">{{ kindLabel(nextCalendarItem.kind) }}</p>
                     <Link
                         :href="route('client.strategic-calendar.index')"
-                        class="mt-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-rose-600 shadow-lg transition hover:scale-105"
+                        class="mt-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-talents-700 shadow-lg transition hover:scale-105"
                         aria-label="Abrir calendário"
                     >
                         <svg class="h-5 w-5 translate-x-px" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -201,7 +199,7 @@ const attentionTotal = computed(() => {
 
             <div
                 v-if="can('pesquisas', 'view')"
-                class="surface-card-dark border-slate-700/40 p-6 sm:p-8"
+                class="dashboard-panel-dark"
                 :class="can('calendario_estrategico', 'view') && upcomingCalendar?.length ? 'lg:col-span-2' : 'lg:col-span-3'"
             >
             <div class="flex flex-wrap items-start justify-between gap-4">
@@ -284,10 +282,10 @@ const attentionTotal = computed(() => {
                 />
             </div>
 
-            <div v-if="can('pesquisas', 'view')" class="surface-card border-slate-200/70 p-5">
+            <div v-if="can('pesquisas', 'view')" class="dashboard-panel-compact">
                 <SectionHeader title="Seções com menor saúde" subtitle="Top 3 (última campanha)" />
                 <ul v-if="lastCampaign.section_results?.length" class="mt-3 space-y-3">
-                    <li v-for="(row, idx) in lastCampaign.section_results" :key="idx" class="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                    <li v-for="(row, idx) in lastCampaign.section_results" :key="idx" class="dashboard-inset-list-item">
                         <div class="flex items-start justify-between gap-2">
                             <p class="text-sm font-semibold text-slate-900">{{ row.section_name }}</p>
                             <HealthBadge :risk-level="row.risk_level" />
@@ -306,7 +304,7 @@ const attentionTotal = computed(() => {
 
         <!-- Próximos dias + tarefas -->
         <div class="mt-8 grid gap-6 lg:grid-cols-2">
-            <div v-if="upcomingCalendar && can('calendario_estrategico', 'view')" class="surface-card border-slate-200/70 p-5">
+            <div v-if="upcomingCalendar && can('calendario_estrategico', 'view')" class="dashboard-panel-compact">
                 <SectionHeader title="Próximos 7 dias" subtitle="Calendário estratégico">
                     <template #action>
                         <Link :href="route('client.strategic-calendar.index')" class="text-xs font-semibold text-talents-700 hover:underline">
@@ -324,14 +322,14 @@ const attentionTotal = computed(() => {
                 <EmptyState v-else class="mt-2 border-0 bg-transparent py-6" title="Sem eventos nesta semana" />
             </div>
 
-            <div v-if="can('tarefas', 'view')" class="surface-card border-slate-200/70 p-5">
+            <div v-if="can('tarefas', 'view')" class="dashboard-panel-compact">
                 <SectionHeader title="Minhas tarefas" subtitle="Atribuídas a si, em aberto">
                     <template #action>
                         <Link :href="route('client.tarefas.index')" class="text-xs font-semibold text-talents-700 hover:underline"> Quadros </Link>
                     </template>
                 </SectionHeader>
                 <ul v-if="pendingTasks?.length" class="mt-3 space-y-2 text-sm">
-                    <li v-for="t in pendingTasks" :key="t.id" class="rounded-xl bg-slate-50 px-3 py-2">
+                    <li v-for="t in pendingTasks" :key="t.id" class="dashboard-inset-row">
                         <p class="font-medium text-slate-900">{{ t.title }}</p>
                         <p class="text-xs text-slate-500">
                             <span v-if="t.list_title">{{ t.list_title }}</span>
@@ -344,7 +342,7 @@ const attentionTotal = computed(() => {
         </div>
 
         <!-- Plano de ação itens -->
-        <div v-if="can('planos_acao', 'view') && openActionPlanItems?.length" class="mt-8 surface-card border-slate-200/70 p-5">
+        <div v-if="can('planos_acao', 'view') && openActionPlanItems?.length" class="dashboard-panel-compact mt-8">
             <SectionHeader title="Próximos itens do plano de ação" subtitle="Em aberto na sua empresa">
                 <template #action>
                     <Link v-if="actionPlanHref" :href="actionPlanHref" class="text-xs font-semibold text-talents-700 hover:underline">
@@ -364,7 +362,7 @@ const attentionTotal = computed(() => {
         </div>
 
         <!-- Denúncias link -->
-        <div v-if="complaintsPublicUrl && can('denuncias', 'view')" class="surface-card mt-8 border-slate-200/70 p-5">
+        <div v-if="complaintsPublicUrl && can('denuncias', 'view')" class="dashboard-panel-compact mt-8">
             <SectionHeader title="Canal de denúncias" subtitle="Lei 14.457/2022 — link público para colaboradores" />
             <p class="mt-2 break-all rounded-lg bg-slate-50 p-2 font-mono text-xs text-slate-800">{{ complaintsPublicUrl }}</p>
             <button
