@@ -105,15 +105,15 @@ class DashboardController extends Controller
             ->where('is_archived', false)
             ->whereHas('members', fn ($q) => $q->where('users.id', $userId))
             ->visibleToCompany($companyId)
-            ->with(['list:id,title'])
-            ->orderByRaw('due_date IS NULL, due_date ASC')
+            ->with(['list:id,name'])
+            ->orderByRaw('due_date ASC NULLS LAST')
             ->limit(5)
             ->get(['id', 'title', 'due_date', 'list_id'])
             ->map(fn (TaskCard $card) => [
                 'id' => $card->id,
                 'title' => $card->title,
                 'due_date' => $card->due_date?->toDateString(),
-                'list_title' => $card->list?->title,
+                'list_title' => $card->list?->name,
             ]);
 
         $upcomingCalendar = null;
