@@ -14,14 +14,13 @@ use App\Models\SurveyResponse;
 use App\Models\SurveyResult;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(): Response
     {
         $companiesCount = Company::query()->count();
         $activeCompanies = Company::query()->where('is_active', true)->count();
@@ -107,7 +106,7 @@ class DashboardController extends Controller
         $recentLeads = LandingInterestSubmission::query()
             ->whereNull('mail_sent_at')
             ->orderByDesc('id')
-            ->limit(5)
+            ->limit(8)
             ->get(['id', 'name', 'email', 'company', 'created_at']);
 
         $today = Carbon::today();
@@ -147,18 +146,6 @@ class DashboardController extends Controller
             30
         );
 
-        $calYear = max(2000, min(2100, (int) $request->input('cal_year', now()->year)));
-        $calMonth = max(1, min(12, (int) $request->input('cal_month', now()->month)));
-        $monthStart = Carbon::create($calYear, $calMonth, 1)->startOfDay();
-        $monthEnd = $monthStart->copy()->endOfMonth()->endOfDay();
-
-        $dashboardCalendarItems = StrategicCalendarItem::query()
-            ->with('company:id,name')
-            ->whereBetween('occurs_on', [$monthStart->toDateString(), $monthEnd->toDateString()])
-            ->orderBy('occurs_on')
-            ->orderBy('id')
-            ->get();
-
         $pendingComplaintsTotal = Complaint::query()
             ->whereIn('status', ['new', 'under_review'])
             ->count();
@@ -187,14 +174,9 @@ class DashboardController extends Controller
             'recentLeads' => $recentLeads,
             'upcomingCalendar' => $upcomingCalendar,
             'subscriptionsDueSoon' => $subscriptionsDueSoon,
-            'dashboardCalendar' => [
-                'year' => $calYear,
-                'month' => $calMonth,
-                'items' => $dashboardCalendarItems,
-                'kindLabels' => collect(StrategicCalendarItemKind::cases())->mapWithKeys(
-                    fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()]
-                ),
-            ],
+            'calendarKindLabels' => collect(StrategicCalendarItemKind::cases())
+                ->mapWithKeys(fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()])
+                ->all(),
         ]);
     }
 

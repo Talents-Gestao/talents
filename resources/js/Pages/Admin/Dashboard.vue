@@ -4,7 +4,6 @@ import HealthBadge from '@/Components/Dashboard/HealthBadge.vue';
 import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
 import SectionHeader from '@/Components/Dashboard/SectionHeader.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
-import StrategicCalendarWidget from '@/Components/StrategicCalendarWidget.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
 import { Head, Link } from '@inertiajs/vue3';
@@ -21,17 +20,17 @@ const props = defineProps({
     recentLeads: Array,
     upcomingCalendar: Array,
     subscriptionsDueSoon: Array,
-    dashboardCalendar: Object,
+    calendarKindLabels: { type: Object, default: () => ({}) },
 });
 
-const todayLabel = computed(() =>
-    new Date().toLocaleDateString('pt-BR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    }),
-);
+const startOfLocalDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+function parseOccurrenceDate(iso) {
+    if (!iso) return null;
+    const raw = iso;
+    const d = new Date(String(raw).includes('T') ? raw : `${raw}T12:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
 
 const responsesSpark = computed(() => (props.stats?.responses_sparkline || []).map((p) => p.count));
 const complaintsSpark = computed(() => (props.stats?.complaints_sparkline || []).map((p) => p.count));
@@ -101,10 +100,37 @@ const nextCalendarEvent = computed(() => {
     return items[0];
 });
 
+/** Diferença em dias entre hoje e a data `occurs_on` do evento (0 = hoje). */
+const calendarEventDaysFromToday = computed(() => {
+    const d = parseOccurrenceDate(nextCalendarEvent.value?.occurs_on);
+    if (!d) return null;
+    const today = new Date();
+    const e0 = startOfLocalDay(d).getTime();
+    const t0 = startOfLocalDay(today).getTime();
+    return Math.round((e0 - t0) / 86400000);
+});
+
+/** Texto curto para contextualizar a data do evento vs. hoje. */
+const calendarEventRelativeHint = computed(() => {
+    const n = calendarEventDaysFromToday.value;
+    if (n === null || n === undefined) return '';
+    if (n === 0) return 'Este evento está agendado para hoje.';
+    if (n === 1) return 'Este evento é amanhã.';
+    if (n > 1) return `Faltam ${n} dias para o dia do evento (a contar a partir de hoje).`;
+    if (n < 0) return 'Data do evento no passado — ajuste no calendário se for erro.';
+    return '';
+});
+
+const calendarKindLabel = (kind) => {
+    const k = typeof kind === 'object' && kind?.value !== undefined ? kind.value : kind;
+    return props.calendarKindLabels?.[k] ?? k ?? '—';
+};
+
 const formatEventLong = (item) => {
-    if (!item?.occurs_on) return '';
+    const d = parseOccurrenceDate(item?.occurs_on);
+    if (!d) return '';
     try {
-        return new Date(item.occurs_on).toLocaleDateString('pt-BR', {
+        return d.toLocaleDateString('pt-BR', {
             weekday: 'long',
             day: 'numeric',
             month: 'long',
@@ -136,7 +162,7 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Painel executivo</p>
                     <h2 class="mt-0.5 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">Visão geral Talents</h2>
-                    <p class="mt-1 text-sm capitalize text-slate-500">{{ todayLabel }}</p>
+                    <p class="mt-1 text-sm text-slate-500">Resumo operacional — datas de eventos aparecem no destaque roxo com o dia agendado.</p>
                 </div>
                 <Link
                     v-if="Number(stats.pending_complaints_total) > 0"
@@ -152,19 +178,22 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
         </template>
 
         <template #aside>
-            <div class="space-y-4">
-                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Atalhos</p>
-                <div class="surface-glass space-y-3 p-4 text-sm text-slate-700">
-                    <Link :href="route('admin.companies.index')" class="block font-medium text-talents-800 hover:underline">
-                        Empresas
-                    </Link>
-                    <Link :href="route('admin.settings.edit')" class="block font-medium text-talents-800 hover:underline">
-                        Configurações
-                    </Link>
-                    <Link :href="route('admin.landing-interest.index')" class="block font-medium text-talents-800 hover:underline">
-                        Interessados
-                    </Link>
-                </div>
+            <div class="dashboard-panel-compact">
+                <SectionHeader title="Leads recentes" subtitle="Interessados sem e-mail de follow-up">
+                    <template #action>
+                        <Link :href="route('admin.landing-interest.index')" class="text-xs font-semibold text-talents-700 hover:underline">
+                            Ver todos
+                        </Link>
+                    </template>
+                </SectionHeader>
+                <ul v-if="recentLeads?.length" class="mt-3 max-h-[min(70vh,28rem)] space-y-2.5 overflow-y-auto text-sm">
+                    <li v-for="lead in recentLeads" :key="lead.id" class="dashboard-inset-row">
+                        <p class="font-medium leading-snug text-slate-900">{{ lead.name }}</p>
+                        <p class="mt-0.5 text-xs text-slate-600">{{ lead.email }}</p>
+                        <p v-if="lead.company" class="mt-1 text-xs text-slate-500">{{ lead.company }}</p>
+                    </li>
+                </ul>
+                <EmptyState v-else class="mt-2 border-0 bg-transparent py-6" title="Sem leads pendentes" />
             </div>
         </template>
 
@@ -182,20 +211,37 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                             {{ userInitials }}
                         </div>
                         <div class="min-w-0">
-                            <p class="text-sm font-medium text-white/85">
-                                {{ greeting.prefix }}, <span class="font-bold text-white">{{ greeting.first }}</span>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-white/65">Saudação</p>
+                            <p class="mt-1 text-base font-medium text-white/90 sm:text-lg">
+                                {{ greeting.prefix }},
+                                <span class="block text-2xl font-bold leading-tight text-white sm:inline sm:text-3xl sm:font-bold">
+                                    {{ greeting.first }}
+                                </span>
                             </p>
                             <template v-if="nextCalendarEvent">
-                                <p class="mt-3 text-xs font-semibold uppercase tracking-wider text-white/70">Próximo no calendário</p>
-                                <h3 class="mt-1 text-xl font-bold leading-snug sm:text-2xl">{{ nextCalendarEvent.title }}</h3>
-                                <p class="mt-2 text-sm text-white/90">{{ formatEventLong(nextCalendarEvent) }}</p>
-                                <p v-if="nextCalendarEvent.company" class="mt-1 text-xs text-white/75">
-                                    {{ nextCalendarEvent.company.name }}
+                                <p class="mt-5 text-xs font-semibold uppercase tracking-wider text-white/70">Próximo no calendário estratégico</p>
+                                <div
+                                    class="mt-2 rounded-2xl border border-white/25 bg-white/15 px-4 py-3 shadow-inner backdrop-blur-sm ring-1 ring-white/10"
+                                >
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-white/80">Data agendada no calendário</p>
+                                    <p class="mt-1 font-serif text-2xl font-bold capitalize leading-snug text-white sm:text-3xl">
+                                        {{ formatEventLong(nextCalendarEvent) }}
+                                    </p>
+                                    <p v-if="calendarEventRelativeHint" class="mt-2 text-sm font-medium text-white/90">
+                                        {{ calendarEventRelativeHint }}
+                                    </p>
+                                </div>
+                                <h3 class="mt-4 text-lg font-bold leading-snug text-white sm:text-xl">{{ nextCalendarEvent.title }}</h3>
+                                <p class="mt-1 text-xs text-white/75">
+                                    {{ calendarKindLabel(nextCalendarEvent.kind) }}
+                                    <span v-if="nextCalendarEvent.company"> · {{ nextCalendarEvent.company.name }}</span>
                                 </p>
                             </template>
                             <template v-else>
-                                <h3 class="mt-3 text-xl font-bold leading-snug sm:text-2xl">Sem eventos nos próximos 7 dias</h3>
-                                <p class="mt-2 max-w-md text-sm text-white/85">Planeje ritos e marcos no calendário estratégico para a equipa ver aqui o próximo passo.</p>
+                                <h3 class="mt-5 text-xl font-bold leading-snug sm:text-2xl">Sem eventos nos próximos 7 dias</h3>
+                                <p class="mt-2 max-w-md text-sm text-white/85">
+                                    Quando existir um item no calendário estratégico para esta semana, a data agendada aparece aqui em destaque.
+                                </p>
                             </template>
                         </div>
                     </div>
@@ -370,48 +416,6 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
 
             <div class="space-y-6">
                 <div class="dashboard-panel-compact">
-                    <SectionHeader title="Próximos 7 dias" subtitle="Calendário estratégico" />
-                    <ul v-if="upcomingCalendar?.length" class="mt-2 space-y-3 text-sm">
-                        <li v-for="item in upcomingCalendar" :key="item.id" class="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-                            <p class="text-xs font-medium text-slate-500">
-                                {{ formatShortDate(item.occurs_on) }}
-                                <span v-if="item.company" class="text-slate-400"> · {{ item.company.name }}</span>
-                            </p>
-                            <p class="mt-0.5 font-medium text-slate-900">{{ item.title }}</p>
-                            <p class="mt-0.5 text-xs text-talents-700">
-                                {{ dashboardCalendar?.kindLabels?.[item.kind] ?? item.kind }}
-                            </p>
-                        </li>
-                    </ul>
-                    <EmptyState
-                        v-else
-                        class="mt-2 border-0 bg-transparent py-6"
-                        title="Nada agendado"
-                        description="Sem itens de calendário nos próximos 7 dias."
-                        :cta-href="route('admin.strategic-calendar.index')"
-                        cta-label="Gerir calendário"
-                    />
-                </div>
-
-                <div class="dashboard-panel-compact">
-                    <SectionHeader title="Leads recentes" subtitle="E-mail ainda não enviado (follow-up)">
-                        <template #action>
-                            <Link :href="route('admin.landing-interest.index')" class="text-xs font-semibold text-talents-700 hover:underline">
-                                Ver todos
-                            </Link>
-                        </template>
-                    </SectionHeader>
-                    <ul v-if="recentLeads?.length" class="mt-3 space-y-3 text-sm">
-                        <li v-for="lead in recentLeads" :key="lead.id" class="dashboard-inset-row">
-                            <p class="font-medium text-slate-900">{{ lead.name }}</p>
-                            <p class="text-xs text-slate-600">{{ lead.email }}</p>
-                            <p v-if="lead.company" class="mt-1 text-xs text-slate-500">{{ lead.company }}</p>
-                        </li>
-                    </ul>
-                    <EmptyState v-else class="mt-2 border-0 bg-transparent py-6" title="Sem leads pendentes" />
-                </div>
-
-                <div class="dashboard-panel-compact">
                     <SectionHeader title="Renovações (30 dias)" subtitle="Assinaturas ativas a terminar" />
                     <ul v-if="subscriptionsDueSoon?.length" class="mt-3 space-y-2 text-sm">
                         <li v-for="sub in subscriptionsDueSoon" :key="sub.id">
@@ -440,20 +444,6 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                     <EmptyState v-else class="mt-2 border-0 bg-transparent py-6" title="Sem denúncias pendentes" />
                 </div>
             </div>
-        </div>
-
-        <div v-if="dashboardCalendar" class="mt-10">
-            <StrategicCalendarWidget
-                :items="dashboardCalendar.items"
-                :year="dashboardCalendar.year"
-                :month="dashboardCalendar.month"
-                :kind-labels="dashboardCalendar.kindLabels"
-                title="Calendário estratégico"
-                subtitle="Eventos e ritos do mês — visão completa"
-                :full-page-href="route('admin.strategic-calendar.index')"
-                full-page-label="Gerenciar itens"
-                dashboard-route="admin.dashboard"
-            />
         </div>
     </AdminLayout>
 </template>
