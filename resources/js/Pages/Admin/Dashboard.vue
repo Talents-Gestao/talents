@@ -174,12 +174,13 @@ const leadWhatsappUrl = computed(() => {
     <Head title="Painel Admin" />
 
     <AdminLayout>
-        <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Painel</p>
-                    <h2 class="mt-0.5 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">Visão geral Talents</h2>
-                </div>
+        <template #topbar>
+            <div
+                class="hidden shrink-0 items-center justify-between gap-4 border-b border-slate-200/40 bg-white/75 px-6 py-3 backdrop-blur-md sm:flex lg:rounded-t-shell lg:px-8"
+            >
+                <h2 class="truncate text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
+                    Visão geral Talents
+                </h2>
                 <Link
                     v-if="Number(stats.pending_complaints_total) > 0"
                     :href="route('admin.companies.index')"

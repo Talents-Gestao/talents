@@ -21,6 +21,14 @@ defineProps({
         type: String,
         default: 'Buscar…',
     },
+    topBarShowSearch: {
+        type: Boolean,
+        default: true,
+    },
+    topBarShowActions: {
+        type: Boolean,
+        default: true,
+    },
 });
 
 const slots = useSlots();
@@ -142,6 +150,8 @@ const hasAside = computed(() => Boolean(slots.aside));
                     class="hidden sm:flex"
                     :title="topBarTitle"
                     :search-placeholder="topBarSearchPlaceholder"
+                    :show-search="topBarShowSearch"
+                    :show-actions="topBarShowActions"
                 />
 
                 <header

@@ -11,6 +11,10 @@ defineProps({
         type: Boolean,
         default: true,
     },
+    showActions: {
+        type: Boolean,
+        default: true,
+    },
     searchPlaceholder: {
         type: String,
         default: 'Buscar…',
@@ -42,7 +46,7 @@ defineProps({
                 aria-disabled="true"
             />
         </div>
-        <div class="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+        <div v-if="showActions" class="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
             <button
                 type="button"
                 class="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-talents-500/30"

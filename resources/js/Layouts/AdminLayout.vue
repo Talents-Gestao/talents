@@ -28,7 +28,11 @@ const { canAdmin } = useAdminPermissions();
 </script>
 
 <template>
-    <SidebarLayout top-bar-title="Administração">
+    <SidebarLayout
+        top-bar-title="Administração"
+        :top-bar-show-search="false"
+        :top-bar-show-actions="false"
+    >
         <template #logo="{ collapsed }">
             <Link
                 :href="route('admin.dashboard')"
