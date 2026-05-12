@@ -41,7 +41,7 @@ const deltaText = computed(() => {
         class="dashboard-stat-card flex min-h-[7.5rem] flex-col justify-between text-slate-900"
         :class="
             interactive
-                ? 'transition-all duration-200 hover:-translate-y-0.5 hover:border-talents-200/90 hover:shadow-md focus-within:ring-2 focus-within:ring-talents-400/30'
+                ? 'transition-all duration-200 hover:border-talents-100/35 hover:shadow-[0_4px_18px_-6px_rgba(99,42,126,0.06)] focus-within:ring-2 focus-within:ring-talents-300/25'
                 : ''
         "
     >

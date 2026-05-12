@@ -11,7 +11,7 @@ defineProps({
 
 <template>
     <div
-        class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-talents-200/70 bg-talents-50/50 px-4 py-10 text-center"
+        class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-rose-100/45 bg-rose-50/20 px-4 py-10 text-center"
     >
         <slot name="icon">
             <svg class="mx-auto h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">

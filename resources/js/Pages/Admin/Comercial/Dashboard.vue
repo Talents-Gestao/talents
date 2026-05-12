@@ -330,7 +330,7 @@ const barChartSeries = computed(() => [
         </div>
 
         <div class="dashboard-panel-static mt-8">
-            <div class="flex flex-wrap gap-2 border-b border-talents-100/80 pb-3">
+            <div class="flex flex-wrap gap-2 border-b border-rose-100/40 pb-3">
                 <button
                     type="button"
                     class="dashboard-tab"
