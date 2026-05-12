@@ -4,11 +4,12 @@ import HealthBadge from '@/Components/Dashboard/HealthBadge.vue';
 import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
 import SectionHeader from '@/Components/Dashboard/SectionHeader.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
+import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
 import { daysFromToday, formatDateLong, formatDateShort } from '@/utils/dateOnly';
 import { Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const greeting = useDashboardGreeting();
 
@@ -130,6 +131,12 @@ const riskLegend = computed(() => {
 });
 
 const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
+
+const showCalendarModal = ref(false);
+const showAlertsModal = ref(false);
+const showLeadsModal = ref(false);
+
+const formatLeadDate = (iso) => formatDateLong(iso);
 </script>
 
 <template>
@@ -157,7 +164,15 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
 
         <!-- Hero + status (estilo cartões principais) -->
         <div class="mb-8 grid gap-4 lg:grid-cols-4">
-            <div class="dashboard-hero lg:col-span-2">
+            <div
+                role="button"
+                tabindex="0"
+                class="dashboard-hero group cursor-pointer text-left transition hover:shadow-xl hover:ring-2 hover:ring-talents-300/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-300/60 lg:col-span-2"
+                aria-haspopup="dialog"
+                @click="showCalendarModal = true"
+                @keydown.enter.prevent="showCalendarModal = true"
+                @keydown.space.prevent="showCalendarModal = true"
+            >
                 <div class="dashboard-hero-blob -right-24 -top-24 h-56 w-56 opacity-70" />
                 <div class="dashboard-hero-blob-accent -bottom-24 left-1/3 h-48 w-48 opacity-60" />
 
@@ -183,6 +198,7 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                             :href="route('admin.strategic-calendar.index')"
                             class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white/90 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
                             aria-label="Abrir calendário estratégico"
+                            @click.stop
                         >
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -254,18 +270,26 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                 </div>
             </div>
 
-            <div class="dashboard-accent-dark text-white">
-                <div class="dashboard-hero-blob right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 bg-talents-500/20" />
+            <div
+                role="button"
+                tabindex="0"
+                class="dashboard-accent-dark group cursor-pointer text-left text-white transition hover:shadow-xl hover:ring-2 hover:ring-talents-300/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-300/60"
+                aria-haspopup="dialog"
+                @click="showAlertsModal = true"
+                @keydown.enter.prevent="showAlertsModal = true"
+                @keydown.space.prevent="showAlertsModal = true"
+            >
+                <div class="dashboard-hero-blob right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 bg-talents-300/25" />
                 <div class="relative">
-                    <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">Alertas NR-1</p>
+                    <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-talents-100/75">Alertas NR-1</p>
                     <h3 class="mt-1.5 text-base font-semibold text-white">Resumo rápido</h3>
                     <div class="mt-5 space-y-2.5">
                         <div class="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 ring-1 ring-white/10">
-                            <span class="text-sm text-white/75">Empresas críticas</span>
+                            <span class="text-sm text-talents-50/80">Empresas críticas</span>
                             <span class="text-xl font-bold tabular-nums text-rose-300">{{ criticalCount }}</span>
                         </div>
                         <div class="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 ring-1 ring-white/10">
-                            <span class="text-sm text-white/75">Denúncias abertas</span>
+                            <span class="text-sm text-talents-50/80">Denúncias abertas</span>
                             <span class="text-xl font-bold tabular-nums text-amber-200">{{ stats.pending_complaints_total }}</span>
                         </div>
                     </div>
@@ -273,23 +297,33 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                 <Link
                     :href="route('admin.companies.index')"
                     class="relative mt-6 inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 py-2.5 text-sm font-semibold text-white/90 transition hover:bg-white/15 hover:text-white"
+                    @click.stop
                 >
                     Ver empresas
                 </Link>
             </div>
 
-            <div class="dashboard-accent-dark text-white">
-                <div class="dashboard-hero-blob -right-10 -top-10 h-32 w-32 bg-talents-500/25" />
+            <div
+                role="button"
+                tabindex="0"
+                class="dashboard-accent-dark group cursor-pointer text-left text-white transition hover:shadow-xl hover:ring-2 hover:ring-talents-300/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-300/60"
+                aria-haspopup="dialog"
+                @click="showLeadsModal = true"
+                @keydown.enter.prevent="showLeadsModal = true"
+                @keydown.space.prevent="showLeadsModal = true"
+            >
+                <div class="dashboard-hero-blob -right-10 -top-10 h-32 w-32 bg-talents-300/30" />
                 <div class="relative flex h-full flex-col">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">Leads recentes</p>
+                            <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-talents-100/75">Leads recentes</p>
                             <h3 class="mt-1.5 text-base font-semibold text-white">Interessados · follow-up</h3>
                         </div>
                         <Link
                             :href="route('admin.landing-interest.index')"
                             class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/90 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
                             aria-label="Ver todos os leads"
+                            @click.stop
                         >
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -299,16 +333,21 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
 
                     <ul v-if="recentLeads?.length" class="mt-5 space-y-2 text-sm">
                         <li
-                            v-for="lead in recentLeads"
+                            v-for="lead in recentLeads.slice(0, 4)"
                             :key="lead.id"
                             class="rounded-xl px-3 py-2.5 ring-1 ring-white/10 transition hover:bg-white/5"
                         >
                             <p class="truncate font-medium leading-snug text-white">{{ lead.name }}</p>
-                            <p class="mt-0.5 truncate text-xs text-white/70">{{ lead.email }}</p>
-                            <p v-if="lead.company" class="mt-1 truncate text-xs text-white/55">{{ lead.company }}</p>
+                            <p class="mt-0.5 truncate text-xs text-talents-100/80">{{ lead.email }}</p>
+                        </li>
+                        <li
+                            v-if="recentLeads.length > 4"
+                            class="rounded-xl px-3 py-2 text-center text-xs font-medium text-talents-100/75"
+                        >
+                            + {{ recentLeads.length - 4 }} leads · clique para ver
                         </li>
                     </ul>
-                    <div v-else class="mt-5 rounded-xl px-3 py-6 text-center text-sm text-white/65 ring-1 ring-white/10">
+                    <div v-else class="mt-5 rounded-xl px-3 py-6 text-center text-sm text-talents-100/65 ring-1 ring-white/10">
                         Sem leads pendentes
                     </div>
                 </div>
@@ -478,5 +517,204 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                 </div>
             </div>
         </div>
+
+        <Modal :show="showCalendarModal" max-width="2xl" @close="showCalendarModal = false">
+            <div class="dashboard-accent-dark !rounded-lg text-white">
+                <div class="dashboard-hero-blob -right-16 -top-16 h-40 w-40 bg-talents-300/25" />
+                <div class="relative">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-talents-100/75">
+                                Calendário estratégico
+                            </p>
+                            <h3 class="mt-1.5 font-serif text-2xl font-bold text-white">Próximos 7 dias</h3>
+                        </div>
+                        <button
+                            type="button"
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/90 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
+                            aria-label="Fechar"
+                            @click="showCalendarModal = false"
+                        >
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <ul v-if="upcomingCalendar?.length" class="mt-6 space-y-2">
+                        <li
+                            v-for="event in upcomingCalendar"
+                            :key="event.id"
+                            class="rounded-xl px-4 py-3 ring-1 ring-white/10 transition hover:bg-white/5"
+                        >
+                            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                                <p class="font-semibold leading-snug text-white">{{ event.title }}</p>
+                                <span class="text-xs tabular-nums text-talents-100/75">{{ formatEventLong(event) }}</span>
+                            </div>
+                            <p class="mt-1 text-xs text-talents-100/70">
+                                {{ calendarKindLabel(event.kind) }}
+                                <span v-if="event.company"> · {{ event.company.name }}</span>
+                            </p>
+                            <p v-if="event.description" class="mt-2 text-sm text-talents-50/90">{{ event.description }}</p>
+                        </li>
+                    </ul>
+                    <div v-else class="mt-6 rounded-xl px-4 py-8 text-center text-sm text-talents-100/65 ring-1 ring-white/10">
+                        Sem eventos nos próximos 7 dias
+                    </div>
+
+                    <Link
+                        :href="route('admin.strategic-calendar.index')"
+                        class="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 py-2.5 text-sm font-semibold text-white/90 transition hover:bg-white/15 hover:text-white"
+                    >
+                        Abrir calendário completo
+                    </Link>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="showAlertsModal" max-width="2xl" @close="showAlertsModal = false">
+            <div class="dashboard-accent-dark !rounded-lg text-white">
+                <div class="dashboard-hero-blob right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 bg-talents-300/25" />
+                <div class="relative">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-talents-100/75">Alertas NR-1</p>
+                            <h3 class="mt-1.5 font-serif text-2xl font-bold text-white">Resumo de criticidade</h3>
+                        </div>
+                        <button
+                            type="button"
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/90 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
+                            aria-label="Fechar"
+                            @click="showAlertsModal = false"
+                        >
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-xl px-4 py-3 ring-1 ring-white/10">
+                            <p class="text-xs uppercase tracking-wide text-talents-100/70">Empresas críticas</p>
+                            <p class="mt-1 text-2xl font-bold tabular-nums text-rose-300">{{ criticalCount }}</p>
+                        </div>
+                        <div class="rounded-xl px-4 py-3 ring-1 ring-white/10">
+                            <p class="text-xs uppercase tracking-wide text-talents-100/70">Denúncias pendentes</p>
+                            <p class="mt-1 text-2xl font-bold tabular-nums text-amber-200">{{ stats.pending_complaints_total }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-talents-100/75">Empresas com risco crítico</p>
+                        <ul v-if="criticalCompanies?.length" class="mt-2 space-y-2">
+                            <li
+                                v-for="c in criticalCompanies"
+                                :key="c.id"
+                                class="flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-2.5 ring-1 ring-white/10"
+                            >
+                                <div class="min-w-0">
+                                    <Link
+                                        :href="route('admin.companies.show', c.id)"
+                                        class="font-medium text-white hover:underline"
+                                    >
+                                        {{ c.name }}
+                                    </Link>
+                                    <p v-if="c.segment" class="text-xs text-talents-100/65">{{ c.segment }}</p>
+                                </div>
+                                <span class="inline-flex items-center gap-2 text-xs tabular-nums">
+                                    <span class="text-talents-100/75">Média {{ Number(c.average_score).toFixed(1) }}</span>
+                                    <span class="inline-flex h-2 w-2 rounded-full bg-rose-400" aria-hidden="true" />
+                                </span>
+                            </li>
+                        </ul>
+                        <p v-else class="mt-2 rounded-xl px-4 py-4 text-sm text-talents-100/65 ring-1 ring-white/10">
+                            Nenhuma empresa crítica no momento.
+                        </p>
+                    </div>
+
+                    <div class="mt-5">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-talents-100/75">Denúncias por empresa (top 5)</p>
+                        <ul v-if="pendingComplaints?.length" class="mt-2 space-y-2">
+                            <li
+                                v-for="row in pendingComplaints"
+                                :key="row.company_id"
+                                class="flex items-center justify-between gap-3 rounded-xl px-4 py-2.5 ring-1 ring-white/10"
+                            >
+                                <Link
+                                    :href="route('admin.companies.show', row.company_id)"
+                                    class="truncate font-medium text-white hover:underline"
+                                >
+                                    {{ row.company_name }}
+                                </Link>
+                                <span class="shrink-0 text-sm font-semibold tabular-nums text-amber-200">{{ row.count }}</span>
+                            </li>
+                        </ul>
+                        <p v-else class="mt-2 rounded-xl px-4 py-4 text-sm text-talents-100/65 ring-1 ring-white/10">
+                            Sem denúncias pendentes.
+                        </p>
+                    </div>
+
+                    <Link
+                        :href="route('admin.companies.index')"
+                        class="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 py-2.5 text-sm font-semibold text-white/90 transition hover:bg-white/15 hover:text-white"
+                    >
+                        Ver todas as empresas
+                    </Link>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="showLeadsModal" max-width="2xl" @close="showLeadsModal = false">
+            <div class="dashboard-accent-dark !rounded-lg text-white">
+                <div class="dashboard-hero-blob -right-10 -top-10 h-32 w-32 bg-talents-300/30" />
+                <div class="relative">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-talents-100/75">Leads recentes</p>
+                            <h3 class="mt-1.5 font-serif text-2xl font-bold text-white">Interessados · follow-up</h3>
+                        </div>
+                        <button
+                            type="button"
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/90 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
+                            aria-label="Fechar"
+                            @click="showLeadsModal = false"
+                        >
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <ul v-if="recentLeads?.length" class="mt-6 max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+                        <li
+                            v-for="lead in recentLeads"
+                            :key="lead.id"
+                            class="rounded-xl px-4 py-3 ring-1 ring-white/10 transition hover:bg-white/5"
+                        >
+                            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                                <p class="font-semibold leading-snug text-white">{{ lead.name }}</p>
+                                <span v-if="lead.created_at" class="text-xs tabular-nums text-talents-100/70">
+                                    {{ formatLeadDate(lead.created_at) }}
+                                </span>
+                            </div>
+                            <p class="mt-0.5 truncate text-sm text-talents-50/85">
+                                <a :href="`mailto:${lead.email}`" class="hover:underline">{{ lead.email }}</a>
+                            </p>
+                            <p v-if="lead.company" class="mt-1 truncate text-xs text-talents-100/70">{{ lead.company }}</p>
+                        </li>
+                    </ul>
+                    <div v-else class="mt-6 rounded-xl px-4 py-8 text-center text-sm text-talents-100/65 ring-1 ring-white/10">
+                        Sem leads pendentes
+                    </div>
+
+                    <Link
+                        :href="route('admin.landing-interest.index')"
+                        class="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 py-2.5 text-sm font-semibold text-white/90 transition hover:bg-white/15 hover:text-white"
+                    >
+                        Abrir gestão completa de leads
+                    </Link>
+                </div>
+            </div>
+        </Modal>
     </AdminLayout>
 </template>

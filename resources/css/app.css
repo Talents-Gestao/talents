@@ -48,9 +48,9 @@
         @apply rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur-sm;
     }
 
-    /** Destaque escuro (hero / blocos de contraste) */
+    /** Destaque escuro (hero / blocos de contraste) — alinhado à paleta talents do logo */
     .surface-card-dark {
-        @apply rounded-3xl border border-slate-700/50 bg-gradient-to-br from-slate-800 via-slate-900 to-talents-900 text-slate-100 shadow-lg;
+        @apply rounded-3xl border border-talents-700/40 bg-gradient-to-br from-talents-700 via-talents-800 to-talents-900 text-talents-50 shadow-lg;
     }
 
     /**
