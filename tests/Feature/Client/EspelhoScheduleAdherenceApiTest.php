@@ -289,7 +289,105 @@ class EspelhoScheduleAdherenceApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('id_person', 100)
             ->assertJsonPath('tolerancia_minutos', 0)
+            ->assertJsonPath('preferencia_almoco', 'auto')
             ->assertJsonPath('dias.0.situacao', 'analisavel')
-            ->assertJsonPath('dias.0.ent_1', '09:00');
+            ->assertJsonPath('dias.0.ent_1', '09:00')
+            ->assertJsonPath('dias.0.lunch_interval_used', 1)
+            ->assertJsonPath('dias.0.atraso_entrada_minutos', 60);
+    }
+
+    /**
+     * Reproduz o caso reportado em campo: empresa com 2 intervalos de almoco (11:30-12:30 e 12:30-13:30),
+     * colaborador que almoca no 2º intervalo (sai_1=13:05, ent_2=13:56). Sem auto-detect daria ~150min de
+     * falso atraso/dia; com auto-detect o intervalo correto é aplicado.
+     */
+    public function test_auto_detect_second_lunch_avoids_false_positives_in_aggregate(): void
+    {
+        $company = Company::query()->create(['name' => 'Emp Auto']);
+        $this->subscribeCompanyToNr1($company);
+        $admin = User::factory()->companyAdmin($company->id)->create();
+
+        $dias = [];
+        foreach (['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'] as $k) {
+            $dias[$k] = [
+                'ativo' => $k === 'seg',
+                'entrada' => '07:30',
+                'saida_almoco' => '11:30',
+                'volta_almoco' => '12:30',
+                'saida' => '17:30',
+                'almoco2_inicio' => '12:30',
+                'almoco2_fim' => '13:30',
+                'trabalho2_entrada' => null,
+                'trabalho2_saida' => null,
+            ];
+        }
+        CompanyRhidScheduleSetting::query()->create([
+            'company_id' => $company->id,
+            'settings' => [
+                'segundo_trabalho' => false,
+                'segundo_almoco' => true,
+                'tolerancia_minutos' => 15,
+                'dias' => $dias,
+            ],
+        ]);
+
+        $import = RhidEspelhoImport::query()->create([
+            'company_id' => $company->id,
+            'user_id' => $admin->id,
+            'id_person' => 300,
+            'period_ini' => '2026-05-01',
+            'period_fim' => '2026-05-31',
+            'guid' => 'g-auto-1',
+            'storage_path' => 'rhid/auto.pdf',
+            'parse_status' => 'ok',
+            'parsed_at' => now(),
+        ]);
+
+        // Segunda-feira (2026-05-04) — claramente usa o 2º intervalo
+        RhidEspelhoDay::query()->create([
+            'import_id' => $import->id,
+            'ref_date' => '2026-05-04',
+            'row_json' => [
+                'colaboradores' => [[
+                    'nome' => 'Colab Almoço 2',
+                    'ent_1' => '07:31',
+                    'sai_1' => '13:05',
+                    'ent_2' => '13:56',
+                    'sai_2' => '17:39',
+                ]],
+            ],
+        ]);
+
+        $payload = $this->actingAs($admin)
+            ->getJson(route('client.rhid.api.espelhos.schedule-adherence', [
+                'ini' => '2026-05-01',
+                'fim' => '2026-05-31',
+            ]))
+            ->assertOk()
+            ->assertJsonPath('resumo.dias_calendario_distintos', 1)
+            ->json();
+
+        $row = collect($payload['ranking_atrasos_entrada'])->firstWhere('id_person', 300);
+        $this->assertNotNull($row);
+        $this->assertLessThanOrEqual(5, $row['total_atraso_entrada_minutos']);
+
+        // Soma de saida + volta almoco (com tolerância 15min) deve ficar pequena, não ~150
+        $this->assertLessThanOrEqual(70, $row['total_minutos_atraso_saida_almoco'] + $row['total_minutos_atraso_volta_almoco']);
+
+        // Verifica marks: lunch_interval_used = 2 no dia 04/05
+        $marks = $this->actingAs($admin)
+            ->getJson(route('client.rhid.api.espelhos.schedule-adherence.marks', [
+                'ini' => '2026-05-01',
+                'fim' => '2026-05-31',
+                'id_person' => 300,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('preferencia_almoco', 'auto')
+            ->json();
+
+        $dia = collect($marks['dias'])->firstWhere('ref_date', '2026-05-04');
+        $this->assertNotNull($dia);
+        $this->assertSame('analisavel', $dia['situacao']);
+        $this->assertSame(2, $dia['lunch_interval_used']);
     }
 }

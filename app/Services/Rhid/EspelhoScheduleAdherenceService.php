@@ -49,6 +49,7 @@ class EspelhoScheduleAdherenceService
         $days = $this->loadDedupedDays($company->id, $ini, $fim, $idPerson);
 
         $prefMap = $this->personSchedulePreferences->secondLunchMapForCompany($company->id);
+        $autoDetectAllowed = ! empty($settings['segundo_almoco']);
 
         $byPerson = [];
         /** @var array<string, true> datas YYYY-MM-DD com pelo menos um colaborador analisável (4 batidas) no período */
@@ -81,8 +82,10 @@ class EspelhoScheduleAdherenceService
                 $nome = '—';
             }
 
+            $hasManualPref = array_key_exists($idPersonRow, $prefMap);
             $useSecond = $prefMap[$idPersonRow] ?? false;
-            $analysis = $this->analyzeDayFragment($fragment, $daySchedule, $tolerance, $settings, $useSecond);
+            $allowAuto = $autoDetectAllowed && ! $hasManualPref;
+            $analysis = $this->analyzeDayFragment($fragment, $daySchedule, $tolerance, $settings, $useSecond, $allowAuto);
             if ($analysis === null) {
                 if (! isset($byPerson[$idPersonRow])) {
                     $byPerson[$idPersonRow] = $this->emptyPersonAgg($idPersonRow, $nome);
@@ -392,7 +395,10 @@ class EspelhoScheduleAdherenceService
     ): array {
         $settings = $this->scheduleSettings->getForCompany($company);
         $tolerance = $this->toleranceMinutes($settings);
-        $useSecond = $this->personSchedulePreferences->getUseSecondLunchInterval($company, $idPerson);
+        $prefMap = $this->personSchedulePreferences->secondLunchMapForCompany($company->id);
+        $hasManualPref = array_key_exists($idPerson, $prefMap);
+        $useSecond = $prefMap[$idPerson] ?? false;
+        $allowAuto = ! empty($settings['segundo_almoco']) && ! $hasManualPref;
         $days = $this->loadDedupedDays($company->id, $ini, $fim, $idPerson);
 
         $rows = [];
@@ -423,9 +429,14 @@ class EspelhoScheduleAdherenceService
             $ent2 = $fragment !== null ? $this->normalizeSlot($fragment['ent_2'] ?? null) : null;
             $sai2 = $fragment !== null ? $this->normalizeSlot($fragment['sai_2'] ?? null) : null;
 
+            $analysis = null;
+            if ($escalaAtiva && $fragment !== null) {
+                $analysis = $this->analyzeDayFragment($fragment, $daySchedule, $tolerance, $settings, $useSecond, $allowAuto);
+            }
+
             if (! $escalaAtiva) {
                 $situacao = 'sem_escala';
-            } elseif ($fragment === null || $this->analyzeDayFragment($fragment, $daySchedule, $tolerance, $settings, $useSecond) === null) {
+            } elseif ($analysis === null) {
                 $situacao = 'insuficiente';
             } else {
                 $situacao = 'analisavel';
@@ -438,6 +449,10 @@ class EspelhoScheduleAdherenceService
                 'ent_2' => $ent2,
                 'sai_2' => $sai2,
                 'situacao' => $situacao,
+                'lunch_interval_used' => $analysis['lunch_interval_used'] ?? null,
+                'atraso_entrada_minutos' => $analysis['atraso_entrada_minutos'] ?? null,
+                'atraso_saida_almoco_minutos' => $analysis['atraso_saida_almoco_minutos'] ?? null,
+                'atraso_volta_almoco_minutos' => $analysis['atraso_volta_almoco_minutos'] ?? null,
             ];
         }
 
@@ -451,6 +466,7 @@ class EspelhoScheduleAdherenceService
                 'fim' => $fim->toDateString(),
             ],
             'tolerancia_minutos' => $tolerance,
+            'preferencia_almoco' => $hasManualPref ? ($useSecond ? 'segundo' : 'primeiro') : 'auto',
             'dias' => $rows,
         ];
     }
@@ -541,9 +557,58 @@ class EspelhoScheduleAdherenceService
     }
 
     /**
+     * Candidatos de intervalos de almoco para um dia, com o numero identificador (1 ou 2).
+     *
+     * @param  array<string, mixed>  $daySchedule
+     * @param  array<string, mixed>  $scheduleSettings
+     * @return list<array{interval: int, saida: string, volta: string}>
+     */
+    public function availableLunchPairs(array $daySchedule, array $scheduleSettings, bool $useSecondPref, bool $allowAutoDetect): array
+    {
+        $pairs = [];
+
+        $primeiroSaida = $daySchedule['saida_almoco'] ?? null;
+        $primeiroVolta = $daySchedule['volta_almoco'] ?? null;
+        $primeiroOk = is_string($primeiroSaida) && is_string($primeiroVolta)
+            && preg_match('/^\d{2}:\d{2}$/', $primeiroSaida)
+            && preg_match('/^\d{2}:\d{2}$/', $primeiroVolta);
+
+        $segundoSaida = $daySchedule['almoco2_inicio'] ?? null;
+        $segundoVolta = $daySchedule['almoco2_fim'] ?? null;
+        $segundoConfigurado = ! empty($scheduleSettings['segundo_almoco'])
+            && is_string($segundoSaida) && is_string($segundoVolta)
+            && preg_match('/^\d{2}:\d{2}$/', $segundoSaida)
+            && preg_match('/^\d{2}:\d{2}$/', $segundoVolta);
+
+        if ($allowAutoDetect) {
+            if ($primeiroOk) {
+                $pairs[] = ['interval' => 1, 'saida' => $primeiroSaida, 'volta' => $primeiroVolta];
+            }
+            if ($segundoConfigurado) {
+                $pairs[] = ['interval' => 2, 'saida' => $segundoSaida, 'volta' => $segundoVolta];
+            }
+
+            return $pairs;
+        }
+
+        if ($useSecondPref && $segundoConfigurado) {
+            $pairs[] = ['interval' => 2, 'saida' => $segundoSaida, 'volta' => $segundoVolta];
+
+            return $pairs;
+        }
+
+        if ($primeiroOk) {
+            $pairs[] = ['interval' => 1, 'saida' => $primeiroSaida, 'volta' => $primeiroVolta];
+        }
+
+        return $pairs;
+    }
+
+    /**
      * @param  array<string, mixed>  $fragment
      * @param  array<string, mixed>  $daySchedule
      * @param  array<string, mixed>  $scheduleSettings  Settings completos para resolver 1º vs 2º almoco
+     * @param  bool  $allowAutoDetect  quando true e a empresa tem 2 intervalos configurados, escolhe o intervalo com menor desvio em relação a `sai_1`/`ent_2`. Sobrescreve `useSecondLunchInterval`.
      * @return array<string, mixed>|null null = insuficiente / não aplicável
      */
     public function analyzeDayFragment(
@@ -552,6 +617,7 @@ class EspelhoScheduleAdherenceService
         int $tolerance,
         array $scheduleSettings = [],
         bool $useSecondLunchInterval = false,
+        bool $allowAutoDetect = false,
     ): ?array {
         $ent1 = $this->normalizeSlot($fragment['ent_1'] ?? null);
         $sai1 = $this->normalizeSlot($fragment['sai_1'] ?? null);
@@ -567,21 +633,12 @@ class EspelhoScheduleAdherenceService
             return null;
         }
 
-        $lunchPair = $this->expectedLunchTimesFromDay($daySchedule, $scheduleSettings, $useSecondLunchInterval);
-        if ($lunchPair === null) {
-            return null;
-        }
-        [$saidaAlmocoEsp, $voltaAlmocoEsp] = $lunchPair;
-
         $T = $tolerance;
 
         $mEnt1 = $this->minutesSinceMidnight($ent1);
         $mSai1 = $this->minutesSinceMidnight($sai1);
         $mEnt2 = $this->minutesSinceMidnight($ent2);
-        $mSaidaAlm = $this->minutesSinceMidnight($saidaAlmocoEsp);
-        $mVoltaAlm = $this->minutesSinceMidnight($voltaAlmocoEsp);
-
-        if ($mEnt1 === null || $mSai1 === null || $mEnt2 === null || $mSaidaAlm === null || $mVoltaAlm === null) {
+        if ($mEnt1 === null || $mSai1 === null || $mEnt2 === null) {
             return null;
         }
 
@@ -590,8 +647,40 @@ class EspelhoScheduleAdherenceService
             return null;
         }
 
-        $atrasoEntrada = max(0, $mEnt1 - $mEntradaEsp);
+        $candidates = $this->availableLunchPairs($daySchedule, $scheduleSettings, $useSecondLunchInterval, $allowAutoDetect);
+        if ($candidates === []) {
+            return null;
+        }
 
+        // Escolhe o intervalo com menor desvio absoluto entre marcacoes reais e horario esperado (auto-detecta 1º vs 2º).
+        $bestScore = null;
+        $bestPick = null;
+        foreach ($candidates as $cand) {
+            $mSa = $this->minutesSinceMidnight($cand['saida']);
+            $mVo = $this->minutesSinceMidnight($cand['volta']);
+            if ($mSa === null || $mVo === null) {
+                continue;
+            }
+            $score = abs($mSai1 - $mSa) + abs($mEnt2 - $mVo);
+            if ($bestScore === null || $score < $bestScore) {
+                $bestScore = $score;
+                $bestPick = [
+                    'interval' => $cand['interval'],
+                    'saida' => $cand['saida'],
+                    'volta' => $cand['volta'],
+                    'mSa' => $mSa,
+                    'mVo' => $mVo,
+                ];
+            }
+        }
+        if ($bestPick === null) {
+            return null;
+        }
+
+        $mSaidaAlm = $bestPick['mSa'];
+        $mVoltaAlm = $bestPick['mVo'];
+
+        $atrasoEntrada = max(0, $mEnt1 - $mEntradaEsp);
         $atrasoSaidaAlmoco = max(0, $mSai1 - $mSaidaAlm - $T);
         $atrasoVoltaAlmoco = max(0, $mEnt2 - $mVoltaAlm - $T);
 
@@ -612,6 +701,7 @@ class EspelhoScheduleAdherenceService
             'almoco_longo' => $almocoLongo,
             'saida_almoco_cedo' => $saidaCedo,
             'tem_infracao_almoco' => $temInfracao,
+            'lunch_interval_used' => $bestPick['interval'],
         ];
     }
 

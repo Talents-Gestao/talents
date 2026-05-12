@@ -2769,6 +2769,27 @@ const justDeptBarChart = computed(() => {
                             {{ formatEspelhoAdherenceYmdToPt(espelhoAdherenceMarksData.periodo?.fim) }} · Tolerância:
                             {{ espelhoAdherenceMarksData.tolerancia_minutos }} min (config.) · Import mais recente por dia
                         </p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            Intervalo de almoço:
+                            <span
+                                v-if="espelhoAdherenceMarksData.preferencia_almoco === 'auto'"
+                                class="inline-flex items-center gap-1 rounded-full bg-talents-50 px-2 py-0.5 text-[11px] font-semibold text-talents-800"
+                            >
+                                Detecção automática
+                            </span>
+                            <span
+                                v-else-if="espelhoAdherenceMarksData.preferencia_almoco === 'segundo'"
+                                class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
+                            >
+                                Preferência manual · 2º intervalo
+                            </span>
+                            <span
+                                v-else-if="espelhoAdherenceMarksData.preferencia_almoco === 'primeiro'"
+                                class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700"
+                            >
+                                Preferência manual · 1º intervalo
+                            </span>
+                        </p>
                         <div
                             v-if="espelhoAdherenceMarksData.dias?.length"
                             class="mt-4 max-h-[min(32rem,70vh)] overflow-auto rounded-lg border border-slate-200"
@@ -2783,7 +2804,11 @@ const justDeptBarChart = computed(() => {
                                         <th class="whitespace-nowrap p-2">SAI.1</th>
                                         <th class="whitespace-nowrap p-2">ENT.2</th>
                                         <th class="whitespace-nowrap p-2">SAI.2</th>
-                                        <th class="whitespace-nowrap p-2">Situacao</th>
+                                        <th class="whitespace-nowrap p-2">Almoço aplicado</th>
+                                        <th class="whitespace-nowrap p-2">Atraso ent.</th>
+                                        <th class="whitespace-nowrap p-2">Atraso saída</th>
+                                        <th class="whitespace-nowrap p-2">Atraso volta</th>
+                                        <th class="whitespace-nowrap p-2">Situação</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -2799,6 +2824,63 @@ const justDeptBarChart = computed(() => {
                                         <td class="whitespace-nowrap p-2 font-mono tabular-nums">{{ d.sai_1 ?? '—' }}</td>
                                         <td class="whitespace-nowrap p-2 font-mono tabular-nums">{{ d.ent_2 ?? '—' }}</td>
                                         <td class="whitespace-nowrap p-2 font-mono tabular-nums">{{ d.sai_2 ?? '—' }}</td>
+                                        <td class="whitespace-nowrap p-2">
+                                            <span
+                                                v-if="d.lunch_interval_used === 1"
+                                                class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700"
+                                            >
+                                                1º
+                                            </span>
+                                            <span
+                                                v-else-if="d.lunch_interval_used === 2"
+                                                class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800"
+                                            >
+                                                2º
+                                            </span>
+                                            <span v-else class="text-slate-400">—</span>
+                                        </td>
+                                        <td class="whitespace-nowrap p-2 font-mono tabular-nums">
+                                            <span
+                                                v-if="d.atraso_entrada_minutos != null && d.atraso_entrada_minutos > 0"
+                                                class="text-rose-700"
+                                            >
+                                                +{{ d.atraso_entrada_minutos }} min
+                                            </span>
+                                            <span v-else-if="d.atraso_entrada_minutos === 0" class="text-emerald-700">
+                                                0 min
+                                            </span>
+                                            <span v-else class="text-slate-400">—</span>
+                                        </td>
+                                        <td class="whitespace-nowrap p-2 font-mono tabular-nums">
+                                            <span
+                                                v-if="d.atraso_saida_almoco_minutos != null && d.atraso_saida_almoco_minutos > 0"
+                                                class="text-rose-700"
+                                            >
+                                                +{{ d.atraso_saida_almoco_minutos }} min
+                                            </span>
+                                            <span
+                                                v-else-if="d.atraso_saida_almoco_minutos === 0"
+                                                class="text-emerald-700"
+                                            >
+                                                0 min
+                                            </span>
+                                            <span v-else class="text-slate-400">—</span>
+                                        </td>
+                                        <td class="whitespace-nowrap p-2 font-mono tabular-nums">
+                                            <span
+                                                v-if="d.atraso_volta_almoco_minutos != null && d.atraso_volta_almoco_minutos > 0"
+                                                class="text-rose-700"
+                                            >
+                                                +{{ d.atraso_volta_almoco_minutos }} min
+                                            </span>
+                                            <span
+                                                v-else-if="d.atraso_volta_almoco_minutos === 0"
+                                                class="text-emerald-700"
+                                            >
+                                                0 min
+                                            </span>
+                                            <span v-else class="text-slate-400">—</span>
+                                        </td>
                                         <td class="p-2 text-slate-700">{{ espelhoAdherenceSituacaoLabel(d.situacao) }}</td>
                                     </tr>
                                 </tbody>
@@ -3034,6 +3116,12 @@ const justDeptBarChart = computed(() => {
                                 class="font-medium text-talents-800 underline"
                             >Configuração RHID</Link><span v-else class="font-medium">Configuração RHID</span>.
                             Convenção de 4 batidas por dia. Clique no nome para ver as marcações do espelho no período.
+                        </p>
+                        <p class="mt-1 text-[11px] leading-relaxed text-slate-500">
+                            <span class="font-semibold text-talents-700">Intervalo de almoço:</span>
+                            quando a empresa tem 1º e 2º intervalos configurados, o cálculo usa
+                            <em>detecção automática</em> por dia (escolhe o intervalo cujas marcações reais ficam mais próximas).
+                            Preferência manual por colaborador, quando registrada, sobrescreve a detecção.
                         </p>
                         <div class="mt-3 flex flex-wrap items-end gap-3">
                             <div>
