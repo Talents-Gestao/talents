@@ -50,7 +50,6 @@ const props = defineProps({
 
 const emit = defineEmits([
     'refresh',
-    'go-punches-dashboard',
     'go-punches-adherence',
     'go-bank',
     'go-justifications',
@@ -522,7 +521,7 @@ const trendBank = computed(() => {
                 <button
                     type="button"
                     class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-talents-700 via-talents-600 to-talents-500 p-4 text-left text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-talents-300 focus:ring-offset-2"
-                    @click="emit('go-punches-dashboard')"
+                    @click="emit('go-punches-adherence')"
                 >
                     <div
                         class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-xl"
@@ -554,7 +553,7 @@ const trendBank = computed(() => {
                         </span>
                     </div>
                     <p class="relative z-10 mt-3 text-[11px] font-medium text-white/85">
-                        Última leitura · ver painel →
+                        Última leitura · aderência ao horário →
                     </p>
                 </button>
 
@@ -944,9 +943,9 @@ const trendBank = computed(() => {
                         <button
                             type="button"
                             class="rounded-md border border-talents-200 bg-talents-50 px-3 py-1 text-xs font-semibold text-talents-700 transition hover:bg-talents-100"
-                            @click="emit('go-punches-dashboard')"
+                            @click="emit('go-punches-adherence')"
                         >
-                            Painel completo →
+                            Aderência ao horário →
                         </button>
                     </div>
                     <ul

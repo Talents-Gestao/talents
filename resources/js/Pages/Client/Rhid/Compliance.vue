@@ -46,11 +46,8 @@ const loading = ref(false);
 /** Detalhes tecnicos (admin): endpoints, GUID, JSON bruto */
 const supportMode = ref(false);
 
-const lastPunches = ref([]);
-
-/** Painel | aderência | espelho | export (relatórios RHID) */
-const punchesSubTab = ref('dashboard');
-const lastPunchesUpdatedAt = ref(null);
+/** Sub-abas em Marcações: aderência | espelho | export (relatórios RHID) */
+const punchesSubTab = ref('adherence');
 
 const bankDateHtml = ref(todayHtmlDate());
 const bankResult = ref(null);
@@ -887,14 +884,6 @@ const pickPunchPersonId = (row) => {
     return null;
 };
 
-const pickPunchIdLabel = (row, index) => {
-    const v = row?.id ?? row?.Id;
-    if (v != null && String(v).trim() !== '') {
-        return String(v);
-    }
-    return `—`;
-};
-
 const formatPunchDateTimePtBr = (raw) => {
     const s = String(raw ?? '').trim();
     if (!s) {
@@ -906,67 +895,6 @@ const formatPunchDateTimePtBr = (raw) => {
     }
     return s;
 };
-
-const punchExtractHour = (dataRaw) => {
-    const s = String(dataRaw ?? '').trim();
-    if (!s) {
-        return null;
-    }
-    const hm = s.match(/\b(\d{1,2}):(\d{2})\b/);
-    if (hm) {
-        const h = parseInt(hm[1], 10);
-        if (h >= 0 && h <= 23) {
-            return h;
-        }
-    }
-    const t = Date.parse(s);
-    if (!Number.isNaN(t)) {
-        return new Date(t).getHours();
-    }
-    return null;
-};
-
-/** Instantâneo em ms para ordenar / extremos (ISO ou dd/mm/aaaa com hora). */
-const punchParseInstantMs = (dataRaw) => {
-    const s = String(dataRaw ?? '').trim();
-    if (!s) {
-        return null;
-    }
-    const isoTry = Date.parse(s);
-    if (!Number.isNaN(isoTry)) {
-        return isoTry;
-    }
-    const dm = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (!dm) {
-        return null;
-    }
-    const day = parseInt(dm[1], 10);
-    const month = parseInt(dm[2], 10) - 1;
-    const year = parseInt(dm[3], 10);
-    const hm = s.match(/\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b/);
-    const hh = hm ? parseInt(hm[1], 10) : 0;
-    const mm = hm ? parseInt(hm[2], 10) : 0;
-    const ss = hm && hm[3] != null ? parseInt(hm[3], 10) : 0;
-    const d = new Date(year, month, day, hh, mm, ss);
-    const x = d.getTime();
-    return Number.isNaN(x) ? null : x;
-};
-
-const punchDashboardRows = computed(() => {
-    const list = normalizeLastPunchesPayload(lastPunches.value);
-    return list.map((row, i) => {
-        const nome = pickPunchNome(row);
-        const dataRaw = pickPunchDataRaw(row);
-        return {
-            idLabel: pickPunchIdLabel(row, i),
-            nome,
-            dataRaw,
-            dataDisplay: formatPunchDateTimePtBr(dataRaw),
-            personId: pickPunchPersonId(row),
-            raw: row,
-        };
-    });
-});
 
 const overviewPunchRows = computed(() => normalizeLastPunchesPayload(overviewPunchesSample.value));
 const overviewPunchDistinct = computed(() => {
@@ -1127,120 +1055,6 @@ const overviewBankPrevLoaded = computed(() => overviewBankRowsPrevMonthEnd.value
 const overviewAdherencePrevLoaded = computed(() => overviewAdherencePrevious.value != null);
 
 const overviewJustPrevLoaded = computed(() => overviewJustTotalPrevious.value != null);
-
-const punchDashboardDistinctPeople = computed(() => {
-    const keys = new Set();
-    for (const r of punchDashboardRows.value) {
-        const k = r.personId != null ? `id:${r.personId}` : `nome:${r.nome}`;
-        keys.add(k);
-    }
-    return keys.size;
-});
-
-const punchDashboardHourlyBarChart = computed(() => {
-    const rows = punchDashboardRows.value;
-    const full = Array.from({ length: 24 }, () => 0);
-    const hoursFound = [];
-    for (const r of rows) {
-        const h = punchExtractHour(r.dataRaw);
-        if (h == null) {
-            continue;
-        }
-        full[h] += 1;
-        hoursFound.push(h);
-    }
-    const totalWithHour = full.reduce((a, b) => a + b, 0);
-    if (!totalWithHour) {
-        return { series: [{ name: 'Marcações', data: [] }], options: {}, empty: true };
-    }
-    let minH = Math.min(...hoursFound);
-    let maxH = Math.max(...hoursFound);
-    minH = Math.max(0, minH - 1);
-    maxH = Math.min(23, maxH + 1);
-    const slice = full.slice(minH, maxH + 1);
-    const categories = [];
-    for (let h = minH; h <= maxH; h += 1) {
-        categories.push(`${h}h`);
-    }
-    const options = {
-        chart: {
-            type: 'bar',
-            toolbar: { show: false },
-            fontFamily: 'Figtree, sans-serif',
-            foreColor: '#334155',
-        },
-        plotOptions: { bar: { borderRadius: 4, columnWidth: '72%' } },
-        colors: ['#6366f1'],
-        dataLabels: { enabled: slice.length <= 16, style: { fontSize: '11px', colors: ['#334155'] } },
-        xaxis: { categories, labels: { rotate: slice.length > 14 ? -45 : 0 } },
-        yaxis: { min: 0, tickAmount: 4, labels: { formatter: (val) => (Number.isInteger(val) ? String(val) : '') } },
-        tooltip: { y: { formatter: (val) => `${val} marcação(ões)` } },
-        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
-    };
-    return {
-        series: [{ name: 'Marcações', data: slice }],
-        options,
-        empty: false,
-    };
-});
-
-const punchDashboardWithValidHour = computed(() =>
-    punchDashboardRows.value.reduce((n, r) => n + (punchExtractHour(r.dataRaw) != null ? 1 : 0), 0),
-);
-
-const punchDashboardSampleTimeBounds = computed(() => {
-    let minMs = null;
-    let maxMs = null;
-    for (const r of punchDashboardRows.value) {
-        const ms = punchParseInstantMs(r.dataRaw);
-        if (ms == null) {
-            continue;
-        }
-        if (minMs == null || ms < minMs) {
-            minMs = ms;
-        }
-        if (maxMs == null || ms > maxMs) {
-            maxMs = ms;
-        }
-    }
-    if (minMs == null || maxMs == null) {
-        return null;
-    }
-    const fmt = (ms) =>
-        new Date(ms).toLocaleString('pt-BR', {
-            dateStyle: 'short',
-            timeStyle: 'medium',
-        });
-    return { earliest: fmt(minMs), latest: fmt(maxMs) };
-});
-
-const punchDashboardTopInSample = computed(() => {
-    const map = new Map();
-    for (const r of punchDashboardRows.value) {
-        const key = r.personId != null ? `id:${r.personId}` : `n:${r.nome}`;
-        const cur = map.get(key) ?? { personId: r.personId, nome: r.nome, count: 0 };
-        cur.count += 1;
-        map.set(key, cur);
-    }
-    return [...map.values()].sort((a, b) => b.count - a.count).slice(0, 6);
-});
-
-const loadLastPunches = async () => {
-    if (!props.configured) {
-        return;
-    }
-    loading.value = true;
-    clearErr();
-    try {
-        const { data } = await axios.get(route('client.rhid.api.last-punches'));
-        lastPunches.value = data;
-        lastPunchesUpdatedAt.value = new Date();
-    } catch (e) {
-        handleError(e);
-    } finally {
-        loading.value = false;
-    }
-};
 
 const rhidDepartmentRows = computed(() => extractListItems(rhidDepartmentsPayload.value));
 const rhidPersonRoleRows = computed(() => extractListItems(rhidPersonRolesPayload.value));
@@ -1635,9 +1449,6 @@ watch(
     ([t, sub]) => {
         if (t !== 'punches') {
             return;
-        }
-        if (sub === 'dashboard') {
-            loadLastPunches();
         }
         if (sub === 'espelho') {
             loadEspelhoImports();
@@ -3076,7 +2887,6 @@ const justDeptBarChart = computed(() => {
                 :bank-display-value="bankDisplayValue"
                 :rhid-person-id="rhidPersonId"
                 @refresh="loadOverviewData"
-                @go-punches-dashboard="tab = 'punches'; punchesSubTab = 'dashboard'"
                 @go-punches-adherence="tab = 'punches'; punchesSubTab = 'adherence'"
                 @go-bank="tab = 'bank'"
                 @go-justifications="tab = 'justifications'"
@@ -3086,18 +2896,6 @@ const justDeptBarChart = computed(() => {
 
             <div v-show="tab === 'punches'" class="space-y-4">
                 <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
-                    <button
-                        type="button"
-                        class="rounded-md px-3 py-1.5 text-sm font-medium"
-                        :class="
-                            punchesSubTab === 'dashboard'
-                                ? 'bg-talents-700 text-white'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        "
-                        @click="punchesSubTab = 'dashboard'"
-                    >
-                        Painel
-                    </button>
                     <button
                         type="button"
                         class="rounded-md px-3 py-1.5 text-sm font-medium"
@@ -3134,184 +2932,6 @@ const justDeptBarChart = computed(() => {
                     >
                         Exportar relatório (RHID)
                     </button>
-                </div>
-
-                <div v-show="punchesSubTab === 'dashboard'" class="space-y-4">
-                    <div class="flex flex-wrap items-center gap-3">
-                        <PrimaryButton type="button" :disabled="loading" @click="loadLastPunches">
-                            Atualizar marcações
-                        </PrimaryButton>
-                        <p v-if="lastPunchesUpdatedAt" class="text-sm text-slate-600">
-                            Última atualização:
-                            {{
-                                lastPunchesUpdatedAt.toLocaleString('pt-BR', {
-                                    dateStyle: 'short',
-                                    timeStyle: 'medium',
-                                })
-                            }}
-                        </p>
-                    </div>
-
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Linhas retornadas</p>
-                            <p class="mt-1 text-2xl font-semibold text-slate-900">
-                                {{ punchDashboardRows.length }}
-                            </p>
-                        </div>
-                        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Painel</p>
-                            <p class="mt-1 text-sm text-slate-700">
-                                Últimas marcações registradas no RHID (amostra para acompanhamento rápido).
-                            </p>
-                            <p v-if="supportMode" class="mt-1 text-xs text-slate-500">
-                                Endpoint:
-                                <code class="rounded bg-slate-100 px-1">util.svc/ultimasmarcacoes</code>
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <h3 class="text-sm font-semibold text-slate-800">Resumo da leitura</h3>
-                        <p class="mt-1 text-xs leading-relaxed text-slate-500">
-                            Indicadores calculados em cima da mesma amostra da tabela abaixo (últimas marcações do RHID).
-                            A distribuição por hora usa o relógio de cada batida — útil para ver picos de entrada e dispersão
-                            ao longo da manhã.
-                        </p>
-
-                        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                            <div class="rounded-lg border border-slate-100 bg-slate-50/80 p-3">
-                                <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                                    Colaboradores distintos
-                                </p>
-                                <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
-                                    {{ punchDashboardDistinctPeople }}
-                                </p>
-                            </div>
-                            <div class="rounded-lg border border-slate-100 bg-talents-50/60 p-3">
-                                <p class="text-[10px] font-semibold uppercase tracking-wide text-talents-700">
-                                    Com horário interpretável
-                                </p>
-                                <p class="mt-1 text-2xl font-semibold tabular-nums text-talents-900">
-                                    {{ punchDashboardWithValidHour }}
-                                    <span class="text-sm font-normal text-talents-700/80">
-                                        / {{ punchDashboardRows.length }}
-                                    </span>
-                                </p>
-                            </div>
-                            <div
-                                v-if="punchDashboardSampleTimeBounds"
-                                class="rounded-lg border border-slate-100 bg-white p-3 sm:col-span-2 lg:col-span-2"
-                            >
-                                <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                                    Janela de tempo na amostra
-                                </p>
-                                <p class="mt-1 text-xs leading-snug text-slate-700">
-                                    <span class="font-medium text-slate-800">Mais antiga:</span>
-                                    {{ punchDashboardSampleTimeBounds.earliest }}
-                                </p>
-                                <p class="mt-0.5 text-xs leading-snug text-slate-700">
-                                    <span class="font-medium text-slate-800">Mais recente:</span>
-                                    {{ punchDashboardSampleTimeBounds.latest }}
-                                </p>
-                            </div>
-                            <div
-                                v-else
-                                class="flex items-center rounded-lg border border-amber-100 bg-amber-50/70 p-3 sm:col-span-2 lg:col-span-2"
-                            >
-                                <p class="text-xs text-amber-900">
-                                    Não foi possível ordenar todas as datas no formato retornado pelo RHID; o gráfico por hora
-                                    ainda usa a hora extraída do texto quando existir.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="mt-5 grid gap-4 lg:grid-cols-12">
-                            <div class="lg:col-span-7">
-                                <h4 class="text-xs font-semibold text-slate-800">Distribuição por hora do dia</h4>
-                                <p class="mt-0.5 text-[11px] text-slate-500">
-                                    Contagem por hora cheia (ex.: 08:29 conta como 8h). Faixa do eixo reduzida ao entorno
-                                    das horas que aparecem na amostra.
-                                </p>
-                                <apexchart
-                                    v-if="!punchDashboardHourlyBarChart.empty"
-                                    type="bar"
-                                    height="260"
-                                    class="mt-2"
-                                    :options="punchDashboardHourlyBarChart.options"
-                                    :series="punchDashboardHourlyBarChart.series"
-                                />
-                                <p v-else class="mt-3 text-sm text-slate-500">
-                                    Nenhuma hora reconhecida nos registros (formato de data/hora variável).
-                                </p>
-                            </div>
-                            <div class="lg:col-span-5">
-                                <h4 class="text-xs font-semibold text-slate-800">Mais batidas nesta amostra</h4>
-                                <p class="mt-0.5 text-[11px] text-slate-500">
-                                    Quem aparece mais vezes na lista retornada (várias marcações ou leitura concentrada).
-                                </p>
-                                <ul
-                                    v-if="punchDashboardTopInSample.length"
-                                    class="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-100"
-                                >
-                                    <li
-                                        v-for="(tp, ti) in punchDashboardTopInSample"
-                                        :key="ti"
-                                        class="flex items-center justify-between gap-2 px-3 py-2 text-sm"
-                                    >
-                                        <div class="min-w-0 flex-1">
-                                            <Link
-                                                v-if="tp.personId != null"
-                                                :href="route('client.rhid.collaborators.show', tp.personId)"
-                                                class="block truncate font-medium text-talents-800 hover:underline"
-                                            >
-                                                {{ tp.nome }}
-                                            </Link>
-                                            <span v-else class="block truncate font-medium text-slate-800">{{ tp.nome }}</span>
-                                        </div>
-                                        <span
-                                            class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-700"
-                                        >
-                                            {{ tp.count }}×
-                                        </span>
-                                    </li>
-                                </ul>
-                                <p v-else class="mt-3 text-sm text-slate-500">Sem linhas para ranquear.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="overflow-x-auto rounded border border-slate-200">
-                        <table class="min-w-full text-left text-sm">
-                            <thead class="bg-slate-50">
-                                <tr>
-                                    <th class="p-2">ID</th>
-                                    <th class="p-2">Nome</th>
-                                    <th class="p-2">Data / hora</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr
-                                    v-for="(row, i) in punchDashboardRows"
-                                    :key="i"
-                                    class="border-t border-slate-100"
-                                >
-                                    <td class="whitespace-nowrap p-2 text-slate-800">{{ row.idLabel }}</td>
-                                    <td class="p-2">
-                                        <Link
-                                            v-if="row.personId != null"
-                                            :href="route('client.rhid.collaborators.show', row.personId)"
-                                            class="font-medium text-talents-800 hover:underline"
-                                        >
-                                            {{ row.nome }}
-                                        </Link>
-                                        <span v-else class="font-medium text-slate-800">{{ row.nome }}</span>
-                                    </td>
-                                    <td class="whitespace-nowrap p-2 text-slate-700">{{ row.dataDisplay }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
                 </div>
 
                 <div v-show="punchesSubTab === 'adherence'" class="space-y-4">
