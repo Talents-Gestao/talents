@@ -9,6 +9,7 @@ import {
     EllipsisHorizontalIcon,
     PaperClipIcon,
     PlusIcon,
+    TrashIcon,
     XMarkIcon,
 } from '@heroicons/vue/24/outline';
 import { VueDraggable } from 'vue-draggable-plus';
@@ -49,6 +50,23 @@ function cloneLists(lists) {
 
 function reload() {
     emit('refresh');
+}
+
+function requestDeleteCard(card) {
+    if (!props.isAdmin || !card?.id) return;
+    const title = card.title || 'esta tarefa';
+    if (
+        !window.confirm(
+            `Excluir "${title}"?\n\nA tarefa e todos os seus anexos, comentários e checklists serão removidos.`,
+        )
+    ) {
+        return;
+    }
+
+    router.delete(route('admin.tarefas.cards.destroy', card.id), {
+        preserveScroll: true,
+        onSuccess: () => reload(),
+    });
 }
 
 function moveCardRoute(cardId) {
@@ -299,9 +317,18 @@ function dueClass(card) {
                         v-for="card in list.cards"
                         :key="card.id"
                         :data-card-id="card.id"
-                        class="group cursor-pointer rounded-lg bg-white px-3 py-2 text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-talents-300"
+                        class="group relative cursor-pointer rounded-lg bg-white px-3 py-2 text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-talents-300"
                         @click="openCard(card)"
                     >
+                        <button
+                            v-if="isAdmin"
+                            type="button"
+                            class="absolute right-1 top-1 z-10 rounded-md bg-white/90 p-1 text-rose-600 opacity-0 shadow-sm ring-1 ring-slate-200 transition hover:bg-rose-50 group-hover:opacity-100"
+                            title="Excluir tarefa"
+                            @click.stop="requestDeleteCard(card)"
+                        >
+                            <TrashIcon class="h-3.5 w-3.5" />
+                        </button>
                         <div v-if="card.cover_color" class="-mx-3 -mt-2 mb-2 h-2 rounded-t-lg" :style="{ backgroundColor: card.cover_color }" />
 
                         <div v-if="card.labels?.length" class="mb-1.5 flex flex-wrap gap-1">

@@ -39,6 +39,22 @@ function refreshBoard() {
     });
 }
 
+function deleteListCard(card, event) {
+    event?.stopPropagation?.();
+    const title = card.title || 'esta tarefa';
+    if (
+        !window.confirm(
+            `Excluir "${title}"?\n\nA tarefa e todos os seus anexos, comentários e checklists serão removidos.`,
+        )
+    ) {
+        return;
+    }
+    router.delete(route('admin.tarefas.cards.destroy', card.id), {
+        preserveScroll: true,
+        onSuccess: () => refreshBoard(),
+    });
+}
+
 const listCards = computed(() =>
     (props.boardPayload?.lists || []).flatMap((list) =>
         (list.cards || []).map((card) => ({
@@ -113,6 +129,7 @@ function formatDate(value) {
                             <th class="px-2 py-2">Cliente</th>
                             <th class="px-2 py-2">Vencimento</th>
                             <th class="px-2 py-2">Status</th>
+                            <th class="w-24 px-2 py-2 text-right">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -128,6 +145,15 @@ function formatDate(value) {
                             <td class="px-2 py-2 text-slate-600">{{ formatDate(card.due_date) }}</td>
                             <td class="px-2 py-2 text-slate-600">
                                 {{ card.completed_at ? 'Concluída' : 'Aberta' }}
+                            </td>
+                            <td class="px-2 py-2 text-right">
+                                <button
+                                    type="button"
+                                    class="text-xs font-medium text-rose-600 hover:underline"
+                                    @click="deleteListCard(card, $event)"
+                                >
+                                    Excluir
+                                </button>
                             </td>
                         </tr>
                     </tbody>
