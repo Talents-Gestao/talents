@@ -56,7 +56,7 @@ class LandingInterestTest extends TestCase
                 && $mail->submitterEmail === 'joao@example.com'
                 && $mail->phone === '(11) 98888-7777'
                 && $mail->company === 'ACME'
-                && $mail->message === 'Gostaria de uma demo.';
+                && $mail->submitterMessage === 'Gostaria de uma demo.';
         });
     }
 
@@ -77,8 +77,26 @@ class LandingInterestTest extends TestCase
                 && $mail->submitterEmail === 'maria@example.com'
                 && $mail->phone === null
                 && $mail->company === null
-                && $mail->message === null;
+                && $mail->submitterMessage === null;
         });
+    }
+
+    public function test_landing_interest_mail_renders_when_optional_fields_are_empty(): void
+    {
+        $mail = new LandingInterestMail(
+            submitterName: 'Leticia',
+            submitterEmail: 'leticia@example.com',
+            phone: '11972599018',
+            company: null,
+            submitterMessage: null,
+        );
+
+        $html = $mail->render();
+
+        $this->assertStringContainsString('Leticia', $html);
+        $this->assertStringContainsString('leticia@example.com', $html);
+        $this->assertStringContainsString('11972599018', $html);
+        $this->assertStringContainsString('—', $html);
     }
 
     public function test_landing_interest_throttle_returns_429_after_limit(): void

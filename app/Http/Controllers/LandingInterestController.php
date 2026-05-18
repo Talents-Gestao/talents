@@ -55,7 +55,7 @@ class LandingInterestController extends Controller
                 submitterEmail: $email,
                 phone: $phone,
                 company: $company,
-                message: $message,
+                submitterMessage: $message,
             ));
             $submission->forceFill([
                 'mail_sent_at' => now(),

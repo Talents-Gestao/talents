@@ -6,4 +6,4 @@ Telefone / WhatsApp: {{ $phone ?? '—' }}
 Empresa: {{ $company ?? '—' }}
 
 Mensagem:
-{{ $message ?? '—' }}
+{{ $submitterMessage ?? '—' }}

@@ -11,6 +11,6 @@
     <p><strong>Telefone / WhatsApp:</strong> {{ $phone ?? '—' }}</p>
     <p><strong>Empresa:</strong> {{ $company ?? '—' }}</p>
     <p><strong>Mensagem:</strong></p>
-    <p style="white-space: pre-wrap;">{{ $message ?? '—' }}</p>
+    <p style="white-space: pre-wrap;">{{ $submitterMessage ?? '—' }}</p>
 </body>
 </html>
