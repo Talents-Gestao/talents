@@ -12,6 +12,7 @@ class TaskList extends Model
     protected $fillable = [
         'board_id',
         'name',
+        'color',
         'position',
         'visibility',
         'allow_company_drop_in',

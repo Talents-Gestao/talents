@@ -18,14 +18,17 @@ class TaskBoardListController extends Controller
             'visibility' => ['required', 'in:internal,company'],
             'allow_company_drop_in' => ['boolean'],
             'position' => ['nullable', 'numeric'],
+            'color' => ['nullable', 'string', 'max:32'],
         ]);
 
         $max = (float) $board->lists()->max('position');
         $data['position'] = $data['position'] ?? ($max + 1000);
         $data['allow_company_drop_in'] = $data['allow_company_drop_in'] ?? true;
+        $data['color'] = $this->normalizeColor($data['color'] ?? null);
 
         $list = $board->lists()->create([
             'name' => $data['name'],
+            'color' => $data['color'],
             'visibility' => $data['visibility'],
             'allow_company_drop_in' => $data['allow_company_drop_in'],
             'position' => $data['position'],
@@ -45,7 +48,12 @@ class TaskBoardListController extends Controller
             'visibility' => ['sometimes', 'in:internal,company'],
             'allow_company_drop_in' => ['sometimes', 'boolean'],
             'position' => ['sometimes', 'numeric'],
+            'color' => ['sometimes', 'nullable', 'string', 'max:32'],
         ]);
+
+        if (array_key_exists('color', $data)) {
+            $data['color'] = $this->normalizeColor($data['color']);
+        }
 
         $list->update($data);
 
@@ -61,5 +69,12 @@ class TaskBoardListController extends Controller
         $log->handle($board, null, 'list.deleted', request()->user(), []);
 
         return back()->with('success', 'Lista removida.');
+    }
+
+    private function normalizeColor(?string $color): ?string
+    {
+        $color = $color !== null ? trim($color) : null;
+
+        return $color === '' ? null : $color;
     }
 }

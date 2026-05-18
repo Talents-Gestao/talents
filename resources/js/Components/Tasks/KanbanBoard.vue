@@ -24,6 +24,17 @@ const props = defineProps({
 
 const emit = defineEmits(['open-card', 'refresh']);
 
+const LIST_COLOR_PRESETS = [
+    { value: '#ef4444', label: 'Vermelho' },
+    { value: '#f97316', label: 'Laranja' },
+    { value: '#eab308', label: 'Amarelo' },
+    { value: '#22c55e', label: 'Verde' },
+    { value: '#14b8a6', label: 'Turquesa' },
+    { value: '#3b82f6', label: 'Azul' },
+    { value: '#8b5cf6', label: 'Roxo' },
+    { value: '#ec4899', label: 'Rosa' },
+];
+
 const localLists = ref(cloneLists(props.boardPayload.lists));
 
 watch(
@@ -61,6 +72,67 @@ function closeListMenu() {
 function toggleListMenu(listId, event) {
     event?.stopPropagation?.();
     listMenuOpenId.value = listMenuOpenId.value === listId ? null : listId;
+}
+
+function hexToRgba(hex, alpha) {
+    let h = String(hex || '').replace('#', '').trim();
+    if (h.length === 3) {
+        h = h
+            .split('')
+            .map((c) => c + c)
+            .join('');
+    }
+    if (h.length !== 6) return null;
+    const n = Number.parseInt(h, 16);
+    if (Number.isNaN(n)) return null;
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function listColumnStyle(list) {
+    const color = list?.color?.trim();
+    if (!color) {
+        return {};
+    }
+    const tint = hexToRgba(color, 0.12);
+    return {
+        borderTopWidth: '3px',
+        borderTopStyle: 'solid',
+        borderTopColor: color,
+        backgroundColor: tint || '#f1f5f9',
+    };
+}
+
+function isListColorSelected(list, color) {
+    const current = (list?.color || '').toLowerCase();
+    const next = (color || '').toLowerCase();
+    if (!next) return !current;
+    return current === next;
+}
+
+function setListColor(list, color, event) {
+    event?.stopPropagation?.();
+    if (!props.isAdmin || !list?.id) return;
+
+    const normalized = color?.trim() || null;
+    const current = list.color?.trim() || null;
+    if (current === normalized) {
+        return;
+    }
+
+    router.patch(
+        route('admin.tarefas.listas.update', list.id),
+        { color: normalized },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                list.color = normalized;
+                reload();
+            },
+        },
+    );
 }
 
 function deleteList(list, event) {
@@ -323,7 +395,9 @@ function dueClass(card) {
                 v-for="list in localLists"
                 :key="list.id"
                 :data-list-id="list.id"
-                class="flex w-72 shrink-0 flex-col rounded-xl bg-slate-100 p-2 shadow-sm ring-1 ring-slate-200"
+                class="flex w-72 shrink-0 flex-col rounded-xl p-2 shadow-sm ring-1 ring-slate-200"
+                :class="list.color ? '' : 'bg-slate-100'"
+                :style="listColumnStyle(list)"
             >
                 <header class="flex items-start justify-between gap-2 px-1.5 pb-1 pt-1">
                     <div class="min-w-0">
@@ -347,9 +421,42 @@ function dueClass(card) {
                         </button>
                         <div
                             v-if="listMenuOpenId === list.id"
-                            class="absolute right-0 top-full z-20 mt-1 min-w-[9.5rem] overflow-hidden rounded-lg bg-white py-1 shadow-lg ring-1 ring-slate-200"
+                            class="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-lg bg-white py-1 shadow-lg ring-1 ring-slate-200"
                             @click.stop
                         >
+                            <div class="border-b border-slate-100 px-3 py-2">
+                                <p class="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                                    Cor da lista
+                                </p>
+                                <div class="mt-2 flex flex-wrap gap-1.5">
+                                    <button
+                                        type="button"
+                                        class="h-6 w-6 rounded-full ring-2 ring-offset-1 transition hover:scale-105"
+                                        :class="
+                                            isListColorSelected(list, '')
+                                                ? 'ring-talents-500'
+                                                : 'ring-transparent'
+                                        "
+                                        style="background: linear-gradient(135deg, #f1f5f9 50%, #e2e8f0 50%)"
+                                        title="Sem cor"
+                                        @click="setListColor(list, '', $event)"
+                                    />
+                                    <button
+                                        v-for="preset in LIST_COLOR_PRESETS"
+                                        :key="preset.value"
+                                        type="button"
+                                        class="h-6 w-6 rounded-full ring-2 ring-offset-1 transition hover:scale-105"
+                                        :class="
+                                            isListColorSelected(list, preset.value)
+                                                ? 'ring-talents-500'
+                                                : 'ring-transparent'
+                                        "
+                                        :style="{ backgroundColor: preset.value }"
+                                        :title="preset.label"
+                                        @click="setListColor(list, preset.value, $event)"
+                                    />
+                                </div>
+                            </div>
                             <button
                                 type="button"
                                 class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-rose-600 hover:bg-rose-50"

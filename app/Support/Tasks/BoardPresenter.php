@@ -116,6 +116,7 @@ final class BoardPresenter
         return [
             'id' => $list->id,
             'name' => $list->name,
+            'color' => $list->color,
             'position' => $list->position,
             'visibility' => $list->visibility,
             'allow_company_drop_in' => $list->allow_company_drop_in,

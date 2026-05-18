@@ -388,6 +388,38 @@ class TaskModuleTest extends TestCase
         $this->assertSame('Original', $card->fresh()->title);
     }
 
+    public function test_admin_can_set_board_list_color(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro teste',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Coluna',
+            'position' => 1000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/listas/'.$list->id, ['color' => '#3b82f6'])
+            ->assertRedirect();
+
+        $this->assertSame('#3b82f6', $list->fresh()->color);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/listas/'.$list->id, ['color' => ''])
+            ->assertRedirect();
+
+        $this->assertNull($list->fresh()->color);
+    }
+
     public function test_admin_can_delete_board_list_and_its_cards(): void
     {
         $admin = User::factory()->superAdmin()->create();
