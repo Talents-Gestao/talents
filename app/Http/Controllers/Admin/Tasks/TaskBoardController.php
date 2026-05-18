@@ -82,12 +82,14 @@ class TaskBoardController extends Controller
         ]);
 
         $companyUsers = BoardPresenter::allActiveCompanyUsers();
+        $teamUsers = BoardPresenter::allActiveTalentsTeamUsers();
         $companies = Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Admin/Tarefas/Quadros/Show', [
             'boardPayload' => $payload,
             'activity' => $activity,
             'companyUsers' => $companyUsers,
+            'teamUsers' => $teamUsers,
             'companies' => $companies,
             'visibilityListOptions' => [
                 ['value' => 'internal', 'label' => 'Interno'],

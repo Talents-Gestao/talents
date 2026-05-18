@@ -2,6 +2,7 @@
 
 namespace App\Support\Tasks;
 
+use App\Enums\UserRole;
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
 use App\Models\User;
@@ -24,7 +25,7 @@ final class BoardPresenter
             'lists.cards' => fn ($q) => $q->where('is_archived', false)->orderBy('position'),
             'lists' => fn ($q) => $q->where('is_archived', false)->orderBy('position'),
             'labels',
-            'members:id,name,email',
+            'members:id,name,email,company_id',
         ]);
 
         return self::serializeBoard($board, false);
@@ -41,24 +42,11 @@ final class BoardPresenter
             },
             'lists' => function ($q) use ($companyId) {
                 $q->where('is_archived', false)
-                    ->where(function (Builder $lq) use ($companyId) {
-                        $lq->where('visibility', 'company')
-                            ->orWhere(function (Builder $inner) use ($companyId) {
-                                $inner->where('visibility', 'internal')
-                                    ->whereHas('cards', function (Builder $cq) use ($companyId) {
-                                        $cq->where('is_archived', false)
-                                            ->where('company_id', $companyId)
-                                            ->where(function (Builder $cv) {
-                                                $cv->where('visibility', 'company')
-                                                    ->orWhere('visibility', 'inherit');
-                                            });
-                                    });
-                            });
-                    })
+                    ->whereHas('cards', fn (Builder $cq) => $cq->visibleToCompany($companyId))
                     ->orderBy('position');
             },
             'labels',
-            'members:id,name,email',
+            'members:id,name,email,company_id',
         ]);
 
         return self::serializeBoard($board, true);
@@ -132,7 +120,7 @@ final class BoardPresenter
         $card->loadMissing([
             'company:id,name',
             'labels:id,name,color',
-            'members:id,name,email',
+            'members:id,name,email,company_id',
             'checklists.items',
             'attachments',
             'comments.user:id,name',
@@ -153,7 +141,13 @@ final class BoardPresenter
             'due_date' => $card->due_date?->toDateString(),
             'completed_at' => $card->completed_at?->toIso8601String(),
             'labels' => $card->labels->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'color' => $l->color])->values(),
-            'members' => $card->members->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'email' => $u->email])->values(),
+            'members' => $card->members->map(fn ($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'company_id' => $u->company_id,
+                'is_team' => $u->company_id === null,
+            ])->values(),
             'checklists' => $card->checklists->map(fn ($cl) => [
                 'id' => $cl->id,
                 'name' => $cl->name,
@@ -193,6 +187,22 @@ final class BoardPresenter
     {
         return User::query()
             ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email'])
+            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'email' => $u->email]);
+    }
+
+    /**
+     * Utilizadores internos Talents (admin) atribuíveis em tarefas.
+     *
+     * @return Collection<int, array{id:int,name:string,email:string}>
+     */
+    public static function allActiveTalentsTeamUsers(): Collection
+    {
+        return User::query()
+            ->where('role', UserRole::SuperAdmin)
+            ->whereNull('company_id')
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'email'])

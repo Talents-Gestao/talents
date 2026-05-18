@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Admin\Tasks;
 use App\Actions\Tasks\LogTaskActivity;
 use App\Actions\Tasks\MoveTaskCard;
 use App\Enums\TaskListVisibility;
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\TaskCard;
 use App\Models\TaskList;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use App\Notifications\TaskCardMemberAssignedNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -97,12 +99,7 @@ class TaskBoardCardController extends Controller
 
         if (is_array($memberIds)) {
             $targetCompanyId = $data['company_id'] ?? $card->company_id;
-            $validIds = User::query()
-                ->whereIn('id', $memberIds)
-                ->when($targetCompanyId, fn ($q) => $q->where('company_id', $targetCompanyId))
-                ->when(! $targetCompanyId, fn ($q) => $q->whereNull('company_id'))
-                ->pluck('id')
-                ->all();
+            $validIds = self::resolveAssignableMemberIds($memberIds, $targetCompanyId);
             $previous = $card->members()->pluck('users.id')->all();
             $card->members()->sync($validIds);
             $added = array_diff($validIds, $previous);
@@ -156,5 +153,28 @@ class TaskBoardCardController extends Controller
         $log->handle($board, null, 'card.deleted', request()->user(), []);
 
         return back()->with('success', 'Cartão removido.');
+    }
+
+    /**
+     * @param  list<int>  $memberIds
+     * @return list<int>
+     */
+    private static function resolveAssignableMemberIds(array $memberIds, ?int $companyId): array
+    {
+        return User::query()
+            ->whereIn('id', $memberIds)
+            ->where('is_active', true)
+            ->where(function (Builder $q) use ($companyId) {
+                $q->where(function (Builder $team) {
+                    $team->where('role', UserRole::SuperAdmin)
+                        ->whereNull('company_id');
+                });
+
+                if ($companyId) {
+                    $q->orWhere('company_id', $companyId);
+                }
+            })
+            ->pluck('id')
+            ->all();
     }
 }

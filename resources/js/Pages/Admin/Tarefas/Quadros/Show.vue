@@ -9,6 +9,7 @@ import { computed, ref } from 'vue';
 const props = defineProps({
     boardPayload: Object,
     companyUsers: Array,
+    teamUsers: Array,
     companies: Array,
     visibilityListOptions: Array,
     visibilityCardOptions: Array,
@@ -166,6 +167,7 @@ function formatDate(value) {
             :card="selectedCard"
             :board-payload="boardPayload"
             :company-users="companyUsers || []"
+            :team-users="teamUsers || []"
             :companies="companies || []"
             :is-admin="true"
             :visibility-card-options="visibilityCardOptions || []"

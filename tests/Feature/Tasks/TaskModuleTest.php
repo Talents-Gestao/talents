@@ -150,6 +150,140 @@ class TaskModuleTest extends TestCase
         $this->assertSame($company->id, (int) $card->company_id);
     }
 
+    public function test_admin_can_assign_company_and_talents_team_members_to_card(): void
+    {
+        $company = $this->baseCompany();
+        $admin = User::factory()->superAdmin()->create();
+        $teamMember = User::factory()->superAdmin()->create([
+            'email' => 'equipe@talents.test',
+        ]);
+        $companyUser = User::factory()->companyAdmin($company->id)->create([
+            'email' => 'cliente@empresa.test',
+        ]);
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro global',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'company_id' => $company->id,
+            'title' => 'Tarefa mista',
+            'position' => 1000,
+            'visibility' => 'company',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/cards/'.$card->id, [
+                'member_ids' => [$teamMember->id, $companyUser->id, $admin->id],
+            ])
+            ->assertRedirect();
+
+        $memberIds = $card->fresh()->members()->pluck('users.id')->sort()->values()->all();
+        $expected = collect([$teamMember->id, $companyUser->id, $admin->id])->sort()->values()->all();
+        $this->assertSame($expected, $memberIds);
+    }
+
+    public function test_client_only_sees_lists_with_own_visible_cards(): void
+    {
+        $companyA = $this->baseCompany();
+        $companyB = Company::query()->create([
+            'name' => 'Empresa B',
+            'cnpj' => '44.444.444/0001-44',
+            'is_active' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+            'tasks_access' => true,
+        ]);
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro global',
+            'is_archived' => false,
+        ]);
+
+        $emptyList = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Lista vazia',
+            'position' => 500,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $listWithMixedCards = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Em andamento',
+            'position' => 1000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $otherCompanyList = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Só empresa B',
+            'position' => 2000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $cardA = TaskCard::query()->create([
+            'list_id' => $listWithMixedCards->id,
+            'company_id' => $companyA->id,
+            'title' => 'Tarefa A',
+            'position' => 1000,
+            'visibility' => 'inherit',
+            'is_archived' => false,
+        ]);
+
+        TaskCard::query()->create([
+            'list_id' => $listWithMixedCards->id,
+            'company_id' => $companyB->id,
+            'title' => 'Tarefa B',
+            'position' => 2000,
+            'visibility' => 'inherit',
+            'is_archived' => false,
+        ]);
+
+        TaskCard::query()->create([
+            'list_id' => $otherCompanyList->id,
+            'company_id' => $companyB->id,
+            'title' => 'Outra tarefa B',
+            'position' => 1000,
+            'visibility' => 'inherit',
+            'is_archived' => false,
+        ]);
+
+        $payloadA = BoardPresenter::forClient($board->fresh(), $companyA->id);
+        $listIdsA = collect($payloadA['lists'])->pluck('id')->all();
+        $cardIdsA = collect($payloadA['lists'])->flatMap(fn ($l) => collect($l['cards'])->pluck('id'))->all();
+
+        $this->assertNotContains($emptyList->id, $listIdsA);
+        $this->assertNotContains($otherCompanyList->id, $listIdsA);
+        $this->assertContains($listWithMixedCards->id, $listIdsA);
+        $this->assertSame([$cardA->id], $cardIdsA);
+
+        $payloadB = BoardPresenter::forClient($board->fresh(), $companyB->id);
+        $listIdsB = collect($payloadB['lists'])->pluck('id')->all();
+
+        $this->assertNotContains($emptyList->id, $listIdsB);
+        $this->assertContains($otherCompanyList->id, $listIdsB);
+        $this->assertContains($listWithMixedCards->id, $listIdsB);
+    }
+
     public function test_client_sees_card_on_internal_list_when_company_assigned(): void
     {
         $company = $this->baseCompany();

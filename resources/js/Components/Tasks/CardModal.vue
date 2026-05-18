@@ -16,6 +16,7 @@ const props = defineProps({
     card: { type: Object, default: null },
     boardPayload: { type: Object, required: true },
     companyUsers: { type: Array, default: () => [] },
+    teamUsers: { type: Array, default: () => [] },
     companies: { type: Array, default: () => [] },
     isAdmin: { type: Boolean, default: false },
     visibilityCardOptions: { type: Array, default: () => [] },
@@ -100,6 +101,11 @@ const usersForSelectedCompany = computed(() => {
     return (props.companyUsers || []).filter(
         (u) => Number(u.company_id) === Number(cardUpdate.company_id),
     );
+});
+
+const assignableTeamUsers = computed(() => {
+    if (!props.isAdmin) return [];
+    return props.teamUsers || [];
 });
 
 function checklistStats(checklist) {
@@ -748,17 +754,47 @@ function formatDateLabel(value) {
                         </div>
                         <div>
                             <InputLabel value="Membros" />
-                            <div class="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm">
-                                <label
-                                    v-for="u in usersForSelectedCompany"
-                                    :key="u.id"
-                                    class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
+                            <div class="mt-1 max-h-52 space-y-3 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm">
+                                <div v-if="assignableTeamUsers.length">
+                                    <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                        Equipe Talents
+                                    </p>
+                                    <label
+                                        v-for="u in assignableTeamUsers"
+                                        :key="`team-${u.id}`"
+                                        class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
+                                    >
+                                        <input v-model="cardUpdate.member_ids" type="checkbox" :value="u.id" />
+                                        {{ u.name }}
+                                    </label>
+                                </div>
+                                <div v-if="cardUpdate.company_id">
+                                    <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                        Cliente
+                                    </p>
+                                    <label
+                                        v-for="u in usersForSelectedCompany"
+                                        :key="`company-${u.id}`"
+                                        class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
+                                    >
+                                        <input v-model="cardUpdate.member_ids" type="checkbox" :value="u.id" />
+                                        {{ u.name }}
+                                    </label>
+                                    <p v-if="!usersForSelectedCompany.length" class="text-xs text-slate-500">
+                                        Nenhum utilizador ativo nesta empresa.
+                                    </p>
+                                </div>
+                                <p
+                                    v-else-if="!assignableTeamUsers.length"
+                                    class="text-xs text-slate-500"
                                 >
-                                    <input v-model="cardUpdate.member_ids" type="checkbox" :value="u.id" />
-                                    {{ u.name }}
-                                </label>
-                                <p v-if="!usersForSelectedCompany.length" class="text-xs text-slate-500">
-                                    Selecione uma empresa para listar os responsáveis.
+                                    Selecione uma empresa para responsáveis do cliente ou atribua a equipe Talents.
+                                </p>
+                                <p
+                                    v-else-if="!cardUpdate.company_id"
+                                    class="text-xs text-slate-500"
+                                >
+                                    Selecione uma empresa acima para incluir responsáveis do cliente.
                                 </p>
                             </div>
                         </div>
