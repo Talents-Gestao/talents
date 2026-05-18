@@ -171,4 +171,19 @@ class CommercialPricingServiceTest extends TestCase
         $this->assertSame(0, $r['total_final_cents']);
         $this->assertSame(0, $r['commission_cents']);
     }
+
+    public function test_commission_uses_settings_default_when_not_in_inputs(): void
+    {
+        $settings = $this->defaultSettings();
+        $settings->default_commission_percent = 10;
+
+        $svc = new CommercialPricingService();
+        $r = $svc->calculate([
+            'employee_count' => 1,
+            'svc_pesquisas' => true,
+        ], $settings);
+
+        $this->assertSame(10.0, $r['commission_percent']);
+        $this->assertSame(1270, $r['commission_cents']);
+    }
 }

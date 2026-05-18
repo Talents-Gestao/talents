@@ -100,7 +100,7 @@ export function useCommercialPricing(formRef, settingsRef) {
         + nr1Implantacao.value + contratacao.value + direcionamento.value + palestras.value,
     );
 
-    const commissionPercent = computed(() => Number(formRef.value?.commission_percent ?? 0));
+    const commissionPercent = computed(() => Number(s().default_commission_percent ?? 0));
     const commissionCents = computed(() => Math.round(totalFinal.value * commissionPercent.value / 100));
 
     return {

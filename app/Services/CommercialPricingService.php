@@ -48,7 +48,7 @@ class CommercialPricingService
         $totalFinal = $pesquisas + $profiler + $devolutiva + $nr1 + $nr1Implantacao
             + $contratacao + $direcionamento + $palestras;
 
-        $commissionPercent = (float) ($inputs['commission_percent'] ?? 0);
+        $commissionPercent = (float) ($inputs['commission_percent'] ?? $s->default_commission_percent ?? 0);
         $commissionCents = (int) round($totalFinal * $commissionPercent / 100);
 
         return [

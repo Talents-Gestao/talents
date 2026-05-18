@@ -35,7 +35,6 @@ const formInitial = props.proposal
           svc_contratacao_salario_cents: props.proposal.svc_contratacao_salario_cents ?? 0,
           svc_direcionamento: !!props.proposal.svc_direcionamento,
           svc_palestras: !!props.proposal.svc_palestras,
-          commission_percent: props.proposal.commission_percent ?? 0,
           is_closed: !!props.proposal.is_closed,
           notes: props.proposal.notes ?? '',
           palestra_topic: props.proposal.palestra_topic ?? '',
@@ -66,7 +65,6 @@ const formInitial = props.proposal
           svc_contratacao_salario_cents: 0,
           svc_direcionamento: false,
           svc_palestras: false,
-          commission_percent: 0,
           is_closed: false,
           notes: '',
           palestra_topic: '',
@@ -88,7 +86,7 @@ watch(salaryReais, (val) => {
 });
 
 const formRef = computed(() => form);
-const { breakdownCents, totalFinalCents, commissionCents } = useCommercialPricing(formRef, settingsRef);
+const { breakdownCents, totalFinalCents } = useCommercialPricing(formRef, settingsRef);
 
 // Consulta CNPJ (Receita Federal) — reaproveita o endpoint já existente.
 const cnpjLookupLoading = ref(false);
@@ -519,20 +517,6 @@ const services = computed(() => [
                                 Nenhum vendedor marcado como Comercial. Marque usuários como "Comercial" no cadastro de usuários.
                             </p>
                         </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Comissão (%)</label>
-                            <input
-                                v-model.number="form.commission_percent"
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                            <p class="mt-1 text-xs text-slate-500">
-                                Comissão calculada: <strong>{{ formatBRL(commissionCents) }}</strong>
-                            </p>
-                        </div>
                         <div class="sm:col-span-2">
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
                             <textarea
@@ -597,11 +581,7 @@ const services = computed(() => [
                     </ul>
 
                     <div class="mt-4 border-t border-slate-200 pt-4">
-                        <div class="flex items-center justify-between text-sm text-slate-600">
-                            <span>Comissão ({{ form.commission_percent || 0 }}%)</span>
-                            <span class="tabular-nums">{{ formatBRL(commissionCents) }}</span>
-                        </div>
-                        <div class="mt-2 flex items-center justify-between text-base font-semibold text-talents-700">
+                        <div class="flex items-center justify-between text-base font-semibold text-talents-700">
                             <span>Honorário Final</span>
                             <span class="tabular-nums">{{ formatBRL(totalFinalCents) }}</span>
                         </div>

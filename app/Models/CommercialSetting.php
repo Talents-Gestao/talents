@@ -53,6 +53,7 @@ class CommercialSetting extends Model
             'palestras_base_cents' => 'integer',
             'palestras_threshold_funcionarios' => 'integer',
             'palestras_multiplier' => 'integer',
+            'default_commission_percent' => 'float',
 
             'pdf_validade_dias' => 'integer',
 

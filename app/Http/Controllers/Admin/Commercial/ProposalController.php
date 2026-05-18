@@ -191,6 +191,7 @@ class ProposalController extends Controller
             'devolutiva_individual_cents', 'devolutiva_grupo_cents',
             'nr1_implantacao_online_cents', 'nr1_implantacao_presencial_cents',
             'palestras_base_cents', 'palestras_threshold_funcionarios', 'palestras_multiplier',
+            'default_commission_percent',
             'pdf_validade_dias',
         ]);
     }
@@ -200,7 +201,7 @@ class ProposalController extends Controller
      */
     private function validateProposal(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'client_name' => ['required', 'string', 'max:255'],
             'client_cnpj' => ['nullable', 'string', 'max:18'],
             'client_email' => ['nullable', 'email', 'max:255'],
@@ -231,10 +232,12 @@ class ProposalController extends Controller
             'palestra_audience_estimate' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'palestra_format' => ['nullable', Rule::in(['presencial', 'online', 'hibrido'])],
 
-            'commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-
             'is_closed' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        $data['commission_percent'] = (float) (CommercialSetting::current()->default_commission_percent ?? 0);
+
+        return $data;
     }
 }

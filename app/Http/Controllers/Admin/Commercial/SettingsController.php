@@ -117,6 +117,7 @@ class SettingsController extends Controller
             'palestras_base_cents' => $integerCents,
             'palestras_threshold_funcionarios' => ['nullable', 'integer', 'min:0'],
             'palestras_multiplier' => ['nullable', 'integer', 'min:1', 'max:10'],
+            'default_commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
 
             // PDF
             'pdf_validade_dias' => ['nullable', 'integer', 'min:1', 'max:365'],

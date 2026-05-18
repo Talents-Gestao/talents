@@ -61,6 +61,7 @@ const form = useForm({
     palestras_base_cents: props.settings.palestras_base_cents,
     palestras_threshold_funcionarios: props.settings.palestras_threshold_funcionarios,
     palestras_multiplier: props.settings.palestras_multiplier,
+    default_commission_percent: props.settings.default_commission_percent ?? 0,
 
     pdf_validade_dias: props.settings.pdf_validade_dias,
     pdf_observacoes: props.settings.pdf_observacoes ?? '',
@@ -413,7 +414,30 @@ const tableConfig = computed(() => [
                 </section>
             </template>
 
-            <div v-if="tab !== 'vendedores' && tab !== 'contratos' && tab !== 'empresa'" class="flex justify-end">
+            <template v-if="tab === 'vendedores'">
+                <section class="surface-card p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Comissão de vendedores</h3>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Percentual aplicado automaticamente em todas as propostas. Uso interno — não aparece no formulário
+                        nem no PDF enviado ao cliente.
+                    </p>
+                    <div class="mt-4 max-w-xs">
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Comissão padrão (%)
+                        </label>
+                        <input
+                            v-model.number="form.default_commission_percent"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
+                    </div>
+                </section>
+            </template>
+
+            <div v-if="tab !== 'contratos' && tab !== 'empresa'" class="flex justify-end">
                 <button
                     type="submit"
                     :disabled="form.processing"

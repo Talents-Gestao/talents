@@ -253,10 +253,6 @@
     @if($proposal->seller)
         <p class="commission-inline">
             <strong>Vendedor responsável:</strong> {{ $proposal->seller->name }}
-            @if($proposal->commission_percent > 0)
-                &nbsp;|&nbsp; Comissão: {{ number_format((float) $proposal->commission_percent, 2, ',', '.') }}%
-                ({{ $brl((int) $proposal->commission_cents) }})
-            @endif
         </p>
     @endif
 
