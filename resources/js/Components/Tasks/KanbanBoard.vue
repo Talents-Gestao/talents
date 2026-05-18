@@ -64,14 +64,46 @@ function reload() {
 }
 
 const listMenuOpenId = ref(null);
+const listMenuPosition = ref(null);
 
 function closeListMenu() {
     listMenuOpenId.value = null;
+    listMenuPosition.value = null;
 }
 
-function toggleListMenu(listId, event) {
+function toggleListMenu(list, event) {
     event?.stopPropagation?.();
-    listMenuOpenId.value = listMenuOpenId.value === listId ? null : listId;
+    if (listMenuOpenId.value === list.id) {
+        closeListMenu();
+        return;
+    }
+
+    const rect = event?.currentTarget?.getBoundingClientRect?.();
+    if (!rect) {
+        return;
+    }
+
+    const menuWidth = 192;
+    const menuHeight = 148;
+    const left = Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8));
+
+    let top = rect.bottom + 6;
+    if (top + menuHeight > window.innerHeight - 8) {
+        top = Math.max(8, rect.top - menuHeight - 6);
+    }
+
+    listMenuOpenId.value = list.id;
+    listMenuPosition.value = {
+        top,
+        left,
+        list,
+    };
+}
+
+function onListMenuViewportChange() {
+    if (listMenuOpenId.value) {
+        closeListMenu();
+    }
 }
 
 function hexToRgba(hex, alpha) {
@@ -162,8 +194,16 @@ function deleteList(list, event) {
     });
 }
 
-onMounted(() => document.addEventListener('click', closeListMenu));
-onUnmounted(() => document.removeEventListener('click', closeListMenu));
+onMounted(() => {
+    document.addEventListener('click', closeListMenu);
+    window.addEventListener('scroll', onListMenuViewportChange, true);
+    window.addEventListener('resize', onListMenuViewportChange);
+});
+onUnmounted(() => {
+    document.removeEventListener('click', closeListMenu);
+    window.removeEventListener('scroll', onListMenuViewportChange, true);
+    window.removeEventListener('resize', onListMenuViewportChange);
+});
 
 function requestDeleteCard(card) {
     if (!props.isAdmin || !card?.id) return;
@@ -414,58 +454,12 @@ function dueClass(card) {
                         <button
                             type="button"
                             class="rounded p-1 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
+                            :class="listMenuOpenId === list.id ? 'bg-slate-200 text-slate-800' : ''"
                             title="Ações da lista"
-                            @click.stop="toggleListMenu(list.id, $event)"
+                            @click.stop="toggleListMenu(list, $event)"
                         >
                             <EllipsisHorizontalIcon class="h-4 w-4" />
                         </button>
-                        <div
-                            v-if="listMenuOpenId === list.id"
-                            class="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-lg bg-white py-1 shadow-lg ring-1 ring-slate-200"
-                            @click.stop
-                        >
-                            <div class="border-b border-slate-100 px-3 py-2">
-                                <p class="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                                    Cor da lista
-                                </p>
-                                <div class="mt-2 flex flex-wrap gap-1.5">
-                                    <button
-                                        type="button"
-                                        class="h-6 w-6 rounded-full ring-2 ring-offset-1 transition hover:scale-105"
-                                        :class="
-                                            isListColorSelected(list, '')
-                                                ? 'ring-talents-500'
-                                                : 'ring-transparent'
-                                        "
-                                        style="background: linear-gradient(135deg, #f1f5f9 50%, #e2e8f0 50%)"
-                                        title="Sem cor"
-                                        @click="setListColor(list, '', $event)"
-                                    />
-                                    <button
-                                        v-for="preset in LIST_COLOR_PRESETS"
-                                        :key="preset.value"
-                                        type="button"
-                                        class="h-6 w-6 rounded-full ring-2 ring-offset-1 transition hover:scale-105"
-                                        :class="
-                                            isListColorSelected(list, preset.value)
-                                                ? 'ring-talents-500'
-                                                : 'ring-transparent'
-                                        "
-                                        :style="{ backgroundColor: preset.value }"
-                                        :title="preset.label"
-                                        @click="setListColor(list, preset.value, $event)"
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-rose-600 hover:bg-rose-50"
-                                @click="deleteList(list, $event)"
-                            >
-                                <TrashIcon class="h-3.5 w-3.5" />
-                                Excluir lista
-                            </button>
-                        </div>
                     </div>
                 </header>
 
@@ -706,5 +700,59 @@ function dueClass(card) {
                 </span>
             </span>
         </div>
+
+        <Teleport to="body">
+            <div
+                v-if="listMenuOpenId && listMenuPosition"
+                class="fixed z-[100] w-48 rounded-xl bg-white py-2 shadow-xl ring-1 ring-slate-200"
+                :style="{
+                    top: `${listMenuPosition.top}px`,
+                    left: `${listMenuPosition.left}px`,
+                }"
+                @click.stop
+            >
+                <div class="border-b border-slate-100 px-3 pb-2">
+                    <p class="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                        Cor da lista
+                    </p>
+                    <div class="mt-2 grid grid-cols-5 gap-2">
+                        <button
+                            type="button"
+                            class="h-7 w-7 justify-self-center rounded-full ring-2 ring-offset-1 transition hover:scale-105"
+                            :class="
+                                isListColorSelected(listMenuPosition.list, '')
+                                    ? 'ring-talents-500'
+                                    : 'ring-transparent'
+                            "
+                            style="background: linear-gradient(135deg, #f1f5f9 50%, #e2e8f0 50%)"
+                            title="Sem cor"
+                            @click="setListColor(listMenuPosition.list, '', $event)"
+                        />
+                        <button
+                            v-for="preset in LIST_COLOR_PRESETS"
+                            :key="preset.value"
+                            type="button"
+                            class="h-7 w-7 justify-self-center rounded-full ring-2 ring-offset-1 transition hover:scale-105"
+                            :class="
+                                isListColorSelected(listMenuPosition.list, preset.value)
+                                    ? 'ring-talents-500'
+                                    : 'ring-transparent'
+                            "
+                            :style="{ backgroundColor: preset.value }"
+                            :title="preset.label"
+                            @click="setListColor(listMenuPosition.list, preset.value, $event)"
+                        />
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-rose-600 hover:bg-rose-50"
+                    @click="deleteList(listMenuPosition.list, $event)"
+                >
+                    <TrashIcon class="h-3.5 w-3.5" />
+                    Excluir lista
+                </button>
+            </div>
+        </Teleport>
     </div>
 </template>
