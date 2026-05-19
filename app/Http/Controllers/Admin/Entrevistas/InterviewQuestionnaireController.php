@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InterviewQuestionnaire;
 use App\Models\InterviewQuestionnaireQuestion;
 use App\Models\InterviewQuestionnaireSection;
+use Database\Seeders\InterviewQuestionnaireSeeder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,8 @@ class InterviewQuestionnaireController extends Controller
 {
     public function index(): Response
     {
+        InterviewQuestionnaireSeeder::ensureDefault();
+
         $questionnaires = InterviewQuestionnaire::query()
             ->withCount(['sections', 'interviews'])
             ->orderByDesc('is_default')

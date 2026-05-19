@@ -8,6 +8,7 @@ use App\Jobs\ProcessInterviewAudioJob;
 use App\Models\Company;
 use App\Models\Interview;
 use App\Models\InterviewQuestionnaire;
+use Database\Seeders\InterviewQuestionnaireSeeder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -55,6 +56,8 @@ class InterviewController extends Controller
 
     public function create(): Response
     {
+        InterviewQuestionnaireSeeder::ensureDefault();
+
         $questionnaires = InterviewQuestionnaire::query()
             ->orderByDesc('is_default')
             ->orderBy('name')

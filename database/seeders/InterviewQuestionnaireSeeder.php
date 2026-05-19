@@ -9,6 +9,11 @@ use Illuminate\Database\Seeder;
 
 class InterviewQuestionnaireSeeder extends Seeder
 {
+    public static function ensureDefault(): void
+    {
+        (new self)->run();
+    }
+
     public function run(): void
     {
         if (InterviewQuestionnaire::query()->where('is_default', true)->exists()) {

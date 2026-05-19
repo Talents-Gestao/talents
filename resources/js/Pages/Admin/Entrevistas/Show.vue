@@ -118,19 +118,35 @@ onUnmounted(() => {
             </p>
         </div>
 
-        <div v-if="interview.status === 'completed'" class="space-y-6">
+        <div v-if="sections?.length" class="space-y-6">
+            <p
+                v-if="interview.is_processing"
+                class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+            >
+                Roteiro de perguntas abaixo. As respostas serão preenchidas automaticamente quando o processamento terminar.
+            </p>
+
             <section v-for="section in sections" :key="section.id" class="surface-card p-5">
                 <h3 class="text-base font-semibold text-gray-900">{{ section.title }}</h3>
                 <div class="mt-4 space-y-4">
                     <article v-for="question in section.questions" :key="question.id" class="border-b border-slate-100 pb-4 last:border-0">
                         <p class="text-sm font-medium text-slate-800">{{ question.text }}</p>
-                        <p class="mt-2 whitespace-pre-wrap text-sm text-slate-700">{{ question.answer || 'Não mencionado' }}</p>
+                        <p
+                            v-if="interview.status === 'completed'"
+                            class="mt-2 whitespace-pre-wrap text-sm text-slate-700"
+                        >
+                            {{ question.answer || 'Não mencionado' }}
+                        </p>
+                        <p v-else-if="interview.is_processing" class="mt-2 text-sm italic text-slate-500">
+                            Aguardando processamento…
+                        </p>
+                        <p v-else class="mt-2 text-sm italic text-slate-500">—</p>
                         <p v-if="question.raw_quote" class="mt-2 text-xs italic text-slate-500">“{{ question.raw_quote }}”</p>
                     </article>
                 </div>
             </section>
 
-            <section class="surface-card p-5">
+            <section v-if="interview.status === 'completed'" class="surface-card p-5">
                 <button
                     type="button"
                     class="flex w-full items-center justify-between text-left text-sm font-semibold text-gray-900"
