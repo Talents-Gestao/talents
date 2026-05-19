@@ -1,15 +1,10 @@
 <script setup>
 import TextInput from '@/Components/TextInput.vue';
+import TaskCardMeta from '@/Components/Tasks/TaskCardMeta.vue';
 import { router } from '@inertiajs/vue3';
 import {
-    CalendarDaysIcon,
-    ChatBubbleOvalLeftEllipsisIcon,
-    CheckCircleIcon,
-    ClipboardDocumentListIcon,
-    DocumentTextIcon,
     EllipsisHorizontalIcon,
     PencilSquareIcon,
-    PaperClipIcon,
     PlusIcon,
     TrashIcon,
     XMarkIcon,
@@ -407,77 +402,6 @@ function openCard(card) {
     emit('open-card', card);
 }
 
-function checklistTotals(card) {
-    if (!card.checklists?.length) return null;
-    let total = 0;
-    let done = 0;
-    card.checklists.forEach((cl) => {
-        cl.items?.forEach((it) => {
-            total += 1;
-            if (it.is_completed) done += 1;
-        });
-    });
-    if (total === 0) return null;
-    return { done, total, complete: done === total };
-}
-
-function descriptionPresent(card) {
-    const d = card.description;
-    return typeof d === 'string' ? d.trim().length > 0 : Boolean(d);
-}
-
-function avatarInitials(name) {
-    if (!name) return '?';
-    const parts = String(name).trim().split(/\s+/);
-    const first = parts[0]?.[0] ?? '';
-    const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
-    return (first + last).toUpperCase().slice(0, 2);
-}
-
-const palette = [
-    'bg-amber-500',
-    'bg-rose-500',
-    'bg-fuchsia-500',
-    'bg-violet-500',
-    'bg-indigo-500',
-    'bg-sky-500',
-    'bg-emerald-500',
-    'bg-teal-500',
-    'bg-orange-500',
-];
-
-function avatarColor(seed) {
-    if (seed === undefined || seed === null) return palette[0];
-    const n = Number(seed);
-    if (Number.isFinite(n)) return palette[Math.abs(Math.trunc(n)) % palette.length];
-    let hash = 0;
-    for (const ch of String(seed)) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
-    return palette[Math.abs(hash) % palette.length];
-}
-
-function dueLabel(date) {
-    if (!date) return '';
-    try {
-        const [y, m, d] = String(date).split('-').map(Number);
-        const dt = new Date(y, (m || 1) - 1, d || 1);
-        return dt.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
-    } catch (_e) {
-        return date;
-    }
-}
-
-function dueClass(card) {
-    if (card.completed_at) return 'bg-emerald-100 text-emerald-800';
-    if (!card.due_date) return 'bg-slate-100 text-slate-700';
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const [y, m, d] = String(card.due_date).split('-').map(Number);
-    const due = new Date(y, (m || 1) - 1, d || 1);
-    const diff = (due - today) / 86_400_000;
-    if (diff < 0) return 'bg-rose-100 text-rose-800';
-    if (diff <= 2) return 'bg-amber-100 text-amber-800';
-    return 'bg-slate-100 text-slate-700';
-}
 </script>
 
 <template>
@@ -575,75 +499,7 @@ function dueClass(card) {
                             Cliente: {{ card.company.name }}
                         </p>
 
-                        <div class="mt-2 flex items-center justify-between gap-2">
-                            <div class="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-                                <span
-                                    v-if="card.due_date || card.completed_at"
-                                    class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium"
-                                    :class="dueClass(card)"
-                                    :title="card.completed_at ? 'Concluído' : 'Data de entrega'"
-                                >
-                                    <CheckCircleIcon v-if="card.completed_at" class="h-3.5 w-3.5" />
-                                    <CalendarDaysIcon v-else class="h-3.5 w-3.5" />
-                                    {{ dueLabel(card.due_date) || (card.completed_at ? 'Concluído' : '') }}
-                                </span>
-
-                                <span
-                                    v-if="descriptionPresent(card)"
-                                    class="inline-flex items-center text-slate-500"
-                                    title="Descrição / observações"
-                                >
-                                    <DocumentTextIcon class="h-3.5 w-3.5" aria-hidden="true" />
-                                </span>
-
-                                <span
-                                    v-if="checklistTotals(card)"
-                                    class="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium"
-                                    :class="checklistTotals(card).complete ? 'bg-emerald-100 text-emerald-800' : 'text-slate-600'"
-                                    :title="`Checklist ${checklistTotals(card).done}/${checklistTotals(card).total}`"
-                                >
-                                    <ClipboardDocumentListIcon class="h-3.5 w-3.5" aria-hidden="true" />
-                                    {{ checklistTotals(card).done }}/{{ checklistTotals(card).total }}
-                                </span>
-
-                                <span
-                                    v-if="card.comments?.length"
-                                    class="inline-flex items-center gap-0.5"
-                                    :title="`${card.comments.length} comentário(s)`"
-                                >
-                                    <ChatBubbleOvalLeftEllipsisIcon class="h-3.5 w-3.5" aria-hidden="true" />
-                                    {{ card.comments.length }}
-                                </span>
-
-                                <span
-                                    v-if="card.attachments?.length"
-                                    class="inline-flex items-center gap-0.5"
-                                    :title="`${card.attachments.length} anexo(s)`"
-                                >
-                                    <PaperClipIcon class="h-3.5 w-3.5" aria-hidden="true" />
-                                    {{ card.attachments.length }}
-                                </span>
-                            </div>
-
-                            <div v-if="card.members?.length" class="flex -space-x-1.5">
-                                <span
-                                    v-for="m in card.members.slice(0, 3)"
-                                    :key="m.id"
-                                    :title="m.name"
-                                    class="inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white ring-2 ring-white"
-                                    :class="avatarColor(m.id)"
-                                >
-                                    {{ avatarInitials(m.name) }}
-                                </span>
-                                <span
-                                    v-if="card.members.length > 3"
-                                    class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-300 text-[10px] font-semibold text-slate-700 ring-2 ring-white"
-                                    :title="`+${card.members.length - 3} membros`"
-                                >
-                                    +{{ card.members.length - 3 }}
-                                </span>
-                            </div>
-                        </div>
+                        <TaskCardMeta :card="card" />
                     </div>
                 </VueDraggable>
 

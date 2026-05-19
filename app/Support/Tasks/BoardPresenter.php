@@ -28,18 +28,21 @@ final class BoardPresenter
         $board->loadMissing([
             'company:id,name',
             'lists' => fn ($q) => $q->where('is_archived', false)->orderBy('position')->orderBy('id'),
-            'lists.cards' => fn ($q) => $q->where('is_archived', false)->orderBy('position')->orderBy('id')->with('company:id,name'),
+            'lists.cards' => fn ($q) => $q->where('is_archived', false)
+                ->orderBy('position')
+                ->orderBy('id')
+                ->with([
+                    'company:id,name',
+                    'labels:id,name,color',
+                    'members:id,name',
+                    'checklists.items:id,task_checklist_id,is_completed',
+                ])
+                ->withCount(['comments', 'attachments']),
         ]);
 
         $cardsCount = 0;
         $lists = $board->lists->map(function ($list) use (&$cardsCount) {
-            $cards = $list->cards->map(fn (TaskCard $card) => [
-                'id' => $card->id,
-                'title' => $card->title,
-                'due_date' => $card->due_date?->toDateString(),
-                'completed_at' => $card->completed_at?->toIso8601String(),
-                'company' => $card->company ? ['id' => $card->company->id, 'name' => $card->company->name] : null,
-            ])->values();
+            $cards = $list->cards->map(fn (TaskCard $card) => self::serializeCardPreview($card))->values();
             $cardsCount += $cards->count();
 
             return [
@@ -162,6 +165,35 @@ final class BoardPresenter
     /**
      * @return array<string, mixed>
      */
+    /**
+     * Cartão resumido para listagem / preview de quadros (ícones estilo Trello).
+     *
+     * @return array<string, mixed>
+     */
+    public static function serializeCardPreview(TaskCard $card): array
+    {
+        return [
+            'id' => $card->id,
+            'title' => $card->title,
+            'description' => $card->description,
+            'cover_color' => $card->cover_color,
+            'due_date' => $card->due_date?->toDateString(),
+            'completed_at' => $card->completed_at?->toIso8601String(),
+            'company' => $card->company ? ['id' => $card->company->id, 'name' => $card->company->name] : null,
+            'labels' => $card->labels->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'color' => $l->color])->values(),
+            'members' => $card->members->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])->values(),
+            'checklists' => $card->checklists->map(fn ($cl) => [
+                'id' => $cl->id,
+                'items' => $cl->items->map(fn ($it) => [
+                    'id' => $it->id,
+                    'is_completed' => $it->is_completed,
+                ])->values(),
+            ])->values(),
+            'comments_count' => (int) ($card->comments_count ?? 0),
+            'attachments_count' => (int) ($card->attachments_count ?? 0),
+        ];
+    }
+
     public static function serializeCard(TaskCard $card): array
     {
         $card->loadMissing([
