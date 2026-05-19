@@ -1,5 +1,6 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import ColorPresetPicker from '@/Components/Tasks/ColorPresetPicker.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -93,10 +94,7 @@ function deleteCard(cardId) {
                     <InputLabel value="Descrição" />
                     <textarea v-model="metaForm.description" rows="2" class="mt-1 w-full rounded border border-slate-300 text-sm" />
                 </div>
-                <div>
-                    <InputLabel value="Cor" />
-                    <TextInput v-model="metaForm.cover_color" class="mt-1 w-full" />
-                </div>
+                <ColorPresetPicker v-model="metaForm.cover_color" label="Cor de capa" />
                 <label class="flex items-center gap-2 text-sm">
                     <input v-model="metaForm.is_active" type="checkbox" class="rounded border-slate-300" />
                     Ativo

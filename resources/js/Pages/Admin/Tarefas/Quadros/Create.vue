@@ -1,5 +1,6 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import ColorPresetPicker from '@/Components/Tasks/ColorPresetPicker.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -39,10 +40,11 @@ function submit() {
                     class="mt-1 w-full rounded-md border border-slate-300 text-sm"
                 />
             </div>
-            <div>
-                <InputLabel for="cover_color" value="Cor de capa (hex)" />
-                <TextInput id="cover_color" v-model="form.cover_color" class="mt-1 w-full" placeholder="#4F46E5" />
-            </div>
+            <ColorPresetPicker
+                v-model="form.cover_color"
+                label="Cor de capa"
+                hint="Aparece como faixa colorida na listagem de quadros."
+            />
             <div class="flex flex-wrap gap-3">
                 <PrimaryButton :disabled="form.processing">Criar quadro</PrimaryButton>
                 <Link :href="route('admin.tarefas.quadros.index')">

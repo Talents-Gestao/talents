@@ -1,5 +1,6 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import ColorPresetPicker from '@/Components/Tasks/ColorPresetPicker.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -39,10 +40,7 @@ function submit() {
                     class="mt-1 w-full rounded-md border border-slate-300 text-sm"
                 />
             </div>
-            <div>
-                <InputLabel for="cover_color" value="Cor (hex)" />
-                <TextInput id="cover_color" v-model="form.cover_color" class="mt-1 w-full" />
-            </div>
+            <ColorPresetPicker v-model="form.cover_color" label="Cor de capa" />
             <label class="flex items-center gap-2 text-sm">
                 <input v-model="form.is_active" type="checkbox" class="rounded border-slate-300" />
                 Ativo
