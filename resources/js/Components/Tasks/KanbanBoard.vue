@@ -2,10 +2,11 @@
 import TextInput from '@/Components/TextInput.vue';
 import { router } from '@inertiajs/vue3';
 import {
-    Bars3BottomLeftIcon,
     CalendarDaysIcon,
     ChatBubbleOvalLeftEllipsisIcon,
     CheckCircleIcon,
+    ClipboardDocumentListIcon,
+    DocumentTextIcon,
     EllipsisHorizontalIcon,
     PencilSquareIcon,
     PaperClipIcon,
@@ -589,28 +590,10 @@ function dueClass(card) {
 
                                 <span
                                     v-if="descriptionPresent(card)"
-                                    class="inline-flex items-center"
-                                    title="Esta tarefa tem descrição"
+                                    class="inline-flex items-center text-slate-500"
+                                    title="Descrição / observações"
                                 >
-                                    <Bars3BottomLeftIcon class="h-3.5 w-3.5" />
-                                </span>
-
-                                <span
-                                    v-if="card.attachments?.length"
-                                    class="inline-flex items-center gap-0.5"
-                                    :title="`${card.attachments.length} anexo(s)`"
-                                >
-                                    <PaperClipIcon class="h-3.5 w-3.5" />
-                                    {{ card.attachments.length }}
-                                </span>
-
-                                <span
-                                    v-if="card.comments?.length"
-                                    class="inline-flex items-center gap-0.5"
-                                    :title="`${card.comments.length} comentário(s)`"
-                                >
-                                    <ChatBubbleOvalLeftEllipsisIcon class="h-3.5 w-3.5" />
-                                    {{ card.comments.length }}
+                                    <DocumentTextIcon class="h-3.5 w-3.5" aria-hidden="true" />
                                 </span>
 
                                 <span
@@ -619,8 +602,26 @@ function dueClass(card) {
                                     :class="checklistTotals(card).complete ? 'bg-emerald-100 text-emerald-800' : 'text-slate-600'"
                                     :title="`Checklist ${checklistTotals(card).done}/${checklistTotals(card).total}`"
                                 >
-                                    <CheckCircleIcon class="h-3.5 w-3.5" />
+                                    <ClipboardDocumentListIcon class="h-3.5 w-3.5" aria-hidden="true" />
                                     {{ checklistTotals(card).done }}/{{ checklistTotals(card).total }}
+                                </span>
+
+                                <span
+                                    v-if="card.comments?.length"
+                                    class="inline-flex items-center gap-0.5"
+                                    :title="`${card.comments.length} comentário(s)`"
+                                >
+                                    <ChatBubbleOvalLeftEllipsisIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                                    {{ card.comments.length }}
+                                </span>
+
+                                <span
+                                    v-if="card.attachments?.length"
+                                    class="inline-flex items-center gap-0.5"
+                                    :title="`${card.attachments.length} anexo(s)`"
+                                >
+                                    <PaperClipIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                                    {{ card.attachments.length }}
                                 </span>
                             </div>
 

@@ -4,8 +4,9 @@ import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import {
+    CalendarDaysIcon,
     ChatBubbleOvalLeftEllipsisIcon,
-    CheckCircleIcon,
+    ClipboardDocumentListIcon,
     PaperClipIcon,
 } from '@heroicons/vue/24/outline';
 import { router, useForm } from '@inertiajs/vue3';
@@ -61,6 +62,7 @@ const checklistForm = useForm({ name: '' });
 const checklistBulkProcessing = ref({});
 const editingChecklistItemId = ref(null);
 const editingChecklistItemText = ref('');
+const newChecklistItems = ref({});
 
 const showNewLabelForm = ref(false);
 const newLabelDraft = ref({ name: '', color: '#3b82f6' });
@@ -464,6 +466,72 @@ function formatDateLabel(value) {
         year: 'numeric',
     });
 }
+
+function newItemDraft(checklistId) {
+    if (!newChecklistItems.value[checklistId]) {
+        newChecklistItems.value = {
+            ...newChecklistItems.value,
+            [checklistId]: { text: '', due_date: '' },
+        };
+    }
+    return newChecklistItems.value[checklistId];
+}
+
+function addChecklistItem(checklist) {
+    if (!props.isAdmin || !checklist?.id) return;
+    const draft = newItemDraft(checklist.id);
+    const text = draft.text?.trim();
+    if (!text) return;
+
+    router.post(
+        route('admin.tarefas.checklists.itens.store', checklist.id),
+        {
+            text,
+            due_date: draft.due_date || null,
+        },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                newChecklistItems.value = {
+                    ...newChecklistItems.value,
+                    [checklist.id]: { text: '', due_date: '' },
+                };
+                reloadBoardPayloadAndSyncCard();
+            },
+        },
+    );
+}
+
+function updateItemDueDate(item, dueDate) {
+    if (isReadOnly.value || !item?.id) return;
+    const url = props.isAdmin
+        ? route('admin.tarefas.checklist-itens.update', item.id)
+        : route('client.tarefas.checklist-itens.update', item.id);
+
+    router.patch(
+        url,
+        { due_date: dueDate || null },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => reloadBoardPayloadAndSyncCard(),
+        },
+    );
+}
+
+function itemDueClass(item) {
+    if (item.is_completed) return 'border-slate-200 bg-slate-50 text-slate-500';
+    if (!item.due_date) return 'border-slate-200 bg-white text-slate-700';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [y, m, d] = String(item.due_date).split('-').map(Number);
+    const due = new Date(y, (m || 1) - 1, d || 1);
+    const diff = (due - today) / 86_400_000;
+    if (diff < 0) return 'border-rose-200 bg-rose-50 text-rose-800';
+    if (diff <= 2) return 'border-amber-200 bg-amber-50 text-amber-900';
+    return 'border-slate-200 bg-white text-slate-700';
+}
 </script>
 
 <template>
@@ -513,7 +581,7 @@ function formatDateLabel(value) {
                             <p class="mt-1 text-sm font-medium text-slate-900">{{ card.title }}</p>
                         </div>
                         <div class="space-y-1">
-                            <InputLabel value="Descrição" />
+                            <InputLabel value="Descrição / observações" />
                             <p class="mt-1 whitespace-pre-wrap text-sm text-slate-700">
                                 {{ card.description?.trim() ? card.description : '—' }}
                             </p>
@@ -538,10 +606,11 @@ function formatDateLabel(value) {
                             />
                         </div>
                         <div class="space-y-1">
-                            <InputLabel value="Descrição" />
+                            <InputLabel value="Descrição / observações" />
                             <textarea
                                 v-model="cardUpdate.description"
                                 rows="4"
+                                placeholder="Detalhes, observações e contexto da tarefa…"
                                 class="mt-1 w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
                             />
                         </div>
@@ -568,8 +637,8 @@ function formatDateLabel(value) {
 
                 <div class="space-y-2 rounded-lg border border-slate-100 p-4">
                     <h4 class="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                        <CheckCircleIcon class="h-4 w-4 text-slate-500" />
-                        Checklist
+                        <ClipboardDocumentListIcon class="h-4 w-4 text-slate-500" aria-hidden="true" />
+                        Checklist de tarefas
                     </h4>
                     <div class="rounded-md border border-slate-200 bg-slate-50/60 p-2">
                         <div class="mb-1 flex items-center justify-between text-[11px] text-slate-600">
@@ -631,23 +700,23 @@ function formatDateLabel(value) {
                                     />
                                 </div>
                             </div>
-                            <ul class="mt-2 space-y-1 text-sm">
+                            <ul class="mt-2 space-y-1.5 text-sm">
                                 <li
                                     v-for="it in cl.items || []"
                                     :key="it.id"
-                                    class="flex items-center gap-2"
+                                    class="flex flex-wrap items-center gap-2"
                                 >
                                     <input
                                         type="checkbox"
                                         :checked="it.is_completed"
-                                        class="rounded border-slate-300"
+                                        class="shrink-0 rounded border-slate-300"
                                         :disabled="isReadOnly"
                                         @change="toggleItem(it)"
                                     />
                                     <TextInput
                                         v-if="!isReadOnly && editingChecklistItemId === it.id"
                                         v-model="editingChecklistItemText"
-                                        class="h-8 w-full border-slate-200 bg-white text-sm shadow-none"
+                                        class="h-8 min-w-0 flex-1 border-slate-200 bg-white text-sm shadow-none"
                                         @keydown.enter.prevent="saveInlineEditItem(it)"
                                         @keydown.esc.prevent="cancelInlineEditItem"
                                         @blur="saveInlineEditItem(it)"
@@ -655,20 +724,68 @@ function formatDateLabel(value) {
                                     <button
                                         v-else-if="!isReadOnly"
                                         type="button"
-                                        class="w-full text-left"
+                                        class="min-w-0 flex-1 text-left"
                                         @click="startInlineEditItem(it)"
                                     >
                                         <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{ it.text }}</span>
                                     </button>
                                     <span
                                         v-else
-                                        class="w-full text-left text-sm"
+                                        class="min-w-0 flex-1 text-left text-sm"
                                         :class="it.is_completed ? 'text-slate-400 line-through' : 'text-slate-800'"
                                     >
                                         {{ it.text }}
                                     </span>
+                                    <label
+                                        v-if="isAdmin"
+                                        class="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px]"
+                                        :class="itemDueClass(it)"
+                                        :title="it.due_date ? 'Vencimento da etapa' : 'Definir vencimento'"
+                                    >
+                                        <CalendarDaysIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                        <input
+                                            type="date"
+                                            :value="it.due_date || ''"
+                                            class="w-[7.25rem] border-0 bg-transparent p-0 text-[11px] focus:ring-0"
+                                            @change="updateItemDueDate(it, $event.target.value)"
+                                        />
+                                    </label>
+                                    <span
+                                        v-else-if="it.due_date"
+                                        class="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px]"
+                                        :class="itemDueClass(it)"
+                                    >
+                                        <CalendarDaysIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                                        {{ formatDateLabel(it.due_date) }}
+                                    </span>
                                 </li>
                             </ul>
+                            <div v-if="isAdmin" class="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+                                <TextInput
+                                    v-model="newItemDraft(cl.id).text"
+                                    class="min-w-0 flex-1 border-slate-200 bg-white text-sm shadow-none"
+                                    placeholder="Nova etapa…"
+                                    @keydown.enter.prevent="addChecklistItem(cl)"
+                                />
+                                <label
+                                    class="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-1 text-[11px] text-slate-600"
+                                    title="Vencimento da etapa (opcional)"
+                                >
+                                    <CalendarDaysIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                                    <input
+                                        v-model="newItemDraft(cl.id).due_date"
+                                        type="date"
+                                        class="w-[7.25rem] border-0 bg-transparent p-0 text-[11px] focus:ring-0"
+                                    />
+                                </label>
+                                <button
+                                    type="button"
+                                    class="shrink-0 rounded-md border border-slate-300 px-2 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+                                    @click="addChecklistItem(cl)"
+                                >
+                                    Adicionar
+                                </button>
+                            </div>
                         </div>
                     </div>
 
