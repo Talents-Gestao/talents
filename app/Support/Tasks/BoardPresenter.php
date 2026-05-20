@@ -187,6 +187,7 @@ final class BoardPresenter
                 'items' => $cl->items->map(fn ($it) => [
                     'id' => $it->id,
                     'is_completed' => $it->is_completed,
+                    'due_date' => $it->due_date?->toDateString(),
                 ])->values(),
             ])->values(),
             'comments_count' => (int) ($card->comments_count ?? 0),

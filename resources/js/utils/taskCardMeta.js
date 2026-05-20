@@ -27,6 +27,104 @@ export function attachmentsCount(card) {
     return Number(card?.attachments_count) || 0;
 }
 
+/** Dias até o vencimento (negativo = atrasado). */
+export function dueDaysDiff(dateStr) {
+    if (!dateStr) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [y, m, d] = String(dateStr).split('-').map(Number);
+    const due = new Date(y, (m || 1) - 1, d || 1);
+    return Math.round((due - today) / 86_400_000);
+}
+
+/** overdue = atrasado; soon = vence em até 2 dias; ok = data futura. */
+export function dueUrgency(dateStr, isCompleted = false) {
+    if (!dateStr || isCompleted) return null;
+    const diff = dueDaysDiff(dateStr);
+    if (diff === null) return null;
+    if (diff < 0) return 'overdue';
+    if (diff <= 2) return 'soon';
+    return 'ok';
+}
+
+export function pendingChecklistDueDates(card) {
+    const dates = [];
+    card?.checklists?.forEach((cl) => {
+        cl.items?.forEach((it) => {
+            if (!it.is_completed && it.due_date) {
+                dates.push({ date: it.due_date, text: it.text });
+            }
+        });
+    });
+    return dates;
+}
+
+/**
+ * Alerta de vencimento unificado: tarefa + etapas do checklist pendentes.
+ */
+export function cardDueAlert(card) {
+    if (card?.completed_at) {
+        return {
+            show: true,
+            urgency: 'completed',
+            date: card.due_date,
+            label: 'Concluído',
+            title: 'Tarefa concluída',
+            fromChecklist: false,
+        };
+    }
+
+    const candidates = [];
+
+    if (card?.due_date) {
+        candidates.push({
+            date: card.due_date,
+            urgency: dueUrgency(card.due_date),
+            source: 'card',
+            title: 'Vencimento da tarefa',
+        });
+    }
+
+    pendingChecklistDueDates(card).forEach((item) => {
+        candidates.push({
+            date: item.date,
+            urgency: dueUrgency(item.date),
+            source: 'checklist',
+            title: item.text ? `Etapa: ${item.text}` : 'Vencimento de etapa do checklist',
+        });
+    });
+
+    const active = candidates.filter((c) => c.urgency);
+    if (!active.length) {
+        return { show: false };
+    }
+
+    const worstRank = { overdue: 3, soon: 2, ok: 1 };
+    const worst = active.reduce((a, b) =>
+        (worstRank[b.urgency] ?? 0) > (worstRank[a.urgency] ?? 0) ? b : a,
+    );
+
+    const nearest = active.reduce((best, cur) => {
+        const diff = dueDaysDiff(cur.date);
+        const bestDiff = dueDaysDiff(best.date);
+        if (diff === null) return best;
+        if (bestDiff === null) return cur;
+        return diff < bestDiff ? cur : best;
+    });
+
+    const display = ['overdue', 'soon'].includes(worst.urgency) ? worst : nearest;
+
+    return {
+        show: true,
+        urgency: worst.urgency,
+        date: display.date,
+        label: dueLabel(display.date),
+        title: display.title,
+        fromChecklist: display.source === 'checklist',
+        hasChecklistDue: active.some((c) => c.source === 'checklist'),
+    };
+}
+
 export function dueLabel(date) {
     if (!date) return '';
     try {
@@ -38,17 +136,25 @@ export function dueLabel(date) {
     }
 }
 
-export function dueClass(card) {
-    if (card?.completed_at) return 'bg-emerald-100 text-emerald-800';
-    if (!card?.due_date) return 'bg-slate-100 text-slate-600';
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const [y, m, d] = String(card.due_date).split('-').map(Number);
-    const due = new Date(y, (m || 1) - 1, d || 1);
-    const diff = (due - today) / 86_400_000;
-    if (diff < 0) return 'bg-rose-100 text-rose-800';
-    if (diff <= 2) return 'bg-amber-100 text-amber-800';
+export function dueAlertClass(alert) {
+    if (!alert?.show) return 'bg-slate-100 text-slate-600';
+    if (alert.urgency === 'completed') return 'bg-emerald-100 text-emerald-800';
+    if (alert.urgency === 'overdue') return 'bg-rose-100 text-rose-800';
+    if (alert.urgency === 'soon') return 'bg-amber-100 text-amber-800';
     return 'bg-slate-100 text-slate-600';
+}
+
+export function calendarIconClass(alert) {
+    if (!alert?.show) return 'text-slate-500';
+    if (alert.urgency === 'completed') return 'text-emerald-700';
+    if (alert.urgency === 'overdue') return 'text-rose-700';
+    if (alert.urgency === 'soon') return 'text-amber-600';
+    return 'text-slate-500';
+}
+
+/** @deprecated use dueAlertClass(cardDueAlert(card)) */
+export function dueClass(card) {
+    return dueAlertClass(cardDueAlert(card));
 }
 
 export function avatarInitials(name) {

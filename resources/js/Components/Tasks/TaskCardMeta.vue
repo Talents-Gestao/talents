@@ -3,11 +3,12 @@ import {
     attachmentsCount,
     avatarColor,
     avatarInitials,
+    calendarIconClass,
+    cardDueAlert,
     checklistTotals,
     commentsCount,
     descriptionPresent,
-    dueClass,
-    dueLabel,
+    dueAlertClass,
 } from '@/utils/taskCardMeta';
 import {
     CalendarDaysIcon,
@@ -26,20 +27,42 @@ const props = defineProps({
 const checklist = computed(() => checklistTotals(props.card));
 const comments = computed(() => commentsCount(props.card));
 const attachments = computed(() => attachmentsCount(props.card));
+const dueAlert = computed(() => cardDueAlert(props.card));
+
+const checklistTitle = computed(() => {
+    if (!checklist.value) return '';
+    const base = `Checklist ${checklist.value.done}/${checklist.value.total}`;
+    if (dueAlert.value?.hasChecklistDue && dueAlert.value.urgency === 'soon') {
+        return `${base} · etapa vence em breve`;
+    }
+    if (dueAlert.value?.hasChecklistDue && dueAlert.value.urgency === 'overdue') {
+        return `${base} · etapa atrasada`;
+    }
+    return base;
+});
 </script>
 
 <template>
     <div class="mt-2 flex items-end justify-between gap-2">
         <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
             <span
-                v-if="card.due_date || card.completed_at"
+                v-if="dueAlert.show"
                 class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium"
-                :class="dueClass(card)"
-                :title="card.completed_at ? 'Concluído' : 'Data de entrega'"
+                :class="dueAlertClass(dueAlert)"
+                :title="dueAlert.title"
             >
-                <CheckCircleIcon v-if="card.completed_at" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <CalendarDaysIcon v-else class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                {{ dueLabel(card.due_date) || (card.completed_at ? 'Concluído' : '') }}
+                <CheckCircleIcon
+                    v-if="dueAlert.urgency === 'completed'"
+                    class="h-3.5 w-3.5 shrink-0"
+                    aria-hidden="true"
+                />
+                <CalendarDaysIcon
+                    v-else
+                    class="h-3.5 w-3.5 shrink-0"
+                    :class="calendarIconClass(dueAlert)"
+                    aria-hidden="true"
+                />
+                {{ dueAlert.label }}
             </span>
 
             <span
@@ -53,11 +76,25 @@ const attachments = computed(() => attachmentsCount(props.card));
             <span
                 v-if="checklist"
                 class="inline-flex items-center gap-0.5 font-medium"
-                :class="checklist.complete ? 'text-emerald-700' : 'text-slate-500'"
-                :title="`Checklist ${checklist.done}/${checklist.total}`"
+                :class="
+                    dueAlert.hasChecklistDue && dueAlert.urgency === 'overdue'
+                        ? 'text-rose-700'
+                        : dueAlert.hasChecklistDue && dueAlert.urgency === 'soon'
+                          ? 'text-amber-700'
+                          : checklist.complete
+                            ? 'text-emerald-700'
+                            : 'text-slate-500'
+                "
+                :title="checklistTitle"
             >
                 <ClipboardDocumentListIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 {{ checklist.done }}/{{ checklist.total }}
+                <CalendarDaysIcon
+                    v-if="dueAlert.hasChecklistDue && dueAlert.urgency !== 'completed'"
+                    class="h-3 w-3 shrink-0"
+                    :class="calendarIconClass(dueAlert)"
+                    aria-hidden="true"
+                />
             </span>
 
             <span v-if="comments" class="inline-flex items-center gap-0.5" :title="`${comments} comentário(s)`">
