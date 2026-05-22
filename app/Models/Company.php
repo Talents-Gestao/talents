@@ -165,6 +165,16 @@ class Company extends Model
     }
 
     /**
+     * Janela de visualização do calendário estratégico conforme o plano (null = sem limite).
+     *
+     * @return array{start: \Carbon\Carbon, end: \Carbon\Carbon, label: string, period: \App\Enums\StrategicCalendarViewPeriod}|null
+     */
+    public function strategicCalendarVisibleRange(?\Carbon\Carbon $now = null): ?array
+    {
+        return \App\Support\StrategicCalendarPeriod::forCompany($this, $now);
+    }
+
+    /**
      * Módulo Tarefas: override na empresa ou chave no plano da assinatura ativa.
      */
     public function hasTasksEnabled(): bool

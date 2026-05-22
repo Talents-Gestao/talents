@@ -5,13 +5,17 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
-defineProps({ modules: Array });
+const props = defineProps({
+    modules: Array,
+    strategicCalendarViewPeriodOptions: { type: Array, default: () => [] },
+});
 
 const form = useForm({
     name: '',
     price_reais: '',
     max_employees: null,
     max_surveys_per_year: null,
+    strategic_calendar_view_period: '',
     module_ids: [],
     is_active: true,
 });
@@ -56,6 +60,26 @@ const toggleModule = (id) => {
             <div>
                 <InputLabel for="max_surveys" value="Máx. pesquisas / ano" />
                 <TextInput id="max_surveys" type="number" v-model="form.max_surveys_per_year" class="mt-1 block w-full" />
+            </div>
+            <div>
+                <InputLabel for="strategic_calendar_view_period" value="Período visível do calendário estratégico (cliente)" />
+                <select
+                    id="strategic_calendar_view_period"
+                    v-model="form.strategic_calendar_view_period"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option value="">Sem limite</option>
+                    <option
+                        v-for="opt in props.strategicCalendarViewPeriodOptions"
+                        :key="opt.value"
+                        :value="opt.value"
+                    >
+                        {{ opt.label }}
+                    </option>
+                </select>
+                <p class="mt-1 text-xs text-gray-500">
+                    Aplica-se ao portal do cliente quando o plano inclui o módulo Calendário estratégico.
+                </p>
             </div>
             <div>
                 <p class="text-sm text-gray-600">Módulos</p>

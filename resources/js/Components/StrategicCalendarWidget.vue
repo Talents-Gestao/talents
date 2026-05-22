@@ -16,6 +16,9 @@ const props = defineProps({
     dashboardRoute: { type: String, required: true },
     queryParamYear: { type: String, default: 'cal_year' },
     queryParamMonth: { type: String, default: 'cal_month' },
+    canNavigatePrev: { type: Boolean, default: true },
+    canNavigateNext: { type: Boolean, default: true },
+    periodLabel: { type: String, default: null },
 });
 
 const localYear = ref(props.year);
@@ -30,6 +33,9 @@ watch(
 );
 
 const goMonth = (delta) => {
+    if (delta < 0 && !props.canNavigatePrev) return;
+    if (delta > 0 && !props.canNavigateNext) return;
+
     let y = localYear.value;
     let mo = localMonth.value + delta;
     if (mo < 1) {
@@ -88,6 +94,9 @@ const goToday = () => {
                 embedded
                 compact
                 :show-view-toggle="false"
+                :can-navigate-prev="canNavigatePrev"
+                :can-navigate-next="canNavigateNext"
+                :period-label="periodLabel"
                 @navigate-month="goMonth"
                 @go-today="goToday"
             />

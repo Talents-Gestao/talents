@@ -12,9 +12,15 @@ const props = defineProps({
     calendarYear: Number,
     calendarMonth: Number,
     kindLabels: Object,
+    visiblePeriod: { type: Object, default: null },
+    canNavigatePrev: { type: Boolean, default: true },
+    canNavigateNext: { type: Boolean, default: true },
 });
 
 const navigateMonth = (delta) => {
+    if (delta < 0 && !props.canNavigatePrev) return;
+    if (delta > 0 && !props.canNavigateNext) return;
+
     let y = props.calendarYear;
     let m = props.calendarMonth + delta;
     if (m < 1) {
@@ -70,6 +76,9 @@ const goToday = () => {
                 :items="monthItems"
                 :agenda-items="agendaItems"
                 :kind-labels="kindLabels"
+                :can-navigate-prev="canNavigatePrev"
+                :can-navigate-next="canNavigateNext"
+                :period-label="visiblePeriod?.label ?? null"
                 @navigate-month="navigateMonth"
                 @go-today="goToday"
             />

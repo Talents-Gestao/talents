@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\StrategicCalendarViewPeriod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +15,7 @@ class Plan extends Model
         'price_monthly_cents',
         'max_employees',
         'max_surveys_per_year',
+        'strategic_calendar_view_period',
         'is_active',
     ];
 
@@ -21,6 +23,7 @@ class Plan extends Model
     {
         return [
             'is_active' => 'boolean',
+            'strategic_calendar_view_period' => StrategicCalendarViewPeriod::class,
         ];
     }
 

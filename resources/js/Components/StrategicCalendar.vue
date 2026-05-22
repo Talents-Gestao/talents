@@ -14,6 +14,10 @@ const props = defineProps({
     showViewToggle: { type: Boolean, default: true },
     /** Sem borda/sombra externa (ex.: dentro do StrategicCalendarWidget que já usa surface-card) */
     embedded: { type: Boolean, default: false },
+    canNavigatePrev: { type: Boolean, default: true },
+    canNavigateNext: { type: Boolean, default: true },
+    /** Rótulo do período do plano (ex.: "2 meses") para banner informativo */
+    periodLabel: { type: String, default: null },
 });
 
 const emit = defineEmits(['navigate-month', 'go-today', 'update:view']);
@@ -150,10 +154,12 @@ function onPickDay(cell) {
 }
 
 function onPrev() {
+    if (!props.canNavigatePrev) return;
     emit('navigate-month', -1);
 }
 
 function onNext() {
+    if (!props.canNavigateNext) return;
     emit('navigate-month', 1);
 }
 
@@ -195,6 +201,14 @@ function monthCellClass(cell) {
 
 <template>
     <div :class="rootShellClass">
+        <p
+            v-if="periodLabel"
+            class="border-b border-amber-200/80 bg-amber-50/90 px-4 py-2 text-xs text-amber-900 sm:text-sm"
+            :class="compact ? 'px-3 sm:px-4' : 'px-4 sm:px-6'"
+        >
+            Visualização limitada ao período do seu plano:
+            <span class="font-semibold">{{ periodLabel }}</span>
+        </p>
         <!-- Toolbar -->
         <div
             class="flex flex-col gap-3 border-b border-slate-200/80 sm:flex-row sm:items-center sm:justify-between"
@@ -249,7 +263,13 @@ function monthCellClass(cell) {
                 <div class="flex items-center gap-1">
                     <button
                         type="button"
-                        class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        class="rounded-lg p-2 transition"
+                        :class="
+                            canNavigatePrev
+                                ? 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+                                : 'cursor-not-allowed text-slate-200'
+                        "
+                        :disabled="!canNavigatePrev"
                         aria-label="Mês anterior"
                         @click="onPrev"
                     >
@@ -263,7 +283,13 @@ function monthCellClass(cell) {
                     </span>
                     <button
                         type="button"
-                        class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        class="rounded-lg p-2 transition"
+                        :class="
+                            canNavigateNext
+                                ? 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+                                : 'cursor-not-allowed text-slate-200'
+                        "
+                        :disabled="!canNavigateNext"
                         aria-label="Próximo mês"
                         @click="onNext"
                     >

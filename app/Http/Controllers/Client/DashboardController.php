@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\Complaint;
 use App\Models\StrategicCalendarItem;
 use App\Models\Survey;
+use App\Support\StrategicCalendarPeriod;
 use App\Models\SurveyResult;
 use App\Models\TaskCard;
 use Carbon\Carbon;
@@ -120,13 +121,18 @@ class DashboardController extends Controller
         if ($company) {
             $today = Carbon::today();
             $weekEnd = $today->copy()->addDays(7);
-            $upcomingCalendar = StrategicCalendarItem::query()
+            $upcomingQuery = StrategicCalendarItem::query()
                 ->forCompany($company)
                 ->whereBetween('occurs_on', [$today->toDateString(), $weekEnd->toDateString()])
                 ->orderBy('occurs_on')
-                ->orderBy('id')
-                ->limit(7)
-                ->get();
+                ->orderBy('id');
+
+            $calendarRange = StrategicCalendarPeriod::forCompany($company);
+            if ($calendarRange) {
+                $upcomingQuery->whereDate('occurs_on', '<=', $calendarRange['end']->toDateString());
+            }
+
+            $upcomingCalendar = $upcomingQuery->limit(7)->get();
         }
 
         $calendarKindLabels = collect(StrategicCalendarItemKind::cases())->mapWithKeys(
@@ -135,14 +141,26 @@ class DashboardController extends Controller
 
         $dashboardCalendar = null;
         if ($company && $company->hasStrategicCalendarEnabled()) {
-            $calYear = max(2000, min(2100, (int) $request->input('cal_year', now()->year)));
-            $calMonth = max(1, min(12, (int) $request->input('cal_month', now()->month)));
+            $requestedYear = max(2000, min(2100, (int) $request->input('cal_year', now()->year)));
+            $requestedMonth = max(1, min(12, (int) $request->input('cal_month', now()->month)));
+            $view = StrategicCalendarPeriod::resolveClientView($company, $requestedYear, $requestedMonth);
+            $calYear = $view['year'];
+            $calMonth = $view['month'];
+
             $monthStart = Carbon::create($calYear, $calMonth, 1)->startOfDay();
             $monthEnd = $monthStart->copy()->endOfMonth()->endOfDay();
 
+            $range = $view['range'];
+            $monthQueryStart = $range
+                ? max($monthStart->toDateString(), $range['start']->toDateString())
+                : $monthStart->toDateString();
+            $monthQueryEnd = $range
+                ? min($monthEnd->toDateString(), $range['end']->toDateString())
+                : $monthEnd->toDateString();
+
             $items = StrategicCalendarItem::query()
                 ->forCompany($company)
-                ->whereBetween('occurs_on', [$monthStart->toDateString(), $monthEnd->toDateString()])
+                ->whereBetween('occurs_on', [$monthQueryStart, $monthQueryEnd])
                 ->orderBy('occurs_on')
                 ->orderBy('id')
                 ->get();
@@ -152,6 +170,9 @@ class DashboardController extends Controller
                 'month' => $calMonth,
                 'items' => $items,
                 'kindLabels' => $calendarKindLabels,
+                'visiblePeriod' => $view['visiblePeriod'],
+                'canNavigatePrev' => $view['canNavigatePrev'],
+                'canNavigateNext' => $view['canNavigateNext'],
             ];
         }
 

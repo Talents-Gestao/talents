@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\StrategicCalendarItemKind;
+use App\Enums\StrategicCalendarViewPeriod;
 use App\Models\Company;
 use App\Models\Module;
 use App\Models\Plan;
@@ -183,5 +184,108 @@ class StrategicCalendarTest extends TestCase
             ->component('Client/StrategicCalendar/Index')
             ->has('monthItems', 1)
             ->where('monthItems.0.title', 'Global'));
+    }
+
+    public function test_client_calendar_clamped_to_two_months_plan(): void
+    {
+        $company = $this->baseCompany();
+        $plan = Plan::query()->create([
+            'name' => 'Plano 2 meses',
+            'slug' => 'plano-2m-'.Str::random(8),
+            'price_monthly_cents' => 0,
+            'is_active' => true,
+            'strategic_calendar_view_period' => StrategicCalendarViewPeriod::TwoMonths,
+        ]);
+        $cal = Module::query()->firstOrCreate(
+            ['key' => Module::KEY_CALENDARIO_ESTRATEGICO],
+            ['name' => 'Calendário', 'description' => 'x']
+        );
+        $plan->modules()->sync([$cal->id]);
+
+        Subscription::query()->create([
+            'company_id' => $company->id,
+            'plan_id' => $plan->id,
+            'starts_at' => now(),
+            'ends_at' => now()->addYear(),
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $now = now();
+        $inRange = $now->copy()->addMonth()->endOfMonth();
+        $outOfRange = $now->copy()->addMonths(3)->startOfMonth();
+
+        StrategicCalendarItem::query()->create([
+            'title' => 'Dentro do plano',
+            'description' => null,
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => $inRange->toDateString(),
+            'company_id' => null,
+        ]);
+
+        StrategicCalendarItem::query()->create([
+            'title' => 'Fora do plano',
+            'description' => null,
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => $outOfRange->toDateString(),
+            'company_id' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/client/calendario-estrategico?year=2020&month=1')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Client/StrategicCalendar/Index')
+                ->where('calendarYear', $now->year)
+                ->where('calendarMonth', $now->month)
+                ->where('visiblePeriod.label', StrategicCalendarViewPeriod::TwoMonths->label())
+                ->where('canNavigatePrev', false)
+                ->missing('monthItems.1'));
+
+        $this->actingAs($user)
+            ->get('/client/calendario-estrategico?year='.$outOfRange->year.'&month='.$outOfRange->month)
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('calendarYear', $now->year)
+                ->where('calendarMonth', $now->month));
+    }
+
+    public function test_client_calendar_unlimited_when_plan_has_no_period(): void
+    {
+        $company = $this->baseCompany();
+        $plan = Plan::query()->create([
+            'name' => 'Plano sem limite',
+            'slug' => 'plano-free-cal-'.Str::random(8),
+            'price_monthly_cents' => 0,
+            'is_active' => true,
+            'strategic_calendar_view_period' => null,
+        ]);
+        $cal = Module::query()->firstOrCreate(
+            ['key' => Module::KEY_CALENDARIO_ESTRATEGICO],
+            ['name' => 'Calendário', 'description' => 'x']
+        );
+        $plan->modules()->sync([$cal->id]);
+
+        Subscription::query()->create([
+            'company_id' => $company->id,
+            'plan_id' => $plan->id,
+            'starts_at' => now(),
+            'ends_at' => now()->addYear(),
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $this->actingAs($user)
+            ->get('/client/calendario-estrategico?year=2030&month=6')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Client/StrategicCalendar/Index')
+                ->where('calendarYear', 2030)
+                ->where('calendarMonth', 6)
+                ->where('visiblePeriod', null)
+                ->where('canNavigatePrev', true)
+                ->where('canNavigateNext', true));
     }
 }
