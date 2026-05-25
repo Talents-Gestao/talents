@@ -60,6 +60,8 @@ function setCoverColor(color) {
 const commentForm = useForm({ body: '', mentioned_user_ids: [] });
 const checklistForm = useForm({ name: '' });
 const checklistBulkProcessing = ref({});
+const editingChecklistId = ref(null);
+const editingChecklistName = ref('');
 const editingChecklistItemId = ref(null);
 const editingChecklistItemText = ref('');
 const newChecklistItems = ref({});
@@ -82,6 +84,8 @@ watch(
             activeTab.value = 'details';
             showNewLabelForm.value = false;
             editingLabelId.value = null;
+            cancelInlineEditChecklist();
+            cancelInlineEditItem();
         }
         cardUpdate.title = c.title || '';
         cardUpdate.description = c.description || '';
@@ -245,6 +249,60 @@ function createChecklist() {
         preserveState: true,
         onSuccess: () => {
             checklistForm.reset('name');
+            reloadBoardPayloadAndSyncCard();
+        },
+    });
+}
+
+function startInlineEditChecklist(checklist) {
+    if (!props.isAdmin || !checklist?.id) return;
+    editingChecklistId.value = checklist.id;
+    editingChecklistName.value = checklist.name || '';
+}
+
+function cancelInlineEditChecklist() {
+    editingChecklistId.value = null;
+    editingChecklistName.value = '';
+}
+
+function saveInlineEditChecklist(checklist) {
+    if (!props.isAdmin || !checklist?.id) return;
+    const name = editingChecklistName.value.trim();
+    if (!name || name === checklist.name) {
+        cancelInlineEditChecklist();
+        return;
+    }
+
+    router.patch(
+        route('admin.tarefas.checklists.update', checklist.id),
+        { name },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                cancelInlineEditChecklist();
+                reloadBoardPayloadAndSyncCard();
+            },
+        },
+    );
+}
+
+function deleteChecklist(checklist) {
+    if (!props.isAdmin || !checklist?.id) return;
+    const display = (checklist.name || '').trim() || 'sem nome';
+    if (
+        !window.confirm(
+            `Excluir a checklist "${display}"?\n\nTodos os itens desta checklist serão removidos.`,
+        )
+    ) {
+        return;
+    }
+
+    router.delete(route('admin.tarefas.checklists.destroy', checklist.id), {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            if (editingChecklistId.value === checklist.id) cancelInlineEditChecklist();
             reloadBoardPayloadAndSyncCard();
         },
     });
@@ -677,16 +735,45 @@ function itemDueClass(item) {
                             class="rounded-md border border-slate-200 p-2"
                         >
                             <div class="flex items-center justify-between gap-2">
-                                <p class="text-xs font-semibold text-slate-700">{{ cl.name }}</p>
-                                <button
-                                    v-if="!isReadOnly"
-                                    type="button"
-                                    class="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                                    :disabled="checklistBulkProcessing[cl.id]"
-                                    @click="toggleChecklistCompletion(cl)"
-                                >
-                                    {{ checklistStats(cl).done ? 'Reabrir' : 'Concluir' }}
-                                </button>
+                                <div class="min-w-0 flex-1">
+                                    <TextInput
+                                        v-if="isAdmin && editingChecklistId === cl.id"
+                                        v-model="editingChecklistName"
+                                        class="h-8 w-full border-slate-200 bg-white text-xs font-semibold shadow-none"
+                                        @keydown.enter.prevent="saveInlineEditChecklist(cl)"
+                                        @keydown.esc.prevent="cancelInlineEditChecklist"
+                                        @blur="saveInlineEditChecklist(cl)"
+                                    />
+                                    <button
+                                        v-else-if="isAdmin"
+                                        type="button"
+                                        class="block max-w-full truncate text-left text-xs font-semibold text-slate-700 hover:text-talents-700"
+                                        title="Clique para editar o nome"
+                                        @click="startInlineEditChecklist(cl)"
+                                    >
+                                        {{ cl.name }}
+                                    </button>
+                                    <p v-else class="truncate text-xs font-semibold text-slate-700">{{ cl.name }}</p>
+                                </div>
+                                <div class="flex shrink-0 items-center gap-1">
+                                    <button
+                                        v-if="isAdmin"
+                                        type="button"
+                                        class="text-[11px] text-red-600 underline hover:text-red-700"
+                                        @click="deleteChecklist(cl)"
+                                    >
+                                        Excluir
+                                    </button>
+                                    <button
+                                        v-if="!isReadOnly"
+                                        type="button"
+                                        class="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                        :disabled="checklistBulkProcessing[cl.id]"
+                                        @click="toggleChecklistCompletion(cl)"
+                                    >
+                                        {{ checklistStats(cl).done ? 'Reabrir' : 'Concluir' }}
+                                    </button>
+                                </div>
                             </div>
                             <div class="mt-2">
                                 <div class="mb-1 flex items-center justify-between text-[11px] text-slate-500">

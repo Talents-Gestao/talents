@@ -31,17 +31,24 @@ class TaskBoardChecklistController extends Controller
     public function update(Request $request, TaskChecklist $checklist): RedirectResponse
     {
         $data = $request->validate([
-            'is_completed' => ['required', 'boolean'],
+            'name' => ['sometimes', 'string', 'max:255'],
+            'is_completed' => ['sometimes', 'boolean'],
         ]);
 
-        $checklist->update([
-            'is_completed' => (bool) $data['is_completed'],
-        ]);
+        if (array_key_exists('name', $data)) {
+            $checklist->update(['name' => $data['name']]);
+        }
 
-        if ($checklist->items()->exists()) {
-            $checklist->items()->update([
+        if (array_key_exists('is_completed', $data)) {
+            $checklist->update([
                 'is_completed' => (bool) $data['is_completed'],
             ]);
+
+            if ($checklist->items()->exists()) {
+                $checklist->items()->update([
+                    'is_completed' => (bool) $data['is_completed'],
+                ]);
+            }
         }
 
         return back()->with('success', 'Checklist atualizada.');
