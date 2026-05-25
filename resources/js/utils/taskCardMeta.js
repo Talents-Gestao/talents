@@ -4,23 +4,37 @@ export function descriptionPresent(card) {
 }
 
 export function checklistTotals(card) {
-    const explicitTotal = Number(card?.checklist_total);
-    if (Number.isFinite(explicitTotal) && explicitTotal > 0) {
-        const done = Number(card?.checklist_done) || 0;
-        return { done, total: explicitTotal, complete: done === explicitTotal };
+    if (!card) return null;
+
+    const explicitTotal = Number(card.checklist_total);
+    const explicitDone = Number(card.checklist_done) || 0;
+    const hasExplicit = Number.isFinite(explicitTotal);
+
+    const checklists = Array.isArray(card.checklists) ? card.checklists : [];
+    const hasAnyChecklist = hasExplicit
+        ? explicitTotal > 0 || checklists.length > 0
+        : checklists.length > 0;
+
+    if (!hasAnyChecklist) return null;
+
+    let total = hasExplicit ? explicitTotal : 0;
+    let done = hasExplicit ? explicitDone : 0;
+
+    if (!hasExplicit) {
+        checklists.forEach((cl) => {
+            cl.items?.forEach((it) => {
+                total += 1;
+                if (it.is_completed) done += 1;
+            });
+        });
     }
 
-    if (!card?.checklists?.length) return null;
-    let total = 0;
-    let done = 0;
-    card.checklists.forEach((cl) => {
-        cl.items?.forEach((it) => {
-            total += 1;
-            if (it.is_completed) done += 1;
-        });
-    });
-    if (total === 0) return null;
-    return { done, total, complete: done === total };
+    return {
+        done,
+        total,
+        complete: total > 0 && done === total,
+        empty: total === 0,
+    };
 }
 
 export function commentsCount(card) {

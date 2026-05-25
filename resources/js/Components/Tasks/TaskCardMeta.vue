@@ -31,6 +31,7 @@ const dueAlert = computed(() => cardDueAlert(props.card));
 
 const checklistTitle = computed(() => {
     if (!checklist.value) return '';
+    if (checklist.value.empty) return 'Checklist sem etapas';
     const base = `Checklist ${checklist.value.done}/${checklist.value.total}`;
     if (dueAlert.value?.hasChecklistDue && dueAlert.value.urgency === 'soon') {
         return `${base} · etapa vence em breve`;
@@ -77,20 +78,22 @@ const checklistTitle = computed(() => {
                 v-if="checklist"
                 class="inline-flex items-center gap-0.5 font-medium"
                 :class="
-                    dueAlert.hasChecklistDue && dueAlert.urgency === 'overdue'
-                        ? 'text-rose-700'
-                        : dueAlert.hasChecklistDue && dueAlert.urgency === 'soon'
-                          ? 'text-amber-700'
-                          : checklist.complete
-                            ? 'text-emerald-700'
-                            : 'text-slate-500'
+                    checklist.empty
+                        ? 'text-slate-400'
+                        : dueAlert.hasChecklistDue && dueAlert.urgency === 'overdue'
+                          ? 'text-rose-700'
+                          : dueAlert.hasChecklistDue && dueAlert.urgency === 'soon'
+                            ? 'text-amber-700'
+                            : checklist.complete
+                              ? 'text-emerald-700'
+                              : 'text-slate-500'
                 "
                 :title="checklistTitle"
             >
                 <ClipboardDocumentListIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                {{ checklist.done }}/{{ checklist.total }}
+                <template v-if="!checklist.empty">{{ checklist.done }}/{{ checklist.total }}</template>
                 <CalendarDaysIcon
-                    v-if="dueAlert.hasChecklistDue && dueAlert.urgency !== 'completed'"
+                    v-if="!checklist.empty && dueAlert.hasChecklistDue && dueAlert.urgency !== 'completed'"
                     class="h-3 w-3 shrink-0"
                     :class="calendarIconClass(dueAlert)"
                     aria-hidden="true"
