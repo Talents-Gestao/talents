@@ -3,12 +3,15 @@ import TextInput from '@/Components/TextInput.vue';
 import TaskCardMeta from '@/Components/Tasks/TaskCardMeta.vue';
 import { router } from '@inertiajs/vue3';
 import {
+    ArrowsPointingOutIcon,
+    ChevronDoubleLeftIcon,
     EllipsisHorizontalIcon,
     PencilSquareIcon,
     PlusIcon,
     TrashIcon,
     XMarkIcon,
 } from '@heroicons/vue/24/outline';
+import { useCollapsedLists } from '@/composables/useCollapsedLists';
 import { VueDraggable } from 'vue-draggable-plus';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
@@ -20,6 +23,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['open-card', 'refresh']);
+
+const { isCollapsed: isListCollapsed, toggleCollapsed: toggleListCollapsed } = useCollapsedLists();
 
 const LIST_COLOR_PRESETS = [
     { value: '#ef4444', label: 'Vermelho' },
@@ -402,6 +407,18 @@ function openCard(card) {
     emit('open-card', card);
 }
 
+function collapseListFromMenu(list, event) {
+    event?.stopPropagation?.();
+    toggleListCollapsed(list.id);
+    closeListMenu();
+}
+
+function expandList(list) {
+    if (isListCollapsed(list.id)) {
+        toggleListCollapsed(list.id);
+    }
+}
+
 </script>
 
 <template>
@@ -411,12 +428,32 @@ function openCard(card) {
                 v-for="list in localLists"
                 :key="list.id"
                 :data-list-id="list.id"
-                class="flex w-72 shrink-0 flex-col rounded-xl p-2 shadow-sm ring-1 ring-slate-200"
-                :class="list.color ? '' : 'bg-slate-100'"
+                class="flex shrink-0 flex-col rounded-xl p-2 shadow-sm ring-1 ring-slate-200 transition-all duration-200"
+                :class="[
+                    isListCollapsed(list.id) ? 'w-10 cursor-pointer' : 'w-72',
+                    list.color ? '' : 'bg-slate-100',
+                ]"
                 :style="listColumnStyle(list)"
+                @click="isListCollapsed(list.id) && expandList(list)"
             >
-                <header class="flex items-start justify-between gap-2 px-1.5 pb-1 pt-1">
-                    <div class="min-w-0 flex-1">
+                <header
+                    class="flex items-start justify-between gap-2 px-1.5 pb-1 pt-1"
+                    :class="isListCollapsed(list.id) ? 'flex-col items-center gap-1' : ''"
+                >
+                    <div
+                        v-if="isListCollapsed(list.id)"
+                        class="flex min-h-[8rem] flex-1 flex-col items-center justify-start gap-1 py-1"
+                    >
+                        <p
+                            class="text-xs font-semibold text-slate-900"
+                            style="writing-mode: vertical-rl; transform: rotate(180deg)"
+                            :title="list.name"
+                        >
+                            {{ list.name }}
+                        </p>
+                        <span class="text-[10px] font-normal text-slate-500">({{ list.cards?.length ?? 0 }})</span>
+                    </div>
+                    <div v-else class="min-w-0 flex-1">
                         <input
                             v-if="isAdmin && editingListId === list.id"
                             :data-list-rename-input="list.id"
@@ -459,6 +496,7 @@ function openCard(card) {
                 </header>
 
                 <VueDraggable
+                    v-if="!isListCollapsed(list.id)"
                     v-model="list.cards"
                     group="kanban-cards"
                     item-key="id"
@@ -503,7 +541,7 @@ function openCard(card) {
                     </div>
                 </VueDraggable>
 
-                <div v-if="isAdmin" class="px-0.5 pt-2">
+                <div v-if="isAdmin && !isListCollapsed(list.id)" class="px-0.5 pt-2">
                     <div v-if="composing[list.id]" class="space-y-2">
                         <div
                             v-if="
@@ -638,6 +676,18 @@ function openCard(card) {
                 }"
                 @click.stop
             >
+                <button
+                    type="button"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    @click="collapseListFromMenu(listMenuPosition.list, $event)"
+                >
+                    <ChevronDoubleLeftIcon
+                        v-if="!isListCollapsed(listMenuPosition.list.id)"
+                        class="h-3.5 w-3.5"
+                    />
+                    <ArrowsPointingOutIcon v-else class="h-3.5 w-3.5" />
+                    {{ isListCollapsed(listMenuPosition.list.id) ? 'Expandir lista' : 'Encolher lista' }}
+                </button>
                 <button
                     type="button"
                     class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50"

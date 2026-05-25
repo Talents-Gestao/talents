@@ -25,7 +25,7 @@ final class BoardPresenter
      */
     public static function forAdminIndex(TaskBoard $board): array
     {
-        $board->loadMissing([
+        $board->load([
             'company:id,name',
             'lists' => fn ($q) => $q->where('is_archived', false)->orderBy('position')->orderBy('id'),
             'lists.cards' => fn ($q) => $q->where('is_archived', false)
@@ -35,7 +35,7 @@ final class BoardPresenter
                     'company:id,name',
                     'labels:id,name,color',
                     'members:id,name',
-                    'checklists.items:id,task_checklist_id,is_completed',
+                    'checklists.items:id,task_checklist_id,is_completed,due_date',
                 ])
                 ->withCount(['comments', 'attachments']),
         ]);
