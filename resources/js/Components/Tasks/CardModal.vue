@@ -8,6 +8,7 @@ import {
     ChatBubbleOvalLeftEllipsisIcon,
     ClipboardDocumentListIcon,
     PaperClipIcon,
+    TrashIcon,
 } from '@heroicons/vue/24/outline';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, nextTick, ref, watch } from 'vue';
@@ -407,6 +408,23 @@ function saveInlineEditItem(item) {
             },
         },
     );
+}
+
+function deleteChecklistItem(item) {
+    if (!props.isAdmin || !item?.id) return;
+    const display = (item.text || '').trim() || 'esta etapa';
+    if (!window.confirm(`Excluir "${display}"?`)) {
+        return;
+    }
+
+    router.delete(route('admin.tarefas.checklist-itens.destroy', item.id), {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            if (editingChecklistItemId.value === item.id) cancelInlineEditItem();
+            reloadBoardPayloadAndSyncCard();
+        },
+    });
 }
 
 function toggleChecklistCompletion(checklist) {
@@ -923,6 +941,15 @@ function itemDueClass(item) {
                                         <CalendarDaysIcon class="h-3.5 w-3.5" aria-hidden="true" />
                                         {{ formatDateLabel(it.due_date) }}
                                     </span>
+                                    <button
+                                        v-if="isAdmin"
+                                        type="button"
+                                        class="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                                        title="Excluir etapa"
+                                        @click="deleteChecklistItem(it)"
+                                    >
+                                        <TrashIcon class="h-4 w-4" aria-hidden="true" />
+                                    </button>
                                 </li>
                             </ul>
                             <div v-if="isAdmin" class="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">

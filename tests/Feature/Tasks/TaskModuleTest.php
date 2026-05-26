@@ -225,6 +225,54 @@ class TaskModuleTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_delete_checklist_item(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Lista',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'Tarefa',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $checklist = TaskChecklist::query()->create([
+            'task_card_id' => $card->id,
+            'name' => 'Etapas',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        $item = TaskChecklistItem::query()->create([
+            'task_checklist_id' => $checklist->id,
+            'text' => 'Etapa a remover',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->delete('/admin/tarefas/checklist-itens/'.$item->id)
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('task_checklist_items', ['id' => $item->id]);
+    }
+
     public function test_client_only_sees_lists_with_own_visible_cards(): void
     {
         $companyA = $this->baseCompany();
