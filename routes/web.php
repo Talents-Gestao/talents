@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\LandingInterestController;
 use App\Http\Controllers\ProfileController;
+use App\Support\AdminHomeResolver;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -51,7 +52,7 @@ Route::get('/dashboard', function () {
     }
 
     if ($user->isSuperAdmin()) {
-        return redirect()->route('admin.dashboard');
+        return redirect(app(AdminHomeResolver::class)->urlFor($user));
     }
 
     return redirect()->route('client.dashboard');

@@ -5,7 +5,8 @@ import DropdownLink from '@/Components/DropdownLink.vue';
 import SidebarLayout from '@/Components/SidebarLayout.vue';
 import SidebarNavItem from '@/Components/SidebarNavItem.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import {
     AcademicCapIcon,
     BanknotesIcon,
@@ -26,6 +27,10 @@ import {
 } from '@heroicons/vue/24/outline';
 
 const { canAdmin } = useAdminPermissions();
+const page = usePage();
+const adminHomeUrl = computed(
+    () => page.props.auth?.user?.admin_home_url ?? route('admin.dashboard'),
+);
 </script>
 
 <template>
@@ -36,7 +41,7 @@ const { canAdmin } = useAdminPermissions();
     >
         <template #logo="{ collapsed }">
             <Link
-                :href="route('admin.dashboard')"
+                :href="adminHomeUrl"
                 class="flex min-w-0 max-w-full items-center justify-center lg:justify-start"
             >
                 <ApplicationLogo

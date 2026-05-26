@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Support\AdminHomeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -36,7 +37,7 @@ class AuthenticatedSessionController extends Controller
         $user = $request->user();
 
         if ($user->isSuperAdmin()) {
-            return redirect()->intended(route('admin.dashboard', absolute: false));
+            return redirect()->intended(app(AdminHomeResolver::class)->urlFor($user));
         }
 
         return redirect()->intended(route('client.dashboard', absolute: false));

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\AdminHomeResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Middleware;
@@ -70,6 +71,9 @@ class HandleInertiaRequests extends Middleware
                             ? $user->adminPermissionMatrixForFrontend()
                             : null,
                         'is_owner' => $user->isSuperAdmin() && $user->isOwner(),
+                        'admin_home_url' => $user->isSuperAdmin()
+                            ? $this->adminHomeUrlFor($user)
+                            : null,
                     ]
                     : null,
             ],
@@ -90,5 +94,12 @@ class HandleInertiaRequests extends Middleware
         }
 
         return $shared;
+    }
+
+    private function adminHomeUrlFor(\App\Models\User $user): ?string
+    {
+        $routeName = app(AdminHomeResolver::class)->routeNameFor($user);
+
+        return $routeName !== null ? route($routeName, absolute: false) : null;
     }
 }
