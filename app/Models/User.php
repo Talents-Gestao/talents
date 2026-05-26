@@ -135,6 +135,26 @@ class User extends Authenticatable
     }
 
     /**
+     * Verdadeiro quando o super admin tem todas as combinações módulo × ação (ou é proprietário).
+     */
+    public function hasAllAdminPermissions(): bool
+    {
+        if (! $this->isSuperAdmin()) {
+            return false;
+        }
+
+        foreach (AdminPermissionModule::all() as $module) {
+            foreach (PermissionAction::all() as $action) {
+                if (! $this->canAccessAdmin($module, $action)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Matriz para o sidebar admin: módulo => lista de ações (values).
      * Owner: ['*' => true].
      *

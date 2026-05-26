@@ -23,6 +23,16 @@ const remove = (user) => {
     }
 };
 
+function functionLabel(user) {
+    if (user.is_owner) {
+        return { text: 'Proprietário', class: 'bg-violet-100 text-violet-800' };
+    }
+    if (user.has_all_admin_permissions) {
+        return { text: 'Administrador', class: 'bg-talents-100 text-talents-800' };
+    }
+    return { text: 'Equipe', class: 'bg-slate-100 text-slate-700' };
+}
+
 const resendInvitation = (user) => {
     if (!user.pending_registration || resendingId.value) {
         return;
@@ -74,12 +84,11 @@ const resendInvitation = (user) => {
                         <td class="px-4 py-2 text-slate-700">{{ u.email }}</td>
                         <td class="px-4 py-2 text-slate-700">
                             <span
-                                v-if="u.is_owner"
-                                class="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800"
+                                class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                                :class="functionLabel(u).class"
                             >
-                                Proprietário
+                                {{ functionLabel(u).text }}
                             </span>
-                            <span v-else class="text-slate-600">Administrador</span>
                         </td>
                         <td class="px-4 py-2 text-slate-700">
                             {{ u.is_commercial ? 'Sim' : 'Não' }}

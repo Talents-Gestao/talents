@@ -32,6 +32,7 @@ class AdminUserController extends Controller
     {
         $users = User::query()
             ->where('role', UserRole::SuperAdmin)
+            ->with('adminPermissions')
             ->orderBy('name')
             ->get()
             ->map(fn (User $u) => [
@@ -39,6 +40,7 @@ class AdminUserController extends Controller
                 'name' => $u->name,
                 'email' => $u->email,
                 'is_owner' => $u->isOwner(),
+                'has_all_admin_permissions' => $u->hasAllAdminPermissions(),
                 'is_active' => $u->isActive(),
                 'is_commercial' => (bool) $u->is_commercial,
                 'pending_registration' => ! $u->hasCompletedRegistration(),
