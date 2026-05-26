@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Admin\Tasks;
 use App\Actions\Tasks\LogTaskActivity;
 use App\Enums\TaskBoardMemberRole;
 use App\Http\Controllers\Controller;
+use App\Enums\UserRole;
 use App\Models\TaskBoard;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class TaskBoardMemberController extends Controller
 {
@@ -20,7 +22,18 @@ class TaskBoardMemberController extends Controller
             'role' => ['nullable', Rule::in(array_map(fn ($r) => $r->value, TaskBoardMemberRole::cases()))],
         ]);
 
-        $role = $data['role'] ?? TaskBoardMemberRole::Editor->value;
+        $role = $data['role'] ?? TaskBoardMemberRole::Viewer->value;
+
+        $user = User::query()
+            ->where('id', $data['user_id'])
+            ->where('is_active', true)
+            ->first();
+
+        if (! $user || ! $this->isEligibleBoardMember($user, $board)) {
+            throw ValidationException::withMessages([
+                'user_id' => 'Usuário inválido ou não elegível para este quadro.',
+            ]);
+        }
 
         $board->members()->syncWithoutDetaching([
             $data['user_id'] => ['role' => $role],
@@ -43,5 +56,24 @@ class TaskBoardMemberController extends Controller
         ]);
 
         return back()->with('success', 'Membro removido do quadro.');
+    }
+
+    private function isEligibleBoardMember(User $user, TaskBoard $board): bool
+    {
+        $isTeam = $user->role === UserRole::SuperAdmin && $user->company_id === null;
+
+        if ($isTeam) {
+            return true;
+        }
+
+        if ($user->company_id === null) {
+            return false;
+        }
+
+        if ($board->company_id === null) {
+            return true;
+        }
+
+        return (int) $user->company_id === (int) $board->company_id;
     }
 }

@@ -105,6 +105,7 @@ function formatDate(value) {
                 :board-payload="boardPayload"
                 :is-admin="true"
                 :company-users="companyUsers || []"
+                :team-users="teamUsers || []"
                 @refresh="refreshBoard"
             />
 

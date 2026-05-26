@@ -198,6 +198,33 @@ class TaskModuleTest extends TestCase
         $this->assertSame($expected, $memberIds);
     }
 
+    public function test_admin_can_invite_talents_team_member_to_internal_board_as_viewer(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $teamMember = User::factory()->superAdmin()->create([
+            'email' => 'viewer@talents.test',
+        ]);
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'GESTÃO TALENTS',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/quadros/'.$board->id.'/membros', [
+                'user_id' => $teamMember->id,
+                'role' => 'viewer',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('task_board_members', [
+            'board_id' => $board->id,
+            'user_id' => $teamMember->id,
+            'role' => 'viewer',
+        ]);
+    }
+
     public function test_client_only_sees_lists_with_own_visible_cards(): void
     {
         $companyA = $this->baseCompany();

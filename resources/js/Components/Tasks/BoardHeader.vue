@@ -15,6 +15,8 @@ const props = defineProps({
     boardPayload: { type: Object, required: true },
     isAdmin: { type: Boolean, default: false },
     companyUsers: { type: Array, default: () => [] },
+    /** Usuários internos Talents (super admins) para quadros globais/internos. */
+    teamUsers: { type: Array, default: () => [] },
     /** Quando false, não repete o nome do quadro (ex.: já exibido num hero acima). */
     showBoardTitle: { type: Boolean, default: true },
 });
@@ -24,6 +26,7 @@ const emit = defineEmits(['refresh']);
 const isStarred = ref(Boolean(props.boardPayload?.is_starred));
 const inviting = ref(false);
 const inviteUserId = ref(null);
+const inviteRole = ref('viewer');
 const editingName = ref(false);
 const editingCover = ref(false);
 
@@ -47,10 +50,39 @@ const members = computed(() => props.boardPayload?.members ?? []);
 const visibleMembers = computed(() => members.value.slice(0, 4));
 const extraMembers = computed(() => Math.max(0, members.value.length - visibleMembers.value.length));
 
-const availableToInvite = computed(() => {
-    const memberIds = new Set(members.value.map((m) => m.id));
-    return (props.companyUsers || []).filter((u) => !memberIds.has(u.id));
+const memberIds = computed(() => new Set(members.value.map((m) => Number(m.id))));
+
+const eligibleCompanyUsers = computed(() => {
+    const list = props.companyUsers || [];
+    const companyId = props.boardPayload?.company_id;
+    if (!companyId) {
+        return list;
+    }
+    return list.filter((u) => Number(u.company_id) === Number(companyId));
 });
+
+const availableTeamToInvite = computed(() =>
+    (props.teamUsers || []).filter((u) => !memberIds.value.has(Number(u.id))),
+);
+
+const availableCompanyToInvite = computed(() =>
+    eligibleCompanyUsers.value.filter((u) => !memberIds.value.has(Number(u.id))),
+);
+
+const hasAnyoneToInvite = computed(
+    () => availableTeamToInvite.value.length > 0 || availableCompanyToInvite.value.length > 0,
+);
+
+const boardMemberRoleLabels = {
+    owner: 'Proprietário',
+    editor: 'Editar',
+    commenter: 'Comentar',
+    viewer: 'Visualizar',
+};
+
+function memberRoleLabel(role) {
+    return boardMemberRoleLabels[role] || role || 'Membro';
+}
 
 const palette = [
     'bg-amber-500',
@@ -111,16 +143,22 @@ function inviteSelected() {
     if (!inviteUserId.value) return;
     router.post(
         route('admin.tarefas.quadros.membros.store', props.boardPayload.id),
-        { user_id: inviteUserId.value, role: 'editor' },
+        { user_id: inviteUserId.value, role: inviteRole.value },
         {
             preserveScroll: true,
             onSuccess: () => {
                 inviteUserId.value = null;
-                inviting.value = false;
+                inviteRole.value = 'viewer';
                 emit('refresh');
             },
         },
     );
+}
+
+function openInviteModal() {
+    inviteUserId.value = null;
+    inviteRole.value = 'viewer';
+    inviting.value = true;
 }
 
 function removeMember(userId) {
@@ -301,7 +339,7 @@ function deleteBoard() {
                 v-if="isAdmin"
                 type="button"
                 class="inline-flex items-center gap-1.5 rounded-lg bg-talents-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
-                @click="inviting = true"
+                @click="openInviteModal"
             >
                 <UserPlusIcon class="h-4 w-4" />
                 Convidar
@@ -331,27 +369,57 @@ function deleteBoard() {
                     <div class="mt-4 space-y-3">
                         <div>
                             <label class="text-xs font-medium text-slate-600">Adicionar usuário</label>
-                            <div class="mt-1 flex gap-2">
+                            <div class="mt-1 flex flex-wrap gap-2">
                                 <select
                                     v-model="inviteUserId"
-                                    class="block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                    class="block min-w-0 flex-1 rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                                 >
                                     <option :value="null">Selecione…</option>
-                                    <option v-for="u in availableToInvite" :key="u.id" :value="u.id">
-                                        {{ u.name }} <span v-if="u.email">— {{ u.email }}</span>
-                                    </option>
+                                    <optgroup
+                                        v-if="availableTeamToInvite.length"
+                                        label="Equipe Talents"
+                                    >
+                                        <option
+                                            v-for="u in availableTeamToInvite"
+                                            :key="`team-${u.id}`"
+                                            :value="u.id"
+                                        >
+                                            {{ u.name }}{{ u.email ? ` — ${u.email}` : '' }}
+                                        </option>
+                                    </optgroup>
+                                    <optgroup
+                                        v-if="availableCompanyToInvite.length"
+                                        :label="boardPayload.company ? 'Empresa do quadro' : 'Clientes'"
+                                    >
+                                        <option
+                                            v-for="u in availableCompanyToInvite"
+                                            :key="`company-${u.id}`"
+                                            :value="u.id"
+                                        >
+                                            {{ u.name }}{{ u.email ? ` — ${u.email}` : '' }}
+                                        </option>
+                                    </optgroup>
+                                </select>
+                                <select
+                                    v-model="inviteRole"
+                                    class="w-36 shrink-0 rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                    title="Permissão no quadro"
+                                >
+                                    <option value="viewer">Visualizar</option>
+                                    <option value="commenter">Comentar</option>
+                                    <option value="editor">Editar</option>
                                 </select>
                                 <button
                                     type="button"
-                                    class="rounded-lg bg-talents-600 px-3 text-sm font-semibold text-white shadow hover:bg-talents-700 disabled:opacity-50"
+                                    class="shrink-0 rounded-lg bg-talents-600 px-3 text-sm font-semibold text-white shadow hover:bg-talents-700 disabled:opacity-50"
                                     :disabled="!inviteUserId"
                                     @click="inviteSelected"
                                 >
                                     Adicionar
                                 </button>
                             </div>
-                            <p v-if="!availableToInvite.length" class="mt-2 text-xs text-slate-500">
-                                Não há usuários elegíveis para adicionar.
+                            <p v-if="!hasAnyoneToInvite" class="mt-2 text-xs text-slate-500">
+                                Não há usuários elegíveis para adicionar. Todos da equipe ou da empresa já estão no quadro.
                             </p>
                         </div>
 
@@ -374,7 +442,10 @@ function deleteBoard() {
                                         </span>
                                         <div class="min-w-0">
                                             <p class="truncate text-sm font-medium text-slate-800">{{ m.name }}</p>
-                                            <p class="truncate text-xs text-slate-500">{{ m.email }}</p>
+                                            <p class="truncate text-xs text-slate-500">
+                                                {{ m.email }}
+                                                <span v-if="m.role" class="text-slate-400"> · {{ memberRoleLabel(m.role) }}</span>
+                                            </p>
                                         </div>
                                     </div>
                                     <button
