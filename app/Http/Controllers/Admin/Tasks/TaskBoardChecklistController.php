@@ -15,15 +15,33 @@ class TaskBoardChecklistController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'position' => ['nullable', 'numeric'],
+            'items' => ['nullable', 'array'],
+            'items.*' => ['required', 'string', 'max:2000'],
         ]);
 
         $max = (float) $card->checklists()->max('position');
         $data['position'] = $data['position'] ?? ($max + 1000);
 
-        $card->checklists()->create([
+        $checklist = $card->checklists()->create([
             'name' => $data['name'],
             'position' => $data['position'],
         ]);
+
+        $items = collect($data['items'] ?? [])
+            ->map(fn ($text) => trim((string) $text))
+            ->filter()
+            ->values();
+
+        if ($items->isNotEmpty()) {
+            $itemPosition = (float) $checklist->items()->max('position');
+            foreach ($items as $text) {
+                $itemPosition += 1000;
+                $checklist->items()->create([
+                    'text' => $text,
+                    'position' => $itemPosition,
+                ]);
+            }
+        }
 
         return back()->with('success', 'Checklist criada.');
     }

@@ -10,7 +10,7 @@ import {
     PaperClipIcon,
 } from '@heroicons/vue/24/outline';
 import { router, useForm } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 const props = defineProps({
     show: Boolean,
@@ -58,7 +58,9 @@ function setCoverColor(color) {
 }
 
 const commentForm = useForm({ body: '', mentioned_user_ids: [] });
-const checklistForm = useForm({ name: '' });
+const checklistForm = useForm({ name: '', items_text: '' });
+const pendingFocusChecklistItemInputId = ref(null);
+const checklistIdsBeforeCreate = ref(null);
 const checklistBulkProcessing = ref({});
 const editingChecklistId = ref(null);
 const editingChecklistName = ref('');
@@ -206,10 +208,58 @@ function reloadBoardPayloadAndSyncCard() {
         preserveScroll: true,
         onSuccess: () => {
             emit('sync-card', props.card.id);
-            emit('refresh');
         },
     });
 }
+
+function parseChecklistItemsText(text) {
+    return String(text || '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+}
+
+function scheduleFocusNewChecklistItemInput(checklistId) {
+    if (!checklistId) return;
+    pendingFocusChecklistItemInputId.value = Number(checklistId);
+}
+
+function focusPendingChecklistItemInput() {
+    const checklistId = pendingFocusChecklistItemInputId.value;
+    if (!checklistId) return;
+
+    nextTick(() => {
+        const el = document.querySelector(
+            `[data-checklist-new-item="${checklistId}"]`,
+        );
+        if (el && typeof el.focus === 'function') {
+            el.focus();
+            pendingFocusChecklistItemInputId.value = null;
+        }
+    });
+}
+
+watch(
+    () => props.card?.checklists,
+    (lists) => {
+        if (pendingFocusChecklistItemInputId.value === 'new' && lists?.length) {
+            const before = checklistIdsBeforeCreate.value;
+            const added = before
+                ? lists.find((cl) => !before.has(Number(cl.id)))
+                : lists.reduce((latest, cl) =>
+                      !latest || Number(cl.id) > Number(latest.id) ? cl : latest,
+                  null);
+
+            if (added?.id) {
+                scheduleFocusNewChecklistItemInput(added.id);
+                checklistIdsBeforeCreate.value = null;
+            }
+        }
+
+        focusPendingChecklistItemInput();
+    },
+    { deep: true },
+);
 
 function submitComment() {
     if (!props.card || !commentForm.body.trim()) return;
@@ -247,14 +297,25 @@ function toggleItem(item) {
 function createChecklist() {
     if (!props.isAdmin || !props.card || !checklistForm.name.trim()) return;
 
-    checklistForm.post(route('admin.tarefas.cards.checklists.store', props.card.id), {
-        preserveScroll: true,
-        preserveState: true,
-        onSuccess: () => {
-            checklistForm.reset('name');
-            reloadBoardPayloadAndSyncCard();
-        },
-    });
+    const items = parseChecklistItemsText(checklistForm.items_text);
+    checklistIdsBeforeCreate.value = new Set(
+        (props.card.checklists || []).map((cl) => Number(cl.id)),
+    );
+    pendingFocusChecklistItemInputId.value = 'new';
+
+    checklistForm
+        .transform((data) => ({
+            name: data.name.trim(),
+            items,
+        }))
+        .post(route('admin.tarefas.cards.checklists.store', props.card.id), {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                checklistForm.reset('name', 'items_text');
+                reloadBoardPayloadAndSyncCard();
+            },
+        });
 }
 
 function startInlineEditChecklist(checklist) {
@@ -544,6 +605,8 @@ function addChecklistItem(checklist) {
     const text = draft.text?.trim();
     if (!text) return;
 
+    scheduleFocusNewChecklistItemInput(checklist.id);
+
     router.post(
         route('admin.tarefas.checklists.itens.store', checklist.id),
         {
@@ -716,18 +779,30 @@ function itemDueClass(item) {
                             />
                         </div>
                     </div>
-                    <div v-if="isAdmin" class="flex gap-2">
+                    <div v-if="isAdmin" class="space-y-2 rounded-md border border-dashed border-slate-200 bg-white p-3">
                         <TextInput
                             v-model="checklistForm.name"
                             class="w-full border-slate-200 bg-white text-sm shadow-none"
                             placeholder="Nome da checklist"
+                            @keydown.enter.prevent="createChecklist"
                         />
+                        <textarea
+                            v-model="checklistForm.items_text"
+                            rows="4"
+                            :placeholder="'Etapas (opcional) — uma por linha\nEx.: Revisar briefing\nPublicar vaga\nEnviar relatório'"
+                            class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
+                        />
+                        <p class="text-[11px] text-slate-500">
+                            Você pode criar várias etapas de uma vez. Depois de salvar, o cursor permanece no campo
+                            para adicionar mais etapas na mesma checklist.
+                        </p>
                         <button
                             type="button"
                             class="rounded-md border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            :disabled="checklistForm.processing || !checklistForm.name.trim()"
                             @click="createChecklist"
                         >
-                            Criar
+                            Criar checklist
                         </button>
                     </div>
 
@@ -853,6 +928,7 @@ function itemDueClass(item) {
                             <div v-if="isAdmin" class="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
                                 <TextInput
                                     v-model="newItemDraft(cl.id).text"
+                                    :data-checklist-new-item="cl.id"
                                     class="min-w-0 flex-1 border-slate-200 bg-white text-sm shadow-none"
                                     placeholder="Nova etapa…"
                                     @keydown.enter.prevent="addChecklistItem(cl)"

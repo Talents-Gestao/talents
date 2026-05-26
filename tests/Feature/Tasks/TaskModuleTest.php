@@ -884,4 +884,47 @@ class TaskModuleTest extends TestCase
                 ->where('boardPayload.lists.0.cards.0.checklist_done', 1)
             );
     }
+
+    public function test_admin_can_create_checklist_with_multiple_items_at_once(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Lista',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'Tarefa',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/cards/'.$card->id.'/checklists', [
+                'name' => 'Publicação',
+                'items' => ['Revisar briefing', 'Publicar vaga', 'Enviar relatório'],
+            ])
+            ->assertRedirect();
+
+        $checklist = TaskChecklist::query()->where('task_card_id', $card->id)->first();
+        $this->assertNotNull($checklist);
+        $this->assertSame('Publicação', $checklist->name);
+        $this->assertSame(
+            ['Revisar briefing', 'Publicar vaga', 'Enviar relatório'],
+            $checklist->items()->orderBy('position')->pluck('text')->all(),
+        );
+    }
 }
