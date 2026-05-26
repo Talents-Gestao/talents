@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Support\AdminHomeResolver;
+use App\Support\WorkspaceManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +14,10 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
+    public function __construct(
+        private WorkspaceManager $workspaceManager,
+    ) {}
+
     /**
      * Display the login view.
      */
@@ -36,11 +40,7 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
-        if ($user->isSuperAdmin()) {
-            return redirect()->intended(app(AdminHomeResolver::class)->urlFor($user));
-        }
-
-        return redirect()->intended(route('client.dashboard', absolute: false));
+        return $this->workspaceManager->redirectAfterLogin($user, $request);
     }
 
     /**

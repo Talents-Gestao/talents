@@ -4,16 +4,16 @@ namespace App\Actions;
 
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
-use App\Models\User;
+use App\Models\UserWorkspace;
 
 class SyncAdminUserPermissions
 {
     /**
      * @param  array<int, array{module: string, action: string}>  $permissions
      */
-    public function execute(User $user, array $permissions): void
+    public function execute(UserWorkspace $workspace, array $permissions): void
     {
-        $user->adminPermissions()->delete();
+        $workspace->adminPermissions()->delete();
 
         foreach ($permissions as $row) {
             if (! isset($row['module'], $row['action'])) {
@@ -23,7 +23,7 @@ class SyncAdminUserPermissions
             $mod = AdminPermissionModule::from($row['module']);
             $act = PermissionAction::from($row['action']);
 
-            $user->adminPermissions()->create([
+            $workspace->adminPermissions()->create([
                 'module' => $mod->value,
                 'action' => $act->value,
             ]);

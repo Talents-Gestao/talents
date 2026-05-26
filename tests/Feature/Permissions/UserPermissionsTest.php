@@ -27,8 +27,9 @@ class UserPermissionsTest extends TestCase
             'company_id' => $fx->company->id,
             'role' => UserRole::CompanyUser,
         ]);
+        $workspace = $user->workspaces()->first();
         UserPermission::query()->create([
-            'user_id' => $user->id,
+            'user_workspace_id' => $workspace->id,
             'module' => PermissionModule::Pesquisas->value,
             'action' => PermissionAction::View->value,
         ]);
@@ -60,8 +61,9 @@ class UserPermissionsTest extends TestCase
             'company_id' => $fx->company->id,
             'role' => UserRole::CompanyUser,
         ]);
+        $workspace = $user->workspaces()->first();
         UserPermission::query()->create([
-            'user_id' => $user->id,
+            'user_workspace_id' => $workspace->id,
             'module' => PermissionModule::Pesquisas->value,
             'action' => PermissionAction::View->value,
         ]);

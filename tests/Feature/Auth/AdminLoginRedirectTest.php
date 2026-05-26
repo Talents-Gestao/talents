@@ -17,7 +17,7 @@ class AdminLoginRedirectTest extends TestCase
     {
         $user = User::factory()->superAdmin()->create();
 
-        app(SyncAdminUserPermissions::class)->execute($user, [
+        app(SyncAdminUserPermissions::class)->execute($user->talentsWorkspace(), [
             ['module' => AdminPermissionModule::Comercial->value, 'action' => PermissionAction::View->value],
             ['module' => AdminPermissionModule::Entrevistas->value, 'action' => PermissionAction::View->value],
         ]);
@@ -34,7 +34,7 @@ class AdminLoginRedirectTest extends TestCase
     {
         $user = User::factory()->superAdmin()->create();
 
-        app(SyncAdminUserPermissions::class)->execute($user, [
+        app(SyncAdminUserPermissions::class)->execute($user->talentsWorkspace(), [
             ['module' => AdminPermissionModule::Comercial->value, 'action' => PermissionAction::View->value],
         ]);
 

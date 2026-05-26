@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AdminUserPermission extends Model
 {
     protected $fillable = [
-        'user_id',
+        'user_workspace_id',
         'module',
         'action',
     ];
@@ -23,8 +23,8 @@ class AdminUserPermission extends Model
         ];
     }
 
-    public function user(): BelongsTo
+    public function userWorkspace(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(UserWorkspace::class);
     }
 }

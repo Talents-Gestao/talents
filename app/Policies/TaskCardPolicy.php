@@ -18,7 +18,7 @@ class TaskCardPolicy
             return false;
         }
 
-        return $user->belongsToCompany() && $user->company?->hasTasksEnabled();
+        return $user->belongsToCompany() && $user->contextCompany()?->hasTasksEnabled();
     }
 
     public function view(User $user, TaskCard $card): bool
@@ -33,7 +33,7 @@ class TaskCardPolicy
             return false;
         }
 
-        if (! $user->belongsToCompany() || ! $user->company?->hasTasksEnabled()) {
+        if (! $user->belongsToCompany() || ! $user->contextCompany()?->hasTasksEnabled()) {
             return false;
         }
 

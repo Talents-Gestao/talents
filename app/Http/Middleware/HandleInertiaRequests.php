@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Support\AdminHomeResolver;
+use App\Support\WorkspaceManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Middleware;
@@ -10,6 +11,10 @@ use Inertia\Middleware;
 class HandleInertiaRequests extends Middleware
 {
     protected $rootView = 'app';
+
+    public function __construct(
+        private WorkspaceManager $workspaceManager,
+    ) {}
 
     public function version(Request $request): ?string
     {
@@ -27,31 +32,40 @@ class HandleInertiaRequests extends Middleware
 
         $companyPayload = null;
         $permissions = [];
+        $workspacePayload = null;
+        $availableWorkspaces = [];
 
         if ($user) {
-            if ($user->isCompanyUser()) {
-                $user->loadMissing(['company', 'permissions']);
-            } elseif ($user->isSuperAdmin()) {
-                $user->loadMissing(['company', 'adminPermissions']);
-            } else {
-                $user->loadMissing('company');
+            $workspace = $this->workspaceManager->ensureActiveWorkspace($user, $request);
+
+            if ($workspace) {
+                $user->setActiveWorkspace($workspace);
+                $workspacePayload = $workspace->toFrontendArray();
+
+                if ($workspace->isCompany()) {
+                    $workspace->loadMissing(['company', 'permissions']);
+                } elseif ($workspace->isTalents()) {
+                    $workspace->loadMissing('adminPermissions');
+                }
             }
+
+            $availableWorkspaces = $this->workspaceManager
+                ->activeWorkspacesFor($user)
+                ->map(fn ($w) => $w->toFrontendArray())
+                ->values()
+                ->all();
 
             $permissions = $user->permissionMatrixForFrontend();
 
-            if ($user->company_id) {
-                $company = $user->relationLoaded('company')
-                    ? $user->company
-                    : $user->company()->first();
+            $company = $user->contextCompany();
 
-                if ($company) {
-                    $companyPayload = array_merge($company->toArray(), [
-                        'has_methodology' => $company->hasMethodologyEnabled(),
-                        'has_strategic_calendar' => $company->hasStrategicCalendarEnabled(),
-                        'has_tasks' => $company->hasTasksEnabled(),
-                        'active_permission_modules' => $company->activePermissionModuleValues(),
-                    ]);
-                }
+            if ($company) {
+                $companyPayload = array_merge($company->toArray(), [
+                    'has_methodology' => $company->hasMethodologyEnabled(),
+                    'has_strategic_calendar' => $company->hasStrategicCalendarEnabled(),
+                    'has_tasks' => $company->hasTasksEnabled(),
+                    'active_permission_modules' => $company->activePermissionModuleValues(),
+                ]);
             }
         }
 
@@ -63,8 +77,8 @@ class HandleInertiaRequests extends Middleware
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
-                        'role' => $user->role->value,
-                        'company_id' => $user->company_id,
+                        'role' => $user->contextRole()->value,
+                        'company_id' => $user->contextCompanyId(),
                         'company' => $companyPayload,
                         'permissions' => $permissions,
                         'admin_permissions' => $user->isSuperAdmin()
@@ -76,6 +90,8 @@ class HandleInertiaRequests extends Middleware
                             : null,
                     ]
                     : null,
+                'workspace' => $workspacePayload,
+                'available_workspaces' => $availableWorkspaces,
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

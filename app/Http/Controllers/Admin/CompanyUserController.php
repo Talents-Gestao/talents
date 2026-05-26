@@ -7,11 +7,14 @@ use App\Actions\SyncUserPermissions;
 use App\Enums\PermissionAction;
 use App\Enums\PermissionModule;
 use App\Enums\UserRole;
+use App\Enums\WorkspaceType;
 use App\Http\Controllers\Controller;
 use App\Mail\UserInvitationMail;
 use App\Models\Company;
 use App\Models\User;
+use App\Models\UserWorkspace;
 use App\Support\InvitationPassword;
+use App\Support\WorkspaceManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -27,22 +30,27 @@ class CompanyUserController extends Controller
     public function __construct(
         private SyncUserPermissions $syncUserPermissions,
         private ResendUserInvitation $resendUserInvitation,
+        private WorkspaceManager $workspaceManager,
     ) {}
 
     public function index(Company $company): Response
     {
-        $company->load(['users' => fn ($q) => $q->orderBy('name')]);
+        $users = $this->companyUsersQuery($company)->get();
 
         return Inertia::render('Admin/Companies/Users/Index', [
             'company' => $company->only('id', 'name'),
-            'users' => $company->users->map(fn (User $u) => [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'role' => $u->role->value,
-                'is_active' => $u->isActive(),
-                'pending_registration' => ! $u->hasCompletedRegistration(),
-            ]),
+            'users' => $users->map(function (User $u) use ($company) {
+                $workspace = $u->workspaces->first();
+
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'email' => $u->email,
+                    'role' => $workspace?->role->value ?? $u->role->value,
+                    'is_active' => $workspace ? (bool) $workspace->is_active : $u->isActive(),
+                    'pending_registration' => ! $u->hasCompletedRegistration(),
+                ];
+            }),
         ]);
     }
 
@@ -58,44 +66,79 @@ class CompanyUserController extends Controller
 
     public function store(Request $request, Company $company): RedirectResponse
     {
-        $validated = $this->validatedUserPayload($request, null);
+        $validated = $this->validatedUserPayload($request, null, $company);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make(Str::password(32)),
-            'role' => UserRole::from($validated['role']),
-            'company_id' => $company->id,
-            'email_verified_at' => now(),
-            'is_active' => $validated['is_active'] ?? true,
-        ]);
+        $existingUser = User::query()->where('email', $validated['email'])->first();
+        $role = UserRole::from($validated['role']);
 
-        if ($user->isCompanyUser()) {
-            $this->syncUserPermissions->execute($user, $company, $validated['permissions'] ?? []);
+        if ($existingUser) {
+            if ($this->workspaceManager->companyWorkspaceFor($existingUser, $company->id)) {
+                throw ValidationException::withMessages([
+                    'email' => 'Este e-mail já está vinculado a esta empresa.',
+                ]);
+            }
+
+            $existingUser->update(['name' => $validated['name']]);
+
+            $workspace = $this->workspaceManager->createCompanyWorkspace(
+                $existingUser,
+                $company->id,
+                $role,
+                $validated['is_active'] ?? true,
+            );
+
+            $user = $existingUser;
+            $mailMessage = ' Utilizador vinculado à empresa (conta existente reutilizada).';
+        } else {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make(Str::password(32)),
+                'role' => $role,
+                'company_id' => $company->id,
+                'email_verified_at' => now(),
+                'is_active' => $validated['is_active'] ?? true,
+            ]);
+
+            $workspace = $this->workspaceManager->createCompanyWorkspace(
+                $user,
+                $company->id,
+                $role,
+                $validated['is_active'] ?? true,
+            );
+
+            $mailMessage = ' Utilizador criado.';
         }
 
-        $mailMessage = ' Utilizador criado.';
-        try {
-            $token = InvitationPassword::createToken($user);
-            $resetUrl = InvitationPassword::setPasswordUrl($user, $token);
-            Mail::to($user->email)->send(new UserInvitationMail($user, $company, $resetUrl));
-            $mailMessage = ' Utilizador criado. Foi enviado um e-mail com o link para definir a senha.';
-        } catch (\Throwable $e) {
-            report($e);
-            $mailMessage = ' Utilizador criado, mas o e-mail de convite não pôde ser enviado. Erro: '.$e->getMessage();
+        if ($workspace->isCompanyUser()) {
+            $this->syncUserPermissions->execute($workspace, $company, $validated['permissions'] ?? []);
         }
+
+        if (! $user->hasCompletedRegistration()) {
+            try {
+                $token = InvitationPassword::createToken($user);
+                $resetUrl = InvitationPassword::setPasswordUrl($user, $token);
+                Mail::to($user->email)->send(new UserInvitationMail($user, $company, $resetUrl));
+                $mailMessage .= ' Foi enviado um e-mail com o link para definir a senha.';
+            } catch (\Throwable $e) {
+                report($e);
+                $mailMessage .= ' O e-mail de convite não pôde ser enviado. Erro: '.$e->getMessage();
+            }
+        }
+
+        $this->workspaceManager->syncLegacyUserColumns($user);
 
         return redirect()
             ->route('admin.companies.users.index', $company)
-            ->with('success', $mailMessage);
+            ->with('success', trim($mailMessage));
     }
 
     public function edit(Company $company, User $user): Response
     {
-        abort_unless($user->company_id === $company->id, 404);
+        $workspace = $this->assertCompanyWorkspace($company, $user);
+        $workspace->load('permissions');
 
-        $user->load('permissions');
-        $initialPermissions = $user->permissions->map(fn ($p) => [
+        $initialPermissions = $workspace->permissions->map(fn ($p) => [
             'module' => $p->module->value,
             'action' => $p->action->value,
         ])->values()->all();
@@ -107,8 +150,8 @@ class CompanyUserController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->role->value,
-                'is_active' => $user->isActive(),
+                'role' => $workspace->role->value,
+                'is_active' => (bool) $workspace->is_active,
                 'permissions' => $initialPermissions,
             ],
             ...$this->sharedFormProps($company),
@@ -117,24 +160,29 @@ class CompanyUserController extends Controller
 
     public function update(Request $request, Company $company, User $user): RedirectResponse
     {
-        abort_unless($user->company_id === $company->id, 404);
+        $workspace = $this->assertCompanyWorkspace($company, $user);
 
-        $validated = $this->validatedUserPayload($request, $user);
+        $validated = $this->validatedUserPayload($request, $user, $company);
 
-        $this->assertKeepsAtLeastOneActiveAdmin($company, $user, $validated);
+        $this->assertKeepsAtLeastOneActiveAdmin($company, $workspace, $validated);
 
         $user->update([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'role' => UserRole::from($validated['role']),
-            'is_active' => $validated['is_active'] ?? $user->is_active,
         ]);
 
-        if ($user->isCompanyUser()) {
-            $this->syncUserPermissions->execute($user, $company, $validated['permissions'] ?? []);
+        $workspace->update([
+            'role' => UserRole::from($validated['role']),
+            'is_active' => $validated['is_active'] ?? $workspace->is_active,
+        ]);
+
+        if ($workspace->isCompanyUser()) {
+            $this->syncUserPermissions->execute($workspace, $company, $validated['permissions'] ?? []);
         } else {
-            $user->permissions()->delete();
+            $workspace->permissions()->delete();
         }
+
+        $this->workspaceManager->syncLegacyUserColumns($user);
 
         return redirect()
             ->route('admin.companies.users.index', $company)
@@ -143,15 +191,22 @@ class CompanyUserController extends Controller
 
     public function destroy(Company $company, User $user): RedirectResponse
     {
-        abort_unless($user->company_id === $company->id, 404);
+        $workspace = $this->assertCompanyWorkspace($company, $user);
 
-        if ($user->isCompanyAdmin() && $this->companyAdminCount($company) <= 1) {
+        if ($workspace->isCompanyAdmin() && $this->companyAdminCount($company) <= 1) {
             return redirect()
                 ->route('admin.companies.users.index', $company)
                 ->with('error', 'Não é possível remover o único administrador da empresa.');
         }
 
-        $user->delete();
+        $workspace->permissions()->delete();
+        $workspace->delete();
+
+        if ($user->workspaces()->doesntExist()) {
+            $user->delete();
+        } else {
+            $this->workspaceManager->syncLegacyUserColumns($user);
+        }
 
         return redirect()
             ->route('admin.companies.users.index', $company)
@@ -160,7 +215,7 @@ class CompanyUserController extends Controller
 
     public function resendInvitation(Company $company, User $user): RedirectResponse
     {
-        abort_unless($user->company_id === $company->id, 404);
+        $this->assertCompanyWorkspace($company, $user);
 
         if ($user->hasCompletedRegistration()) {
             return redirect()
@@ -181,6 +236,28 @@ class CompanyUserController extends Controller
         return redirect()
             ->route('admin.companies.users.index', $company)
             ->with('success', 'Convite reenviado para '.$user->email.'.');
+    }
+
+    private function companyUsersQuery(Company $company)
+    {
+        return User::query()
+            ->whereHas('workspaces', function ($q) use ($company) {
+                $q->where('workspace_type', WorkspaceType::Company)
+                    ->where('company_id', $company->id);
+            })
+            ->with(['workspaces' => function ($q) use ($company) {
+                $q->where('workspace_type', WorkspaceType::Company)
+                    ->where('company_id', $company->id);
+            }])
+            ->orderBy('name');
+    }
+
+    private function assertCompanyWorkspace(Company $company, User $user): UserWorkspace
+    {
+        $workspace = $this->workspaceManager->companyWorkspaceFor($user, $company->id);
+        abort_unless($workspace, 404);
+
+        return $workspace;
     }
 
     /**
@@ -213,16 +290,31 @@ class CompanyUserController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validatedUserPayload(Request $request, ?User $existing): array
+    private function validatedUserPayload(Request $request, ?User $existing, Company $company): array
     {
-        $emailRule = Rule::unique('users', 'email');
-        if ($existing) {
-            $emailRule = $emailRule->ignore($existing->id);
-        }
-
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', $emailRule],
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail) use ($existing, $company): void {
+                    $owner = User::query()->where('email', $value)->first();
+
+                    if (! $owner) {
+                        return;
+                    }
+
+                    if ($existing && $owner->id === $existing->id) {
+                        return;
+                    }
+
+                    if ($this->workspaceManager->companyWorkspaceFor($owner, $company->id)) {
+                        $fail('Este e-mail já está vinculado a esta empresa.');
+                    }
+                },
+            ],
             'role' => ['required', Rule::in([UserRole::CompanyAdmin->value, UserRole::CompanyUser->value])],
             'is_active' => ['boolean'],
             'permissions' => ['nullable', 'array'],
@@ -233,7 +325,8 @@ class CompanyUserController extends Controller
 
     private function companyAdminCount(Company $company): int
     {
-        return User::query()
+        return UserWorkspace::query()
+            ->where('workspace_type', WorkspaceType::Company)
             ->where('company_id', $company->id)
             ->where('role', UserRole::CompanyAdmin)
             ->count();
@@ -242,22 +335,23 @@ class CompanyUserController extends Controller
     /**
      * @param  array<string, mixed>  $validated
      */
-    private function assertKeepsAtLeastOneActiveAdmin(Company $company, User $user, array $validated): void
+    private function assertKeepsAtLeastOneActiveAdmin(Company $company, UserWorkspace $workspace, array $validated): void
     {
-        if (! $user->isCompanyAdmin()) {
+        if (! $workspace->isCompanyAdmin()) {
             return;
         }
 
         $newRole = UserRole::from($validated['role']);
-        $newActive = (bool) ($validated['is_active'] ?? $user->is_active);
+        $newActive = (bool) ($validated['is_active'] ?? $workspace->is_active);
 
         if ($newRole === UserRole::CompanyAdmin && $newActive) {
             return;
         }
 
-        $others = User::query()
+        $others = UserWorkspace::query()
+            ->where('workspace_type', WorkspaceType::Company)
             ->where('company_id', $company->id)
-            ->where('id', '!=', $user->id)
+            ->where('id', '!=', $workspace->id)
             ->where('role', UserRole::CompanyAdmin)
             ->where('is_active', true)
             ->count();

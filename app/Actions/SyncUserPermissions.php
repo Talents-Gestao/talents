@@ -5,18 +5,18 @@ namespace App\Actions;
 use App\Enums\PermissionAction;
 use App\Enums\PermissionModule;
 use App\Models\Company;
-use App\Models\User;
+use App\Models\UserWorkspace;
 
 class SyncUserPermissions
 {
     /**
      * @param  array<int, array{module: string, action: string}>  $permissions
      */
-    public function execute(User $user, Company $company, array $permissions): void
+    public function execute(UserWorkspace $workspace, Company $company, array $permissions): void
     {
         $allowed = $company->activePermissionModuleValues();
 
-        $user->permissions()->delete();
+        $workspace->permissions()->delete();
 
         foreach ($permissions as $row) {
             if (! isset($row['module'], $row['action'])) {
@@ -30,7 +30,7 @@ class SyncUserPermissions
                 continue;
             }
 
-            $user->permissions()->create([
+            $workspace->permissions()->create([
                 'module' => $mod->value,
                 'action' => $act->value,
             ]);

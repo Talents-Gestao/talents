@@ -79,8 +79,9 @@ class RhidComplianceAccessTest extends TestCase
             'company_id' => $company->id,
             'role' => UserRole::CompanyUser,
         ]);
+        $workspace = $user->workspaces()->first();
         UserPermission::query()->create([
-            'user_id' => $user->id,
+            'user_workspace_id' => $workspace->id,
             'module' => PermissionModule::Rhid->value,
             'action' => PermissionAction::View->value,
         ]);

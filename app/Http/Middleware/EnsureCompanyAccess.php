@@ -2,13 +2,18 @@
 
 namespace App\Http\Middleware;
 
-use App\Enums\UserRole;
+use App\Enums\WorkspaceType;
+use App\Support\WorkspaceManager;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureCompanyAccess
 {
+    public function __construct(
+        private WorkspaceManager $workspaceManager,
+    ) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
@@ -17,11 +22,21 @@ class EnsureCompanyAccess
             abort(Response::HTTP_FORBIDDEN);
         }
 
-        if ($user->role === UserRole::SuperAdmin) {
+        $workspace = $this->workspaceManager->ensureActiveWorkspace($user, $request);
+
+        if (! $workspace) {
+            if ($this->workspaceManager->activeWorkspacesFor($user)->isEmpty()) {
+                abort(Response::HTTP_FORBIDDEN);
+            }
+
+            return redirect()->route('workspaces.select');
+        }
+
+        if ($workspace->workspace_type === WorkspaceType::Talents) {
             return redirect()->route('admin.dashboard');
         }
 
-        if (! $user->company_id) {
+        if ($workspace->workspace_type !== WorkspaceType::Company || ! $workspace->company_id) {
             abort(Response::HTTP_FORBIDDEN, 'Usuário sem empresa vinculada.');
         }
 

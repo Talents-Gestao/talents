@@ -7,10 +7,13 @@ use App\Actions\SyncAdminUserPermissions;
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Enums\UserRole;
+use App\Enums\WorkspaceType;
 use App\Http\Controllers\Controller;
 use App\Mail\UserInvitationMail;
 use App\Models\User;
+use App\Models\UserWorkspace;
 use App\Support\InvitationPassword;
+use App\Support\WorkspaceManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -26,25 +29,31 @@ class AdminUserController extends Controller
     public function __construct(
         private SyncAdminUserPermissions $syncAdminUserPermissions,
         private ResendUserInvitation $resendUserInvitation,
+        private WorkspaceManager $workspaceManager,
     ) {}
 
     public function index(): Response
     {
         $users = User::query()
-            ->where('role', UserRole::SuperAdmin)
-            ->with('adminPermissions')
+            ->whereHas('workspaces', fn ($q) => $q->where('workspace_type', WorkspaceType::Talents))
+            ->with(['workspaces' => fn ($q) => $q->where('workspace_type', WorkspaceType::Talents)])
             ->orderBy('name')
             ->get()
-            ->map(fn (User $u) => [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'is_owner' => $u->isOwner(),
-                'has_all_admin_permissions' => $u->hasAllAdminPermissions(),
-                'is_active' => $u->isActive(),
-                'is_commercial' => (bool) $u->is_commercial,
-                'pending_registration' => ! $u->hasCompletedRegistration(),
-            ]);
+            ->map(function (User $u) {
+                $workspace = $u->workspaces->first();
+                $u->setActiveWorkspace($workspace);
+
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'email' => $u->email,
+                    'is_owner' => $workspace?->isOwner() ?? false,
+                    'has_all_admin_permissions' => $u->hasAllAdminPermissions(),
+                    'is_active' => $workspace ? (bool) $workspace->is_active : $u->isActive(),
+                    'is_commercial' => (bool) $u->is_commercial,
+                    'pending_registration' => ! $u->hasCompletedRegistration(),
+                ];
+            });
 
         return Inertia::render('Admin/Users/Index', [
             'users' => $users,
@@ -64,40 +73,76 @@ class AdminUserController extends Controller
     {
         $validated = $this->validatedPayload($request, null, requirePermissions: true);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make(Str::password(32)),
-            'role' => UserRole::SuperAdmin,
-            'company_id' => null,
-            'email_verified_at' => now(),
-            'is_active' => $validated['is_active'] ?? true,
-            'is_commercial' => $validated['is_commercial'] ?? false,
-            'is_owner' => false,
-        ]);
+        $existingUser = User::query()->where('email', $validated['email'])->first();
 
-        $this->syncAdminUserPermissions->execute($user, $validated['permissions'] ?? []);
+        if ($existingUser) {
+            if ($this->workspaceManager->talentsWorkspaceFor($existingUser)) {
+                throw ValidationException::withMessages([
+                    'email' => 'Este e-mail já pertence à equipe Talents.',
+                ]);
+            }
 
-        $mailMessage = 'Utilizador criado.';
-        try {
-            $token = InvitationPassword::createToken($user);
-            $resetUrl = InvitationPassword::setPasswordUrl($user, $token);
-            Mail::to($user->email)->send(new UserInvitationMail($user, null, $resetUrl));
-            $mailMessage = 'Utilizador criado. Foi enviado um e-mail com o link para definir a senha.';
-        } catch (\Throwable $e) {
-            report($e);
-            $mailMessage = 'Utilizador criado, mas o e-mail de convite não pôde ser enviado. Erro: '.$e->getMessage();
+            $existingUser->update([
+                'name' => $validated['name'],
+                'is_commercial' => $validated['is_commercial'] ?? $existingUser->is_commercial,
+            ]);
+
+            $workspace = $this->workspaceManager->createTalentsWorkspace(
+                $existingUser,
+                isOwner: false,
+                isActive: $validated['is_active'] ?? true,
+            );
+
+            $user = $existingUser;
+            $mailMessage = 'Utilizador vinculado à equipe Talents (conta existente reutilizada).';
+        } else {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make(Str::password(32)),
+                'role' => UserRole::SuperAdmin,
+                'company_id' => null,
+                'email_verified_at' => now(),
+                'is_active' => $validated['is_active'] ?? true,
+                'is_commercial' => $validated['is_commercial'] ?? false,
+                'is_owner' => false,
+            ]);
+
+            $workspace = $this->workspaceManager->createTalentsWorkspace(
+                $user,
+                isOwner: false,
+                isActive: $validated['is_active'] ?? true,
+            );
+
+            $mailMessage = 'Utilizador criado.';
         }
+
+        $this->syncAdminUserPermissions->execute($workspace, $validated['permissions'] ?? []);
+
+        if (! $user->hasCompletedRegistration()) {
+            try {
+                $token = InvitationPassword::createToken($user);
+                $resetUrl = InvitationPassword::setPasswordUrl($user, $token);
+                Mail::to($user->email)->send(new UserInvitationMail($user, null, $resetUrl));
+                $mailMessage .= ' Foi enviado um e-mail com o link para definir a senha.';
+            } catch (\Throwable $e) {
+                report($e);
+                $mailMessage .= ' O e-mail de convite não pôde ser enviado. Erro: '.$e->getMessage();
+            }
+        }
+
+        $this->workspaceManager->syncLegacyUserColumns($user);
 
         return redirect()->route('admin.users.index')->with('success', $mailMessage);
     }
 
     public function edit(User $user): Response
     {
-        $this->assertSuperAdminUser($user);
+        $workspace = $this->assertTalentsWorkspace($user);
+        $user->setActiveWorkspace($workspace);
+        $workspace->load('adminPermissions');
 
-        $user->load('adminPermissions');
-        $initialPermissions = $user->adminPermissions->map(fn ($p) => [
+        $initialPermissions = $workspace->adminPermissions->map(fn ($p) => [
             'module' => $p->module->value,
             'action' => $p->action->value,
         ])->values()->all();
@@ -108,8 +153,8 @@ class AdminUserController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'is_owner' => $user->isOwner(),
-                'is_active' => $user->isActive(),
+                'is_owner' => $workspace->isOwner(),
+                'is_active' => (bool) $workspace->is_active,
                 'is_commercial' => (bool) $user->is_commercial,
                 'permissions' => $initialPermissions,
             ],
@@ -119,12 +164,13 @@ class AdminUserController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
-        $this->assertSuperAdminUser($user);
+        $workspace = $this->assertTalentsWorkspace($user);
+        $user->setActiveWorkspace($workspace);
 
-        $validated = $this->validatedPayload($request, $user, requirePermissions: ! $user->isOwner());
+        $validated = $this->validatedPayload($request, $user, requirePermissions: ! $workspace->isOwner());
 
-        if ($user->isOwner()) {
-            if (($validated['is_active'] ?? $user->is_active) === false) {
+        if ($workspace->isOwner()) {
+            if (($validated['is_active'] ?? $workspace->is_active) === false) {
                 throw ValidationException::withMessages([
                     'is_active' => 'A conta do proprietário não pode ser desativada.',
                 ]);
@@ -136,8 +182,10 @@ class AdminUserController extends Controller
                 'is_active' => true,
                 'is_commercial' => $validated['is_commercial'] ?? $user->is_commercial,
             ]);
+
+            $workspace->update(['is_active' => true]);
         } else {
-            $this->assertKeepsAtLeastOneActiveSuperAdmin($user, $validated);
+            $this->assertKeepsAtLeastOneActiveSuperAdmin($workspace, $validated);
 
             $user->update([
                 'name' => $validated['name'],
@@ -146,17 +194,23 @@ class AdminUserController extends Controller
                 'is_commercial' => $validated['is_commercial'] ?? $user->is_commercial,
             ]);
 
-            $this->syncAdminUserPermissions->execute($user, $validated['permissions'] ?? []);
+            $workspace->update([
+                'is_active' => $validated['is_active'] ?? $workspace->is_active,
+            ]);
+
+            $this->syncAdminUserPermissions->execute($workspace, $validated['permissions'] ?? []);
         }
+
+        $this->workspaceManager->syncLegacyUserColumns($user);
 
         return redirect()->route('admin.users.index')->with('success', 'Utilizador atualizado.');
     }
 
     public function destroy(User $user): RedirectResponse
     {
-        $this->assertSuperAdminUser($user);
+        $workspace = $this->assertTalentsWorkspace($user);
 
-        if ($user->isOwner()) {
+        if ($workspace->isOwner()) {
             return redirect()->route('admin.users.index')->with('error', 'Não é possível remover o proprietário da plataforma.');
         }
 
@@ -164,18 +218,25 @@ class AdminUserController extends Controller
             return redirect()->route('admin.users.index')->with('error', 'Não pode remover a sua própria conta.');
         }
 
-        if (! $this->otherActiveSuperAdminsExist($user)) {
+        if (! $this->otherActiveSuperAdminsExist($workspace)) {
             return redirect()->route('admin.users.index')->with('error', 'Tem de existir pelo menos um super administrador ativo.');
         }
 
-        $user->delete();
+        $workspace->adminPermissions()->delete();
+        $workspace->delete();
+
+        if ($user->workspaces()->doesntExist()) {
+            $user->delete();
+        } else {
+            $this->workspaceManager->syncLegacyUserColumns($user);
+        }
 
         return redirect()->route('admin.users.index')->with('success', 'Utilizador removido.');
     }
 
     public function resendInvitation(User $user): RedirectResponse
     {
-        $this->assertSuperAdminUser($user);
+        $this->assertTalentsWorkspace($user);
 
         if ($user->hasCompletedRegistration()) {
             return redirect()->route('admin.users.index')->with('error', 'Este utilizador já concluiu o cadastro.');
@@ -198,9 +259,12 @@ class AdminUserController extends Controller
         );
     }
 
-    private function assertSuperAdminUser(User $user): void
+    private function assertTalentsWorkspace(User $user): UserWorkspace
     {
-        abort_unless($user->isSuperAdmin(), 404);
+        $workspace = $this->workspaceManager->talentsWorkspaceFor($user);
+        abort_unless($workspace, 404);
+
+        return $workspace;
     }
 
     /**
@@ -229,11 +293,6 @@ class AdminUserController extends Controller
      */
     private function validatedPayload(Request $request, ?User $existing, bool $requirePermissions): array
     {
-        $emailRule = Rule::unique('users', 'email');
-        if ($existing) {
-            $emailRule = $emailRule->ignore($existing->id);
-        }
-
         $permissionRules = $requirePermissions
             ? [
                 'permissions' => ['required', 'array', 'min:1'],
@@ -248,7 +307,27 @@ class AdminUserController extends Controller
 
         return $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', $emailRule],
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail) use ($existing): void {
+                    $owner = User::query()->where('email', $value)->first();
+
+                    if (! $owner) {
+                        return;
+                    }
+
+                    if ($existing && $owner->id === $existing->id) {
+                        return;
+                    }
+
+                    if ($this->workspaceManager->talentsWorkspaceFor($owner)) {
+                        $fail('Este e-mail já pertence à equipe Talents.');
+                    }
+                },
+            ],
             'is_active' => ['boolean'],
             'is_commercial' => ['boolean'],
         ], $permissionRules));
@@ -257,15 +336,15 @@ class AdminUserController extends Controller
     /**
      * @param  array<string, mixed>  $validated
      */
-    private function assertKeepsAtLeastOneActiveSuperAdmin(User $user, array $validated): void
+    private function assertKeepsAtLeastOneActiveSuperAdmin(UserWorkspace $workspace, array $validated): void
     {
-        $newActive = (bool) ($validated['is_active'] ?? $user->is_active);
+        $newActive = (bool) ($validated['is_active'] ?? $workspace->is_active);
 
         if ($newActive) {
             return;
         }
 
-        if ($this->otherActiveSuperAdminsExist($user)) {
+        if ($this->otherActiveSuperAdminsExist($workspace)) {
             return;
         }
 
@@ -274,10 +353,10 @@ class AdminUserController extends Controller
         ]);
     }
 
-    private function otherActiveSuperAdminsExist(User $excluding): bool
+    private function otherActiveSuperAdminsExist(UserWorkspace $excluding): bool
     {
-        return User::query()
-            ->where('role', UserRole::SuperAdmin)
+        return UserWorkspace::query()
+            ->where('workspace_type', WorkspaceType::Talents)
             ->where('id', '!=', $excluding->id)
             ->where('is_active', true)
             ->exists();

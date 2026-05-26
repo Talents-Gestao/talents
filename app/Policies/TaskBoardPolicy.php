@@ -14,8 +14,8 @@ class TaskBoardPolicy
         }
 
         return $user->belongsToCompany()
-            && $user->company
-            && $user->company->hasTasksEnabled();
+            && $user->contextCompany()
+            && $user->contextCompany()->hasTasksEnabled();
     }
 
     public function view(User $user, TaskBoard $board): bool
@@ -24,7 +24,7 @@ class TaskBoardPolicy
             return true;
         }
 
-        if (! $user->belongsToCompany() || ! $user->company?->hasTasksEnabled()) {
+        if (! $user->belongsToCompany() || ! $user->contextCompany()?->hasTasksEnabled()) {
             return false;
         }
 
@@ -32,7 +32,7 @@ class TaskBoardPolicy
             return true;
         }
 
-        return (int) $board->company_id === (int) $user->company_id;
+        return (int) $board->company_id === (int) $user->contextCompanyId();
     }
 
     /**

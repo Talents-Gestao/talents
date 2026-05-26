@@ -6,7 +6,10 @@ use App\Actions\SyncAdminUserPermissions;
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Enums\UserRole;
+use App\Enums\WorkspaceType;
 use App\Models\User;
+use App\Models\UserWorkspace;
+use App\Support\WorkspaceManager;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -20,6 +23,32 @@ class UserFactory extends Factory
      * The current password being used by the factory.
      */
     protected static ?string $password;
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            if ($user->workspaces()->exists()) {
+                return;
+            }
+
+            if ($user->role === UserRole::SuperAdmin) {
+                return;
+            }
+
+            if ($user->company_id) {
+                UserWorkspace::create([
+                    'user_id' => $user->id,
+                    'workspace_type' => WorkspaceType::Company,
+                    'company_id' => $user->company_id,
+                    'role' => $user->role,
+                    'is_owner' => false,
+                    'is_active' => (bool) $user->is_active,
+                ]);
+            }
+
+            app(WorkspaceManager::class)->syncLegacyUserColumns($user);
+        });
+    }
 
     /**
      * Define the model's default state.
@@ -59,6 +88,19 @@ class UserFactory extends Factory
             'role' => UserRole::SuperAdmin,
             'company_id' => null,
         ])->afterCreating(function (User $user): void {
+            if ($user->workspaces()->where('workspace_type', WorkspaceType::Talents)->exists()) {
+                return;
+            }
+
+            $workspace = UserWorkspace::create([
+                'user_id' => $user->id,
+                'workspace_type' => WorkspaceType::Talents,
+                'company_id' => null,
+                'role' => UserRole::SuperAdmin,
+                'is_owner' => (bool) $user->is_owner,
+                'is_active' => (bool) $user->is_active,
+            ]);
+
             if ($user->role !== UserRole::SuperAdmin || $user->isOwner()) {
                 return;
             }
@@ -70,7 +112,8 @@ class UserFactory extends Factory
                 }
             }
 
-            app(SyncAdminUserPermissions::class)->execute($user, $perms);
+            app(SyncAdminUserPermissions::class)->execute($workspace, $perms);
+            app(WorkspaceManager::class)->syncLegacyUserColumns($user);
         });
     }
 
@@ -79,7 +122,27 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'role' => UserRole::CompanyAdmin,
             'company_id' => $companyId,
-        ]);
+        ])->afterCreating(function (User $user) use ($companyId): void {
+            $companyId ??= $user->company_id;
+
+            if (! $companyId || $user->workspaces()
+                ->where('workspace_type', WorkspaceType::Company)
+                ->where('company_id', $companyId)
+                ->exists()) {
+                return;
+            }
+
+            UserWorkspace::create([
+                'user_id' => $user->id,
+                'workspace_type' => WorkspaceType::Company,
+                'company_id' => $companyId,
+                'role' => UserRole::CompanyAdmin,
+                'is_owner' => false,
+                'is_active' => (bool) $user->is_active,
+            ]);
+
+            app(WorkspaceManager::class)->syncLegacyUserColumns($user);
+        });
     }
 
     public function companyUser(?int $companyId = null): static
@@ -87,7 +150,27 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'role' => UserRole::CompanyUser,
             'company_id' => $companyId,
-        ]);
+        ])->afterCreating(function (User $user) use ($companyId): void {
+            $companyId ??= $user->company_id;
+
+            if (! $companyId || $user->workspaces()
+                ->where('workspace_type', WorkspaceType::Company)
+                ->where('company_id', $companyId)
+                ->exists()) {
+                return;
+            }
+
+            UserWorkspace::create([
+                'user_id' => $user->id,
+                'workspace_type' => WorkspaceType::Company,
+                'company_id' => $companyId,
+                'role' => UserRole::CompanyUser,
+                'is_owner' => false,
+                'is_active' => (bool) $user->is_active,
+            ]);
+
+            app(WorkspaceManager::class)->syncLegacyUserColumns($user);
+        });
     }
 
     public function pendingRegistration(): static

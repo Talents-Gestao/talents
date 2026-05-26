@@ -32,8 +32,8 @@ class AdminUserFunctionLabelTest extends TestCase
             }
         }
 
-        app(SyncAdminUserPermissions::class)->execute($fullAdmin, $allPermissions);
-        app(SyncAdminUserPermissions::class)->execute($teamMember, [
+        app(SyncAdminUserPermissions::class)->execute($fullAdmin->talentsWorkspace(), $allPermissions);
+        app(SyncAdminUserPermissions::class)->execute($teamMember->talentsWorkspace(), [
             ['module' => AdminPermissionModule::Tarefas->value, 'action' => PermissionAction::View->value],
         ]);
 
@@ -63,10 +63,12 @@ class AdminUserFunctionLabelTest extends TestCase
     {
         $user = User::factory()->superAdmin()->create();
 
-        app(SyncAdminUserPermissions::class)->execute($user, [
+        $workspace = $user->talentsWorkspace();
+        app(SyncAdminUserPermissions::class)->execute($workspace, [
             ['module' => AdminPermissionModule::Dashboard->value, 'action' => PermissionAction::View->value],
         ]);
 
-        $this->assertFalse($user->fresh()->hasAllAdminPermissions());
+        $user->setActiveWorkspace($workspace->fresh(['adminPermissions']));
+        $this->assertFalse($user->hasAllAdminPermissions());
     }
 }

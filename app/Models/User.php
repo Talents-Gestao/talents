@@ -6,6 +6,8 @@ use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Enums\PermissionModule;
 use App\Enums\UserRole;
+use App\Enums\WorkspaceType;
+use App\Support\WorkspaceManager;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +19,8 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    protected ?UserWorkspace $activeWorkspaceCache = null;
 
     protected $fillable = [
         'name',
@@ -48,24 +52,105 @@ class User extends Authenticatable
         ];
     }
 
+    public function setActiveWorkspace(?UserWorkspace $workspace): void
+    {
+        $this->activeWorkspaceCache = $workspace;
+    }
+
+    public function activeWorkspace(): ?UserWorkspace
+    {
+        if ($this->activeWorkspaceCache) {
+            return $this->activeWorkspaceCache;
+        }
+
+        $manager = app(WorkspaceManager::class);
+
+        return $this->activeWorkspaceCache = $manager->activeWorkspaceFor($this);
+    }
+
+    public function workspaces(): HasMany
+    {
+        return $this->hasMany(UserWorkspace::class);
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
     }
 
+    /**
+     * Empresa do contexto ativo (workspace company) ou coluna legada.
+     */
+    public function contextCompany(): ?Company
+    {
+        $workspace = $this->activeWorkspace();
+
+        if ($workspace?->isCompany()) {
+            return $workspace->relationLoaded('company')
+                ? $workspace->company
+                : $workspace->company()->first();
+        }
+
+        if ($this->attributes['company_id'] ?? null) {
+            return $this->relationLoaded('company')
+                ? $this->getRelation('company')
+                : $this->company()->first();
+        }
+
+        return null;
+    }
+
     public function permissions(): HasMany
     {
-        return $this->hasMany(UserPermission::class);
+        $workspace = $this->activeWorkspace();
+
+        if ($workspace) {
+            return $workspace->permissions();
+        }
+
+        return $this->hasMany(UserPermission::class, 'user_workspace_id')
+            ->whereRaw('1 = 0');
     }
 
     public function adminPermissions(): HasMany
     {
-        return $this->hasMany(AdminUserPermission::class);
+        $workspace = $this->activeWorkspace();
+
+        if ($workspace) {
+            return $workspace->adminPermissions();
+        }
+
+        return $this->hasMany(AdminUserPermission::class, 'user_workspace_id')
+            ->whereRaw('1 = 0');
+    }
+
+    public function talentsWorkspace(): ?UserWorkspace
+    {
+        return $this->workspaces()
+            ->where('workspace_type', WorkspaceType::Talents)
+            ->first();
+    }
+
+    public function companyWorkspace(?int $companyId = null): ?UserWorkspace
+    {
+        $query = $this->workspaces()->where('workspace_type', WorkspaceType::Company);
+
+        if ($companyId !== null) {
+            $query->where('company_id', $companyId);
+        }
+
+        return $query->first();
     }
 
     public function isActive(): bool
     {
-        return (bool) $this->is_active;
+        if (! (bool) $this->is_active) {
+            return false;
+        }
+
+        $workspace = $this->activeWorkspace();
+
+        return $workspace ? (bool) $workspace->is_active : true;
     }
 
     public function hasCompletedRegistration(): bool
@@ -75,7 +160,7 @@ class User extends Authenticatable
 
     public function isCompanyUser(): bool
     {
-        return $this->role === UserRole::CompanyUser;
+        return $this->contextRole() === UserRole::CompanyUser;
     }
 
     public function canAccess(PermissionModule $module, PermissionAction $action): bool
@@ -88,7 +173,7 @@ class User extends Authenticatable
             return false;
         }
 
-        $company = $this->relationLoaded('company') ? $this->company : $this->company()->first();
+        $company = $this->contextCompany();
 
         if (! $company || ! $company->hasModuleEnabled($module)) {
             return false;
@@ -134,9 +219,6 @@ class User extends Authenticatable
             ->exists();
     }
 
-    /**
-     * Verdadeiro quando o super admin tem todas as combinações módulo × ação (ou é proprietário).
-     */
     public function hasAllAdminPermissions(): bool
     {
         if (! $this->isSuperAdmin()) {
@@ -155,9 +237,6 @@ class User extends Authenticatable
     }
 
     /**
-     * Matriz para o sidebar admin: módulo => lista de ações (values).
-     * Owner: ['*' => true].
-     *
      * @return array<string, mixed>
      */
     public function adminPermissionMatrixForFrontend(): array
@@ -188,9 +267,6 @@ class User extends Authenticatable
     }
 
     /**
-     * Matriz para o frontend: módulo => lista de ações (values).
-     * Owner (super admin): ['*' => true].
-     *
      * @return array<string, mixed>
      */
     public function permissionMatrixForFrontend(): array
@@ -203,7 +279,7 @@ class User extends Authenticatable
             return [];
         }
 
-        $company = $this->relationLoaded('company') ? $this->company : $this->company()->first();
+        $company = $this->contextCompany();
 
         if (! $company) {
             return [];
@@ -247,21 +323,62 @@ class User extends Authenticatable
 
     public function isSuperAdmin(): bool
     {
-        return $this->role === UserRole::SuperAdmin;
+        return $this->contextRole() === UserRole::SuperAdmin;
     }
 
     public function isOwner(): bool
     {
+        $workspace = $this->activeWorkspace();
+
+        if ($workspace) {
+            return $workspace->isOwner();
+        }
+
         return (bool) $this->is_owner;
     }
 
     public function isCompanyAdmin(): bool
     {
-        return $this->role === UserRole::CompanyAdmin;
+        return $this->contextRole() === UserRole::CompanyAdmin;
     }
 
     public function belongsToCompany(): bool
     {
-        return in_array($this->role, [UserRole::CompanyAdmin, UserRole::CompanyUser], true);
+        return in_array($this->contextRole(), [UserRole::CompanyAdmin, UserRole::CompanyUser], true);
+    }
+
+    public function contextRole(): UserRole
+    {
+        $workspace = $this->activeWorkspace();
+
+        if ($workspace) {
+            return $workspace->role;
+        }
+
+        return $this->role;
+    }
+
+    public function contextCompanyId(): ?int
+    {
+        $workspace = $this->activeWorkspace();
+
+        if ($workspace?->isCompany()) {
+            return $workspace->company_id;
+        }
+
+        return $this->attributes['company_id'] ?? null;
+    }
+
+    public function getAttribute($key): mixed
+    {
+        if ($key === 'company_id') {
+            $workspace = $this->activeWorkspace();
+
+            if ($workspace?->isCompany()) {
+                return $workspace->company_id;
+            }
+        }
+
+        return parent::getAttribute($key);
     }
 }
