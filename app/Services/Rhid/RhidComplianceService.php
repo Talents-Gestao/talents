@@ -148,6 +148,10 @@ class RhidComplianceService
      */
     public function personBankHours(Company $company, ?User $user, array $query): array
     {
+        if (isset($query['date']) && is_string($query['date'])) {
+            $query['date'] = $this->normalizeBankHoursDateParam($query['date']);
+        }
+
         $r = $this->client->request(
             $company,
             $user,
@@ -159,9 +163,16 @@ class RhidComplianceService
             ],
         );
 
+        if (! $r->successful()) {
+            throw RhidApiException::fromResponse($r, 'person_banco_horas');
+        }
+
         $json = $r->json();
         if (! is_array($json)) {
-            throw RhidApiException::fromResponse($r, 'person_banco_horas');
+            throw new RhidApiException(
+                'Resposta invalida da API RHID (person_banco_horas). Use a data no formato YYYYMMDD.',
+                $r->status(),
+            );
         }
 
         $rows = $this->normalizeBankHoursRows($json);
@@ -1086,6 +1097,17 @@ class RhidComplianceService
      * @param  array<int|string, mixed>  $json
      * @return list<array<string, mixed>>
      */
+    protected function normalizeBankHoursDateParam(string $date): string
+    {
+        $date = trim($date);
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return str_replace('-', '', $date);
+        }
+
+        return $date;
+    }
+
     protected function normalizeBankHoursRows(array $json, int $depth = 0): array
     {
         if ($depth > 20) {

@@ -307,8 +307,8 @@ class RhidAdminPortfolioMetricsService
             'just_fim' => $monthEnd->format('Ymd'),
             'prev_just_ini' => $prevStart->format('Ymd'),
             'prev_just_fim' => $prevEnd->format('Ymd'),
-            'bank_date_today' => $now->toDateString(),
-            'bank_date_prev_month_end' => $prevEnd->toDateString(),
+            'bank_date_today' => $now->format('Ymd'),
+            'bank_date_prev_month_end' => $prevEnd->format('Ymd'),
             'label_current' => $monthStart->locale('pt_BR')->translatedFormat('F Y'),
             'label_previous' => $prevStart->locale('pt_BR')->translatedFormat('F Y'),
         ];
