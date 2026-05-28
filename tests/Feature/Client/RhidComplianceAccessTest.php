@@ -90,4 +90,15 @@ class RhidComplianceAccessTest extends TestCase
             ->get(route('client.rhid.compliance.index'))
             ->assertOk();
     }
+
+    public function test_company_admin_cannot_open_rhid_compliance_without_rhid_module(): void
+    {
+        $company = Company::query()->create(['name' => 'Empresa sem RHID']);
+        $this->subscribeCompanyToNr1($company, withRhid: false);
+        $admin = User::factory()->companyAdmin($company->id)->create();
+
+        $this->actingAs($admin)
+            ->get(route('client.rhid.compliance.index'))
+            ->assertForbidden();
+    }
 }

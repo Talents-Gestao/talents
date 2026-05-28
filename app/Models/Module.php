@@ -19,6 +19,9 @@ class Module extends Model
     /** @var string Quadros Kanban / Tarefas */
     public const KEY_TAREFAS = 'tarefas';
 
+    /** @var string Integração RHID / ponto eletrônico Control iD */
+    public const KEY_RHID = 'rhid';
+
     protected $fillable = ['key', 'name', 'description'];
 
     public function plans(): BelongsToMany

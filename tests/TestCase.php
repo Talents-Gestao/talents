@@ -49,19 +49,27 @@ abstract class TestCase extends BaseTestCase
         $this->withoutMiddleware(ValidateCsrfToken::class);
     }
 
-    protected function subscribeCompanyToNr1(Company $company): void
+    protected function subscribeCompanyToNr1(Company $company, bool $withRhid = true): void
     {
         $nr1 = Module::query()->firstOrCreate(
             ['key' => Module::KEY_NR1],
             ['name' => 'NR1', 'description' => 'Teste']
         );
+        $moduleIds = [$nr1->id];
+        if ($withRhid) {
+            $rhid = Module::query()->firstOrCreate(
+                ['key' => Module::KEY_RHID],
+                ['name' => 'RHID / Ponto', 'description' => 'Teste']
+            );
+            $moduleIds[] = $rhid->id;
+        }
         $plan = Plan::query()->create([
             'name' => 'Plano NR1 Test',
             'slug' => 'nr1-test-'.Str::random(8),
             'price_monthly_cents' => 0,
             'is_active' => true,
         ]);
-        $plan->modules()->sync([$nr1->id]);
+        $plan->modules()->sync($moduleIds);
         Subscription::query()->create([
             'company_id' => $company->id,
             'plan_id' => $plan->id,

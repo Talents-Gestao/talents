@@ -51,6 +51,14 @@ class TalentsSeeder extends Seeder
             ]
         );
 
+        $rhid = Module::query()->firstOrCreate(
+            ['key' => Module::KEY_RHID],
+            [
+                'name' => 'RHID / Ponto',
+                'description' => 'Integração de ponto eletrônico Control iD (espelho, compliance NR-1).',
+            ]
+        );
+
         $plan = Plan::query()->firstOrCreate(
             ['slug' => 'nr1-pro'],
             [
@@ -62,7 +70,7 @@ class TalentsSeeder extends Seeder
             ]
         );
 
-        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id]);
+        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id, $rhid->id]);
 
         $admin = User::query()->firstOrCreate(
             ['email' => 'admin@talents.local'],

@@ -25,6 +25,13 @@ const tasksAccessMode = () => {
     return 'inherit';
 };
 
+const rhidAccessMode = () => {
+    const v = props.company.rhid_access;
+    if (v === true) return 'enabled';
+    if (v === false) return 'disabled';
+    return 'inherit';
+};
+
 const form = useForm({
     name: props.company.name,
     contact_email: props.company.contact_email ?? '',
@@ -41,6 +48,7 @@ const form = useForm({
     is_active: props.company.is_active,
     strategic_calendar_access_mode: accessMode(),
     tasks_access_mode: tasksAccessMode(),
+    rhid_access_mode: rhidAccessMode(),
     plan_id: props.activePlanId ?? null,
 });
 
@@ -165,6 +173,21 @@ const submit = () => {
                 <select
                     id="tasks_access_mode"
                     v-model="form.tasks_access_mode"
+                    class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option value="inherit">Seguir o plano</option>
+                    <option value="enabled">Forçar habilitado</option>
+                    <option value="disabled">Forçar desabilitado</option>
+                </select>
+            </div>
+            <div>
+                <InputLabel for="rhid_access_mode" value="RHID / Ponto" />
+                <p class="mt-0.5 text-xs text-gray-500">
+                    Por padrão segue o plano (módulo «rhid»). Pode forçar por empresa.
+                </p>
+                <select
+                    id="rhid_access_mode"
+                    v-model="form.rhid_access_mode"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
                     <option value="inherit">Seguir o plano</option>
