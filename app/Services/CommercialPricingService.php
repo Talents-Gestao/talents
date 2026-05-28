@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\CommercialProduct;
 use App\Models\CommercialSetting;
+use App\Services\Commercial\CommercialProductPricingService;
+use Illuminate\Support\Collection;
 
 /**
  * Reproduz as fórmulas Q–X da aba "Simulador" da planilha
@@ -12,6 +15,15 @@ use App\Models\CommercialSetting;
  */
 class CommercialPricingService
 {
+    public function __construct(
+        private ?CommercialProductPricingService $catalogPricing = null,
+    ) {}
+
+    private function catalogPricingService(): CommercialProductPricingService
+    {
+        return $this->catalogPricing ??= new CommercialProductPricingService;
+    }
+
     /**
      * Calcula o breakdown completo de uma proposta.
      *
@@ -45,8 +57,18 @@ class CommercialPricingService
         $direcionamento = $this->calcDirecionamento($employees, $inputs, $s);
         $palestras = $this->calcPalestras($employees, $inputs, $s);
 
-        $totalFinal = $pesquisas + $profiler + $devolutiva + $nr1 + $nr1Implantacao
+        $legacyTotal = $pesquisas + $profiler + $devolutiva + $nr1 + $nr1Implantacao
             + $contratacao + $direcionamento + $palestras;
+
+        $catalogSelections = $inputs['catalog_products'] ?? [];
+
+        $catalog = $this->catalogPricingService()->calculateMany(
+            $this->catalogProducts($inputs, $catalogSelections),
+            $employees,
+            $catalogSelections,
+        );
+
+        $totalFinal = $legacyTotal + $catalog['total_cents'];
 
         $commissionPercent = (float) ($inputs['commission_percent'] ?? $s->default_commission_percent ?? 0);
         $commissionCents = (int) round($totalFinal * $commissionPercent / 100);
@@ -60,10 +82,42 @@ class CommercialPricingService
             'total_contratacao_cents' => $contratacao,
             'total_direcionamento_cents' => $direcionamento,
             'total_palestras_cents' => $palestras,
+            'total_catalog_products_cents' => $catalog['total_cents'],
+            'catalog_lines' => $catalog['lines'],
             'total_final_cents' => $totalFinal,
             'commission_percent' => $commissionPercent,
             'commission_cents' => $commissionCents,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @param  array<int, array<string, mixed>>  $selections
+     */
+    private function catalogProducts(array $inputs, array $selections): Collection
+    {
+        if (isset($inputs['_catalog_products']) && $inputs['_catalog_products'] instanceof Collection) {
+            return $inputs['_catalog_products'];
+        }
+
+        if ($selections === []) {
+            return collect();
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map(
+            fn ($s) => (int) ($s['product_id'] ?? 0),
+            $selections,
+        ))));
+
+        if ($ids === []) {
+            return collect();
+        }
+
+        return CommercialProduct::query()
+            ->active()
+            ->whereIn('id', $ids)
+            ->ordered()
+            ->get();
     }
 
     /**

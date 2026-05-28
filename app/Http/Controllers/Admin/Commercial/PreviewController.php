@@ -32,8 +32,15 @@ class PreviewController extends Controller
             'svc_direcionamento' => ['boolean'],
             'svc_palestras' => ['boolean'],
             'commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'catalog_products' => ['nullable', 'array'],
+            'catalog_products.*.product_id' => ['required', 'integer'],
+            'catalog_products.*.enabled' => ['boolean'],
+            'catalog_products.*.modality' => ['nullable', 'string', 'max:64'],
+            'catalog_products.*.salary_cents' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        return response()->json($this->pricing->calculate($data));
+        $result = $this->pricing->calculate($data);
+
+        return response()->json($result);
     }
 }

@@ -121,7 +121,35 @@ class CommercialProposalServiceLines
             ];
         }
 
+        $p->loadMissing('catalogLines.product');
+
+        foreach ($p->catalogLines as $line) {
+            $slug = $line->product?->slug ?? ('produto-'.$line->commercial_product_id);
+            $lines[] = [
+                'key' => $slug,
+                'label' => $line->label_snapshot,
+                'detail' => (string) ($line->detail_snapshot ?? ''),
+                'value_cents' => (int) $line->total_cents,
+            ];
+        }
+
         return $lines;
+    }
+
+    /**
+     * Chaves de serviço (legado + catálogo) para placeholders de contrato.
+     *
+     * @return array<int, string>
+     */
+    public static function allServiceKeysForProposal(CommercialProposal $p): array
+    {
+        $keys = self::SERVICE_KEYS;
+        $p->loadMissing('catalogLines.product');
+        foreach ($p->catalogLines as $line) {
+            $keys[] = $line->product?->slug ?? ('produto-'.$line->commercial_product_id);
+        }
+
+        return array_values(array_unique($keys));
     }
 
     /**

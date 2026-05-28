@@ -1,4 +1,5 @@
 <script setup>
+import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
 import axios from 'axios';
@@ -10,9 +11,23 @@ const props = defineProps({
     proposal: { type: Object, default: null },
     sellers: { type: Array, default: () => [] },
     settings: { type: Object, required: true },
+    catalogProducts: { type: Array, default: () => [] },
 });
 
 const settingsRef = ref({ ...props.settings });
+const catalogProductsRef = computed(() => props.catalogProducts);
+
+const buildCatalogProductsInitial = () => {
+    const existing = Object.fromEntries(
+        (props.proposal?.catalog_products ?? []).map((s) => [s.product_id, s]),
+    );
+    return props.catalogProducts.map((p) => ({
+        product_id: p.id,
+        enabled: !!existing[p.id]?.enabled,
+        modality: existing[p.id]?.modality ?? '',
+        salary_cents: existing[p.id]?.salary_cents ?? 0,
+    }));
+};
 
 const formInitial = props.proposal
     ? {
@@ -44,6 +59,7 @@ const formInitial = props.proposal
           palestra_venue_address: props.proposal.palestra_venue_address ?? '',
           palestra_audience_estimate: props.proposal.palestra_audience_estimate ?? '',
           palestra_format: props.proposal.palestra_format ?? '',
+          catalog_products: buildCatalogProductsInitial(),
       }
     : {
           client_name: '',
@@ -74,6 +90,7 @@ const formInitial = props.proposal
           palestra_venue_address: '',
           palestra_audience_estimate: '',
           palestra_format: '',
+          catalog_products: buildCatalogProductsInitial(),
       };
 
 const form = useForm(formInitial);
@@ -86,7 +103,33 @@ watch(salaryReais, (val) => {
 });
 
 const formRef = computed(() => form);
-const { breakdownCents, totalFinalCents } = useCommercialPricing(formRef, settingsRef);
+const { breakdownCents, totalFinalCents, catalogLines } = useCommercialPricing(formRef, settingsRef, catalogProductsRef);
+
+const catalogSelection = (productId) => {
+    let sel = form.catalog_products.find((s) => s.product_id === productId);
+    if (!sel) {
+        sel = { product_id: productId, enabled: false, modality: '', salary_cents: 0 };
+        form.catalog_products.push(sel);
+    }
+    return sel;
+};
+
+const catalogLineCents = (productId) => {
+    const line = breakdownCents.value.catalog_lines?.find((l) => l.product_id === productId);
+    return line?.value_cents ?? 0;
+};
+
+const catalogSalaryReais = (productId) => {
+    const cents = catalogSelection(productId).salary_cents ?? 0;
+    return ((Number(cents) || 0) / 100).toFixed(2).replace('.', ',');
+};
+
+const updateCatalogSalary = (productId, reaisStr) => {
+    const numeric = Number(String(reaisStr ?? '').replace(/\./g, '').replace(',', '.'));
+    catalogSelection(productId).salary_cents = Number.isFinite(numeric)
+        ? Math.max(0, Math.round(numeric * 100))
+        : 0;
+};
 
 // Consulta CNPJ (Receita Federal) — reaproveita o endpoint já existente.
 const cnpjLookupLoading = ref(false);
@@ -149,16 +192,24 @@ const formatContractDate = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR')
 const isEdit = computed(() => props.mode === 'edit');
 const titleText = computed(() => (isEdit.value ? `Proposta ${props.proposal?.code}` : 'Nova proposta'));
 
-const services = computed(() => [
-    { label: 'Pesquisas e Organograma', cents: breakdownCents.value.total_pesquisas_cents, on: form.svc_pesquisas },
-    { label: 'Profiler', cents: breakdownCents.value.total_profiler_cents, on: form.svc_profiler },
-    { label: 'Devolutiva', cents: breakdownCents.value.total_devolutiva_cents, on: !!form.svc_devolutiva },
-    { label: 'NR-1 Mapeamento', cents: breakdownCents.value.total_nr1_cents, on: form.svc_nr1 },
-    { label: 'NR-1 Implantação', cents: breakdownCents.value.total_nr1_implantacao_cents, on: !!form.svc_nr1_implantacao_modo && form.svc_nr1 },
-    { label: 'Contratação', cents: breakdownCents.value.total_contratacao_cents, on: form.svc_contratacao },
-    { label: 'Direcionamento Estratégico', cents: breakdownCents.value.total_direcionamento_cents, on: form.svc_direcionamento },
-    { label: 'Palestras e Treinamentos', cents: breakdownCents.value.total_palestras_cents, on: form.svc_palestras },
-]);
+const services = computed(() => {
+    const legacy = [
+        { label: 'Pesquisas e Organograma', cents: breakdownCents.value.total_pesquisas_cents, on: form.svc_pesquisas },
+        { label: 'Profiler', cents: breakdownCents.value.total_profiler_cents, on: form.svc_profiler },
+        { label: 'Devolutiva', cents: breakdownCents.value.total_devolutiva_cents, on: !!form.svc_devolutiva },
+        { label: 'NR-1 Mapeamento', cents: breakdownCents.value.total_nr1_cents, on: form.svc_nr1 },
+        { label: 'NR-1 Implantação', cents: breakdownCents.value.total_nr1_implantacao_cents, on: !!form.svc_nr1_implantacao_modo && form.svc_nr1 },
+        { label: 'Contratação', cents: breakdownCents.value.total_contratacao_cents, on: form.svc_contratacao },
+        { label: 'Direcionamento Estratégico', cents: breakdownCents.value.total_direcionamento_cents, on: form.svc_direcionamento },
+        { label: 'Palestras e Treinamentos', cents: breakdownCents.value.total_palestras_cents, on: form.svc_palestras },
+    ];
+    const catalog = (catalogLines.value || []).map((line) => ({
+        label: line.label,
+        cents: line.value_cents,
+        on: true,
+    }));
+    return [...legacy, ...catalog];
+});
 </script>
 
 <template>
@@ -186,6 +237,8 @@ const services = computed(() => [
                 </div>
             </div>
         </template>
+
+        <CommercialModuleNav />
 
         <form class="grid gap-8 lg:grid-cols-3" @submit.prevent="submit">
             <div class="space-y-6 lg:col-span-2">
@@ -421,6 +474,90 @@ const services = computed(() => [
                                 {{ formatBRL(breakdownCents.total_palestras_cents) }}
                             </div>
                         </label>
+                    </div>
+
+                    <div v-if="catalogProducts.length" class="mt-8 border-t border-slate-200 pt-6">
+                        <h4 class="text-sm font-semibold text-slate-900">Produtos do catálogo</h4>
+                        <p class="mt-1 text-xs text-slate-500">
+                            Produtos cadastrados em Comercial → Valores e contratos → aba Produtos.
+                        </p>
+                        <div class="mt-4 space-y-4">
+                            <template v-for="product in catalogProducts" :key="product.id">
+                                <label
+                                    v-if="product.pricing_type === 'fixed' || product.pricing_type === 'per_employee' || product.pricing_type === 'tiered_per_employee' || product.pricing_type === 'threshold_multiplier'"
+                                    class="flex items-start gap-3 rounded-xl border border-talents-100 bg-talents-50/30 p-3 hover:bg-talents-50/50"
+                                >
+                                    <input
+                                        v-model="catalogSelection(product.id).enabled"
+                                        type="checkbox"
+                                        class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500"
+                                    />
+                                    <div class="flex-1">
+                                        <div class="font-medium text-slate-900">{{ product.name }}</div>
+                                        <p v-if="product.description" class="text-xs text-slate-500">{{ product.description }}</p>
+                                    </div>
+                                    <div class="text-right text-sm tabular-nums text-slate-700">
+                                        {{ formatBRL(catalogLineCents(product.id)) }}
+                                    </div>
+                                </label>
+
+                                <div
+                                    v-else-if="product.pricing_type === 'fixed_modality'"
+                                    class="rounded-xl border border-talents-100 bg-talents-50/30 p-3"
+                                >
+                                    <div class="font-medium text-slate-900">{{ product.name }}</div>
+                                    <select
+                                        v-model="catalogSelection(product.id).modality"
+                                        class="mt-2 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                        @change="catalogSelection(product.id).enabled = !!catalogSelection(product.id).modality"
+                                    >
+                                        <option value="">— Não contratado —</option>
+                                        <option
+                                            v-for="mod in product.pricing_config?.modalities || []"
+                                            :key="mod.key"
+                                            :value="mod.key"
+                                        >
+                                            {{ mod.label }} ({{ formatBRL(mod.cents) }})
+                                        </option>
+                                    </select>
+                                    <div class="mt-2 text-right text-sm tabular-nums text-slate-700">
+                                        {{ formatBRL(catalogLineCents(product.id)) }}
+                                    </div>
+                                </div>
+
+                                <div
+                                    v-else-if="product.pricing_type === 'salary_times_employees'"
+                                    class="rounded-xl border border-talents-100 bg-talents-50/30 p-3"
+                                >
+                                    <label class="flex items-start gap-3">
+                                        <input
+                                            v-model="catalogSelection(product.id).enabled"
+                                            type="checkbox"
+                                            class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500"
+                                        />
+                                        <div class="flex-1">
+                                            <div class="font-medium text-slate-900">{{ product.name }}</div>
+                                            <p class="text-xs text-slate-500">Salário base × nº de funcionários.</p>
+                                        </div>
+                                        <div class="text-right text-sm tabular-nums text-slate-700">
+                                            {{ formatBRL(catalogLineCents(product.id)) }}
+                                        </div>
+                                    </label>
+                                    <div v-if="catalogSelection(product.id).enabled" class="mt-3">
+                                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                            Salário base por funcionário (R$)
+                                        </label>
+                                        <input
+                                            :value="catalogSalaryReais(product.id)"
+                                            type="text"
+                                            placeholder="0,00"
+                                            class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                            @input="updateCatalogSalary(product.id, $event.target.value)"
+                                        />
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </section>
 

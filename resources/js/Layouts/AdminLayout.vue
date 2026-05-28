@@ -134,9 +134,20 @@ const adminHomeUrl = computed(
             <SidebarNavItem
                 v-if="canAdmin('comercial')"
                 :href="route('admin.comercial.dashboard')"
-                :active="route().current('admin.comercial.*')"
+                :active="
+                    route().current('admin.comercial.*') &&
+                    !route().current('admin.comercial.settings.*')
+                "
                 :icon="BanknotesIcon"
                 label="Comercial"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                v-if="$page.props.auth?.user?.can_commercial_settings"
+                :href="route('admin.comercial.settings.edit')"
+                :active="route().current('admin.comercial.settings.*')"
+                :icon="DocumentTextIcon"
+                label="Valores e contratos"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

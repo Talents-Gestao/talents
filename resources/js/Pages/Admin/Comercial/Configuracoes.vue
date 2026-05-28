@@ -1,5 +1,8 @@
 <script setup>
+import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue';
+import CommercialPricingShortcuts from '@/Components/Comercial/CommercialPricingShortcuts.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import CommercialProductsManager from '@/Pages/Admin/Comercial/CommercialProductsManager.vue';
 import ContractTemplatesManager from '@/Pages/Admin/Comercial/ContractTemplatesManager.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -8,13 +11,25 @@ const props = defineProps({
     settings: { type: Object, required: true },
     users: { type: Array, default: () => [] },
     contractTemplates: { type: Array, default: () => [] },
+    commercialProducts: { type: Array, default: () => [] },
+    pricingTypeLabels: { type: Object, default: () => ({}) },
 });
 
 const tab = ref('faixas');
 
+const validTabs = ['faixas', 'fixos', 'produtos', 'pdf', 'vendedores', 'empresa', 'contratos'];
+
+const setTab = (id) => {
+    if (!validTabs.includes(id)) return;
+    tab.value = id;
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', id);
+    window.history.replaceState({}, '', url);
+};
+
 onMounted(() => {
     const q = new URLSearchParams(window.location.search).get('tab');
-    if (q && ['faixas', 'fixos', 'pdf', 'vendedores', 'empresa', 'contratos'].includes(q)) {
+    if (q && validTabs.includes(q)) {
         tab.value = q;
     }
 });
@@ -98,6 +113,7 @@ moneyKeys.forEach((key) => {
 const tabs = [
     { id: 'faixas', label: 'Faixas por funcionários' },
     { id: 'fixos', label: 'Valores fixos' },
+    { id: 'produtos', label: 'Produtos' },
     { id: 'pdf', label: 'PDF' },
     { id: 'empresa', label: 'Empresa' },
     { id: 'contratos', label: 'Contratos' },
@@ -148,10 +164,16 @@ const tableConfig = computed(() => [
             <div>
                 <p class="text-sm text-slate-500">Comercial</p>
                 <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-                    Parâmetros de precificação
+                    Valores e contratos
                 </h2>
+                <p class="mt-1 text-sm text-slate-600">
+                    Tabelas de preço, PDF da proposta e modelos usados na geração de contratos.
+                </p>
             </div>
         </template>
+
+        <CommercialModuleNav />
+        <CommercialPricingShortcuts />
 
         <div class="surface-card p-1">
             <div class="flex flex-wrap gap-1 p-2">
@@ -161,7 +183,7 @@ const tableConfig = computed(() => [
                     type="button"
                     class="rounded-lg px-3 py-2 text-sm font-medium transition"
                     :class="tab === t.id ? 'bg-talents-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
-                    @click="tab = t.id"
+                    @click="setTab(t.id)"
                 >
                     {{ t.label }}
                 </button>
@@ -437,7 +459,7 @@ const tableConfig = computed(() => [
                 </section>
             </template>
 
-            <div v-if="tab !== 'contratos' && tab !== 'empresa'" class="flex justify-end">
+            <div v-if="tab !== 'contratos' && tab !== 'empresa' && tab !== 'produtos'" class="flex justify-end">
                 <button
                     type="submit"
                     :disabled="form.processing"
@@ -447,6 +469,13 @@ const tableConfig = computed(() => [
                 </button>
             </div>
         </form>
+
+        <div v-if="tab === 'produtos'" class="mt-6">
+            <CommercialProductsManager
+                :products="commercialProducts"
+                :pricing-type-labels="pricingTypeLabels"
+            />
+        </div>
 
         <div v-if="tab === 'contratos'" class="mt-6">
             <ContractTemplatesManager :templates="contractTemplates" />

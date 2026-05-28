@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\AdminPermissionModule;
+use App\Enums\PermissionAction;
 use App\Support\AdminHomeResolver;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\Request;
@@ -89,6 +91,8 @@ class HandleInertiaRequests extends Middleware
                         'admin_home_url' => $user->isSuperAdmin()
                             ? $this->adminHomeUrlFor($user)
                             : null,
+                        'can_commercial_settings' => $user->isSuperAdmin()
+                            && $user->canAccessAdmin(AdminPermissionModule::Comercial, PermissionAction::View),
                     ]
                     : null,
                 'workspace' => $workspacePayload,

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Commercial;
 
 use App\Http\Controllers\Controller;
 use App\Models\CommercialContractTemplate;
+use App\Models\CommercialProduct;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSetting;
 use App\Models\User;
@@ -77,20 +78,21 @@ class ProposalController extends Controller
             'proposal' => null,
             'sellers' => $this->sellersOptions(),
             'settings' => $this->publicSettings(),
+            'catalogProducts' => $this->catalogProductsPayload(),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $this->validateProposal($request);
-
-        $totals = $this->pricing->calculate($data);
+        [$data, $totals, $catalogLines] = $this->validatedWithTotals($request);
 
         $proposal = CommercialProposal::create(array_merge($data, $totals, [
             'code' => CommercialProposal::nextCode(),
             'created_by' => $request->user()?->id,
             'closed_at' => ($data['is_closed'] ?? false) ? now() : null,
         ]));
+
+        $this->syncCatalogLines($proposal, $catalogLines);
 
         return redirect()
             ->route('admin.comercial.propostas.edit', $proposal)
@@ -101,20 +103,16 @@ class ProposalController extends Controller
     {
         return Inertia::render('Admin/Comercial/Propostas/Form', [
             'mode' => 'edit',
-            'proposal' => $proposal->load([
-                'seller:id,name',
-                'contracts' => fn ($q) => $q->orderByDesc('generated_at')
-                    ->select(['id', 'proposal_id', 'code', 'template_name_snapshot', 'generated_at']),
-            ]),
+            'proposal' => $this->proposalFormPayload($proposal),
             'sellers' => $this->sellersOptions(),
             'settings' => $this->publicSettings(),
+            'catalogProducts' => $this->catalogProductsPayload(),
         ]);
     }
 
     public function update(Request $request, CommercialProposal $proposal): RedirectResponse
     {
-        $data = $this->validateProposal($request);
-        $totals = $this->pricing->calculate($data);
+        [$data, $totals, $catalogLines] = $this->validatedWithTotals($request);
 
         $wasClosed = $proposal->is_closed;
         $isClosed = (bool) ($data['is_closed'] ?? false);
@@ -126,6 +124,8 @@ class ProposalController extends Controller
                 default => $proposal->closed_at,
             },
         ]));
+
+        $this->syncCatalogLines($proposal, $catalogLines);
 
         return redirect()
             ->route('admin.comercial.propostas.edit', $proposal)
@@ -197,6 +197,81 @@ class ProposalController extends Controller
     }
 
     /**
+     * @return array{0: array<string, mixed>, 1: array<string, mixed>, 2: array<int, array<string, mixed>>}
+     */
+    private function validatedWithTotals(Request $request): array
+    {
+        $data = $this->validateProposal($request);
+        $catalogProducts = $data['catalog_products'] ?? [];
+        unset($data['catalog_products']);
+
+        $totals = $this->pricing->calculate(array_merge($data, [
+            'catalog_products' => $catalogProducts,
+        ]));
+        $catalogLines = $totals['catalog_lines'] ?? [];
+        unset($totals['catalog_lines']);
+
+        return [$data, $totals, $catalogLines];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $catalogLines
+     */
+    private function syncCatalogLines(CommercialProposal $proposal, array $catalogLines): void
+    {
+        $proposal->catalogLines()->delete();
+
+        foreach ($catalogLines as $line) {
+            $proposal->catalogLines()->create([
+                'commercial_product_id' => $line['product_id'],
+                'options' => array_filter([
+                    'modality' => $line['options']['modality'] ?? null,
+                    'salary_cents' => $line['options']['salary_cents'] ?? null,
+                ], fn ($v) => $v !== null && $v !== ''),
+                'label_snapshot' => $line['label'],
+                'detail_snapshot' => $line['detail'] ?? '',
+                'total_cents' => (int) $line['value_cents'],
+            ]);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function proposalFormPayload(CommercialProposal $proposal): array
+    {
+        $proposal->load([
+            'seller:id,name',
+            'contracts' => fn ($q) => $q->orderByDesc('generated_at')
+                ->select(['id', 'proposal_id', 'code', 'template_name_snapshot', 'generated_at']),
+            'catalogLines.product:id,slug,name,pricing_type,pricing_config',
+        ]);
+
+        $payload = $proposal->toArray();
+        $payload['catalog_products'] = $proposal->catalogLines->map(fn ($line) => [
+            'product_id' => $line->commercial_product_id,
+            'enabled' => true,
+            'modality' => $line->options['modality'] ?? '',
+            'salary_cents' => (int) ($line->options['salary_cents'] ?? 0),
+        ])->values()->all();
+
+        return $payload;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function catalogProductsPayload(): array
+    {
+        return CommercialProduct::query()
+            ->active()
+            ->ordered()
+            ->get()
+            ->map(fn (CommercialProduct $p) => $p->toCatalogArray())
+            ->all();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function validateProposal(Request $request): array
@@ -234,6 +309,12 @@ class ProposalController extends Controller
 
             'is_closed' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
+
+            'catalog_products' => ['nullable', 'array'],
+            'catalog_products.*.product_id' => ['required', 'integer', Rule::exists('commercial_products', 'id')],
+            'catalog_products.*.enabled' => ['boolean'],
+            'catalog_products.*.modality' => ['nullable', 'string', 'max:64'],
+            'catalog_products.*.salary_cents' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $data['commission_percent'] = (float) (CommercialSetting::current()->default_commission_percent ?? 0);

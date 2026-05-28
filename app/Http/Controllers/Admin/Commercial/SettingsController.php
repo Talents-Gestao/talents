@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Commercial;
 
 use App\Http\Controllers\Controller;
 use App\Models\CommercialContractTemplate;
+use App\Models\CommercialProduct;
 use App\Models\CommercialSetting;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -34,6 +35,12 @@ class SettingsController extends Controller
                     'has_docx' => (bool) $t->docx_path,
                 ])
                 ->all(),
+            'commercialProducts' => CommercialProduct::query()
+                ->ordered()
+                ->get()
+                ->map(fn (CommercialProduct $p) => $p->toCatalogArray())
+                ->all(),
+            'pricingTypeLabels' => \App\Enums\CommercialProductPricingType::labels(),
             'users' => User::query()
                 ->whereNull('company_id')
                 ->orderBy('name')

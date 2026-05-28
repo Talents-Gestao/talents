@@ -4,6 +4,7 @@ import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
 import RankingList from '@/Components/Dashboard/RankingList.vue';
 import SectionHeader from '@/Components/Dashboard/SectionHeader.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
+import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
 import { formatBRL } from '@/composables/useCommercialPricing';
@@ -156,6 +157,13 @@ const barChartSeries = computed(() => [
                         <option v-for="opt in periodOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
                     </select>
                     <Link
+                        v-if="$page.props.auth?.user?.can_commercial_settings"
+                        :href="route('admin.comercial.settings.edit')"
+                        class="inline-flex items-center rounded-xl border border-talents-200 bg-talents-50 px-4 py-2 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-100"
+                    >
+                        Valores e contratos
+                    </Link>
+                    <Link
                         :href="route('admin.comercial.propostas.index')"
                         class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                     >
@@ -170,6 +178,8 @@ const barChartSeries = computed(() => [
                 </div>
             </div>
         </template>
+
+        <CommercialModuleNav />
 
         <!-- Destaque + ação rápida -->
         <div class="mb-8 grid gap-4 lg:grid-cols-3">

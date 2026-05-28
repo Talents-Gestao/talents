@@ -1,3 +1,4 @@
+import { calculateCatalogProducts } from '@/composables/useCatalogProductPricing';
 import { computed } from 'vue';
 
 /**
@@ -8,7 +9,7 @@ import { computed } from 'vue';
  * @param {import('vue').Ref<object>} formRef    Form reativo (useForm ou ref).
  * @param {import('vue').Ref<object>} settingsRef Settings vindos do backend.
  */
-export function useCommercialPricing(formRef, settingsRef) {
+export function useCommercialPricing(formRef, settingsRef, catalogProductsRef = null) {
     const employees = computed(() => Math.max(0, Number(formRef.value?.employee_count ?? 0)));
     const s = () => settingsRef.value || {};
 
@@ -95,10 +96,18 @@ export function useCommercialPricing(formRef, settingsRef) {
         return employees.value > threshold ? base * multiplier : base;
     });
 
-    const totalFinal = computed(() =>
+    const catalog = computed(() => {
+        const products = catalogProductsRef?.value ?? [];
+        const selections = formRef.value?.catalog_products ?? [];
+        return calculateCatalogProducts(products, employees.value, selections);
+    });
+
+    const legacyTotal = computed(() =>
         pesquisas.value + profiler.value + devolutiva.value + nr1.value
         + nr1Implantacao.value + contratacao.value + direcionamento.value + palestras.value,
     );
+
+    const totalFinal = computed(() => legacyTotal.value + catalog.value.total_cents);
 
     const commissionPercent = computed(() => Number(s().default_commission_percent ?? 0));
     const commissionCents = computed(() => Math.round(totalFinal.value * commissionPercent.value / 100));
@@ -113,9 +122,12 @@ export function useCommercialPricing(formRef, settingsRef) {
             total_contratacao_cents: contratacao.value,
             total_direcionamento_cents: direcionamento.value,
             total_palestras_cents: palestras.value,
+            total_catalog_products_cents: catalog.value.total_cents,
+            catalog_lines: catalog.value.lines,
             total_final_cents: totalFinal.value,
             commission_cents: commissionCents.value,
         })),
+        catalogLines: computed(() => catalog.value.lines),
         totalFinalCents: totalFinal,
         commissionCents,
     };

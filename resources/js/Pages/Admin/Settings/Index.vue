@@ -4,7 +4,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -142,6 +142,20 @@ const setTab = (name) => {
                 diferente da atual e não pode ser lida. Salve novamente a chave ou a senha em cada aba para corrigir.
             </p>
         </div>
+
+        <Link
+            v-if="$page.props.auth?.user?.can_commercial_settings"
+            :href="route('admin.comercial.settings.edit')"
+            class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-talents-200 bg-talents-50 px-4 py-3 text-sm transition hover:border-talents-300 hover:bg-talents-100/80"
+        >
+            <div>
+                <p class="font-semibold text-talents-900">Comercial — valores e contratos</p>
+                <p class="mt-0.5 text-talents-800/90">
+                    Edite faixas de preço, valores fixos e modelos de contrato usados nas propostas.
+                </p>
+            </div>
+            <span class="shrink-0 font-semibold text-talents-700">Abrir →</span>
+        </Link>
 
         <div class="mb-6 flex flex-wrap gap-2 border-b border-gray-200 pb-4">
             <button

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ActionPlanAdminController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AiSettingsController;
 use App\Http\Controllers\Admin\Commercial\ContractController as CommercialContractController;
+use App\Http\Controllers\Admin\Commercial\ProductController as CommercialProductController;
 use App\Http\Controllers\Admin\Commercial\ContractTemplateController as CommercialContractTemplateController;
 use App\Http\Controllers\Admin\Commercial\DashboardController as CommercialDashboardController;
 use App\Http\Controllers\Admin\Commercial\PreviewController as CommercialPreviewController;
@@ -166,6 +167,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->only(['store', 'update', 'destroy'])
             ->parameters(['contract-templates' => 'template'])
             ->names('contract-templates');
+        Route::resource('products', CommercialProductController::class)
+            ->only(['store', 'update', 'destroy'])
+            ->parameters(['products' => 'product'])
+            ->names('products');
         Route::resource('propostas', CommercialProposalController::class)
             ->except(['show'])
             ->parameters(['propostas' => 'proposal']);

@@ -156,7 +156,7 @@ class ContractPlaceholderService
             'data_hoje_por_extenso' => $dataHojePorExtenso,
         ];
 
-        return array_merge($base, $this->perServicePlaceholders($byKey));
+        return array_merge($base, $this->perServicePlaceholders($proposal, $byKey));
     }
 
     /**
@@ -166,14 +166,16 @@ class ContractPlaceholderService
      * @param  array<string, array{key:string, label:string, detail:string, value_cents:int}>  $byKey
      * @return array<string, string>
      */
-    private function perServicePlaceholders(array $byKey): array
+    private function perServicePlaceholders(CommercialProposal $proposal, array $byKey): array
     {
         $out = [];
         $fmt = fn (int $cents) => 'R$ '.number_format($cents / 100, 2, ',', '.');
 
-        foreach (CommercialProposalServiceLines::SERVICE_KEYS as $key) {
-            $label = CommercialProposalServiceLines::labelForKey($key);
+        $serviceKeys = CommercialProposalServiceLines::allServiceKeysForProposal($proposal);
+
+        foreach ($serviceKeys as $key) {
             $line = $byKey[$key] ?? null;
+            $label = $line['label'] ?? CommercialProposalServiceLines::labelForKey($key);
             $ativo = $line !== null;
             $detail = $line['detail'] ?? '—';
             $valor = $line !== null ? $fmt((int) $line['value_cents']) : '—';

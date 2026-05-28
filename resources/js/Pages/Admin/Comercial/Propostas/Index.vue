@@ -1,4 +1,5 @@
 <script setup>
+import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import {
@@ -203,16 +204,27 @@ const sendZapSign = () => {
                     <p class="text-sm text-slate-500">Comercial</p>
                     <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Propostas</h2>
                 </div>
-                <Link
-                    :href="route('admin.comercial.propostas.create')"
-                    class="inline-flex items-center gap-1.5 rounded-xl bg-talents-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
-                    title="Nova proposta"
-                >
-                    <PlusIcon class="h-4 w-4" />
-                    Nova
-                </Link>
+                <div class="flex flex-wrap items-center gap-2">
+                    <Link
+                        v-if="$page.props.auth?.user?.can_commercial_settings"
+                        :href="route('admin.comercial.settings.edit')"
+                        class="inline-flex items-center rounded-xl border border-talents-200 bg-talents-50 px-3 py-2 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-100"
+                    >
+                        Valores e contratos
+                    </Link>
+                    <Link
+                        :href="route('admin.comercial.propostas.create')"
+                        class="inline-flex items-center gap-1.5 rounded-xl bg-talents-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
+                        title="Nova proposta"
+                    >
+                        <PlusIcon class="h-4 w-4" />
+                        Nova
+                    </Link>
+                </div>
             </div>
         </template>
+
+        <CommercialModuleNav />
 
         <div class="surface-card p-6">
             <form class="grid gap-4 sm:grid-cols-4" @submit.prevent="applyFilters">

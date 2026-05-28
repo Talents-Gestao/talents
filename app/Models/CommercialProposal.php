@@ -31,6 +31,7 @@ class CommercialProposal extends Model
             'total_contratacao_cents' => 'integer',
             'total_direcionamento_cents' => 'integer',
             'total_palestras_cents' => 'integer',
+            'total_catalog_products_cents' => 'integer',
             'total_final_cents' => 'integer',
 
             'commission_percent' => 'float',
@@ -57,6 +58,11 @@ class CommercialProposal extends Model
     public function contracts(): HasMany
     {
         return $this->hasMany(CommercialContract::class, 'proposal_id');
+    }
+
+    public function catalogLines(): HasMany
+    {
+        return $this->hasMany(CommercialProposalProductLine::class, 'commercial_proposal_id');
     }
 
     public function scopeClosed(Builder $query): Builder
