@@ -1067,4 +1067,124 @@ class TaskModuleTest extends TestCase
             $checklist->items()->orderBy('position')->pluck('text')->all(),
         );
     }
+
+    public function test_admin_can_complete_card_and_move_to_concluido_list(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $todoList = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $doneList = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Concluído',
+            'position' => 3000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $todoList->id,
+            'title' => 'Tarefa',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+            'completed_at' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/cards/'.$card->id, ['complete' => true])
+            ->assertRedirect();
+
+        $card->refresh();
+        $this->assertNotNull($card->completed_at);
+        $this->assertSame($doneList->id, $card->list_id);
+    }
+
+    public function test_admin_can_reopen_card_without_moving(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $doneList = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Concluído',
+            'position' => 3000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $doneList->id,
+            'title' => 'Tarefa feita',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/cards/'.$card->id, ['complete' => false])
+            ->assertRedirect();
+
+        $card->refresh();
+        $this->assertNull($card->completed_at);
+        $this->assertSame($doneList->id, $card->list_id);
+    }
+
+    public function test_complete_without_concluido_list_only_sets_timestamp(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Em andamento',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'Tarefa',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+            'completed_at' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/cards/'.$card->id, ['complete' => true])
+            ->assertRedirect();
+
+        $card->refresh();
+        $this->assertNotNull($card->completed_at);
+        $this->assertSame($list->id, $card->list_id);
+    }
 }

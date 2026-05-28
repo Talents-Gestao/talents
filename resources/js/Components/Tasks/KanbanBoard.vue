@@ -258,6 +258,28 @@ onUnmounted(() => {
     window.removeEventListener('resize', onListMenuViewportChange);
 });
 
+function toggleCardComplete(card, event) {
+    event?.stopPropagation?.();
+    if (!props.isAdmin || !card?.id) return;
+
+    const completing = !card.completed_at;
+    const previousCompletedAt = card.completed_at;
+
+    card.completed_at = completing ? new Date().toISOString() : null;
+
+    router.patch(
+        route('admin.tarefas.cards.update', card.id),
+        { complete: completing },
+        {
+            preserveScroll: true,
+            onSuccess: () => reload(),
+            onError: () => {
+                card.completed_at = previousCompletedAt;
+            },
+        },
+    );
+}
+
 function requestDeleteCard(card) {
     if (!props.isAdmin || !card?.id) return;
     const title = card.title || 'esta tarefa';
@@ -521,7 +543,25 @@ function expandList(list) {
                             />
                         </div>
 
-                        <p class="text-sm font-medium leading-snug text-slate-900">{{ card.title }}</p>
+                        <div class="flex items-start gap-2">
+                            <input
+                                v-if="isAdmin"
+                                type="checkbox"
+                                class="mt-0.5 h-4 w-4 shrink-0 rounded-full border-slate-300 text-talents-600 focus:ring-talents-500"
+                                :checked="!!card.completed_at"
+                                :title="card.completed_at ? 'Reabrir tarefa' : 'Marcar como concluída'"
+                                :aria-label="card.completed_at ? 'Reabrir tarefa' : 'Marcar como concluída'"
+                                @click.stop="toggleCardComplete(card, $event)"
+                            />
+                            <p
+                                class="min-w-0 flex-1 text-sm font-medium leading-snug"
+                                :class="
+                                    card.completed_at ? 'text-slate-500 line-through' : 'text-slate-900'
+                                "
+                            >
+                                {{ card.title }}
+                            </p>
+                        </div>
                         <p v-if="isAdmin && card.company?.name" class="mt-1 text-[11px] text-slate-500">
                             Cliente: {{ card.company.name }}
                         </p>

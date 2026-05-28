@@ -4,18 +4,19 @@ namespace App\Http\Controllers\Admin\Tasks;
 
 use App\Actions\Tasks\LogTaskActivity;
 use App\Actions\Tasks\MoveTaskCard;
-use App\Enums\TaskListVisibility;
+use App\Actions\Tasks\ToggleTaskCardCompletion;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\TaskCard;
 use App\Models\TaskList;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 use App\Notifications\TaskCardMemberAssignedNotification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+
 class TaskBoardCardController extends Controller
 {
     public function store(Request $request, TaskList $list, LogTaskActivity $log): RedirectResponse
@@ -56,9 +57,26 @@ class TaskBoardCardController extends Controller
         return back()->with('success', 'Cartão criado.');
     }
 
-    public function update(Request $request, TaskCard $card, LogTaskActivity $log): RedirectResponse
-    {
+    public function update(
+        Request $request,
+        TaskCard $card,
+        LogTaskActivity $log,
+        ToggleTaskCardCompletion $toggleCompletion,
+    ): RedirectResponse {
         $board = $card->list->board;
+
+        if ($request->has('complete')) {
+            $data = $request->validate([
+                'complete' => ['required', 'boolean'],
+            ]);
+
+            $toggleCompletion->handle($card, (bool) $data['complete'], $request->user());
+
+            $message = $data['complete'] ? 'Tarefa concluída.' : 'Tarefa reaberta.';
+
+            return back()->with('success', $message);
+        }
+
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
