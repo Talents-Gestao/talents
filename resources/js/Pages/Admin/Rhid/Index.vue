@@ -39,7 +39,7 @@ const filteredCompanies = computed(() => {
 });
 
 const selectedCompany = computed(() =>
-    props.companies.find((company) => company.id === selectedCompanyId.value) ?? null,
+    props.companies.find((company) => Number(company.id) === Number(selectedCompanyId.value)) ?? null,
 );
 
 const summary = computed(() => summaryData.value?.summary ?? {});
@@ -76,10 +76,18 @@ const loadCompanyMetrics = async (refresh = false) => {
     try {
         const { data } = await axios.get(route('admin.rhid.companies.metrics', selectedCompanyId.value), {
             params: refresh ? { refresh: 1 } : {},
+            timeout: 120000,
         });
         companyMetrics.value = data;
         companyLoadedAt.value = new Date();
+
+        if (data?.status === 'error') {
+            companyError.value = data.error || 'Falha ao carregar indicadores da empresa.';
+        } else if (data?.status === 'not_configured') {
+            companyError.value = data.message || 'Integracao RHID nao configurada para esta empresa.';
+        }
     } catch (e) {
+        companyMetrics.value = null;
         companyError.value = e?.response?.data?.message || 'Falha ao carregar indicadores da empresa.';
     } finally {
         companyLoading.value = false;

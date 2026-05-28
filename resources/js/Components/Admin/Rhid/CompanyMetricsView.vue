@@ -24,6 +24,20 @@ const props = defineProps({
 const emit = defineEmits(['refresh']);
 
 const kpiProps = computed(() => metricsToKpiProps(props.metrics));
+
+const apiErrorMessage = computed(() => {
+    if (props.metrics?.status === 'error') {
+        return props.metrics.error || 'Falha ao consultar indicadores RHID.';
+    }
+    if (props.metrics?.status === 'not_configured') {
+        return props.metrics.message || 'Integracao RHID nao configurada para esta empresa.';
+    }
+    return null;
+});
+
+const showMetricsContent = computed(() => props.metrics?.status === 'ok');
+
+const showLoadingSkeleton = computed(() => props.loading && !props.metrics);
 </script>
 
 <template>
@@ -50,13 +64,36 @@ const kpiProps = computed(() => metricsToKpiProps(props.metrics));
             Integracao RHID nao configurada. O cliente deve informar credenciais em RHID / Ponto no portal.
         </p>
 
-        <p v-else-if="error" class="mt-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-rose-100">
-            {{ error }}
+        <p
+            v-else-if="error || apiErrorMessage"
+            class="mt-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-rose-100"
+        >
+            {{ error || apiErrorMessage }}
         </p>
 
-        <template v-else-if="rhidConfigured">
+        <div
+            v-else-if="showLoadingSkeleton"
+            class="mt-5"
+        >
+            <RhidOverviewKpiCards
+                :loading="true"
+                :interactive="false"
+                :format-rhid-bank-balance-minutes="formatRhidBankBalanceMinutes"
+            />
+            <p class="mt-3 text-xs text-slate-500">
+                Consultando API RHID. Isso pode levar alguns instantes...
+            </p>
+        </div>
+
+        <template v-else-if="rhidConfigured && showMetricsContent">
+            <p
+                v-if="loading"
+                class="mt-4 text-xs font-medium text-talents-700"
+            >
+                Atualizando indicadores...
+            </p>
+
             <div
-                v-if="metrics?.status === 'ok'"
                 class="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm"
             >
                 <div class="flex items-center gap-2">
@@ -92,7 +129,7 @@ const kpiProps = computed(() => metricsToKpiProps(props.metrics));
 
             <div v-if="kpiProps" class="mt-5">
                 <RhidOverviewKpiCards
-                    :loading="loading && !metrics"
+                    :loading="false"
                     :interactive="false"
                     v-bind="kpiProps"
                     :format-rhid-bank-balance-minutes="formatRhidBankBalanceMinutes"
@@ -122,5 +159,12 @@ const kpiProps = computed(() => metricsToKpiProps(props.metrics));
                 }}
             </p>
         </template>
+
+        <p
+            v-else-if="rhidConfigured"
+            class="mt-4 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-100"
+        >
+            Nenhum indicador carregado. Clique em atualizar para consultar a API RHID.
+        </p>
     </div>
 </template>
