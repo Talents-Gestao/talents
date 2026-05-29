@@ -58,7 +58,7 @@ class DashboardController extends Controller
                 ->orderBy('survey_results.average_score')
                 ->limit(3)
                 ->get([
-                    'survey_template_sections.name as section_name',
+                    'survey_template_sections.title as section_name',
                     'survey_results.average_score',
                     'survey_results.risk_level',
                 ])
