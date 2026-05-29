@@ -10,6 +10,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       target: php
+    image: talents-php:prod
     restart: unless-stopped
     env_file:
       - .env
@@ -83,10 +84,7 @@ services:
       retries: 5
 
   queue:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-      target: php
+    image: talents-php:prod
     restart: unless-stopped
     env_file:
       - .env
