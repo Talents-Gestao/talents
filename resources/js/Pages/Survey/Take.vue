@@ -78,7 +78,6 @@ const progress = () => {
                                 v-model="form.department_id"
                                 class="mt-1 w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             >
-                                <option :value="null">Prefiro não informar</option>
                                 <option v-for="d in survey.company.departments" :key="d.id" :value="d.id">{{ d.name }}</option>
                             </select>
                         </div>
