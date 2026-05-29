@@ -74,7 +74,7 @@ class SurveyController extends Controller
             'starts_at' => $data['starts_at'] ?? now(),
             'ends_at' => $data['ends_at'] ?? now()->addMonth(),
             'status' => $data['status'] ?? 'active',
-            'min_responses_for_breakdown' => $data['min_responses_for_breakdown'] ?? 5,
+            'min_responses_for_breakdown' => $data['min_responses_for_breakdown'] ?? 1,
         ]);
 
         return redirect()->route('client.surveys.show', $survey)->with('success', 'Campanha criada.');

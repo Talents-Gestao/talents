@@ -180,7 +180,7 @@ class TalentsSeeder extends Seeder
                 'starts_at' => now()->subDay(),
                 'ends_at' => now()->addMonths(2),
                 'status' => 'active',
-                'min_responses_for_breakdown' => 5,
+                'min_responses_for_breakdown' => 1,
             ]
         );
 

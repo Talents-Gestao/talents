@@ -13,7 +13,7 @@ const form = useForm({
     starts_at: '',
     ends_at: '',
     status: 'active',
-    min_responses_for_breakdown: 5,
+    min_responses_for_breakdown: 1,
 });
 
 const submit = () => {

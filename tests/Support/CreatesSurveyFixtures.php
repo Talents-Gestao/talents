@@ -56,7 +56,7 @@ trait CreatesSurveyFixtures
             'starts_at' => now()->subDay(),
             'ends_at' => now()->addMonth(),
             'status' => 'active',
-            'min_responses_for_breakdown' => 5,
+            'min_responses_for_breakdown' => 1,
         ], $surveyOverrides));
 
         return (object) [
