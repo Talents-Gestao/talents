@@ -80,7 +80,7 @@ class ExportController extends Controller
             foreach ($survey->completedResponses as $response) {
                 $rowNum++;
                 $dept = $response->department_id
-                    ? ($deptNames->get($response->department_id)?->name ?? '')
+                    ? ($deptNames->get((int) $response->department_id)?->name ?? '')
                     : '';
                 foreach ($response->answers as $answer) {
                     $meta = $questionMeta[$answer->survey_template_question_id] ?? ['dimension' => '', 'body' => ''];

@@ -9,6 +9,7 @@ const props = defineProps({
     deptSectionsByDepartment: Array,
     insights: Array,
     questionDistributions: { type: Array, default: () => [] },
+    departmentParticipation: { type: Array, default: () => [] },
 });
 
 const frequencyLabels = {
@@ -187,6 +188,47 @@ const healthLevelLabel = (level) => {
             </div>
         </div>
 
+        <div v-if="departmentParticipation?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-talents-900">Participação por setor</h3>
+            <p class="mt-1 text-sm text-gray-500">
+                Setores informados pelos respondentes. Gráficos detalhados por setor exigem pelo menos
+                {{ survey.min_responses_for_breakdown }} respondentes no mesmo setor.
+            </p>
+            <table class="mt-4 min-w-full border-collapse text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200 bg-gray-50">
+                        <th class="px-3 py-2 text-left font-medium text-gray-700">Setor</th>
+                        <th class="px-3 py-2 text-right font-medium text-gray-700">Respondentes</th>
+                        <th class="px-3 py-2 text-left font-medium text-gray-700">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr
+                        v-for="row in departmentParticipation"
+                        :key="row.department_id"
+                        class="border-b border-gray-100"
+                    >
+                        <td class="px-3 py-2 font-medium text-gray-900">{{ row.department_name }}</td>
+                        <td class="px-3 py-2 text-right text-gray-700">{{ row.respondent_count }}</td>
+                        <td class="px-3 py-2">
+                            <span
+                                v-if="row.meets_minimum"
+                                class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
+                            >
+                                Exibido nos gráficos
+                            </span>
+                            <span
+                                v-else
+                                class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                            >
+                                Aguardando mínimo ({{ survey.min_responses_for_breakdown }})
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
         <div v-if="deptOveralls?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 class="text-lg font-semibold text-talents-900">Saúde por setor (média geral)</h3>
             <p class="mt-1 text-sm text-gray-500">
@@ -302,10 +344,18 @@ const healthLevelLabel = (level) => {
         </div>
 
         <div
-            v-if="overall && !deptOveralls?.length"
+            v-if="overall && !deptOveralls?.length && departmentParticipation?.length"
             class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
         >
-            Não há dados por setor ainda: é necessário o número mínimo de respondentes por setor ou respostas com setor informado.
+            Os setores já aparecem na tabela acima, mas os gráficos por setor só serão exibidos quando cada setor atingir
+            {{ survey.min_responses_for_breakdown }} respondentes (regra de anonimato).
+        </div>
+
+        <div
+            v-if="overall && !deptOveralls?.length && !departmentParticipation?.length"
+            class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+        >
+            Não há setores informados nas respostas ainda. Peça aos respondentes que selecionem o setor ao responder a pesquisa.
         </div>
     </div>
 </template>

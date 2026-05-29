@@ -15,6 +15,7 @@ const props = defineProps({
     deptSectionsByDepartment: Array,
     insights: Array,
     questionDistributions: Array,
+    departmentParticipation: Array,
     aiEnabled: { type: Boolean, default: false },
     aiAnalysis: { type: Object, default: null },
     aiAnalysisPending: { type: Boolean, default: false },
@@ -352,6 +353,7 @@ onUnmounted(() => {
             :dept-sections-by-department="deptSectionsByDepartment"
             :insights="insights"
             :question-distributions="questionDistributions"
+            :department-participation="departmentParticipation"
         />
     </ClientLayout>
 </template>

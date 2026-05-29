@@ -34,7 +34,20 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post(route('survey.public.submit', props.survey.public_token));
+    if (props.survey.company?.departments?.length && (form.department_id === null || form.department_id === '')) {
+        form.setError('department_id', 'Selecione um setor.');
+        return;
+    }
+
+    form
+        .transform((data) => ({
+            ...data,
+            department_id:
+                data.department_id != null && data.department_id !== ''
+                    ? Number(data.department_id)
+                    : null,
+        }))
+        .post(route('survey.public.submit', props.survey.public_token));
 };
 
 const progress = () => {
@@ -80,7 +93,7 @@ const progress = () => {
                                 required
                             >
                                 <option :value="null" disabled>Selecione</option>
-                                <option v-for="d in survey.company.departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+                                <option v-for="d in survey.company.departments" :key="d.id" :value="Number(d.id)">{{ d.name }}</option>
                             </select>
                             <p v-if="form.errors.department_id" class="mt-1 text-xs text-red-600">{{ form.errors.department_id }}</p>
                         </div>

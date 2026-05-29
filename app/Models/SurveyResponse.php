@@ -21,6 +21,7 @@ class SurveyResponse extends Model
     {
         return [
             'completed_at' => 'datetime',
+            'department_id' => 'integer',
         ];
     }
 

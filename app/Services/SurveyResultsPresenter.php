@@ -15,7 +15,7 @@ class SurveyResultsPresenter
      */
     public static function forSurvey(Survey $survey): array
     {
-        $survey->loadMissing(['template.sections.questions', 'company', 'insights']);
+        $survey->loadMissing(['template.sections.questions', 'company.departments', 'insights']);
 
         $results = SurveyResult::query()
             ->where('survey_id', $survey->id)
@@ -74,7 +74,43 @@ class SurveyResultsPresenter
             'deptSectionsByDepartment' => $deptSectionsByDepartment,
             'insights' => $survey->insights,
             'questionDistributions' => self::buildQuestionDistributions($survey),
+            'departmentParticipation' => self::buildDepartmentParticipation($survey),
         ];
+    }
+
+    /**
+     * @return list<array{department_id: int, department_name: string, respondent_count: int, meets_minimum: bool}>
+     */
+    private static function buildDepartmentParticipation(Survey $survey): array
+    {
+        $min = (int) ($survey->min_responses_for_breakdown ?? 5);
+        $countsByDepartment = $survey->completedResponses()
+            ->whereNotNull('department_id')
+            ->get(['department_id'])
+            ->groupBy(fn ($response) => (int) $response->department_id)
+            ->map->count();
+
+        if ($countsByDepartment->isEmpty()) {
+            return [];
+        }
+
+        $departmentNames = ($survey->company?->departments ?? collect())->keyBy('id');
+        $participation = [];
+
+        foreach ($countsByDepartment as $departmentId => $count) {
+            $department = $departmentNames->get((int) $departmentId);
+
+            $participation[] = [
+                'department_id' => (int) $departmentId,
+                'department_name' => $department?->name ?? 'Setor #'.$departmentId,
+                'respondent_count' => (int) $count,
+                'meets_minimum' => (int) $count >= $min,
+            ];
+        }
+
+        usort($participation, fn (array $a, array $b) => strcmp($a['department_name'], $b['department_name']));
+
+        return $participation;
     }
 
     /**

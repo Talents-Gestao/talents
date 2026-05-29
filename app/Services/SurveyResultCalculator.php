@@ -42,18 +42,21 @@ class SurveyResultCalculator
                 $this->storeAggregate($survey, $responses, $questionsById, $qids, $section->id, null);
             }
 
-            foreach ($survey->company->departments as $dept) {
-                $deptResponses = $responses->where('department_id', $dept->id);
+            $responsesByDepartment = $responses
+                ->filter(fn ($response) => $response->department_id !== null)
+                ->groupBy(fn ($response) => (int) $response->department_id);
+
+            foreach ($responsesByDepartment as $deptId => $deptResponses) {
                 if ($deptResponses->count() < $min) {
                     continue;
                 }
-                $this->storeAggregate($survey, $deptResponses, $questionsById, $allQuestionIds, null, $dept->id);
+                $this->storeAggregate($survey, $deptResponses, $questionsById, $allQuestionIds, null, (int) $deptId);
                 foreach ($survey->template->sections as $section) {
                     $qids = $section->questions->pluck('id');
                     if ($qids->isEmpty()) {
                         continue;
                     }
-                    $this->storeAggregate($survey, $deptResponses, $questionsById, $qids, $section->id, $dept->id);
+                    $this->storeAggregate($survey, $deptResponses, $questionsById, $qids, $section->id, (int) $deptId);
                 }
             }
         });

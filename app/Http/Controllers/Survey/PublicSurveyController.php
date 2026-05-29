@@ -118,7 +118,7 @@ class PublicSurveyController extends Controller
         $response = SurveyResponse::create([
             'survey_id' => $survey->id,
             'session_token' => Str::random(40),
-            'department_id' => $data['department_id'] ?? null,
+            'department_id' => isset($data['department_id']) ? (int) $data['department_id'] : null,
             'age_range' => $data['age_range'] ?? null,
             'tenure_range' => $data['tenure_range'] ?? null,
             'completed_at' => now(),
