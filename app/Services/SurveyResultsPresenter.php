@@ -57,6 +57,18 @@ class SurveyResultsPresenter
             })
             ->values();
 
+        $departmentParticipation = self::buildDepartmentParticipation($survey);
+
+        $questionDistributionsByDepartment = array_map(
+            fn (array $participation) => [
+                'department_id' => $participation['department_id'],
+                'department_name' => $participation['department_name'],
+                'respondent_count' => $participation['respondent_count'],
+                'sections' => self::buildQuestionDistributions($survey, $participation['department_id']),
+            ],
+            $departmentParticipation
+        );
+
         return [
             'survey' => $survey,
             'overall' => $overall,
@@ -74,7 +86,8 @@ class SurveyResultsPresenter
             'deptSectionsByDepartment' => $deptSectionsByDepartment,
             'insights' => $survey->insights,
             'questionDistributions' => self::buildQuestionDistributions($survey),
-            'departmentParticipation' => self::buildDepartmentParticipation($survey),
+            'departmentParticipation' => $departmentParticipation,
+            'questionDistributionsByDepartment' => $questionDistributionsByDepartment,
         ];
     }
 
@@ -116,13 +129,14 @@ class SurveyResultsPresenter
     /**
      * @return list<array{section_id: int, section_title: string, questions: list<array{id: int, body: string, response_scale: string, total: int, counts: array<int, int>}>}>
      */
-    private static function buildQuestionDistributions(Survey $survey): array
+    private static function buildQuestionDistributions(Survey $survey, ?int $departmentId = null): array
     {
         $countsByQuestion = SurveyAnswer::query()
             ->selectRaw('survey_answers.survey_template_question_id, survey_answers.value, COUNT(*) as total')
             ->join('survey_responses', 'survey_responses.id', '=', 'survey_answers.survey_response_id')
             ->where('survey_responses.survey_id', $survey->id)
             ->whereNotNull('survey_responses.completed_at')
+            ->when($departmentId !== null, fn ($q) => $q->where('survey_responses.department_id', $departmentId))
             ->groupBy('survey_answers.survey_template_question_id', 'survey_answers.value')
             ->get()
             ->groupBy('survey_template_question_id')

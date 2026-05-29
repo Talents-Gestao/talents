@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     survey: Object,
@@ -10,7 +10,87 @@ const props = defineProps({
     insights: Array,
     questionDistributions: { type: Array, default: () => [] },
     departmentParticipation: { type: Array, default: () => [] },
+    questionDistributionsByDepartment: { type: Array, default: () => [] },
 });
+
+const selectedDepartmentId = ref('');
+
+const departmentFilterOptions = computed(() => [
+    { id: '', name: 'Todos os setores (visão geral)' },
+    ...(props.departmentParticipation ?? []).map((d) => ({
+        id: d.department_id,
+        name: d.department_name,
+    })),
+]);
+
+const normalizedSelectedDepartmentId = computed(() => {
+    const value = selectedDepartmentId.value;
+    if (value === '' || value === null || value === undefined) {
+        return null;
+    }
+    return Number(value);
+});
+
+const isDepartmentFiltered = computed(() => normalizedSelectedDepartmentId.value !== null);
+
+const selectedDepartmentName = computed(() => {
+    if (!isDepartmentFiltered.value) {
+        return null;
+    }
+    return (
+        departmentFilterOptions.value.find((o) => Number(o.id) === normalizedSelectedDepartmentId.value)
+            ?.name ?? 'Setor'
+    );
+});
+
+const activeDeptOverall = computed(() => {
+    if (!isDepartmentFiltered.value) {
+        return null;
+    }
+    return (
+        props.deptOveralls?.find((d) => d.department_id === normalizedSelectedDepartmentId.value) ?? null
+    );
+});
+
+const activeDeptSections = computed(() => {
+    if (!isDepartmentFiltered.value) {
+        return [];
+    }
+    const group = props.deptSectionsByDepartment?.find(
+        (g) => g.department_id === normalizedSelectedDepartmentId.value,
+    );
+    return group?.sections ?? [];
+});
+
+const activeQuestionDistributions = computed(() => {
+    if (!isDepartmentFiltered.value) {
+        return props.questionDistributions ?? [];
+    }
+    const row = props.questionDistributionsByDepartment?.find(
+        (d) => d.department_id === normalizedSelectedDepartmentId.value,
+    );
+    return row?.sections ?? [];
+});
+
+const filteredDeptRadar = computed(() => ({
+    chart: { type: 'radar', toolbar: { show: false }, foreColor: '#334155' },
+    colors: ['#632a7e'],
+    stroke: { width: 2 },
+    fill: { opacity: 0.15 },
+    xaxis: {
+        categories: activeDeptSections.value.map((r) => r.meta?.section_title || 'Dimensão'),
+    },
+    yaxis: { show: false, min: 0, max: 100 },
+    markers: { size: 4 },
+    dataLabels: { enabled: true },
+}));
+
+const filteredDeptRadarSeries = computed(() => [
+    {
+        name: selectedDepartmentName.value ?? 'Setor',
+        data: activeDeptSections.value.map((r) => Number(r.average_score)),
+    },
+]);
 
 const frequencyLabels = {
     1: 'Nunca',
@@ -169,7 +249,52 @@ const healthLevelLabel = (level) => {
 
 <template>
     <div>
-        <div v-if="overall" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div
+            v-if="departmentFilterOptions.length > 1"
+            class="mb-8 rounded-xl border border-talents-100 bg-white p-6 shadow-sm"
+        >
+            <label for="department-filter" class="text-sm font-semibold text-talents-900">Filtrar por setor</label>
+            <p class="mt-1 text-sm text-gray-500">
+                Selecione um setor para ver indicadores e respostas específicas daquele departamento.
+            </p>
+            <select
+                id="department-filter"
+                v-model="selectedDepartmentId"
+                class="mt-3 block w-full max-w-md rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+            >
+                <option v-for="opt in departmentFilterOptions" :key="String(opt.id || 'all')" :value="opt.id">
+                    {{ opt.name }}
+                </option>
+            </select>
+        </div>
+
+        <div
+            v-if="isDepartmentFiltered && activeDeptOverall"
+            class="rounded-xl border border-talents-200 bg-talents-50/40 p-6 shadow-sm"
+        >
+            <h3 class="text-lg font-semibold text-talents-900">Resultados — {{ selectedDepartmentName }}</h3>
+            <p class="mt-1 text-sm text-gray-500">
+                {{ activeDeptOverall.respondent_count }} respondente{{ activeDeptOverall.respondent_count === 1 ? '' : 's' }} neste setor.
+            </p>
+            <div class="mt-4 flex flex-wrap items-center gap-4">
+                <span class="text-4xl font-bold text-talents-800">{{ Number(activeDeptOverall.average_score).toFixed(1) }}</span>
+                <span class="rounded-full px-3 py-1 text-sm font-medium" :class="healthBadge(activeDeptOverall.risk_level)">
+                    {{ healthLevelLabel(activeDeptOverall.risk_level) }}
+                </span>
+            </div>
+        </div>
+
+        <div
+            v-if="isDepartmentFiltered && activeDeptSections.length"
+            class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+        >
+            <h3 class="text-lg font-semibold text-talents-900">Dimensões — {{ selectedDepartmentName }}</h3>
+            <div class="mt-4 h-96">
+                <apexchart height="380" :options="filteredDeptRadar" :series="filteredDeptRadarSeries" />
+            </div>
+        </div>
+
+        <div v-if="!isDepartmentFiltered && overall" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 class="text-lg font-semibold text-talents-900">Indicador geral de saúde (0–100)</h3>
             <p class="mt-1 text-sm text-gray-500">Quanto maior, melhor o panorama psicossocial agregado.</p>
             <div class="mt-4 flex flex-wrap items-center gap-4">
@@ -181,14 +306,21 @@ const healthLevelLabel = (level) => {
             </div>
         </div>
 
-        <div v-if="bySection?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div v-if="!isDepartmentFiltered && bySection?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 class="text-lg font-semibold text-talents-900">Dimensões</h3>
             <div class="mt-4 h-96">
                 <apexchart height="380" :options="radar" :series="radarSeries" />
             </div>
         </div>
 
-        <div v-if="departmentParticipation?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div
+            v-if="isDepartmentFiltered && !activeQuestionDistributions?.length"
+            class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+        >
+            Não há respostas registradas para o setor {{ selectedDepartmentName }}.
+        </div>
+
+        <div v-if="!isDepartmentFiltered && departmentParticipation?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 class="text-lg font-semibold text-talents-900">Participação por setor</h3>
             <p class="mt-1 text-sm text-gray-500">
                 Setores informados pelos respondentes. Gráficos detalhados por setor exigem pelo menos 1 respondente no mesmo setor.
@@ -228,7 +360,7 @@ const healthLevelLabel = (level) => {
             </table>
         </div>
 
-        <div v-if="deptOveralls?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div v-if="!isDepartmentFiltered && deptOveralls?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 class="text-lg font-semibold text-talents-900">Saúde por setor (média geral)</h3>
             <p class="mt-1 text-sm text-gray-500">
                 Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato).
@@ -239,7 +371,7 @@ const healthLevelLabel = (level) => {
         </div>
 
         <div
-            v-if="deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
+            v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
             class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
         >
             <h3 class="text-lg font-semibold text-talents-900">Dimensões por setor (barras agrupadas)</h3>
@@ -249,7 +381,7 @@ const healthLevelLabel = (level) => {
         </div>
 
         <div
-            v-if="deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
+            v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
             class="mt-8 overflow-x-auto rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
         >
             <h3 class="text-lg font-semibold text-talents-900">Tabela de saúde por setor e dimensão</h3>
@@ -292,13 +424,18 @@ const healthLevelLabel = (level) => {
             </table>
         </div>
 
-        <div v-if="questionDistributions?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div v-if="activeQuestionDistributions?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 class="text-lg font-semibold text-talents-900">Detalhamento por pergunta</h3>
             <p class="mt-1 text-sm text-gray-500">
-                Quantidade de votos por opção da escala, no total da campanha.
+                <template v-if="isDepartmentFiltered">
+                    Quantidade de votos por opção da escala no setor {{ selectedDepartmentName }}.
+                </template>
+                <template v-else>
+                    Quantidade de votos por opção da escala, no total da campanha.
+                </template>
             </p>
 
-            <div v-for="section in questionDistributions" :key="section.section_id" class="mt-8 first:mt-6">
+            <div v-for="section in activeQuestionDistributions" :key="section.section_id" class="mt-8 first:mt-6">
                 <h4 class="text-base font-semibold text-talents-800">{{ section.section_title }}</h4>
 
                 <div
@@ -343,14 +480,14 @@ const healthLevelLabel = (level) => {
         </div>
 
         <div
-            v-if="overall && !deptOveralls?.length && departmentParticipation?.length"
+            v-if="!isDepartmentFiltered && overall && !deptOveralls?.length && departmentParticipation?.length"
             class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
         >
             Os setores já aparecem na tabela acima, mas os gráficos por setor só serão exibidos quando cada setor atingir 1 respondente (regra de anonimato).
         </div>
 
         <div
-            v-if="overall && !deptOveralls?.length && !departmentParticipation?.length"
+            v-if="!isDepartmentFiltered && overall && !deptOveralls?.length && !departmentParticipation?.length"
             class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
         >
             Não há setores informados nas respostas ainda. Peça aos respondentes que selecionem o setor ao responder a pesquisa.

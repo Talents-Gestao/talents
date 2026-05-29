@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\Department;
 use App\Models\SurveyAnswer;
 use App\Models\SurveyResponse;
 use App\Models\SurveyTemplateQuestion;
@@ -106,5 +107,58 @@ class SurveyResultsPresenterTest extends TestCase
         $question = $presented['questionDistributions'][0]['questions'][0];
 
         $this->assertSame('agreement', $question['response_scale']);
+    }
+
+    public function test_question_distributions_by_department_filters_votes_per_sector(): void
+    {
+        $fx = $this->createSurveyFixture();
+
+        $deptA = Department::query()->create([
+            'company_id' => $fx->company->id,
+            'name' => 'Operações',
+        ]);
+
+        $deptB = Department::query()->create([
+            'company_id' => $fx->company->id,
+            'name' => 'Financeiro',
+        ]);
+
+        $responseA = SurveyResponse::query()->create([
+            'survey_id' => $fx->survey->id,
+            'session_token' => 'token-a',
+            'department_id' => $deptA->id,
+            'completed_at' => now(),
+        ]);
+
+        $responseB = SurveyResponse::query()->create([
+            'survey_id' => $fx->survey->id,
+            'session_token' => 'token-b',
+            'department_id' => $deptB->id,
+            'completed_at' => now(),
+        ]);
+
+        SurveyAnswer::query()->create([
+            'survey_response_id' => $responseA->id,
+            'survey_template_question_id' => $fx->question->id,
+            'value' => 5,
+        ]);
+
+        SurveyAnswer::query()->create([
+            'survey_response_id' => $responseB->id,
+            'survey_template_question_id' => $fx->question->id,
+            'value' => 2,
+        ]);
+
+        $presented = SurveyResultsPresenter::forSurvey($fx->survey->fresh());
+
+        $this->assertCount(2, $presented['questionDistributionsByDepartment']);
+
+        $ops = collect($presented['questionDistributionsByDepartment'])->firstWhere('department_id', $deptA->id);
+        $fin = collect($presented['questionDistributionsByDepartment'])->firstWhere('department_id', $deptB->id);
+
+        $this->assertSame(1, $ops['sections'][0]['questions'][0]['counts'][5]);
+        $this->assertSame(0, $ops['sections'][0]['questions'][0]['counts'][2]);
+        $this->assertSame(1, $fin['sections'][0]['questions'][0]['counts'][2]);
+        $this->assertSame(0, $fin['sections'][0]['questions'][0]['counts'][5]);
     }
 }

@@ -17,6 +17,7 @@ const props = defineProps({
     insights: { type: Array, default: () => [] },
     questionDistributions: { type: Array, default: () => [] },
     departmentParticipation: { type: Array, default: () => [] },
+    questionDistributionsByDepartment: { type: Array, default: () => [] },
     plan: { type: Object, default: null },
     items: { type: Array, default: () => [] },
     aiEnabled: { type: Boolean, default: false },
@@ -124,6 +125,7 @@ const submit = () => {
             :insights="insights"
             :question-distributions="questionDistributions"
             :department-participation="departmentParticipation"
+            :question-distributions-by-department="questionDistributionsByDepartment"
         />
 
         <div v-if="!overall" class="mb-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
