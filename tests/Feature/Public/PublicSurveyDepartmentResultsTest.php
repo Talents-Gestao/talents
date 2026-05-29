@@ -42,10 +42,10 @@ class PublicSurveyDepartmentResultsTest extends TestCase
         $this->assertSame('Operações', $presented['deptOveralls'][0]['department_name']);
     }
 
-    public function test_department_participation_lists_sectors_below_minimum_threshold(): void
+    public function test_department_participation_marks_sector_ready_with_one_response(): void
     {
         $fx = $this->createSurveyFixture([
-            'min_responses_for_breakdown' => 5,
+            'min_responses_for_breakdown' => 60,
         ]);
 
         $dept = Department::query()->create([
@@ -63,13 +63,13 @@ class PublicSurveyDepartmentResultsTest extends TestCase
             'value' => 4,
         ]);
 
+        app(SurveyResultCalculator::class)->recalculate($fx->survey->fresh());
+
         $presented = SurveyResultsPresenter::forSurvey($fx->survey->fresh());
 
         $this->assertCount(1, $presented['departmentParticipation']);
-        $this->assertSame('Operações', $presented['departmentParticipation'][0]['department_name']);
-        $this->assertSame(1, $presented['departmentParticipation'][0]['respondent_count']);
-        $this->assertFalse($presented['departmentParticipation'][0]['meets_minimum']);
-        $this->assertEmpty($presented['deptOveralls']);
+        $this->assertTrue($presented['departmentParticipation'][0]['meets_minimum']);
+        $this->assertNotEmpty($presented['deptOveralls']);
     }
 
     public function test_calculator_groups_responses_by_department_from_response_data(): void

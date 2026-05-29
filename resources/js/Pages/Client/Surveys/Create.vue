@@ -63,8 +63,17 @@ const submit = () => {
                 </select>
             </div>
             <div>
-                <InputLabel for="min" value="Mínimo de respondentes por corte (setor)" />
-                <TextInput id="min" v-model="form.min_responses_for_breakdown" type="number" min="1" class="mt-1 block w-full" />
+                <InputLabel for="min" value="Mínimo de respondentes por setor (anonimato)" />
+                <input
+                    id="min"
+                    type="number"
+                    value="1"
+                    min="1"
+                    max="1"
+                    readonly
+                    class="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+                />
+                <p class="mt-1 text-xs text-gray-500">Fixo em 1 respondente por setor para exibir gráficos detalhados.</p>
             </div>
             <PrimaryButton :disabled="form.processing">Criar</PrimaryButton>
         </form>

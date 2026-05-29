@@ -58,7 +58,7 @@ class SurveyController extends Controller
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'status' => ['nullable', 'string', 'in:draft,active,closed'],
-            'min_responses_for_breakdown' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'min_responses_for_breakdown' => ['nullable', 'integer', 'min:1', 'max:1'],
         ]);
 
         $template = SurveyTemplate::query()
@@ -74,7 +74,7 @@ class SurveyController extends Controller
             'starts_at' => $data['starts_at'] ?? now(),
             'ends_at' => $data['ends_at'] ?? now()->addMonth(),
             'status' => $data['status'] ?? 'active',
-            'min_responses_for_breakdown' => $data['min_responses_for_breakdown'] ?? 1,
+            'min_responses_for_breakdown' => 1,
         ]);
 
         return redirect()->route('client.surveys.show', $survey)->with('success', 'Campanha criada.');
@@ -118,8 +118,10 @@ class SurveyController extends Controller
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'status' => ['required', 'in:draft,active,closed'],
-            'min_responses_for_breakdown' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'min_responses_for_breakdown' => ['nullable', 'integer', 'min:1', 'max:1'],
         ]);
+
+        $data['min_responses_for_breakdown'] = 1;
 
         $survey->update($data);
 

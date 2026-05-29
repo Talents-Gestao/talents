@@ -191,8 +191,7 @@ const healthLevelLabel = (level) => {
         <div v-if="departmentParticipation?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 class="text-lg font-semibold text-talents-900">Participação por setor</h3>
             <p class="mt-1 text-sm text-gray-500">
-                Setores informados pelos respondentes. Gráficos detalhados por setor exigem pelo menos
-                {{ survey.min_responses_for_breakdown }} respondentes no mesmo setor.
+                Setores informados pelos respondentes. Gráficos detalhados por setor exigem pelo menos 1 respondente no mesmo setor.
             </p>
             <table class="mt-4 min-w-full border-collapse text-sm">
                 <thead>
@@ -221,7 +220,7 @@ const healthLevelLabel = (level) => {
                                 v-else
                                 class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
                             >
-                                Aguardando mínimo ({{ survey.min_responses_for_breakdown }})
+                                Aguardando mínimo (1)
                             </span>
                         </td>
                     </tr>
@@ -232,7 +231,7 @@ const healthLevelLabel = (level) => {
         <div v-if="deptOveralls?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 class="text-lg font-semibold text-talents-900">Saúde por setor (média geral)</h3>
             <p class="mt-1 text-sm text-gray-500">
-                Setores só aparecem com pelo menos {{ survey.min_responses_for_breakdown }} respondentes no mesmo setor (anonimato).
+                Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato).
             </p>
             <div class="mt-4 h-80">
                 <apexchart height="320" :options="deptBarChart" :series="deptBarSeries" />
@@ -347,8 +346,7 @@ const healthLevelLabel = (level) => {
             v-if="overall && !deptOveralls?.length && departmentParticipation?.length"
             class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
         >
-            Os setores já aparecem na tabela acima, mas os gráficos por setor só serão exibidos quando cada setor atingir
-            {{ survey.min_responses_for_breakdown }} respondentes (regra de anonimato).
+            Os setores já aparecem na tabela acima, mas os gráficos por setor só serão exibidos quando cada setor atingir 1 respondente (regra de anonimato).
         </div>
 
         <div

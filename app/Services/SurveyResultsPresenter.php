@@ -83,7 +83,7 @@ class SurveyResultsPresenter
      */
     private static function buildDepartmentParticipation(Survey $survey): array
     {
-        $min = (int) ($survey->min_responses_for_breakdown ?? 1);
+        $min = 1;
         $countsByDepartment = $survey->completedResponses()
             ->whereNotNull('department_id')
             ->get(['department_id'])

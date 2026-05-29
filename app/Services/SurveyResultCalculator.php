@@ -28,7 +28,7 @@ class SurveyResultCalculator
                 return;
             }
 
-            $min = $survey->min_responses_for_breakdown;
+            $min = 1;
 
             $allQuestionIds = $questionsById->keys();
 
