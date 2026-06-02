@@ -88,13 +88,13 @@ class Nr1AuditScoringCommand extends Command
         }
 
         $this->newLine();
-        $this->info('=== FAIXAS DO SISTEMA (COPSOQ / tercis na escala 0–100) ===');
-        $greenMax = config('nr1.risk_thresholds.green_max', 33);
-        $yellowMax = config('nr1.risk_thresholds.yellow_max', 66);
-        $this->line("  Verde  0–{$greenMax}  (situação favorável, sem risco aparente)");
-        $this->line('  Amarelo '.($greenMax + 1)."–{$yellowMax} (risco intermediário, monitorar)");
-        $this->line('  Vermelho '.($yellowMax + 1).'–100 (risco elevado, ação imediata)');
-        $this->line('  Escala Likert 1–5 → índice 0–100 (maior = maior risco psicossocial)');
+        $this->info('=== FAIXAS DO SISTEMA (COPSOQ / tercis na escala Likert 1–5) ===');
+        $greenMax = config('nr1.risk_thresholds.green_max', 2.33);
+        $yellowMax = config('nr1.risk_thresholds.yellow_max', 3.66);
+        $this->line("  Verde  1,00–{$greenMax}  (situação favorável, sem risco aparente)");
+        $this->line('  Amarelo '.number_format($greenMax + 0.01, 2, ',', '')."–{$yellowMax} (risco intermediário, monitorar)");
+        $this->line('  Vermelho '.number_format($yellowMax + 0.01, 2, ',', '').'–5,00 (risco elevado, ação imediata)');
+        $this->line('  Média ponderada das respostas Likert 1–5 (maior = maior risco psicossocial)');
 
         $this->newLine();
         $this->info('=== AUDITORIA reverse_score POR PERGUNTA ===');
@@ -142,7 +142,7 @@ class Nr1AuditScoringCommand extends Command
         }
 
         $this->newLine();
-        $this->line('Referência: COPSOQ usa tercis em 2,33 e 3,66 na escala Likert 1–5; na escala 0–100 isso corresponde a 33 e 67.');
+        $this->line('Referência: COPSOQ usa tercis em 2,33 e 3,66 na escala Likert 1–5 (NR-1).');
 
         return self::SUCCESS;
     }

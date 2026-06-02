@@ -7,15 +7,15 @@ return [
     | Metodologia NR-1 / COPSOQ
     |--------------------------------------------------------------------------
     |
-    | Escala Likert 1–5 convertida para índice de risco 0–100:
-    | (resposta − 1) ÷ 4 × 100, com inversão por item quando reverse_score=true.
-    | Quanto maior o score, maior o risco psicossocial.
+    | Média ponderada das respostas Likert 1–5 (com inversão por item quando
+    | reverse_score=true). Quanto maior a média, maior o risco psicossocial.
+    | Tercis: favorável ≤ 2,33 · intermediário ≤ 3,66 · elevado > 3,66.
     |
     */
 
     'methodology' => 'copsoq',
 
-    'scale' => '0-100',
+    'scale' => '1-5',
 
     'likert_min' => 1,
 
@@ -24,8 +24,8 @@ return [
     'tercile_cutoffs_likert' => [2.33, 3.66],
 
     'risk_thresholds' => [
-        'green_max' => 33,
-        'yellow_max' => 66,
+        'green_max' => 2.33,
+        'yellow_max' => 3.66,
     ],
 
     'risk_labels' => [
@@ -35,18 +35,18 @@ return [
     ],
 
     /*
-    | Benchmark médio de risco estimado por segmento (0–100; menor = melhor).
+    | Benchmark médio de risco estimado por segmento (escala Likert 1–5).
     */
     'segment_risk_benchmarks' => [
-        'tecnologia' => 42,
-        'saude' => 48,
-        'educacao' => 45,
-        'industria' => 45,
-        'default' => 45,
+        'tecnologia' => 2.68,
+        'saude' => 2.92,
+        'educacao' => 2.80,
+        'industria' => 2.80,
+        'default' => 2.80,
     ],
 
-    'benchmark_alert_margin' => 5,
+    'benchmark_alert_margin' => 0.20,
 
-    'trend_change_threshold' => 3,
+    'trend_change_threshold' => 0.25,
 
 ];

@@ -109,7 +109,7 @@
         </tbody>
     </table>
     <p style="margin-top: 12px; font-size: 10px; padding: 8px; border: 1px solid #ccc; background: #f9f9f9;">
-        <strong>Disclaimer:</strong> as médias deste relatório refletem índice de risco (0–100) derivado de respostas Likert 1–5 com pesos e inversões configurados no template (metodologia COPSOQ). Quanto maior o score, maior o risco.
+        <strong>Disclaimer:</strong> as médias deste relatório refletem escala Likert 1–5 (metodologia COPSOQ), com pesos e inversões configurados no template. Quanto maior a média, maior o risco.
         A interpretação final para fins de PGR, exposição e controles deve ser feita por equipe técnica competente e integrada aos demais dados da organização.
     </p>
 </body>

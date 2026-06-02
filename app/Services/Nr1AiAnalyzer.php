@@ -144,7 +144,7 @@ PROMPT;
             'company' => $survey->company?->name ?? 'Empresa',
             'methodology' => config('nr1.methodology'),
             'scale' => config('nr1.scale'),
-            'score_interpretation' => 'Índice de risco 0–100: quanto maior, maior o risco. Faixas: 0–33 favorável, 34–66 intermediário, 67–100 elevado.',
+            'score_interpretation' => 'Média Likert 1–5: quanto maior, maior o risco. Faixas: 1,00–2,33 favorável, 2,34–3,66 intermediário, 3,67–5,00 elevado.',
             'min_responses_for_breakdown' => $survey->min_responses_for_breakdown,
             'overall' => $overall ? [
                 'average_score' => round((float) $overall->average_score, 2),

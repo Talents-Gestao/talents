@@ -7,22 +7,21 @@ use App\Models\SurveyTemplateQuestion;
 class Nr1Scoring
 {
     /**
-     * Score de risco (0 = sem risco, 100 = risco máximo), a partir da escala Likert 1–5.
+     * Valor Likert efetivo (1–5) após aplicar inversão do item, se houver.
+     * Quanto maior, maior o risco na dimensão.
      */
-    public static function normalizedRiskScore(SurveyTemplateQuestion $question, int $likert): float
+    public static function effectiveLikertValue(SurveyTemplateQuestion $question, int $likert): float
     {
-        $v = $question->reverse_score ? (6 - $likert) : $likert;
-
-        return (($v - 1) / 4) * 100;
+        return (float) ($question->reverse_score ? (6 - $likert) : $likert);
     }
 
     /**
-     * Faixas por tercis na escala 0–100: verde 0–33, amarelo 34–66, vermelho 67–100.
+     * Faixas por tercis na escala Likert 1–5: verde ≤2,33, amarelo ≤3,66, vermelho >3,66.
      */
     public static function riskLevel(float $score): string
     {
-        $greenMax = (float) config('nr1.risk_thresholds.green_max', 33);
-        $yellowMax = (float) config('nr1.risk_thresholds.yellow_max', 66);
+        $greenMax = (float) config('nr1.risk_thresholds.green_max', 2.33);
+        $yellowMax = (float) config('nr1.risk_thresholds.yellow_max', 3.66);
 
         if ($score <= $greenMax) {
             return 'green';
@@ -53,6 +52,6 @@ class Nr1Scoring
             return (float) $map[$key];
         }
 
-        return (float) ($map['default'] ?? 45);
+        return (float) ($map['default'] ?? 2.80);
     }
 }

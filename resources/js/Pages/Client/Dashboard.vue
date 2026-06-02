@@ -204,7 +204,7 @@ const attentionTotal = computed(() => {
                     </h3>
                     <div v-if="overallRisk" class="mt-4 flex flex-wrap items-center gap-3">
                         <span class="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white ring-1 ring-white/20">
-                            Média {{ Number(overallRisk.average_score).toFixed(1) }} / 100
+                            Média {{ Number(overallRisk.average_score).toFixed(2) }} / 5
                         </span>
                         <HealthBadge :risk-level="overallRisk.risk_level" />
                     </div>

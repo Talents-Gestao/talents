@@ -30,7 +30,7 @@
     @endphp
 
     @if($overall)
-        <p><strong>Indicador geral de risco (0–100):</strong> {{ number_format($overall->average_score, 1) }} ({{ $riskLevelLabel($overall->risk_level) }})</p>
+        <p><strong>Indicador geral de risco (1–5):</strong> {{ number_format($overall->average_score, 2) }} ({{ $riskLevelLabel($overall->risk_level) }})</p>
         <p><strong>Respondentes:</strong> {{ $overall->respondent_count }}</p>
     @endif
 
@@ -39,7 +39,7 @@
         <thead>
             <tr>
                 <th>Dimensão</th>
-                <th>Média (risco)</th>
+                <th>Média (1–5)</th>
                 <th>Nível de risco</th>
             </tr>
         </thead>

@@ -13,6 +13,9 @@ const props = defineProps({
     questionDistributionsByDepartment: { type: Array, default: () => [] },
 });
 
+const likertScaleMax = 5;
+const likertScaleMin = 1;
+
 const selectedDepartmentId = ref('');
 
 const departmentFilterOptions = computed(() => [
@@ -80,7 +83,7 @@ const filteredDeptRadar = computed(() => ({
     xaxis: {
         categories: activeDeptSections.value.map((r) => r.meta?.section_title || 'Dimensão'),
     },
-    yaxis: { show: false, min: 0, max: 100 },
+    yaxis: { show: false, min: likertScaleMin, max: likertScaleMax },
     markers: { size: 4 },
     dataLabels: { enabled: true },
 }));
@@ -135,7 +138,7 @@ const radar = computed(() => ({
     xaxis: {
         categories: props.bySection?.map((r) => r.meta?.section_title || 'Dimensão') ?? [],
     },
-    yaxis: { show: false, min: 0, max: 100 },
+    yaxis: { show: false, min: likertScaleMin, max: likertScaleMax },
     markers: { size: 4 },
     dataLabels: { enabled: true },
 }));
@@ -167,7 +170,7 @@ const deptBarChart = computed(() => {
         xaxis: {
             categories: rows.map((r) => r.department_name),
         },
-        yaxis: { min: 0, max: 100, title: { text: 'Risco (0–100)' } },
+        yaxis: { min: likertScaleMin, max: likertScaleMax, title: { text: 'Média (1–5)' } },
         legend: { show: false },
         tooltip: { y: { formatter: (val) => `${Number(val).toFixed(1)}` } },
     };
@@ -199,7 +202,7 @@ const deptGroupedBar = computed(() => {
         chart: { type: 'bar', toolbar: { show: false }, foreColor: '#334155' },
         plotOptions: { bar: { horizontal: false, columnWidth: '70%' } },
         xaxis: { categories: cats },
-        yaxis: { min: 0, max: 100, title: { text: 'Risco (0–100)' } },
+        yaxis: { min: likertScaleMin, max: likertScaleMax, title: { text: 'Média (1–5)' } },
         legend: { position: 'bottom' },
         dataLabels: { enabled: false },
         colors: ['#7b4fa2', '#b388d9', '#632a7e', '#4a2070', '#9b6bc4', '#d4b8e4', '#e8dcf2'],
@@ -277,7 +280,7 @@ const healthLevelLabel = (level) => {
                 {{ activeDeptOverall.respondent_count }} respondente{{ activeDeptOverall.respondent_count === 1 ? '' : 's' }} neste setor.
             </p>
             <div class="mt-4 flex flex-wrap items-center gap-4">
-                <span class="text-4xl font-bold text-talents-800">{{ Number(activeDeptOverall.average_score).toFixed(1) }}</span>
+                <span class="text-4xl font-bold text-talents-800">{{ Number(activeDeptOverall.average_score).toFixed(2) }}</span>
                 <span class="rounded-full px-3 py-1 text-sm font-medium" :class="healthBadge(activeDeptOverall.risk_level)">
                     {{ healthLevelLabel(activeDeptOverall.risk_level) }}
                 </span>
@@ -295,10 +298,10 @@ const healthLevelLabel = (level) => {
         </div>
 
         <div v-if="!isDepartmentFiltered && overall" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 class="text-lg font-semibold text-talents-900">Indicador geral de risco (0–100)</h3>
-            <p class="mt-1 text-sm text-gray-500">Quanto maior, maior o risco psicossocial agregado. Faixas: 0–33 favorável, 34–66 intermediário, 67–100 elevado.</p>
+            <h3 class="text-lg font-semibold text-talents-900">Indicador geral de risco (1–5)</h3>
+            <p class="mt-1 text-sm text-gray-500">Média ponderada das respostas Likert. Quanto maior, maior o risco. Faixas: 1,00–2,33 favorável · 2,34–3,66 intermediário · 3,67–5,00 elevado.</p>
             <div class="mt-4 flex flex-wrap items-center gap-4">
-                <span class="text-4xl font-bold text-talents-800">{{ Number(overall.average_score).toFixed(1) }}</span>
+                <span class="text-4xl font-bold text-talents-800">{{ Number(overall.average_score).toFixed(2) }}</span>
                 <span class="rounded-full px-3 py-1 text-sm font-medium" :class="healthBadge(overall.risk_level)">
                     {{ healthLevelLabel(overall.risk_level) }}
                 </span>
@@ -415,7 +418,7 @@ const healthLevelLabel = (level) => {
                                 class="inline-block min-w-[3rem] rounded px-2 py-1 font-mono text-xs"
                                 :class="heatmapCellClass(scoreForDeptSection(row.department_id, sec.survey_template_section_id).risk_level)"
                             >
-                                {{ Number(scoreForDeptSection(row.department_id, sec.survey_template_section_id).average_score).toFixed(1) }}
+                                {{ Number(scoreForDeptSection(row.department_id, sec.survey_template_section_id).average_score).toFixed(2) }}
                             </span>
                             <span v-else class="text-gray-400">—</span>
                         </td>

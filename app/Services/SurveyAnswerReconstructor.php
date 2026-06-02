@@ -71,23 +71,22 @@ class SurveyAnswerReconstructor
     private function syntheticLikertValue(int $responseId, SurveyTemplateQuestion $question, ?int $departmentId): int
     {
         $deptKey = $departmentId ?? 0;
-        $deptBaseline = 25 + (abs(crc32('dept-'.$deptKey)) % 31);
-        $noise = (abs(crc32('resp-'.$responseId.'-q-'.$question->id)) % 41) - 20;
-        $risk = min(95.0, max(5.0, (float) ($deptBaseline + $noise)));
+        $deptBaseline = 2.2 + (abs(crc32('dept-'.$deptKey)) % 13) / 10;
+        $noise = ((abs(crc32('resp-'.$responseId.'-q-'.$question->id)) % 21) - 10) / 10.0;
+        $riskLikert = min(5.0, max(1.0, $deptBaseline + $noise));
 
-        return $this->riskScoreToLikert($risk, (bool) $question->reverse_score);
+        return $this->riskLikertToResponse($riskLikert, (bool) $question->reverse_score);
     }
 
     /**
-     * Converte índice de risco (0–100, maior = pior) para escala Likert 1–5
-     * coerente com Nr1Scoring::normalizedRiskScore.
+     * Converte média de risco Likert (1–5) para resposta bruta 1–5 do item.
      */
-    private function riskScoreToLikert(float $risk, bool $reverseScore): int
+    private function riskLikertToResponse(float $riskLikert, bool $reverseScore): int
     {
         if ($reverseScore) {
-            $likert = 5 - (int) round(($risk / 100) * 4);
+            $likert = (int) round(6 - $riskLikert);
         } else {
-            $likert = 1 + (int) round(($risk / 100) * 4);
+            $likert = (int) round($riskLikert);
         }
 
         return min(5, max(1, $likert));

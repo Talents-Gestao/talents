@@ -10,7 +10,7 @@ class Nr1RecalculateCommand extends Command
 {
     protected $signature = 'nr1:recalculate {survey? : ID da pesquisa (omitir para recalcular todas com respostas)}';
 
-    protected $description = 'Recalcula survey_results com a metodologia COPSOQ (índice de risco 0–100)';
+    protected $description = 'Recalcula survey_results com a metodologia COPSOQ (média Likert 1–5)';
 
     public function handle(SurveyResultCalculator $calculator): int
     {

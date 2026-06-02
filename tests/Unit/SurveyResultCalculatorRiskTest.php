@@ -45,7 +45,7 @@ class SurveyResultCalculatorRiskTest extends TestCase
             ->first();
 
         $this->assertNotNull($overall);
-        $this->assertSame(100.0, (float) $overall->average_score);
+        $this->assertSame(5.0, (float) $overall->average_score);
         $this->assertSame('red', $overall->risk_level);
     }
 
@@ -78,7 +78,7 @@ class SurveyResultCalculatorRiskTest extends TestCase
             ->first();
 
         $this->assertNotNull($overall);
-        $this->assertSame(0.0, (float) $overall->average_score);
+        $this->assertSame(1.0, (float) $overall->average_score);
         $this->assertSame('green', $overall->risk_level);
     }
 }

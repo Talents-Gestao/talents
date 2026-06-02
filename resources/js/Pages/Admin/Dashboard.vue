@@ -67,7 +67,7 @@ const riskDonutOptions = computed(() => ({
 const maxSegmentScore = computed(() => {
     const rows = props.riskBySegment || [];
     if (!rows.length) return 100;
-    return Math.max(100, ...rows.map((r) => Number(r.avg_score) || 0));
+    return Math.max(5, ...rows.map((r) => Number(r.avg_score) || 0));
 });
 
 const formatShortDate = (iso) => formatDateShort(iso);
@@ -472,7 +472,7 @@ const leadWhatsappUrl = computed(() => {
                         </aside>
                     </div>
                     <div class="mt-8 border-t border-slate-100 pt-6">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Média de risco por segmento (0–100)</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Média de risco por segmento (1–5)</p>
                         <div class="mt-3 space-y-3">
                             <ProgressBar
                                 v-for="row in riskBySegment"

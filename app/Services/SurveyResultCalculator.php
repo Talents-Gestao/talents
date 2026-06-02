@@ -92,7 +92,7 @@ class SurveyResultCalculator
                     continue;
                 }
                 $weight = max(0.01, (float) ($q->weight ?? 1.0));
-                $weightedSum += Nr1Scoring::normalizedRiskScore($q, (int) $answer->value) * $weight;
+                $weightedSum += Nr1Scoring::effectiveLikertValue($q, (int) $answer->value) * $weight;
                 $totalWeight += $weight;
             }
             if ($totalWeight > 0) {
