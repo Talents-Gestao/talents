@@ -239,7 +239,7 @@ const attentionTotal = computed(() => {
             </div>
             <div v-if="!lastSurvey" class="mt-6 rounded-xl border border-white/20 bg-white/5 px-4 py-5 text-sm text-slate-200">
                 <p class="font-medium text-white">Comece criando uma campanha</p>
-                <p class="mt-1 text-slate-300">Assim que existir uma pesquisa, o resumo de saúde aparece aqui.</p>
+                <p class="mt-1 text-slate-300">Assim que existir uma pesquisa, o resumo de risco aparece aqui.</p>
                 <Link
                     :href="route('client.surveys.index')"
                     class="mt-3 inline-flex text-sm font-semibold text-white underline decoration-white/40 hover:decoration-white"
@@ -277,7 +277,7 @@ const attentionTotal = computed(() => {
             </div>
 
             <div v-if="can('pesquisas', 'view')" class="dashboard-panel-compact">
-                <SectionHeader title="Seções com menor saúde" subtitle="Top 3 (última campanha)" />
+                <SectionHeader title="Dimensões com maior risco" subtitle="Top 3 (última campanha)" />
                 <ul v-if="lastCampaign.section_results?.length" class="mt-3 space-y-3">
                     <li v-for="(row, idx) in lastCampaign.section_results" :key="idx" class="dashboard-inset-list-item">
                         <div class="flex items-start justify-between gap-2">

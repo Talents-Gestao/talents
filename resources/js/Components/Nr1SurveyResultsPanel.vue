@@ -141,7 +141,7 @@ const radar = computed(() => ({
 }));
 
 const radarSeries = computed(() => [
-    { name: 'Saúde média', data: props.bySection?.map((r) => Number(r.average_score)) ?? [] },
+    { name: 'Risco médio', data: props.bySection?.map((r) => Number(r.average_score)) ?? [] },
 ]);
 
 const riskToBarColor = (level) => {
@@ -167,7 +167,7 @@ const deptBarChart = computed(() => {
         xaxis: {
             categories: rows.map((r) => r.department_name),
         },
-        yaxis: { min: 0, max: 100, title: { text: 'Saúde (0–100)' } },
+        yaxis: { min: 0, max: 100, title: { text: 'Risco (0–100)' } },
         legend: { show: false },
         tooltip: { y: { formatter: (val) => `${Number(val).toFixed(1)}` } },
     };
@@ -175,7 +175,7 @@ const deptBarChart = computed(() => {
 
 const deptBarSeries = computed(() => [
     {
-        name: 'Média de saúde',
+        name: 'Média de risco',
         data: (props.deptOveralls ?? []).map((r) => Number(r.average_score)),
     },
 ]);
@@ -199,7 +199,7 @@ const deptGroupedBar = computed(() => {
         chart: { type: 'bar', toolbar: { show: false }, foreColor: '#334155' },
         plotOptions: { bar: { horizontal: false, columnWidth: '70%' } },
         xaxis: { categories: cats },
-        yaxis: { min: 0, max: 100, title: { text: 'Saúde (0–100)' } },
+        yaxis: { min: 0, max: 100, title: { text: 'Risco (0–100)' } },
         legend: { position: 'bottom' },
         dataLabels: { enabled: false },
         colors: ['#7b4fa2', '#b388d9', '#632a7e', '#4a2070', '#9b6bc4', '#d4b8e4', '#e8dcf2'],
@@ -241,9 +241,9 @@ const healthBadge = (level) => {
 };
 
 const healthLevelLabel = (level) => {
-    if (level === 'green') return 'Saudável';
-    if (level === 'yellow') return 'Atenção';
-    return 'Crítico';
+    if (level === 'green') return 'Situação favorável';
+    if (level === 'yellow') return 'Risco intermediário';
+    return 'Risco elevado';
 };
 </script>
 
@@ -295,8 +295,8 @@ const healthLevelLabel = (level) => {
         </div>
 
         <div v-if="!isDepartmentFiltered && overall" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 class="text-lg font-semibold text-talents-900">Indicador geral de saúde (0–100)</h3>
-            <p class="mt-1 text-sm text-gray-500">Quanto maior, melhor o panorama psicossocial agregado.</p>
+            <h3 class="text-lg font-semibold text-talents-900">Indicador geral de risco (0–100)</h3>
+            <p class="mt-1 text-sm text-gray-500">Quanto maior, maior o risco psicossocial agregado. Faixas: 0–33 favorável, 34–66 intermediário, 67–100 elevado.</p>
             <div class="mt-4 flex flex-wrap items-center gap-4">
                 <span class="text-4xl font-bold text-talents-800">{{ Number(overall.average_score).toFixed(1) }}</span>
                 <span class="rounded-full px-3 py-1 text-sm font-medium" :class="healthBadge(overall.risk_level)">
@@ -361,7 +361,7 @@ const healthLevelLabel = (level) => {
         </div>
 
         <div v-if="!isDepartmentFiltered && deptOveralls?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 class="text-lg font-semibold text-talents-900">Saúde por setor (média geral)</h3>
+            <h3 class="text-lg font-semibold text-talents-900">Risco por setor (média geral)</h3>
             <p class="mt-1 text-sm text-gray-500">
                 Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato).
             </p>
@@ -384,7 +384,7 @@ const healthLevelLabel = (level) => {
             v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
             class="mt-8 overflow-x-auto rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
         >
-            <h3 class="text-lg font-semibold text-talents-900">Tabela de saúde por setor e dimensão</h3>
+            <h3 class="text-lg font-semibold text-talents-900">Tabela de risco por setor e dimensão</h3>
             <table class="mt-4 min-w-full border-collapse text-sm">
                 <thead>
                     <tr class="border-b border-gray-200 bg-gray-50">

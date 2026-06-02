@@ -27,7 +27,7 @@ class ActionPlanGenerator
             ->where('survey_id', $survey->id)
             ->whereNotNull('survey_template_section_id')
             ->whereNull('department_id')
-            ->orderBy('average_score')
+            ->orderByDesc('average_score')
             ->get();
 
         $sort = 0;

@@ -41,7 +41,7 @@ const riskDonutSeries = computed(() => {
 
 const riskDonutOptions = computed(() => ({
     chart: { type: 'donut', toolbar: { show: false }, animations: { enabled: true, speed: 400 } },
-    labels: ['Saudável', 'Atenção', 'Crítico'],
+    labels: ['Situação favorável', 'Risco intermediário', 'Risco elevado'],
     colors: ['#10b981', '#f59e0b', '#f43f5e'],
     stroke: { width: 0 },
     legend: { show: false },
@@ -125,9 +125,9 @@ const calendarEventTime = computed(() => extractEventTimeRange(nextCalendarEvent
 const riskLegend = computed(() => {
     const d = props.riskDistribution || {};
     return [
-        { key: 'green', label: 'Saudável', count: d.green || 0, color: 'bg-emerald-500' },
-        { key: 'yellow', label: 'Atenção', count: d.yellow || 0, color: 'bg-amber-500' },
-        { key: 'red', label: 'Crítico', count: d.red || 0, color: 'bg-rose-500' },
+        { key: 'green', label: 'Situação favorável', count: d.green || 0, color: 'bg-emerald-500' },
+        { key: 'yellow', label: 'Risco intermediário', count: d.yellow || 0, color: 'bg-amber-500' },
+        { key: 'red', label: 'Risco elevado', count: d.red || 0, color: 'bg-rose-500' },
     ];
 });
 
@@ -432,7 +432,7 @@ const leadWhatsappUrl = computed(() => {
                 <div class="dashboard-panel">
                     <SectionHeader
                         variant="panel"
-                        title="Saúde organizacional"
+                        title="Risco psicossocial"
                         subtitle="Distribuição na última campanha de cada empresa (resultado global)"
                     />
                     <div class="mt-6 flex flex-col gap-8 lg:flex-row lg:items-start">
@@ -472,7 +472,7 @@ const leadWhatsappUrl = computed(() => {
                         </aside>
                     </div>
                     <div class="mt-8 border-t border-slate-100 pt-6">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Média por segmento (0–100)</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Média de risco por segmento (0–100)</p>
                         <div class="mt-3 space-y-3">
                             <ProgressBar
                                 v-for="row in riskBySegment"
@@ -493,7 +493,7 @@ const leadWhatsappUrl = computed(() => {
                 </div>
 
                 <div class="dashboard-panel">
-                    <SectionHeader title="Empresas com saúde crítica" subtitle="Última campanha — nível vermelho" />
+                    <SectionHeader title="Empresas com risco elevado" subtitle="Última campanha — nível vermelho" />
                     <ul v-if="criticalCompanies?.length" class="mt-4 divide-y divide-slate-100">
                         <li
                             v-for="c in criticalCompanies"

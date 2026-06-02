@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Survey;
 use App\Models\SurveyResult;
 use App\Models\SurveyTemplateQuestion;
+use App\Support\Nr1Scoring;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -91,7 +92,7 @@ class SurveyResultCalculator
                     continue;
                 }
                 $weight = max(0.01, (float) ($q->weight ?? 1.0));
-                $weightedSum += $this->normalizedHealthScore($q, (int) $answer->value) * $weight;
+                $weightedSum += Nr1Scoring::normalizedRiskScore($q, (int) $answer->value) * $weight;
                 $totalWeight += $weight;
             }
             if ($totalWeight > 0) {
@@ -115,7 +116,7 @@ class SurveyResultCalculator
             'survey_template_section_id' => $sectionId,
             'department_id' => $departmentId,
             'average_score' => round($avg, 3),
-            'risk_level' => $this->healthLevel($avg),
+            'risk_level' => Nr1Scoring::riskLevel($avg),
             'respondent_count' => count($scores),
             'meta' => [
                 'section_title' => $sectionTitle,
@@ -123,28 +124,4 @@ class SurveyResultCalculator
         ]);
     }
 
-    /**
-     * Score de saúde (0 = pior, 100 = melhor), a partir da escala Likert 1–5.
-     */
-    private function normalizedHealthScore(SurveyTemplateQuestion $question, int $likert): float
-    {
-        $v = $question->reverse_score ? (6 - $likert) : $likert;
-
-        return 100 - ((($v - 1) / 4) * 100);
-    }
-
-    /**
-     * Faixas de saúde: verde ≥67, amarelo 34–66, vermelho ≤33.
-     */
-    private function healthLevel(float $score): string
-    {
-        if ($score >= 67) {
-            return 'green';
-        }
-        if ($score >= 34) {
-            return 'yellow';
-        }
-
-        return 'red';
-    }
 }

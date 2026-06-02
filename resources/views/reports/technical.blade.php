@@ -15,10 +15,10 @@
 </head>
 <body>
     @php
-        $healthLevelLabel = fn (?string $l) => match ($l) {
-            'green' => 'Saudável',
-            'yellow' => 'Atenção',
-            'red' => 'Crítico',
+        $riskLevelLabel = fn (?string $l) => match ($l) {
+            'green' => 'Situação favorável',
+            'yellow' => 'Risco intermediário',
+            'red' => 'Risco elevado',
             default => (string) $l,
         };
     @endphp
@@ -56,7 +56,7 @@
             <tr>
                 <th>Escopo</th>
                 <th>Média</th>
-                <th>Nível de saúde</th>
+                <th>Nível de risco</th>
                 <th>N</th>
             </tr>
         </thead>
@@ -73,7 +73,7 @@
                         @endif
                     </td>
                     <td>{{ number_format($row->average_score, 2) }}</td>
-                    <td>{{ $healthLevelLabel($row->risk_level) }}</td>
+                    <td>{{ $riskLevelLabel($row->risk_level) }}</td>
                     <td>{{ $row->respondent_count }}</td>
                 </tr>
             @endforeach
@@ -89,27 +89,27 @@
     <table>
         <thead>
             <tr>
-                <th>Nível de saúde (agregado)</th>
+                <th>Nível de risco (agregado)</th>
                 <th>Conduta sugerida no ciclo PGR</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td>Crítico</td>
+                <td>Risco elevado</td>
                 <td>Priorizar análise aprofundada, medidas de controle e prazo definido; comunicação com CIPA/participação dos trabalhadores quando aplicável.</td>
             </tr>
             <tr>
-                <td>Atenção</td>
+                <td>Risco intermediário</td>
                 <td>Planejar ações preventivas, monitoramento em nova rodada de coleta ou indicadores correlatos.</td>
             </tr>
             <tr>
-                <td>Saudável</td>
+                <td>Situação favorável</td>
                 <td>Manter práticas, revisar periodicamente e registrar evolução histórica no PGR.</td>
             </tr>
         </tbody>
     </table>
     <p style="margin-top: 12px; font-size: 10px; padding: 8px; border: 1px solid #ccc; background: #f9f9f9;">
-        <strong>Disclaimer:</strong> as médias deste relatório refletem escala interna de &quot;saúde&quot; (0–100) derivada de respostas Likert 1–5 com pesos e inversões configurados no template.
+        <strong>Disclaimer:</strong> as médias deste relatório refletem índice de risco (0–100) derivado de respostas Likert 1–5 com pesos e inversões configurados no template (metodologia COPSOQ). Quanto maior o score, maior o risco.
         A interpretação final para fins de PGR, exposição e controles deve ser feita por equipe técnica competente e integrada aos demais dados da organização.
     </p>
 </body>

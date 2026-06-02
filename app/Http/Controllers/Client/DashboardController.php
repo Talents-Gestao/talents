@@ -55,7 +55,7 @@ class DashboardController extends Controller
                 ->whereNotNull('survey_template_section_id')
                 ->whereNull('department_id')
                 ->join('survey_template_sections', 'survey_template_sections.id', '=', 'survey_results.survey_template_section_id')
-                ->orderBy('survey_results.average_score')
+                ->orderByDesc('survey_results.average_score')
                 ->limit(3)
                 ->get([
                     'survey_template_sections.title as section_name',

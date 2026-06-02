@@ -5,26 +5,10 @@ namespace App\Services;
 use App\Models\Survey;
 use App\Models\SurveyInsight;
 use App\Models\SurveyResult;
+use App\Support\Nr1Scoring;
 
 class InsightGenerator
 {
-    /** Benchmark médio de saúde estimado por segmento (0–100; pode vir de tabela futura) */
-    private function benchmarkForSegment(?string $segment): float
-    {
-        $map = [
-            'tecnologia' => 58,
-            'saude' => 52,
-            'educacao' => 55,
-            'industria' => 55,
-        ];
-
-        if ($segment && isset($map[strtolower($segment)])) {
-            return $map[strtolower($segment)];
-        }
-
-        return 55;
-    }
-
     public function generateForSurvey(Survey $survey): void
     {
         $survey->insights()->delete();
@@ -45,17 +29,18 @@ class InsightGenerator
             SurveyInsight::create([
                 'survey_id' => $survey->id,
                 'type' => 'alert',
-                'message' => 'Indicador de saúde psicossocial geral baixo. Priorize ações imediatas com SESMT/RH e liderança.',
+                'message' => 'Risco psicossocial elevado no indicador geral. Priorize ações imediatas com SESMT/RH e liderança.',
                 'meta' => ['average_score' => $overall->average_score],
             ]);
         }
 
-        $benchmark = $this->benchmarkForSegment($survey->company->segment);
-        if ($overall->average_score < $benchmark - 5) {
+        $benchmark = Nr1Scoring::segmentRiskBenchmark($survey->company->segment);
+        $margin = (float) config('nr1.benchmark_alert_margin', 5);
+        if ($overall->average_score > $benchmark + $margin) {
             SurveyInsight::create([
                 'survey_id' => $survey->id,
                 'type' => 'benchmark',
-                'message' => 'Atenção: a média de saúde está abaixo do benchmark estimado do segmento ('.$benchmark.' pontos).',
+                'message' => 'Atenção: o índice de risco está acima do benchmark estimado do segmento ('.$benchmark.' pontos).',
                 'meta' => ['benchmark' => $benchmark, 'company' => $overall->average_score],
             ]);
         }
@@ -67,13 +52,14 @@ class InsightGenerator
             ->get();
 
         foreach ($sections as $row) {
-            if ($row->risk_level === 'red') {
+            if (in_array($row->risk_level, ['red', 'yellow'], true)) {
                 $title = $row->meta['section_title'] ?? 'Dimensão';
+                $levelLabel = Nr1Scoring::riskLabel($row->risk_level);
                 SurveyInsight::create([
                     'survey_id' => $survey->id,
                     'type' => 'alert',
-                    'message' => 'Área crítica: '.$title.'. Inclua medidas específicas no PGR.',
-                    'meta' => ['section_id' => $row->survey_template_section_id],
+                    'message' => $levelLabel.': '.$title.'. Documente medidas no plano de ação do PGR.',
+                    'meta' => ['section_id' => $row->survey_template_section_id, 'risk_level' => $row->risk_level],
                 ]);
             }
         }
@@ -90,19 +76,22 @@ class InsightGenerator
                 ->whereNull('survey_template_section_id')
                 ->whereNull('department_id')
                 ->first();
-            if ($prevOverall && $overall->average_score > $prevOverall->average_score + 3) {
+
+            $trendThreshold = (float) config('nr1.trend_change_threshold', 3);
+
+            if ($prevOverall && $overall->average_score < $prevOverall->average_score - $trendThreshold) {
                 SurveyInsight::create([
                     'survey_id' => $survey->id,
                     'type' => 'trend',
-                    'message' => 'Tendência positiva: a média geral de saúde melhorou em relação à campanha anterior.',
+                    'message' => 'Tendência positiva: o risco geral reduziu em relação à campanha anterior.',
                     'meta' => ['previous' => $prevOverall->average_score, 'current' => $overall->average_score],
                 ]);
             }
-            if ($prevOverall && $overall->average_score < $prevOverall->average_score - 3) {
+            if ($prevOverall && $overall->average_score > $prevOverall->average_score + $trendThreshold) {
                 SurveyInsight::create([
                     'survey_id' => $survey->id,
                     'type' => 'trend',
-                    'message' => 'Atenção: os indicadores de saúde pioraram em relação à campanha anterior.',
+                    'message' => 'Atenção: o risco psicossocial aumentou em relação à campanha anterior.',
                     'meta' => ['previous' => $prevOverall->average_score, 'current' => $overall->average_score],
                 ]);
             }

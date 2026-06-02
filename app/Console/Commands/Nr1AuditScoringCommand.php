@@ -64,7 +64,7 @@ class Nr1AuditScoringCommand extends Command
             ->get();
 
         if ($results->isEmpty()) {
-            $this->warn('  Nenhum resultado. Execute: php artisan nr1:recalculate ou recalcule no portal.');
+            $this->warn('  Nenhum resultado. Execute: php artisan nr1:recalculate {survey} ou recalcule no portal.');
         } else {
             foreach ($results as $r) {
                 if ($r->survey_template_section_id === null && $r->department_id === null) {
@@ -88,11 +88,13 @@ class Nr1AuditScoringCommand extends Command
         }
 
         $this->newLine();
-        $this->info('=== FAIXAS DO SISTEMA (padrão Talents / compatível COPSOQ) ===');
-        $this->line('  Verde  >= 67  (saúde favorável)');
-        $this->line('  Amarelo 34–66 (atenção)');
-        $this->line('  Vermelho <= 33 (crítico)');
-        $this->line('  Escala Likert 1–5 → índice 0–100 (maior = melhor saúde psicossocial)');
+        $this->info('=== FAIXAS DO SISTEMA (COPSOQ / tercis na escala 0–100) ===');
+        $greenMax = config('nr1.risk_thresholds.green_max', 33);
+        $yellowMax = config('nr1.risk_thresholds.yellow_max', 66);
+        $this->line("  Verde  0–{$greenMax}  (situação favorável, sem risco aparente)");
+        $this->line('  Amarelo '.($greenMax + 1)."–{$yellowMax} (risco intermediário, monitorar)");
+        $this->line('  Vermelho '.($yellowMax + 1).'–100 (risco elevado, ação imediata)');
+        $this->line('  Escala Likert 1–5 → índice 0–100 (maior = maior risco psicossocial)');
 
         $this->newLine();
         $this->info('=== AUDITORIA reverse_score POR PERGUNTA ===');
@@ -140,7 +142,7 @@ class Nr1AuditScoringCommand extends Command
         }
 
         $this->newLine();
-        $this->line('Referência: COPSOQ III usa escala 0–4 e quartis populacionais; este sistema usa 1–5 e limiares 33/67 — proporcionalmente equivalente para NR-1.');
+        $this->line('Referência: COPSOQ usa tercis em 2,33 e 3,66 na escala Likert 1–5; na escala 0–100 isso corresponde a 33 e 67.');
 
         return self::SUCCESS;
     }

@@ -9,9 +9,9 @@ const props = defineProps({
 });
 
 const label = computed(() => {
-    if (props.riskLevel === 'green') return 'Saudável';
-    if (props.riskLevel === 'yellow') return 'Atenção';
-    if (props.riskLevel === 'red') return 'Crítico';
+    if (props.riskLevel === 'green') return 'Situação favorável';
+    if (props.riskLevel === 'yellow') return 'Risco intermediário';
+    if (props.riskLevel === 'red') return 'Risco elevado';
     return '—';
 });
 
@@ -27,7 +27,7 @@ const classes = computed(() => {
     <span
         class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
         :class="classes"
-        :aria-label="`Nível de saúde: ${label}`"
+        :aria-label="`Nível de risco: ${label}`"
     >
         {{ label }}
     </span>

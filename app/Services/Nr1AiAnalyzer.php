@@ -142,6 +142,9 @@ PROMPT;
         return [
             'survey_title' => $survey->title,
             'company' => $survey->company?->name ?? 'Empresa',
+            'methodology' => config('nr1.methodology'),
+            'scale' => config('nr1.scale'),
+            'score_interpretation' => 'Índice de risco 0–100: quanto maior, maior o risco. Faixas: 0–33 favorável, 34–66 intermediário, 67–100 elevado.',
             'min_responses_for_breakdown' => $survey->min_responses_for_breakdown,
             'overall' => $overall ? [
                 'average_score' => round((float) $overall->average_score, 2),

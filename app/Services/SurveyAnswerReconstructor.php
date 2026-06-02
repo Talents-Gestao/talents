@@ -71,23 +71,23 @@ class SurveyAnswerReconstructor
     private function syntheticLikertValue(int $responseId, SurveyTemplateQuestion $question, ?int $departmentId): int
     {
         $deptKey = $departmentId ?? 0;
-        $deptBaseline = 45 + (abs(crc32('dept-'.$deptKey)) % 31);
+        $deptBaseline = 25 + (abs(crc32('dept-'.$deptKey)) % 31);
         $noise = (abs(crc32('resp-'.$responseId.'-q-'.$question->id)) % 41) - 20;
-        $health = min(95.0, max(5.0, (float) ($deptBaseline + $noise)));
+        $risk = min(95.0, max(5.0, (float) ($deptBaseline + $noise)));
 
-        return $this->healthScoreToLikert($health, (bool) $question->reverse_score);
+        return $this->riskScoreToLikert($risk, (bool) $question->reverse_score);
     }
 
     /**
-     * Converte índice de saúde (0–100, maior = melhor) para escala Likert 1–5
-     * coerente com SurveyResultCalculator::normalizedHealthScore.
+     * Converte índice de risco (0–100, maior = pior) para escala Likert 1–5
+     * coerente com Nr1Scoring::normalizedRiskScore.
      */
-    private function healthScoreToLikert(float $health, bool $reverseScore): int
+    private function riskScoreToLikert(float $risk, bool $reverseScore): int
     {
         if ($reverseScore) {
-            $likert = 1 + (int) round(($health / 100) * 4);
+            $likert = 5 - (int) round(($risk / 100) * 4);
         } else {
-            $likert = 5 - (int) round(($health / 100) * 4);
+            $likert = 1 + (int) round(($risk / 100) * 4);
         }
 
         return min(5, max(1, $likert));

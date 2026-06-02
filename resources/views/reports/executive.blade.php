@@ -14,10 +14,10 @@
 </head>
 <body>
     @php
-        $healthLevelLabel = fn (?string $l) => match ($l) {
-            'green' => 'Saudável',
-            'yellow' => 'Atenção',
-            'red' => 'Crítico',
+        $riskLevelLabel = fn (?string $l) => match ($l) {
+            'green' => 'Situação favorável',
+            'yellow' => 'Risco intermediário',
+            'red' => 'Risco elevado',
             default => strtoupper((string) $l),
         };
     @endphp
@@ -30,7 +30,7 @@
     @endphp
 
     @if($overall)
-        <p><strong>Indicador geral de saúde (0–100):</strong> {{ number_format($overall->average_score, 1) }} ({{ $healthLevelLabel($overall->risk_level) }})</p>
+        <p><strong>Indicador geral de risco (0–100):</strong> {{ number_format($overall->average_score, 1) }} ({{ $riskLevelLabel($overall->risk_level) }})</p>
         <p><strong>Respondentes:</strong> {{ $overall->respondent_count }}</p>
     @endif
 
@@ -39,8 +39,8 @@
         <thead>
             <tr>
                 <th>Dimensão</th>
-                <th>Média (saúde)</th>
-                <th>Nível de saúde</th>
+                <th>Média (risco)</th>
+                <th>Nível de risco</th>
             </tr>
         </thead>
         <tbody>
@@ -48,7 +48,7 @@
                 <tr>
                     <td>{{ $row->meta['section_title'] ?? '—' }}</td>
                     <td>{{ number_format($row->average_score, 1) }}</td>
-                    <td>{{ $healthLevelLabel($row->risk_level) }}</td>
+                    <td>{{ $riskLevelLabel($row->risk_level) }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -72,7 +72,7 @@
     <p><strong>Uso deste relatório na documentação do PGR:</strong></p>
     <ul>
         <li>Evidência de levantamento participativo / percepção dos trabalhadores sobre o ambiente de trabalho (dados agregados).</li>
-        <li>Apoio à priorização de medidas de prevenção nas dimensões com indicador &quot;Atenção&quot; ou &quot;Crítico&quot;.</li>
+        <li>Apoio à priorização de medidas de prevenção nas dimensões com indicador &quot;Risco intermediário&quot; ou &quot;Risco elevado&quot;.</li>
         <li>Registro de campanha, período e unidade organizacional (setores, quando aplicável).</li>
         <li>Manter rastreabilidade com plano de ação, responsáveis e prazos definidos internamente.</li>
     </ul>
