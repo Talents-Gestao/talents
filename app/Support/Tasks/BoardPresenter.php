@@ -2,7 +2,6 @@
 
 namespace App\Support\Tasks;
 
-use App\Enums\UserRole;
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
 use App\Models\User;
@@ -361,9 +360,7 @@ final class BoardPresenter
     public static function allActiveTalentsTeamUsers(): Collection
     {
         return User::query()
-            ->where('role', UserRole::SuperAdmin)
-            ->whereNull('company_id')
-            ->where('is_active', true)
+            ->withActiveTalentsWorkspace()
             ->orderBy('name')
             ->get(['id', 'name', 'email'])
             ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'email' => $u->email]);

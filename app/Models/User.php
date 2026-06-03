@@ -9,6 +9,7 @@ use App\Enums\UserRole;
 use App\Enums\WorkspaceType;
 use App\Support\WorkspaceManager;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -71,6 +72,20 @@ class User extends Authenticatable
     public function workspaces(): HasMany
     {
         return $this->hasMany(UserWorkspace::class);
+    }
+
+    /**
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    public function scopeWithActiveTalentsWorkspace(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'workspaces',
+            fn (Builder $q) => $q
+                ->where('workspace_type', WorkspaceType::Talents)
+                ->where('is_active', true),
+        );
     }
 
     public function company(): BelongsTo

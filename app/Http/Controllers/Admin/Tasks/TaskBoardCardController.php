@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin\Tasks;
 use App\Actions\Tasks\LogTaskActivity;
 use App\Actions\Tasks\MoveTaskCard;
 use App\Actions\Tasks\ToggleTaskCardCompletion;
-use App\Enums\UserRole;
+use App\Enums\WorkspaceType;
 use App\Http\Controllers\Controller;
 use App\Models\TaskCard;
 use App\Models\TaskList;
@@ -173,15 +173,17 @@ class TaskBoardCardController extends Controller
     {
         return User::query()
             ->whereIn('id', $memberIds)
-            ->where('is_active', true)
             ->where(function (Builder $q) use ($companyId) {
-                $q->where(function (Builder $team) {
-                    $team->where('role', UserRole::SuperAdmin)
-                        ->whereNull('company_id');
+                $q->whereHas('workspaces', function (Builder $team) {
+                    $team->where('workspace_type', WorkspaceType::Talents)
+                        ->where('is_active', true);
                 });
 
                 if ($companyId) {
-                    $q->orWhere('company_id', $companyId);
+                    $q->orWhere(function (Builder $company) use ($companyId) {
+                        $company->where('company_id', $companyId)
+                            ->where('is_active', true);
+                    });
                 }
             })
             ->pluck('id')

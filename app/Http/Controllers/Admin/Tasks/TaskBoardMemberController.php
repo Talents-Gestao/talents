@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin\Tasks;
 use App\Actions\Tasks\LogTaskActivity;
 use App\Enums\TaskBoardMemberRole;
 use App\Http\Controllers\Controller;
-use App\Enums\UserRole;
+use App\Enums\WorkspaceType;
 use App\Models\TaskBoard;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -60,13 +60,16 @@ class TaskBoardMemberController extends Controller
 
     private function isEligibleBoardMember(User $user, TaskBoard $board): bool
     {
-        $isTeam = $user->role === UserRole::SuperAdmin && $user->company_id === null;
+        $hasActiveTalentsWorkspace = $user->workspaces()
+            ->where('workspace_type', WorkspaceType::Talents)
+            ->where('is_active', true)
+            ->exists();
 
-        if ($isTeam) {
+        if ($hasActiveTalentsWorkspace) {
             return true;
         }
 
-        if ($user->company_id === null) {
+        if ($user->company_id === null || ! $user->is_active) {
             return false;
         }
 

@@ -198,6 +198,60 @@ class TaskModuleTest extends TestCase
         $this->assertSame($expected, $memberIds);
     }
 
+    public function test_dual_workspace_user_appears_in_talents_team_users_for_card_assignment(): void
+    {
+        $company = $this->baseCompany();
+        $admin = User::factory()->superAdmin()->create();
+
+        $dualUser = User::factory()->companyUser($company->id)->create([
+            'email' => 'dual@talents.test',
+        ]);
+
+        app(\App\Support\WorkspaceManager::class)->createTalentsWorkspace($dualUser, isOwner: false, isActive: true);
+        app(\App\Support\WorkspaceManager::class)->syncLegacyUserColumns($dualUser);
+
+        $dualUser->refresh();
+        $this->assertNotNull($dualUser->company_id, 'Utilizador dual deve manter company_id legado após sync.');
+
+        $teamUserIds = BoardPresenter::allActiveTalentsTeamUsers()->pluck('id')->all();
+        $this->assertContains($dualUser->id, $teamUserIds);
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro global',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'company_id' => $company->id,
+            'title' => 'Tarefa dual',
+            'position' => 1000,
+            'visibility' => 'company',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/cards/'.$card->id, [
+                'member_ids' => [$dualUser->id],
+            ])
+            ->assertRedirect();
+
+        $this->assertTrue(
+            $card->fresh()->members()->where('users.id', $dualUser->id)->exists(),
+            'Membro da equipe Talents com workspace dual deve ser atribuível ao cartão.',
+        );
+    }
+
     public function test_admin_can_invite_talents_team_member_to_internal_board_as_viewer(): void
     {
         $admin = User::factory()->superAdmin()->create();
