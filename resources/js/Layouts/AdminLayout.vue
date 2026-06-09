@@ -3,6 +3,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import SidebarLayout from '@/Components/SidebarLayout.vue';
+import SidebarNavGroup from '@/Components/SidebarNavGroup.vue';
 import SidebarNavItem from '@/Components/SidebarNavItem.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { Link, usePage } from '@inertiajs/vue3';
@@ -31,6 +32,68 @@ const { canAdmin } = useAdminPermissions();
 const page = usePage();
 const adminHomeUrl = computed(
     () => page.props.auth?.user?.admin_home_url ?? route('admin.dashboard'),
+);
+
+const showComercialGroup = computed(
+    () =>
+        canAdmin('comercial') ||
+        page.props.auth?.user?.can_commercial_settings ||
+        canAdmin('companies') ||
+        canAdmin('landing_interest') ||
+        canAdmin('plans'),
+);
+
+const comercialGroupActive = computed(
+    () =>
+        (route().current('admin.comercial.*') &&
+            !route().current('admin.comercial.settings.*')) ||
+        route().current('admin.comercial.settings.*') ||
+        route().current('admin.companies.*') ||
+        route().current('admin.landing-interest.*') ||
+        route().current('admin.plans.*'),
+);
+
+const showEstrategiaGroup = computed(
+    () =>
+        canAdmin('methodology') ||
+        canAdmin('strategic_calendar') ||
+        canAdmin('survey_templates') ||
+        canAdmin('tarefas'),
+);
+
+const estrategiaGroupActive = computed(
+    () =>
+        route().current('admin.metodologia.*') ||
+        route().current('admin.methodology-templates.*') ||
+        route().current('admin.strategic-calendar.*') ||
+        route().current('admin.survey-templates.*') ||
+        route().current('admin.tarefas.*'),
+);
+
+const showRecrutamentoGroup = computed(
+    () => canAdmin('solides') || canAdmin('entrevistas'),
+);
+
+const recrutamentoGroupActive = computed(
+    () => route().current('admin.solides.*') || route().current('admin.entrevistas.*'),
+);
+
+const showOperacaoGroup = computed(() => canAdmin('rhid') || canAdmin('training'));
+
+const operacaoGroupActive = computed(
+    () => route().current('admin.rhid.*') || route().current('admin.training.*'),
+);
+
+const showAdministracaoGroup = computed(
+    () => canAdmin('empresa_talents') || canAdmin('equipe') || canAdmin('settings'),
+);
+
+const administracaoGroupActive = computed(
+    () =>
+        route().current('admin.empresa-talents.*') ||
+        route().current('admin.users.*') ||
+        route().current('admin.settings.edit') ||
+        route().current('admin.ai-settings.edit'),
 );
 </script>
 
@@ -64,144 +127,189 @@ const adminHomeUrl = computed(
                 label="Painel"
                 :collapsed="collapsed"
             />
-            <SidebarNavItem
-                v-if="canAdmin('landing_interest')"
-                :href="route('admin.landing-interest.index')"
-                :active="route().current('admin.landing-interest.*')"
-                :icon="EnvelopeOpenIcon"
-                label="Interessados"
-                :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('companies')"
-                :href="route('admin.companies.index')"
-                :active="route().current('admin.companies.*')"
-                :icon="BuildingOffice2Icon"
-                label="Empresas"
-                :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('rhid')"
-                :href="route('admin.rhid.index')"
-                :active="route().current('admin.rhid.*')"
-                :icon="ClockIcon"
-                label="RHID"
-                :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('plans')"
-                :href="route('admin.plans.index')"
-                :active="route().current('admin.plans.*')"
-                :icon="CreditCardIcon"
-                label="Planos"
-                :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('survey_templates')"
-                :href="route('admin.survey-templates.index')"
-                :active="route().current('admin.survey-templates.*')"
-                :icon="DocumentDuplicateIcon"
-                label="Mapeamentos"
-                :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('methodology')"
-                :href="route('admin.metodologia.index')"
-                :active="
-                    route().current('admin.metodologia.*') ||
-                    route().current('admin.methodology-templates.*')
-                "
-                :icon="BeakerIcon"
-                label="Direcionamento Estratégico"
-                :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('strategic_calendar')"
-                :href="route('admin.strategic-calendar.index')"
-                :active="route().current('admin.strategic-calendar.*')"
-                :icon="CalendarDaysIcon"
-                label="Calendário estratégico"
-                :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('tarefas')"
-                :href="route('admin.tarefas.quadros.index')"
-                :active="route().current('admin.tarefas.*')"
-                :icon="ViewColumnsIcon"
-                label="Tarefas"
-                :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('comercial')"
-                :href="route('admin.comercial.dashboard')"
-                :active="
-                    route().current('admin.comercial.*') &&
-                    !route().current('admin.comercial.settings.*')
-                "
+
+            <SidebarNavGroup
+                v-if="showComercialGroup"
+                label="Comercial / Clientes"
                 :icon="BanknotesIcon"
-                label="Comercial"
                 :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="$page.props.auth?.user?.can_commercial_settings"
-                :href="route('admin.comercial.settings.edit')"
-                :active="route().current('admin.comercial.settings.*')"
-                :icon="DocumentTextIcon"
-                label="Valores e contratos"
+                :active="comercialGroupActive"
+            >
+                <SidebarNavItem
+                    v-if="canAdmin('comercial')"
+                    :href="route('admin.comercial.dashboard')"
+                    :active="
+                        route().current('admin.comercial.*') &&
+                        !route().current('admin.comercial.settings.*')
+                    "
+                    :icon="BanknotesIcon"
+                    label="Comercial"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="$page.props.auth?.user?.can_commercial_settings"
+                    :href="route('admin.comercial.settings.edit')"
+                    :active="route().current('admin.comercial.settings.*')"
+                    :icon="DocumentTextIcon"
+                    label="Valores e contratos"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('companies')"
+                    :href="route('admin.companies.index')"
+                    :active="route().current('admin.companies.*')"
+                    :icon="BuildingOffice2Icon"
+                    label="Empresas"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('landing_interest')"
+                    :href="route('admin.landing-interest.index')"
+                    :active="route().current('admin.landing-interest.*')"
+                    :icon="EnvelopeOpenIcon"
+                    label="Interessados"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('plans')"
+                    :href="route('admin.plans.index')"
+                    :active="route().current('admin.plans.*')"
+                    :icon="CreditCardIcon"
+                    label="Planos"
+                    :collapsed="collapsed"
+                />
+            </SidebarNavGroup>
+
+            <SidebarNavGroup
+                v-if="showEstrategiaGroup"
+                label="Estratégia"
+                :icon="BeakerIcon"
                 :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('empresa_talents')"
-                :href="route('admin.empresa-talents.edit')"
-                :active="route().current('admin.empresa-talents.*')"
-                :icon="IdentificationIcon"
-                label="Empresa Talents"
-                :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('solides')"
-                :href="route('admin.solides.curriculos.index')"
-                :active="route().current('admin.solides.*')"
-                :icon="DocumentTextIcon"
-                label="Sólides — Currículos"
-                :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('entrevistas')"
-                :href="route('admin.entrevistas.index')"
-                :active="route().current('admin.entrevistas.*')"
+                :active="estrategiaGroupActive"
+            >
+                <SidebarNavItem
+                    v-if="canAdmin('methodology')"
+                    :href="route('admin.metodologia.index')"
+                    :active="
+                        route().current('admin.metodologia.*') ||
+                        route().current('admin.methodology-templates.*')
+                    "
+                    :icon="BeakerIcon"
+                    label="Direcionamento Estratégico"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('strategic_calendar')"
+                    :href="route('admin.strategic-calendar.index')"
+                    :active="route().current('admin.strategic-calendar.*')"
+                    :icon="CalendarDaysIcon"
+                    label="Calendário estratégico"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('survey_templates')"
+                    :href="route('admin.survey-templates.index')"
+                    :active="route().current('admin.survey-templates.*')"
+                    :icon="DocumentDuplicateIcon"
+                    label="Mapeamentos"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('tarefas')"
+                    :href="route('admin.tarefas.quadros.index')"
+                    :active="route().current('admin.tarefas.*')"
+                    :icon="ViewColumnsIcon"
+                    label="Tarefas"
+                    :collapsed="collapsed"
+                />
+            </SidebarNavGroup>
+
+            <SidebarNavGroup
+                v-if="showRecrutamentoGroup"
+                label="Recrutamento (IA)"
                 :icon="MicrophoneIcon"
-                label="Entrevistas (IA)"
                 :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('equipe')"
-                :href="route('admin.users.index')"
-                :active="route().current('admin.users.*')"
-                :icon="UsersIcon"
-                label="Equipe"
+                :active="recrutamentoGroupActive"
+            >
+                <SidebarNavItem
+                    v-if="canAdmin('solides')"
+                    :href="route('admin.solides.curriculos.index')"
+                    :active="route().current('admin.solides.*')"
+                    :icon="DocumentTextIcon"
+                    label="Sólides — Currículos"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('entrevistas')"
+                    :href="route('admin.entrevistas.index')"
+                    :active="route().current('admin.entrevistas.*')"
+                    :icon="MicrophoneIcon"
+                    label="Entrevistas (IA)"
+                    :collapsed="collapsed"
+                />
+            </SidebarNavGroup>
+
+            <SidebarNavGroup
+                v-if="showOperacaoGroup"
+                label="Operação"
+                :icon="ClockIcon"
                 :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('settings')"
-                :href="route('admin.settings.edit')"
-                :active="
-                    route().current('admin.settings.edit') ||
-                    route().current('admin.ai-settings.edit')
-                "
+                :active="operacaoGroupActive"
+            >
+                <SidebarNavItem
+                    v-if="canAdmin('rhid')"
+                    :href="route('admin.rhid.index')"
+                    :active="route().current('admin.rhid.*')"
+                    :icon="ClockIcon"
+                    label="RHID"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('training')"
+                    :href="route('admin.training.index')"
+                    :active="route().current('admin.training.*')"
+                    :icon="AcademicCapIcon"
+                    label="Capacitação"
+                    :collapsed="collapsed"
+                    badge="Em breve"
+                />
+            </SidebarNavGroup>
+
+            <SidebarNavGroup
+                v-if="showAdministracaoGroup"
+                label="Administração"
                 :icon="Cog6ToothIcon"
-                label="Configurações"
                 :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="canAdmin('training')"
-                :href="route('admin.training.index')"
-                :active="route().current('admin.training.*')"
-                :icon="AcademicCapIcon"
-                label="Capacitação"
-                :collapsed="collapsed"
-                badge="Em breve"
-            />
+                :active="administracaoGroupActive"
+            >
+                <SidebarNavItem
+                    v-if="canAdmin('empresa_talents')"
+                    :href="route('admin.empresa-talents.edit')"
+                    :active="route().current('admin.empresa-talents.*')"
+                    :icon="IdentificationIcon"
+                    label="Empresa Talents"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('equipe')"
+                    :href="route('admin.users.index')"
+                    :active="route().current('admin.users.*')"
+                    :icon="UsersIcon"
+                    label="Equipe"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('settings')"
+                    :href="route('admin.settings.edit')"
+                    :active="
+                        route().current('admin.settings.edit') ||
+                        route().current('admin.ai-settings.edit')
+                    "
+                    :icon="Cog6ToothIcon"
+                    label="Configurações"
+                    :collapsed="collapsed"
+                />
+            </SidebarNavGroup>
         </template>
 
         <template #user="{ collapsed }">
