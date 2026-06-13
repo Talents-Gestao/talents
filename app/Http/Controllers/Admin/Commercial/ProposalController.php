@@ -27,7 +27,7 @@ class ProposalController extends Controller
     public function index(Request $request): Response
     {
         $q = CommercialProposal::query()
-            ->with('seller:id,name')
+            ->with(['seller:id,name', 'sale:id,proposal_id,code,status'])
             ->orderByDesc('created_at');
 
         if ($request->filled('search')) {

@@ -10,6 +10,10 @@ use App\Http\Controllers\Admin\Commercial\DashboardController as CommercialDashb
 use App\Http\Controllers\Admin\Commercial\PreviewController as CommercialPreviewController;
 use App\Http\Controllers\Admin\Commercial\ProposalController as CommercialProposalController;
 use App\Http\Controllers\Admin\Commercial\SettingsController as CommercialSettingsController;
+use App\Http\Controllers\Admin\Finance\CommissionController as FinanceCommissionController;
+use App\Http\Controllers\Admin\Finance\FinanceDashboardController;
+use App\Http\Controllers\Admin\Finance\InstallmentController as FinanceInstallmentController;
+use App\Http\Controllers\Admin\Finance\SaleController as FinanceSaleController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\CompanyUserController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -159,6 +163,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('propostas/{proposal}/pdf', [CommercialProposalController::class, 'pdf'])->name('propostas.pdf');
         Route::post('propostas/{proposal}/contratos', [CommercialContractController::class, 'store'])
             ->name('propostas.contratos.store');
+        Route::post('propostas/{proposal}/converter', [FinanceSaleController::class, 'store'])
+            ->name('propostas.converter');
         Route::get('contratos/{contract}/pdf', [CommercialContractController::class, 'pdf'])
             ->name('contratos.pdf');
         Route::post('contratos/{contract}/zapsign', [CommercialContractController::class, 'sendZapSign'])
@@ -178,6 +184,18 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::resource('propostas', CommercialProposalController::class)
             ->except(['show'])
             ->parameters(['propostas' => 'proposal']);
+    });
+
+    Route::middleware('admin.can:financeiro')->prefix('financeiro')->name('financeiro.')->group(function () {
+        Route::get('/', [FinanceDashboardController::class, 'index'])->name('dashboard');
+        Route::get('vendas', [FinanceSaleController::class, 'index'])->name('vendas.index');
+        Route::get('vendas/{sale}', [FinanceSaleController::class, 'show'])->name('vendas.show');
+        Route::patch('parcelas/{installment}/pagamento', [FinanceInstallmentController::class, 'registerPayment'])
+            ->name('parcelas.pagamento');
+        Route::get('parcelas/{installment}/comprovante', [FinanceInstallmentController::class, 'receipt'])
+            ->name('parcelas.comprovante');
+        Route::patch('comissoes/{commission}', [FinanceCommissionController::class, 'update'])
+            ->name('comissoes.update');
     });
 
     Route::middleware('admin.can:tarefas')->prefix('tarefas')->name('tarefas.')->group(function () {

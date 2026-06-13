@@ -14,6 +14,7 @@ enum AdminPermissionModule: string
     case StrategicCalendar = 'strategic_calendar';
     case Tarefas = 'tarefas';
     case Comercial = 'comercial';
+    case Financeiro = 'financeiro';
     case EmpresaTalents = 'empresa_talents';
     case Solides = 'solides';
     case Settings = 'settings';
@@ -34,6 +35,7 @@ enum AdminPermissionModule: string
             self::StrategicCalendar => 'Calendário estratégico',
             self::Tarefas => 'Tarefas',
             self::Comercial => 'Comercial',
+            self::Financeiro => 'Financeiro',
             self::EmpresaTalents => 'Empresa Talents',
             self::Solides => 'Sólides — Currículos',
             self::Settings => 'Configurações',
@@ -59,6 +61,7 @@ enum AdminPermissionModule: string
             self::StrategicCalendar,
             self::Tarefas,
             self::Comercial,
+            self::Financeiro,
             self::EmpresaTalents,
             self::Solides,
             self::Settings,

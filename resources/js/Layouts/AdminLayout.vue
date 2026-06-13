@@ -37,6 +37,7 @@ const adminHomeUrl = computed(
 const showComercialGroup = computed(
     () =>
         canAdmin('comercial') ||
+        canAdmin('financeiro') ||
         page.props.auth?.user?.can_commercial_settings ||
         canAdmin('companies') ||
         canAdmin('landing_interest') ||
@@ -48,6 +49,7 @@ const comercialGroupActive = computed(
         (route().current('admin.comercial.*') &&
             !route().current('admin.comercial.settings.*')) ||
         route().current('admin.comercial.settings.*') ||
+        route().current('admin.financeiro.*') ||
         route().current('admin.companies.*') ||
         route().current('admin.landing-interest.*') ||
         route().current('admin.plans.*'),
@@ -142,6 +144,14 @@ const administracaoGroupActive = computed(
                     "
                     :icon="BanknotesIcon"
                     label="Comercial"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('financeiro')"
+                    :href="route('admin.financeiro.dashboard')"
+                    :active="route().current('admin.financeiro.*')"
+                    :icon="BanknotesIcon"
+                    label="Financeiro"
                     :collapsed="collapsed"
                 />
                 <SidebarNavItem

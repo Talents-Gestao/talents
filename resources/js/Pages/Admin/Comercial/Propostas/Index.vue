@@ -3,13 +3,14 @@ import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue'
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import {
+    BanknotesIcon,
     DocumentArrowDownIcon,
     DocumentTextIcon,
     PencilSquareIcon,
     PlusIcon,
     TrashIcon,
 } from '@heroicons/vue/24/outline';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, reactive, ref } from 'vue';
 
 const inertiaPage = usePage();
@@ -192,6 +193,42 @@ const sendZapSign = () => {
         },
     );
 };
+
+const convertModalOpen = ref(false);
+const convertProposal = ref(null);
+
+const convertForm = useForm({
+    payment_method: 'pix',
+    installments_count: 1,
+    first_due_date: new Date().toISOString().slice(0, 10),
+    notes: '',
+});
+
+const canConvert = (proposal) => proposal.is_closed && !proposal.sale;
+
+const openConvertModal = (proposal) => {
+    convertProposal.value = proposal;
+    convertForm.reset();
+    convertForm.payment_method = 'pix';
+    convertForm.installments_count = 1;
+    convertForm.first_due_date = new Date().toISOString().slice(0, 10);
+    convertForm.notes = '';
+    convertModalOpen.value = true;
+};
+
+const closeConvertModal = () => {
+    convertModalOpen.value = false;
+    convertProposal.value = null;
+    convertForm.reset();
+};
+
+const submitConvert = () => {
+    if (!convertProposal.value) return;
+    convertForm.post(route('admin.comercial.propostas.converter', convertProposal.value.id), {
+        preserveScroll: true,
+        onSuccess: () => closeConvertModal(),
+    });
+};
 </script>
 
 <template>
@@ -310,6 +347,13 @@ const sendZapSign = () => {
                                 >
                                     {{ p.is_closed ? 'Fechada' : 'Em aberto' }}
                                 </span>
+                                <Link
+                                    v-if="p.sale"
+                                    :href="route('admin.financeiro.vendas.show', p.sale.id)"
+                                    class="mt-1 block text-xs font-medium text-talents-700 hover:underline"
+                                >
+                                    Venda {{ p.sale.code }}
+                                </Link>
                             </td>
                             <td class="px-4 py-3 text-right text-xs text-slate-500">{{ formatDate(p.created_at) }}</td>
                             <td class="px-4 py-3 text-right">
@@ -330,6 +374,15 @@ const sendZapSign = () => {
                                     >
                                         <DocumentArrowDownIcon class="h-4 w-4" />
                                     </a>
+                                    <button
+                                        v-if="canConvert(p)"
+                                        type="button"
+                                        class="rounded-lg p-1.5 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-800"
+                                        title="Converter em venda"
+                                        @click="openConvertModal(p)"
+                                    >
+                                        <BanknotesIcon class="h-4 w-4" />
+                                    </button>
                                     <button
                                         type="button"
                                         class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
@@ -554,6 +607,79 @@ const sendZapSign = () => {
                         </button>
                     </div>
                 </template>
+            </div>
+        </div>
+
+        <div
+            v-if="convertModalOpen"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            role="dialog"
+            aria-modal="true"
+            @click.self="closeConvertModal"
+        >
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-900">Converter em venda</h3>
+                <p v-if="convertProposal" class="mt-1 text-sm text-slate-600">
+                    {{ convertProposal.code }} — {{ convertProposal.client_name }}
+                    · {{ formatBRL(convertProposal.total_final_cents) }}
+                </p>
+
+                <form class="mt-4 space-y-4" @submit.prevent="submitConvert">
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Forma de pagamento</label>
+                        <select
+                            v-model="convertForm.payment_method"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        >
+                            <option value="pix">PIX</option>
+                            <option value="boleto">Boleto</option>
+                            <option value="cartao">Cartão</option>
+                            <option value="misto">Misto</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Nº de parcelas</label>
+                        <input
+                            v-model.number="convertForm.installments_count"
+                            type="number"
+                            min="1"
+                            max="60"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">1º vencimento</label>
+                        <input
+                            v-model="convertForm.first_due_date"
+                            type="date"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
+                        <textarea
+                            v-model="convertForm.notes"
+                            rows="2"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button
+                            type="button"
+                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            @click="closeConvertModal"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                            :disabled="convertForm.processing"
+                        >
+                            {{ convertForm.processing ? 'Gerando…' : 'Gerar venda' }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </AdminLayout>

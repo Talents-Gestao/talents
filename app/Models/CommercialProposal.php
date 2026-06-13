@@ -67,6 +67,25 @@ class CommercialProposal extends Model
         return $this->hasMany(CommercialProposalProductLine::class, 'commercial_proposal_id');
     }
 
+    public function sale(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(CommercialSale::class, 'proposal_id');
+    }
+
+    public function isWon(): bool
+    {
+        return (bool) $this->is_closed;
+    }
+
+    public function hasSale(): bool
+    {
+        if ($this->relationLoaded('sale')) {
+            return $this->sale !== null;
+        }
+
+        return $this->sale()->exists();
+    }
+
     public function scopeClosed(Builder $query): Builder
     {
         return $query->where('is_closed', true);
