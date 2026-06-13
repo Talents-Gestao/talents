@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSetting;
 use App\Services\Commercial\CommercialProposalServiceLines;
+use App\Support\TalentsButterflyDataUri;
 use App\Support\TalentsLogoDataUri;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\File;
@@ -26,6 +27,7 @@ class CommercialProposalPdfService
             'proposal' => $proposal,
             'settings' => $settings,
             'logoBase64' => TalentsLogoDataUri::get(),
+            'butterflyBase64' => TalentsButterflyDataUri::get(),
             'services' => CommercialProposalServiceLines::forProposal($proposal, $settings),
             'validityDate' => now()->copy()->addDays((int) $settings->pdf_validade_dias),
         ]);

@@ -19,7 +19,15 @@
             @php $inList = false; @endphp
         @endif
         @if($trimmed !== '')
-            <p class="desc-paragraph">{{ $trimmed }}</p>
+            @if(str_starts_with($trimmed, 'Objetivo:'))
+                <p class="desc-paragraph"><strong>Objetivo:</strong>{{ substr($trimmed, 9) }}</p>
+            @elseif($trimmed === 'O que contempla:' || str_starts_with($trimmed, 'O que contempla:'))
+                <p class="desc-paragraph"><strong>O que contempla:</strong></p>
+            @elseif($trimmed === 'Temas abordados:' || str_starts_with($trimmed, 'Temas abordados:'))
+                <p class="desc-paragraph"><strong>Temas abordados:</strong></p>
+            @else
+                <p class="desc-paragraph">{{ $trimmed }}</p>
+            @endif
         @endif
     @endif
 @endforeach
