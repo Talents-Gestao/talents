@@ -2,6 +2,7 @@
 import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
+import { formatCnpj } from '@/utils/formatCnpj';
 import axios from 'axios';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
@@ -47,7 +48,7 @@ const buildCatalogProductsInitial = () => {
 const formInitial = props.proposal
     ? {
           client_name: props.proposal.client_name ?? '',
-          client_cnpj: props.proposal.client_cnpj ?? '',
+          client_cnpj: formatCnpj(props.proposal.client_cnpj ?? ''),
           client_email: props.proposal.client_email ?? '',
           client_phone: props.proposal.client_phone ?? '',
           client_address: props.proposal.client_address ?? '',
@@ -331,6 +332,7 @@ const services = computed(() => {
                                     type="text"
                                     placeholder="00.000.000/0001-00"
                                     class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500 sm:max-w-md"
+                                    @blur="form.client_cnpj = formatCnpj(form.client_cnpj)"
                                 />
                                 <button
                                     type="button"

@@ -2,6 +2,7 @@
 import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
+import { formatCnpj } from '@/utils/formatCnpj';
 import {
     BanknotesIcon,
     DocumentArrowDownIcon,
@@ -333,7 +334,7 @@ const submitConvert = () => {
                             <td class="px-4 py-3 font-mono text-xs text-slate-600">{{ p.code }}</td>
                             <td class="px-4 py-3">
                                 <div class="font-medium">{{ p.client_name }}</div>
-                                <div v-if="p.client_cnpj" class="text-xs text-slate-500">{{ p.client_cnpj }}</div>
+                                <div v-if="p.client_cnpj" class="text-xs text-slate-500">{{ formatCnpj(p.client_cnpj) }}</div>
                             </td>
                             <td class="px-4 py-3 text-slate-600">{{ p.seller?.name ?? '—' }}</td>
                             <td class="px-4 py-3 text-right tabular-nums">{{ p.employee_count }}</td>
