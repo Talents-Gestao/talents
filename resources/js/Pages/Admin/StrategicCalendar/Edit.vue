@@ -3,7 +3,8 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { PaperClipIcon, PlusIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -30,11 +31,10 @@ const form = useForm({
     recurrence: props.item.recurrence ?? '',
     recurrence_ends_on: recurrenceEndsOn,
     company_id: props.item.company_id ? String(props.item.company_id) : '',
-    attachment: null,
-    remove_attachment: false,
 });
 
 const showRecurrenceEnd = computed(() => Boolean(form.recurrence));
+const attachments = computed(() => props.item.attachments ?? []);
 
 const submit = () => {
     form.transform((data) => ({
@@ -42,17 +42,33 @@ const submit = () => {
         company_id: data.company_id || null,
         recurrence: data.recurrence || null,
         recurrence_ends_on: data.recurrence ? data.recurrence_ends_on || null : null,
-    })).put(route('admin.strategic-calendar.update', props.item.id), {
-        forceFormData: true,
-    });
+    })).put(route('admin.strategic-calendar.update', props.item.id));
 };
 
-const onFileChange = (e) => {
-    form.attachment = e.target.files?.[0] ?? null;
-    if (form.attachment) {
-        form.remove_attachment = false;
+function uploadAttachments(event) {
+    const files = event.target.files;
+    if (!files?.length) return;
+
+    const fd = new FormData();
+    for (const file of files) {
+        fd.append('files[]', file);
     }
-};
+
+    router.post(route('admin.strategic-calendar.attachments.store', props.item.id), fd, {
+        forceFormData: true,
+        preserveScroll: true,
+    });
+
+    event.target.value = '';
+}
+
+function destroyAttachment(attachmentId) {
+    if (!window.confirm('Remover este anexo?')) return;
+
+    router.delete(route('admin.strategic-calendar.attachment.destroy', attachmentId), {
+        preserveScroll: true,
+    });
+}
 </script>
 
 <template>
@@ -120,31 +136,39 @@ const onFileChange = (e) => {
                 />
             </div>
             <div>
-                <InputLabel for="attachment" value="Anexo" />
-                <div v-if="item.has_attachment && !form.remove_attachment" class="mb-2 flex flex-wrap items-center gap-2 text-sm">
-                    <a
-                        :href="item.attachment_url"
-                        class="font-medium text-talents-700 hover:underline"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                <InputLabel value="Anexos" />
+                <ul v-if="attachments.length" class="mt-2 space-y-2">
+                    <li
+                        v-for="att in attachments"
+                        :key="att.id"
+                        class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
                     >
-                        {{ item.attachment_original_name || 'Baixar anexo atual' }}
-                    </a>
-                    <button
-                        type="button"
-                        class="text-red-600 hover:underline"
-                        @click="form.remove_attachment = true"
-                    >
-                        Remover
-                    </button>
-                </div>
-                <input
-                    id="attachment"
-                    type="file"
-                    class="mt-1 block w-full text-sm text-slate-600 file:mr-4 file:rounded-md file:border-0 file:bg-talents-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-talents-700"
-                    @change="onFileChange"
-                />
-                <p class="mt-0.5 text-xs text-gray-500">Envie um novo arquivo para substituir o anexo atual.</p>
+                        <a
+                            :href="att.url"
+                            class="inline-flex min-w-0 items-center gap-2 truncate font-medium text-talents-700 hover:underline"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <PaperClipIcon class="h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span class="truncate">{{ att.name }}</span>
+                        </a>
+                        <button
+                            type="button"
+                            class="shrink-0 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                            title="Remover anexo"
+                            @click="destroyAttachment(att.id)"
+                        >
+                            <TrashIcon class="h-4 w-4" aria-hidden="true" />
+                        </button>
+                    </li>
+                </ul>
+                <p v-else class="mt-2 text-sm text-slate-500">Nenhum anexo enviado.</p>
+                <label class="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-talents-700 hover:text-talents-800">
+                    <PlusIcon class="h-4 w-4" aria-hidden="true" />
+                    Adicionar anexos
+                    <input type="file" multiple class="sr-only" @change="uploadAttachments" />
+                </label>
+                <p class="mt-1 text-xs text-gray-500">PDF, imagens ou documentos de apoio (máx. 10 MB cada).</p>
             </div>
             <div>
                 <InputLabel for="company_id" value="Empresa (opcional)" />

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Enums\StrategicCalendarItemKind;
 use App\Http\Controllers\Controller;
 use App\Models\StrategicCalendarItem;
+use App\Models\StrategicCalendarItemAttachment;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Support\StrategicCalendarPeriod;
 use Carbon\Carbon;
@@ -37,7 +38,7 @@ class StrategicCalendarController extends Controller
         $queryEnd = $range ? min($monthEnd, $range['end']) : $monthEnd;
 
         $monthMasters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
-            StrategicCalendarItem::query()->forCompany($company),
+            StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'attachments']),
             $queryStart,
             $queryEnd,
         )->orderBy('occurs_on')->orderBy('id')->get();
@@ -46,7 +47,7 @@ class StrategicCalendarController extends Controller
             $monthMasters,
             $queryStart,
             $queryEnd,
-            'client.strategic-calendar.attachment',
+            'client.strategic-calendar.attachment-download',
         );
 
         $upcomingStart = now()->startOfDay();
@@ -55,7 +56,7 @@ class StrategicCalendarController extends Controller
             : now()->copy()->addYears(2)->endOfDay();
 
         $upcomingMasters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
-            StrategicCalendarItem::query()->forCompany($company),
+            StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'attachments']),
             $upcomingStart,
             $upcomingEnd,
         )->orderBy('occurs_on')->orderBy('id')->get();
@@ -64,7 +65,7 @@ class StrategicCalendarController extends Controller
             $upcomingMasters,
             $upcomingStart,
             $upcomingEnd,
-            'client.strategic-calendar.attachment',
+            'client.strategic-calendar.attachment-download',
         );
 
         $upcoming = $upcomingExpanded
@@ -79,7 +80,7 @@ class StrategicCalendarController extends Controller
         }
 
         $agendaMasters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
-            StrategicCalendarItem::query()->forCompany($company),
+            StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'attachments']),
             Carbon::parse($agendaStart)->startOfDay(),
             $agendaEndCarbon,
         )->orderBy('occurs_on')->orderBy('id')->get();
@@ -88,7 +89,7 @@ class StrategicCalendarController extends Controller
             $agendaMasters,
             Carbon::parse($agendaStart)->startOfDay(),
             $agendaEndCarbon,
-            'client.strategic-calendar.attachment',
+            'client.strategic-calendar.attachment-download',
         );
 
         return Inertia::render('Client/StrategicCalendar/Index', [
@@ -106,21 +107,22 @@ class StrategicCalendarController extends Controller
         ]);
     }
 
-    public function attachment(Request $request, StrategicCalendarItem $item): StreamedResponse|Response
+    public function attachmentDownload(Request $request, StrategicCalendarItemAttachment $attachment): StreamedResponse|Response
     {
         $company = $request->user()->company;
+        $item = $attachment->item;
 
         if ($item->company_id !== null && (int) $item->company_id !== (int) $company->id) {
             abort(404);
         }
 
-        if (! $item->hasAttachment()) {
+        if (! Storage::disk($attachment->disk)->exists($attachment->path)) {
             abort(404);
         }
 
-        return Storage::disk($item->attachment_disk)->download(
-            $item->attachment_path,
-            $item->attachment_original_name ?? 'anexo',
+        return Storage::disk($attachment->disk)->download(
+            $attachment->path,
+            $attachment->downloadName(),
         );
     }
 }

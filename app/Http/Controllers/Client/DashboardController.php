@@ -128,7 +128,7 @@ class DashboardController extends Controller
             }
 
             $masters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
-                StrategicCalendarItem::query()->forCompany($company),
+                StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'attachments']),
                 $today,
                 $weekEnd,
             )->orderBy('occurs_on')->orderBy('id')->get();
@@ -137,7 +137,7 @@ class DashboardController extends Controller
                 $masters,
                 $today,
                 $weekEnd,
-                'client.strategic-calendar.attachment',
+                'client.strategic-calendar.attachment-download',
             )->take(7)->values();
         }
 
@@ -161,7 +161,7 @@ class DashboardController extends Controller
             $queryEnd = $range ? min($monthEnd, $range['end']) : $monthEnd;
 
             $masters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
-                StrategicCalendarItem::query()->forCompany($company),
+                StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'attachments']),
                 $queryStart,
                 $queryEnd,
             )->orderBy('occurs_on')->orderBy('id')->get();
@@ -170,7 +170,7 @@ class DashboardController extends Controller
                 $masters,
                 $queryStart,
                 $queryEnd,
-                'client.strategic-calendar.attachment',
+                'client.strategic-calendar.attachment-download',
             );
 
             $dashboardCalendar = [

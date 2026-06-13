@@ -7,7 +7,7 @@ use App\Enums\StrategicCalendarRecurrence;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class StrategicCalendarItem extends Model
 {
@@ -19,11 +19,6 @@ class StrategicCalendarItem extends Model
         'recurrence',
         'recurrence_ends_on',
         'company_id',
-        'attachment_disk',
-        'attachment_path',
-        'attachment_original_name',
-        'attachment_mime',
-        'attachment_size',
     ];
 
     protected function casts(): array
@@ -33,7 +28,6 @@ class StrategicCalendarItem extends Model
             'recurrence_ends_on' => 'date',
             'kind' => StrategicCalendarItemKind::class,
             'recurrence' => StrategicCalendarRecurrence::class,
-            'attachment_size' => 'integer',
         ];
     }
 
@@ -42,20 +36,17 @@ class StrategicCalendarItem extends Model
         return $this->belongsTo(Company::class);
     }
 
-    public function hasAttachment(): bool
+    public function attachments(): HasMany
     {
-        return $this->attachment_path !== null
-            && $this->attachment_disk !== null
-            && Storage::disk($this->attachment_disk)->exists($this->attachment_path);
+        return $this->hasMany(StrategicCalendarItemAttachment::class, 'strategic_calendar_item_id')
+            ->orderBy('id');
     }
 
-    public function deleteAttachmentFile(): void
+    public function deleteAllAttachments(): void
     {
-        if ($this->attachment_path && $this->attachment_disk) {
-            $disk = Storage::disk($this->attachment_disk);
-            if ($disk->exists($this->attachment_path)) {
-                $disk->delete($this->attachment_path);
-            }
+        foreach ($this->attachments as $attachment) {
+            $attachment->deleteStoredFile();
+            $attachment->delete();
         }
     }
 

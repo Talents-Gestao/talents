@@ -12,9 +12,6 @@ class StrategicCalendarOccurrenceExpander
 {
     private const MAX_OCCURRENCES_PER_ITEM = 500;
 
-    /**
-     * Itens-mestre que podem gerar ocorrências no intervalo.
-     */
     public static function baseQueryForRange(
         Builder $query,
         Carbon $rangeStart,
@@ -43,12 +40,12 @@ class StrategicCalendarOccurrenceExpander
         Collection $items,
         Carbon $rangeStart,
         Carbon $rangeEnd,
-        ?string $attachmentRouteName = 'admin.strategic-calendar.attachment',
+        ?string $attachmentDownloadRouteName = 'admin.strategic-calendar.attachment-download',
     ): Collection {
         $out = collect();
 
         foreach ($items as $item) {
-            foreach (self::occurrencesForItem($item, $rangeStart, $rangeEnd, $attachmentRouteName) as $occurrence) {
+            foreach (self::occurrencesForItem($item, $rangeStart, $rangeEnd, $attachmentDownloadRouteName) as $occurrence) {
                 $out->push($occurrence);
             }
         }
@@ -66,7 +63,7 @@ class StrategicCalendarOccurrenceExpander
         StrategicCalendarItem $item,
         Carbon $rangeStart,
         Carbon $rangeEnd,
-        ?string $attachmentRouteName = 'admin.strategic-calendar.attachment',
+        ?string $attachmentDownloadRouteName = 'admin.strategic-calendar.attachment-download',
     ): array {
         $anchor = $item->occurs_on->copy()->startOfDay();
         $rangeStart = $rangeStart->copy()->startOfDay();
@@ -74,7 +71,7 @@ class StrategicCalendarOccurrenceExpander
 
         if (! $item->recurrence instanceof StrategicCalendarRecurrence) {
             if ($anchor->between($rangeStart, $rangeEnd)) {
-                return [self::toOccurrenceArray($item, $anchor, $attachmentRouteName)];
+                return [self::toOccurrenceArray($item, $anchor, $attachmentDownloadRouteName)];
             }
 
             return [];
@@ -102,7 +99,7 @@ class StrategicCalendarOccurrenceExpander
         $safety = 0;
         while ($current->lte($iterationEnd) && $safety < self::MAX_OCCURRENCES_PER_ITEM) {
             if ($current->between($rangeStart, $rangeEnd)) {
-                $occurrences[] = self::toOccurrenceArray($item, $current, $attachmentRouteName);
+                $occurrences[] = self::toOccurrenceArray($item, $current, $attachmentDownloadRouteName);
             }
 
             $next = self::advance($current, $item->recurrence);
@@ -134,7 +131,7 @@ class StrategicCalendarOccurrenceExpander
     private static function toOccurrenceArray(
         StrategicCalendarItem $item,
         Carbon $date,
-        ?string $attachmentRouteName,
+        ?string $attachmentDownloadRouteName,
     ): array {
         $iso = $date->toDateString();
 
@@ -146,13 +143,33 @@ class StrategicCalendarOccurrenceExpander
             'kind' => $item->kind instanceof \BackedEnum ? $item->kind->value : $item->kind,
             'occurs_on' => $iso,
             'company_id' => $item->company_id,
+            'company' => $item->relationLoaded('company') && $item->company
+                ? ['id' => $item->company->id, 'name' => $item->company->name]
+                : null,
             'recurrence' => $item->recurrence instanceof \BackedEnum ? $item->recurrence->value : $item->recurrence,
             'recurrence_label' => $item->recurrence?->label(),
-            'has_attachment' => $item->hasAttachment(),
-            'attachment_url' => $item->hasAttachment() && $attachmentRouteName
-                ? route($attachmentRouteName, $item->id)
-                : null,
-            'attachment_name' => $item->attachment_original_name,
+            'recurrence_ends_on' => $item->recurrence_ends_on?->toDateString(),
+            'attachments' => self::attachmentsPayload($item, $attachmentDownloadRouteName),
         ];
+    }
+
+    /**
+     * @return list<array{id:int, name:string, url:string|null}>
+     */
+    private static function attachmentsPayload(
+        StrategicCalendarItem $item,
+        ?string $attachmentDownloadRouteName,
+    ): array {
+        if (! $item->relationLoaded('attachments')) {
+            return [];
+        }
+
+        return $item->attachments->map(fn ($attachment) => [
+            'id' => $attachment->id,
+            'name' => $attachment->downloadName(),
+            'url' => $attachmentDownloadRouteName
+                ? route($attachmentDownloadRouteName, $attachment->id)
+                : null,
+        ])->values()->all();
     }
 }

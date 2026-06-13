@@ -69,8 +69,12 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     });
 
     Route::middleware('admin.can:strategic_calendar')->group(function () {
-        Route::get('calendario-estrategico/{item}/anexo', [AdminStrategicCalendarController::class, 'attachment'])
-            ->name('strategic-calendar.attachment');
+        Route::post('calendario-estrategico/{item}/anexos', [AdminStrategicCalendarController::class, 'attachmentsStore'])
+            ->name('strategic-calendar.attachments.store');
+        Route::delete('calendario-estrategico/anexos/{attachment}', [AdminStrategicCalendarController::class, 'attachmentDestroy'])
+            ->name('strategic-calendar.attachment.destroy');
+        Route::get('calendario-estrategico/anexos/{attachment}/download', [AdminStrategicCalendarController::class, 'attachmentDownload'])
+            ->name('strategic-calendar.attachment-download');
         Route::patch('calendario-estrategico/{item}/data', [AdminStrategicCalendarController::class, 'updateDate'])
             ->name('strategic-calendar.update-date');
         Route::resource('calendario-estrategico', AdminStrategicCalendarController::class)

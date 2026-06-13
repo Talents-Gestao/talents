@@ -7,6 +7,7 @@ use App\Enums\StrategicCalendarRecurrence;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\StrategicCalendarItem;
+use App\Models\StrategicCalendarItemAttachment;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -35,7 +36,8 @@ class StrategicCalendarController extends Controller
         }
 
         $listQuery = StrategicCalendarItem::query()
-            ->with('company:id,name')
+            ->with(['company:id,name', 'attachments'])
+            ->withCount('attachments')
             ->orderByDesc('occurs_on')
             ->orderByDesc('id');
 
@@ -94,6 +96,11 @@ class StrategicCalendarController extends Controller
             'recurrenceLabels' => collect(StrategicCalendarRecurrence::cases())->mapWithKeys(
                 fn (StrategicCalendarRecurrence $r) => [$r->value => $r->label()]
             ),
+            'kinds' => collect(StrategicCalendarItemKind::cases())->map(fn (StrategicCalendarItemKind $k) => [
+                'value' => $k->value,
+                'label' => $k->label(),
+            ])->values()->all(),
+            'recurrences' => $this->recurrenceOptions(),
         ]);
     }
 
@@ -113,25 +120,26 @@ class StrategicCalendarController extends Controller
     {
         $data = $this->validated($request);
 
-        $item = StrategicCalendarItem::query()->create($data);
+        StrategicCalendarItem::query()->create($data);
 
-        $this->storeAttachment($request, $item);
-
-        return redirect()->route('admin.strategic-calendar.index')->with('success', 'Item do calendário criado.');
+        return back()->with('success', 'Item do calendário criado.');
     }
 
     public function edit(StrategicCalendarItem $item): InertiaResponse
     {
+        $item->load('attachments');
+
         return Inertia::render('Admin/StrategicCalendar/Edit', [
             'item' => [
                 ...$item->toArray(),
                 'occurs_on' => $item->occurs_on?->toDateString(),
                 'recurrence_ends_on' => $item->recurrence_ends_on?->toDateString(),
                 'recurrence' => $item->recurrence?->value,
-                'has_attachment' => $item->hasAttachment(),
-                'attachment_url' => $item->hasAttachment()
-                    ? route('admin.strategic-calendar.attachment', $item->id)
-                    : null,
+                'attachments' => $item->attachments->map(fn ($a) => [
+                    'id' => $a->id,
+                    'name' => $a->downloadName(),
+                    'url' => route('admin.strategic-calendar.attachment-download', $a->id),
+                ])->values()->all(),
             ],
             'companies' => Company::query()->orderBy('name')->get(['id', 'name']),
             'kinds' => collect(StrategicCalendarItemKind::cases())->map(fn (StrategicCalendarItemKind $k) => [
@@ -159,45 +167,65 @@ class StrategicCalendarController extends Controller
 
         $item->update($data);
 
-        if ($request->boolean('remove_attachment')) {
-            $item->deleteAttachmentFile();
-            $item->update([
-                'attachment_disk' => null,
-                'attachment_path' => null,
-                'attachment_original_name' => null,
-                'attachment_mime' => null,
-                'attachment_size' => null,
-            ]);
-        }
-
-        $this->storeAttachment($request, $item);
-
-        return redirect()->route('admin.strategic-calendar.index')->with('success', 'Item atualizado.');
+        return back()->with('success', 'Item atualizado.');
     }
 
     public function destroy(StrategicCalendarItem $item): RedirectResponse
     {
-        $item->deleteAttachmentFile();
+        $item->deleteAllAttachments();
         $item->delete();
 
-        return redirect()->route('admin.strategic-calendar.index')->with('success', 'Item removido.');
+        return back()->with('success', 'Item removido.');
     }
 
-    public function attachment(StrategicCalendarItem $item): StreamedResponse|Response
+    public function attachmentsStore(Request $request, StrategicCalendarItem $item): RedirectResponse
     {
-        if (! $item->hasAttachment()) {
+        $maxKb = (int) config('strategic_calendar.max_attachment_kb', 10240);
+
+        $request->validate([
+            'files' => ['required', 'array', 'min:1'],
+            'files.*' => ['file', 'max:'.max(1, $maxKb)],
+        ]);
+
+        foreach ($request->file('files', []) as $file) {
+            $path = $file->store('strategic-calendar/'.$item->id, 'public');
+
+            $item->attachments()->create([
+                'disk' => 'public',
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime' => $file->getClientMimeType(),
+                'size' => $file->getSize(),
+                'uploaded_by_user_id' => $request->user()?->id,
+            ]);
+        }
+
+        return back()->with('success', 'Anexo(s) enviado(s).');
+    }
+
+    public function attachmentDestroy(StrategicCalendarItemAttachment $attachment): RedirectResponse
+    {
+        $attachment->deleteStoredFile();
+        $attachment->delete();
+
+        return back()->with('success', 'Anexo removido.');
+    }
+
+    public function attachmentDownload(StrategicCalendarItemAttachment $attachment): StreamedResponse|Response
+    {
+        if (! Storage::disk($attachment->disk)->exists($attachment->path)) {
             abort(404);
         }
 
-        return Storage::disk($item->attachment_disk)->download(
-            $item->attachment_path,
-            $item->attachment_original_name ?? 'anexo',
+        return Storage::disk($attachment->disk)->download(
+            $attachment->path,
+            $attachment->downloadName(),
         );
     }
 
     private function filteredMasterQuery(Request $request)
     {
-        $query = StrategicCalendarItem::query()->with('company:id,name');
+        $query = StrategicCalendarItem::query()->with(['company:id,name', 'attachments']);
 
         if ($request->filled('company_id')) {
             $cid = (int) $request->input('company_id');
@@ -227,31 +255,6 @@ class StrategicCalendarController extends Controller
             ->all();
     }
 
-    private function storeAttachment(Request $request, StrategicCalendarItem $item): void
-    {
-        if (! $request->hasFile('attachment')) {
-            return;
-        }
-
-        $maxKb = (int) config('strategic_calendar.max_attachment_kb', 10240);
-        $request->validate([
-            'attachment' => ['file', 'max:'.max(1, $maxKb)],
-        ]);
-
-        $file = $request->file('attachment');
-        $item->deleteAttachmentFile();
-
-        $path = $file->store('strategic-calendar/'.$item->id, 'public');
-
-        $item->update([
-            'attachment_disk' => 'public',
-            'attachment_path' => $path,
-            'attachment_original_name' => $file->getClientOriginalName(),
-            'attachment_mime' => $file->getClientMimeType(),
-            'attachment_size' => $file->getSize(),
-        ]);
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -270,7 +273,6 @@ class StrategicCalendarController extends Controller
             'recurrence' => ['nullable', Rule::enum(StrategicCalendarRecurrence::class)],
             'recurrence_ends_on' => ['nullable', 'date', 'after_or_equal:occurs_on'],
             'company_id' => ['nullable', 'exists:companies,id'],
-            'remove_attachment' => ['sometimes', 'boolean'],
         ]);
 
         if (empty($data['recurrence'])) {

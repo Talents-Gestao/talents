@@ -20,7 +20,6 @@ const form = useForm({
     recurrence: '',
     recurrence_ends_on: '',
     company_id: '',
-    attachment: null,
 });
 
 const showRecurrenceEnd = computed(() => Boolean(form.recurrence));
@@ -31,13 +30,7 @@ const submit = () => {
         company_id: data.company_id || null,
         recurrence: data.recurrence || null,
         recurrence_ends_on: data.recurrence ? data.recurrence_ends_on || null : null,
-    })).post(route('admin.strategic-calendar.store'), {
-        forceFormData: true,
-    });
-};
-
-const onFileChange = (e) => {
-    form.attachment = e.target.files?.[0] ?? null;
+    })).post(route('admin.strategic-calendar.store'));
 };
 </script>
 
@@ -108,16 +101,9 @@ const onFileChange = (e) => {
                     placeholder="Descreva como esta ação pode ou deve ser realizada."
                 />
             </div>
-            <div>
-                <InputLabel for="attachment" value="Anexo" />
-                <input
-                    id="attachment"
-                    type="file"
-                    class="mt-1 block w-full text-sm text-slate-600 file:mr-4 file:rounded-md file:border-0 file:bg-talents-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-talents-700"
-                    @change="onFileChange"
-                />
-                <p class="mt-0.5 text-xs text-gray-500">PDF, imagens ou documentos de apoio (máx. 10 MB).</p>
-            </div>
+            <p class="text-xs text-gray-500">
+                Os anexos podem ser adicionados após criar o item, no calendário ou na página de edição.
+            </p>
             <div>
                 <InputLabel for="company_id" value="Empresa (opcional)" />
                 <p class="mt-0.5 text-xs text-gray-500">Em branco = todas as empresas com o módulo habilitado.</p>

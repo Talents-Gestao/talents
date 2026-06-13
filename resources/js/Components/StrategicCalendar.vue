@@ -27,7 +27,7 @@ const props = defineProps({
     editItemRoute: { type: String, default: null },
 });
 
-const emit = defineEmits(['navigate-month', 'go-today', 'update:view']);
+const emit = defineEmits(['navigate-month', 'go-today', 'update:view', 'edit-day']);
 
 const selectedDay = ref(1);
 const currentView = ref('month');
@@ -157,6 +157,15 @@ const agendaTimeline = computed(() => {
 function onPickDay(cell) {
     if (cell.day) {
         selectedDay.value = cell.day;
+        if (props.editable && cell.iso) {
+            emit('edit-day', cell.iso);
+        }
+    }
+}
+
+function openDayEditor() {
+    if (props.editable && selectedDayIso.value) {
+        emit('edit-day', selectedDayIso.value);
     }
 }
 
@@ -412,6 +421,14 @@ function monthCellClass(cell) {
                             : ''
                     }}
                 </p>
+                <button
+                    v-if="editable"
+                    type="button"
+                    class="mt-2 text-xs font-semibold text-talents-700 hover:text-talents-800"
+                    @click="openDayEditor"
+                >
+                    + Adicionar no dia
+                </button>
                 <ul v-if="selectedDayItems.length" class="mt-4 space-y-3" aria-live="polite">
                     <li
                         v-for="it in selectedDayItems"
@@ -445,15 +462,18 @@ function monthCellClass(cell) {
                             {{ it.description }}
                         </p>
                         <p v-if="it.recurrence_label" class="mt-2 text-xs text-violet-600">Repete: {{ it.recurrence_label }}</p>
-                        <a
-                            v-if="it.attachment_url"
-                            :href="it.attachment_url"
-                            class="mt-2 inline-flex text-sm font-medium text-talents-700 hover:underline"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            {{ it.attachment_name ? `Anexo: ${it.attachment_name}` : 'Baixar anexo' }}
-                        </a>
+                        <ul v-if="it.attachments?.length" class="mt-2 space-y-1">
+                            <li v-for="att in it.attachments" :key="att.id">
+                                <a
+                                    :href="att.url"
+                                    class="inline-flex text-sm font-medium text-talents-700 hover:underline"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Anexo: {{ att.name }}
+                                </a>
+                            </li>
+                        </ul>
                         <p v-if="it.company?.name" class="mt-2 text-xs text-slate-500">
                             Empresa: {{ it.company.name }}
                         </p>
@@ -504,15 +524,18 @@ function monthCellClass(cell) {
                                         {{ it.description }}
                                     </p>
                                     <p v-if="it.recurrence_label" class="mt-1 text-xs text-violet-600">{{ it.recurrence_label }}</p>
-                                    <a
-                                        v-if="it.attachment_url"
-                                        :href="it.attachment_url"
-                                        class="mt-1 inline-block text-xs font-medium text-talents-700 hover:underline"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        Anexo
-                                    </a>
+                                    <ul v-if="it.attachments?.length" class="mt-1 space-y-0.5">
+                                        <li v-for="att in it.attachments" :key="att.id">
+                                            <a
+                                                :href="att.url"
+                                                class="inline-block text-xs font-medium text-talents-700 hover:underline"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                {{ att.name }}
+                                            </a>
+                                        </li>
+                                    </ul>
                                     <p v-if="it.company?.name" class="mt-1 text-xs text-slate-500">{{ it.company.name }}</p>
                                 </div>
                                 <Link
@@ -574,15 +597,18 @@ function monthCellClass(cell) {
                                 <p v-if="it.description" class="mt-2 line-clamp-3 text-sm text-slate-600">
                                     {{ it.description }}
                                 </p>
-                                <a
-                                    v-if="it.attachment_url"
-                                    :href="it.attachment_url"
-                                    class="mt-2 inline-flex text-sm font-medium text-talents-700 hover:underline"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    {{ it.attachment_name ? `Anexo: ${it.attachment_name}` : 'Baixar anexo' }}
-                                </a>
+                                <ul v-if="it.attachments?.length" class="mt-2 space-y-1">
+                                    <li v-for="att in it.attachments" :key="att.id">
+                                        <a
+                                            :href="att.url"
+                                            class="inline-flex text-sm font-medium text-talents-700 hover:underline"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            Anexo: {{ att.name }}
+                                        </a>
+                                    </li>
+                                </ul>
                                 <p v-if="it.company?.name" class="mt-1 text-xs text-slate-500">{{ it.company.name }}</p>
                             </li>
                         </ul>

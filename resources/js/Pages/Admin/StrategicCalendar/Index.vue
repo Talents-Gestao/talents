@@ -1,4 +1,5 @@
 <script setup>
+import DayModal from '@/Components/StrategicCalendar/DayModal.vue';
 import StrategicCalendar from '@/Components/StrategicCalendar.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -16,11 +17,15 @@ const props = defineProps({
     companies: Array,
     kindLabels: Object,
     recurrenceLabels: { type: Object, default: () => ({}) },
+    kinds: { type: Array, default: () => [] },
+    recurrences: { type: Array, default: () => [] },
 });
 
 const companyFilter = ref(props.filters?.company_id ? String(props.filters.company_id) : '');
 const kindFilter = ref(props.filters?.kind ?? '');
 const companySearch = ref('');
+const dayModalOpen = ref(false);
+const dayModalIso = ref(null);
 
 const filteredCompanies = computed(() => {
     const list = props.companies ?? [];
@@ -103,6 +108,23 @@ function updateRowDate(row, newDate) {
         preserveScroll: true,
         preserveState: true,
     });
+}
+
+const dayModalItems = computed(() => {
+    if (!dayModalIso.value) return [];
+    return (props.monthItems ?? []).filter((item) => {
+        const iso = item.occurs_on?.slice?.(0, 10) ?? String(item.occurs_on);
+        return iso === dayModalIso.value;
+    });
+});
+
+function openDayModal(iso) {
+    dayModalIso.value = iso;
+    dayModalOpen.value = true;
+}
+
+function closeDayModal() {
+    dayModalOpen.value = false;
 }
 </script>
 
@@ -192,8 +214,21 @@ function updateRowDate(row, newDate) {
                 edit-item-route="admin.strategic-calendar.edit"
                 @navigate-month="navigateMonth"
                 @go-today="goToday"
+                @edit-day="openDayModal"
             />
         </div>
+
+        <DayModal
+            :show="dayModalOpen"
+            :iso="dayModalIso"
+            :items="dayModalItems"
+            :companies="companies"
+            :kinds="kinds"
+            :recurrences="recurrences"
+            :kind-labels="kindLabels"
+            :recurrence-labels="recurrenceLabels"
+            @close="closeDayModal"
+        />
 
         <div class="surface-card overflow-hidden">
             <div class="border-b border-slate-200/80 px-4 py-3 sm:px-6">
@@ -224,7 +259,9 @@ function updateRowDate(row, newDate) {
                         </div>
                         <p class="font-medium text-slate-900">{{ row.title }}</p>
                         <p class="text-sm text-slate-500">{{ row.company?.name ?? 'Todas as empresas' }}</p>
-                        <p v-if="row.attachment_path" class="text-xs text-talents-700">Com anexo</p>
+                        <p v-if="row.attachments_count" class="text-xs text-talents-700">
+                            {{ row.attachments_count === 1 ? '1 anexo' : `${row.attachments_count} anexos` }}
+                        </p>
                     </div>
                     <div class="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
                         <Link

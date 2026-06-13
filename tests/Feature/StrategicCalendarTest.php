@@ -317,28 +317,33 @@ class StrategicCalendarTest extends TestCase
         $this->assertSame('2026-05-29', $occurrences[4]['occurs_on']);
     }
 
-    public function test_admin_can_create_item_with_attachment(): void
+    public function test_admin_can_upload_attachments_for_item(): void
     {
         Storage::fake('public');
 
         $admin = User::factory()->superAdmin()->create();
 
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Com material',
+            'description' => 'Guia PDF',
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => '2026-07-01',
+            'recurrence' => StrategicCalendarRecurrence::Monthly,
+            'company_id' => null,
+        ]);
+
         $this->actingAs($admin)
-            ->post('/admin/calendario-estrategico', [
-                'title' => 'Com material',
-                'description' => 'Guia PDF',
-                'kind' => StrategicCalendarItemKind::Event->value,
-                'occurs_on' => '2026-07-01',
-                'recurrence' => StrategicCalendarRecurrence::Monthly->value,
-                'attachment' => UploadedFile::fake()->create('guia.pdf', 100, 'application/pdf'),
+            ->post('/admin/calendario-estrategico/'.$item->id.'/anexos', [
+                'files' => [
+                    UploadedFile::fake()->create('guia.pdf', 100, 'application/pdf'),
+                    UploadedFile::fake()->create('checklist.docx', 50, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+                ],
             ])
             ->assertRedirect();
 
-        $item = StrategicCalendarItem::query()->where('title', 'Com material')->first();
-        $this->assertNotNull($item);
-        $this->assertSame(StrategicCalendarRecurrence::Monthly, $item->recurrence);
-        $this->assertTrue($item->hasAttachment());
-        Storage::disk('public')->assertExists($item->attachment_path);
+        $item->refresh();
+        $this->assertCount(2, $item->attachments);
+        Storage::disk('public')->assertExists($item->attachments->first()->path);
     }
 
     public function test_client_can_download_attachment_for_global_item(): void
@@ -357,17 +362,20 @@ class StrategicCalendarTest extends TestCase
             'kind' => StrategicCalendarItemKind::Event,
             'occurs_on' => '2026-05-20',
             'company_id' => null,
-            'attachment_disk' => 'public',
-            'attachment_path' => $path,
-            'attachment_original_name' => 'guia.pdf',
-            'attachment_mime' => 'application/pdf',
-            'attachment_size' => 14,
+        ]);
+
+        $attachment = $item->attachments()->create([
+            'disk' => 'public',
+            'path' => $path,
+            'original_name' => 'guia.pdf',
+            'mime' => 'application/pdf',
+            'size' => 14,
         ]);
 
         $user = User::factory()->companyAdmin($company->id)->create();
 
         $this->actingAs($user)
-            ->get('/client/calendario-estrategico/'.$item->id.'/anexo')
+            ->get('/client/calendario-estrategico/anexos/'.$attachment->id.'/download')
             ->assertOk();
     }
 }

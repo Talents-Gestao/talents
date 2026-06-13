@@ -113,7 +113,7 @@ class DashboardController extends Controller
         $today = Carbon::today()->startOfDay();
         $weekEnd = $today->copy()->addDays(7)->endOfDay();
         $masters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
-            StrategicCalendarItem::query()->with('company:id,name'),
+            StrategicCalendarItem::query()->with(['company:id,name', 'attachments']),
             $today,
             $weekEnd,
         )->orderBy('occurs_on')->orderBy('id')->get();

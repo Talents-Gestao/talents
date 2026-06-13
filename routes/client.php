@@ -72,8 +72,8 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
 
     Route::middleware(['strategic_calendar', 'can.module:calendario_estrategico'])->group(function () {
         Route::get('calendario-estrategico', [ClientStrategicCalendarController::class, 'index'])->name('strategic-calendar.index');
-        Route::get('calendario-estrategico/{item}/anexo', [ClientStrategicCalendarController::class, 'attachment'])
-            ->name('strategic-calendar.attachment');
+        Route::get('calendario-estrategico/anexos/{attachment}/download', [ClientStrategicCalendarController::class, 'attachmentDownload'])
+            ->name('strategic-calendar.attachment-download');
     });
 
     Route::middleware('can.module:metodologia')->prefix('metodologia')->name('metodologia.')->group(function () {
