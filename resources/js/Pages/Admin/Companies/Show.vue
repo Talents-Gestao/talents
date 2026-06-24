@@ -24,6 +24,8 @@ const props = defineProps({
     company: Object,
     rhidConfigured: { type: Boolean, default: false },
     planIncludesMetodologia: { type: Boolean, default: false },
+    pendingRegistration: { type: Boolean, default: false },
+    registrationAdminEmail: { type: String, default: null },
     complaintsPublicUrl: { type: String, default: null },
     plans: Array,
     templates: Array,
@@ -31,6 +33,24 @@ const props = defineProps({
 });
 
 const showDeleteModal = ref(false);
+const resendingInvitation = ref(false);
+
+const resendInvitation = () => {
+    if (!props.pendingRegistration || resendingInvitation.value) {
+        return;
+    }
+    const email = props.registrationAdminEmail || props.company.contact_email || 'o e-mail de contacto';
+    if (!confirm(`Reenviar o convite de cadastro para ${email}?`)) {
+        return;
+    }
+    resendingInvitation.value = true;
+    router.post(route('admin.companies.resend-invitation', props.company.id), {}, {
+        preserveScroll: true,
+        onFinish: () => {
+            resendingInvitation.value = false;
+        },
+    });
+};
 
 const locationLabel = computed(() => {
     const city = props.company.address_city;
@@ -121,6 +141,12 @@ const deleteCompany = () => {
                             >
                                 RHID configurado
                             </span>
+                            <span
+                                v-if="pendingRegistration"
+                                class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/80"
+                            >
+                                Aguarda cadastro
+                            </span>
                         </div>
                         <h1 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
                             {{ company.name }}
@@ -151,6 +177,15 @@ const deleteCompany = () => {
                         </dl>
                     </div>
                     <div class="flex shrink-0 flex-wrap gap-2">
+                        <button
+                            v-if="pendingRegistration"
+                            type="button"
+                            class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 shadow-sm transition hover:bg-amber-100 disabled:opacity-50"
+                            :disabled="resendingInvitation"
+                            @click="resendInvitation"
+                        >
+                            {{ resendingInvitation ? 'Enviando…' : 'Reenviar convite de cadastro' }}
+                        </button>
                         <Link
                             :href="route('admin.companies.edit', company.id)"
                             class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-talents-200 hover:bg-talents-50/50 hover:text-talents-800"

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PermissionModule;
+use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -75,6 +76,28 @@ class Company extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function registrationAdmin(): ?User
+    {
+        if (filled($this->contact_email)) {
+            $byEmail = $this->users()->where('email', $this->contact_email)->first();
+            if ($byEmail !== null) {
+                return $byEmail;
+            }
+        }
+
+        return $this->users()
+            ->where('role', UserRole::CompanyAdmin)
+            ->orderBy('id')
+            ->first();
+    }
+
+    public function hasPendingRegistration(): bool
+    {
+        $admin = $this->registrationAdmin();
+
+        return $admin !== null && ! $admin->hasCompletedRegistration();
     }
 
     public function subscriptions(): HasMany

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\ResendCompanyInvitation;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Mail\CompanyAdminInvitationMail;
@@ -13,6 +14,7 @@ use App\Models\SurveyTemplate;
 use App\Models\User;
 use App\Services\ReceitaWsService;
 use App\Support\InvitationPassword;
+use App\Support\WorkspaceManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,6 +30,11 @@ use RuntimeException;
 
 class CompanyController extends Controller
 {
+    public function __construct(
+        private ResendCompanyInvitation $resendCompanyInvitation,
+        private WorkspaceManager $workspaceManager,
+    ) {}
+
     public function index(Request $request): Response
     {
         $q = Company::query()->orderBy('name');
@@ -48,10 +55,24 @@ class CompanyController extends Controller
             ->pluck('id')
             ->all();
 
+        $pendingRegistrationIds = Company::query()
+            ->where(function ($query) {
+                $query->whereHas('users', function ($q) {
+                    $q->whereColumn('users.email', 'companies.contact_email')
+                        ->whereNull('password_set_at');
+                })->orWhereHas('users', function ($q) {
+                    $q->where('role', UserRole::CompanyAdmin)
+                        ->whereNull('password_set_at');
+                });
+            })
+            ->pluck('id')
+            ->all();
+
         return Inertia::render('Admin/Companies/Index', [
             'companies' => $companies,
             'filters' => $request->only(['search']),
             'rhidConfiguredIds' => $rhidConfiguredIds,
+            'pendingRegistrationIds' => $pendingRegistrationIds,
         ]);
     }
 
@@ -142,6 +163,12 @@ class CompanyController extends Controller
                 'company_id' => $company->id,
                 'email_verified_at' => now(),
             ]);
+
+            $this->workspaceManager->createCompanyWorkspace(
+                $adminUser,
+                $company->id,
+                UserRole::CompanyAdmin,
+            );
         });
 
         $mailMessage = ' Empresa criada. O primeiro administrador da empresa receberá um e-mail com o link para definir a senha e acessar o portal.';
@@ -173,6 +200,8 @@ class CompanyController extends Controller
             'company' => $company,
             'rhidConfigured' => $company->rhidConfigured(),
             'planIncludesMetodologia' => $company->hasMethodologyEnabled(),
+            'pendingRegistration' => $company->hasPendingRegistration(),
+            'registrationAdminEmail' => $company->registrationAdmin()?->email,
             'complaintsPublicUrl' => $company->complaints_public_token
                 ? url('/denuncia/'.$company->complaints_public_token)
                 : null,
@@ -302,6 +331,31 @@ class CompanyController extends Controller
         });
 
         return redirect()->route('admin.companies.index')->with('success', 'Empresa removida.');
+    }
+
+    public function resendInvitation(Company $company): RedirectResponse
+    {
+        if (! $company->hasPendingRegistration()) {
+            return redirect()
+                ->back()
+                ->with('error', 'O cadastro desta empresa já foi concluído.');
+        }
+
+        try {
+            $this->resendCompanyInvitation->execute($company);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()
+                ->back()
+                ->with('error', 'Não foi possível reenviar o convite. Erro: '.$e->getMessage());
+        }
+
+        $email = $company->registrationAdmin()?->email ?? $company->contact_email;
+
+        return redirect()
+            ->back()
+            ->with('success', 'Convite de cadastro reenviado para '.$email.'.');
     }
 
     public function attachTemplate(Company $company, SurveyTemplate $template): RedirectResponse

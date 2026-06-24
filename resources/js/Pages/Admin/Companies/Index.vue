@@ -3,16 +3,39 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 const props = defineProps({
     companies: Object,
     filters: Object,
     rhidConfiguredIds: { type: Array, default: () => [] },
+    pendingRegistrationIds: { type: Array, default: () => [] },
 });
 
 const rhidIdSet = new Set(props.rhidConfiguredIds.map((id) => Number(id)));
+const pendingRegistrationIdSet = new Set(props.pendingRegistrationIds.map((id) => Number(id)));
 
 const isRhidConfigured = (companyId) => rhidIdSet.has(Number(companyId));
+const hasPendingRegistration = (companyId) => pendingRegistrationIdSet.has(Number(companyId));
+
+const resendingId = ref(null);
+
+const resendInvitation = (company) => {
+    if (!hasPendingRegistration(company.id) || resendingId.value) {
+        return;
+    }
+    const email = company.contact_email || 'o e-mail de contacto';
+    if (!confirm(`Reenviar o convite de cadastro para ${email}?`)) {
+        return;
+    }
+    resendingId.value = company.id;
+    router.post(route('admin.companies.resend-invitation', company.id), {}, {
+        preserveScroll: true,
+        onFinish: () => {
+            resendingId.value = null;
+        },
+    });
+};
 
 const form = useForm({
     search: props.filters?.search ?? '',
@@ -53,6 +76,7 @@ const submit = () => {
                         <th class="px-4 py-3 text-left font-medium text-gray-700">Segmento</th>
                         <th class="px-4 py-3 text-left font-medium text-gray-700">Ativa</th>
                         <th class="px-4 py-3 text-left font-medium text-gray-700">RHID</th>
+                        <th class="px-4 py-3 text-left font-medium text-gray-700">Cadastro</th>
                         <th class="px-4 py-3"></th>
                     </tr>
                 </thead>
@@ -71,7 +95,20 @@ const submit = () => {
                             </span>
                             <span v-else class="text-xs text-gray-400">—</span>
                         </td>
-                        <td class="px-4 py-3 text-right">
+                        <td class="px-4 py-3">
+                            <span v-if="hasPendingRegistration(c.id)" class="text-xs font-medium text-amber-700">Aguarda cadastro</span>
+                            <span v-else class="text-xs text-gray-400">Concluído</span>
+                        </td>
+                        <td class="px-4 py-3 text-right space-x-3">
+                            <button
+                                v-if="hasPendingRegistration(c.id)"
+                                type="button"
+                                class="text-sm font-medium text-amber-700 hover:underline disabled:opacity-50"
+                                :disabled="resendingId === c.id"
+                                @click="resendInvitation(c)"
+                            >
+                                {{ resendingId === c.id ? 'Enviando…' : 'Reenviar convite' }}
+                            </button>
                             <Link :href="route('admin.companies.show', c.id)" class="font-medium text-talents-700 hover:underline">Ver</Link>
                         </td>
                     </tr>
