@@ -7,7 +7,20 @@ import SidebarNavItem from '@/Components/SidebarNavItem.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import { UserCircleIcon } from '@heroicons/vue/24/outline';
+import {
+    AcademicCapIcon,
+    BuildingOffice2Icon,
+    CalendarDaysIcon,
+    ChatBubbleLeftRightIcon,
+    Cog6ToothIcon,
+    HomeIcon,
+    MegaphoneIcon,
+    PresentationChartLineIcon,
+    RocketLaunchIcon,
+    UserCircleIcon,
+    UserPlusIcon,
+    ViewColumnsIcon,
+} from '@heroicons/vue/24/outline';
 
 const { canAdmin } = useAdminPermissions();
 const page = usePage();
@@ -121,8 +134,8 @@ const configuracaoActive = computed(
                 v-if="canAdmin('dashboard')"
                 :href="route('admin.dashboard')"
                 :active="route().current('admin.dashboard')"
+                :icon="HomeIcon"
                 label="Home"
-                variant="minimal"
                 :collapsed="collapsed"
             />
 
@@ -130,8 +143,8 @@ const configuracaoActive = computed(
                 v-if="showComercial"
                 :href="comercialHref"
                 :active="comercialActive"
+                :icon="PresentationChartLineIcon"
                 label="Comercial"
-                variant="minimal"
                 :collapsed="collapsed"
             />
 
@@ -139,8 +152,8 @@ const configuracaoActive = computed(
                 v-if="canAdmin('companies')"
                 :href="route('admin.companies.index')"
                 :active="route().current('admin.companies.*')"
+                :icon="BuildingOffice2Icon"
                 label="Clientes"
-                variant="minimal"
                 :collapsed="collapsed"
             />
 
@@ -151,8 +164,8 @@ const configuracaoActive = computed(
                     route().current('admin.metodologia.*') &&
                     !route().current('admin.methodology-templates.*')
                 "
+                :icon="RocketLaunchIcon"
                 label="Metamorfose"
-                variant="minimal"
                 :collapsed="collapsed"
             />
 
@@ -160,8 +173,8 @@ const configuracaoActive = computed(
                 v-if="showContratacao"
                 :href="contratacaoHref"
                 :active="contratacaoActive"
+                :icon="UserPlusIcon"
                 label="Contratação de Talentos"
-                variant="minimal"
                 :collapsed="collapsed"
             />
 
@@ -169,8 +182,8 @@ const configuracaoActive = computed(
                 v-if="canAdmin('methodology')"
                 :href="route('admin.methodology-templates.index')"
                 :active="route().current('admin.methodology-templates.*')"
+                :icon="ChatBubbleLeftRightIcon"
                 label="Feedbacks"
-                variant="minimal"
                 :collapsed="collapsed"
             />
 
@@ -178,8 +191,8 @@ const configuracaoActive = computed(
                 v-if="canAdmin('survey_templates')"
                 :href="route('admin.survey-templates.index')"
                 :active="route().current('admin.survey-templates.*')"
+                :icon="MegaphoneIcon"
                 label="Voz do Time"
-                variant="minimal"
                 :collapsed="collapsed"
             />
 
@@ -187,8 +200,8 @@ const configuracaoActive = computed(
                 v-if="canAdmin('strategic_calendar')"
                 :href="route('admin.strategic-calendar.index')"
                 :active="route().current('admin.strategic-calendar.*')"
+                :icon="CalendarDaysIcon"
                 label="Calendário"
-                variant="minimal"
                 :collapsed="collapsed"
             />
 
@@ -196,8 +209,8 @@ const configuracaoActive = computed(
                 v-if="canAdmin('tarefas')"
                 :href="route('admin.tarefas.quadros.index')"
                 :active="route().current('admin.tarefas.*')"
+                :icon="ViewColumnsIcon"
                 label="Tarefas"
-                variant="minimal"
                 :collapsed="collapsed"
             />
 
@@ -205,8 +218,8 @@ const configuracaoActive = computed(
                 v-if="canAdmin('training')"
                 :href="route('admin.training.index')"
                 :active="route().current('admin.training.*')"
+                :icon="AcademicCapIcon"
                 label="Capacitação"
-                variant="minimal"
                 :collapsed="collapsed"
                 badge="Em breve"
             />
@@ -215,8 +228,8 @@ const configuracaoActive = computed(
                 v-if="showConfiguracao"
                 :href="configuracaoHref"
                 :active="configuracaoActive"
+                :icon="Cog6ToothIcon"
                 label="Configuração"
-                variant="minimal"
                 :collapsed="collapsed"
             />
         </template>
