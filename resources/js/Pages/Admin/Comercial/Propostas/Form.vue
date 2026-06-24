@@ -1,4 +1,5 @@
 <script setup>
+import CommercialAdjustmentFields from '@/Components/Comercial/CommercialAdjustmentFields.vue';
 import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
@@ -33,7 +34,9 @@ const buildCatalogProductsInitial = () => {
             rate_mode: ex.rate_mode ?? '',
             units: ex.units ?? '',
             adjustment: ex.adjustment ?? 'none',
+            discount_type: ex.discount_type ?? 'percent',
             discount_percent: ex.discount_percent ?? '',
+            discount_value_cents: ex.discount_value_cents ?? 0,
         };
     });
 };
@@ -143,7 +146,9 @@ const catalogSelection = (productId) => {
             rate_mode: '',
             units: '',
             adjustment: 'none',
+            discount_type: 'percent',
             discount_percent: '',
+            discount_value_cents: 0,
         };
         form.catalog_products.push(sel);
     }
@@ -153,6 +158,22 @@ const catalogSelection = (productId) => {
 const catalogLineCents = (productId) => {
     const line = catalogLines.value?.find((l) => l.product_id === productId);
     return line?.value_cents ?? 0;
+};
+
+const catalogLineSubtotal = (productId) => {
+    const line = catalogLines.value?.find((l) => l.product_id === productId);
+    return line?.subtotal_cents ?? 0;
+};
+
+const showCommercialAdjustment = (product) => {
+    if (product.pricing_type === 'flexible_rates') {
+        const sel = catalogSelection(product.id);
+        return !!sel.enabled && !!sel.rate_mode && Number(sel.units) > 0 && catalogLineSubtotal(product.id) > 0;
+    }
+    if (product.pricing_type === 'fixed_modality') {
+        return !!catalogSelection(product.id).modality && catalogLineSubtotal(product.id) > 0;
+    }
+    return !!catalogSelection(product.id).enabled && catalogLineSubtotal(product.id) > 0;
 };
 
 const catalogSalaryReais = (productId) => {
@@ -430,23 +451,31 @@ const services = computed(() => {
 
                     <div v-if="catalogProducts.length" class="mt-4 space-y-4">
                         <template v-for="product in catalogProducts" :key="product.id">
-                            <label
+                            <div
                                 v-if="product.pricing_type === 'fixed' || product.pricing_type === 'per_employee' || product.pricing_type === 'tiered_per_employee' || product.pricing_type === 'threshold_multiplier'"
-                                class="flex items-start gap-3 rounded-xl border border-talents-100 bg-talents-50/30 p-3 hover:bg-talents-50/50"
+                                class="rounded-xl border border-talents-100 bg-talents-50/30 p-3"
                             >
-                                <input
-                                    v-model="catalogSelection(product.id).enabled"
-                                    type="checkbox"
-                                    class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500"
+                                <label class="flex items-start gap-3 hover:bg-talents-50/50">
+                                    <input
+                                        v-model="catalogSelection(product.id).enabled"
+                                        type="checkbox"
+                                        class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500"
+                                    />
+                                    <div class="flex-1">
+                                        <div class="font-medium text-slate-900">{{ product.name }}</div>
+                                        <p v-if="product.description" class="text-xs text-slate-500">{{ product.description }}</p>
+                                    </div>
+                                    <div class="text-right text-sm tabular-nums text-slate-700">
+                                        {{ formatBRL(catalogLineCents(product.id)) }}
+                                    </div>
+                                </label>
+                                <CommercialAdjustmentFields
+                                    v-if="showCommercialAdjustment(product)"
+                                    :selection="catalogSelection(product.id)"
+                                    :subtotal-cents="catalogLineSubtotal(product.id)"
+                                    :total-cents="catalogLineCents(product.id)"
                                 />
-                                <div class="flex-1">
-                                    <div class="font-medium text-slate-900">{{ product.name }}</div>
-                                    <p v-if="product.description" class="text-xs text-slate-500">{{ product.description }}</p>
-                                </div>
-                                <div class="text-right text-sm tabular-nums text-slate-700">
-                                    {{ formatBRL(catalogLineCents(product.id)) }}
-                                </div>
-                            </label>
+                            </div>
 
                             <div
                                 v-else-if="product.pricing_type === 'fixed_modality'"
@@ -470,6 +499,12 @@ const services = computed(() => {
                                 <div class="mt-2 text-right text-sm tabular-nums text-slate-700">
                                     {{ formatBRL(catalogLineCents(product.id)) }}
                                 </div>
+                                <CommercialAdjustmentFields
+                                    v-if="showCommercialAdjustment(product)"
+                                    :selection="catalogSelection(product.id)"
+                                    :subtotal-cents="catalogLineSubtotal(product.id)"
+                                    :total-cents="catalogLineCents(product.id)"
+                                />
                             </div>
 
                             <div
@@ -522,36 +557,14 @@ const services = computed(() => {
                                             class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                                         />
                                     </div>
-
-                                    <div v-if="catalogSelection(product.id).rate_mode && Number(catalogSelection(product.id).units) > 0">
-                                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Ajuste comercial</label>
-                                        <select
-                                            v-model="catalogSelection(product.id).adjustment"
-                                            class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                        >
-                                            <option value="none">Sem ajuste</option>
-                                            <option value="bonus">Bonificação (R$ 0,00)</option>
-                                            <option value="discount">Desconto (%)</option>
-                                        </select>
-                                    </div>
-
-                                    <div
-                                        v-if="catalogSelection(product.id).adjustment === 'discount'
-                                            && catalogSelection(product.id).rate_mode
-                                            && Number(catalogSelection(product.id).units) > 0"
-                                    >
-                                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Desconto (%)</label>
-                                        <input
-                                            v-model.number="catalogSelection(product.id).discount_percent"
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            step="0.01"
-                                            placeholder="Ex.: 10"
-                                            class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                        />
-                                    </div>
                                 </div>
+
+                                <CommercialAdjustmentFields
+                                    v-if="showCommercialAdjustment(product)"
+                                    :selection="catalogSelection(product.id)"
+                                    :subtotal-cents="catalogLineSubtotal(product.id)"
+                                    :total-cents="catalogLineCents(product.id)"
+                                />
                             </div>
 
                             <div
@@ -584,6 +597,12 @@ const services = computed(() => {
                                         @input="updateCatalogSalary(product.id, $event.target.value)"
                                     />
                                 </div>
+                                <CommercialAdjustmentFields
+                                    v-if="showCommercialAdjustment(product)"
+                                    :selection="catalogSelection(product.id)"
+                                    :subtotal-cents="catalogLineSubtotal(product.id)"
+                                    :total-cents="catalogLineCents(product.id)"
+                                />
                             </div>
                         </template>
                     </div>

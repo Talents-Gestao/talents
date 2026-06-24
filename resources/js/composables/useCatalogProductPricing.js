@@ -17,56 +17,112 @@ export const FLEXIBLE_RATE_DEFS = [
     { key: 'unit', label: 'Por unidade', unitsLabel: 'Número de unidades', suffix: 'un.' },
 ];
 
-const flexibleRatesTotal = (config, selection) => {
+const applyDiscount = (subtotal, selection) => {
+    const discountType = String(selection.discount_type ?? 'percent');
+
+    if (discountType === 'value') {
+        const discountCents = Math.max(0, Number(selection.discount_value_cents ?? 0));
+        return Math.max(0, subtotal - discountCents);
+    }
+
+    const pct = Math.min(100, Math.max(0, Number(selection.discount_percent ?? 0)));
+    return Math.round(subtotal * (1 - pct / 100));
+};
+
+export const applyAdjustment = (subtotal, selection) => {
+    const adjustment = String(selection.adjustment ?? 'none');
+
+    if (adjustment === 'bonus') {
+        return 0;
+    }
+    if (adjustment === 'discount') {
+        return applyDiscount(subtotal, selection);
+    }
+    return subtotal;
+};
+
+const flexibleRatesSubtotal = (config, selection) => {
     const mode = String(selection.rate_mode ?? '');
     const rate = config.rates?.[mode];
     if (!rate?.enabled) {
-        return { subtotal: 0, total: 0 };
+        return 0;
     }
 
     const units = Math.max(0, Number(selection.units ?? 0));
     if (units <= 0) {
-        return { subtotal: 0, total: 0 };
+        return 0;
     }
 
-    const subtotal = Math.round(units * Number(rate.cents_per_unit ?? 0));
-    const adjustment = String(selection.adjustment ?? 'none');
-
-    let total = subtotal;
-    if (adjustment === 'bonus') {
-        total = 0;
-    } else if (adjustment === 'discount') {
-        const pct = Math.min(100, Math.max(0, Number(selection.discount_percent ?? 0)));
-        total = Math.round(subtotal * (1 - pct / 100));
-    }
-
-    return { subtotal, total: Math.max(0, total) };
+    return Math.round(units * Number(rate.cents_per_unit ?? 0));
 };
 
-const buildFlexibleDetail = (selection, flexible, config) => {
-    if (flexible.subtotal <= 0) {
-        return '—';
+const discountSuffix = (selection) => {
+    const discountType = String(selection.discount_type ?? 'percent');
+
+    if (discountType === 'value') {
+        const cents = Math.max(0, Number(selection.discount_value_cents ?? 0));
+        const fmt = (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        return ` · Desconto ${fmt}`;
     }
 
+    const pct = Number(selection.discount_percent ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+    return ` · Desconto ${pct}%`;
+};
+
+const appendAdjustmentSuffix = (base, selection) => {
+    const adjustment = String(selection.adjustment ?? 'none');
+    if (adjustment === 'bonus') {
+        return `${base} · Bonificação`;
+    }
+    if (adjustment === 'discount') {
+        return `${base}${discountSuffix(selection)}`;
+    }
+    return base;
+};
+
+const buildFlexibleBaseDetail = (selection, config) => {
     const mode = String(selection.rate_mode ?? '');
     const def = FLEXIBLE_RATE_DEFS.find((d) => d.key === mode);
     const units = Number(selection.units ?? 0);
     const centsPerUnit = Number(config.rates?.[mode]?.cents_per_unit ?? 0);
     const suffix = def?.suffix ?? '';
 
+    if (units <= 0) {
+        return '—';
+    }
+
     const unitsFmt = units.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
     const priceFmt = (centsPerUnit / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const base = `${unitsFmt} ${suffix} × ${priceFmt}`;
+    return `${unitsFmt} ${suffix} × ${priceFmt}`;
+};
 
-    const adjustment = String(selection.adjustment ?? 'none');
-    if (adjustment === 'bonus') {
-        return `${base} · Bonificação`;
+const buildBaseDetail = (product, employees, selection, subtotal) => {
+    if (subtotal <= 0) {
+        return '—';
     }
-    if (adjustment === 'discount') {
-        const pct = Number(selection.discount_percent ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
-        return `${base} · Desconto ${pct}%`;
+
+    const config = product.pricing_config || {};
+    const n = Math.max(0, Number(employees ?? 0));
+
+    switch (product.pricing_type) {
+        case 'flexible_rates':
+            return buildFlexibleBaseDetail(selection, config);
+        case 'fixed':
+            return 'Valor fixo';
+        case 'per_employee':
+        case 'tiered_per_employee':
+            return `${n} funcionários`;
+        case 'fixed_modality': {
+            const mod = (config.modalities || []).find((m) => m.key === selection.modality);
+            return mod?.label || selection.modality || '—';
+        }
+        case 'salary_times_employees':
+            return `Salário × ${n} funcionários`;
+        case 'threshold_multiplier':
+            return n > Number(config.threshold_employees ?? 30) ? 'Pacote ampliado' : 'Pacote padrão';
+        default:
+            return '—';
     }
-    return base;
 };
 
 const shouldIncludeLine = (selection, result) => {
@@ -91,87 +147,50 @@ export function calculateCatalogLine(product, employees, selection) {
 
     const config = product.pricing_config || {};
     const n = Math.max(0, Number(employees ?? 0));
-    let total = 0;
     let subtotal = 0;
-    let detail = '—';
 
     switch (product.pricing_type) {
         case 'fixed':
-            total = Number(config.amount_cents ?? 0);
-            subtotal = total;
+            subtotal = Number(config.amount_cents ?? 0);
             break;
         case 'per_employee':
-            total = n > 0 ? n * Number(config.cents_per_employee ?? 0) : 0;
-            subtotal = total;
+            subtotal = n > 0 ? n * Number(config.cents_per_employee ?? 0) : 0;
             break;
         case 'tiered_per_employee':
             if (n > 0) {
-                total = n * pickTier(
+                subtotal = n * pickTier(
                     n,
                     [config.tier1_max, config.tier2_max, config.tier3_max],
                     [config.tier1_cents, config.tier2_cents, config.tier3_cents, config.tier4_cents],
                 );
             }
-            subtotal = total;
             break;
         case 'fixed_modality': {
             const mod = String(selection.modality ?? '');
             const found = (config.modalities || []).find((m) => m.key === mod);
-            total = found ? Number(found.cents ?? 0) : 0;
-            subtotal = total;
+            subtotal = found ? Number(found.cents ?? 0) : 0;
             break;
         }
         case 'salary_times_employees':
-            total = n > 0 ? n * Math.max(0, Number(selection.salary_cents ?? 0)) : 0;
-            subtotal = total;
+            subtotal = n > 0 ? n * Math.max(0, Number(selection.salary_cents ?? 0)) : 0;
             break;
         case 'threshold_multiplier': {
             const base = Number(config.base_cents ?? 0);
             const threshold = Number(config.threshold_employees ?? 30);
             const multiplier = Math.max(1, Number(config.multiplier ?? 2));
-            total = n > threshold ? base * multiplier : base;
-            subtotal = total;
+            subtotal = n > threshold ? base * multiplier : base;
             break;
         }
-        case 'flexible_rates': {
-            const flex = flexibleRatesTotal(config, selection);
-            total = flex.total;
-            subtotal = flex.subtotal;
-            detail = buildFlexibleDetail(selection, flex, config);
+        case 'flexible_rates':
+            subtotal = flexibleRatesSubtotal(config, selection);
             break;
-        }
         default:
-            total = 0;
             subtotal = 0;
     }
 
-    total = Math.max(0, total);
     subtotal = Math.max(0, subtotal);
-
-    if (detail === '—' && total > 0) {
-        switch (product.pricing_type) {
-            case 'fixed':
-                detail = 'Valor fixo';
-                break;
-            case 'per_employee':
-            case 'tiered_per_employee':
-                detail = `${n} funcionários`;
-                break;
-            case 'fixed_modality': {
-                const mod = (config.modalities || []).find((m) => m.key === selection.modality);
-                detail = mod?.label || selection.modality || '—';
-                break;
-            }
-            case 'salary_times_employees':
-                detail = `Salário × ${n} funcionários`;
-                break;
-            case 'threshold_multiplier':
-                detail = n > Number(config.threshold_employees ?? 30) ? 'Pacote ampliado' : 'Pacote padrão';
-                break;
-            default:
-                break;
-        }
-    }
+    const total = Math.max(0, applyAdjustment(subtotal, selection));
+    const detail = appendAdjustmentSuffix(buildBaseDetail(product, n, selection, subtotal), selection);
 
     return { total_cents: total, subtotal_cents: subtotal, detail };
 }
@@ -197,6 +216,7 @@ export function calculateCatalogProducts(products, employees, selections) {
             label: product.name,
             detail: result.detail,
             value_cents: result.total_cents,
+            subtotal_cents: result.subtotal_cents,
         });
         total += result.total_cents;
     });

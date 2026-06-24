@@ -158,6 +158,10 @@ class CommercialProposalServiceLines
 
         foreach ($p->catalogLines as $line) {
             $slug = $line->product?->slug ?? ('produto-'.$line->commercial_product_id);
+            $subtotalCents = (int) ($line->options['subtotal_cents'] ?? $line->total_cents);
+            $valueCents = (int) $line->total_cents;
+            $discountCents = max(0, $subtotalCents - $valueCents);
+
             $lines[] = [
                 'key' => $slug,
                 'label' => $line->label_snapshot,
@@ -168,7 +172,9 @@ class CommercialProposalServiceLines
                     $defaultDescriptions,
                     (string) ($line->product?->description ?? ''),
                 ),
-                'value_cents' => (int) $line->total_cents,
+                'value_cents' => $valueCents,
+                'subtotal_cents' => $subtotalCents,
+                'discount_cents' => $discountCents,
             ];
         }
 

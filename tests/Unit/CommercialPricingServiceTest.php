@@ -166,11 +166,79 @@ class CommercialPricingServiceTest extends TestCase
                 'rate_mode' => 'hour',
                 'units' => 10,
                 'adjustment' => 'discount',
+                'discount_type' => 'percent',
                 'discount_percent' => 10,
             ],
         ], 5, collect([$product]));
 
         $this->assertSame(492300, $r['total_catalog_products_cents']);
+    }
+
+    public function test_fixed_product_with_percent_discount(): void
+    {
+        $product = $this->makeProduct(12, 'devolutiva', CommercialProductPricingType::Fixed, [
+            'amount_cents' => 100000,
+        ]);
+
+        $r = $this->calculateWithProducts([
+            [
+                'product_id' => 12,
+                'enabled' => true,
+                'adjustment' => 'discount',
+                'discount_type' => 'percent',
+                'discount_percent' => 15,
+            ],
+        ], 1, collect([$product]));
+
+        $this->assertSame(85000, $r['total_catalog_products_cents']);
+        $this->assertStringContainsString('Desconto 15%', $r['catalog_lines'][0]['detail']);
+        $this->assertSame(100000, $r['catalog_lines'][0]['options']['subtotal_cents']);
+    }
+
+    public function test_fixed_product_with_value_discount(): void
+    {
+        $product = $this->makeProduct(13, 'pacote', CommercialProductPricingType::Fixed, [
+            'amount_cents' => 200000,
+        ]);
+
+        $r = $this->calculateWithProducts([
+            [
+                'product_id' => 13,
+                'enabled' => true,
+                'adjustment' => 'discount',
+                'discount_type' => 'value',
+                'discount_value_cents' => 25000,
+            ],
+        ], 1, collect([$product]));
+
+        $this->assertSame(175000, $r['total_catalog_products_cents']);
+        $this->assertStringContainsString('Desconto R$ 250,00', $r['catalog_lines'][0]['detail']);
+        $this->assertSame(25000, $r['catalog_lines'][0]['options']['discount_value_cents']);
+    }
+
+    public function test_flexible_rates_with_value_discount(): void
+    {
+        $product = $this->makeProduct(14, 'consultoria', CommercialProductPricingType::FlexibleRates, [
+            'rates' => [
+                'hour' => ['enabled' => true, 'cents_per_unit' => 10000],
+                'quantity' => ['enabled' => false, 'cents_per_unit' => 0],
+                'unit' => ['enabled' => false, 'cents_per_unit' => 0],
+            ],
+        ]);
+
+        $r = $this->calculateWithProducts([
+            [
+                'product_id' => 14,
+                'enabled' => true,
+                'rate_mode' => 'hour',
+                'units' => 5,
+                'adjustment' => 'discount',
+                'discount_type' => 'value',
+                'discount_value_cents' => 3000,
+            ],
+        ], 1, collect([$product]));
+
+        $this->assertSame(47000, $r['total_catalog_products_cents']);
     }
 
     public function test_flexible_rates_bonus_is_zero_but_included(): void

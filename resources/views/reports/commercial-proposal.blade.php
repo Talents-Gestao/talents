@@ -152,6 +152,25 @@
             margin: 4px 0;
         }
 
+        .investment-original {
+            text-decoration: line-through;
+            color: #94a3b8;
+            margin-right: 6px;
+        }
+
+        .investment-discount {
+            font-size: 11px;
+            color: #047857;
+            margin: 2px 0;
+        }
+
+        .investment-final {
+            font-size: 11px;
+            color: #1e1e1e;
+            font-weight: bold;
+            margin: 2px 0 4px;
+        }
+
         .service-detail {
             font-size: 11px;
             color: #1e1e1e;
@@ -397,7 +416,16 @@
                     @if(!empty($line['detail']))
                         <p class="service-detail">{{ $line['detail'] }}</p>
                     @endif
-                    <p class="investment"><strong>Investimento:</strong> {{ $brl($line['value_cents']) }}</p>
+                    @if(!empty($line['discount_cents']) && (int) $line['discount_cents'] > 0)
+                        <p class="investment">
+                            <strong>Investimento:</strong>
+                            <span class="investment-original">{{ $brl((int) ($line['subtotal_cents'] ?? $line['value_cents'])) }}</span>
+                        </p>
+                        <p class="investment-discount"><strong>Desconto:</strong> −{{ $brl((int) $line['discount_cents']) }}</p>
+                        <p class="investment-final"><strong>Valor final:</strong> {{ $brl($line['value_cents']) }}</p>
+                    @else
+                        <p class="investment"><strong>Investimento:</strong> {{ $brl($line['value_cents']) }}</p>
+                    @endif
                     @if(!empty($line['description']))
                         <div class="service-description">
                             @include('reports.partials.description-text', ['text' => $line['description']])

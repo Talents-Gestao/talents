@@ -251,7 +251,9 @@ class ProposalController extends Controller
             'rate_mode' => $line->options['rate_mode'] ?? '',
             'units' => $line->options['units'] ?? '',
             'adjustment' => $line->options['adjustment'] ?? 'none',
+            'discount_type' => $line->options['discount_type'] ?? 'percent',
             'discount_percent' => $line->options['discount_percent'] ?? '',
+            'discount_value_cents' => (int) ($line->options['discount_value_cents'] ?? 0),
         ])->values()->all();
         $payload['has_legacy_services'] = $proposal->hasLegacyServices();
         $payload['legacy_summary'] = $this->legacySummaryLines($proposal);
@@ -345,7 +347,9 @@ class ProposalController extends Controller
             'catalog_products.*.rate_mode' => ['nullable', Rule::in(['hour', 'quantity', 'unit'])],
             'catalog_products.*.units' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'catalog_products.*.adjustment' => ['nullable', Rule::in(['none', 'bonus', 'discount'])],
+            'catalog_products.*.discount_type' => ['nullable', Rule::in(['percent', 'value'])],
             'catalog_products.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'catalog_products.*.discount_value_cents' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $data['commission_percent'] = (float) (CommercialSetting::current()->default_commission_percent ?? 0);

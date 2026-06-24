@@ -30,7 +30,9 @@ class PreviewController extends Controller
             'catalog_products.*.rate_mode' => ['nullable', 'string', 'max:16'],
             'catalog_products.*.units' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'catalog_products.*.adjustment' => ['nullable', 'string', 'max:16'],
+            'catalog_products.*.discount_type' => ['nullable', 'string', 'max:16'],
             'catalog_products.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'catalog_products.*.discount_value_cents' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $result = $this->pricing->calculate($data);
