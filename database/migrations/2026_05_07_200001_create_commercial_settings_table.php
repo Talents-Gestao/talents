@@ -72,8 +72,7 @@ return new class extends Migration
 
         // Cria singleton inicial usando os defaults + textos padrão para o PDF.
         DB::table('commercial_settings')->insert([
-            'pdf_observacoes' => 'Os valores acima são mensais e podem ser parcelados conforme acordo comercial. '
-                .'Implantação NR-1 é cobrada uma única vez. NR-1 Mapeamento é dividido em 12 parcelas.',
+            'pdf_observacoes' => null,
             'pdf_aceite_texto' => 'Declaro estar de acordo com os termos, valores e prazos descritos nesta proposta comercial.',
             'created_at' => now(),
             'updated_at' => now(),

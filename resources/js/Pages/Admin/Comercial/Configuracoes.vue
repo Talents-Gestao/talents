@@ -79,7 +79,6 @@ const form = useForm({
     default_commission_percent: props.settings.default_commission_percent ?? 0,
 
     pdf_validade_dias: props.settings.pdf_validade_dias,
-    pdf_observacoes: props.settings.pdf_observacoes ?? '',
     pdf_aceite_texto: props.settings.pdf_aceite_texto ?? '',
     pdf_descricoes_servicos: { ...(props.settings.pdf_descricoes_servicos ?? {}) },
     pdf_condicoes_pagamento: props.settings.pdf_condicoes_pagamento ?? '',
@@ -340,14 +339,6 @@ const tableConfig = computed(() => [
                                 type="number"
                                 min="1"
                                 max="365"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações padrão (impressas no PDF)</label>
-                            <textarea
-                                v-model="form.pdf_observacoes"
-                                rows="4"
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             />
                         </div>

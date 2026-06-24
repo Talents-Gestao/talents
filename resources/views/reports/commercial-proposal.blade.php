@@ -240,22 +240,6 @@
             line-height: 1.45;
         }
 
-        .notes {
-            margin-top: 12px;
-            padding: 0 0 0 12px;
-            border-left: 2px solid #4a2070;
-            font-size: 11px;
-            color: #475569;
-        }
-
-        .notes strong {
-            color: #1e1e1e;
-        }
-
-        .notes-proposal {
-            border-left-color: #7c3aed;
-        }
-
         .closing-text {
             margin-top: 12px;
             font-size: 11px;
@@ -462,20 +446,6 @@
         @if($closingText)
             <div class="closing-text">
                 {!! nl2br(e($closingText)) !!}
-            </div>
-        @endif
-
-        @if($settings->pdf_observacoes)
-            <div class="notes">
-                <strong>Observações:</strong><br>
-                {!! nl2br(e($settings->pdf_observacoes)) !!}
-            </div>
-        @endif
-
-        @if($proposal->notes)
-            <div class="notes notes-proposal">
-                <strong>Observações específicas desta proposta:</strong><br>
-                {!! nl2br(e($proposal->notes)) !!}
             </div>
         @endif
     </div>
