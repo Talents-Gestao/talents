@@ -102,8 +102,8 @@ const organizationJsonLd = computed(() =>
             </component>
         </template>
 
-        <section class="relative overflow-hidden lg:min-h-[600px]">
-            <div class="relative z-20 mx-auto max-w-6xl px-4 py-16 md:py-24 lg:py-28">
+        <section class="relative overflow-hidden lg:min-h-[560px]">
+            <div class="relative z-10 mx-auto max-w-6xl px-4 py-16 md:py-24 lg:py-28">
                 <div class="lg:max-w-[46%]">
                     <p class="text-sm font-semibold uppercase tracking-widest text-talents-600">
                         Consultoria estratégica em gestão de pessoas
@@ -124,18 +124,9 @@ const organizationJsonLd = computed(() =>
             </div>
 
             <img
-                src="/images/fundoimagenssuzane.png"
-                alt=""
-                aria-hidden="true"
-                class="pointer-events-none absolute z-0 hidden h-auto w-full max-w-none object-contain object-right lg:-top-[10%] lg:right-0 lg:block lg:h-[125%] lg:w-auto lg:translate-x-[8%]"
-                width="750"
-                height="911"
-            />
-
-            <img
                 src="/images/hero-home.png"
                 alt="Profissional apresentando perfis comportamentais: Executor, Comunicador, Planejador e Analista"
-                class="relative z-10 mx-auto mt-10 w-full max-w-md object-contain md:mt-12 lg:absolute lg:inset-y-0 lg:right-0 lg:mx-0 lg:mt-0 lg:h-full lg:w-auto lg:max-w-none lg:translate-x-[2%]"
+                class="mt-10 h-auto w-full rounded-l-[3rem] object-cover object-[72%_center] md:mt-12 md:max-h-[480px] lg:absolute lg:inset-y-0 lg:right-0 lg:mt-0 lg:h-full lg:max-h-none lg:w-1/2 lg:rounded-none lg:object-[78%_center]"
                 width="1124"
                 height="901"
                 fetchpriority="high"
