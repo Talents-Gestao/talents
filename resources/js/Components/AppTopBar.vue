@@ -24,11 +24,11 @@ defineProps({
 
 <template>
     <div
-        class="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-200/50 bg-white/75 px-4 py-3 backdrop-blur-md sm:gap-4 sm:px-6 lg:rounded-t-shell"
+        class="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-200/50 bg-white/75 px-4 py-3 backdrop-blur-md sm:gap-4 sm:px-6 lg:rounded-t-shell lg:px-8"
     >
         <p
             v-if="title"
-            class="hidden min-w-0 text-sm font-semibold tracking-tight text-slate-800 sm:block sm:max-w-[12rem] sm:truncate lg:max-w-xs"
+            class="hidden min-w-0 py-1 text-sm font-semibold tracking-tight text-slate-800 sm:block sm:max-w-[12rem] sm:truncate lg:max-w-xs"
         >
             {{ title }}
         </p>

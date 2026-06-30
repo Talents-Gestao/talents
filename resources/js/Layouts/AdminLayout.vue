@@ -1,14 +1,14 @@
 <script setup>
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
+import SidebarBrandMark from '@/Components/SidebarBrandMark.vue';
 import SidebarLayout from '@/Components/SidebarLayout.vue';
 import SidebarNavItem from '@/Components/SidebarNavItem.vue';
+import SidebarUserCard from '@/Components/SidebarUserCard.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
-import { Link, usePage } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import {
     AcademicCapIcon,
+    ArrowRightOnRectangleIcon,
     BuildingOffice2Icon,
     CalendarDaysIcon,
     ChatBubbleLeftRightIcon,
@@ -17,7 +17,6 @@ import {
     MegaphoneIcon,
     PresentationChartLineIcon,
     RocketLaunchIcon,
-    UserCircleIcon,
     UserPlusIcon,
     ViewColumnsIcon,
 } from '@heroicons/vue/24/outline';
@@ -115,21 +114,15 @@ const configuracaoActive = computed(
         :top-bar-show-actions="false"
     >
         <template #logo="{ collapsed }">
-            <Link
+            <SidebarBrandMark
                 :href="adminHomeUrl"
-                class="flex min-w-0 max-w-full items-center justify-center lg:justify-start"
-            >
-                <ApplicationLogo
-                    :class="
-                        collapsed
-                            ? '!h-7 !max-h-7 !max-w-[2.75rem] w-auto object-contain object-center'
-                            : '!h-8 !max-h-8 !max-w-[10.5rem] w-auto object-contain object-left'
-                    "
-                />
-            </Link>
+                :collapsed="collapsed"
+                isolated-icon
+                icon-src="/images/logo-icon.png"
+            />
         </template>
 
-        <template #navigation="{ collapsed }">
+        <template #navigation="{ collapsed, compact }">
             <SidebarNavItem
                 v-if="canAdmin('dashboard')"
                 :href="route('admin.dashboard')"
@@ -137,6 +130,7 @@ const configuracaoActive = computed(
                 :icon="HomeIcon"
                 label="Home"
                 :collapsed="collapsed"
+                :compact="compact"
             />
 
             <SidebarNavItem
@@ -146,6 +140,7 @@ const configuracaoActive = computed(
                 :icon="PresentationChartLineIcon"
                 label="Comercial"
                 :collapsed="collapsed"
+                :compact="compact"
             />
 
             <SidebarNavItem
@@ -155,6 +150,7 @@ const configuracaoActive = computed(
                 :icon="BuildingOffice2Icon"
                 label="Clientes"
                 :collapsed="collapsed"
+                :compact="compact"
             />
 
             <SidebarNavItem
@@ -167,6 +163,7 @@ const configuracaoActive = computed(
                 :icon="RocketLaunchIcon"
                 label="Metamorfose"
                 :collapsed="collapsed"
+                :compact="compact"
             />
 
             <SidebarNavItem
@@ -176,6 +173,7 @@ const configuracaoActive = computed(
                 :icon="UserPlusIcon"
                 label="Contratação de Talentos"
                 :collapsed="collapsed"
+                :compact="compact"
             />
 
             <SidebarNavItem
@@ -185,6 +183,7 @@ const configuracaoActive = computed(
                 :icon="ChatBubbleLeftRightIcon"
                 label="Feedbacks"
                 :collapsed="collapsed"
+                :compact="compact"
             />
 
             <SidebarNavItem
@@ -194,6 +193,7 @@ const configuracaoActive = computed(
                 :icon="MegaphoneIcon"
                 label="Voz do Time"
                 :collapsed="collapsed"
+                :compact="compact"
             />
 
             <SidebarNavItem
@@ -203,6 +203,7 @@ const configuracaoActive = computed(
                 :icon="CalendarDaysIcon"
                 label="Calendário"
                 :collapsed="collapsed"
+                :compact="compact"
             />
 
             <SidebarNavItem
@@ -212,6 +213,7 @@ const configuracaoActive = computed(
                 :icon="ViewColumnsIcon"
                 label="Tarefas"
                 :collapsed="collapsed"
+                :compact="compact"
             />
 
             <SidebarNavItem
@@ -221,6 +223,7 @@ const configuracaoActive = computed(
                 :icon="AcademicCapIcon"
                 label="Capacitação"
                 :collapsed="collapsed"
+                :compact="compact"
                 badge="Em breve"
             />
 
@@ -231,31 +234,28 @@ const configuracaoActive = computed(
                 :icon="Cog6ToothIcon"
                 label="Configuração"
                 :collapsed="collapsed"
+                :compact="compact"
             />
         </template>
 
-        <template #user="{ collapsed }">
-            <div class="px-0.5">
-                <Dropdown align="right" width="48" open-upward>
-                    <template #trigger>
-                        <button
-                            type="button"
-                            class="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-2 text-left text-sm text-slate-800 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-talents-500/30"
-                            :class="collapsed ? 'justify-center' : ''"
-                        >
-                            <UserCircleIcon class="h-8 w-8 shrink-0 text-talents-600" />
-                            <span v-if="!collapsed" class="min-w-0 flex-1 truncate font-medium">
-                                {{ $page.props.auth.user.name }}
-                            </span>
-                        </button>
-                    </template>
-                    <template #content>
-                        <DropdownLink :href="route('profile.edit')">Perfil</DropdownLink>
-                        <DropdownLink :href="route('logout')" method="post" as="button">
-                            Sair
-                        </DropdownLink>
-                    </template>
-                </Dropdown>
+        <template #user="{ collapsed, compact }">
+            <div class="flex flex-col gap-0.5">
+                <SidebarNavItem
+                    :href="route('logout')"
+                    method="post"
+                    as="button"
+                    :icon="ArrowRightOnRectangleIcon"
+                    label="Sair"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarUserCard
+                    :href="route('profile.edit')"
+                    :active="route().current('profile.*')"
+                    :label="$page.props.auth.user.name"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
             </div>
         </template>
 

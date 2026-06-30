@@ -1,10 +1,12 @@
 <script setup>
 import AppTopBar from '@/Components/AppTopBar.vue';
 import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline';
-import { computed, provide, ref, useSlots } from 'vue';
+import { computed, onBeforeUnmount, provide, ref, useSlots, watch } from 'vue';
+
+const LABELS_SHOW_DELAY_MS = 80;
+const WIDTH_COLLAPSE_START_MS = 120;
 
 defineProps({
-    /** Classes do invólucro exterior (gradiente em app.css) */
     shellClass: {
         type: String,
         default: 'app-shell',
@@ -34,32 +36,86 @@ defineProps({
 const slots = useSlots();
 
 const asideHovered = ref(false);
+const labelsVisible = ref(false);
 const mobileOpen = ref(false);
+
+let showLabelsTimer = null;
+let hideWidthTimer = null;
+
+const clearSidebarTimers = () => {
+    if (showLabelsTimer) {
+        clearTimeout(showLabelsTimer);
+        showLabelsTimer = null;
+    }
+    if (hideWidthTimer) {
+        clearTimeout(hideWidthTimer);
+        hideWidthTimer = null;
+    }
+};
+
+const onAsideEnter = () => {
+    clearSidebarTimers();
+    asideHovered.value = true;
+    showLabelsTimer = setTimeout(() => {
+        labelsVisible.value = true;
+    }, LABELS_SHOW_DELAY_MS);
+};
+
+const onAsideLeave = () => {
+    if (mobileOpen.value) {
+        return;
+    }
+    clearSidebarTimers();
+    labelsVisible.value = false;
+    hideWidthTimer = setTimeout(() => {
+        asideHovered.value = false;
+    }, WIDTH_COLLAPSE_START_MS);
+};
+
+onBeforeUnmount(clearSidebarTimers);
+
+watch(mobileOpen, (open) => {
+    clearSidebarTimers();
+    if (open) {
+        asideHovered.value = true;
+        labelsVisible.value = true;
+        return;
+    }
+    labelsVisible.value = false;
+    asideHovered.value = false;
+});
 
 const collapsed = computed(() => {
     if (mobileOpen.value) {
         return false;
     }
-    return !asideHovered.value;
+    return !labelsVisible.value;
 });
+
+const asideWide = computed(() => asideHovered.value || mobileOpen.value);
+const compact = computed(() => !asideWide.value && !mobileOpen.value);
 
 const closeMobileSidebar = () => {
     mobileOpen.value = false;
 };
 
 provide('closeMobileSidebar', closeMobileSidebar);
+provide('sidebarCompact', compact);
 
-const asideWidthClass = computed(() =>
-    asideHovered.value ? 'lg:w-64' : 'lg:w-16',
-);
+const asideWidthClass = computed(() => (asideWide.value ? 'lg:w-64' : 'lg:w-16'));
 
 const asideTransformClass = computed(() =>
     mobileOpen.value ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
 );
 
-/** Margem esquerda = margem + largura da sidebar + gap (desktop) */
+const sidebarTransitionClass =
+    'transition-[width,transform] duration-[240ms] ease-in-out';
+
+const mainTransitionClass =
+    'transition-[margin-left] duration-[240ms] ease-in-out';
+
 const mainMarginClass = computed(() =>
-    asideHovered.value
+    asideWide.value
         ? 'lg:ml-[calc(1rem+16rem+1rem)]'
         : 'lg:ml-[calc(1rem+4rem+1rem)]',
 );
@@ -69,43 +125,41 @@ const hasAside = computed(() => Boolean(slots.aside));
 
 <template>
     <div :class="shellClass">
-        <!-- Backdrop mobile -->
         <div
             v-show="mobileOpen"
-            class="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-sm lg:hidden"
+            class="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
             aria-hidden="true"
             @click="closeMobileSidebar"
         />
 
-        <!-- Sidebar: drawer no mobile; no desktop “pill” com hover -->
         <aside
             :class="[
                 asideWidthClass,
                 asideTransformClass,
-                'fixed z-50 flex w-64 flex-col overflow-hidden border border-white/80 bg-white/95 shadow-shell ring-1 ring-slate-200/40 transition-all duration-300 ease-in-out',
+                sidebarTransitionClass,
+                'fixed z-50 flex w-64 flex-col overflow-hidden border border-white/80 bg-white/95 shadow-shell ring-1 ring-slate-200/40 will-change-[width,transform]',
                 'inset-y-0 left-0 max-h-screen rounded-none lg:inset-auto lg:left-4 lg:top-4 lg:h-[calc(100vh-2rem)] lg:max-h-[calc(100vh-2rem)] lg:rounded-3xl lg:shadow-shell',
             ]"
-            @mouseenter="asideHovered = true"
-            @mouseleave="asideHovered = false"
+            @mouseenter="onAsideEnter"
+            @mouseleave="onAsideLeave"
         >
             <div class="flex h-full min-h-0 flex-col lg:overflow-visible">
                 <div
                     class="flex min-h-[3.25rem] shrink-0 items-center border-b border-slate-200/70 px-2 py-3"
-                    :class="collapsed ? 'justify-center' : 'justify-start'"
                 >
-                    <slot name="logo" :collapsed="collapsed" />
+                    <slot name="logo" :collapsed="collapsed" :compact="compact" />
                 </div>
 
                 <nav
-                    class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-2 py-4 scrollbar-none"
+                    class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain py-4 scrollbar-none"
                 >
-                    <div class="flex flex-col gap-0.5 px-1">
-                        <slot name="navigation" :collapsed="collapsed" />
+                    <div class="flex flex-col gap-0.5 px-2">
+                        <slot name="navigation" :collapsed="collapsed" :compact="compact" />
                     </div>
                 </nav>
 
-                <div class="shrink-0 overflow-visible border-t border-slate-200/70 p-2">
-                    <slot name="user" :collapsed="collapsed" />
+                <div class="shrink-0 overflow-hidden border-t border-slate-200/70 px-2 py-2">
+                    <slot name="user" :collapsed="collapsed" :compact="compact" />
                 </div>
             </div>
 
@@ -119,17 +173,10 @@ const hasAside = computed(() => Boolean(slots.aside));
             </button>
         </aside>
 
-        <!-- Coluna principal + painel -->
-        <div
-            :class="[
-                'flex min-h-screen flex-1 flex-col transition-[margin] duration-300 ease-in-out',
-                mainMarginClass,
-            ]"
-        >
+        <div :class="['flex min-h-screen flex-1 flex-col', mainTransitionClass, mainMarginClass]">
             <div
                 class="app-shell-panel mx-3 mb-4 mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden shadow-shell-inner sm:mx-4 lg:mx-4 lg:mb-6 lg:mt-4 lg:min-h-[calc(100vh-2rem)]"
             >
-                <!-- Mobile: topo -->
                 <div
                     class="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200/60 bg-white/90 px-4 backdrop-blur-md lg:hidden"
                 >
