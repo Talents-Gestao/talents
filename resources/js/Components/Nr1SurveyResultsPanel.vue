@@ -1,4 +1,5 @@
 <script setup>
+import ApexChart from '@/Components/Charts/ApexChart.vue';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -382,7 +383,7 @@ const healthBadge = (level) => {
             </div>
             <div class="mt-6 grid gap-8 xl:grid-cols-5">
                 <div class="xl:col-span-3 min-h-[34rem]">
-                    <apexchart height="540" :options="filteredDeptRadar" :series="filteredDeptRadarSeries" />
+                    <ApexChart height="540" :options="filteredDeptRadar" :series="filteredDeptRadarSeries" />
                 </div>
                 <ul class="space-y-2 xl:col-span-2">
                     <li
@@ -426,7 +427,7 @@ const healthBadge = (level) => {
             </div>
             <div class="mt-6 grid gap-8 xl:grid-cols-5">
                 <div class="xl:col-span-3 min-h-[34rem]">
-                    <apexchart height="540" :options="radar" :series="radarSeries" />
+                    <ApexChart height="540" :options="radar" :series="radarSeries" />
                 </div>
                 <ul class="space-y-2 xl:col-span-2">
                     <li
@@ -500,7 +501,7 @@ const healthBadge = (level) => {
                 Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato).
             </p>
             <div class="mt-4 h-80">
-                <apexchart height="320" :options="deptBarChart" :series="deptBarSeries" />
+                <ApexChart height="320" :options="deptBarChart" :series="deptBarSeries" />
             </div>
         </div>
 
@@ -510,7 +511,7 @@ const healthBadge = (level) => {
         >
             <h3 class="text-lg font-semibold text-talents-900">Dimensões por setor (barras agrupadas)</h3>
             <div class="mt-4 min-h-[28rem]">
-                <apexchart height="380" :options="deptGroupedBar" :series="deptGroupedSeries" />
+                <ApexChart height="380" :options="deptGroupedBar" :series="deptGroupedSeries" />
             </div>
         </div>
 

@@ -1,4 +1,5 @@
 <script setup>
+import ApexChart from '@/Components/Charts/ApexChart.vue';
 import RhidResponsePanel from '@/Components/Rhid/RhidResponsePanel.vue';
 import OverviewSection from '@/Pages/Client/Rhid/Compliance/OverviewSection.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
@@ -3159,7 +3160,7 @@ const justDeptBarChart = computed(() => {
                                         Soma dos minutos de atraso na entrada no período (top
                                         {{ ESPELHO_ADHERENCE_CHART_TOP }}).
                                     </p>
-                                    <apexchart
+                                    <ApexChart
                                         v-if="!espelhoAdherenceChartEntradaTotal.empty"
                                         type="bar"
                                         :height="
@@ -3181,7 +3182,7 @@ const justDeptBarChart = computed(() => {
                                         desvio da duração (falta ou excesso em relação ao intervalo configurado, após a
                                         tolerância). Top {{ ESPELHO_ADHERENCE_CHART_TOP }} (mesma ordenação da tabela).
                                     </p>
-                                    <apexchart
+                                    <ApexChart
                                         v-if="!espelhoAdherenceChartAlmoco.empty"
                                         type="bar"
                                         :height="
@@ -3509,7 +3510,7 @@ const justDeptBarChart = computed(() => {
                             Colaboradores por faixa de saldo (HH:mm, mesmo conceito do espelho RHID) na data de referência.
                             <span class="font-medium text-talents-800"> Clique numa fatia</span> para ver a lista.
                         </p>
-                        <apexchart
+                        <ApexChart
                             v-if="bankDonutChart.series.length"
                             type="donut"
                             height="300"
@@ -3524,7 +3525,7 @@ const justDeptBarChart = computed(() => {
                             Apenas linhas com saldo numérico; até 12 departamentos + Outros.
                             <span class="font-medium text-talents-800"> Clique numa barra</span> para listar os colaboradores.
                         </p>
-                        <apexchart
+                        <ApexChart
                             v-if="!bankDeptAvgChart.empty"
                             type="bar"
                             :height="Math.max(280, (bankDeptAvgChart.series[0]?.data?.length ?? 0) * 36)"
@@ -3541,7 +3542,7 @@ const justDeptBarChart = computed(() => {
                             Ate 10 colaboradores com saldo mais negativo.
                             <span class="font-medium text-talents-800"> Clique numa barra</span> para ver departamento, cargo e documentos.
                         </p>
-                        <apexchart
+                        <ApexChart
                             v-if="!bankTopDebitChart.empty"
                             type="bar"
                             :height="Math.max(260, (bankTopDebitChart.series[0]?.data?.length ?? 0) * 40)"
@@ -3556,7 +3557,7 @@ const justDeptBarChart = computed(() => {
                             Ate 10 colaboradores com maior saldo positivo.
                             <span class="font-medium text-talents-800"> Clique numa barra</span> para ver o detalhe.
                         </p>
-                        <apexchart
+                        <ApexChart
                             v-if="!bankTopCreditChart.empty"
                             type="bar"
                             :height="Math.max(260, (bankTopCreditChart.series[0]?.data?.length ?? 0) * 40)"
@@ -3790,7 +3791,7 @@ const justDeptBarChart = computed(() => {
                         <p class="mb-3 text-xs text-slate-500">
                             Clique numa fatia para ver colaboradores e datas.
                         </p>
-                        <apexchart
+                        <ApexChart
                             v-if="!justTypeDonutChart.empty"
                             type="donut"
                             height="320"
@@ -3804,7 +3805,7 @@ const justDeptBarChart = computed(() => {
                         <p class="mb-3 text-xs text-slate-500">
                             Separação por tipo ou texto que contém «atest» (demais entram em outras justificativas).
                         </p>
-                        <apexchart
+                        <ApexChart
                             v-if="!justAtestadoDonutChart.empty"
                             type="donut"
                             height="280"
@@ -3816,7 +3817,7 @@ const justDeptBarChart = computed(() => {
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                         <h3 class="mb-1 text-sm font-semibold text-slate-800">Top colaboradores</h3>
                         <p class="mb-3 text-xs text-slate-500">Mais justificativas no período ({{ JUST_TOP_COLLABORATORS }}).</p>
-                        <apexchart
+                        <ApexChart
                             v-if="!justTopPersonBarChart.empty"
                             type="bar"
                             :height="Math.max(260, (justTopPersonBarChart.series[0]?.data?.length ?? 0) * 40)"
@@ -3830,7 +3831,7 @@ const justDeptBarChart = computed(() => {
                         <p class="mb-3 text-xs text-slate-500">
                             Até {{ JUST_MAX_DEPT_CHART }} setores + Outros. Clique na barra para listar.
                         </p>
-                        <apexchart
+                        <ApexChart
                             v-if="!justDeptBarChart.empty"
                             type="bar"
                             :height="Math.max(280, (justDeptBarChart.series[0]?.data?.length ?? 0) * 36)"

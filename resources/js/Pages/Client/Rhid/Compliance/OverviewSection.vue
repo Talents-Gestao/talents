@@ -1,4 +1,5 @@
 <script setup>
+import ApexChart from '@/Components/Charts/ApexChart.vue';
 import RhidOverviewKpiCards from '@/Components/Rhid/RhidOverviewKpiCards.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Link } from '@inertiajs/vue3';
@@ -545,7 +546,7 @@ const trendBank = computed(() => {
                             Mês
                         </span>
                     </div>
-                    <apexchart
+                    <ApexChart
                         type="radialBar"
                         height="220"
                         :options="radialAderenciaChart.options"
@@ -588,7 +589,7 @@ const trendBank = computed(() => {
                             {{ overviewBankNegativePercent }}% negativos
                         </span>
                     </div>
-                    <apexchart
+                    <ApexChart
                         v-if="!donutBankChart.empty"
                         type="donut"
                         height="240"
@@ -621,7 +622,7 @@ const trendBank = computed(() => {
                             {{ overviewJustAtestadosPercent }}% atestados
                         </span>
                     </div>
-                    <apexchart
+                    <ApexChart
                         v-if="!donutJustChart.empty"
                         type="donut"
                         height="240"
@@ -658,7 +659,7 @@ const trendBank = computed(() => {
                             Atenção
                         </span>
                     </div>
-                    <apexchart
+                    <ApexChart
                         v-if="!barWorstBankChart.empty"
                         type="bar"
                         :height="Math.max(180, (barWorstBankChart.series[0]?.data?.length || 0) * 46 + 20)"
@@ -703,7 +704,7 @@ const trendBank = computed(() => {
                             Aderência
                         </span>
                     </div>
-                    <apexchart
+                    <ApexChart
                         v-if="!barWorstEntradaChart.empty"
                         type="bar"
                         :height="Math.max(180, (barWorstEntradaChart.series[0]?.data?.length || 0) * 46 + 20)"
