@@ -33,7 +33,7 @@ function mailErrorText(value) {
 
         <div class="surface-card overflow-hidden">
             <div v-if="!submissions.data.length" class="px-4 py-10 text-center text-sm text-gray-600">
-                Nenhum envio ainda.
+                Nenhum envio encontrado.
             </div>
             <div v-else class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm text-gray-900">

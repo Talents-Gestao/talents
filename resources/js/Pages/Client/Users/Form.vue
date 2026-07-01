@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -36,14 +37,11 @@ const submit = () => {
 
     <ClientLayout>
         <template #header>
-            <div>
-                <Link :href="route('client.usuarios.index')" class="text-sm font-medium text-talents-700 hover:underline">
-                    ← Utilizadores
-                </Link>
-                <h2 class="mt-1 text-xl font-semibold leading-tight text-talents-900">
-                    {{ mode === 'create' ? 'Novo utilizador' : 'Editar utilizador' }}
-                </h2>
-            </div>
+            <FormPageHeader
+                :back-href="route('client.usuarios.index')"
+                back-label="Utilizadores"
+                :title="mode === 'create' ? 'Novo utilizador' : 'Editar utilizador'"
+            />
         </template>
 
         <form class="max-w-3xl space-y-6 surface-card p-6" @submit.prevent="submit">

@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -38,7 +39,7 @@ const toggleModule = (id) => {
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-900">Editar plano</h2>
+            <FormPageHeader :back-href="route('admin.plans.index')" title="Editar plano" />
         </template>
 
         <form class="max-w-xl space-y-4 surface-card p-6 text-slate-900" @submit.prevent="submit">

@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -104,15 +105,10 @@ function destroyAttachment(attachmentId) {
 
     <AdminLayout>
         <template #header>
-            <div class="flex items-center gap-4">
-                <Link
-                    :href="route('admin.strategic-calendar.index')"
-                    class="text-sm font-medium text-gray-600 hover:text-gray-900"
-                >
-                    ← Voltar
-                </Link>
-                <h2 class="text-xl font-semibold leading-tight text-gray-900">Editar evento ou rito</h2>
-            </div>
+            <FormPageHeader
+                :back-href="route('admin.strategic-calendar.index')"
+                title="Editar evento ou rito"
+            />
         </template>
 
         <form class="surface-card max-w-2xl space-y-4 p-6 text-slate-900" @submit.prevent="submit">

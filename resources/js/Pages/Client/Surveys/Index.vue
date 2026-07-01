@@ -1,4 +1,5 @@
 <script setup>
+import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 
@@ -41,6 +42,7 @@ defineProps({ surveys: Object });
                             <Link :href="route('client.surveys.results', s.id)" class="text-talents-700 hover:underline">Resultados</Link>
                         </td>
                     </tr>
+                    <TableEmptyRow v-if="!surveys.data.length" :colspan="4" message="Nenhuma campanha encontrada." />
                 </tbody>
             </table>
         </div>

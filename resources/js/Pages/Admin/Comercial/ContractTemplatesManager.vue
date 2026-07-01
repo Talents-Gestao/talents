@@ -262,7 +262,7 @@ const docxUrl = (t) => route('admin.comercial.contract-templates.docx', t.id);
                         </td>
                     </tr>
                     <tr v-if="!templates.length">
-                        <td colspan="4" class="px-4 py-10 text-center text-slate-500">Nenhum modelo cadastrado.</td>
+                        <td colspan="4" class="px-4 py-10 text-center text-slate-500">Nenhum modelo encontrado.</td>
                     </tr>
                 </tbody>
             </table>

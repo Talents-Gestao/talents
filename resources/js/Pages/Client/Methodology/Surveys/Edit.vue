@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -25,7 +26,11 @@ const submit = () => {
 
     <ClientLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-talents-900">Editar pesquisa</h2>
+            <FormPageHeader
+                :back-href="route('client.metodologia.pesquisa-satisfacao.show', survey.id)"
+                back-label="Pesquisa"
+                title="Editar pesquisa"
+            />
         </template>
 
         <form class="max-w-xl space-y-6 text-gray-900" @submit.prevent="submit">

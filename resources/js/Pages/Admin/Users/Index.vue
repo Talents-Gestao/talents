@@ -1,4 +1,5 @@
 <script setup>
+import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
@@ -136,6 +137,7 @@ const resendInvitation = (user) => {
                             </button>
                         </td>
                     </tr>
+                    <TableEmptyRow v-if="!users.length" :colspan="6" message="Nenhum administrador encontrado." />
                 </tbody>
             </table>
         </div>

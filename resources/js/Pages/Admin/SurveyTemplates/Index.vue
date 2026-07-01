@@ -1,4 +1,5 @@
 <script setup>
+import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 
@@ -49,6 +50,7 @@ defineProps({ templates: Object });
                             <Link :href="route('admin.survey-templates.edit', t.id)" class="font-medium text-talents-700 hover:underline">Editar</Link>
                         </td>
                     </tr>
+                    <TableEmptyRow v-if="!templates.data.length" :colspan="4" message="Nenhum mapeamento encontrado." />
                 </tbody>
             </table>
         </div>

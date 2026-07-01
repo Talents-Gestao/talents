@@ -1,9 +1,10 @@
 <script setup>
 import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
-import { ChevronLeftIcon, ChevronRightIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
+import { kindTheme, monthTheme } from '@/utils/strategicCalendarThemes';
+import { CheckCircleIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
 import { Link, router } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps({
     year: { type: Number, required: true },
@@ -20,18 +21,104 @@ const props = defineProps({
     canNavigateNext: { type: Boolean, default: true },
     /** Rótulo do período do plano (ex.: "2 meses") para banner informativo */
     periodLabel: { type: String, default: null },
+    /** Janela navegável (cliente): { start: 'YYYY-MM-DD', end: 'YYYY-MM-DD' } */
+    navigationRange: { type: Object, default: null },
     /** Permite editar data e abrir edição completa (admin) */
     editable: { type: Boolean, default: false },
     /** Nome da rota para atualizar data (ex.: admin.strategic-calendar.update-date) */
     updateDateRoute: { type: String, default: null },
     /** Nome da rota para editar item (ex.: admin.strategic-calendar.edit) */
     editItemRoute: { type: String, default: null },
+    /** Habilita check de conclusão no painel cliente */
+    completionEnabled: { type: Boolean, default: false },
+    toggleCompletionRoute: { type: String, default: 'client.strategic-calendar.toggle-completion' },
+    toggleTaskCompletionRoute: { type: String, default: 'client.strategic-calendar.toggle-task-completion' },
 });
 
-const emit = defineEmits(['navigate-month', 'go-today', 'update:view', 'edit-day']);
+const emit = defineEmits(['navigate-month', 'pick-month', 'go-today', 'update:view', 'edit-day']);
 
 const selectedDay = ref(1);
 const currentView = ref('month');
+const completingIds = ref(new Set());
+const monthPickerOpen = ref(false);
+const pickerYear = ref(props.year);
+const monthPickerRef = ref(null);
+
+const monthPickerLabels = [
+    'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+    'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
+];
+
+watch(
+    () => props.year,
+    (y) => {
+        if (!monthPickerOpen.value) {
+            pickerYear.value = y;
+        }
+    },
+);
+
+function isMonthSelectable(year, month) {
+    if (!props.navigationRange?.start || !props.navigationRange?.end) {
+        return true;
+    }
+
+    const monthStart = new Date(year, month - 1, 1);
+    const monthEnd = new Date(year, month, 0);
+    const rangeStart = new Date(`${props.navigationRange.start}T12:00:00`);
+    const rangeEnd = new Date(`${props.navigationRange.end}T12:00:00`);
+
+    return monthEnd >= rangeStart && monthStart <= rangeEnd;
+}
+
+const monthPickerOptions = computed(() =>
+    monthPickerLabels.map((shortLabel, index) => {
+        const month = index + 1;
+        const theme = monthTheme(month);
+        const isCurrent = props.year === pickerYear.value && props.month === month;
+        const selectable = isMonthSelectable(pickerYear.value, month);
+
+        return {
+            month,
+            shortLabel,
+            theme,
+            isCurrent,
+            selectable,
+        };
+    }),
+);
+
+function toggleMonthPicker() {
+    monthPickerOpen.value = !monthPickerOpen.value;
+    if (monthPickerOpen.value) {
+        pickerYear.value = props.year;
+    }
+}
+
+function closeMonthPicker() {
+    monthPickerOpen.value = false;
+}
+
+function shiftPickerYear(delta) {
+    pickerYear.value += delta;
+}
+
+function pickMonth(month) {
+    if (!isMonthSelectable(pickerYear.value, month)) return;
+
+    emit('pick-month', { year: pickerYear.value, month });
+    closeMonthPicker();
+}
+
+function onDocumentClick(event) {
+    if (!monthPickerOpen.value) return;
+    if (monthPickerRef.value && !monthPickerRef.value.contains(event.target)) {
+        closeMonthPicker();
+    }
+}
+
+onMounted(() => document.addEventListener('click', onDocumentClick));
+onUnmounted(() => document.removeEventListener('click', onDocumentClick));
 
 watch(
     () => props.showViewToggle,
@@ -94,6 +181,21 @@ const monthTitleCapitalized = computed(() => {
     return d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 });
 
+const currentMonthTheme = computed(() => monthTheme(props.month));
+
+const visibleKindThemes = computed(() => {
+    const kinds = new Set(['event', 'rito']);
+    for (const item of [...props.items, ...props.agendaItems]) {
+        if (item?.kind) kinds.add(item.kind);
+    }
+
+    return Array.from(kinds).map((kind) => ({
+        kind,
+        label: kindLabel(kind),
+        ...kindTheme(kind),
+    }));
+});
+
 function syncSelectedDay() {
     const t = new Date();
     if (props.year === t.getFullYear() && props.month === t.getMonth() + 1) {
@@ -112,6 +214,10 @@ watch(
 );
 
 const kindLabel = (kind) => props.kindLabels[kind] ?? kind;
+
+function itemKindTheme(item) {
+    return kindTheme(item?.kind);
+}
 
 const selectedDayIso = computed(() => {
     return `${props.year}-${String(props.month).padStart(2, '0')}-${String(selectedDay.value).padStart(2, '0')}`;
@@ -220,6 +326,41 @@ function updateItemDate(item, newDate) {
     );
 }
 
+function completionRouteFor(item) {
+    if (item?.source_type === 'task') {
+        return route(props.toggleTaskCompletionRoute, itemSourceId(item));
+    }
+
+    return route(props.toggleCompletionRoute, itemSourceId(item));
+}
+
+function canToggleCompletion(item) {
+    return props.completionEnabled && !props.editable && itemSourceId(item);
+}
+
+function toggleCompletion(item) {
+    if (!canToggleCompletion(item) || completingIds.value.has(item.id)) return;
+
+    const nextCompleted = !item.completed;
+    const next = new Set(completingIds.value);
+    next.add(item.id);
+    completingIds.value = next;
+
+    const payload = item.source_type === 'task'
+        ? { completed: nextCompleted }
+        : { occurs_on: item.occurs_on, completed: nextCompleted };
+
+    router.patch(completionRouteFor(item), payload, {
+        preserveScroll: true,
+        preserveState: false,
+        onFinish: () => {
+            const done = new Set(completingIds.value);
+            done.delete(item.id);
+            completingIds.value = done;
+        },
+    });
+}
+
 function monthCellClass(cell) {
     const base =
         'relative flex w-full flex-col rounded-xl border text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2';
@@ -230,10 +371,35 @@ function monthCellClass(cell) {
     const today = cell.isToday && !selected;
     return [
         base,
-        'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/80',
-        selected ? 'border-talents-500 bg-talents-50 ring-1 ring-talents-500' : '',
-        today ? 'ring-1 ring-slate-300/80' : '',
+        selected ? 'border-current shadow-sm' : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/60',
+        today && !selected ? 'ring-1 ring-slate-300/80' : '',
     ].join(' ');
+}
+
+function monthCellStyle(cell) {
+    if (!cell.day) return {};
+
+    const theme = currentMonthTheme.value;
+    const selected = selectedDay.value === cell.day;
+
+    if (selected) {
+        return {
+            borderColor: theme.color,
+            background: `linear-gradient(180deg, ${theme.background} 0%, #ffffff 78%)`,
+        };
+    }
+
+    return {
+        background: `linear-gradient(180deg, ${theme.background}bb 0%, #ffffff 70%)`,
+    };
+}
+
+function itemTextClass(item) {
+    return item.completed ? 'text-slate-400 line-through' : 'text-slate-900';
+}
+
+function itemShellClass(item) {
+    return item.completed ? 'border-slate-200 bg-slate-50/80 opacity-80' : 'border-slate-200/80 bg-white';
 }
 </script>
 
@@ -298,7 +464,7 @@ function monthCellClass(cell) {
                 class="flex flex-wrap items-center justify-between gap-3 sm:justify-end"
                 :class="!showViewToggle ? 'w-full sm:ml-auto' : ''"
             >
-                <div class="flex items-center gap-1">
+                <div ref="monthPickerRef" class="relative flex items-center gap-1">
                     <button
                         type="button"
                         class="rounded-lg p-2 transition"
@@ -313,12 +479,17 @@ function monthCellClass(cell) {
                     >
                         <ChevronLeftIcon class="h-5 w-5" aria-hidden="true" />
                     </button>
-                    <span
-                        class="min-w-[10rem] truncate px-2 text-center text-sm font-semibold capitalize text-slate-800 sm:text-base"
+                    <button
+                        type="button"
+                        class="flex min-w-[10rem] items-center justify-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold capitalize text-slate-800 transition hover:bg-slate-100 sm:text-base"
                         :title="monthTitleCapitalized"
+                        aria-haspopup="dialog"
+                        :aria-expanded="monthPickerOpen"
+                        @click.stop="toggleMonthPicker"
                     >
+                        <CalendarDaysIcon class="h-5 w-5 shrink-0 text-talents-700" aria-hidden="true" />
                         {{ monthTitleCapitalized }}
-                    </span>
+                    </button>
                     <button
                         type="button"
                         class="rounded-lg p-2 transition"
@@ -333,27 +504,128 @@ function monthCellClass(cell) {
                     >
                         <ChevronRightIcon class="h-5 w-5" aria-hidden="true" />
                     </button>
+
+                    <div
+                        v-if="monthPickerOpen"
+                        class="absolute left-1/2 top-full z-30 mt-2 w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-slate-200/90 bg-white p-3 shadow-lg"
+                        role="dialog"
+                        aria-label="Selecionar mês"
+                        @click.stop
+                    >
+                        <div class="mb-3 flex items-center justify-between gap-2">
+                            <button
+                                type="button"
+                                class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                                aria-label="Ano anterior"
+                                @click="shiftPickerYear(-1)"
+                            >
+                                <ChevronLeftIcon class="h-4 w-4" aria-hidden="true" />
+                            </button>
+                            <span class="text-sm font-semibold text-slate-900">{{ pickerYear }}</span>
+                            <button
+                                type="button"
+                                class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                                aria-label="Próximo ano"
+                                @click="shiftPickerYear(1)"
+                            >
+                                <ChevronRightIcon class="h-4 w-4" aria-hidden="true" />
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button
+                                v-for="option in monthPickerOptions"
+                                :key="option.month"
+                                type="button"
+                                class="flex items-center gap-1.5 rounded-xl border px-2 py-2 text-left text-xs font-medium transition sm:text-sm"
+                                :class="
+                                    option.isCurrent
+                                        ? 'border-talents-500 bg-talents-50 text-talents-900'
+                                        : option.selectable
+                                          ? 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                                          : 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300'
+                                "
+                                :disabled="!option.selectable"
+                                @click="pickMonth(option.month)"
+                            >
+                                <span
+                                    class="h-2 w-2 shrink-0 rounded-full"
+                                    :style="{ backgroundColor: option.selectable ? option.theme.color : '#cbd5e1' }"
+                                    aria-hidden="true"
+                                />
+                                {{ option.shortLabel }}
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <button type="button" class="btn-ghost !px-4 !py-2 text-xs sm:text-sm" @click="onGoToday">
                     Hoje
                 </button>
             </div>
             <div v-else-if="showViewToggle" class="flex flex-wrap items-center gap-2 sm:ml-auto">
-                <p class="text-sm text-slate-500">Próximos eventos e ritos (até 60 dias)</p>
+                <p class="text-sm text-slate-500">Próximos eventos, ritos e tarefas (até 60 dias)</p>
                 <button type="button" class="btn-ghost !px-4 !py-2 text-xs sm:text-sm" @click="onGoToday">
                     Ir para hoje
                 </button>
             </div>
         </div>
 
+        <div
+            v-if="currentView !== 'agenda'"
+            class="border-b border-slate-200/80"
+            :class="rootPad"
+            :style="{
+                background: `linear-gradient(90deg, ${currentMonthTheme.background}cc 0%, #ffffff 78%)`,
+            }"
+        >
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="min-w-0">
+                    <p
+                        class="text-xs font-semibold uppercase tracking-wide"
+                        :style="{ color: currentMonthTheme.color }"
+                    >
+                        Campanha do mês
+                    </p>
+                    <p class="mt-1 text-sm font-semibold sm:text-base">
+                        <span
+                            class="mr-2 inline-block h-2.5 w-2.5 rounded-full align-middle"
+                            :style="{ backgroundColor: currentMonthTheme.color }"
+                            aria-hidden="true"
+                        />
+                        <span :style="{ color: currentMonthTheme.color }">{{ currentMonthTheme.label }}</span>
+                        <span class="text-slate-700"> — {{ currentMonthTheme.campaign }}</span>
+                    </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                    <span class="font-medium text-slate-700">Legenda:</span>
+                    <span
+                        v-for="theme in visibleKindThemes"
+                        :key="theme.kind"
+                        class="inline-flex items-center gap-1.5 rounded-full border px-2 py-1"
+                        :style="{ borderColor: `${theme.color}66`, backgroundColor: theme.background }"
+                    >
+                        <span class="h-1.5 w-1.5 rounded-full" :style="{ backgroundColor: theme.color }" aria-hidden="true" />
+                        <span class="font-medium text-slate-700">{{ theme.label }}</span>
+                    </span>
+                    <span v-if="completionEnabled" class="inline-flex items-center gap-1 text-slate-500">
+                        <CheckCircleIcon class="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                        Concluído
+                    </span>
+                </div>
+            </div>
+        </div>
+
         <!-- Month + detail -->
         <div v-if="currentView === 'month'" :class="compact ? 'flex flex-col' : 'flex flex-col lg:flex-row'">
             <div class="min-w-0 flex-1" :class="rootPad">
-                <div role="grid" class="grid grid-cols-7 gap-px rounded-xl bg-slate-200/80 p-px">
+                <div role="grid" class="grid grid-cols-7 gap-px rounded-xl bg-slate-200/90 p-px">
                     <div
                         v-for="w in weekdayLabels"
                         :key="w"
-                        class="bg-slate-50 px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs"
+                        class="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide sm:text-xs"
+                        :style="{
+                            backgroundColor: `${currentMonthTheme.background}99`,
+                            color: currentMonthTheme.color,
+                        }"
                         role="columnheader"
                     >
                         {{ w }}
@@ -365,11 +637,19 @@ function monthCellClass(cell) {
                                     v-if="cell.day"
                                     type="button"
                                     :class="[monthCellClass(cell), cellMinH]"
+                                    :style="monthCellStyle(cell)"
                                     @click="onPickDay(cell)"
                                 >
                                     <span
                                         class="px-2 pt-1.5 text-xs font-semibold tabular-nums"
-                                        :class="cell.isToday ? 'text-talents-700' : 'text-slate-500'"
+                                        :class="
+                                            selectedDay === cell.day
+                                                ? ''
+                                                : cell.isToday
+                                                  ? 'text-talents-700'
+                                                  : 'text-slate-500'
+                                        "
+                                        :style="selectedDay === cell.day ? { color: currentMonthTheme.color } : {}"
                                     >
                                         {{ cell.day }}
                                     </span>
@@ -380,12 +660,13 @@ function monthCellClass(cell) {
                                             class="flex min-w-0 items-center gap-1"
                                         >
                                             <span
-                                                class="h-1 w-1 shrink-0 rounded-full"
-                                                :class="it.kind === 'rito' ? 'bg-violet-500' : 'bg-sky-500'"
+                                                class="h-1.5 w-1.5 shrink-0 rounded-full"
+                                                :style="{ backgroundColor: itemKindTheme(it).color }"
                                                 aria-hidden="true"
                                             />
                                             <span
-                                                class="truncate text-[10px] font-medium leading-tight text-slate-700 sm:text-xs"
+                                                class="truncate text-[10px] font-medium leading-tight sm:text-xs"
+                                                :class="it.completed ? 'text-slate-400 line-through' : 'text-slate-700'"
                                             >
                                                 {{ it.title }}
                                             </span>
@@ -434,10 +715,22 @@ function monthCellClass(cell) {
                     <li
                         v-for="it in selectedDayItems"
                         :key="it.id"
-                        class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm"
+                        class="rounded-2xl border p-4 shadow-sm"
+                        :class="itemShellClass(it)"
                     >
                         <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
                             <StrategicKindBadge :kind="it.kind" :label="kindLabel(it.kind)" />
+                            <button
+                                v-if="canToggleCompletion(it)"
+                                type="button"
+                                class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition"
+                                :class="it.completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-700'"
+                                :disabled="completingIds.has(it.id)"
+                                @click.stop="toggleCompletion(it)"
+                            >
+                                <CheckCircleIcon class="h-4 w-4" aria-hidden="true" />
+                                {{ it.completed ? 'Concluído' : 'Marcar feito' }}
+                            </button>
                             <div v-if="editable" class="flex items-center gap-2">
                                 <label class="inline-flex items-center gap-1 text-xs text-slate-500">
                                     <span>Data</span>
@@ -458,11 +751,12 @@ function monthCellClass(cell) {
                                 </Link>
                             </div>
                         </div>
-                        <p class="font-semibold text-slate-900">{{ it.title }}</p>
+                        <p class="font-semibold" :class="itemTextClass(it)">{{ it.title }}</p>
                         <p v-if="it.description" class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
                             {{ it.description }}
                         </p>
-                        <p v-if="it.recurrence_label" class="mt-2 text-xs text-violet-600">Repete: {{ it.recurrence_label }}</p>
+                        <p v-if="it.recurrence_label" class="mt-2 text-xs text-slate-500">Repete: {{ it.recurrence_label }}</p>
+                        <p v-if="it.list_title" class="mt-2 text-xs text-slate-500">Lista: {{ it.list_title }}</p>
                         <AttachmentList
                             v-if="it.attachments?.length"
                             class="mt-2"
@@ -497,6 +791,7 @@ function monthCellClass(cell) {
                                 v-for="it in group.items"
                                 :key="it.id"
                                 class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
+                                :class="it.completed ? 'bg-slate-50/80' : ''"
                             >
                                 <div class="min-w-0 flex-1">
                                     <div class="mb-1 flex flex-wrap items-center gap-2">
@@ -513,11 +808,12 @@ function monthCellClass(cell) {
                                             />
                                         </label>
                                     </div>
-                                    <p class="font-medium text-slate-900">{{ it.title }}</p>
+                                    <p class="font-medium" :class="itemTextClass(it)">{{ it.title }}</p>
                                     <p v-if="it.description" class="mt-1 line-clamp-2 text-sm text-slate-600">
                                         {{ it.description }}
                                     </p>
-                                    <p v-if="it.recurrence_label" class="mt-1 text-xs text-violet-600">{{ it.recurrence_label }}</p>
+                                    <p v-if="it.recurrence_label" class="mt-1 text-xs text-slate-500">{{ it.recurrence_label }}</p>
+                                    <p v-if="it.list_title" class="mt-1 text-xs text-slate-500">{{ it.list_title }}</p>
                                     <AttachmentList
                                         v-if="it.attachments?.length"
                                         class="mt-1"
@@ -535,6 +831,16 @@ function monthCellClass(cell) {
                                 >
                                     <PencilSquareIcon class="h-5 w-5" aria-hidden="true" />
                                 </Link>
+                                <button
+                                    v-else-if="canToggleCompletion(it)"
+                                    type="button"
+                                    class="shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                                    :class="it.completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700'"
+                                    :disabled="completingIds.has(it.id)"
+                                    @click="toggleCompletion(it)"
+                                >
+                                    {{ it.completed ? 'Concluído' : 'Marcar feito' }}
+                                </button>
                             </li>
                         </ul>
                     </template>
@@ -561,10 +867,22 @@ function monthCellClass(cell) {
                             <li
                                 v-for="it in block.items"
                                 :key="it.id"
-                                class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm"
+                                class="rounded-2xl border p-4 shadow-sm"
+                                :class="itemShellClass(it)"
                             >
                                 <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
                                     <StrategicKindBadge :kind="it.kind" :label="kindLabel(it.kind)" />
+                                    <button
+                                        v-if="canToggleCompletion(it)"
+                                        type="button"
+                                        class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition"
+                                        :class="it.completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-700'"
+                                        :disabled="completingIds.has(it.id)"
+                                        @click="toggleCompletion(it)"
+                                    >
+                                        <CheckCircleIcon class="h-4 w-4" aria-hidden="true" />
+                                        {{ it.completed ? 'Concluído' : 'Marcar feito' }}
+                                    </button>
                                     <div v-if="editable" class="flex items-center gap-2">
                                         <input
                                             type="date"
@@ -582,7 +900,7 @@ function monthCellClass(cell) {
                                         </Link>
                                     </div>
                                 </div>
-                                <p class="font-medium text-slate-900">{{ it.title }}</p>
+                                <p class="font-medium" :class="itemTextClass(it)">{{ it.title }}</p>
                                 <p v-if="it.description" class="mt-2 line-clamp-3 text-sm text-slate-600">
                                     {{ it.description }}
                                 </p>
@@ -592,6 +910,7 @@ function monthCellClass(cell) {
                                     :attachments="it.attachments"
                                 />
                                 <p v-if="it.company?.name" class="mt-1 text-xs text-slate-500">{{ it.company.name }}</p>
+                                <p v-if="it.list_title" class="mt-1 text-xs text-slate-500">Lista: {{ it.list_title }}</p>
                             </li>
                         </ul>
                     </div>

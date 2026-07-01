@@ -19,6 +19,7 @@ const props = defineProps({
     canNavigatePrev: { type: Boolean, default: true },
     canNavigateNext: { type: Boolean, default: true },
     periodLabel: { type: String, default: null },
+    navigationRange: { type: Object, default: null },
 });
 
 const localYear = ref(props.year);
@@ -45,11 +46,15 @@ const goMonth = (delta) => {
         mo = 1;
         y += 1;
     }
+    goToMonth(y, mo);
+};
+
+const goToMonth = (year, month) => {
     router.get(
         route(props.dashboardRoute),
         {
-            [props.queryParamYear]: y,
-            [props.queryParamMonth]: mo,
+            [props.queryParamYear]: year,
+            [props.queryParamMonth]: month,
         },
         { preserveScroll: true, replace: true },
     );
@@ -97,7 +102,9 @@ const goToday = () => {
                 :can-navigate-prev="canNavigatePrev"
                 :can-navigate-next="canNavigateNext"
                 :period-label="periodLabel"
+                :navigation-range="navigationRange"
                 @navigate-month="goMonth"
+                @pick-month="({ year, month }) => goToMonth(year, month)"
                 @go-today="goToday"
             />
         </div>

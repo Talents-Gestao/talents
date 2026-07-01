@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -78,7 +79,7 @@ const submit = () => {
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-900">Nova empresa</h2>
+            <FormPageHeader :back-href="route('admin.companies.index')" title="Nova empresa" />
         </template>
 
         <form class="surface-card max-w-4xl space-y-4 p-6 text-slate-900" @submit.prevent="submit">

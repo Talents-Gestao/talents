@@ -21,6 +21,7 @@
 /storage/fonts
 /storage/app/dompdf-tmp
 /vendor
+.docker-tmp/
 Homestead.json
 Homestead.yaml
 Thumbs.db

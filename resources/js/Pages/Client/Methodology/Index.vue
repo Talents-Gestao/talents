@@ -83,7 +83,7 @@ const selectedStep = ref(2);
                         </div>
                     </div>
                     <div v-else class="rounded-xl border border-dashed border-talents-200 bg-white/80 p-8 text-center text-sm text-gray-600">
-                        Nenhuma pesquisa ainda. Crie uma pesquisa a partir de um template vinculado pela Talents.
+                        Nenhuma pesquisa encontrada.
                     </div>
                 </div>
                 <div v-else class="rounded-xl border border-dashed border-talents-200 bg-white/60 p-10 text-center">

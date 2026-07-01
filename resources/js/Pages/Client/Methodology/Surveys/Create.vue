@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -26,7 +27,11 @@ const submit = () => {
 
     <ClientLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-talents-900">Nova pesquisa</h2>
+            <FormPageHeader
+                :back-href="route('client.metodologia.index')"
+                back-label="Direcionamento estratégico"
+                title="Nova pesquisa"
+            />
         </template>
 
         <div v-if="!templates?.length" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">

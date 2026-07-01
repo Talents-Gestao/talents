@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -27,7 +28,7 @@ function submit() {
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold text-gray-900">Ativar processo para empresa</h2>
+            <FormPageHeader :back-href="route('admin.tarefas.processos.index')" title="Ativar processo para empresa" />
         </template>
 
         <form class="surface-card max-w-xl space-y-4 p-6" @submit.prevent="submit">

@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -69,9 +70,10 @@ const submit = () => {
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-900">
-                {{ questionnaire ? 'Editar roteiro' : 'Novo roteiro' }}
-            </h2>
+            <FormPageHeader
+                :back-href="route('admin.entrevistas.roteiros.index')"
+                :title="questionnaire ? 'Editar roteiro' : 'Novo roteiro'"
+            />
         </template>
 
         <form class="space-y-6" @submit.prevent="submit">

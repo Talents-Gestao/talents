@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import CommercialAdjustmentFields from '@/Components/Comercial/CommercialAdjustmentFields.vue';
 import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -302,25 +303,21 @@ const services = computed(() => {
 
     <AdminLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <p class="text-sm text-slate-500">
-                        <Link :href="route('admin.comercial.propostas.index')" class="hover:underline">Propostas</Link>
-                        / {{ isEdit ? 'Editar' : 'Nova' }}
-                    </p>
-                    <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{{ titleText }}</h2>
-                </div>
-                <div class="flex flex-wrap gap-2">
+            <FormPageHeader
+                :back-href="route('admin.comercial.propostas.index')"
+                back-label="Propostas"
+                :title="titleText"
+            >
+                <template v-if="isEdit" #trailing>
                     <button
-                        v-if="isEdit"
                         type="button"
                         class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                         @click="downloadPdf"
                     >
                         Gerar PDF
                     </button>
-                </div>
-            </div>
+                </template>
+            </FormPageHeader>
         </template>
 
         <CommercialModuleNav />

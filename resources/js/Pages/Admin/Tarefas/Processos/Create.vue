@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import ColorPresetPicker from '@/Components/Tasks/ColorPresetPicker.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -23,7 +24,7 @@ function submit() {
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold text-gray-900">Novo modelo de processo</h2>
+            <FormPageHeader :back-href="route('admin.tarefas.processos.index')" title="Novo modelo de processo" />
         </template>
 
         <form class="surface-card max-w-xl space-y-4 p-6" @submit.prevent="submit">

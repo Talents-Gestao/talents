@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import axios from 'axios';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
@@ -94,20 +95,12 @@ const submit = () => {
 
     <AdminLayout>
         <template #header>
-            <div>
-                <p class="text-sm text-slate-500">
-                    <Link :href="route('admin.dashboard')" class="hover:underline">Admin</Link>
-                    / Empresa Talents
-                </p>
-                <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-                    Empresa Talents — dados institucionais (CONTRATADA)
-                </h2>
-                <p class="mt-2 max-w-3xl text-sm text-slate-600">
-                    Estes dados alimentam os placeholders dos contratos comerciais (<code class="rounded bg-slate-100 px-1 text-xs">empresa_nome</code>,
-                    <code class="rounded bg-slate-100 px-1 text-xs">empresa_cnpj</code>,
-                    <code class="rounded bg-slate-100 px-1 text-xs">empresa_representacao</code>, etc.).
-                </p>
-            </div>
+            <FormPageHeader
+                :back-href="`${route('admin.comercial.settings.edit')}?tab=empresa`"
+                back-label="Configurações comerciais"
+                title="Empresa Talents — dados institucionais (CONTRATADA)"
+                subtitle="Estes dados alimentam os placeholders dos contratos comerciais (empresa_nome, empresa_cnpj, empresa_representacao, etc.)."
+            />
         </template>
 
         <div v-if="page.props.flash?.success" class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">

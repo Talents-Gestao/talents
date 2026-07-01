@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import MiaNr1AdminPanel from '@/Components/MiaNr1AdminPanel.vue';
 import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -194,20 +195,12 @@ const submit = () => {
 
     <AdminLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h2 class="text-xl font-semibold leading-tight text-gray-900">Parecer técnico e plano de ação (NR-1)</h2>
-                    <p class="mt-1 text-sm text-gray-600">
-                        {{ company.name }} — {{ survey.title }}
-                    </p>
-                </div>
-                <Link
-                    :href="route('admin.companies.show', company.id)"
-                    class="text-sm font-medium text-talents-700 hover:underline"
-                >
-                    Voltar à empresa
-                </Link>
-            </div>
+            <FormPageHeader
+                :back-href="route('admin.companies.show', company.id)"
+                back-label="Voltar à empresa"
+                title="Parecer técnico e plano de ação (NR-1)"
+                :subtitle="`${company.name} — ${survey.title}`"
+            />
         </template>
 
         <div
