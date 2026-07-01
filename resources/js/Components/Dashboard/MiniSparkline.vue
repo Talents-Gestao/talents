@@ -1,4 +1,5 @@
 <script setup>
+import ApexChart from '@/Components/Charts/ApexChart.vue';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -43,6 +44,6 @@ const chartSeries = computed(() => [
 
 <template>
     <div class="h-10 w-full min-w-[4rem]">
-        <apexchart v-if="series?.length" type="area" height="40" :options="chartOptions" :series="chartSeries" />
+        <ApexChart v-if="series?.length" type="area" height="40" :options="chartOptions" :series="chartSeries" />
     </div>
 </template>

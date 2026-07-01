@@ -1,4 +1,5 @@
 <script setup>
+import ApexChart from '@/Components/Charts/ApexChart.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -64,7 +65,7 @@ const chartSeries = computed(() => [
 
         <div v-if="radar?.labels?.length" class="mt-6 rounded-xl border border-talents-100 bg-white p-4 shadow-sm">
             <h3 class="text-sm font-semibold text-talents-800">Visão por dimensão (média 0–5)</h3>
-            <apexchart type="radar" height="360" :options="chartOptions" :series="chartSeries" />
+            <ApexChart type="radar" height="360" :options="chartOptions" :series="chartSeries" />
         </div>
 
         <div v-for="block in bySection" :key="block.section.id" class="mt-8 surface-card p-6">

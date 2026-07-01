@@ -1,4 +1,5 @@
 <script setup>
+import ApexChart from '@/Components/Charts/ApexChart.vue';
 import EmptyState from '@/Components/Dashboard/EmptyState.vue';
 import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
 import RankingList from '@/Components/Dashboard/RankingList.vue';
@@ -282,7 +283,7 @@ const barChartSeries = computed(() => [
             />
             <div class="mt-6 flex flex-col gap-8 lg:flex-row lg:items-stretch">
                 <div class="min-h-[280px] min-w-0 flex-1">
-                    <apexchart v-if="monthlyClosings?.length" type="bar" height="300" :options="barChartOptions" :series="barChartSeries" />
+                    <ApexChart v-if="monthlyClosings?.length" type="bar" height="300" :options="barChartOptions" :series="barChartSeries" />
                     <EmptyState v-else class="border-0 bg-transparent py-12" title="Sem fechamentos" />
                 </div>
                 <aside
