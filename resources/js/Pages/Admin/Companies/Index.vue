@@ -1,4 +1,5 @@
 <script setup>
+import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -121,6 +122,7 @@ const submit = () => {
                             <Link :href="route('admin.companies.show', c.id)" class="font-medium text-talents-700 hover:underline">Ver</Link>
                         </td>
                     </tr>
+                    <TableEmptyRow v-if="!companies.data.length" :colspan="7" message="Nenhuma empresa encontrada." />
                 </tbody>
             </table>
         </div>

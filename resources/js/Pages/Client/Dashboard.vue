@@ -377,6 +377,7 @@ const attentionTotal = computed(() => {
                 :can-navigate-prev="dashboardCalendar.canNavigatePrev ?? true"
                 :can-navigate-next="dashboardCalendar.canNavigateNext ?? true"
                 :period-label="dashboardCalendar.visiblePeriod?.label ?? null"
+                :navigation-range="dashboardCalendar.visiblePeriod"
                 title="Calendário estratégico"
                 subtitle="Suas datas e orientações do mês"
                 :full-page-href="route('client.strategic-calendar.index')"

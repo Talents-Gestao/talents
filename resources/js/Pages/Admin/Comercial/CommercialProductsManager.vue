@@ -250,7 +250,7 @@ const typeLabel = (type) => props.pricingTypeLabels[type] ?? type;
                     </tr>
                     <tr v-if="!sortedProducts.length">
                         <td colspan="5" class="px-4 py-10 text-center text-slate-500">
-                            Nenhum produto cadastrado. Use o botão acima para criar o primeiro produto do catálogo.
+                            Nenhum produto encontrado.
                         </td>
                     </tr>
                 </tbody>

@@ -1,4 +1,5 @@
 <script setup>
+import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 
@@ -58,6 +59,7 @@ function destroy(id) {
                             </button>
                         </td>
                     </tr>
+                    <TableEmptyRow v-if="!templates.data.length" :colspan="5" message="Nenhum modelo encontrado." />
                 </tbody>
             </table>
         </div>

@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -66,7 +67,7 @@ const submit = () => {
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-900">Editar template</h2>
+            <FormPageHeader :back-href="route('admin.methodology-templates.index')" title="Editar template" />
         </template>
 
         <form class="space-y-6 text-gray-900" @submit.prevent="submit">

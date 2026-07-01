@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -103,15 +104,11 @@ onMounted(() => {
 
     <ClientLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <h2 class="text-xl font-semibold leading-tight text-talents-900">Integração RHID (Control iD)</h2>
-                <Link
-                    :href="route('client.rhid.compliance.index')"
-                    class="text-sm font-medium text-talents-700 hover:underline"
-                >
-                    Voltar ao Compliance
-                </Link>
-            </div>
+            <FormPageHeader
+                :back-href="route('client.rhid.compliance.index')"
+                back-label="Compliance RHID"
+                title="Integração RHID (Control iD)"
+            />
         </template>
 
         <div class="mx-auto max-w-2xl space-y-8">

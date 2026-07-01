@@ -3,8 +3,8 @@ import StrategicCalendar from '@/Components/StrategicCalendar.vue';
 import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
+import { CheckCircleIcon, InformationCircleIcon } from '@heroicons/vue/24/outline';
 import { Head, router } from '@inertiajs/vue3';
-import { InformationCircleIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     monthItems: Array,
@@ -31,9 +31,13 @@ const navigateMonth = (delta) => {
         m = 1;
         y += 1;
     }
+    goToMonth(y, m);
+};
+
+const goToMonth = (year, month) => {
     router.get(
         route('client.strategic-calendar.index'),
-        { year: y, month: m },
+        { year, month },
         { preserveState: true, replace: true },
     );
 };
@@ -45,6 +49,20 @@ const goToday = () => {
         { year: t.getFullYear(), month: t.getMonth() + 1 },
         { preserveState: true, replace: true },
     );
+};
+
+const toggleUpcoming = (row) => {
+    const routeName = row.source_type === 'task'
+        ? 'client.strategic-calendar.toggle-task-completion'
+        : 'client.strategic-calendar.toggle-completion';
+    const payload = row.source_type === 'task'
+        ? { completed: !row.completed }
+        : { occurs_on: row.occurs_on, completed: !row.completed };
+
+    router.patch(route(routeName, row.source_id), payload, {
+        preserveScroll: true,
+        preserveState: false,
+    });
 };
 </script>
 
@@ -65,7 +83,7 @@ const goToday = () => {
                     </span>
                 </div>
                 <p class="mt-1 max-w-2xl text-sm text-slate-500">
-                    Veja eventos e ritos no calendário ou nas próximas datas abaixo.
+                    Veja eventos, ritos e tarefas no calendário ou nas próximas datas abaixo.
                 </p>
             </div>
         </template>
@@ -80,7 +98,10 @@ const goToday = () => {
                 :can-navigate-prev="canNavigatePrev"
                 :can-navigate-next="canNavigateNext"
                 :period-label="visiblePeriod?.label ?? null"
+                :navigation-range="visiblePeriod"
+                completion-enabled
                 @navigate-month="navigateMonth"
+                @pick-month="({ year, month }) => goToMonth(year, month)"
                 @go-today="goToday"
             />
         </div>
@@ -93,11 +114,26 @@ const goToday = () => {
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">
                                 <StrategicKindBadge :kind="row.kind" :label="kindLabels[row.kind] ?? row.kind" />
-                                <span class="font-medium text-slate-900">{{ row.title }}</span>
+                                <span
+                                    class="font-medium"
+                                    :class="row.completed ? 'text-slate-400 line-through' : 'text-slate-900'"
+                                >
+                                    {{ row.title }}
+                                </span>
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold transition"
+                                    :class="row.completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700'"
+                                    @click="toggleUpcoming(row)"
+                                >
+                                    <CheckCircleIcon class="h-4 w-4" aria-hidden="true" />
+                                    {{ row.completed ? 'Concluído' : 'Marcar feito' }}
+                                </button>
                             </div>
                             <p v-if="row.description" class="mt-2 line-clamp-2 text-sm text-slate-600">
                                 {{ row.description }}
                             </p>
+                            <p v-if="row.list_title" class="mt-1 text-xs text-slate-500">Lista: {{ row.list_title }}</p>
                             <AttachmentList
                                 v-if="row.attachments?.length"
                                 class="mt-2"
@@ -109,7 +145,7 @@ const goToday = () => {
                         }}</span>
                     </div>
                 </li>
-                <li v-if="!upcoming?.length" class="py-4 text-sm text-slate-500">Nenhum item futuro cadastrado.</li>
+                <li v-if="!upcoming?.length" class="py-4 text-sm text-slate-500">Nenhum item encontrado.</li>
             </ul>
         </div>
     </ClientLayout>

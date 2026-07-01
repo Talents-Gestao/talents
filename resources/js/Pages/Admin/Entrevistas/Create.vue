@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -56,12 +57,11 @@ const submit = () => {
 
     <AdminLayout>
         <template #header>
-            <div>
-                <h2 class="text-xl font-semibold leading-tight text-gray-900">Nova entrevista</h2>
-                <p class="mt-1 text-sm text-gray-600">
-                    Envie a gravação (até {{ maxUploadMb }} MB). O processamento pode levar vários minutos para áudios longos.
-                </p>
-            </div>
+            <FormPageHeader
+                :back-href="route('admin.entrevistas.index')"
+                title="Nova entrevista"
+                :subtitle="`Envie a gravação (até ${maxUploadMb} MB). O processamento pode levar vários minutos para áudios longos.`"
+            />
         </template>
 
         <form class="surface-card max-w-2xl space-y-4 p-6" @submit.prevent="submit">

@@ -60,7 +60,7 @@ const categoryLabel = (c) => {
                     </tr>
                 </tbody>
             </table>
-            <p v-if="!complaints.data?.length" class="px-4 py-8 text-center text-sm text-gray-500">Nenhuma denúncia registrada.</p>
+            <p v-if="!complaints.data?.length" class="px-4 py-8 text-center text-sm text-gray-500">Nenhuma denúncia encontrada.</p>
         </div>
     </ClientLayout>
 </template>

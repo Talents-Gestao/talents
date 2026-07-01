@@ -42,6 +42,11 @@ class StrategicCalendarItem extends Model
             ->orderBy('id');
     }
 
+    public function completions(): HasMany
+    {
+        return $this->hasMany(StrategicCalendarCompletion::class, 'strategic_calendar_item_id');
+    }
+
     public function deleteAllAttachments(): void
     {
         foreach ($this->attachments as $attachment) {

@@ -1,4 +1,5 @@
 <script setup>
+import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -67,6 +68,7 @@ const remove = (id) => {
                             <span v-if="u.role === 'company_admin'" class="text-slate-400">—</span>
                         </td>
                     </tr>
+                    <TableEmptyRow v-if="!users.length" :colspan="5" message="Nenhum utilizador encontrado." />
                 </tbody>
             </table>
         </div>

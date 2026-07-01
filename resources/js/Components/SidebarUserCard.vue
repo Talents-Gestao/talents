@@ -30,12 +30,13 @@ const closeMobileSidebar = inject('closeMobileSidebar', null);
 
 const cardClasses = computed(() => {
     const base =
-        'group flex min-h-12 w-full items-center overflow-hidden rounded-2xl border bg-white text-left text-sm transition-[background-color,border-color,box-shadow] duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-talents-500/30';
+        'group flex min-h-10 w-full items-center overflow-hidden rounded-xl border bg-white text-left text-sm transition-[background-color,border-color,box-shadow] duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-talents-500/30';
+    const layout = props.collapsed ? '' : 'pr-2.5';
     const state = props.active
         ? 'border-talents-200 shadow-sm ring-1 ring-talents-200/70'
-        : 'border-slate-200 shadow-sm hover:border-talents-200 hover:bg-slate-50/70';
+        : 'border-slate-200 hover:border-talents-200 hover:bg-slate-50/70';
 
-    return `${base} ${state}`;
+    return `${base} ${layout} ${state}`;
 });
 
 const onNavigate = () => {
@@ -53,18 +54,16 @@ const onNavigate = () => {
         @click="onNavigate"
     >
         <span
-            class="flex h-12 w-12 shrink-0 items-center justify-center"
+            class="flex h-10 w-[2.7rem] shrink-0 items-center justify-center"
             aria-hidden="true"
         >
-            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-talents-300 bg-talents-50 text-talents-700 shadow-sm transition-colors duration-200 group-hover:border-talents-400">
-                <UserCircleIcon class="h-5 w-5" />
-            </span>
+            <UserCircleIcon class="size-6 shrink-0 text-talents-700" />
         </span>
 
         <Transition name="fade">
             <span
                 v-if="!collapsed"
-                class="min-w-0 truncate font-medium leading-snug text-slate-800"
+                class="min-w-0 flex-1 truncate font-medium leading-snug text-slate-900"
             >
                 {{ label }}
             </span>

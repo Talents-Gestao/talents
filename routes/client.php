@@ -73,6 +73,10 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
 
     Route::middleware(['strategic_calendar', 'can.module:calendario_estrategico'])->group(function () {
         Route::get('calendario-estrategico', [ClientStrategicCalendarController::class, 'index'])->name('strategic-calendar.index');
+        Route::patch('calendario-estrategico/{item}/conclusao', [ClientStrategicCalendarController::class, 'toggleCompletion'])
+            ->name('strategic-calendar.toggle-completion');
+        Route::patch('calendario-estrategico/tarefas/{card}/conclusao', [ClientStrategicCalendarController::class, 'toggleTaskCompletion'])
+            ->name('strategic-calendar.toggle-task-completion');
         Route::get('calendario-estrategico/anexos/{attachment}/download', [ClientStrategicCalendarController::class, 'attachmentDownload'])
             ->name('strategic-calendar.attachment-download');
     });

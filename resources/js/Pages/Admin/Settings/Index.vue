@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -112,8 +113,11 @@ const setTab = (name) => {
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-900">Configurações</h2>
-            <p class="mt-1 text-sm text-gray-600">Mia (IA) para análises NR-1 e envio de e-mails (SMTP) da plataforma.</p>
+            <FormPageHeader
+                :back-href="route('admin.dashboard')"
+                title="Configurações"
+                subtitle="Mia (IA) para análises NR-1 e envio de e-mails (SMTP) da plataforma."
+            />
         </template>
 
         <div

@@ -42,7 +42,7 @@ const destroyQuestionnaire = (id, name) => {
             v-if="!questionnaires?.length"
             class="surface-card p-8 text-center text-sm text-gray-600"
         >
-            Nenhum roteiro cadastrado. O sistema criará o roteiro padrão automaticamente ao recarregar esta página.
+            Nenhum roteiro encontrado.
         </div>
 
         <div v-else class="surface-card overflow-hidden">

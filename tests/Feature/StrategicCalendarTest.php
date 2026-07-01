@@ -12,8 +12,12 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\Company;
 use App\Models\Module;
 use App\Models\Plan;
+use App\Models\StrategicCalendarCompletion;
 use App\Models\StrategicCalendarItem;
 use App\Models\Subscription;
+use App\Models\TaskBoard;
+use App\Models\TaskCard;
+use App\Models\TaskList;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -315,6 +319,141 @@ class StrategicCalendarTest extends TestCase
         $this->assertCount(5, $occurrences);
         $this->assertSame('2026-05-01', $occurrences[0]['occurs_on']);
         $this->assertSame('2026-05-29', $occurrences[4]['occurs_on']);
+    }
+
+    public function test_client_can_toggle_completion_without_affecting_other_company(): void
+    {
+        $companyA = $this->baseCompany();
+        $companyA->update(['strategic_calendar_access' => true]);
+        $companyB = Company::query()->create([
+            'name' => 'Empresa B',
+            'cnpj' => '22.222.222/0001-22',
+            'is_active' => true,
+            'strategic_calendar_access' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+        ]);
+
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Rito mensal',
+            'description' => null,
+            'kind' => StrategicCalendarItemKind::Rito,
+            'occurs_on' => '2026-09-10',
+            'company_id' => null,
+        ]);
+
+        $userA = User::factory()->companyAdmin($companyA->id)->create();
+        $userB = User::factory()->companyAdmin($companyB->id)->create();
+
+        $this->actingAs($userA)
+            ->patch("/client/calendario-estrategico/{$item->id}/conclusao", [
+                'occurs_on' => '2026-09-10',
+                'completed' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('strategic_calendar_completions', [
+            'company_id' => $companyA->id,
+            'strategic_calendar_item_id' => $item->id,
+            'occurs_on' => '2026-09-10 00:00:00',
+        ]);
+
+        $this->actingAs($userA)
+            ->get('/client/calendario-estrategico?year=2026&month=9')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('monthItems.0.completed', true)
+                ->where('monthItems.0.completed_by_user_id', $userA->id));
+
+        $this->actingAs($userB)
+            ->get('/client/calendario-estrategico?year=2026&month=9')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('monthItems.0.completed', false)
+                ->where('monthItems.0.completed_at', null));
+    }
+
+    public function test_recurring_completion_is_scoped_to_occurrence_date(): void
+    {
+        $company = $this->baseCompany();
+        $company->update(['strategic_calendar_access' => true]);
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Rito semanal',
+            'description' => null,
+            'kind' => StrategicCalendarItemKind::Rito,
+            'occurs_on' => '2026-09-04',
+            'recurrence' => StrategicCalendarRecurrence::Weekly,
+            'company_id' => null,
+        ]);
+
+        StrategicCalendarCompletion::query()->create([
+            'company_id' => $company->id,
+            'strategic_calendar_item_id' => $item->id,
+            'occurs_on' => '2026-09-11',
+            'completed_at' => now(),
+            'completed_by_user_id' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/client/calendario-estrategico?year=2026&month=9')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('monthItems', 4)
+                ->where('monthItems.0.occurs_on', '2026-09-04')
+                ->where('monthItems.0.completed', false)
+                ->where('monthItems.1.occurs_on', '2026-09-11')
+                ->where('monthItems.1.completed', true));
+    }
+
+    public function test_client_calendar_includes_due_tasks_and_can_complete_task(): void
+    {
+        $company = $this->baseCompany();
+        $company->update([
+            'strategic_calendar_access' => true,
+            'tasks_access' => true,
+        ]);
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'visibility' => 'company',
+            'position' => 1,
+            'is_archived' => false,
+        ]);
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'company_id' => $company->id,
+            'title' => 'Enviar evidências',
+            'description' => null,
+            'position' => 1,
+            'visibility' => 'company',
+            'due_date' => '2026-09-12',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/client/calendario-estrategico?year=2026&month=9')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('kindLabels.task', 'Tarefa')
+                ->where('monthItems.0.kind', 'task')
+                ->where('monthItems.0.title', 'Enviar evidências')
+                ->where('monthItems.0.completed', false));
+
+        $this->actingAs($user)
+            ->patch("/client/calendario-estrategico/tarefas/{$card->id}/conclusao", [
+                'completed' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertNotNull($card->fresh()->completed_at);
     }
 
     public function test_admin_can_upload_attachments_for_item(): void

@@ -1,4 +1,5 @@
 <script setup>
+import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -105,6 +106,7 @@ const resendInvitation = (user) => {
                             </button>
                         </td>
                     </tr>
+                    <TableEmptyRow v-if="!users.length" :colspan="5" message="Nenhum utilizador encontrado." />
                 </tbody>
             </table>
         </div>

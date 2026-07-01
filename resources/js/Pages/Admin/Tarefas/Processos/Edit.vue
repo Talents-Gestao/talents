@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import ColorPresetPicker from '@/Components/Tasks/ColorPresetPicker.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -77,7 +78,7 @@ function deleteCard(cardId) {
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold text-gray-900">Editar modelo</h2>
+            <FormPageHeader :back-href="route('admin.tarefas.processos.index')" title="Editar modelo" />
         </template>
 
         <div class="space-y-6 p-4">

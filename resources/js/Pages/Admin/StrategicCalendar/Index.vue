@@ -47,11 +47,15 @@ const navigateMonth = (delta) => {
         m = 1;
         y += 1;
     }
+    goToMonth(y, m);
+};
+
+const goToMonth = (year, month) => {
     router.get(
         route('admin.strategic-calendar.index'),
         {
-            year: y,
-            month: m,
+            year,
+            month,
             company_id: companyFilter.value || undefined,
             kind: kindFilter.value || undefined,
         },
@@ -214,6 +218,7 @@ function closeDayModal() {
                 update-date-route="admin.strategic-calendar.update-date"
                 edit-item-route="admin.strategic-calendar.edit"
                 @navigate-month="navigateMonth"
+                @pick-month="({ year, month }) => goToMonth(year, month)"
                 @go-today="goToday"
                 @edit-day="openDayModal"
             />
@@ -288,7 +293,7 @@ function closeDayModal() {
                     </div>
                 </li>
                 <li v-if="!items.data?.length" class="px-4 py-10 text-center text-sm text-slate-500 sm:px-6">
-                    Nenhum item cadastrado.
+                    Nenhum item encontrado.
                 </li>
             </ul>
 

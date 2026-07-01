@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -39,14 +40,11 @@ const submit = () => {
 
     <AdminLayout>
         <template #header>
-            <div>
-                <Link :href="route('admin.users.index')" class="text-sm font-medium text-talents-700 hover:underline">
-                    ← Equipe
-                </Link>
-                <h2 class="mt-1 text-xl font-semibold leading-tight text-gray-900">
-                    {{ mode === 'create' ? 'Novo administrador' : 'Editar administrador' }}
-                </h2>
-            </div>
+            <FormPageHeader
+                :back-href="route('admin.users.index')"
+                back-label="Equipe"
+                :title="mode === 'create' ? 'Novo administrador' : 'Editar administrador'"
+            />
         </template>
 
         <form class="max-w-3xl space-y-6 surface-card p-6" @submit.prevent="submit">

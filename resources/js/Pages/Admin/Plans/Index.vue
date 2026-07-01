@@ -1,4 +1,5 @@
 <script setup>
+import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 
@@ -42,6 +43,7 @@ defineProps({ plans: Object });
                             <Link :href="route('admin.plans.edit', p.id)" class="font-medium text-talents-700 hover:underline">Editar</Link>
                         </td>
                     </tr>
+                    <TableEmptyRow v-if="!plans.data.length" :colspan="4" message="Nenhum plano encontrado." />
                 </tbody>
             </table>
         </div>

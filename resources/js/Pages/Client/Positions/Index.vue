@@ -1,4 +1,5 @@
 <script setup>
+import ListEmptyState from '@/Components/ListEmptyState.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 
@@ -44,6 +45,7 @@ const remove = (id) => {
                 <span>{{ p.name }}</span>
                 <button type="button" class="text-red-600 hover:underline" @click="remove(p.id)">Excluir</button>
             </li>
+            <ListEmptyState v-if="!positions.data.length" message="Nenhum cargo encontrado." />
         </ul>
     </ClientLayout>
 </template>

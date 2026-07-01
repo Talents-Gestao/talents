@@ -1,4 +1,5 @@
 <script setup>
+import ListEmptyState from '@/Components/ListEmptyState.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 
@@ -68,6 +69,7 @@ const remove = (id) => {
                 <span>{{ d.name }}</span>
                 <button type="button" class="text-red-600 hover:underline" @click="remove(d.id)">Excluir</button>
             </li>
+            <ListEmptyState v-if="!departments.data.length" message="Nenhum setor encontrado." />
         </ul>
     </ClientLayout>
 </template>

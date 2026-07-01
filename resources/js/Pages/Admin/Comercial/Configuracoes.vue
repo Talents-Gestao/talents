@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue';
 import CommercialPricingShortcuts from '@/Components/Comercial/CommercialPricingShortcuts.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -91,15 +92,12 @@ const pdfProductLabels = computed(() =>
 
     <AdminLayout>
         <template #header>
-            <div>
-                <p class="text-sm text-slate-500">Comercial</p>
-                <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-                    Valores e contratos
-                </h2>
-                <p class="mt-1 text-sm text-slate-600">
-                    Tabelas de preço, PDF da proposta e modelos usados na geração de contratos.
-                </p>
-            </div>
+            <FormPageHeader
+                :back-href="route('admin.comercial.dashboard')"
+                back-label="Comercial"
+                title="Valores e contratos"
+                subtitle="Tabelas de preço, PDF da proposta e modelos usados na geração de contratos."
+            />
         </template>
 
         <CommercialModuleNav />

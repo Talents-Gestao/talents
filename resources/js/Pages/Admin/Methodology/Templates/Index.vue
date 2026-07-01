@@ -1,4 +1,5 @@
 <script setup>
+import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 
@@ -46,6 +47,7 @@ defineProps({ templates: Object });
                             <Link :href="route('admin.methodology-templates.edit', t.id)" class="font-medium text-talents-700 hover:underline">Editar</Link>
                         </td>
                     </tr>
+                    <TableEmptyRow v-if="!templates.data.length" :colspan="5" message="Nenhum template encontrado." />
                 </tbody>
             </table>
         </div>
