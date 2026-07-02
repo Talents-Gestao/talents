@@ -10,6 +10,7 @@ use App\Models\StrategicCalendarCompletion;
 use App\Models\StrategicCalendarItem;
 use App\Models\StrategicCalendarItemAttachment;
 use App\Models\TaskCard;
+use App\Support\StrategicCalendarClientEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Support\StrategicCalendarPeriod;
 use Carbon\Carbon;
@@ -54,12 +55,7 @@ class StrategicCalendarController extends Controller
             $queryEnd,
             'client.strategic-calendar.attachment-download',
         );
-        $monthItems = $this->withTasks(
-            $this->withCompletions($monthItems, $company->id),
-            $company,
-            $queryStart,
-            $queryEnd,
-        );
+        $monthItems = StrategicCalendarClientEnricher::enrich($monthItems, $company, $queryStart, $queryEnd);
 
         $upcomingStart = now()->startOfDay();
         $upcomingEnd = $range
@@ -81,12 +77,7 @@ class StrategicCalendarController extends Controller
 
         $upcoming = $upcomingExpanded
             ->filter(fn (array $row) => $row['occurs_on'] >= $upcomingStart->toDateString())
-            ->pipe(fn (Collection $rows) => $this->withTasks(
-                $this->withCompletions($rows, $company->id),
-                $company,
-                $upcomingStart,
-                $upcomingEnd,
-            ))
+            ->pipe(fn (Collection $rows) => StrategicCalendarClientEnricher::enrich($rows, $company, $upcomingStart, $upcomingEnd))
             ->sortBy([['occurs_on', 'asc'], ['kind', 'asc']])
             ->take(12)
             ->values();
@@ -109,8 +100,8 @@ class StrategicCalendarController extends Controller
             $agendaEndCarbon,
             'client.strategic-calendar.attachment-download',
         );
-        $agendaItems = $this->withTasks(
-            $this->withCompletions($agendaItems, $company->id),
+        $agendaItems = StrategicCalendarClientEnricher::enrich(
+            $agendaItems,
             $company,
             Carbon::parse($agendaStart)->startOfDay(),
             $agendaEndCarbon,
@@ -229,83 +220,4 @@ class StrategicCalendarController extends Controller
         return (int) max(1, (int) floor($maxKb / 1024));
     }
 
-    /**
-     * @param  Collection<int, array<string, mixed>>  $items
-     * @return Collection<int, array<string, mixed>>
-     */
-    private function withCompletions(Collection $items, int $companyId): Collection
-    {
-        $sourceIds = $items->pluck('source_id')->filter()->unique()->values();
-
-        if ($sourceIds->isEmpty()) {
-            return $items->map(fn (array $item) => $item + [
-                'source_type' => 'strategic_item',
-                'completed' => false,
-                'completed_at' => null,
-                'completed_by_user_id' => null,
-            ]);
-        }
-
-        $completions = StrategicCalendarCompletion::query()
-            ->where('company_id', $companyId)
-            ->whereIn('strategic_calendar_item_id', $sourceIds)
-            ->get()
-            ->keyBy(fn (StrategicCalendarCompletion $completion) => $completion->strategic_calendar_item_id.'|'.$completion->occurs_on->toDateString());
-
-        return $items->map(function (array $item) use ($completions) {
-            $key = ($item['source_id'] ?? null).'|'.($item['occurs_on'] ?? null);
-            $completion = $completions->get($key);
-
-            return $item + [
-                'source_type' => 'strategic_item',
-                'completed' => $completion !== null,
-                'completed_at' => $completion?->completed_at?->toIso8601String(),
-                'completed_by_user_id' => $completion?->completed_by_user_id,
-            ];
-        });
-    }
-
-    /**
-     * @param  Collection<int, array<string, mixed>>  $items
-     * @return Collection<int, array<string, mixed>>
-     */
-    private function withTasks(Collection $items, Company $company, Carbon $start, Carbon $end): Collection
-    {
-        if (! $company->hasTasksEnabled()) {
-            return $items->sortBy([['occurs_on', 'asc'], ['source_id', 'asc']])->values();
-        }
-
-        $tasks = TaskCard::query()
-            ->visibleToCompany((int) $company->id)
-            ->whereNotNull('due_date')
-            ->whereBetween('due_date', [$start->toDateString(), $end->toDateString()])
-            ->with(['list:id,name'])
-            ->orderBy('due_date')
-            ->orderBy('id')
-            ->get(['id', 'list_id', 'company_id', 'title', 'description', 'due_date', 'completed_at'])
-            ->map(fn (TaskCard $card) => [
-                'id' => 'task-'.$card->id,
-                'source_id' => $card->id,
-                'source_type' => 'task',
-                'title' => $card->title,
-                'description' => $card->description,
-                'kind' => 'task',
-                'occurs_on' => $card->due_date?->toDateString(),
-                'company_id' => $card->company_id,
-                'company' => ['id' => $company->id, 'name' => $company->name],
-                'recurrence' => null,
-                'recurrence_label' => null,
-                'recurrence_ends_on' => null,
-                'attachments' => [],
-                'completed' => $card->completed_at !== null,
-                'completed_at' => $card->completed_at?->toIso8601String(),
-                'completed_by_user_id' => null,
-                'list_title' => $card->list?->name,
-            ]);
-
-        return $items
-            ->concat($tasks)
-            ->sortBy([['occurs_on', 'asc'], ['kind', 'asc'], ['source_id', 'asc']])
-            ->values();
-    }
 }
