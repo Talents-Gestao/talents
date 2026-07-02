@@ -60,7 +60,7 @@ const checklistTitle = computed(() => {
                 v-if="dueAlert.show"
                 class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium"
                 :class="dueAlertClass(dueAlert)"
-                :title="dueAlert.title"
+                :title="dueAlert.absoluteDate ? `${dueAlert.title} · ${dueAlert.absoluteDate}` : dueAlert.title"
             >
                 <CheckCircleIcon
                     v-if="dueAlert.urgency === 'completed'"

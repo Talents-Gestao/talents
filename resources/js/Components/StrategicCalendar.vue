@@ -2,7 +2,12 @@
 import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import { kindTheme, monthTheme } from '@/utils/strategicCalendarThemes';
-import { CheckCircleIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, PencilSquareIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
+import {
+    formatDateNumeric,
+    formatRelativeAgendaHeader,
+    formatRelativeDayHeader,
+} from '@/utils/dateOnly';
+import { CheckCircleIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
 import { Link, router } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
@@ -248,34 +253,8 @@ const listRowsGrouped = computed(() => {
         .sort(([a], [b]) => a.localeCompare(b));
     return entries.map(([iso, dayItems]) => ({
         iso,
-        label: new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
-        }),
-        items: sortItemsByKind(dayItems),
-    }));
-});
-
-const selectedDayProgress = computed(() => {
-    const total = selectedDayItems.value.length;
-    if (!total) return null;
-
-    const done = selectedDayItems.value.filter((it) => it.completed).length;
-    return { done, total };
-});
-
-const selectedDayItemsGrouped = computed(() => {
-    const buckets = { rito: [], event: [], task: [] };
-    for (const it of selectedDayItems.value) {
-        const key = Object.prototype.hasOwnProperty.call(buckets, it.kind) ? it.kind : 'event';
-        buckets[key].push(it);
-    }
-
-    return KIND_ORDER.filter((kind) => buckets[kind].length).map((kind) => ({
-        kind,
-        label: kindLabel(kind),
-        items: buckets[kind],
+        label: formatRelativeDayHeader(iso),
+        items: dayItems,
     }));
 });
 
@@ -290,15 +269,18 @@ const agendaTimeline = computed(() => {
         .sort()
         .map((iso) => ({
             iso,
-            label: new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-            }),
+            label: formatRelativeAgendaHeader(iso),
             items: groups[iso],
         }));
 });
+
+const selectedDayHeaderLabel = computed(() =>
+    selectedDayIso.value ? formatRelativeAgendaHeader(selectedDayIso.value) : '',
+);
+
+const selectedDayHeaderTitle = computed(() =>
+    selectedDayIso.value ? formatDateNumeric(selectedDayIso.value) : '',
+);
 
 function onPickDay(cell) {
     if (cell.day) {
@@ -763,16 +745,11 @@ function itemShellClass(item) {
                 class="border-t border-slate-200/80 bg-slate-50/40 lg:w-[min(380px,34%)] lg:border-l lg:border-t-0 lg:shrink-0"
                 :class="rootPad"
             >
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {{
-                        selectedDayIso
-                            ? new Date(selectedDayIso + 'T12:00:00').toLocaleDateString('pt-BR', {
-                                  weekday: 'long',
-                                  day: 'numeric',
-                                  month: 'long',
-                              })
-                            : ''
-                    }}
+                <p
+                    class="text-xs font-semibold uppercase tracking-wide text-slate-500"
+                    :title="selectedDayHeaderTitle || undefined"
+                >
+                    {{ selectedDayHeaderLabel }}
                 </p>
                 <div v-if="selectedDayProgress" class="mt-2 flex items-center justify-between gap-2 text-xs text-slate-600">
                     <span>{{ selectedDayProgress.done }} de {{ selectedDayProgress.total }} concluídos</span>

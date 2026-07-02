@@ -1,3 +1,5 @@
+import { daysFromToday, formatDateNumeric, formatRelativeDate } from '@/utils/dateOnly';
+
 export function descriptionPresent(card) {
     const d = card?.description;
     return typeof d === 'string' ? d.trim().length > 0 : Boolean(d);
@@ -47,14 +49,9 @@ export function attachmentsCount(card) {
     return Number(card?.attachments_count) || 0;
 }
 
-/** Dias até o vencimento (negativo = atrasado). */
+/** Dias até o vencimento (negativo = atrasado), ancorado em São Paulo. */
 export function dueDaysDiff(dateStr) {
-    if (!dateStr) return null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const [y, m, d] = String(dateStr).split('-').map(Number);
-    const due = new Date(y, (m || 1) - 1, d || 1);
-    return Math.round((due - today) / 86_400_000);
+    return daysFromToday(dateStr);
 }
 
 /** overdue = atrasado; soon = vence em até 2 dias; ok = data futura. */
@@ -140,6 +137,7 @@ export function cardDueAlert(card) {
         date: display.date,
         label: dueLabel(display.date),
         title: display.title,
+        absoluteDate: formatDateNumeric(display.date),
         fromChecklist: display.source === 'checklist',
         hasChecklistDue: active.some((c) => c.source === 'checklist'),
     };
@@ -147,13 +145,7 @@ export function cardDueAlert(card) {
 
 export function dueLabel(date) {
     if (!date) return '';
-    try {
-        const [y, m, d] = String(date).split('-').map(Number);
-        const dt = new Date(y, (m || 1) - 1, d || 1);
-        return dt.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
-    } catch (_e) {
-        return date;
-    }
+    return formatRelativeDate(date);
 }
 
 export function dueAlertClass(alert) {

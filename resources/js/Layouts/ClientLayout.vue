@@ -6,8 +6,12 @@ import SidebarNavSection from '@/Components/SidebarNavSection.vue';
 import SidebarUserCard from '@/Components/SidebarUserCard.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 
+const page = usePage();
 const { can } = usePermissions();
+
+const unreadNoticesCount = computed(() => Number(page.props.nav?.unread_notices_count ?? 0));
 
 const showVozDoTime = computed(
     () => can('pesquisas', 'view') || can('denuncias', 'view'),
@@ -18,6 +22,7 @@ import {
     ArrowRightOnRectangleIcon,
     BriefcaseIcon,
     BuildingOfficeIcon,
+    BellAlertIcon,
     CalendarDaysIcon,
     ViewColumnsIcon,
     ClipboardDocumentListIcon,
@@ -47,6 +52,14 @@ import {
                 :active="route().current('client.dashboard')"
                 :icon="HomeIcon"
                 label="Painel"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                :href="route('client.notices.index')"
+                :active="route().current('client.notices.*')"
+                :icon="BellAlertIcon"
+                label="Avisos"
+                :badge="unreadNoticesCount > 0 ? unreadNoticesCount : null"
                 :collapsed="collapsed"
             />
             <SidebarNavSection v-if="showVozDoTime" label="Voz do Time" :collapsed="collapsed">
