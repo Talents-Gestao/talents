@@ -1,4 +1,5 @@
 <script setup>
+import ApexChart from '@/Components/Charts/ApexChart.vue';
 import EmptyState from '@/Components/Dashboard/EmptyState.vue';
 import HealthBadge from '@/Components/Dashboard/HealthBadge.vue';
 import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
@@ -7,7 +8,7 @@ import StatCard from '@/Components/Dashboard/StatCard.vue';
 import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
-import { daysFromToday, formatDateLong, formatDateShort } from '@/utils/dateOnly';
+import { formatRelativeDateChip, formatDateLong, formatDateShort } from '@/utils/dateOnly';
 import RhidPortfolioSection from '@/Components/Admin/RhidPortfolioSection.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
@@ -87,19 +88,8 @@ const nextCalendarEvent = computed(() => {
     return items[0];
 });
 
-/** Diferença em dias entre hoje e a data `occurs_on` do evento (0 = hoje). */
-const calendarEventDaysFromToday = computed(() => daysFromToday(nextCalendarEvent.value?.occurs_on));
-
 /** Chip discreto que situa o evento no tempo sem repetir a data inteira. */
-const calendarEventChip = computed(() => {
-    const n = calendarEventDaysFromToday.value;
-    if (n === null || n === undefined) return null;
-    if (n === 0) return { label: 'Hoje', tone: 'today' };
-    if (n === 1) return { label: 'Amanhã', tone: 'soon' };
-    if (n > 1 && n <= 7) return { label: `Em ${n} dias`, tone: 'soon' };
-    if (n < 0) return { label: 'No passado', tone: 'past' };
-    return { label: `Em ${n} dias`, tone: 'far' };
-});
+const calendarEventChip = computed(() => formatRelativeDateChip(nextCalendarEvent.value?.occurs_on));
 
 const calendarKindLabel = (kind) => {
     const k = typeof kind === 'object' && kind?.value !== undefined ? kind.value : kind;
@@ -437,7 +427,7 @@ const leadWhatsappUrl = computed(() => {
                     />
                     <div class="mt-6 flex flex-col gap-8 lg:flex-row lg:items-start">
                         <div class="flex min-h-[220px] min-w-0 flex-1 justify-center">
-                            <apexchart
+                            <ApexChart
                                 v-if="riskDonutTotal > 0"
                                 type="donut"
                                 height="260"

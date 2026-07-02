@@ -8,7 +8,7 @@ import StrategicCalendarWidget from '@/Components/StrategicCalendarWidget.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
 import { usePermissions } from '@/composables/usePermissions';
-import { formatDateShort } from '@/utils/dateOnly';
+import { formatDateNumeric, formatRelativeDate } from '@/utils/dateOnly';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
@@ -57,7 +57,14 @@ const todayLabel = computed(() =>
     }),
 );
 
-const formatShortDate = (iso) => formatDateShort(iso);
+const formatRelative = (iso) => formatRelativeDate(iso);
+const formatDateTitle = (iso) => {
+    if (!iso) return undefined;
+    const relative = formatRelativeDate(iso);
+    const absolute = formatDateNumeric(iso);
+    if (!absolute || relative === absolute) return absolute;
+    return `${relative} (${absolute})`;
+};
 
 const kindLabel = (kind) => {
     const k = typeof kind === 'object' && kind?.value !== undefined ? kind.value : kind;
@@ -177,7 +184,9 @@ const attentionTotal = computed(() => {
                 <div class="relative">
                     <p class="text-xs font-bold uppercase tracking-wider text-white/90">Próximo no calendário</p>
                     <h3 class="mt-2 font-serif text-xl font-bold leading-snug sm:text-2xl">{{ nextCalendarItem.title }}</h3>
-                    <p class="mt-2 text-sm text-white/95">{{ formatShortDate(nextCalendarItem.occurs_on) }}</p>
+                    <p class="mt-2 text-sm text-white/95" :title="formatDateTitle(nextCalendarItem.occurs_on)">
+                        {{ formatRelative(nextCalendarItem.occurs_on) }}
+                    </p>
                     <p class="mt-1 text-xs text-white/85">{{ kindLabel(nextCalendarItem.kind) }}</p>
                     <Link
                         :href="route('client.strategic-calendar.index')"
@@ -308,7 +317,9 @@ const attentionTotal = computed(() => {
                 </SectionHeader>
                 <ul v-if="upcomingCalendar.length" class="mt-3 space-y-3 text-sm">
                     <li v-for="item in upcomingCalendar" :key="item.id" class="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-                        <p class="text-xs font-medium text-slate-500">{{ formatShortDate(item.occurs_on) }}</p>
+                        <p class="text-xs font-medium text-slate-500" :title="formatDateTitle(item.occurs_on)">
+                            {{ formatRelative(item.occurs_on) }}
+                        </p>
                         <p class="mt-0.5 font-medium text-slate-900">{{ item.title }}</p>
                         <p class="mt-0.5 text-xs text-talents-700">{{ kindLabel(item.kind) }}</p>
                     </li>
@@ -327,7 +338,9 @@ const attentionTotal = computed(() => {
                         <p class="font-medium text-slate-900">{{ t.title }}</p>
                         <p class="text-xs text-slate-500">
                             <span v-if="t.list_title">{{ t.list_title }}</span>
-                            <span v-if="t.due_date"> · vence {{ formatShortDate(t.due_date) }}</span>
+                            <span v-if="t.due_date" :title="formatDateTitle(t.due_date)">
+                                · vence {{ formatRelative(t.due_date) }}
+                            </span>
                         </p>
                     </li>
                 </ul>
@@ -350,7 +363,13 @@ const attentionTotal = computed(() => {
                         <p class="font-medium text-slate-900">{{ it.title }}</p>
                         <p class="text-xs text-slate-500">{{ it.survey_title }} · {{ it.status === 'in_progress' ? 'Em progresso' : 'Pendente' }}</p>
                     </div>
-                    <span v-if="it.due_date" class="text-xs text-slate-500">Prazo {{ formatShortDate(it.due_date) }}</span>
+                    <span
+                        v-if="it.due_date"
+                        class="text-xs text-slate-500"
+                        :title="formatDateTitle(it.due_date)"
+                    >
+                        Prazo {{ formatRelative(it.due_date) }}
+                    </span>
                 </li>
             </ul>
         </div>
@@ -383,6 +402,7 @@ const attentionTotal = computed(() => {
                 :full-page-href="route('client.strategic-calendar.index')"
                 full-page-label="Ver detalhes"
                 dashboard-route="client.dashboard"
+                completion-enabled
             />
         </div>
     </ClientLayout>

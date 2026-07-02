@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Client\ActionPlanController;
 use App\Http\Controllers\Client\ComplaintController;
+use App\Http\Controllers\Client\CompanyNoticeController as ClientCompanyNoticeController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\DepartmentController;
 use App\Http\Controllers\Client\ExportController;
@@ -31,6 +32,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('client.')->group(function () {
     Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('avisos', [ClientCompanyNoticeController::class, 'index'])->name('notices.index');
+    Route::post('avisos/{notice}/lido', [ClientCompanyNoticeController::class, 'markRead'])->name('notices.mark-read');
+    Route::post('avisos/marcar-todos-lidos', [ClientCompanyNoticeController::class, 'markAllRead'])->name('notices.mark-all-read');
 
     Route::middleware(['company_admin', 'can.module:usuarios'])->group(function () {
         Route::resource('usuarios', UserController::class)->parameters(['usuarios' => 'user'])->except(['show']);

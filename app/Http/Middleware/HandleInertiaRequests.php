@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Support\AdminHomeResolver;
+use App\Support\Notices\UnreadNoticeCounter;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -32,17 +33,13 @@ class HandleInertiaRequests extends Middleware
 
         $user = $request->user();
 
-        $companyPayload = null;
         $permissions = [];
-        $workspacePayload = null;
-        $availableWorkspaces = [];
 
         if ($user) {
             $workspace = $this->workspaceManager->ensureActiveWorkspace($user, $request);
 
             if ($workspace) {
                 $user->setActiveWorkspace($workspace);
-                $workspacePayload = $workspace->toFrontendArray();
 
                 if ($workspace->isCompany()) {
                     $workspace->loadMissing(['company', 'permissions']);
@@ -51,25 +48,7 @@ class HandleInertiaRequests extends Middleware
                 }
             }
 
-            $availableWorkspaces = $this->workspaceManager
-                ->activeWorkspacesFor($user)
-                ->map(fn ($w) => $w->toFrontendArray())
-                ->values()
-                ->all();
-
             $permissions = $user->permissionMatrixForFrontend();
-
-            $company = $user->contextCompany();
-
-            if ($company) {
-                $companyPayload = array_merge($company->toArray(), [
-                    'has_methodology' => $company->hasMethodologyEnabled(),
-                    'has_strategic_calendar' => $company->hasStrategicCalendarEnabled(),
-                    'has_tasks' => $company->hasTasksEnabled(),
-                    'has_complaints' => $company->hasComplaintsEnabled(),
-                    'active_permission_modules' => $company->activePermissionModuleValues(),
-                ]);
-            }
         }
 
         $shared = [
@@ -82,7 +61,6 @@ class HandleInertiaRequests extends Middleware
                         'email' => $user->email,
                         'role' => $user->contextRole()->value,
                         'company_id' => $user->contextCompanyId(),
-                        'company' => $companyPayload,
                         'permissions' => $permissions,
                         'admin_permissions' => $user->isSuperAdmin()
                             ? $user->adminPermissionMatrixForFrontend()
@@ -95,8 +73,6 @@ class HandleInertiaRequests extends Middleware
                             && $user->canAccessAdmin(AdminPermissionModule::Comercial, PermissionAction::View),
                     ]
                     : null,
-                'workspace' => $workspacePayload,
-                'available_workspaces' => $availableWorkspaces,
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
@@ -106,6 +82,11 @@ class HandleInertiaRequests extends Middleware
                 'zapsign_sign_url' => fn () => $request->session()->get('zapsign_sign_url'),
             ],
             'session' => fn () => $this->sessionMetaForFrontend($request),
+            'nav' => [
+                'unread_notices_count' => fn () => $user && $user->contextCompanyId()
+                    ? app(UnreadNoticeCounter::class)->forUser($user)
+                    : 0,
+            ],
         ];
 
         if (config('app.debug') && $request->headers->has('X-Inertia')) {

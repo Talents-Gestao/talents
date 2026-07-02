@@ -118,3 +118,109 @@ export function daysFromToday(iso) {
     const t0 = startOfLocalDay(todayInSaoPaulo()).getTime();
     return Math.round((e0 - t0) / 86400000);
 }
+
+/**
+ * Ex.: "13/06/2026" — data absoluta para tooltips e contexto administrativo.
+ */
+export function formatDateNumeric(iso) {
+    const d = parseDateOnly(iso);
+    if (!d) return '';
+    return d.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+    });
+}
+
+/**
+ * Nome relativo ao "hoje" em São Paulo (estilo Google Calendar/Tasks).
+ *
+ * @param {string|null|undefined} iso
+ * @param {{ weekDayWindow?: number, pastWeekDayWindow?: number }} [options]
+ * @returns {string}
+ */
+export function formatRelativeDate(iso, options = {}) {
+    const weekDayWindow = options.weekDayWindow ?? 6;
+    const pastWeekDayWindow = options.pastWeekDayWindow ?? 6;
+
+    const diff = daysFromToday(iso);
+    if (diff === null) return '—';
+
+    if (diff === 0) return 'Hoje';
+    if (diff === 1) return 'Amanhã';
+    if (diff === -1) return 'Ontem';
+
+    const d = parseDateOnly(iso);
+    if (!d) return '—';
+
+    if (diff > 1 && diff <= weekDayWindow) {
+        return capitalizeFirst(d.toLocaleDateString('pt-BR', { weekday: 'long' }));
+    }
+
+    if (diff < -1 && diff >= -pastWeekDayWindow) {
+        return capitalizeFirst(d.toLocaleDateString('pt-BR', { weekday: 'long' }));
+    }
+
+    const today = todayInSaoPaulo();
+    if (d.getFullYear() === today.getFullYear()) {
+        return formatDateShort(iso);
+    }
+
+    return formatDateNumeric(iso);
+}
+
+/**
+ * Cabeçalho de grupo por dia (lista compacta): "Hoje", "Amanhã" ou "seg., 13 de jun.".
+ */
+export function formatRelativeDayHeader(iso) {
+    const diff = daysFromToday(iso);
+    if (diff === 0) return 'Hoje';
+    if (diff === 1) return 'Amanhã';
+    if (diff === -1) return 'Ontem';
+
+    const d = parseDateOnly(iso);
+    if (!d) return '';
+
+    return capitalizeFirst(
+        d.toLocaleDateString('pt-BR', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+        }),
+    );
+}
+
+/**
+ * Cabeçalho de agenda: relativo próximo ou data por extenso.
+ */
+export function formatRelativeAgendaHeader(iso) {
+    const diff = daysFromToday(iso);
+    if (diff === 0) return 'Hoje';
+    if (diff === 1) return 'Amanhã';
+    if (diff === -1) return 'Ontem';
+
+    return formatDateLong(iso);
+}
+
+/**
+ * Chip com tom visual para dashboards (próximo evento, etc.).
+ *
+ * @returns {{ label: string, tone: 'today'|'soon'|'past'|'far' }|null}
+ */
+export function formatRelativeDateChip(iso) {
+    const diff = daysFromToday(iso);
+    if (diff === null) return null;
+
+    const label = formatRelativeDate(iso);
+    let tone = 'far';
+
+    if (diff === 0) {
+        tone = 'today';
+    } else if (diff === 1 || (diff > 1 && diff <= 7)) {
+        tone = 'soon';
+    } else if (diff < 0) {
+        tone = 'past';
+    }
+
+    return { label, tone };
+}

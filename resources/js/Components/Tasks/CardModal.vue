@@ -15,6 +15,7 @@ import {
     TrashIcon,
 } from '@heroicons/vue/24/outline';
 import { router, useForm } from '@inertiajs/vue3';
+import { formatDateNumeric, formatRelativeDate } from '@/utils/dateOnly';
 import { VueDraggable } from 'vue-draggable-plus';
 import { computed, nextTick, ref, watch } from 'vue';
 
@@ -714,13 +715,15 @@ function formatDateTime(value) {
 
 function formatDateLabel(value) {
     if (!value) return '—';
-    const dt = new Date(value);
-    if (Number.isNaN(dt.getTime())) return String(value);
-    return dt.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-    });
+    return formatRelativeDate(value);
+}
+
+function formatDateTitle(value) {
+    if (!value) return undefined;
+    const relative = formatRelativeDate(value);
+    const absolute = formatDateNumeric(value);
+    if (!absolute || relative === absolute) return absolute;
+    return `${relative} (${absolute})`;
 }
 
 function newItemDraft(checklistId) {
@@ -849,11 +852,15 @@ function itemDueClass(item) {
                         <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                             <div>
                                 <InputLabel value="Início" />
-                                <p class="mt-1 text-sm text-slate-800">{{ formatDateLabel(card.start_date) }}</p>
+                                <p class="mt-1 text-sm text-slate-800" :title="formatDateTitle(card.start_date)">
+                                    {{ formatDateLabel(card.start_date) }}
+                                </p>
                             </div>
                             <div>
                                 <InputLabel value="Vencimento" />
-                                <p class="mt-1 text-sm text-slate-800">{{ formatDateLabel(card.due_date) }}</p>
+                                <p class="mt-1 text-sm text-slate-800" :title="formatDateTitle(card.due_date)">
+                                    {{ formatDateLabel(card.due_date) }}
+                                </p>
                             </div>
                             <div v-if="card.recurrence_label">
                                 <InputLabel value="Repetição" />
@@ -1120,6 +1127,7 @@ function itemDueClass(item) {
                                         v-else-if="it.due_date"
                                         class="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px]"
                                         :class="itemDueClass(it)"
+                                        :title="formatDateTitle(it.due_date)"
                                     >
                                         <CalendarDaysIcon class="h-3.5 w-3.5" aria-hidden="true" />
                                         {{ formatDateLabel(it.due_date) }}

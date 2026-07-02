@@ -3,6 +3,7 @@ import BoardHeader from '@/Components/Tasks/BoardHeader.vue';
 import CardModal from '@/Components/Tasks/CardModal.vue';
 import KanbanBoard from '@/Components/Tasks/KanbanBoard.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
+import { formatDateNumeric, formatRelativeDate } from '@/utils/dateOnly';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
@@ -44,14 +45,15 @@ const listCards = computed(() =>
 );
 
 function formatDate(value) {
-    if (!value) return '—';
-    const dt = new Date(value);
-    if (Number.isNaN(dt.getTime())) return value;
-    return dt.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-    });
+    return formatRelativeDate(value);
+}
+
+function formatDateTitle(value) {
+    if (!value) return undefined;
+    const relative = formatRelativeDate(value);
+    const absolute = formatDateNumeric(value);
+    if (!absolute || relative === absolute) return absolute;
+    return `${relative} (${absolute})`;
 }
 </script>
 
@@ -127,7 +129,9 @@ function formatDate(value) {
                         >
                             <td class="px-2 py-2 font-medium text-slate-900">{{ card.title }}</td>
                             <td class="px-2 py-2 text-slate-600">{{ card.list_name }}</td>
-                            <td class="px-2 py-2 text-slate-600">{{ formatDate(card.due_date) }}</td>
+                            <td class="px-2 py-2 text-slate-600" :title="formatDateTitle(card.due_date)">
+                                {{ formatDate(card.due_date) }}
+                            </td>
                             <td class="px-2 py-2 text-slate-600">
                                 {{ card.completed_at ? 'Concluída' : 'Aberta' }}
                             </td>

@@ -2,6 +2,11 @@
 import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import { kindTheme, monthTheme } from '@/utils/strategicCalendarThemes';
+import {
+    formatDateNumeric,
+    formatRelativeAgendaHeader,
+    formatRelativeDayHeader,
+} from '@/utils/dateOnly';
 import { CheckCircleIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
 import { Link, router } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
@@ -43,6 +48,23 @@ const completingIds = ref(new Set());
 const monthPickerOpen = ref(false);
 const pickerYear = ref(props.year);
 const monthPickerRef = ref(null);
+
+const KIND_ORDER = ['rito', 'event', 'task'];
+
+function sortItemsByKind(items) {
+    const order = { rito: 0, event: 1, task: 2 };
+    return [...items].sort(
+        (a, b) => (order[a.kind] ?? 9) - (order[b.kind] ?? 9) || String(a.title).localeCompare(String(b.title)),
+    );
+}
+
+function hasRecurrence(item) {
+    return Boolean(item?.recurrence || item?.recurrence_label);
+}
+
+function maxItemsVisibleInCell() {
+    return props.compact ? 2 : 3;
+}
 
 const monthPickerLabels = [
     'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
@@ -160,7 +182,7 @@ const weeks = computed(() => {
         cells.push({
             day: d,
             iso,
-            items: itemsByDay.value[iso] ?? [],
+            items: sortItemsByKind(itemsByDay.value[iso] ?? []),
             isToday: iso === todayIso.value,
         });
     }
@@ -231,11 +253,7 @@ const listRowsGrouped = computed(() => {
         .sort(([a], [b]) => a.localeCompare(b));
     return entries.map(([iso, dayItems]) => ({
         iso,
-        label: new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
-        }),
+        label: formatRelativeDayHeader(iso),
         items: dayItems,
     }));
 });
@@ -251,15 +269,18 @@ const agendaTimeline = computed(() => {
         .sort()
         .map((iso) => ({
             iso,
-            label: new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-            }),
+            label: formatRelativeAgendaHeader(iso),
             items: groups[iso],
         }));
 });
+
+const selectedDayHeaderLabel = computed(() =>
+    selectedDayIso.value ? formatRelativeAgendaHeader(selectedDayIso.value) : '',
+);
+
+const selectedDayHeaderTitle = computed(() =>
+    selectedDayIso.value ? formatDateNumeric(selectedDayIso.value) : '',
+);
 
 function onPickDay(cell) {
     if (cell.day) {
@@ -302,7 +323,7 @@ const rootShellClass = computed(() =>
 );
 
 const cellMinH = computed(() =>
-    props.compact ? 'min-h-[4.25rem]' : 'min-h-[5.5rem] sm:min-h-[6.25rem]',
+    props.compact ? 'min-h-[5rem]' : 'min-h-[5.75rem] sm:min-h-[6.5rem]',
 );
 
 function itemSourceId(item) {
@@ -371,8 +392,8 @@ function monthCellClass(cell) {
     const today = cell.isToday && !selected;
     return [
         base,
-        selected ? 'border-current shadow-sm' : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/60',
-        today && !selected ? 'ring-1 ring-slate-300/80' : '',
+        selected ? 'border-current shadow-sm' : 'border-slate-200/70 bg-white hover:border-slate-300 hover:shadow-sm',
+        today ? 'ring-2 ring-offset-1' : '',
     ].join(' ');
 }
 
@@ -381,6 +402,7 @@ function monthCellStyle(cell) {
 
     const theme = currentMonthTheme.value;
     const selected = selectedDay.value === cell.day;
+    const today = cell.isToday && !selected;
 
     if (selected) {
         return {
@@ -389,8 +411,32 @@ function monthCellStyle(cell) {
         };
     }
 
+    if (today) {
+        return {
+            background: `linear-gradient(180deg, ${theme.background}dd 0%, #ffffff 68%)`,
+            '--tw-ring-color': `${theme.color}66`,
+        };
+    }
+
     return {
-        background: `linear-gradient(180deg, ${theme.background}bb 0%, #ffffff 70%)`,
+        background: `linear-gradient(180deg, ${theme.background}bb 0%, #ffffff 72%)`,
+    };
+}
+
+function itemChipStyle(item) {
+    const theme = itemKindTheme(item);
+    if (item.completed) {
+        return {
+            borderColor: '#e2e8f0',
+            backgroundColor: '#f8fafc',
+            color: '#94a3b8',
+        };
+    }
+
+    return {
+        borderColor: `${theme.color}55`,
+        backgroundColor: theme.background,
+        color: theme.color,
     };
 }
 
@@ -610,6 +656,10 @@ function itemShellClass(item) {
                         <CheckCircleIcon class="h-4 w-4 text-emerald-600" aria-hidden="true" />
                         Concluído
                     </span>
+                    <span class="inline-flex items-center gap-1 text-slate-500">
+                        <ArrowPathIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                        Repete
+                    </span>
                 </div>
             </div>
         </div>
@@ -653,29 +703,32 @@ function itemShellClass(item) {
                                     >
                                         {{ cell.day }}
                                     </span>
-                                    <div class="flex min-h-0 flex-1 flex-col gap-0.5 px-1.5 pb-1.5">
+                                    <div class="flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5">
                                         <div
-                                            v-for="it in cell.items.slice(0, compact ? 1 : 2)"
+                                            v-for="it in cell.items.slice(0, maxItemsVisibleInCell())"
                                             :key="it.id"
-                                            class="flex min-w-0 items-center gap-1"
+                                            class="flex min-w-0 items-center gap-0.5 rounded-md border px-1 py-0.5"
+                                            :class="it.completed ? 'opacity-75' : ''"
+                                            :style="itemChipStyle(it)"
+                                            :title="it.title"
                                         >
-                                            <span
-                                                class="h-1.5 w-1.5 shrink-0 rounded-full"
-                                                :style="{ backgroundColor: itemKindTheme(it).color }"
+                                            <ArrowPathIcon
+                                                v-if="hasRecurrence(it)"
+                                                class="h-2.5 w-2.5 shrink-0 opacity-80"
                                                 aria-hidden="true"
                                             />
                                             <span
-                                                class="truncate text-[10px] font-medium leading-tight sm:text-xs"
-                                                :class="it.completed ? 'text-slate-400 line-through' : 'text-slate-700'"
+                                                class="min-w-0 truncate text-[10px] font-semibold leading-tight"
+                                                :class="it.completed ? 'line-through opacity-80' : ''"
                                             >
                                                 {{ it.title }}
                                             </span>
                                         </div>
                                         <span
-                                            v-if="cell.items.length > (compact ? 1 : 2)"
-                                            class="text-[10px] font-medium text-slate-400"
+                                            v-if="cell.items.length > maxItemsVisibleInCell()"
+                                            class="px-0.5 text-[10px] font-semibold text-slate-500"
                                         >
-                                            +{{ cell.items.length - (compact ? 1 : 2) }}
+                                            +{{ cell.items.length - maxItemsVisibleInCell() }} mais
                                         </span>
                                     </div>
                                 </button>
@@ -692,7 +745,116 @@ function itemShellClass(item) {
                 class="border-t border-slate-200/80 bg-slate-50/40 lg:w-[min(380px,34%)] lg:border-l lg:border-t-0 lg:shrink-0"
                 :class="rootPad"
             >
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <p
+                    class="text-xs font-semibold uppercase tracking-wide text-slate-500"
+                    :title="selectedDayHeaderTitle || undefined"
+                >
+                    {{ selectedDayHeaderLabel }}
+                </p>
+                <div v-if="selectedDayProgress" class="mt-2 flex items-center justify-between gap-2 text-xs text-slate-600">
+                    <span>{{ selectedDayProgress.done }} de {{ selectedDayProgress.total }} concluídos</span>
+                    <span
+                        class="h-1.5 flex-1 max-w-[8rem] overflow-hidden rounded-full bg-slate-200"
+                        role="progressbar"
+                        :aria-valuenow="selectedDayProgress.done"
+                        :aria-valuemin="0"
+                        :aria-valuemax="selectedDayProgress.total"
+                    >
+                        <span
+                            class="block h-full rounded-full bg-emerald-500 transition-all"
+                            :style="{ width: `${(selectedDayProgress.done / selectedDayProgress.total) * 100}%` }"
+                        />
+                    </span>
+                </div>
+                <button
+                    v-if="editable"
+                    type="button"
+                    class="mt-2 text-xs font-semibold text-talents-700 hover:text-talents-800"
+                    @click="openDayEditor"
+                >
+                    + Adicionar no dia
+                </button>
+                <template v-if="selectedDayItemsGrouped.length">
+                    <div
+                        v-for="group in selectedDayItemsGrouped"
+                        :key="group.kind"
+                        class="mt-4"
+                    >
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            {{ group.label }}
+                            <span class="font-normal normal-case text-slate-400">({{ group.items.length }})</span>
+                        </p>
+                        <ul class="mt-2 space-y-3" aria-live="polite">
+                            <li
+                                v-for="it in group.items"
+                                :key="it.id"
+                                class="rounded-2xl border p-4 shadow-sm"
+                                :class="itemShellClass(it)"
+                            >
+                                <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                    <StrategicKindBadge :kind="it.kind" :label="kindLabel(it.kind)" />
+                                    <button
+                                        v-if="canToggleCompletion(it)"
+                                        type="button"
+                                        class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition"
+                                        :class="it.completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-700'"
+                                        :disabled="completingIds.has(it.id)"
+                                        @click.stop="toggleCompletion(it)"
+                                    >
+                                        <CheckCircleIcon class="h-4 w-4" aria-hidden="true" />
+                                        {{ it.completed ? 'Concluído' : 'Marcar feito' }}
+                                    </button>
+                                    <div v-if="editable" class="flex items-center gap-2">
+                                        <label class="inline-flex items-center gap-1 text-xs text-slate-500">
+                                            <span>Data</span>
+                                            <input
+                                                type="date"
+                                                :value="it.occurs_on"
+                                                class="rounded-md border border-slate-200 px-1.5 py-0.5 text-xs text-slate-800"
+                                                @change="updateItemDate(it, $event.target.value)"
+                                            />
+                                        </label>
+                                        <Link
+                                            v-if="editItemUrl(it)"
+                                            :href="editItemUrl(it)"
+                                            class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800"
+                                            title="Editar item"
+                                        >
+                                            <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
+                                        </Link>
+                                    </div>
+                                </div>
+                                <p class="font-semibold" :class="itemTextClass(it)">{{ it.title }}</p>
+                                <p
+                                    v-if="hasRecurrence(it)"
+                                    class="mt-2 inline-flex items-center gap-1 text-xs text-slate-500"
+                                >
+                                    <ArrowPathIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                    Repete: {{ it.recurrence_label }}
+                                </p>
+                                <p v-if="it.description" class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
+                                    {{ it.description }}
+                                </p>
+                                <p v-if="it.list_title" class="mt-2 text-xs text-slate-500">Lista: {{ it.list_title }}</p>
+                                <AttachmentList
+                                    v-if="it.attachments?.length"
+                                    class="mt-2"
+                                    :attachments="it.attachments"
+                                />
+                                <p v-if="it.company?.name" class="mt-2 text-xs text-slate-500">
+                                    Empresa: {{ it.company.name }}
+                                </p>
+                            </li>
+                        </ul>
+                    </div>
+                </template>
+                <p v-else class="mt-6 text-sm text-slate-500">Nenhum item neste dia.</p>
+            </div>
+            <div
+                v-else-if="completionEnabled"
+                class="border-t border-slate-200/80 bg-slate-50/40 px-3 py-3 sm:px-4"
+            >
+                <p class="text-xs font-semibold capitalize text-slate-700">
                     {{
                         selectedDayIso
                             ? new Date(selectedDayIso + 'T12:00:00').toLocaleDateString('pt-BR', {
@@ -703,71 +865,49 @@ function itemShellClass(item) {
                             : ''
                     }}
                 </p>
-                <button
-                    v-if="editable"
-                    type="button"
-                    class="mt-2 text-xs font-semibold text-talents-700 hover:text-talents-800"
-                    @click="openDayEditor"
-                >
-                    + Adicionar no dia
-                </button>
-                <ul v-if="selectedDayItems.length" class="mt-4 space-y-3" aria-live="polite">
-                    <li
-                        v-for="it in selectedDayItems"
-                        :key="it.id"
-                        class="rounded-2xl border p-4 shadow-sm"
-                        :class="itemShellClass(it)"
+                <p v-if="selectedDayProgress" class="mt-1 text-xs text-slate-600">
+                    {{ selectedDayProgress.done }} de {{ selectedDayProgress.total }} concluídos
+                </p>
+                <template v-if="selectedDayItemsGrouped.length">
+                    <div
+                        v-for="group in selectedDayItemsGrouped"
+                        :key="`compact-${group.kind}`"
+                        class="mt-3"
                     >
-                        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-                            <StrategicKindBadge :kind="it.kind" :label="kindLabel(it.kind)" />
-                            <button
-                                v-if="canToggleCompletion(it)"
-                                type="button"
-                                class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition"
-                                :class="it.completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-700'"
-                                :disabled="completingIds.has(it.id)"
-                                @click.stop="toggleCompletion(it)"
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{{ group.label }}</p>
+                        <ul class="mt-1.5 space-y-2">
+                            <li
+                                v-for="it in group.items"
+                                :key="it.id"
+                                class="flex items-start justify-between gap-2 rounded-xl border border-slate-200/80 bg-white p-2.5"
+                                :class="it.completed ? 'opacity-80' : ''"
                             >
-                                <CheckCircleIcon class="h-4 w-4" aria-hidden="true" />
-                                {{ it.completed ? 'Concluído' : 'Marcar feito' }}
-                            </button>
-                            <div v-if="editable" class="flex items-center gap-2">
-                                <label class="inline-flex items-center gap-1 text-xs text-slate-500">
-                                    <span>Data</span>
-                                    <input
-                                        type="date"
-                                        :value="it.occurs_on"
-                                        class="rounded-md border border-slate-200 px-1.5 py-0.5 text-xs text-slate-800"
-                                        @change="updateItemDate(it, $event.target.value)"
-                                    />
-                                </label>
-                                <Link
-                                    v-if="editItemUrl(it)"
-                                    :href="editItemUrl(it)"
-                                    class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800"
-                                    title="Editar item"
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium" :class="itemTextClass(it)">{{ it.title }}</p>
+                                    <p
+                                        v-if="hasRecurrence(it)"
+                                        class="mt-0.5 inline-flex items-center gap-1 text-[10px] text-slate-500"
+                                    >
+                                        <ArrowPathIcon class="h-3 w-3 shrink-0" aria-hidden="true" />
+                                        {{ it.recurrence_label }}
+                                    </p>
+                                </div>
+                                <button
+                                    v-if="canToggleCompletion(it)"
+                                    type="button"
+                                    class="shrink-0 rounded-full border p-1.5 transition"
+                                    :class="it.completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-700'"
+                                    :disabled="completingIds.has(it.id)"
+                                    :title="it.completed ? 'Concluído' : 'Marcar feito'"
+                                    @click.stop="toggleCompletion(it)"
                                 >
-                                    <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
-                                </Link>
-                            </div>
-                        </div>
-                        <p class="font-semibold" :class="itemTextClass(it)">{{ it.title }}</p>
-                        <p v-if="it.description" class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
-                            {{ it.description }}
-                        </p>
-                        <p v-if="it.recurrence_label" class="mt-2 text-xs text-slate-500">Repete: {{ it.recurrence_label }}</p>
-                        <p v-if="it.list_title" class="mt-2 text-xs text-slate-500">Lista: {{ it.list_title }}</p>
-                        <AttachmentList
-                            v-if="it.attachments?.length"
-                            class="mt-2"
-                            :attachments="it.attachments"
-                        />
-                        <p v-if="it.company?.name" class="mt-2 text-xs text-slate-500">
-                            Empresa: {{ it.company.name }}
-                        </p>
-                    </li>
-                </ul>
-                <p v-else class="mt-6 text-sm text-slate-500">Nenhum evento ou rito neste dia.</p>
+                                    <CheckCircleIcon class="h-4 w-4" aria-hidden="true" />
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </template>
+                <p v-else class="mt-2 text-xs text-slate-500">Nenhum item neste dia.</p>
             </div>
             <div v-else class="border-t border-slate-200/80 px-3 py-2 sm:px-4">
                 <p class="text-xs text-slate-600">
@@ -812,7 +952,10 @@ function itemShellClass(item) {
                                     <p v-if="it.description" class="mt-1 line-clamp-2 text-sm text-slate-600">
                                         {{ it.description }}
                                     </p>
-                                    <p v-if="it.recurrence_label" class="mt-1 text-xs text-slate-500">{{ it.recurrence_label }}</p>
+                                    <p v-if="it.recurrence_label" class="mt-1 inline-flex items-center gap-1 text-xs text-slate-500">
+                                        <ArrowPathIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                        {{ it.recurrence_label }}
+                                    </p>
                                     <p v-if="it.list_title" class="mt-1 text-xs text-slate-500">{{ it.list_title }}</p>
                                     <AttachmentList
                                         v-if="it.attachments?.length"
@@ -901,6 +1044,13 @@ function itemShellClass(item) {
                                     </div>
                                 </div>
                                 <p class="font-medium" :class="itemTextClass(it)">{{ it.title }}</p>
+                                <p
+                                    v-if="hasRecurrence(it)"
+                                    class="mt-1 inline-flex items-center gap-1 text-xs text-slate-500"
+                                >
+                                    <ArrowPathIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                    {{ it.recurrence_label }}
+                                </p>
                                 <p v-if="it.description" class="mt-2 line-clamp-3 text-sm text-slate-600">
                                     {{ it.description }}
                                 </p>

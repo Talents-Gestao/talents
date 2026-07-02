@@ -29,6 +29,7 @@ use App\Http\Controllers\Admin\RhidPanelController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SolidesCurriculumController;
 use App\Http\Controllers\Admin\SolidesSettingsController;
+use App\Http\Controllers\Admin\CompanyNoticeController as AdminCompanyNoticeController;
 use App\Http\Controllers\Admin\StrategicCalendarController as AdminStrategicCalendarController;
 use App\Http\Controllers\Admin\SurveyTemplateController;
 use App\Http\Controllers\Admin\Tasks\BoardActivationController as TasksBoardActivationController;
@@ -88,6 +89,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
                 'destroy' => 'strategic-calendar.destroy',
             ])
             ->parameters(['calendario-estrategico' => 'item']);
+
+        Route::get('avisos', [AdminCompanyNoticeController::class, 'index'])->name('notices.index');
+        Route::get('avisos/criar', [AdminCompanyNoticeController::class, 'create'])->name('notices.create');
+        Route::post('avisos', [AdminCompanyNoticeController::class, 'store'])->name('notices.store');
     });
 
     Route::middleware('admin.can:companies')->group(function () {
