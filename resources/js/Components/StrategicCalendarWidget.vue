@@ -20,6 +20,10 @@ const props = defineProps({
     canNavigateNext: { type: Boolean, default: true },
     periodLabel: { type: String, default: null },
     navigationRange: { type: Object, default: null },
+    /** Habilita check de conclusão no painel cliente */
+    completionEnabled: { type: Boolean, default: false },
+    toggleCompletionRoute: { type: String, default: 'client.strategic-calendar.toggle-completion' },
+    toggleTaskCompletionRoute: { type: String, default: 'client.strategic-calendar.toggle-task-completion' },
 });
 
 const localYear = ref(props.year);
@@ -103,6 +107,9 @@ const goToday = () => {
                 :can-navigate-next="canNavigateNext"
                 :period-label="periodLabel"
                 :navigation-range="navigationRange"
+                :completion-enabled="completionEnabled"
+                :toggle-completion-route="toggleCompletionRoute"
+                :toggle-task-completion-route="toggleTaskCompletionRoute"
                 @navigate-month="goMonth"
                 @pick-month="({ year, month }) => goToMonth(year, month)"
                 @go-today="goToday"

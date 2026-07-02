@@ -1,4 +1,5 @@
 <script setup>
+import ApexChart from '@/Components/Charts/ApexChart.vue';
 import EmptyState from '@/Components/Dashboard/EmptyState.vue';
 import HealthBadge from '@/Components/Dashboard/HealthBadge.vue';
 import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
@@ -426,7 +427,7 @@ const leadWhatsappUrl = computed(() => {
                     />
                     <div class="mt-6 flex flex-col gap-8 lg:flex-row lg:items-start">
                         <div class="flex min-h-[220px] min-w-0 flex-1 justify-center">
-                            <apexchart
+                            <ApexChart
                                 v-if="riskDonutTotal > 0"
                                 type="donut"
                                 height="260"

@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\Complaint;
 use App\Models\StrategicCalendarItem;
 use App\Models\Survey;
+use App\Support\StrategicCalendarClientEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Support\StrategicCalendarPeriod;
 use App\Models\SurveyResult;
@@ -172,6 +173,7 @@ class DashboardController extends Controller
                 $queryEnd,
                 'client.strategic-calendar.attachment-download',
             );
+            $items = StrategicCalendarClientEnricher::enrich($items, $company, $queryStart, $queryEnd);
 
             $dashboardCalendar = [
                 'year' => $calYear,

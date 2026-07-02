@@ -402,6 +402,7 @@ const attentionTotal = computed(() => {
                 :full-page-href="route('client.strategic-calendar.index')"
                 full-page-label="Ver detalhes"
                 dashboard-route="client.dashboard"
+                completion-enabled
             />
         </div>
     </ClientLayout>

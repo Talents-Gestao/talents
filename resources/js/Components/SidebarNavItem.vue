@@ -106,6 +106,7 @@ const onNavigate = () => {
         :href="href"
         :method="method"
         :as="as"
+        :prefetch="method === 'get' && as !== 'button'"
         :class="linkClasses"
         :title="collapsed ? label : undefined"
         @click="onNavigate"
