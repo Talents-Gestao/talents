@@ -7,7 +7,14 @@ import {
     formatRelativeAgendaHeader,
     formatRelativeDayHeader,
 } from '@/utils/dateOnly';
-import { CheckCircleIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
+import {
+    ArrowPathIcon,
+    CalendarDaysIcon,
+    CheckCircleIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    PencilSquareIcon,
+} from '@heroicons/vue/24/outline';
 import { Link, router } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
@@ -246,6 +253,28 @@ const selectedDayIso = computed(() => {
 });
 
 const selectedDayItems = computed(() => itemsByDay.value[selectedDayIso.value] ?? []);
+
+const selectedDayProgress = computed(() => {
+    const total = selectedDayItems.value.length;
+    if (!total) return null;
+
+    const done = selectedDayItems.value.filter((it) => it.completed).length;
+    return { done, total };
+});
+
+const selectedDayItemsGrouped = computed(() => {
+    const buckets = { rito: [], event: [], task: [] };
+    for (const it of selectedDayItems.value) {
+        const key = Object.prototype.hasOwnProperty.call(buckets, it.kind) ? it.kind : 'event';
+        buckets[key].push(it);
+    }
+
+    return KIND_ORDER.filter((kind) => buckets[kind].length).map((kind) => ({
+        kind,
+        label: kindLabel(kind),
+        items: buckets[kind],
+    }));
+});
 
 const listRowsGrouped = computed(() => {
     const entries = Object.entries(itemsByDay.value)
