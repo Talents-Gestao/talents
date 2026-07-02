@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Notices\PublishStrategicCalendarChangeNotice;
+use App\Enums\CompanyNoticeEventKind;
 use App\Enums\StrategicCalendarItemKind;
 use App\Enums\StrategicCalendarRecurrence;
 use App\Http\Controllers\Controller;
@@ -116,11 +118,12 @@ class StrategicCalendarController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, PublishStrategicCalendarChangeNotice $publishNotice): RedirectResponse
     {
         $data = $this->validated($request);
 
-        StrategicCalendarItem::query()->create($data);
+        $item = StrategicCalendarItem::query()->create($data);
+        $publishNotice->handle($item, CompanyNoticeEventKind::Created, $request->user());
 
         return back()->with('success', 'Item do calendário criado.');
     }
@@ -153,28 +156,42 @@ class StrategicCalendarController extends Controller
         ]);
     }
 
-    public function updateDate(Request $request, StrategicCalendarItem $item): RedirectResponse
+    public function updateDate(Request $request, StrategicCalendarItem $item, PublishStrategicCalendarChangeNotice $publishNotice): RedirectResponse
     {
         $data = $request->validate([
             'occurs_on' => ['required', 'date'],
         ]);
 
+        $previous = $item->occurs_on?->toDateString();
         $item->update(['occurs_on' => $data['occurs_on']]);
+        $item->refresh();
+
+        $publishNotice->handle(
+            $item,
+            CompanyNoticeEventKind::DateChanged,
+            $request->user(),
+            $previous,
+        );
 
         return back()->with('success', 'Data do item atualizada.');
     }
 
-    public function update(Request $request, StrategicCalendarItem $item): RedirectResponse
+    public function update(Request $request, StrategicCalendarItem $item, PublishStrategicCalendarChangeNotice $publishNotice): RedirectResponse
     {
         $data = $this->validated($request);
 
         $item->update($data);
+        $item->refresh();
+
+        $publishNotice->handle($item, CompanyNoticeEventKind::Updated, $request->user());
 
         return back()->with('success', 'Item atualizado.');
     }
 
-    public function destroy(StrategicCalendarItem $item): RedirectResponse
+    public function destroy(StrategicCalendarItem $item, Request $request, PublishStrategicCalendarChangeNotice $publishNotice): RedirectResponse
     {
+        $publishNotice->handle($item, CompanyNoticeEventKind::Deleted, $request->user());
+
         $item->deleteAllAttachments();
         $item->delete();
 

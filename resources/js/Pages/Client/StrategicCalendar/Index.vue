@@ -3,6 +3,7 @@ import StrategicCalendar from '@/Components/StrategicCalendar.vue';
 import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
+import { formatDateNumeric, formatRelativeDate } from '@/utils/dateOnly';
 import { CheckCircleIcon, InformationCircleIcon } from '@heroicons/vue/24/outline';
 import { Head, router } from '@inertiajs/vue3';
 
@@ -140,8 +141,11 @@ const toggleUpcoming = (row) => {
                                 :attachments="row.attachments"
                             />
                         </div>
-                        <span class="shrink-0 text-sm tabular-nums text-slate-500">{{
-                            row.occurs_on ? new Date(row.occurs_on).toLocaleDateString('pt-BR') : ''
+                        <span
+                            class="shrink-0 text-sm tabular-nums text-slate-500"
+                            :title="row.occurs_on ? formatDateNumeric(row.occurs_on) : undefined"
+                        >{{
+                            row.occurs_on ? formatRelativeDate(row.occurs_on) : ''
                         }}</span>
                     </div>
                 </li>

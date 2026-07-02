@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Support\AdminHomeResolver;
+use App\Support\Notices\UnreadNoticeCounter;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -104,6 +105,11 @@ class HandleInertiaRequests extends Middleware
                 'info' => fn () => $request->session()->get('info'),
                 'contract_id' => fn () => $request->session()->get('contract_id'),
                 'zapsign_sign_url' => fn () => $request->session()->get('zapsign_sign_url'),
+            ],
+            'nav' => [
+                'unread_notices_count' => fn () => $user && $user->contextCompanyId()
+                    ? app(UnreadNoticeCounter::class)->forUser($user)
+                    : 0,
             ],
         ];
 
