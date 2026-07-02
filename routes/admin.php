@@ -98,12 +98,16 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.action-plan.edit');
         Route::put('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'update'])
             ->name('companies.surveys.action-plan.update');
+        Route::post('companies/{company}/surveys/{survey}/action-plan/generate-suggested', [ActionPlanAdminController::class, 'generateSuggestedPlan'])
+            ->name('companies.surveys.action-plan.generate-suggested');
         Route::post('companies/{company}/surveys/{survey}/ai-analysis', [ActionPlanAdminController::class, 'generateAiAnalysis'])
             ->name('companies.surveys.ai-analysis');
         Route::post('companies/{company}/surveys/{survey}/technical-opinion', [ActionPlanAdminController::class, 'generateTechnicalOpinion'])
             ->name('companies.surveys.technical-opinion');
         Route::get('companies/{company}/surveys/{survey}/technical-opinion-file', [ActionPlanAdminController::class, 'downloadTechnicalOpinionFile'])
             ->name('companies.surveys.technical-opinion-file.download');
+        Route::get('companies/{company}/surveys/{survey}/nr1-reports/{type}', [ActionPlanAdminController::class, 'downloadNr1Report'])
+            ->name('companies.surveys.nr1-reports.download');
         Route::get('companies/{company}/users', [CompanyUserController::class, 'index'])->name('companies.users.index');
         Route::get('companies/{company}/users/create', [CompanyUserController::class, 'create'])->name('companies.users.create');
         Route::post('companies/{company}/users', [CompanyUserController::class, 'store'])->name('companies.users.store');

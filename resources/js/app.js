@@ -1,14 +1,24 @@
 import '../css/app.css';
 import './bootstrap';
 
+import SessionExpiryMonitor from '@/Components/SessionExpiryMonitor.vue';
+import { isSessionExpiredHttpStatus, redirectToLoginExpired } from '@/utils/sessionExpiry';
 import { registerSW } from 'virtual:pwa-register';
 import { createInertiaApp, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { createApp, h } from 'vue';
+import { createApp, h, Fragment } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Talents';
+
+router.on('exception', (event) => {
+    const status = event.detail.response?.status;
+    if (isSessionExpiredHttpStatus(status)) {
+        event.preventDefault();
+        redirectToLoginExpired();
+    }
+});
 
 if (import.meta.env.DEV) {
     let clientNavStart = 0;
@@ -33,6 +43,11 @@ if (import.meta.env.DEV) {
 
 if (import.meta.env.PROD) {
     registerSW({ immediate: true });
+} else if ('serviceWorker' in navigator) {
+    // Evita SW de builds anteriores bloquear HMR em desenvolvimento
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => registration.unregister());
+    });
 }
 
 createInertiaApp({
@@ -43,7 +58,13 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.vue'),
         ),
     setup({ el, App, props, plugin }) {
-        return createApp({ render: () => h(App, props) })
+        return createApp({
+            render: () =>
+                h(Fragment, null, [
+                    h(App, props),
+                    h(SessionExpiryMonitor),
+                ]),
+        })
             .use(plugin)
             .use(ZiggyVue)
             .use(VueApexCharts)

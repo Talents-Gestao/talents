@@ -1,5 +1,6 @@
 <script setup>
 import FormPageHeader from '@/Components/FormPageHeader.vue';
+import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import MiaNr1AdminPanel from '@/Components/MiaNr1AdminPanel.vue';
 import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -37,6 +38,10 @@ const props = defineProps({
     technicalOpinionAi: { type: Object, default: null },
     technicalOpinionAiPending: { type: Boolean, default: false },
     technicalOpinionGeneratePostUrl: { type: String, required: true },
+    generateSuggestedPlanUrl: { type: String, required: true },
+    riskScenario: { type: String, default: null },
+    riskScenarioLabel: { type: String, default: null },
+    nr1Reports: { type: Object, default: () => ({ executive: null, technical_referral: null }) },
 });
 
 const initialOpinionHtml =
@@ -50,11 +55,23 @@ const form = useForm({
     technical_opinion: initialOpinionHtml === '<p></p>' ? '' : initialOpinionHtml,
     technical_opinion_file: null,
     remove_technical_opinion_file: false,
+    executive_report_file: null,
+    remove_executive_report_file: false,
+    technical_referral_file: null,
+    remove_technical_referral_file: false,
 });
 
 const existingOpinionFileName = ref(props.plan?.technical_opinion_file_name ?? null);
 const existingOpinionFileUrl = ref(props.plan?.technical_opinion_file_url ?? null);
 const opinionFileInput = ref(null);
+
+const existingExecutiveFileName = ref(props.nr1Reports?.executive?.file_name ?? null);
+const existingExecutiveFileUrl = ref(props.nr1Reports?.executive?.download_url ?? null);
+const executiveFileInput = ref(null);
+
+const existingReferralFileName = ref(props.nr1Reports?.technical_referral?.file_name ?? null);
+const existingReferralFileUrl = ref(props.nr1Reports?.technical_referral?.download_url ?? null);
+const referralFileInput = ref(null);
 
 const onOpinionFileChange = (event) => {
     const file = event.target.files?.[0] ?? null;
@@ -76,6 +93,54 @@ const removeExistingOpinionFile = () => {
     existingOpinionFileName.value = null;
     existingOpinionFileUrl.value = null;
     clearSelectedOpinionFile();
+};
+
+const onExecutiveFileChange = (event) => {
+    const file = event.target.files?.[0] ?? null;
+    form.executive_report_file = file;
+    if (file) {
+        form.remove_executive_report_file = false;
+    }
+};
+
+const clearSelectedExecutiveFile = () => {
+    form.executive_report_file = null;
+    if (executiveFileInput.value) {
+        executiveFileInput.value.value = '';
+    }
+};
+
+const removeExistingExecutiveFile = () => {
+    form.remove_executive_report_file = true;
+    existingExecutiveFileName.value = null;
+    existingExecutiveFileUrl.value = null;
+    clearSelectedExecutiveFile();
+};
+
+const onReferralFileChange = (event) => {
+    const file = event.target.files?.[0] ?? null;
+    form.technical_referral_file = file;
+    if (file) {
+        form.remove_technical_referral_file = false;
+    }
+};
+
+const clearSelectedReferralFile = () => {
+    form.technical_referral_file = null;
+    if (referralFileInput.value) {
+        referralFileInput.value.value = '';
+    }
+};
+
+const removeExistingReferralFile = () => {
+    form.remove_technical_referral_file = true;
+    existingReferralFileName.value = null;
+    existingReferralFileUrl.value = null;
+    clearSelectedReferralFile();
+};
+
+const generateSuggestedPlan = () => {
+    router.post(props.generateSuggestedPlanUrl);
 };
 
 const opinionEditor = useEditor({
@@ -180,11 +245,19 @@ const submit = () => {
             technical_opinion: data.technical_opinion || null,
             technical_opinion_file: data.technical_opinion_file,
             remove_technical_opinion_file: data.remove_technical_opinion_file,
+            executive_report_file: data.executive_report_file,
+            remove_executive_report_file: data.remove_executive_report_file,
+            technical_referral_file: data.technical_referral_file,
+            remove_technical_referral_file: data.remove_technical_referral_file,
         }))
         .put(route('admin.companies.surveys.action-plan.update', [props.company.id, props.survey.id]), {
             onSuccess: () => {
                 clearSelectedOpinionFile();
+                clearSelectedExecutiveFile();
+                clearSelectedReferralFile();
                 form.remove_technical_opinion_file = false;
+                form.remove_executive_report_file = false;
+                form.remove_technical_referral_file = false;
             },
         });
 };
@@ -225,7 +298,10 @@ const submit = () => {
         <div class="mb-6 surface-card p-5">
             <h3 class="text-sm font-semibold text-gray-900">Pesquisa</h3>
             <dl class="mt-3 grid gap-2 text-sm text-gray-700 sm:grid-cols-2">
-                <div><span class="text-gray-500">Status:</span> {{ survey.status }}</div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-gray-500">Status:</span>
+                    <SurveyStatusBadge :status="survey.status" />
+                </div>
                 <div>
                     <span class="text-gray-500">Período:</span>
                     {{ survey.starts_at }} — {{ survey.ends_at }}
@@ -261,6 +337,17 @@ const submit = () => {
             empresa.
         </div>
 
+        <div
+            v-else-if="riskScenarioLabel"
+            class="mb-6 rounded-lg border border-violet-200 bg-violet-50/80 p-4 text-sm text-violet-950"
+        >
+            <strong>{{ riskScenarioLabel }}</strong>
+            <span class="mt-1 block text-violet-900/90">
+                Os relatórios NR-1 (executivo, plano de ação e encaminhamento técnico) são gerados automaticamente conforme este cenário.
+                Você pode substituir o executivo ou o encaminhamento por arquivos personalizados abaixo.
+            </span>
+        </div>
+
         <MiaNr1AdminPanel
             v-if="aiEnabled"
             :generate-post-url="aiGeneratePostUrl"
@@ -286,6 +373,100 @@ const submit = () => {
         </div>
 
         <form class="space-y-8" @submit.prevent="submit">
+            <div class="surface-card space-y-6 p-6 text-slate-900">
+                <div>
+                    <h3 class="font-semibold text-talents-800">Relatórios NR-1 personalizados (opcional)</h3>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Envie versões revisadas do relatório executivo ou do encaminhamento técnico. Quando publicados, a empresa baixa estes
+                        arquivos em vez do PDF gerado automaticamente.
+                    </p>
+                </div>
+
+                <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
+                    <h4 class="text-sm font-semibold text-gray-900">Relatório executivo</h4>
+                    <div
+                        v-if="existingExecutiveFileName"
+                        class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                    >
+                        <div class="flex items-center gap-2 text-gray-800">
+                            <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
+                            <a
+                                v-if="existingExecutiveFileUrl"
+                                :href="existingExecutiveFileUrl"
+                                class="font-medium text-talents-800 hover:underline"
+                            >
+                                {{ existingExecutiveFileName }}
+                            </a>
+                            <span v-else class="font-medium">{{ existingExecutiveFileName }}</span>
+                            <span v-if="nr1Reports?.executive?.published_at" class="text-xs text-gray-500">
+                                (publicado em {{ nr1Reports.executive.published_at }})
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                            @click="removeExistingExecutiveFile"
+                        >
+                            Remover
+                        </button>
+                    </div>
+                    <div class="mt-3">
+                        <input
+                            ref="executiveFileInput"
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-talents-800"
+                            @change="onExecutiveFileChange"
+                        />
+                        <p v-if="form.errors.executive_report_file" class="mt-2 text-sm text-red-600">
+                            {{ form.errors.executive_report_file }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
+                    <h4 class="text-sm font-semibold text-gray-900">Encaminhamento técnico</h4>
+                    <div
+                        v-if="existingReferralFileName"
+                        class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                    >
+                        <div class="flex items-center gap-2 text-gray-800">
+                            <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
+                            <a
+                                v-if="existingReferralFileUrl"
+                                :href="existingReferralFileUrl"
+                                class="font-medium text-talents-800 hover:underline"
+                            >
+                                {{ existingReferralFileName }}
+                            </a>
+                            <span v-else class="font-medium">{{ existingReferralFileName }}</span>
+                            <span v-if="nr1Reports?.technical_referral?.published_at" class="text-xs text-gray-500">
+                                (publicado em {{ nr1Reports.technical_referral.published_at }})
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                            @click="removeExistingReferralFile"
+                        >
+                            Remover
+                        </button>
+                    </div>
+                    <div class="mt-3">
+                        <input
+                            ref="referralFileInput"
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-talents-800"
+                            @change="onReferralFileChange"
+                        />
+                        <p v-if="form.errors.technical_referral_file" class="mt-2 text-sm text-red-600">
+                            {{ form.errors.technical_referral_file }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <div class="surface-card p-6 text-slate-900">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
@@ -439,9 +620,19 @@ const submit = () => {
             </div>
 
             <div class="space-y-6 surface-card p-6 text-slate-900">
-                <div class="flex items-center justify-between">
+                <div class="flex flex-wrap items-center justify-between gap-3">
                     <h3 class="font-semibold text-talents-800">Itens do plano de ação</h3>
-                    <button type="button" class="text-sm font-medium text-talents-700 hover:underline" @click="addRow">+ Adicionar item</button>
+                    <div class="flex flex-wrap gap-2">
+                        <button
+                            v-if="overall"
+                            type="button"
+                            class="rounded-md border border-talents-300 bg-white px-3 py-1.5 text-sm font-medium text-talents-800 hover:bg-talents-50"
+                            @click="generateSuggestedPlan"
+                        >
+                            Gerar plano sugerido
+                        </button>
+                        <button type="button" class="text-sm font-medium text-talents-700 hover:underline" @click="addRow">+ Adicionar item</button>
+                    </div>
                 </div>
 
                 <div v-for="(row, index) in form.items" :key="index" class="rounded-lg border border-gray-200 p-4">

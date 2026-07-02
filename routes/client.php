@@ -63,6 +63,8 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
     Route::middleware('can.module:relatorios')->group(function () {
         Route::get('surveys/{survey}/reports/executive', [ReportController::class, 'executive'])->name('surveys.reports.executive');
         Route::get('surveys/{survey}/reports/technical', [ReportController::class, 'technical'])->name('surveys.reports.technical');
+        Route::get('surveys/{survey}/reports/referral', [ReportController::class, 'referral'])->name('surveys.reports.referral');
+        Route::get('surveys/{survey}/reports/action-plan', [ReportController::class, 'actionPlan'])->name('surveys.reports.action-plan');
         Route::get('surveys/{survey}/export/json', [ExportController::class, 'json'])->name('surveys.export.json');
         Route::get('surveys/{survey}/export/csv', [ExportController::class, 'csv'])->name('surveys.export.csv');
     });

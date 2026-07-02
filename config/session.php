@@ -34,6 +34,18 @@ return [
 
     'lifetime' => (int) env('SESSION_LIFETIME', 120),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Session expiry warning (frontend)
+    |--------------------------------------------------------------------------
+    |
+    | Minutos antes do fim da sessão por inatividade em que o utilizador
+    | autenticado vê um aviso no browser (composable SessionExpiryMonitor).
+    |
+    */
+
+    'warning_minutes' => (int) env('SESSION_WARNING_MINUTES', 5),
+
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 
     /*

@@ -83,6 +83,30 @@ class ClientCrossCompanyAccessTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_cannot_download_referral_report_of_other_company_survey(): void
+    {
+        $fxA = $this->createSurveyFixture();
+        $fxB = $this->createSurveyFixture();
+
+        $userA = User::factory()->companyAdmin($fxA->company->id)->create();
+
+        $this->actingAs($userA)
+            ->get(route('client.surveys.reports.referral', $fxB->survey))
+            ->assertNotFound();
+    }
+
+    public function test_cannot_download_action_plan_report_of_other_company_survey(): void
+    {
+        $fxA = $this->createSurveyFixture();
+        $fxB = $this->createSurveyFixture();
+
+        $userA = User::factory()->companyAdmin($fxA->company->id)->create();
+
+        $this->actingAs($userA)
+            ->get(route('client.surveys.reports.action-plan', $fxB->survey))
+            ->assertNotFound();
+    }
+
     public function test_cannot_view_other_company_complaint(): void
     {
         $fxA = $this->createSurveyFixture();

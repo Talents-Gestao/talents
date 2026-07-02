@@ -1,5 +1,6 @@
 <script setup>
 import MethodologyStepper from '@/Components/MethodologyStepper.vue';
+import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
@@ -52,18 +53,7 @@ const selectedStep = ref(2);
                                     <p class="font-medium text-gray-900">{{ s.title }}</p>
                                     <p class="mt-1 text-xs text-gray-500">{{ s.template?.title }}</p>
                                 </div>
-                                <span
-                                    class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold"
-                                    :class="
-                                        s.status === 'active'
-                                            ? 'bg-emerald-100 text-emerald-800'
-                                            : s.status === 'draft'
-                                              ? 'bg-gray-100 text-gray-700'
-                                              : 'bg-amber-100 text-amber-900'
-                                    "
-                                >
-                                    {{ s.status }}
-                                </span>
+                                <SurveyStatusBadge :status="s.status" />
                             </div>
                             <p class="mt-3 text-sm text-gray-600">{{ s.completed_responses_count }} respostas</p>
                             <div class="mt-4 flex flex-wrap gap-2">

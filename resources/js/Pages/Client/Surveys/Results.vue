@@ -20,6 +20,7 @@ const props = defineProps({
     aiEnabled: { type: Boolean, default: false },
     aiAnalysis: { type: Object, default: null },
     aiAnalysisPending: { type: Boolean, default: false },
+    riskScenarioLabel: { type: String, default: null },
 });
 
 const recalculate = () => {
@@ -163,19 +164,39 @@ onUnmounted(() => {
                 <h2 class="text-xl font-semibold leading-tight text-talents-900">Resultados</h2>
                 <div class="flex flex-wrap gap-2">
                     <button type="button" class="rounded-md border border-gray-300 px-3 py-1 text-sm" @click="recalculate">Recalcular</button>
+                    <span
+                        v-if="overall?.risk_level"
+                        class="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-800"
+                    >
+                        {{ riskScenarioLabel }}
+                    </span>
                     <a
                         :href="route('client.surveys.reports.executive', survey.id)"
                         class="rounded-md bg-talents-700 px-3 py-1 text-sm font-semibold text-white"
                         target="_blank"
                     >
-                        PDF executivo
+                        Relatório executivo
                     </a>
                     <a
-                        :href="route('client.surveys.reports.technical', survey.id)"
+                        :href="route('client.surveys.reports.action-plan', survey.id)"
                         class="rounded-md border border-talents-300 px-3 py-1 text-sm font-semibold text-talents-900"
                         target="_blank"
                     >
-                        PDF técnico
+                        Plano de ação
+                    </a>
+                    <a
+                        :href="route('client.surveys.reports.referral', survey.id)"
+                        class="rounded-md border border-talents-300 px-3 py-1 text-sm font-semibold text-talents-900"
+                        target="_blank"
+                    >
+                        Encaminhamento técnico
+                    </a>
+                    <a
+                        :href="route('client.surveys.reports.technical', survey.id)"
+                        class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
+                        target="_blank"
+                    >
+                        Dados técnicos (RH)
                     </a>
                     <a
                         :href="route('client.surveys.export.json', survey.id)"

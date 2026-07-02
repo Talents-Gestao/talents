@@ -105,6 +105,7 @@ class HandleInertiaRequests extends Middleware
                 'contract_id' => fn () => $request->session()->get('contract_id'),
                 'zapsign_sign_url' => fn () => $request->session()->get('zapsign_sign_url'),
             ],
+            'session' => fn () => $this->sessionMetaForFrontend($request),
         ];
 
         if (config('app.debug') && $request->headers->has('X-Inertia')) {
@@ -122,5 +123,24 @@ class HandleInertiaRequests extends Middleware
         $routeName = app(AdminHomeResolver::class)->routeNameFor($user);
 
         return $routeName !== null ? route($routeName, absolute: false) : null;
+    }
+
+    /**
+     * @return array<string, int>|null
+     */
+    private function sessionMetaForFrontend(Request $request): ?array
+    {
+        if ($request->user() === null) {
+            return null;
+        }
+
+        $lifetimeMinutes = (int) config('session.lifetime');
+        $warningMinutes = (int) config('session.warning_minutes', 5);
+
+        return [
+            'expires_at' => now()->addMinutes($lifetimeMinutes)->getTimestamp() * 1000,
+            'lifetime_minutes' => $lifetimeMinutes,
+            'warning_minutes' => $warningMinutes,
+        ];
     }
 }

@@ -14,14 +14,6 @@
     </style>
 </head>
 <body>
-    @php
-        $riskLevelLabel = fn (?string $l) => match ($l) {
-            'green' => 'Situação favorável',
-            'yellow' => 'Risco intermediário',
-            'red' => 'Risco elevado',
-            default => (string) $l,
-        };
-    @endphp
     <h1>Relatório técnico (RH / SESMT)</h1>
     <p class="muted">Empresa: {{ $survey->company->name }} &mdash; Campanha: {{ $survey->title }}</p>
     <p class="muted">Respondentes completos: {{ $survey->responses->whereNotNull('completed_at')->count() }}</p>
@@ -80,11 +72,27 @@
         </tbody>
     </table>
 
+    @php
+        $overall = $survey->results->first(fn($r) => $r->survey_template_section_id === null && $r->department_id === null);
+        $referral = $scenarioConfig['technical_referral'] ?? [];
+    @endphp
+
     <h2>NR-1, riscos psicossociais e PGR</h2>
     <p class="muted">
         Referência: Portaria SEPRT nº 1.419/2024 (NR-1). Os fatores psicossociais no trabalho devem ser considerados no processo de gerenciamento de riscos
         ocupacionais, com participação dos trabalhadores e documentação compatível com o PGR (ou documento equivalente).
     </p>
+
+    @if($overall)
+        <p style="padding: 8px; border: 1px solid #ccc; background: #f5f5f5;">
+            <strong>{{ $scenarioConfig['short_label'] ?? 'Cenário geral' }}:</strong>
+            média {{ number_format($overall->average_score, 2) }} ({{ $riskLevelLabel($overall->risk_level) }}).
+            @if(!empty($referral['conduct']))
+                {{ $referral['conduct'] }}
+            @endif
+        </p>
+    @endif
+
     <p><strong>Mapeamento orientativo — dimensão da pesquisa e foco no PGR:</strong></p>
     <table>
         <thead>
@@ -94,18 +102,20 @@
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td>Risco elevado</td>
-                <td>Priorizar análise aprofundada, medidas de controle e prazo definido; comunicação com CIPA/participação dos trabalhadores quando aplicável.</td>
-            </tr>
-            <tr>
-                <td>Risco intermediário</td>
-                <td>Planejar ações preventivas, monitoramento em nova rodada de coleta ou indicadores correlatos.</td>
-            </tr>
-            <tr>
-                <td>Situação favorável</td>
-                <td>Manter práticas, revisar periodicamente e registrar evolução histórica no PGR.</td>
-            </tr>
+            @php
+                $pgrRows = [
+                    'red' => ['Risco elevado', 'Priorizar análise aprofundada, medidas de controle e prazo definido; comunicação com CIPA/participação dos trabalhadores quando aplicável.'],
+                    'yellow' => ['Risco intermediário', 'Planejar ações preventivas, monitoramento em nova rodada de coleta ou indicadores correlatos.'],
+                    'green' => ['Situação favorável', 'Manter práticas, revisar periodicamente e registrar evolução histórica no PGR.'],
+                ];
+                $highlight = $scenario ?? 'green';
+            @endphp
+            @foreach($pgrRows as $level => [$label, $conduct])
+                <tr @if($level === $highlight) style="background: #fff8e6; font-weight: bold;" @endif>
+                    <td>{{ $label }}@if($level === $highlight) (cenário atual)@endif</td>
+                    <td>{{ $conduct }}</td>
+                </tr>
+            @endforeach
         </tbody>
     </table>
     <p style="margin-top: 12px; font-size: 10px; padding: 8px; border: 1px solid #ccc; background: #f9f9f9;">

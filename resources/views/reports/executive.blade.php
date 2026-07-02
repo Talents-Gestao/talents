@@ -6,32 +6,44 @@
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #2a1042; }
         h1 { font-size: 20px; color: #4a2070; }
+        h2 { font-size: 14px; margin-top: 16px; color: #4a2070; }
         .muted { color: #666; font-size: 11px; }
+        .scenario { margin: 12px 0; padding: 10px; border: 1px solid #ddd; background: #f9f6fc; }
         table { width: 100%; border-collapse: collapse; margin-top: 12px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background: #f5f0fa; }
     </style>
 </head>
 <body>
-    @php
-        $riskLevelLabel = fn (?string $l) => match ($l) {
-            'green' => 'Situação favorável',
-            'yellow' => 'Risco intermediário',
-            'red' => 'Risco elevado',
-            default => strtoupper((string) $l),
-        };
-    @endphp
     <h1>Relatório executivo NR-1</h1>
     <p class="muted">Empresa: {{ $survey->company->name }} &mdash; Campanha: {{ $survey->title }}</p>
     <p class="muted">Período: {{ optional($survey->starts_at)->format('d/m/Y') }} a {{ optional($survey->ends_at)->format('d/m/Y') }}</p>
 
     @php
         $overall = $survey->results->first(fn($r) => $r->survey_template_section_id === null && $r->department_id === null);
+        $executive = $scenarioConfig['executive'] ?? [];
     @endphp
 
     @if($overall)
-        <p><strong>Indicador geral de risco (1–5):</strong> {{ number_format($overall->average_score, 2) }} ({{ $riskLevelLabel($overall->risk_level) }})</p>
-        <p><strong>Respondentes:</strong> {{ $overall->respondent_count }}</p>
+        <div class="scenario">
+            <strong>{{ $scenarioConfig['short_label'] ?? 'Cenário geral' }}</strong>
+            <br>
+            <strong>Indicador geral de risco (1–5):</strong> {{ number_format($overall->average_score, 2) }} ({{ $riskLevelLabel($overall->risk_level) }})
+            <br>
+            <strong>Respondentes:</strong> {{ $overall->respondent_count }}
+        </div>
+    @endif
+
+    @if(!empty($executive))
+        <h2>{{ $executive['focus_heading'] ?? 'Visão geral' }}</h2>
+        <p>{{ $executive['focus_intro'] ?? '' }}</p>
+
+        <h2>{{ $executive['recommendations_heading'] ?? 'Recomendações' }}</h2>
+        <ul>
+            @foreach($executive['recommendations'] ?? [] as $recommendation)
+                <li>{{ $recommendation }}</li>
+            @endforeach
+        </ul>
     @endif
 
     <h2>Dimensões</h2>
@@ -75,13 +87,6 @@
         <li>Apoio à priorização de medidas de prevenção nas dimensões com indicador &quot;Risco intermediário&quot; ou &quot;Risco elevado&quot;.</li>
         <li>Registro de campanha, período e unidade organizacional (setores, quando aplicável).</li>
         <li>Manter rastreabilidade com plano de ação, responsáveis e prazos definidos internamente.</li>
-    </ul>
-    <p><strong>Checklist sugerido (não exaustivo):</strong></p>
-    <ul>
-        <li>Inventário de riscos psicossociais atualizado com base em metodologia reconhecida.</li>
-        <li>Participação dos trabalhadores no ciclo de gerenciamento de riscos.</li>
-        <li>Integração com DDS, análise de acidentes/doenças, absenteísmo e reclamações, quando pertinente.</li>
-        <li>Revisão periódica após mudanças organizacionais relevantes.</li>
     </ul>
     <p style="margin-top: 14px; padding: 10px; border: 1px solid #ccc; background: #fafafa; font-size: 10px;">
         <strong>Aviso legal:</strong> este documento é um relatório gerado pela plataforma com base em respostas agregadas e anônimas.

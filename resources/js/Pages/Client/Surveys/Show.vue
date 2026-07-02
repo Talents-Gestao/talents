@@ -1,4 +1,5 @@
 <script setup>
+import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 
@@ -21,7 +22,10 @@ defineProps({
         </template>
 
         <div class="surface-card p-6">
-            <p class="text-sm text-gray-600">Status: <strong>{{ survey.status }}</strong></p>
+            <p class="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                <span>Status:</span>
+                <SurveyStatusBadge :status="survey.status" />
+            </p>
             <p class="mt-2 text-sm text-gray-600">
                 Período: {{ survey.starts_at }} — {{ survey.ends_at }}
             </p>

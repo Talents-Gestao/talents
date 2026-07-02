@@ -38,13 +38,28 @@ docker compose --profile tools run --rm node npm ci
 docker compose --profile tools run --rm node npm run build
 ```
 
-Vite em modo desenvolvimento (HMR), expondo a porta 5173:
+#### Hot reload (Vite HMR)
+
+1. No `.env`, confira `APP_URL=http://localhost:8080` e as variáveis `VITE_*` (veja `.env.example`).
+2. Suba a stack normal e o serviço `vite` (profile `dev` — **não** entra em produção):
 
 ```bash
-docker compose --profile tools run --rm -p 5173:5173 node sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
+docker compose up -d
+docker compose --profile dev up vite
 ```
 
-Ajuste `APP_URL` no `.env` conforme o endereço que você usa no navegador (ex.: `http://localhost:8080`). Se o Vite apontar assets para outra origem, configure as variáveis do Vite/Laravel conforme a [documentação do Laravel Vite](https://laravel.com/docs/vite#running-the-development-server-in-docker).
+3. Abra **http://localhost:8080** (a app). O Vite serve assets em **http://localhost:5173** (HMR).
+4. Edite `.vue` / `.js` / `.css` → atualização instantânea. Blade, rotas e controllers → reload automático da página.
+
+Para parar o HMR: `Ctrl+C` no terminal do `vite` ou `docker compose --profile dev stop vite`.
+
+Build de produção continua sendo `npm run build` (sem profile `dev`). O ficheiro `public/hot` é criado só em dev e está no `.gitignore`.
+
+Comando alternativo (one-shot, sem serviço `vite` no compose):
+
+```bash
+docker compose --profile tools run --rm -p 5173:5173 node sh -c "npm ci && npm run dev:docker"
+```
 
 ### Acesso
 

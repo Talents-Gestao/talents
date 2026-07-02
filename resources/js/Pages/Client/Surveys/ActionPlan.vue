@@ -29,6 +29,14 @@ const patchItem = (item) => {
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <h2 class="text-xl font-semibold leading-tight text-talents-900">Plano de ação</h2>
                 <div class="flex gap-2">
+                    <a
+                        v-if="!actionPlanLocked"
+                        :href="route('client.surveys.reports.action-plan', survey.id)"
+                        class="rounded-md border border-talents-300 px-3 py-1 text-sm font-semibold text-talents-900"
+                        target="_blank"
+                    >
+                        PDF do plano
+                    </a>
                     <Link :href="route('client.surveys.results', survey.id)" class="text-sm text-talents-700 hover:underline">Resultados</Link>
                     <Link :href="route('client.surveys.show', survey.id)" class="text-sm text-talents-700 hover:underline">Voltar</Link>
                 </div>
