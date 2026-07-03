@@ -34,6 +34,7 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
     Route::get('/dashboard', [ClientDashboardController::class, 'index'])->name('dashboard');
 
     Route::get('avisos', [ClientCompanyNoticeController::class, 'index'])->name('notices.index');
+    Route::get('avisos/recentes', [ClientCompanyNoticeController::class, 'recent'])->name('notices.recent');
     Route::post('avisos/{notice}/lido', [ClientCompanyNoticeController::class, 'markRead'])->name('notices.mark-read');
     Route::post('avisos/marcar-todos-lidos', [ClientCompanyNoticeController::class, 'markAllRead'])->name('notices.mark-all-read');
 
