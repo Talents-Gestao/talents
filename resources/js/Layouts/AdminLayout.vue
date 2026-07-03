@@ -9,7 +9,6 @@ import { computed } from 'vue';
 import {
     AcademicCapIcon,
     ArrowRightOnRectangleIcon,
-    BellAlertIcon,
     BuildingOffice2Icon,
     CalendarDaysIcon,
     ChatBubbleLeftRightIcon,
@@ -203,16 +202,6 @@ const configuracaoActive = computed(
                 :active="route().current('admin.strategic-calendar.*')"
                 :icon="CalendarDaysIcon"
                 label="Calendário"
-                :collapsed="collapsed"
-                :compact="compact"
-            />
-
-            <SidebarNavItem
-                v-if="canAdmin('strategic_calendar')"
-                :href="route('admin.notices.index')"
-                :active="route().current('admin.notices.*')"
-                :icon="BellAlertIcon"
-                label="Avisos"
                 :collapsed="collapsed"
                 :compact="compact"
             />
