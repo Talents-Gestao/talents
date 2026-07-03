@@ -1,5 +1,6 @@
 <script setup>
-import { BellIcon, FolderIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
+import NoticeBellDropdown from '@/Components/NoticeBellDropdown.vue';
+import { FolderIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 
 defineProps({
     /** Texto opcional à esquerda (ex.: contexto da área) */
@@ -54,13 +55,7 @@ defineProps({
             >
                 <FolderIcon class="h-6 w-6" />
             </button>
-            <button
-                type="button"
-                class="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-talents-500/30"
-                aria-label="Notificações"
-            >
-                <BellIcon class="h-6 w-6" />
-            </button>
+            <NoticeBellDropdown />
         </div>
     </div>
 </template>

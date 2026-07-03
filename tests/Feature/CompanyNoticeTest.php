@@ -64,6 +64,20 @@ class CompanyNoticeTest extends TestCase
                 ->where('nav.unread_notices_count', 1));
 
         $this->actingAs($user)
+            ->getJson(route('client.notices.recent'))
+            ->assertOk()
+            ->assertJsonPath('unread_count', 1)
+            ->assertJsonCount(1, 'notices')
+            ->assertJsonPath('notices.0.id', $notice->id)
+            ->assertJsonPath('notices.0.read', false);
+
+        $this->actingAs($user)
+            ->postJson(route('client.notices.mark-read', $notice))
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('unread_count', 0);
+
+        $this->actingAs($user)
             ->post(route('client.notices.mark-read', $notice), [], [
                 'HTTP_REFERER' => route('client.notices.index'),
             ])
