@@ -29,6 +29,7 @@ class PreviewController extends Controller
             'catalog_products.*.salary_cents' => ['nullable', 'integer', 'min:0'],
             'catalog_products.*.rate_mode' => ['nullable', 'string', 'max:16'],
             'catalog_products.*.units' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'catalog_products.*.custom_cents' => ['nullable', 'integer', 'min:0'],
             'catalog_products.*.adjustment' => ['nullable', 'string', 'max:16'],
             'catalog_products.*.discount_type' => ['nullable', 'string', 'max:16'],
             'catalog_products.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
