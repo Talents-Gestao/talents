@@ -4,6 +4,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import { COLLECTIVE_BARGAINING_MONTHS } from '@/utils/collectiveBargainingMonths';
 import { Head, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -46,6 +47,8 @@ const form = useForm({
     legal_name: props.company.legal_name ?? '',
     cnpj: props.company.cnpj ?? '',
     segment: props.company.segment ?? '',
+    activity_branch: props.company.activity_branch ?? '',
+    collective_bargaining_month: props.company.collective_bargaining_month ?? null,
     address_street: props.company.address_street ?? '',
     address_neighborhood: props.company.address_neighborhood ?? '',
     address_city: props.company.address_city ?? '',
@@ -129,6 +132,28 @@ const submit = () => {
                 <div>
                     <InputLabel for="segment" value="Segmento" />
                     <TextInput id="segment" v-model="form.segment" class="mt-1 block w-full" />
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+                <div>
+                    <InputLabel for="activity_branch" value="Ramo de atividade" />
+                    <p class="mt-0.5 text-xs text-gray-500">
+                        Usado para campanhas de contribuição associativa (sindical).
+                    </p>
+                    <TextInput id="activity_branch" v-model="form.activity_branch" class="mt-1 block w-full" />
+                </div>
+                <div>
+                    <InputLabel for="collective_bargaining_month" value="Mês do dissídio" />
+                    <select
+                        id="collective_bargaining_month"
+                        v-model="form.collective_bargaining_month"
+                        class="mt-1 block w-full rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    >
+                        <option :value="null">— Selecione —</option>
+                        <option v-for="month in COLLECTIVE_BARGAINING_MONTHS" :key="month.value" :value="month.value">
+                            {{ month.label }}
+                        </option>
+                    </select>
                 </div>
             </div>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">

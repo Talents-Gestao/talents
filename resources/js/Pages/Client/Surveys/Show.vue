@@ -1,6 +1,7 @@
 <script setup>
 import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
+import { formatDateTime } from '@/utils/dateOnly';
 import { Head, Link } from '@inertiajs/vue3';
 
 defineProps({
@@ -27,7 +28,7 @@ defineProps({
                 <SurveyStatusBadge :status="survey.status" />
             </p>
             <p class="mt-2 text-sm text-gray-600">
-                Período: {{ survey.starts_at }} — {{ survey.ends_at }}
+                Período: {{ formatDateTime(survey.starts_at) }} — {{ formatDateTime(survey.ends_at) }}
             </p>
             <div class="mt-4">
                 <p class="text-sm font-medium text-gray-800">Link anônimo para colaboradores</p>

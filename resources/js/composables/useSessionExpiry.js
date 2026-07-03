@@ -1,9 +1,9 @@
 import { redirectToLoginExpired } from '@/utils/sessionExpiry';
 import { router, usePage } from '@inertiajs/vue3';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { nextTick, onUnmounted, ref, watch } from 'vue';
 
 /**
- * Agenda aviso e expiração com base em `page.props.session` (atualizado a cada visita Inertia).
+ * Agenda aviso e expiração com base em `page.props.sessionExpiry` (atualizado a cada visita Inertia).
  *
  * @param {(minutesRemaining: number) => void} onWarning
  */
@@ -16,6 +16,8 @@ export function useSessionExpiry(onWarning) {
     let warningTimer = null;
     /** @type {ReturnType<typeof setTimeout> | null} */
     let expiryTimer = null;
+    /** @type {number | null} */
+    let scheduledForExpiresAt = null;
 
     function clearTimers() {
         if (warningTimer !== null) {
@@ -29,18 +31,46 @@ export function useSessionExpiry(onWarning) {
     }
 
     function schedule(session) {
-        clearTimers();
-        warningVisible.value = false;
-
         if (!session?.expires_at) {
+            if (import.meta.env.DEV) {
+                console.warn(
+                    '[SessionExpiry] sessionExpiry ausente em page.props — aviso de expiração não agendado.',
+                );
+            }
+
             return;
         }
 
+        const expiresAt = Number(session.expires_at);
+
+        if (Number.isNaN(expiresAt)) {
+            return;
+        }
+
+        if (
+            scheduledForExpiresAt === expiresAt &&
+            warningTimer !== null &&
+            expiryTimer !== null
+        ) {
+            return;
+        }
+
+        clearTimers();
+        warningVisible.value = false;
+        scheduledForExpiresAt = expiresAt;
+
         const now = Date.now();
-        const expiresAt = session.expires_at;
         const warningMinutes = session.warning_minutes ?? 5;
         const warningMs = warningMinutes * 60 * 1000;
         const warningAt = expiresAt - warningMs;
+
+        if (import.meta.env.DEV) {
+            const warnInSec = Math.max(0, Math.round((warningAt - now) / 1000));
+            const expireInSec = Math.max(0, Math.round((expiresAt - now) / 1000));
+            console.info(
+                `[SessionExpiry] agendado — aviso em ${warnInSec}s, expiração em ${expireInSec}s (lifetime ${session.lifetime_minutes} min, aviso ${warningMinutes} min antes).`,
+            );
+        }
 
         if (expiresAt <= now) {
             redirectToLoginExpired();
@@ -73,22 +103,19 @@ export function useSessionExpiry(onWarning) {
     }
 
     watch(
-        () => page.props?.session,
-        (session) => schedule(session),
-        { immediate: true },
+        () => page.props?.sessionExpiry,
+        (sessionExpiry) => schedule(sessionExpiry),
+        { immediate: true, deep: true },
     );
 
-    const removeSuccessListener = router.on('success', () => {
-        schedule(page.props?.session);
-    });
-
-    onMounted(() => {
-        schedule(page.props?.session);
+    const removeFinishListener = router.on('finish', () => {
+        schedule(page.props?.sessionExpiry);
     });
 
     onUnmounted(() => {
         clearTimers();
-        removeSuccessListener();
+        removeFinishListener();
+        scheduledForExpiresAt = null;
     });
 
     return {

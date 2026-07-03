@@ -100,12 +100,16 @@ class CompanyController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $request->merge($this->normalizeCompanyActivityFields($request->all()));
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'contact_email' => ['required', 'string', 'max:255', 'email', 'unique:users,email'],
             'legal_name' => ['nullable', 'string', 'max:255'],
             'cnpj' => ['nullable', 'string', 'max:18'],
             'segment' => ['nullable', 'string', 'max:120'],
+            'activity_branch' => ['nullable', 'string', 'max:120'],
+            'collective_bargaining_month' => ['nullable', 'integer', 'between:1,12'],
             'address_street' => ['nullable', 'string', 'max:255'],
             'address_neighborhood' => ['nullable', 'string', 'max:120'],
             'address_city' => ['nullable', 'string', 'max:120'],
@@ -134,6 +138,8 @@ class CompanyController extends Controller
                 'legal_name' => $data['legal_name'] ?? null,
                 'cnpj' => $data['cnpj'] ?? null,
                 'segment' => $data['segment'] ?? null,
+                'activity_branch' => $data['activity_branch'] ?? null,
+                'collective_bargaining_month' => $data['collective_bargaining_month'] ?? null,
                 'address_street' => $data['address_street'] ?? null,
                 'address_neighborhood' => $data['address_neighborhood'] ?? null,
                 'address_city' => $data['address_city'] ?? null,
@@ -234,12 +240,16 @@ class CompanyController extends Controller
 
     public function update(Request $request, Company $company): RedirectResponse
     {
+        $request->merge($this->normalizeCompanyActivityFields($request->all()));
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'contact_email' => ['nullable', 'string', 'max:255', 'email'],
             'legal_name' => ['nullable', 'string', 'max:255'],
             'cnpj' => ['nullable', 'string', 'max:18'],
             'segment' => ['nullable', 'string', 'max:120'],
+            'activity_branch' => ['nullable', 'string', 'max:120'],
+            'collective_bargaining_month' => ['nullable', 'integer', 'between:1,12'],
             'address_street' => ['nullable', 'string', 'max:255'],
             'address_neighborhood' => ['nullable', 'string', 'max:120'],
             'address_city' => ['nullable', 'string', 'max:120'],
@@ -360,6 +370,25 @@ class CompanyController extends Controller
         return redirect()
             ->back()
             ->with('success', $message);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function normalizeCompanyActivityFields(array $data): array
+    {
+        if (array_key_exists('collective_bargaining_month', $data)
+            && ($data['collective_bargaining_month'] === '' || $data['collective_bargaining_month'] === null)) {
+            $data['collective_bargaining_month'] = null;
+        }
+
+        if (array_key_exists('activity_branch', $data)) {
+            $branch = is_string($data['activity_branch']) ? trim($data['activity_branch']) : $data['activity_branch'];
+            $data['activity_branch'] = $branch === '' ? null : $branch;
+        }
+
+        return $data;
     }
 
     public function attachTemplate(Company $company, SurveyTemplate $template): RedirectResponse
