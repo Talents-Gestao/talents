@@ -59,6 +59,27 @@ function capitalizeFirst(str) {
 }
 
 /**
+ * Data e hora em pt-BR (timezone da aplicação).
+ * Ex.: "25/06/2026, 10:22"
+ *
+ * @param {string|null|undefined} iso
+ * @returns {string}
+ */
+export function formatDateTime(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString('pt-BR', {
+        timeZone: APP_TIMEZONE,
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+/**
  * Ex.: "Terça-feira, 13 de maio de 2026"
  */
 export function formatDateLong(iso) {

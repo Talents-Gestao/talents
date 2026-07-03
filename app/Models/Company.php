@@ -17,6 +17,8 @@ class Company extends Model
         'legal_name',
         'cnpj',
         'segment',
+        'activity_branch',
+        'collective_bargaining_month',
         'address_street',
         'address_neighborhood',
         'address_city',
@@ -39,6 +41,7 @@ class Company extends Model
     protected function casts(): array
     {
         return [
+            'collective_bargaining_month' => 'integer',
             'is_active' => 'boolean',
             'rhid_password' => 'encrypted',
             'strategic_calendar_access' => 'boolean',

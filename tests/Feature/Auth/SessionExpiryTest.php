@@ -33,8 +33,8 @@ class SessionExpiryTest extends TestCase
         $response
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->has('session.expires_at')
-                ->where('session.lifetime_minutes', $lifetimeMinutes)
-                ->where('session.warning_minutes', $warningMinutes));
+                ->has('sessionExpiry.expires_at')
+                ->where('sessionExpiry.lifetime_minutes', $lifetimeMinutes)
+                ->where('sessionExpiry.warning_minutes', $warningMinutes));
     }
 }

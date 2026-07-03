@@ -19,6 +19,7 @@ import {
 } from '@heroicons/vue/24/outline';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { collectiveBargainingMonthLabel } from '@/utils/collectiveBargainingMonths';
 
 const props = defineProps({
     company: Object,
@@ -63,6 +64,10 @@ const locationLabel = computed(() => {
     }
     return city || state || null;
 });
+
+const collectiveBargainingMonth = computed(() =>
+    collectiveBargainingMonthLabel(props.company.collective_bargaining_month),
+);
 
 const subscriptionStatusClass = (status) => {
     const s = String(status || '').toLowerCase();
@@ -166,6 +171,14 @@ const deleteCompany = () => {
                                 <dt class="sr-only">Segmento</dt>
                                 <dd><span class="text-slate-400">Segmento</span> {{ company.segment }}</dd>
                             </div>
+                            <div v-if="company.activity_branch">
+                                <dt class="sr-only">Ramo de atividade</dt>
+                                <dd><span class="text-slate-400">Ramo</span> {{ company.activity_branch }}</dd>
+                            </div>
+                            <div v-if="collectiveBargainingMonth">
+                                <dt class="sr-only">Mês do dissídio</dt>
+                                <dd><span class="text-slate-400">Dissídio</span> {{ collectiveBargainingMonth }}</dd>
+                            </div>
                             <div v-if="locationLabel">
                                 <dt class="sr-only">Localização</dt>
                                 <dd><span class="text-slate-400">Local</span> {{ locationLabel }}</dd>
@@ -246,6 +259,14 @@ const deleteCompany = () => {
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Segmento</dt>
                             <dd class="mt-1 text-slate-800">{{ company.segment || '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Ramo de atividade</dt>
+                            <dd class="mt-1 text-slate-800">{{ company.activity_branch || '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Mês do dissídio</dt>
+                            <dd class="mt-1 text-slate-800">{{ collectiveBargainingMonth || '—' }}</dd>
                         </div>
                         <div class="sm:col-span-2">
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Logradouro</dt>
