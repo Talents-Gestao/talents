@@ -160,6 +160,7 @@ class CommercialProductPricingService
             'salary_cents' => isset($selection['salary_cents']) ? (int) $selection['salary_cents'] : null,
             'rate_mode' => $selection['rate_mode'] ?? null,
             'units' => isset($selection['units']) ? (float) $selection['units'] : null,
+            'custom_cents' => isset($selection['custom_cents']) ? (int) $selection['custom_cents'] : null,
             'adjustment' => $selection['adjustment'] ?? null,
             'discount_type' => $selection['discount_type'] ?? null,
             'discount_percent' => isset($selection['discount_percent']) ? (float) $selection['discount_percent'] : null,
@@ -175,6 +176,11 @@ class CommercialProductPricingService
     private function flexibleRatesSubtotal(array $config, array $selection): int
     {
         $mode = (string) ($selection['rate_mode'] ?? '');
+
+        if ($mode === 'custom') {
+            return max(0, (int) ($selection['custom_cents'] ?? 0));
+        }
+
         $rate = $config['rates'][$mode] ?? null;
 
         if (! is_array($rate) || ! ($rate['enabled'] ?? false)) {
@@ -195,6 +201,7 @@ class CommercialProductPricingService
             'hour' => 'Por hora',
             'quantity' => 'Por quantidade',
             'unit' => 'Por unidade',
+            'custom' => 'Personalizado',
             default => $mode,
         };
     }
@@ -285,6 +292,15 @@ class CommercialProductPricingService
     private function buildFlexibleBaseDetail(array $selection, array $config): string
     {
         $mode = (string) ($selection['rate_mode'] ?? '');
+
+        if ($mode === 'custom') {
+            $cents = max(0, (int) ($selection['custom_cents'] ?? 0));
+
+            return $cents > 0
+                ? 'R$ '.number_format($cents / 100, 2, ',', '.')
+                : '—';
+        }
+
         $units = (float) ($selection['units'] ?? 0);
         $centsPerUnit = (int) ($config['rates'][$mode]['cents_per_unit'] ?? 0);
         $suffix = self::flexibleUnitsSuffix($mode);

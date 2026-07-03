@@ -17,6 +17,12 @@ export const FLEXIBLE_RATE_DEFS = [
     { key: 'unit', label: 'Por unidade', unitsLabel: 'Número de unidades', suffix: 'un.' },
 ];
 
+export const FLEXIBLE_RATE_CUSTOM = {
+    key: 'custom',
+    label: 'Personalizado',
+    unitsLabel: 'Valor personalizado (R$)',
+};
+
 const applyDiscount = (subtotal, selection) => {
     const discountType = String(selection.discount_type ?? 'percent');
 
@@ -43,6 +49,11 @@ export const applyAdjustment = (subtotal, selection) => {
 
 const flexibleRatesSubtotal = (config, selection) => {
     const mode = String(selection.rate_mode ?? '');
+
+    if (mode === FLEXIBLE_RATE_CUSTOM.key) {
+        return Math.max(0, Number(selection.custom_cents ?? 0));
+    }
+
     const rate = config.rates?.[mode];
     if (!rate?.enabled) {
         return 0;
@@ -82,6 +93,15 @@ const appendAdjustmentSuffix = (base, selection) => {
 
 const buildFlexibleBaseDetail = (selection, config) => {
     const mode = String(selection.rate_mode ?? '');
+
+    if (mode === FLEXIBLE_RATE_CUSTOM.key) {
+        const cents = Math.max(0, Number(selection.custom_cents ?? 0));
+        if (cents <= 0) {
+            return '—';
+        }
+        return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
     const def = FLEXIBLE_RATE_DEFS.find((d) => d.key === mode);
     const units = Number(selection.units ?? 0);
     const centsPerUnit = Number(config.rates?.[mode]?.cents_per_unit ?? 0);

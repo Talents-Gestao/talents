@@ -268,4 +268,28 @@ class CommercialPricingServiceTest extends TestCase
         $this->assertCount(1, $r['catalog_lines']);
         $this->assertStringContainsString('Bonificação', $r['catalog_lines'][0]['detail']);
     }
+
+    public function test_flexible_rates_custom_value(): void
+    {
+        $product = $this->makeProduct(15, 'consultoria', CommercialProductPricingType::FlexibleRates, [
+            'rates' => [
+                'hour' => ['enabled' => true, 'cents_per_unit' => 10000],
+                'quantity' => ['enabled' => false, 'cents_per_unit' => 0],
+                'unit' => ['enabled' => false, 'cents_per_unit' => 0],
+            ],
+        ]);
+
+        $r = $this->calculateWithProducts([
+            [
+                'product_id' => 15,
+                'enabled' => true,
+                'rate_mode' => 'custom',
+                'custom_cents' => 125000,
+            ],
+        ], 1, collect([$product]));
+
+        $this->assertSame(125000, $r['total_catalog_products_cents']);
+        $this->assertStringContainsString('R$ 1.250,00', $r['catalog_lines'][0]['detail']);
+        $this->assertSame(125000, $r['catalog_lines'][0]['options']['custom_cents']);
+    }
 }

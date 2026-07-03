@@ -4,7 +4,7 @@ import CommercialAdjustmentFields from '@/Components/Comercial/CommercialAdjustm
 import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
-import { enabledFlexibleRates, FLEXIBLE_RATE_DEFS } from '@/composables/useCatalogProductPricing';
+import { enabledFlexibleRates, FLEXIBLE_RATE_CUSTOM, FLEXIBLE_RATE_DEFS } from '@/composables/useCatalogProductPricing';
 import { formatCnpj } from '@/utils/formatCnpj';
 import axios from 'axios';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
@@ -34,6 +34,7 @@ const buildCatalogProductsInitial = () => {
             salary_cents: ex.salary_cents ?? 0,
             rate_mode: ex.rate_mode ?? '',
             units: ex.units ?? '',
+            custom_cents: ex.custom_cents ?? 0,
             adjustment: ex.adjustment ?? 'none',
             discount_type: ex.discount_type ?? 'percent',
             discount_percent: ex.discount_percent ?? '',
@@ -146,6 +147,7 @@ const catalogSelection = (productId) => {
             salary_cents: 0,
             rate_mode: '',
             units: '',
+            custom_cents: 0,
             adjustment: 'none',
             discount_type: 'percent',
             discount_percent: '',
@@ -169,7 +171,13 @@ const catalogLineSubtotal = (productId) => {
 const showCommercialAdjustment = (product) => {
     if (product.pricing_type === 'flexible_rates') {
         const sel = catalogSelection(product.id);
-        return !!sel.enabled && !!sel.rate_mode && Number(sel.units) > 0 && catalogLineSubtotal(product.id) > 0;
+        if (!sel.enabled) {
+            return false;
+        }
+        if (sel.rate_mode === FLEXIBLE_RATE_CUSTOM.key) {
+            return Number(sel.custom_cents) > 0 && catalogLineSubtotal(product.id) > 0;
+        }
+        return !!sel.rate_mode && Number(sel.units) > 0 && catalogLineSubtotal(product.id) > 0;
     }
     if (product.pricing_type === 'fixed_modality') {
         return !!catalogSelection(product.id).modality && catalogLineSubtotal(product.id) > 0;
@@ -189,21 +197,46 @@ const updateCatalogSalary = (productId, reaisStr) => {
         : 0;
 };
 
+const catalogCustomReais = (productId) => {
+    const cents = catalogSelection(productId).custom_cents ?? 0;
+    return ((Number(cents) || 0) / 100).toFixed(2).replace('.', ',');
+};
+
+const updateCatalogCustomValue = (productId, reaisStr) => {
+    const numeric = Number(String(reaisStr ?? '').replace(/\./g, '').replace(',', '.'));
+    catalogSelection(productId).custom_cents = Number.isFinite(numeric)
+        ? Math.max(0, Math.round(numeric * 100))
+        : 0;
+};
+
+const isFlexibleRateModeCustom = (productId) =>
+    catalogSelection(productId).rate_mode === FLEXIBLE_RATE_CUSTOM.key;
+
 const isProductSelected = (product) => {
     const sel = catalogSelection(product.id);
     if (product.pricing_type === 'fixed_modality') {
         return !!sel.modality;
     }
     if (product.pricing_type === 'flexible_rates') {
-        return !!sel.enabled && !!sel.rate_mode && Number(sel.units) > 0;
+        if (!sel.enabled) {
+            return false;
+        }
+        if (sel.rate_mode === FLEXIBLE_RATE_CUSTOM.key) {
+            return Number(sel.custom_cents) > 0;
+        }
+        return !!sel.rate_mode && Number(sel.units) > 0;
     }
     return !!sel.enabled;
 };
 
 const flexibleRatesForProduct = (product) => enabledFlexibleRates(product);
 
-const unitsLabelForMode = (mode) =>
-    FLEXIBLE_RATE_DEFS.find((d) => d.key === mode)?.unitsLabel ?? 'Quantidade';
+const unitsLabelForMode = (mode) => {
+    if (mode === FLEXIBLE_RATE_CUSTOM.key) {
+        return FLEXIBLE_RATE_CUSTOM.unitsLabel;
+    }
+    return FLEXIBLE_RATE_DEFS.find((d) => d.key === mode)?.unitsLabel ?? 'Quantidade';
+};
 
 const formatRateUnitPrice = (product, mode) => {
     const cents = product.pricing_config?.rates?.[mode]?.cents_per_unit ?? 0;
@@ -538,10 +571,26 @@ const services = computed(() => {
                                             >
                                                 {{ rate.label }} ({{ formatRateUnitPrice(product, rate.key) }})
                                             </option>
+                                            <option :value="FLEXIBLE_RATE_CUSTOM.key">
+                                                {{ FLEXIBLE_RATE_CUSTOM.label }}
+                                            </option>
                                         </select>
                                     </div>
 
-                                    <div v-if="catalogSelection(product.id).rate_mode">
+                                    <div v-if="isFlexibleRateModeCustom(product.id)">
+                                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                            {{ FLEXIBLE_RATE_CUSTOM.unitsLabel }}
+                                        </label>
+                                        <input
+                                            :value="catalogCustomReais(product.id)"
+                                            type="text"
+                                            placeholder="0,00"
+                                            class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                            @input="updateCatalogCustomValue(product.id, $event.target.value)"
+                                        />
+                                    </div>
+
+                                    <div v-else-if="catalogSelection(product.id).rate_mode">
                                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
                                             {{ unitsLabelForMode(catalogSelection(product.id).rate_mode) }}
                                         </label>
