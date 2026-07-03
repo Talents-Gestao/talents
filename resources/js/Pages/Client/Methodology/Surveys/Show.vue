@@ -1,5 +1,6 @@
 <script setup>
 import ClientLayout from '@/Layouts/ClientLayout.vue';
+import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
@@ -68,7 +69,10 @@ const deleteSurvey = () => {
                     {{ copied ? 'Copiado!' : 'Copiar link' }}
                 </button>
                 <p class="mt-4 text-sm text-gray-600">Respostas concluídas: <strong>{{ survey.completed_responses_count }}</strong></p>
-                <p class="mt-2 text-sm text-gray-600">Status: <strong>{{ survey.status }}</strong></p>
+                <p class="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                    <span>Status:</span>
+                    <SurveyStatusBadge :status="survey.status" />
+                </p>
                 <p class="mt-2 text-sm text-gray-600">Coleta de e-mail: {{ survey.collect_email ? 'Sim' : 'Não' }}</p>
             </div>
             <div class="surface-card p-6 text-center">

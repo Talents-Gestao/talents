@@ -3,19 +3,32 @@ import Checkbox from '@/Components/Checkbox.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
-defineProps({
+const props = defineProps({
     canResetPassword: {
         type: Boolean,
     },
     status: {
         type: String,
     },
+    sessionExpired: {
+        type: Boolean,
+        default: false,
+    },
+});
+
+const expiredModalVisible = ref(false);
+
+onMounted(() => {
+    if (props.sessionExpired) {
+        expiredModalVisible.value = true;
+    }
 });
 
 const form = useForm({
@@ -31,11 +44,37 @@ const submit = () => {
         onFinish: () => form.reset('password'),
     });
 };
+
+const closeExpiredModal = () => {
+    expiredModalVisible.value = false;
+    window.history.replaceState({}, '', route('login'));
+};
 </script>
 
 <template>
     <GuestLayout>
         <Head title="Log in" />
+
+        <Modal
+            :show="expiredModalVisible"
+            max-width="md"
+            @close="closeExpiredModal"
+        >
+            <div class="p-6">
+                <h2 class="text-lg font-semibold text-gray-900">
+                    Sessão expirada
+                </h2>
+                <p class="mt-3 text-sm text-gray-600">
+                    Sua sessão expirou por inatividade. É necessário fazer
+                    login novamente para continuar.
+                </p>
+                <div class="mt-6 flex justify-end">
+                    <PrimaryButton type="button" @click="closeExpiredModal">
+                        Entendi
+                    </PrimaryButton>
+                </div>
+            </div>
+        </Modal>
 
         <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
             {{ status }}

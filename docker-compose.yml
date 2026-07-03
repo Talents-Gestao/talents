@@ -95,6 +95,24 @@ services:
     networks:
       - talents
 
+  # Vite HMR (hot reload). Não sobe em produção — profile `dev` apenas.
+  vite:
+    image: node:22-alpine
+    profiles: [dev]
+    container_name: talents-vite
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    ports:
+      - "${VITE_DEV_SERVER_PORT:-5173}:5173"
+    environment:
+      VITE_USE_POLLING: "${VITE_USE_POLLING:-true}"
+      VITE_HMR_HOST: "${VITE_HMR_HOST:-localhost}"
+      VITE_DEV_SERVER_PORT: "${VITE_DEV_SERVER_PORT:-5173}"
+    command: sh -c "if [ ! -x node_modules/.bin/vite ]; then npm ci; fi && npm run dev:docker"
+    networks:
+      - talents
+
 networks:
   talents:
     driver: bridge

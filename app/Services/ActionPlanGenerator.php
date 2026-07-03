@@ -6,12 +6,17 @@ use App\Models\ActionPlan;
 use App\Models\ActionPlanItem;
 use App\Models\Survey;
 use App\Models\SurveyResult;
+use App\Support\Nr1RiskScenarioResolver;
 
 class ActionPlanGenerator
 {
     public function generate(Survey $survey): ActionPlan
     {
         $survey->load('template.sections', 'company');
+
+        $scenario = Nr1RiskScenarioResolver::forSurvey($survey) ?? 'green';
+        $scenarioConfig = Nr1RiskScenarioResolver::scenarioConfig($scenario);
+        $itemKind = $scenarioConfig['action_plan']['item_kind'] ?? 'preventiva';
 
         $plan = ActionPlan::updateOrCreate(
             [
@@ -32,14 +37,17 @@ class ActionPlanGenerator
 
         $sort = 0;
         foreach ($sections as $row) {
-            if ($row->risk_level === 'green') {
+            if ($scenario === 'green' && $row->risk_level === 'green') {
                 continue;
             }
+
             $title = $row->meta['section_title'] ?? 'Dimensão '.$row->survey_template_section_id;
+            [$itemTitle, $itemDescription] = $this->buildItem($title, $itemKind, $row->risk_level);
+
             ActionPlanItem::create([
                 'action_plan_id' => $plan->id,
-                'title' => 'Revisar '.$title,
-                'description' => $this->suggestionForSection($title),
+                'title' => $itemTitle,
+                'description' => $itemDescription,
                 'status' => 'pending',
                 'sort_order' => $sort++,
             ]);
@@ -49,13 +57,36 @@ class ActionPlanGenerator
             ActionPlanItem::create([
                 'action_plan_id' => $plan->id,
                 'title' => 'Manter práticas e monitorar indicadores',
-                'description' => 'Níveis dentro da faixa aceitável. Continue pesquisas periódicas e comunicação com equipes.',
+                'description' => 'Níveis dentro da faixa aceitável. Continue pesquisas periódicas, ações preventivas leves e comunicação com equipes.',
                 'status' => 'pending',
                 'sort_order' => 0,
             ]);
         }
 
         return $plan->load('items');
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function buildItem(string $sectionTitle, string $itemKind, ?string $riskLevel): array
+    {
+        $baseDescription = $this->suggestionForSection($sectionTitle);
+
+        return match ($itemKind) {
+            'intervencao_imediata' => [
+                'Intervenção imediata: Revisar '.$sectionTitle,
+                $baseDescription.' Prazo: curto. Acompanhamento semanal até estabilização do indicador.',
+            ],
+            'preventiva_com_acompanhamento' => [
+                'Ação preventiva (acompanhamento obrigatório): Revisar '.$sectionTitle,
+                $baseDescription.' Definir responsável, prazo e indicador de acompanhamento obrigatório.',
+            ],
+            default => [
+                'Ação preventiva: Revisar '.$sectionTitle,
+                $baseDescription.' Registrar no PGR como medida preventiva.',
+            ],
+        };
     }
 
     private function suggestionForSection(string $title): string
@@ -97,7 +128,6 @@ class ActionPlanGenerator
         }
         if (str_contains($t, 'assédio') || str_contains($t, 'viol')) {
             return 'Reforçar canal de denúncias, código de conduta e treinamentos obrigatórios.';
-
         }
 
         return 'Definir responsáveis, prazo e indicadores de acompanhamento no PGR.';

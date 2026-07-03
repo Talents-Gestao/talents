@@ -1,4 +1,5 @@
 <script setup>
+import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
@@ -36,7 +37,9 @@ defineProps({ surveys: Object });
                     <tr v-for="s in surveys.data" :key="s.id">
                         <td class="px-4 py-3">{{ s.title }}</td>
                         <td class="px-4 py-3">{{ s.template?.title }}</td>
-                        <td class="px-4 py-3">{{ s.status }}</td>
+                        <td class="px-4 py-3">
+                            <SurveyStatusBadge :status="s.status" />
+                        </td>
                         <td class="px-4 py-3 text-right space-x-3">
                             <Link :href="route('client.surveys.show', s.id)" class="text-talents-700 hover:underline">Abrir</Link>
                             <Link :href="route('client.surveys.results', s.id)" class="text-talents-700 hover:underline">Resultados</Link>

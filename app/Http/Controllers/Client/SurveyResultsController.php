@@ -10,6 +10,7 @@ use App\Models\Survey;
 use App\Services\Nr1AiAnalyzer;
 use App\Services\SurveyResultCalculator;
 use App\Services\SurveyResultsPresenter;
+use App\Support\Nr1RiskScenarioResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -56,6 +57,9 @@ class SurveyResultsController extends Controller
                 'content' => $latestAi->content,
             ] : null,
             'aiAnalysisPending' => $aiAnalysisPending,
+            'riskScenarioLabel' => Nr1RiskScenarioResolver::scenarioConfig(
+                Nr1RiskScenarioResolver::forSurvey($survey) ?? 'green'
+            )['short_label'] ?? null,
         ]));
     }
 
