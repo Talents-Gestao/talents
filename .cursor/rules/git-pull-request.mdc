@@ -1,0 +1,33 @@
+---
+description: No projeto Talents, após commit e push criar sempre um pull request
+alwaysApply: true
+---
+
+# Pull request sempre (pasta `talents/`)
+
+Complementa a regra de commit e push. Sempre que uma tarefa **alterou ficheiros** versionados e já foi feito commit + push, **criar um pull request** para a branch `main`.
+
+## Fluxo
+
+1. Confirmar a branch base (normalmente `main`): `git remote show origin | rg "HEAD branch"`.
+2. Rever os commits da branch: `git log origin/main..HEAD --oneline`.
+3. Criar o PR com `gh pr create --base main --head <branch-atual>`.
+4. Devolver o URL do PR ao utilizador no fim.
+
+## Corpo do PR (Windows / PowerShell)
+
+O shell é **PowerShell**: `cat <<EOF` (heredoc) **não funciona**. Escrever o corpo num ficheiro temporário e usar `--body-file`, removendo o ficheiro no fim:
+
+```powershell
+# criar .pr-body.md (via ferramenta de escrita)
+gh pr create --base main --head <branch> --title "…" --body-file .pr-body.md
+# apagar .pr-body.md no fim
+```
+
+Preferir título com prefixo convencional (`feat:`, `fix:`, `ui:`, `refactor:`). Corpo com **Resumo**, **Alterações** e **Plano de teste**.
+
+## Excepções
+
+- Se já existir um PR aberto para a branch, **não** criar outro (verificar com `gh pr view` / `gh pr list`); atualizar/apontar o existente.
+- Não criar PR se o utilizador pedir explicitamente para não abrir, ou se não houver alterações enviadas.
+- Se `gh` falhar (auth, rede), diagnosticar e informar o utilizador com a mensagem de erro.
