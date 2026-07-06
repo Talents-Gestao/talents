@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\StrategicCalendarCompletion;
 use App\Models\TaskCard;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class StrategicCalendarClientEnricher
@@ -72,12 +73,16 @@ class StrategicCalendarClientEnricher
 
         $tasks = TaskCard::query()
             ->visibleToCompany((int) $company->id)
-            ->whereNotNull('due_date')
-            ->whereBetween('due_date', [$start->toDateString(), $end->toDateString()])
+            ->where(function (Builder $q) use ($start, $end): void {
+                $q->whereRaw('COALESCE(due_date, start_date) BETWEEN ? AND ?', [
+                    $start->toDateString(),
+                    $end->toDateString(),
+                ]);
+            })
             ->with(['list:id,name'])
-            ->orderBy('due_date')
+            ->orderByRaw('COALESCE(due_date, start_date)')
             ->orderBy('id')
-            ->get(['id', 'list_id', 'company_id', 'title', 'description', 'due_date', 'completed_at'])
+            ->get(['id', 'list_id', 'company_id', 'title', 'description', 'start_date', 'due_date', 'completed_at'])
             ->map(fn (TaskCard $card) => [
                 'id' => 'task-'.$card->id,
                 'source_id' => $card->id,
@@ -85,7 +90,7 @@ class StrategicCalendarClientEnricher
                 'title' => $card->title,
                 'description' => $card->description,
                 'kind' => 'task',
-                'occurs_on' => $card->due_date?->toDateString(),
+                'occurs_on' => ($card->due_date ?? $card->start_date)?->toDateString(),
                 'company_id' => $card->company_id,
                 'company' => ['id' => $company->id, 'name' => $company->name],
                 'recurrence' => null,

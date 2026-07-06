@@ -1,7 +1,8 @@
 <script setup>
-import StrategicCalendar from '@/Components/StrategicCalendar.vue';
 import { Link, router } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { defineAsyncComponent, ref, watch } from 'vue';
+
+const StrategicCalendar = defineAsyncComponent(() => import('@/Components/StrategicCalendar.vue'));
 
 const props = defineProps({
     items: { type: Array, default: () => [] },
@@ -95,25 +96,35 @@ const goToday = () => {
             </Link>
         </div>
         <div class="p-3 sm:p-4">
-            <StrategicCalendar
-                :year="localYear"
-                :month="localMonth"
-                :items="items"
-                :kind-labels="kindLabels"
-                embedded
-                compact
-                :show-view-toggle="false"
-                :can-navigate-prev="canNavigatePrev"
-                :can-navigate-next="canNavigateNext"
-                :period-label="periodLabel"
-                :navigation-range="navigationRange"
-                :completion-enabled="completionEnabled"
-                :toggle-completion-route="toggleCompletionRoute"
-                :toggle-task-completion-route="toggleTaskCompletionRoute"
-                @navigate-month="goMonth"
-                @pick-month="({ year, month }) => goToMonth(year, month)"
-                @go-today="goToday"
-            />
+            <Suspense>
+                <StrategicCalendar
+                    :year="localYear"
+                    :month="localMonth"
+                    :items="items"
+                    :kind-labels="kindLabels"
+                    embedded
+                    compact
+                    :show-view-toggle="false"
+                    :can-navigate-prev="canNavigatePrev"
+                    :can-navigate-next="canNavigateNext"
+                    :period-label="periodLabel"
+                    :navigation-range="navigationRange"
+                    :completion-enabled="completionEnabled"
+                    :toggle-completion-route="toggleCompletionRoute"
+                    :toggle-task-completion-route="toggleTaskCompletionRoute"
+                    @navigate-month="goMonth"
+                    @pick-month="({ year, month }) => goToMonth(year, month)"
+                    @go-today="goToday"
+                />
+                <template #fallback>
+                    <div
+                        class="flex min-h-[12rem] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 text-sm text-slate-500"
+                        aria-busy="true"
+                    >
+                        Carregando calendário…
+                    </div>
+                </template>
+            </Suspense>
         </div>
     </div>
 </template>

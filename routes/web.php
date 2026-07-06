@@ -113,7 +113,7 @@ Route::get('/dashboard', function () {
         return redirect()->route('login');
     }
 
-    $workspace = app(WorkspaceManager::class)->ensureActiveWorkspace($user, request());
+    $workspace = app(WorkspaceManager::class)->resolveActiveWorkspace($user, request());
 
     if (! $workspace) {
         return redirect()->route('workspaces.select');

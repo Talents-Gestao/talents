@@ -8,8 +8,6 @@ use App\Support\AdminHomeResolver;
 use App\Support\Notices\UnreadNoticeCounter;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\Request;
-use Illuminate\Session\CacheBasedSessionHandler;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Middleware;
@@ -39,12 +37,17 @@ class HandleInertiaRequests extends Middleware
         $permissions = [];
 
         if ($user) {
+            // Não usar resolveActiveWorkspace aqui: ensureActiveWorkspace pode devolver company
+            // com colunas parciais (id,name); cachear isso quebraria middlewares posteriores.
             $workspace = $this->workspaceManager->ensureActiveWorkspace($user, $request);
 
             if ($workspace) {
                 $user->setActiveWorkspace($workspace);
 
                 if ($workspace->isCompany()) {
+                    if ($workspace->relationLoaded('company')) {
+                        $workspace->unsetRelation('company');
+                    }
                     $workspace->loadMissing(['company', 'permissions']);
                 } elseif ($workspace->isTalents()) {
                     $workspace->loadMissing('adminPermissions');
@@ -131,34 +134,8 @@ class HandleInertiaRequests extends Middleware
 
     private function sessionExpiresAtMs(Request $request, int $lifetimeSeconds): int
     {
-        $driver = config('session.driver');
-
-        if ($driver === 'database') {
-            $lastActivity = DB::table(config('session.table', 'sessions'))
-                ->where('id', $request->session()->getId())
-                ->value('last_activity');
-
-            if ($lastActivity !== null) {
-                return ((int) $lastActivity + $lifetimeSeconds) * 1000;
-            }
-        }
-
-        $handler = $request->session()->getHandler();
-
-        if ($handler instanceof CacheBasedSessionHandler) {
-            $store = $handler->getCache()->getStore();
-
-            if (method_exists($store, 'connection')) {
-                $connection = $store->connection();
-                $key = (method_exists($store, 'getPrefix') ? $store->getPrefix() : '').$request->session()->getId();
-                $ttl = $connection->ttl($key);
-
-                if (is_int($ttl) && $ttl > 0) {
-                    return (now()->getTimestamp() + $ttl) * 1000;
-                }
-            }
-        }
-
+        // Cada visita Inertia renova a sessão (janela deslizante). Evita query extra à tabela
+        // `sessions` ou TTL no Redis em todo request — o aviso usa margem de minutos.
         return now()->addSeconds($lifetimeSeconds)->getTimestamp() * 1000;
     }
 }

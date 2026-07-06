@@ -44,6 +44,11 @@ const props = defineProps({
         type: String,
         default: undefined,
     },
+    /** Prefetch Inertia ao focar/hover — desligado por padrão (rotas pesadas). */
+    prefetch: {
+        type: [Boolean, String],
+        default: false,
+    },
 });
 
 const closeMobileSidebar = inject('closeMobileSidebar', null);
@@ -106,7 +111,7 @@ const onNavigate = () => {
         :href="href"
         :method="method"
         :as="as"
-        :prefetch="method === 'get' && as !== 'button'"
+        :prefetch="prefetch"
         :class="linkClasses"
         :title="collapsed ? label : undefined"
         @click="onNavigate"
