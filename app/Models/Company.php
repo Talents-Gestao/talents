@@ -11,6 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Company extends Model
 {
+    private ?Subscription $memoizedActiveSubscription = null;
+
+    private bool $activeSubscriptionResolved = false;
+
+    /** @var list<string>|null */
+    private ?array $memoizedPlanModuleKeys = null;
+
     protected $fillable = [
         'name',
         'contact_email',
@@ -155,17 +162,7 @@ class Company extends Model
      */
     public function hasMethodologyEnabled(): bool
     {
-        $subscription = $this->subscriptions()
-            ->where('status', 'active')
-            ->with('plan.modules')
-            ->latest()
-            ->first();
-
-        if (! $subscription?->plan) {
-            return false;
-        }
-
-        return $subscription->plan->modules->contains('key', Module::KEY_METODOLOGIA);
+        return in_array(Module::KEY_METODOLOGIA, $this->activePlanModuleKeys(), true);
     }
 
     /**
@@ -181,17 +178,7 @@ class Company extends Model
             return true;
         }
 
-        $subscription = $this->subscriptions()
-            ->where('status', 'active')
-            ->with('plan.modules')
-            ->latest()
-            ->first();
-
-        if (! $subscription?->plan) {
-            return false;
-        }
-
-        return $subscription->plan->modules->contains('key', Module::KEY_CALENDARIO_ESTRATEGICO);
+        return in_array(Module::KEY_CALENDARIO_ESTRATEGICO, $this->activePlanModuleKeys(), true);
     }
 
     /**
@@ -254,24 +241,49 @@ class Company extends Model
 
     public function activeSubscription(): ?Subscription
     {
-        return $this->subscriptions()->where('status', 'active')->latest()->first();
+        if ($this->activeSubscriptionResolved) {
+            return $this->memoizedActiveSubscription;
+        }
+
+        $this->activeSubscriptionResolved = true;
+        $this->memoizedActiveSubscription = $this->subscriptions()
+            ->where('status', 'active')
+            ->with('plan.modules')
+            ->latest()
+            ->first();
+
+        return $this->memoizedActiveSubscription;
+    }
+
+    /**
+     * Chaves de módulos do plano da assinatura ativa (uma query por empresa/request).
+     *
+     * @return list<string>
+     */
+    public function activePlanModuleKeys(): array
+    {
+        if ($this->memoizedPlanModuleKeys !== null) {
+            return $this->memoizedPlanModuleKeys;
+        }
+
+        $subscription = $this->activeSubscription();
+
+        if (! $subscription?->plan) {
+            $this->memoizedPlanModuleKeys = [];
+
+            return $this->memoizedPlanModuleKeys;
+        }
+
+        $this->memoizedPlanModuleKeys = $subscription->plan->modules
+            ->pluck('key')
+            ->all();
+
+        return $this->memoizedPlanModuleKeys;
     }
 
     public function subscriptionHasModuleKey(string $key): bool
     {
-        $subscription = $this->activeSubscription();
-
-        if (! $subscription) {
-            return false;
-        }
-
-        $subscription->loadMissing('plan.modules');
-
-        if (! $subscription->plan) {
-            return false;
-        }
-
-        return $subscription->plan->modules->contains('key', $key);
+        return in_array($key, $this->activePlanModuleKeys(), true);
     }
 
     public function hasModuleEnabled(PermissionModule $module): bool

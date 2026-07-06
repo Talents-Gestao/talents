@@ -134,12 +134,23 @@ class DashboardController extends Controller
                 $weekEnd,
             )->orderBy('occurs_on')->orderBy('id')->get();
 
-            $upcomingCalendar = StrategicCalendarOccurrenceExpander::expandCollection(
+            $upcomingExpanded = StrategicCalendarOccurrenceExpander::expandCollection(
                 $masters,
                 $today,
                 $weekEnd,
                 'client.strategic-calendar.attachment-download',
-            )->take(7)->values();
+            );
+
+            $upcomingCalendar = StrategicCalendarClientEnricher::enrich(
+                $upcomingExpanded,
+                $company,
+                $today,
+                $weekEnd,
+            )
+                ->filter(fn (array $row) => ($row['occurs_on'] ?? '') >= $today->toDateString())
+                ->sortBy([['occurs_on', 'asc'], ['kind', 'asc']])
+                ->take(7)
+                ->values();
         }
 
         $calendarKindLabels = collect(StrategicCalendarItemKind::cases())->mapWithKeys(

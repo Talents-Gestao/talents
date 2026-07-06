@@ -456,6 +456,48 @@ class StrategicCalendarTest extends TestCase
         $this->assertNotNull($card->fresh()->completed_at);
     }
 
+    public function test_client_calendar_includes_task_with_only_start_date(): void
+    {
+        $company = $this->baseCompany();
+        $company->update([
+            'strategic_calendar_access' => true,
+            'tasks_access' => true,
+        ]);
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'visibility' => 'company',
+            'position' => 1,
+            'is_archived' => false,
+        ]);
+        TaskCard::query()->create([
+            'list_id' => $list->id,
+            'company_id' => $company->id,
+            'title' => 'CANAL DE DENUNCIAS',
+            'description' => null,
+            'position' => 1,
+            'visibility' => 'company',
+            'start_date' => '2026-07-04',
+            'due_date' => null,
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/client/calendario-estrategico?year=2026&month=7')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('monthItems.0.kind', 'task')
+                ->where('monthItems.0.title', 'CANAL DE DENUNCIAS')
+                ->where('monthItems.0.occurs_on', '2026-07-04'));
+    }
+
     public function test_admin_can_upload_attachments_for_item(): void
     {
         Storage::fake('public');
