@@ -202,6 +202,17 @@ class User extends Authenticatable
             return false;
         }
 
+        // Feedbacks internos: RH e líder (company_user) acedem quando o módulo está ativo.
+        if ($module === PermissionModule::Feedbacks) {
+            return match ($action) {
+                PermissionAction::Delete => $this->permissions()
+                    ->where('module', $module->value)
+                    ->where('action', $action->value)
+                    ->exists(),
+                default => true,
+            };
+        }
+
         return $this->permissions()
             ->where('module', $module->value)
             ->where('action', $action->value)

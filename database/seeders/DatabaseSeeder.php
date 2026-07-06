@@ -12,6 +12,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             TalentsSeeder::class,
             MethodologyFormTemplateSeeder::class,
+            FeedbackTemplateSeeder::class,
+            FeedbackDemoSeeder::class,
             CommercialSellersSeeder::class,
             InterviewQuestionnaireSeeder::class,
         ]);

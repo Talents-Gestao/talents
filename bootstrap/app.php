@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureAdminPermission;
 use App\Http\Middleware\EnsureCompanyAccess;
+use App\Http\Middleware\EnsureFeedbackCompanySelected;
 use App\Http\Middleware\EnsureCompanyAdmin;
 use App\Http\Middleware\EnsureModulePermission;
 use App\Http\Middleware\EnsureStrategicCalendarAccess;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(base_path('routes/survey.php'));
             Route::middleware('web')->group(base_path('routes/complaint.php'));
             Route::middleware('web')->group(base_path('routes/methodology.php'));
+            Route::middleware('web')->group(base_path('routes/feedback.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -49,6 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'company_admin' => EnsureCompanyAdmin::class,
             'strategic_calendar' => EnsureStrategicCalendarAccess::class,
             'can.module' => EnsureModulePermission::class,
+            'feedback.company' => EnsureFeedbackCompanySelected::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -181,7 +181,17 @@ const configuracaoActive = computed(
                 :href="route('admin.methodology-templates.index')"
                 :active="route().current('admin.methodology-templates.*')"
                 :icon="ChatBubbleLeftRightIcon"
-                label="Feedbacks"
+                label="Modelos — Metamorfose"
+                :collapsed="collapsed"
+                :compact="compact"
+            />
+
+            <SidebarNavItem
+                v-if="canAdmin('feedbacks')"
+                :href="route('admin.feedbacks.index')"
+                :active="route().current('admin.feedbacks.*')"
+                :icon="ChatBubbleLeftRightIcon"
+                label="Feedbacks internos"
                 :collapsed="collapsed"
                 :compact="compact"
             />

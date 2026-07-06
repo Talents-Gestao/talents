@@ -25,8 +25,26 @@ Se você rodar `php artisan` no PowerShell com XAMPP, aparece `could not find dr
 |--------|--------|--------|--------|----------------|
 | **Admin Talents** | `admin@talents.local` | `password` | Super administrador (`super_admin`) | `/admin` — painel Talents (empresas, planos, templates NR-1, **Configurações** IA/SMTP, etc.) |
 | **RH demo (empresa)** | `rh@empresa.local` | `password` | Administrador da empresa (`company_admin`) | `/client` — painel da **Empresa Demo** (pesquisas, resultados, setores, etc.) |
+| **Líder demo (empresa)** | `lider@empresa.local` | `password` | Usuário da empresa (`company_user`) | `/client/feedbacks` — feedbacks da equipe do líder |
+| **RH Inovação Plus** | `rh@inovacao.local` | `password` | Administrador da empresa (`company_admin`) | `/client` — segunda empresa demo (feedbacks) |
 
-## Contexto do seed
+## Feedbacks internos (dados de teste)
+
+Após `db:seed`, o **`FeedbackDemoSeeder`** cria colaboradores e sessões de exemplo:
+
+- **Empresa Demo** — 4 colaboradores, 4 sessões (concluída, aguardando assinatura, em preenchimento, histórico)
+- **Inovação Plus** — 1 colaborador, 1 sessão concluída
+
+**Admin Talents:** `/admin/feedbacks` — visão do portfólio.
+
+Para repor só os dados de feedback (sem resetar a BD):
+
+```bash
+docker compose exec app php artisan db:seed --class=FeedbackDemoSeeder --force
+```
+
+(Só insere se ainda não existirem sessões na empresa demo.)
+
 
 - **Empresa:** Empresa Demo (CNPJ fictício `00.000.000/0001-99` no seed).
 - **Usuário admin** não possui `company_id` (acesso global Talents).
