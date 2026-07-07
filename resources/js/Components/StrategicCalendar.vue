@@ -1,7 +1,8 @@
 <script setup>
 import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
-import { kindTheme, monthTheme } from '@/utils/strategicCalendarThemes';
+import { useStrategicCalendarTheme } from '@/composables/useStrategicCalendarTheme';
+import { kindTheme } from '@/utils/strategicCalendarThemes';
 import {
     formatDateNumeric,
     formatRelativeAgendaHeader,
@@ -14,6 +15,7 @@ import {
     ChevronLeftIcon,
     ChevronRightIcon,
     PencilSquareIcon,
+    SwatchIcon,
 } from '@heroicons/vue/24/outline';
 import { Link, router } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
@@ -45,6 +47,8 @@ const props = defineProps({
     completionEnabled: { type: Boolean, default: false },
     toggleCompletionRoute: { type: String, default: 'client.strategic-calendar.toggle-completion' },
     toggleTaskCompletionRoute: { type: String, default: 'client.strategic-calendar.toggle-task-completion' },
+    /** Exibe o seletor de cor personalizada do calendário */
+    showThemeCustomizer: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['navigate-month', 'pick-month', 'go-today', 'update:view', 'edit-day']);
@@ -53,8 +57,22 @@ const selectedDay = ref(1);
 const currentView = ref('month');
 const completingIds = ref(new Set());
 const monthPickerOpen = ref(false);
+const themePickerOpen = ref(false);
 const pickerYear = ref(props.year);
 const monthPickerRef = ref(null);
+const themePickerRef = ref(null);
+
+const {
+    preferences: themePreferences,
+    accentValidationError,
+    isCustomPalette,
+    accentPresets,
+    resolveForMonth,
+    setUseCampaignColors,
+    setAccent,
+    restoreCampaignPalette,
+    previewBackground,
+} = useStrategicCalendarTheme();
 
 const KIND_ORDER = ['rito', 'event', 'task'];
 
@@ -103,7 +121,7 @@ function isMonthSelectable(year, month) {
 const monthPickerOptions = computed(() =>
     monthPickerLabels.map((shortLabel, index) => {
         const month = index + 1;
-        const theme = monthTheme(month);
+        const theme = resolveForMonth(month);
         const isCurrent = props.year === pickerYear.value && props.month === month;
         const selectable = isMonthSelectable(pickerYear.value, month);
 
@@ -121,12 +139,34 @@ function toggleMonthPicker() {
     monthPickerOpen.value = !monthPickerOpen.value;
     if (monthPickerOpen.value) {
         pickerYear.value = props.year;
+        closeThemePicker();
     }
 }
 
 function closeMonthPicker() {
     monthPickerOpen.value = false;
 }
+
+function toggleThemePicker() {
+    themePickerOpen.value = !themePickerOpen.value;
+    if (themePickerOpen.value) {
+        closeMonthPicker();
+    }
+}
+
+function closeThemePicker() {
+    themePickerOpen.value = false;
+}
+
+function onCustomAccentInput(value) {
+    setAccent(value);
+}
+
+function onPresetAccent(preset) {
+    setAccent(preset);
+}
+
+const customAccentPreviewBackground = computed(() => previewBackground(themePreferences.value.accent));
 
 function shiftPickerYear(delta) {
     pickerYear.value += delta;
@@ -140,9 +180,11 @@ function pickMonth(month) {
 }
 
 function onDocumentClick(event) {
-    if (!monthPickerOpen.value) return;
-    if (monthPickerRef.value && !monthPickerRef.value.contains(event.target)) {
+    if (monthPickerOpen.value && monthPickerRef.value && !monthPickerRef.value.contains(event.target)) {
         closeMonthPicker();
+    }
+    if (themePickerOpen.value && themePickerRef.value && !themePickerRef.value.contains(event.target)) {
+        closeThemePicker();
     }
 }
 
@@ -210,7 +252,7 @@ const monthTitleCapitalized = computed(() => {
     return d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 });
 
-const currentMonthTheme = computed(() => monthTheme(props.month));
+const currentMonthTheme = computed(() => resolveForMonth(props.month));
 
 const visibleKindThemes = computed(() => {
     const kinds = new Set(['event', 'rito']);
@@ -632,9 +674,124 @@ function itemShellClass(item) {
                         </div>
                     </div>
                 </div>
-                <button type="button" class="btn-ghost !px-4 !py-2 text-xs sm:text-sm" @click="onGoToday">
-                    Hoje
-                </button>
+                <div class="flex flex-wrap items-center gap-2">
+                    <div
+                        v-if="showThemeCustomizer"
+                        ref="themePickerRef"
+                        class="relative"
+                    >
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition sm:text-sm"
+                            :class="
+                                isCustomPalette
+                                    ? 'border-current text-slate-800'
+                                    : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800'
+                            "
+                            :style="
+                                isCustomPalette
+                                    ? {
+                                          borderColor: `${currentMonthTheme.color}66`,
+                                          backgroundColor: `${currentMonthTheme.background}cc`,
+                                      }
+                                    : {}
+                            "
+                            aria-haspopup="dialog"
+                            :aria-expanded="themePickerOpen"
+                            title="Personalizar cores do calendário"
+                            @click.stop="toggleThemePicker"
+                        >
+                            <SwatchIcon class="h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span class="hidden sm:inline">Cores</span>
+                        </button>
+
+                        <div
+                            v-if="themePickerOpen"
+                            class="absolute right-0 top-full z-30 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-slate-200/90 bg-white p-4 shadow-lg"
+                            role="dialog"
+                            aria-label="Personalizar cores do calendário"
+                            @click.stop
+                        >
+                            <p class="text-sm font-semibold text-slate-900">Cores do calendário</p>
+                            <p class="mt-1 text-xs text-slate-500">
+                                A campanha do mês permanece visível; você escolhe o tom visual da grade.
+                            </p>
+
+                            <label class="mt-4 flex cursor-pointer items-start gap-3">
+                                <input
+                                    type="checkbox"
+                                    class="mt-0.5 rounded border-slate-300 text-talents-600 focus:ring-talents-500"
+                                    :checked="themePreferences.useCampaignColors"
+                                    @change="setUseCampaignColors($event.target.checked)"
+                                />
+                                <span class="text-sm text-slate-700">
+                                    Usar cores da campanha do mês
+                                </span>
+                            </label>
+
+                            <div v-if="!themePreferences.useCampaignColors" class="mt-4 space-y-3">
+                                <div>
+                                    <p class="mb-2 text-xs font-medium text-slate-600">Cor de destaque</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button
+                                            v-for="preset in accentPresets"
+                                            :key="preset"
+                                            type="button"
+                                            class="h-8 w-8 rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2"
+                                            :class="
+                                                themePreferences.accent === preset
+                                                    ? 'border-slate-900 scale-110'
+                                                    : 'border-white shadow-sm hover:scale-105'
+                                            "
+                                            :style="{ backgroundColor: preset }"
+                                            :title="`Usar ${preset}`"
+                                            @click="onPresetAccent(preset)"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <input
+                                        type="color"
+                                        class="h-10 w-14 cursor-pointer rounded-lg border border-slate-200 bg-white p-1"
+                                        :value="themePreferences.accent"
+                                        aria-label="Escolher cor personalizada"
+                                        @input="onCustomAccentInput($event.target.value)"
+                                    />
+                                    <div
+                                        class="min-w-0 flex-1 rounded-xl border px-3 py-2 text-xs"
+                                        :style="{
+                                            borderColor: `${themePreferences.accent}55`,
+                                            backgroundColor: customAccentPreviewBackground,
+                                            color: themePreferences.accent,
+                                        }"
+                                    >
+                                        Pré-visualização
+                                    </div>
+                                </div>
+                                <p
+                                    v-if="accentValidationError"
+                                    class="text-xs font-medium text-amber-800"
+                                    role="alert"
+                                >
+                                    {{ accentValidationError }}
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                @click="restoreCampaignPalette(); closeThemePicker()"
+                            >
+                                <ArrowPathIcon class="h-4 w-4" aria-hidden="true" />
+                                Restaurar campanha do mês
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-ghost !px-4 !py-2 text-xs sm:text-sm" @click="onGoToday">
+                        Hoje
+                    </button>
+                </div>
             </div>
             <div v-else-if="showViewToggle" class="flex flex-wrap items-center gap-2 sm:ml-auto">
                 <p class="text-sm text-slate-500">Próximos eventos, ritos e tarefas (até 60 dias)</p>
@@ -654,12 +811,24 @@ function itemShellClass(item) {
         >
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="min-w-0">
-                    <p
-                        class="text-xs font-semibold uppercase tracking-wide"
-                        :style="{ color: currentMonthTheme.color }"
-                    >
-                        Campanha do mês
-                    </p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <p
+                            class="text-xs font-semibold uppercase tracking-wide"
+                            :style="{ color: currentMonthTheme.color }"
+                        >
+                            Campanha do mês
+                        </p>
+                        <span
+                            v-if="isCustomPalette"
+                            class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600"
+                            :style="{
+                                borderColor: `${currentMonthTheme.color}44`,
+                                backgroundColor: `${currentMonthTheme.background}aa`,
+                            }"
+                        >
+                            Cor personalizada
+                        </span>
+                    </div>
                     <p class="mt-1 text-sm font-semibold sm:text-base">
                         <span
                             class="mr-2 inline-block h-2.5 w-2.5 rounded-full align-middle"

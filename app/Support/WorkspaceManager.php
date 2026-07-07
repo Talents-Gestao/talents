@@ -14,6 +14,8 @@ class WorkspaceManager
 {
     public const SESSION_KEY = 'active_workspace_id';
 
+    private const REQUEST_WORKSPACE_ATTRIBUTE = 'talents.active_workspace';
+
     /**
      * @return Collection<int, UserWorkspace>
      */
@@ -98,6 +100,30 @@ class WorkspaceManager
         }
 
         return redirect()->intended(route('client.dashboard', absolute: false));
+    }
+
+    /**
+     * Resolve workspace ativo uma vez por request HTTP (evita queries duplicadas).
+     */
+    public function resolveActiveWorkspace(User $user, Request $request): ?UserWorkspace
+    {
+        if ($request->attributes->has(self::REQUEST_WORKSPACE_ATTRIBUTE)) {
+            $workspace = $request->attributes->get(self::REQUEST_WORKSPACE_ATTRIBUTE);
+
+            if ($workspace instanceof UserWorkspace) {
+                $user->setActiveWorkspace($workspace);
+            }
+
+            return $workspace instanceof UserWorkspace ? $workspace : null;
+        }
+
+        $workspace = $this->ensureActiveWorkspace($user, $request);
+
+        if ($workspace instanceof UserWorkspace) {
+            $request->attributes->set(self::REQUEST_WORKSPACE_ATTRIBUTE, $workspace);
+        }
+
+        return $workspace;
     }
 
     /**

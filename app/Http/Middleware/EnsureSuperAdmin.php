@@ -22,7 +22,7 @@ class EnsureSuperAdmin
             abort(Response::HTTP_FORBIDDEN);
         }
 
-        $workspace = $this->workspaceManager->ensureActiveWorkspace($user, $request);
+        $workspace = $this->workspaceManager->resolveActiveWorkspace($user, $request);
 
         if (! $workspace) {
             if ($this->workspaceManager->activeWorkspacesFor($user)->isEmpty()) {

@@ -7,7 +7,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { createInertiaApp, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h, Fragment } from 'vue';
-import { ZiggyVue } from '../../vendor/tightenco/ziggy';
+import { ZiggyRelativeVue } from '@/plugins/ziggyRelative';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Talents';
 
@@ -65,7 +65,7 @@ createInertiaApp({
                 ]),
         })
             .use(plugin)
-            .use(ZiggyVue)
+            .use(ZiggyRelativeVue)
             .mount(el);
     },
     progress: {
