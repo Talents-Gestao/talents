@@ -10,6 +10,10 @@ use App\Http\Controllers\Admin\Commercial\DashboardController as CommercialDashb
 use App\Http\Controllers\Admin\Commercial\PreviewController as CommercialPreviewController;
 use App\Http\Controllers\Admin\Commercial\ProposalController as CommercialProposalController;
 use App\Http\Controllers\Admin\Commercial\SettingsController as CommercialSettingsController;
+use App\Http\Controllers\Admin\FeedbackCompanySelectController;
+use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
+use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
+use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
 use App\Http\Controllers\Admin\Finance\CommissionController as FinanceCommissionController;
 use App\Http\Controllers\Admin\Finance\FinanceDashboardController;
 use App\Http\Controllers\Admin\Finance\InstallmentController as FinanceInstallmentController;
@@ -132,6 +136,24 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('/', [RhidPanelController::class, 'index'])->name('index');
         Route::get('summary', [RhidPanelController::class, 'summary'])->name('summary');
         Route::get('companies/{company}/metrics', [RhidPanelController::class, 'companyMetrics'])->name('companies.metrics');
+    });
+
+    Route::middleware('admin.can:feedbacks')->prefix('feedbacks')->name('feedbacks.')->group(function () {
+        Route::get('/', [FeedbackDashboardController::class, 'index'])->name('index');
+        Route::post('company', [FeedbackCompanySelectController::class, 'store'])->name('company.store');
+
+        Route::middleware('feedback.company')->group(function () {
+            Route::resource('employees', FeedbackEmployeeController::class)->except(['destroy']);
+            Route::delete('employees/{employee}', [FeedbackEmployeeController::class, 'destroy'])->name('employees.destroy');
+            Route::get('sessions', [FeedbackSessionController::class, 'index'])->name('sessions.index');
+            Route::get('sessions/create', [FeedbackSessionController::class, 'create'])->name('sessions.create');
+            Route::post('sessions', [FeedbackSessionController::class, 'store'])->name('sessions.store');
+            Route::get('sessions/{session}', [FeedbackSessionController::class, 'show'])->name('sessions.show');
+            Route::get('sessions/{session}/edit', [FeedbackSessionController::class, 'edit'])->name('sessions.edit');
+            Route::patch('sessions/{session}', [FeedbackSessionController::class, 'update'])->name('sessions.update');
+            Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
+            Route::get('sessions/{session}/pdf', [FeedbackSessionController::class, 'pdf'])->name('sessions.pdf');
+        });
     });
 
     Route::middleware('admin.can:plans')->group(function () {

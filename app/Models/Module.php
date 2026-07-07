@@ -25,6 +25,9 @@ class Module extends Model
     /** @var string Canal de denúncias (Lei 14.457/2022) */
     public const KEY_DENUNCIAS = 'denuncias';
 
+    /** @var string Feedbacks internos líder ↔ colaborador */
+    public const KEY_FEEDBACKS = 'feedbacks';
+
     protected $fillable = ['key', 'name', 'description'];
 
     public function plans(): BelongsToMany

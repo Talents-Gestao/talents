@@ -24,6 +24,7 @@ import {
     FingerPrintIcon,
     HomeIcon,
     MegaphoneIcon,
+    ChatBubbleLeftRightIcon,
     RocketLaunchIcon,
     ShieldExclamationIcon,
     UsersIcon,
@@ -80,6 +81,14 @@ import {
                 :active="route().current('client.metodologia.*')"
                 :icon="RocketLaunchIcon"
                 label="Direcionamento Estratégico"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                v-if="can('feedbacks', 'view')"
+                :href="route('client.feedbacks.index')"
+                :active="route().current('client.feedbacks.*')"
+                :icon="ChatBubbleLeftRightIcon"
+                label="Feedbacks internos"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

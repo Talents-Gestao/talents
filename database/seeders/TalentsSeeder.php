@@ -67,6 +67,14 @@ class TalentsSeeder extends Seeder
             ]
         );
 
+        $feedbacks = Module::query()->firstOrCreate(
+            ['key' => Module::KEY_FEEDBACKS],
+            [
+                'name' => 'Feedbacks internos',
+                'description' => 'Feedback estruturado entre líder e colaborador.',
+            ]
+        );
+
         $plan = Plan::query()->firstOrCreate(
             ['slug' => 'nr1-pro'],
             [
@@ -78,7 +86,7 @@ class TalentsSeeder extends Seeder
             ]
         );
 
-        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id, $rhid->id, $denuncias->id]);
+        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id, $rhid->id, $denuncias->id, $feedbacks->id]);
 
         $admin = User::query()->firstOrCreate(
             ['email' => 'admin@talents.local'],

@@ -16,6 +16,7 @@ enum PermissionModule: string
     case Usuarios = 'usuarios';
     case Capacitacao = 'capacitacao';
     case Tarefas = 'tarefas';
+    case Feedbacks = 'feedbacks';
 
     public function label(): string
     {
@@ -32,6 +33,7 @@ enum PermissionModule: string
             self::Usuarios => 'Utilizadores',
             self::Capacitacao => 'Capacitação',
             self::Tarefas => 'Tarefas',
+            self::Feedbacks => 'Feedbacks internos',
         };
     }
 
@@ -53,6 +55,7 @@ enum PermissionModule: string
             self::Usuarios,
             self::Capacitacao,
             self::Tarefas,
+            self::Feedbacks,
         ];
     }
 }

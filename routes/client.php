@@ -5,6 +5,9 @@ use App\Http\Controllers\Client\ComplaintController;
 use App\Http\Controllers\Client\CompanyNoticeController as ClientCompanyNoticeController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\DepartmentController;
+use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
+use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
+use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
 use App\Http\Controllers\Client\ExportController;
 use App\Http\Controllers\Client\ImportController;
 use App\Http\Controllers\Client\MethodologyController as ClientMethodologyController;
@@ -157,6 +160,20 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
             Route::post('devices/{id}/id-cloud', [RhidApiController::class, 'enableIdCloud'])->name('devices.id-cloud');
             Route::post('sync/force-all', [RhidApiController::class, 'forceResyncAll'])->name('sync.force-all');
         });
+    });
+
+    Route::middleware('can.module:feedbacks')->prefix('feedbacks')->name('feedbacks.')->group(function () {
+        Route::get('/', [FeedbackDashboardController::class, 'index'])->name('index');
+        Route::resource('employees', FeedbackEmployeeController::class)->except(['destroy']);
+        Route::delete('employees/{employee}', [FeedbackEmployeeController::class, 'destroy'])->name('employees.destroy');
+        Route::get('sessions', [FeedbackSessionController::class, 'index'])->name('sessions.index');
+        Route::get('sessions/create', [FeedbackSessionController::class, 'create'])->name('sessions.create');
+        Route::post('sessions', [FeedbackSessionController::class, 'store'])->name('sessions.store');
+        Route::get('sessions/{session}', [FeedbackSessionController::class, 'show'])->name('sessions.show');
+        Route::get('sessions/{session}/edit', [FeedbackSessionController::class, 'edit'])->name('sessions.edit');
+        Route::patch('sessions/{session}', [FeedbackSessionController::class, 'update'])->name('sessions.update');
+        Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
+        Route::get('sessions/{session}/pdf', [FeedbackSessionController::class, 'pdf'])->name('sessions.pdf');
     });
 
     Route::middleware('can.module:tarefas')->prefix('tarefas')->name('tarefas.')->group(function () {

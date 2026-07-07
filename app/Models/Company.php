@@ -43,6 +43,7 @@ class Company extends Model
         'tasks_access',
         'rhid_access',
         'denuncias_access',
+        'feedbacks_access',
     ];
 
     protected function casts(): array
@@ -55,6 +56,7 @@ class Company extends Model
             'tasks_access' => 'boolean',
             'rhid_access' => 'boolean',
             'denuncias_access' => 'boolean',
+            'feedbacks_access' => 'boolean',
         ];
     }
 
@@ -123,6 +125,16 @@ class Company extends Model
     public function positions(): HasMany
     {
         return $this->hasMany(Position::class);
+    }
+
+    public function employees(): HasMany
+    {
+        return $this->hasMany(CompanyEmployee::class);
+    }
+
+    public function feedbackSessions(): HasMany
+    {
+        return $this->hasMany(FeedbackSession::class);
     }
 
     public function surveys(): HasMany
@@ -239,6 +251,19 @@ class Company extends Model
         return $this->subscriptionHasModuleKey(Module::KEY_DENUNCIAS);
     }
 
+    public function hasFeedbacksEnabled(): bool
+    {
+        if ($this->feedbacks_access === false) {
+            return false;
+        }
+
+        if ($this->feedbacks_access === true) {
+            return true;
+        }
+
+        return $this->subscriptionHasModuleKey(Module::KEY_FEEDBACKS);
+    }
+
     public function activeSubscription(): ?Subscription
     {
         if ($this->activeSubscriptionResolved) {
@@ -301,6 +326,7 @@ class Company extends Model
             PermissionModule::Rhid => $this->hasRhidEnabled(),
             PermissionModule::Tarefas => $this->hasTasksEnabled(),
             PermissionModule::Denuncias => $this->hasComplaintsEnabled(),
+            PermissionModule::Feedbacks => $this->hasFeedbacksEnabled(),
         };
     }
 
