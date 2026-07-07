@@ -360,4 +360,47 @@ class FeedbackModuleTest extends TestCase
             'declaration_accepted' => true,
         ])->assertSessionHasErrors('signature_data');
     }
+
+    public function test_session_store_requires_scheduled_at(): void
+    {
+        $this->seed(FeedbackTemplateSeeder::class);
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Feedback',
+            'feedbacks_access' => true,
+        ]);
+        $this->subscribeCompanyToNr1($company);
+        $admin = User::factory()->companyAdmin($company->id)->create();
+
+        $template = FeedbackTemplate::query()->whereNull('company_id')->firstOrFail();
+        $employee = CompanyEmployee::create([
+            'company_id' => $company->id,
+            'name' => 'Bruno Lima',
+            'email' => 'bruno@empresa.local',
+            'leader_user_id' => $admin->id,
+        ]);
+
+        $payload = [
+            'company_employee_id' => $employee->id,
+            'feedback_template_id' => $template->id,
+            'leader_user_id' => $admin->id,
+        ];
+
+        $this->actingAs($admin)
+            ->from(route('client.feedbacks.sessions.create'))
+            ->post(route('client.feedbacks.sessions.store'), $payload)
+            ->assertSessionHasErrors('scheduled_at');
+
+        $this->actingAs($admin)
+            ->post(route('client.feedbacks.sessions.store'), array_merge($payload, [
+                'scheduled_at' => now()->format('Y-m-d H:i'),
+            ]))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('feedback_sessions', [
+            'company_id' => $company->id,
+            'company_employee_id' => $employee->id,
+            'leader_user_id' => $admin->id,
+        ]);
+    }
 }

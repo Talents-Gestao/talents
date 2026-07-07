@@ -7,7 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { feedbackFieldClass } from '@/utils/feedbackStatus';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { Head, useForm } from '@inertiajs/vue3';
-import { watch } from 'vue';
+import { computed, watch } from 'vue';
 
 const props = defineProps({
     employees: Array,
@@ -35,7 +35,15 @@ watch(
     { immediate: true },
 );
 
-const submit = () => form.post(feedbackRoute('sessions.store'));
+const canSubmit = computed(() => Boolean(String(form.scheduled_at ?? '').trim()));
+
+const submit = () => {
+    if (!canSubmit.value) {
+        return;
+    }
+
+    form.post(feedbackRoute('sessions.store'));
+};
 </script>
 
 <template>
@@ -87,7 +95,13 @@ const submit = () => form.post(feedbackRoute('sessions.store'));
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <InputLabel value="Data do alinhamento" />
-                        <input v-model="form.scheduled_at" type="datetime-local" :class="feedbackFieldClass" />
+                        <input
+                            v-model="form.scheduled_at"
+                            type="datetime-local"
+                            required
+                            :class="feedbackFieldClass"
+                        />
+                        <InputError :message="form.errors.scheduled_at" />
                     </div>
                     <div>
                         <InputLabel value="Próximo alinhamento" />
@@ -97,7 +111,9 @@ const submit = () => form.post(feedbackRoute('sessions.store'));
             </div>
 
             <div class="border-t border-slate-100 bg-slate-50/50 px-6 py-4">
-                <PrimaryButton type="submit" :disabled="form.processing">Iniciar preenchimento</PrimaryButton>
+                <PrimaryButton type="submit" :disabled="form.processing || !canSubmit">
+                    Iniciar preenchimento
+                </PrimaryButton>
             </div>
         </form>
     </FeedbacksLayout>

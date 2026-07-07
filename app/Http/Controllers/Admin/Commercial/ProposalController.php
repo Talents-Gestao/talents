@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\CommercialPricingService;
 use App\Services\CommercialProposalPdfService;
 use App\Support\CommercialProposalPdfDefaults;
+use App\Support\CommercialProposalPdfOptionalSections;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -109,6 +110,7 @@ class ProposalController extends Controller
             'sellers' => $this->sellersOptions(),
             'settings' => $this->publicSettings(),
             'catalogProducts' => $this->catalogProductsPayload(),
+            'pdfOptionalSectionOptions' => CommercialProposalPdfOptionalSections::options(),
         ]);
     }
 
@@ -142,6 +144,7 @@ class ProposalController extends Controller
             'sellers' => $this->sellersOptions(),
             'settings' => $this->publicSettings(),
             'catalogProducts' => $this->catalogProductsPayload(),
+            'pdfOptionalSectionOptions' => CommercialProposalPdfOptionalSections::options(),
         ]);
     }
 
@@ -350,6 +353,9 @@ class ProposalController extends Controller
         ])->values()->all();
         $payload['has_legacy_services'] = $proposal->hasLegacyServices();
         $payload['legacy_summary'] = $this->legacySummaryLines($proposal);
+        $payload['pdf_optional_sections'] = CommercialProposalPdfOptionalSections::normalizeSelection(
+            $proposal->pdf_optional_sections
+        );
 
         return $payload;
     }
@@ -432,6 +438,9 @@ class ProposalController extends Controller
             'service_descriptions' => ['nullable', 'array'],
             'service_descriptions.*' => ['nullable', 'string', 'max:10000'],
 
+            'pdf_optional_sections' => ['nullable', 'array'],
+            'pdf_optional_sections.*' => ['boolean'],
+
             'catalog_products' => ['nullable', 'array'],
             'catalog_products.*.product_id' => ['required', 'integer', Rule::exists('commercial_products', 'id')],
             'catalog_products.*.enabled' => ['boolean'],
@@ -450,6 +459,10 @@ class ProposalController extends Controller
 
         $data['service_descriptions'] = $this->normalizeServiceDescriptions(
             $data['service_descriptions'] ?? null
+        );
+
+        $data['pdf_optional_sections'] = $this->normalizePdfOptionalSections(
+            $data['pdf_optional_sections'] ?? null
         );
 
         return $data;
@@ -493,6 +506,21 @@ class ProposalController extends Controller
         }
 
         return $normalized === [] ? null : $normalized;
+    }
+
+    /**
+     * @param  array<string, bool>|null  $sections
+     * @return array<string, bool>|null
+     */
+    private function normalizePdfOptionalSections(?array $sections): ?array
+    {
+        if ($sections === null) {
+            return null;
+        }
+
+        $normalized = CommercialProposalPdfOptionalSections::normalizeSelection($sections);
+
+        return array_filter($normalized) === [] ? null : $normalized;
     }
 
     /**
