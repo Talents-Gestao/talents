@@ -1,4 +1,5 @@
 <script setup>
+import FinanceModuleNav from '@/Components/Financeiro/FinanceModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -63,6 +64,8 @@ const statusClass = (s) =>
                 </Link>
             </div>
         </template>
+
+        <FinanceModuleNav />
 
         <div class="surface-card p-6">
             <form class="grid gap-4 sm:grid-cols-4" @submit.prevent="applyFilters">

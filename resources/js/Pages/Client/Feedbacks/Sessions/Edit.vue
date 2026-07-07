@@ -93,7 +93,7 @@ const sectionMeta = (section) => {
                     />
                 </div>
                 <p v-else-if="!section.description" class="px-5 py-4 text-sm text-slate-500">
-                    Secção introdutória — leia o texto acima.
+                    Seção introdutória — leia o texto acima.
                 </p>
             </FeedbackSectionAccordion>
         </div>

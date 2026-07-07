@@ -19,7 +19,7 @@ defineProps({ sessions: Object });
                 :back-href="feedbackRoute('index')"
                 back-label="Feedbacks"
                 title="Sessões"
-                subtitle="Todos os alinhamentos registados"
+                subtitle="Todos os alinhamentos registrados"
             >
                 <template #trailing>
                     <Link :href="feedbackRoute('sessions.create')">
@@ -37,7 +37,7 @@ defineProps({ sessions: Object });
             class="rounded-2xl border border-dashed border-talents-200 bg-talents-50/40 px-6 py-12 text-center"
         >
             <ChatBubbleLeftRightIcon class="mx-auto h-10 w-10 text-talents-300" />
-            <p class="mt-3 text-sm font-medium text-talents-900">Nenhuma sessão registada</p>
+            <p class="mt-3 text-sm font-medium text-talents-900">Nenhuma sessão registrada</p>
             <Link
                 :href="feedbackRoute('sessions.create')"
                 class="mt-4 inline-flex rounded-xl bg-talents-700 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-800"

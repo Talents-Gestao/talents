@@ -109,7 +109,7 @@ const perceptionSeries = computed(() => {
                             Desenvolvimento com conversa estruturada
                         </h3>
                         <p class="mt-2 text-sm leading-relaxed text-slate-600">
-                            Registe conquistas, alinhe expectativas e acompanhe o termômetro da equipe em um só lugar.
+                            Registre conquistas, alinhe expectativas e acompanhe o termômetro da equipe em um só lugar.
                         </p>
                     </div>
                     <div class="flex flex-wrap gap-2 lg:justify-end">
@@ -205,7 +205,7 @@ const perceptionSeries = computed(() => {
             </div>
 
             <div class="mt-10">
-                <SectionHeader title="Sessões recentes" subtitle="Últimos alinhamentos registados">
+                <SectionHeader title="Sessões recentes" subtitle="Últimos alinhamentos registrados">
                     <template #action>
                         <Link :href="feedbackRoute('sessions.index')" class="text-sm font-medium text-talents-700 hover:underline">
                             Ver todas
@@ -221,7 +221,7 @@ const perceptionSeries = computed(() => {
                     class="rounded-2xl border border-dashed border-talents-200 bg-talents-50/40 px-6 py-12 text-center"
                 >
                     <ChatBubbleLeftRightIcon class="mx-auto h-10 w-10 text-talents-300" />
-                    <p class="mt-3 text-sm font-medium text-talents-900">Nenhum feedback registado ainda</p>
+                    <p class="mt-3 text-sm font-medium text-talents-900">Nenhum feedback registrado ainda</p>
                     <p class="mt-1 text-sm text-slate-600">Comece cadastrando um colaborador e abrindo o primeiro alinhamento.</p>
                     <Link
                         :href="feedbackRoute('sessions.create')"

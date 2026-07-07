@@ -27,6 +27,51 @@ Se você rodar `php artisan` no PowerShell com XAMPP, aparece `could not find dr
 | **RH demo (empresa)** | `rh@empresa.local` | `password` | Administrador da empresa (`company_admin`) | `/client` — painel da **Empresa Demo** (pesquisas, resultados, setores, etc.) |
 | **Líder demo (empresa)** | `lider@empresa.local` | `password` | Usuário da empresa (`company_user`) | `/client/feedbacks` — feedbacks da equipe do líder |
 | **RH Inovação Plus** | `rh@inovacao.local` | `password` | Administrador da empresa (`company_admin`) | `/client` — segunda empresa demo (feedbacks) |
+| **Vendedora Karen** | `karen@talents.local` | `password` | Super admin + comercial | Propostas atribuídas à Karen nos cenários demo |
+| **Vendedora Luciana** | `luciana@talents.local` | `password` | Super admin + comercial | Propostas atribuídas à Luciana nos cenários demo |
+
+## Comercial e financeiro (dados de teste)
+
+Após `db:seed`, o **`CommercialDemoSeeder`** cria propostas, vendas, parcelas e comissões de exemplo (códigos `PROP-DEMO-*` e `VENDA-DEMO-*`).
+
+**Login recomendado:** `admin@talents.local` / `password`
+
+### O que testar
+
+| Cenário | Código | Onde ver |
+|--------|--------|----------|
+| Fila #1 (mais antiga) | `PROP-DEMO-0001` | Comercial → **Fila** |
+| Fila #2–#4 | `PROP-DEMO-0002` … `0004` | Comercial → Fila (inclui proposta sem vendedor) |
+| Fechada, converter em venda | `PROP-DEMO-0005` | Comercial → Propostas → ícone **Converter** |
+| Venda quitada + comissão paga | `VENDA-DEMO-0001` | Financeiro → Vendas / Comissões (filtro **Paga**) |
+| Venda parcial (1/3 parcelas) | `VENDA-DEMO-0002` | Financeiro → Vendas |
+| Parcela vencida | `VENDA-DEMO-0003` | Financeiro → Painel (vencidos) |
+| Quitada, comissão a pagar | `VENDA-DEMO-0004` | Financeiro → **Comissões** (pendentes) |
+| 4 parcelas futuras | `VENDA-DEMO-0005` | Financeiro → Próximos vencimentos |
+
+### URLs rápidas
+
+- Fila de propostas: `/admin/comercial/propostas?status=abertas&ordenacao=fila`
+- Comissões pendentes: `/admin/financeiro/comissoes?status=a_pagar`
+- Painel financeiro: `/admin/financeiro`
+
+Para repor só os dados comerciais (sem resetar a BD):
+
+```bash
+docker compose exec app php artisan db:seed --class=CommercialDemoSeeder --force
+```
+
+O seeder é **idempotente** — pode rodar várias vezes sem duplicar vendas.
+
+### Smoke test automatizado
+
+Para validar que todos os cenários demo existem e as páginas respondem corretamente:
+
+```bash
+docker compose exec app php artisan test --filter=CommercialDemoSmokeTest
+```
+
+São **9 testes** (112 asserções): fila FIFO, proposta conversível, estados das vendas/parcelas, ordem das comissões, páginas Inertia e idempotência do seeder.
 
 ## Feedbacks internos (dados de teste)
 

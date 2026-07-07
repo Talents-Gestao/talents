@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             FeedbackTemplateSeeder::class,
             FeedbackDemoSeeder::class,
             CommercialSellersSeeder::class,
+            CommercialDemoSeeder::class,
             InterviewQuestionnaireSeeder::class,
         ]);
 

@@ -6,6 +6,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { feedbackFieldClass } from '@/utils/feedbackStatus';
+import { maskPhoneBr } from '@/utils/formatPhone';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
@@ -20,13 +21,17 @@ const props = defineProps({
 const form = useForm({
     name: props.employee?.name ?? '',
     email: props.employee?.email ?? '',
-    phone: props.employee?.phone ?? '',
+    phone: maskPhoneBr(props.employee?.phone ?? ''),
     department_id: props.employee?.department_id ?? '',
     position_id: props.employee?.position_id ?? '',
     leader_user_id: props.employee?.leader_user_id ?? '',
     is_active: props.employee?.is_active ?? true,
     notes: props.employee?.notes ?? '',
 });
+
+const onPhoneInput = (event) => {
+    form.phone = maskPhoneBr(event.target.value);
+};
 
 const submit = () => {
     if (props.mode === 'edit') {
@@ -67,7 +72,17 @@ const submit = () => {
                 </div>
                 <div>
                     <InputLabel value="Telefone" />
-                    <input v-model="form.phone" :class="feedbackFieldClass" />
+                    <input
+                        :value="form.phone"
+                        type="tel"
+                        inputmode="numeric"
+                        autocomplete="tel"
+                        placeholder="(11) 98765-4321"
+                        maxlength="16"
+                        :class="feedbackFieldClass"
+                        @input="onPhoneInput"
+                    />
+                    <InputError :message="form.errors.phone" />
                 </div>
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>

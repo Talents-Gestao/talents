@@ -1,4 +1,5 @@
 <script setup>
+import FinanceModuleNav from '@/Components/Financeiro/FinanceModuleNav.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
@@ -57,6 +58,12 @@ const statusClass = (s) =>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <Link
+                        :href="route('admin.financeiro.comissoes.index')"
+                        class="inline-flex items-center rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100"
+                    >
+                        Comissões
+                    </Link>
+                    <Link
                         :href="route('admin.financeiro.vendas.index')"
                         class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                     >
@@ -65,6 +72,8 @@ const statusClass = (s) =>
                 </div>
             </div>
         </template>
+
+        <FinanceModuleNav />
 
         <div class="mb-6 flex flex-wrap gap-2">
             <button
@@ -88,6 +97,15 @@ const statusClass = (s) =>
             <StatCard label="Recebido no período" :value="formatBRL(kpis.received_cents)" />
             <StatCard label="Vencidos" :value="formatBRL(kpis.overdue_cents)" />
             <StatCard label="Comissões a pagar" :value="formatBRL(kpis.commissions_pending_cents)" />
+        </div>
+
+        <div class="mb-8">
+            <Link
+                :href="route('admin.financeiro.comissoes.index', { status: 'a_pagar' })"
+                class="text-sm font-semibold text-talents-700 hover:underline"
+            >
+                Ver todas as comissões pendentes →
+            </Link>
         </div>
 
         <div class="mt-8 grid gap-6 lg:grid-cols-2">

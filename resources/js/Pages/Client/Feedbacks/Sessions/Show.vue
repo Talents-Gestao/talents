@@ -125,7 +125,7 @@ const sectionMeta = (section) => {
                         </p>
                     </div>
                 </div>
-                <p v-else class="px-5 py-4 text-sm text-slate-500">Sem perguntas nesta secção.</p>
+                <p v-else class="px-5 py-4 text-sm text-slate-500">Sem perguntas nesta seção.</p>
             </FeedbackSectionAccordion>
         </div>
     </FeedbacksLayout>
