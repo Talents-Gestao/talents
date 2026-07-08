@@ -5,6 +5,7 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
+import { formatPhoneBr } from '@/utils/formatPhone';
 import { Head, Link } from '@inertiajs/vue3';
 import { BriefcaseIcon, BuildingOfficeIcon, PhoneIcon, UserIcon } from '@heroicons/vue/24/outline';
 
@@ -67,7 +68,7 @@ defineProps({
                         <PhoneIcon class="mt-0.5 h-4 w-4 shrink-0 text-talents-600" />
                         <div>
                             <dt class="text-xs text-slate-500">Telefone</dt>
-                            <dd class="font-medium text-slate-800">{{ employee.phone ?? '—' }}</dd>
+                            <dd class="font-medium text-slate-800">{{ employee.phone ? formatPhoneBr(employee.phone) : '—' }}</dd>
                         </div>
                     </div>
                 </dl>

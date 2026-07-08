@@ -232,6 +232,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('parcelas.pagamento');
         Route::get('parcelas/{installment}/comprovante', [FinanceInstallmentController::class, 'receipt'])
             ->name('parcelas.comprovante');
+        Route::get('comissoes', [FinanceCommissionController::class, 'index'])->name('comissoes.index');
         Route::patch('comissoes/{commission}', [FinanceCommissionController::class, 'update'])
             ->name('comissoes.update');
     });

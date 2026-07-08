@@ -72,9 +72,11 @@ class FeedbackSessionController extends FeedbackCompanyController
             'company_employee_id' => ['required', 'exists:company_employees,id'],
             'feedback_template_id' => ['required', 'exists:feedback_templates,id'],
             'leader_user_id' => ['required', 'exists:users,id'],
-            'scheduled_at' => ['nullable', 'date'],
+            'scheduled_at' => ['required', 'date'],
             'next_alignment_at' => ['nullable', 'date'],
             'title' => ['nullable', 'string', 'max:255'],
+        ], [], [
+            'scheduled_at' => 'data do alinhamento',
         ]);
 
         $employee = CompanyEmployee::query()->where('company_id', $company->id)->findOrFail($data['company_employee_id']);
@@ -94,7 +96,7 @@ class FeedbackSessionController extends FeedbackCompanyController
             'created_by_user_id' => $request->user()->id,
             'title' => $data['title'] ?? 'Feedback — '.$employee->name,
             'status' => FeedbackSessionStatus::InProgress,
-            'scheduled_at' => $data['scheduled_at'] ?? null,
+            'scheduled_at' => $data['scheduled_at'],
             'next_alignment_at' => $data['next_alignment_at'] ?? null,
         ]);
 

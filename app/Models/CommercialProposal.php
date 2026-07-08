@@ -45,6 +45,7 @@ class CommercialProposal extends Model
             'palestra_audience_estimate' => 'integer',
 
             'service_descriptions' => 'array',
+            'pdf_optional_sections' => 'array',
         ];
     }
 

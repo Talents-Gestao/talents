@@ -1,5 +1,23 @@
 <script setup>
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const page = usePage();
+
+const isPropostasRoute = computed(() => route().current('admin.comercial.propostas.*'));
+
+const isFilaView = computed(() => {
+    if (!isPropostasRoute.value) {
+        return false;
+    }
+
+    const fromProps = page.props.filters?.ordenacao;
+    if (fromProps === 'fila') {
+        return true;
+    }
+
+    return new URLSearchParams(window.location.search).get('ordenacao') === 'fila';
+});
 
 const items = [
     {
@@ -12,7 +30,13 @@ const items = [
         id: 'propostas',
         label: 'Propostas',
         href: () => route('admin.comercial.propostas.index'),
-        isActive: () => route().current('admin.comercial.propostas.*'),
+        isActive: () => isPropostasRoute.value && !isFilaView.value,
+    },
+    {
+        id: 'fila',
+        label: 'Fila',
+        href: () => route('admin.comercial.propostas.index', { status: 'abertas', ordenacao: 'fila' }),
+        isActive: () => isFilaView.value,
     },
     {
         id: 'configuracoes',

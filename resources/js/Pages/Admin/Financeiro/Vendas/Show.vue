@@ -1,4 +1,5 @@
 <script setup>
+import FinanceModuleNav from '@/Components/Financeiro/FinanceModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
@@ -144,6 +145,8 @@ const onReceiptChange = (event) => {
             </div>
         </template>
 
+        <FinanceModuleNav />
+
         <div class="grid gap-6 lg:grid-cols-3">
             <div class="surface-card p-6 lg:col-span-2">
                 <div class="flex flex-wrap items-start justify-between gap-4">
@@ -174,6 +177,12 @@ const onReceiptChange = (event) => {
                     {{ sale.commission.percent }}% sobre {{ formatBRL(sale.commission.base_cents) }}
                 </p>
                 <p class="mt-1 text-sm text-slate-600">Vendedora: {{ sale.commission.seller?.name ?? '—' }}</p>
+                <Link
+                    :href="route('admin.financeiro.comissoes.index', { search: sale.code })"
+                    class="mt-2 inline-block text-xs font-medium text-talents-700 hover:underline"
+                >
+                    Ver no índice de comissões
+                </Link>
 
                 <form class="mt-4 space-y-3" @submit.prevent="submitCommission">
                     <div>

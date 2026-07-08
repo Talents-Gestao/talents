@@ -18,6 +18,8 @@ const inertiaPage = usePage();
 
 const props = defineProps({
     proposals: { type: Object, required: true },
+    queue: { type: Array, default: () => [] },
+    queue_total: { type: Number, default: 0 },
     sellers: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
     templates: { type: Array, default: () => [] },
@@ -36,7 +38,22 @@ const filterState = reactive({
     search: props.filters.search ?? '',
     seller_id: props.filters.seller_id ?? '',
     status: props.filters.status ?? '',
+    ordenacao: props.filters.ordenacao ?? 'recentes',
 });
+
+const isFilaView = computed(() => filterState.ordenacao === 'fila');
+
+const queueTotal = computed(() => props.queue_total || 0);
+
+const waitingLabel = (days) => {
+    if (days === 0) {
+        return 'hoje';
+    }
+    if (days === 1) {
+        return '1 dia';
+    }
+    return `${days} dias`;
+};
 
 const applyFilters = () => {
     router.get(route('admin.comercial.propostas.index'), filterState, {
@@ -49,7 +66,8 @@ const applyFilters = () => {
 const clearFilters = () => {
     filterState.search = '';
     filterState.seller_id = '';
-    filterState.status = '';
+    filterState.status = isFilaView.value ? 'abertas' : '';
+    filterState.ordenacao = isFilaView.value ? 'fila' : 'recentes';
     applyFilters();
 };
 
@@ -233,14 +251,19 @@ const submitConvert = () => {
 </script>
 
 <template>
-    <Head title="Comercial — Propostas" />
+    <Head :title="isFilaView ? 'Comercial — Fila de propostas' : 'Comercial — Propostas'" />
 
     <AdminLayout>
         <template #header>
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <p class="text-sm text-slate-500">Comercial</p>
-                    <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Propostas</h2>
+                    <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
+                        {{ isFilaView ? 'Fila de propostas' : 'Propostas' }}
+                    </h2>
+                    <p v-if="isFilaView" class="mt-1 max-w-2xl text-sm text-slate-600">
+                        Ordem de entrada (mais antigas primeiro). Use esta fila para priorizar o atendimento comercial.
+                    </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <Link
@@ -263,6 +286,61 @@ const submitConvert = () => {
         </template>
 
         <CommercialModuleNav />
+
+        <div
+            v-if="queue.length && !isFilaView"
+            class="surface-card mb-6 overflow-hidden border-talents-200"
+        >
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-talents-50/60 px-5 py-4">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-900">Próximas na fila</h3>
+                    <p class="mt-0.5 text-xs text-slate-600">
+                        {{ queueTotal }} proposta{{ queueTotal === 1 ? '' : 's' }} em aberto
+                        <span v-if="filterState.seller_id"> para o vendedor selecionado</span>
+                    </p>
+                </div>
+                <Link
+                    :href="route('admin.comercial.propostas.index', { status: 'abertas', ordenacao: 'fila', seller_id: filterState.seller_id || undefined })"
+                    class="text-sm font-semibold text-talents-700 hover:underline"
+                >
+                    Ver fila completa
+                </Link>
+            </div>
+            <ol class="divide-y divide-slate-100">
+                <li
+                    v-for="item in queue"
+                    :key="item.id"
+                    class="flex flex-wrap items-center gap-4 px-5 py-3 transition hover:bg-slate-50"
+                >
+                    <span
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-talents-600 text-sm font-bold text-white tabular-nums"
+                        :title="`Posição ${item.queue_position} na fila`"
+                    >
+                        {{ item.queue_position }}
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="font-mono text-xs text-slate-500">{{ item.code }}</span>
+                            <span class="font-medium text-slate-900">{{ item.client_name }}</span>
+                        </div>
+                        <p class="mt-0.5 text-xs text-slate-500">
+                            {{ item.seller?.name ?? 'Sem vendedor' }}
+                            · aguardando {{ waitingLabel(item.waiting_days) }}
+                            · {{ formatDate(item.created_at) }}
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-semibold tabular-nums text-slate-900">{{ formatBRL(item.total_final_cents) }}</p>
+                        <Link
+                            :href="route('admin.comercial.propostas.edit', item.id)"
+                            class="text-xs font-medium text-talents-700 hover:underline"
+                        >
+                            Abrir
+                        </Link>
+                    </div>
+                </li>
+            </ol>
+        </div>
 
         <div class="surface-card p-6">
             <form class="grid gap-4 sm:grid-cols-4" @submit.prevent="applyFilters">
@@ -296,6 +374,16 @@ const submitConvert = () => {
                         <option value="fechadas">Fechadas</option>
                     </select>
                 </div>
+                <div v-if="!isFilaView" class="sm:col-span-4">
+                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Ordenação</label>
+                    <select
+                        v-model="filterState.ordenacao"
+                        class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    >
+                        <option value="recentes">Mais recentes primeiro</option>
+                        <option value="fila">Fila — mais antigas primeiro</option>
+                    </select>
+                </div>
                 <div class="sm:col-span-4 flex justify-end gap-2">
                     <button
                         type="button"
@@ -319,6 +407,7 @@ const submitConvert = () => {
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                         <tr>
+                            <th v-if="isFilaView || filterState.status === 'abertas'" class="px-4 py-3 text-center font-medium">#</th>
                             <th class="px-4 py-3 text-left font-medium">Código</th>
                             <th class="px-4 py-3 text-left font-medium">Cliente</th>
                             <th class="px-4 py-3 text-left font-medium">Vendedor</th>
@@ -331,6 +420,18 @@ const submitConvert = () => {
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
                         <tr v-for="p in proposals.data" :key="p.id" class="hover:bg-slate-50">
+                            <td
+                                v-if="isFilaView || filterState.status === 'abertas'"
+                                class="px-4 py-3 text-center"
+                            >
+                                <span
+                                    v-if="p.queue_position"
+                                    class="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-talents-100 px-2 text-xs font-bold text-talents-800 tabular-nums"
+                                >
+                                    {{ p.queue_position }}
+                                </span>
+                                <span v-else class="text-xs text-slate-300">—</span>
+                            </td>
                             <td class="px-4 py-3 font-mono text-xs text-slate-600">{{ p.code }}</td>
                             <td class="px-4 py-3">
                                 <div class="font-medium">{{ p.client_name }}</div>
@@ -356,7 +457,12 @@ const submitConvert = () => {
                                     Venda {{ p.sale.code }}
                                 </Link>
                             </td>
-                            <td class="px-4 py-3 text-right text-xs text-slate-500">{{ formatDate(p.created_at) }}</td>
+                            <td class="px-4 py-3 text-right text-xs text-slate-500">
+                                <div>{{ formatDate(p.created_at) }}</div>
+                                <div v-if="p.waiting_days != null && !p.is_closed" class="text-[11px] text-amber-700">
+                                    {{ waitingLabel(p.waiting_days) }}
+                                </div>
+                            </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="inline-flex items-center justify-end gap-0.5">
                                     <Link
@@ -405,7 +511,9 @@ const submitConvert = () => {
                             </td>
                         </tr>
                         <tr v-if="!proposals.data.length">
-                            <td colspan="8" class="px-4 py-10 text-center text-slate-500">Nenhuma proposta encontrada.</td>
+                            <td :colspan="isFilaView || filterState.status === 'abertas' ? 9 : 8" class="px-4 py-10 text-center text-slate-500">
+                                {{ isFilaView ? 'Nenhuma proposta em aberto na fila.' : 'Nenhuma proposta encontrada.' }}
+                            </td>
                         </tr>
                     </tbody>
                 </table>

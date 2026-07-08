@@ -16,6 +16,7 @@ const props = defineProps({
     sellers: { type: Array, default: () => [] },
     settings: { type: Object, required: true },
     catalogProducts: { type: Array, default: () => [] },
+    pdfOptionalSectionOptions: { type: Array, default: () => [] },
 });
 
 const settingsRef = ref({ ...props.settings });
@@ -43,6 +44,13 @@ const buildCatalogProductsInitial = () => {
     });
 };
 
+const buildPdfOptionalSections = () => Object.fromEntries(
+    props.pdfOptionalSectionOptions.map((opt) => [
+        opt.key,
+        !!props.proposal?.pdf_optional_sections?.[opt.key],
+    ]),
+);
+
 const formInitial = props.proposal
     ? {
           client_name: props.proposal.client_name ?? '',
@@ -68,6 +76,7 @@ const formInitial = props.proposal
           pdf_subtitle: props.proposal.pdf_subtitle ?? '',
           pdf_objetivo: props.proposal.pdf_objetivo ?? '',
           service_descriptions: { ...(props.proposal.service_descriptions ?? {}) },
+          pdf_optional_sections: buildPdfOptionalSections(),
       }
     : {
           client_name: '',
@@ -93,6 +102,7 @@ const formInitial = props.proposal
           pdf_subtitle: '',
           pdf_objetivo: '',
           service_descriptions: {},
+          pdf_optional_sections: buildPdfOptionalSections(),
       };
 
 const form = useForm(formInitial);
@@ -684,6 +694,32 @@ const services = computed(() => {
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             />
                         </div>
+                    </div>
+                </section>
+
+                <!-- Seções opcionais do PDF -->
+                <section v-if="pdfOptionalSectionOptions.length" class="surface-card p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Seções opcionais no PDF</h3>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Marque os blocos informativos que devem aparecer no PDF, além dos serviços orçados.
+                        Itens sem preço — «conforme proposta específica».
+                    </p>
+                    <div class="mt-4 space-y-3">
+                        <label
+                            v-for="opt in pdfOptionalSectionOptions"
+                            :key="opt.key"
+                            class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 transition hover:border-talents-200 hover:bg-talents-50/30"
+                        >
+                            <input
+                                v-model="form.pdf_optional_sections[opt.key]"
+                                type="checkbox"
+                                class="mt-0.5 rounded border-slate-300 text-talents-700 focus:ring-talents-500"
+                            />
+                            <span>
+                                <span class="block text-sm font-medium text-slate-900">{{ opt.label }}</span>
+                                <span class="mt-0.5 block text-xs text-slate-500">{{ opt.hint }}</span>
+                            </span>
+                        </label>
                     </div>
                 </section>
 

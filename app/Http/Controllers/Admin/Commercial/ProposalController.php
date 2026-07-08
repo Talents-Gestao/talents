@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\CommercialPricingService;
 use App\Services\CommercialProposalPdfService;
 use App\Support\CommercialProposalPdfDefaults;
+use App\Support\CommercialProposalPdfOptionalSections;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -26,9 +27,19 @@ class ProposalController extends Controller
 
     public function index(Request $request): Response
     {
+        $ordenacao = $request->string('ordenacao')->toString();
+        if (! in_array($ordenacao, ['recentes', 'fila'], true)) {
+            $ordenacao = 'recentes';
+        }
+
         $q = CommercialProposal::query()
-            ->with(['seller:id,name', 'sale:id,proposal_id,code,status'])
-            ->orderByDesc('created_at');
+            ->with(['seller:id,name', 'sale:id,proposal_id,code,status']);
+
+        if ($ordenacao === 'fila') {
+            $q->orderBy('created_at')->orderBy('id');
+        } else {
+            $q->orderByDesc('created_at');
+        }
 
         if ($request->filled('search')) {
             $s = (string) $request->string('search');
@@ -53,12 +64,31 @@ class ProposalController extends Controller
 
         $proposals = $q->paginate(15)->withQueryString();
 
+        $queuePositions = $this->queuePositionsFor($request);
+        $queueTotal = count($queuePositions);
+
+        $proposals->getCollection()->transform(function (CommercialProposal $proposal) use ($queuePositions) {
+            $arr = $proposal->toArray();
+            $arr['queue_position'] = $proposal->is_closed
+                ? null
+                : ($queuePositions[$proposal->id] ?? null);
+            $arr['waiting_days'] = $proposal->is_closed
+                ? null
+                : (int) $proposal->created_at?->diffInDays(now());
+
+            return $arr;
+        });
+
+        $queue = $this->openProposalsQueue($request, $queuePositions);
+
         $commercialSettings = CommercialSetting::current();
 
         return Inertia::render('Admin/Comercial/Propostas/Index', [
             'proposals' => $proposals,
+            'queue' => $queue,
+            'queue_total' => $queueTotal,
             'sellers' => $this->sellersOptions(),
-            'filters' => $request->only(['search', 'seller_id', 'status']),
+            'filters' => $request->only(['search', 'seller_id', 'status', 'ordenacao']),
             'templates' => CommercialContractTemplate::active()
                 ->orderBy('name')
                 ->get(['id', 'name'])
@@ -80,6 +110,7 @@ class ProposalController extends Controller
             'sellers' => $this->sellersOptions(),
             'settings' => $this->publicSettings(),
             'catalogProducts' => $this->catalogProductsPayload(),
+            'pdfOptionalSectionOptions' => CommercialProposalPdfOptionalSections::options(),
         ]);
     }
 
@@ -113,6 +144,7 @@ class ProposalController extends Controller
             'sellers' => $this->sellersOptions(),
             'settings' => $this->publicSettings(),
             'catalogProducts' => $this->catalogProductsPayload(),
+            'pdfOptionalSectionOptions' => CommercialProposalPdfOptionalSections::options(),
         ]);
     }
 
@@ -154,6 +186,69 @@ class ProposalController extends Controller
         return $pdfService
             ->generate($proposal)
             ->stream("proposta-{$proposal->code}.pdf");
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function queuePositionsFor(Request $request): array
+    {
+        $ids = $this->openProposalsQueueQuery($request)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->pluck('id');
+
+        $positions = [];
+        foreach ($ids as $index => $id) {
+            $positions[(int) $id] = $index + 1;
+        }
+
+        return $positions;
+    }
+
+    /**
+     * @param  array<int, int>  $queuePositions
+     * @return list<array<string, mixed>>
+     */
+    private function openProposalsQueue(Request $request, array $queuePositions): array
+    {
+        return $this->openProposalsQueueQuery($request)
+            ->with('seller:id,name')
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->limit(20)
+            ->get(['id', 'code', 'client_name', 'seller_id', 'total_final_cents', 'created_at', 'is_closed'])
+            ->map(fn (CommercialProposal $p) => [
+                'id' => $p->id,
+                'code' => $p->code,
+                'client_name' => $p->client_name,
+                'seller' => $p->seller?->only(['id', 'name']),
+                'total_final_cents' => $p->total_final_cents,
+                'created_at' => $p->created_at?->toIso8601String(),
+                'queue_position' => $queuePositions[$p->id] ?? null,
+                'waiting_days' => (int) $p->created_at?->diffInDays(now()),
+            ])
+            ->all();
+    }
+
+    private function openProposalsQueueQuery(Request $request): \Illuminate\Database\Eloquent\Builder
+    {
+        $q = CommercialProposal::query()->where('is_closed', false);
+
+        if ($request->filled('seller_id')) {
+            $q->where('seller_id', $request->integer('seller_id'));
+        }
+
+        if ($request->filled('search')) {
+            $s = (string) $request->string('search');
+            $q->where(function ($query) use ($s) {
+                $query->where('client_name', 'like', '%'.$s.'%')
+                    ->orWhere('code', 'like', '%'.$s.'%')
+                    ->orWhere('client_cnpj', 'like', '%'.$s.'%');
+            });
+        }
+
+        return $q;
     }
 
     /**
@@ -258,6 +353,9 @@ class ProposalController extends Controller
         ])->values()->all();
         $payload['has_legacy_services'] = $proposal->hasLegacyServices();
         $payload['legacy_summary'] = $this->legacySummaryLines($proposal);
+        $payload['pdf_optional_sections'] = CommercialProposalPdfOptionalSections::normalizeSelection(
+            $proposal->pdf_optional_sections
+        );
 
         return $payload;
     }
@@ -340,6 +438,9 @@ class ProposalController extends Controller
             'service_descriptions' => ['nullable', 'array'],
             'service_descriptions.*' => ['nullable', 'string', 'max:10000'],
 
+            'pdf_optional_sections' => ['nullable', 'array'],
+            'pdf_optional_sections.*' => ['boolean'],
+
             'catalog_products' => ['nullable', 'array'],
             'catalog_products.*.product_id' => ['required', 'integer', Rule::exists('commercial_products', 'id')],
             'catalog_products.*.enabled' => ['boolean'],
@@ -358,6 +459,10 @@ class ProposalController extends Controller
 
         $data['service_descriptions'] = $this->normalizeServiceDescriptions(
             $data['service_descriptions'] ?? null
+        );
+
+        $data['pdf_optional_sections'] = $this->normalizePdfOptionalSections(
+            $data['pdf_optional_sections'] ?? null
         );
 
         return $data;
@@ -401,6 +506,21 @@ class ProposalController extends Controller
         }
 
         return $normalized === [] ? null : $normalized;
+    }
+
+    /**
+     * @param  array<string, bool>|null  $sections
+     * @return array<string, bool>|null
+     */
+    private function normalizePdfOptionalSections(?array $sections): ?array
+    {
+        if ($sections === null) {
+            return null;
+        }
+
+        $normalized = CommercialProposalPdfOptionalSections::normalizeSelection($sections);
+
+        return array_filter($normalized) === [] ? null : $normalized;
     }
 
     /**

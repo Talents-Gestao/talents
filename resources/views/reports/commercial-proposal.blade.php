@@ -458,6 +458,24 @@
             </table>
         @endif
 
+        @if(!empty($optionalSections))
+            <hr class="section-divider">
+            <h2>Projetos e serviços complementares</h2>
+            <p class="muted" style="margin-bottom: 10px;">
+                Os itens abaixo não estão inclusos no investimento acima e poderão ser contratados conforme a necessidade da empresa.
+            </p>
+            @foreach($optionalSections as $index => $section)
+                <div class="service-block">
+                    <h3 class="service-title">{{ $index + 1 }}. {{ $section['label'] }}</h3>
+                    @if(!empty($section['text']))
+                        <div class="service-description">
+                            @include('reports.partials.description-text', ['text' => $section['text']])
+                        </div>
+                    @endif
+                </div>
+            @endforeach
+        @endif
+
         <hr class="section-divider">
         <h2>Condições de Pagamento</h2>
         <div class="section-text">
