@@ -16,6 +16,10 @@ defineProps({
         type: Boolean,
         default: true,
     },
+    showFiles: {
+        type: Boolean,
+        default: true,
+    },
     searchPlaceholder: {
         type: String,
         default: 'Buscar…',
@@ -49,6 +53,7 @@ defineProps({
         </div>
         <div v-if="showActions" class="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
             <button
+                v-if="showFiles"
                 type="button"
                 class="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-talents-500/30"
                 aria-label="Arquivos"

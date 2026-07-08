@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Notices\MarkNoticeRead;
 use App\Actions\Notices\PublishCompanyNotice;
+use App\Enums\CompanyNoticeAudience;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\CompanyNotice;
+use App\Support\Notices\UnreadNoticeCounter;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,6 +17,8 @@ use Inertia\Response;
 
 class CompanyNoticeController extends Controller
 {
+    private const RECENT_LIMIT = 8;
+
     public function index(Request $request): Response
     {
         $query = CompanyNotice::query()
@@ -64,5 +70,88 @@ class CompanyNoticeController extends Controller
         return redirect()
             ->route('admin.notices.index')
             ->with('success', 'Aviso publicado para a empresa.');
+    }
+
+    public function recent(Request $request, UnreadNoticeCounter $unreadNoticeCounter): JsonResponse
+    {
+        $user = $request->user();
+
+        $notices = $this->talentsQuery()
+            ->with(['reads' => fn ($query) => $query->where('user_id', $user->id)])
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->limit(self::RECENT_LIMIT)
+            ->get()
+            ->map(fn (CompanyNotice $notice) => $this->serializeNotice($notice));
+
+        return response()->json([
+            'notices' => $notices,
+            'unread_count' => $unreadNoticeCounter->forUser($user),
+        ]);
+    }
+
+    public function markRead(
+        Request $request,
+        CompanyNotice $notice,
+        MarkNoticeRead $markNoticeRead,
+        UnreadNoticeCounter $unreadNoticeCounter,
+    ): RedirectResponse|JsonResponse {
+        abort_unless($notice->audience === CompanyNoticeAudience::Talents, 404);
+
+        $user = $request->user();
+        $markNoticeRead->handle($notice, $user);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'ok' => true,
+                'unread_count' => $unreadNoticeCounter->forUser($user),
+            ]);
+        }
+
+        return back();
+    }
+
+    public function markAllRead(
+        Request $request,
+        MarkNoticeRead $markNoticeRead,
+        UnreadNoticeCounter $unreadNoticeCounter,
+    ): RedirectResponse|JsonResponse {
+        $user = $request->user();
+        $count = $markNoticeRead->markAllForContext($user, CompanyNoticeAudience::Talents, null);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'ok' => true,
+                'marked' => $count,
+                'unread_count' => $unreadNoticeCounter->forUser($user),
+            ]);
+        }
+
+        return back()->with('success', $count > 0
+            ? 'Todos os avisos foram marcados como lidos.'
+            : 'Não há avisos novos.');
+    }
+
+    private function talentsQuery()
+    {
+        return CompanyNotice::query()
+            ->where('audience', CompanyNoticeAudience::Talents->value)
+            ->whereNull('company_id')
+            ->where('published_at', '<=', now());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeNotice(CompanyNotice $notice): array
+    {
+        return [
+            'id' => $notice->id,
+            'title' => $notice->title,
+            'body' => $notice->body,
+            'published_at' => $notice->published_at?->toIso8601String(),
+            'event_kind' => $notice->event_kind?->value,
+            'read' => $notice->reads->isNotEmpty(),
+        ];
     }
 }

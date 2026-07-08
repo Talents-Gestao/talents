@@ -5,13 +5,15 @@ namespace App\Enums;
 enum StrategicCalendarItemKind: string
 {
     case Event = 'event';
-    case Rito = 'rito';
+    case Ritual = 'ritual';
+    case Birthday = 'birthday';
 
     public function label(): string
     {
         return match ($this) {
             self::Event => 'Evento',
-            self::Rito => 'Rito',
+            self::Ritual => 'Ritual',
+            self::Birthday => 'Aniversário',
         };
     }
 }

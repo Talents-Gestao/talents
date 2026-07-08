@@ -14,7 +14,7 @@ class ImportStrategicCalendarCsvCommand extends Command
     protected $signature = 'calendar:import-csv
                             {file=database/imports/agenda_eventos_2026-05-11_203345.csv : Caminho do CSV (relativo à raiz do projeto ou absoluto)}
                             {--company-id= : ID da empresa (vazio = global)}
-                            {--kind=event : event ou rito}
+                            {--kind=event : event, ritual ou birthday}
                             {--dry-run : Apenas mostra o que seria importado}';
 
     protected $description = 'Importa linhas de CSV (export agenda) para strategic_calendar_items.';
@@ -33,7 +33,7 @@ class ImportStrategicCalendarCsvCommand extends Command
         $kindOption = (string) $this->option('kind');
         $kind = StrategicCalendarItemKind::tryFrom($kindOption);
         if ($kind === null) {
-            $this->error("Kind inválido: {$kindOption}. Use event ou rito.");
+            $this->error("Kind inválido: {$kindOption}. Use event, ritual ou birthday.");
 
             return self::FAILURE;
         }

@@ -44,7 +44,7 @@ class StrategicCalendarController extends Controller
         $queryEnd = $range ? min($monthEnd, $range['end']) : $monthEnd;
 
         $monthMasters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
-            StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'attachments']),
+            StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'companies:id,name', 'attachments']),
             $queryStart,
             $queryEnd,
         )->orderBy('occurs_on')->orderBy('id')->get();
@@ -63,7 +63,7 @@ class StrategicCalendarController extends Controller
             : now()->copy()->addYears(2)->endOfDay();
 
         $upcomingMasters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
-            StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'attachments']),
+            StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'companies:id,name', 'attachments']),
             $upcomingStart,
             $upcomingEnd,
         )->orderBy('occurs_on')->orderBy('id')->get();
@@ -89,7 +89,7 @@ class StrategicCalendarController extends Controller
         }
 
         $agendaMasters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
-            StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'attachments']),
+            StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'companies:id,name', 'attachments']),
             Carbon::parse($agendaStart)->startOfDay(),
             $agendaEndCarbon,
         )->orderBy('occurs_on')->orderBy('id')->get();
@@ -205,10 +205,14 @@ class StrategicCalendarController extends Controller
     {
         $company = $request->user()->company;
         $item = $attachment->item;
+        $item->loadMissing(['companies', 'company']);
 
-        if ($item->company_id !== null && (int) $item->company_id !== (int) $company->id) {
-            abort(404);
-        }
+        $visible = StrategicCalendarItem::query()
+            ->forCompany($company)
+            ->whereKey($item->id)
+            ->exists();
+
+        abort_unless($visible, 404);
 
         return $attachment->toHttpResponse();
     }

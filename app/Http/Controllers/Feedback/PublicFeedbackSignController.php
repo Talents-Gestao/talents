@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Feedback;
 
+use App\Actions\Notices\PublishFeedbackNotice;
 use App\Enums\FeedbackSessionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\FeedbackSessionSignature;
@@ -60,7 +61,7 @@ class PublicFeedbackSignController extends Controller
         ]);
     }
 
-    public function store(Request $request, string $token): RedirectResponse
+    public function store(Request $request, string $token, PublishFeedbackNotice $notices): RedirectResponse
     {
         $signature = $this->findSignature($token);
         abort_if($signature->isSigned(), 403, 'Este documento já foi assinado.');
@@ -89,6 +90,8 @@ class PublicFeedbackSignController extends Controller
                 'status' => FeedbackSessionStatus::Completed,
                 'completed_at' => now(),
             ]);
+
+            $notices->completed($session);
         }
 
         return redirect()

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Notices\PublishLeadNotice;
 use App\Mail\LandingInterestMail;
 use App\Models\LandingInterestSubmission;
 use App\Models\MailSetting;
@@ -13,7 +14,7 @@ use Illuminate\Support\Str;
 
 class LandingInterestController extends Controller
 {
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, PublishLeadNotice $notices): RedirectResponse
     {
         MailSetting::applyToRuntimeConfig();
 
@@ -38,6 +39,8 @@ class LandingInterestController extends Controller
             'company' => $company,
             'message' => $message,
         ]);
+
+        $notices->received($submission);
 
         $recipients = config('landing.interest_recipients', []);
         if ($recipients === []) {

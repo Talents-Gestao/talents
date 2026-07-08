@@ -1,7 +1,10 @@
 <script setup>
 import Modal from '@/Components/Modal.vue';
 import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
+import DateRangeFields from '@/Components/StrategicCalendar/DateRangeFields.vue';
+import CompanyAudienceMultiSelect from '@/Components/StrategicCalendar/CompanyAudienceMultiSelect.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
+import { formatStrategicCalendarDateRange } from '@/utils/strategicCalendarDate';
 import { router, useForm } from '@inertiajs/vue3';
 import { PlusIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { computed, ref, watch } from 'vue';
@@ -31,9 +34,10 @@ const createForm = useForm({
     description: '',
     kind: props.kinds[0]?.value ?? 'event',
     occurs_on: '',
+    ends_on: '',
     recurrence: '',
     recurrence_ends_on: '',
-    company_id: '',
+    company_ids: [],
 });
 
 const editForm = useForm({
@@ -41,9 +45,10 @@ const editForm = useForm({
     description: '',
     kind: 'event',
     occurs_on: '',
+    ends_on: '',
     recurrence: '',
     recurrence_ends_on: '',
-    company_id: '',
+    company_ids: [],
 });
 
 const dayLabel = computed(() => {
@@ -58,6 +63,40 @@ const dayLabel = computed(() => {
 
 const showCreateRecurrenceEnd = computed(() => Boolean(createForm.recurrence));
 const showEditRecurrenceEnd = computed(() => Boolean(editForm.recurrence));
+
+watch(
+    () => createForm.recurrence,
+    (value) => {
+        if (value) createForm.ends_on = '';
+    },
+);
+
+watch(
+    () => createForm.ends_on,
+    (value) => {
+        if (value) {
+            createForm.recurrence = '';
+            createForm.recurrence_ends_on = '';
+        }
+    },
+);
+
+watch(
+    () => editForm.recurrence,
+    (value) => {
+        if (value) editForm.ends_on = '';
+    },
+);
+
+watch(
+    () => editForm.ends_on,
+    (value) => {
+        if (value) {
+            editForm.recurrence = '';
+            editForm.recurrence_ends_on = '';
+        }
+    },
+);
 
 const uniqueDayItems = computed(() => {
     const seen = new Set();
@@ -99,10 +138,14 @@ function startEdit(item) {
     editForm.title = item.title ?? '';
     editForm.description = item.description ?? '';
     editForm.kind = item.kind ?? 'event';
-    editForm.occurs_on = item.occurs_on?.slice?.(0, 10) ?? item.occurs_on ?? props.iso ?? '';
+    editForm.occurs_on = item.range_starts_on?.slice?.(0, 10)
+        ?? item.occurs_on?.slice?.(0, 10)
+        ?? props.iso
+        ?? '';
+    editForm.ends_on = item.ends_on?.slice?.(0, 10) ?? '';
     editForm.recurrence = item.recurrence ?? '';
     editForm.recurrence_ends_on = item.recurrence_ends_on?.slice?.(0, 10) ?? item.recurrence_ends_on ?? '';
-    editForm.company_id = item.company_id ? String(item.company_id) : '';
+    editForm.company_ids = audienceCompanyIds(item);
     editForm.clearErrors();
 }
 
@@ -112,13 +155,38 @@ function cancelEdit() {
     editForm.clearErrors();
 }
 
+function audienceCompanyIds(item) {
+    if (item.companies?.length) {
+        return item.companies.map((company) => company.id);
+    }
+
+    if (item.company_id) {
+        return [item.company_id];
+    }
+
+    return [];
+}
+
+function audienceLabel(item) {
+    if (item.audience_label) {
+        return item.audience_label;
+    }
+
+    if (item.companies?.length) {
+        return item.companies.map((company) => company.name).join(', ');
+    }
+
+    return item.company?.name ?? 'Todas as empresas';
+}
+
 function submitCreate() {
     createForm
         .transform((data) => ({
             ...data,
-            company_id: data.company_id || null,
+            company_ids: data.company_ids ?? [],
             recurrence: data.recurrence || null,
             recurrence_ends_on: data.recurrence ? data.recurrence_ends_on || null : null,
+            ends_on: data.recurrence ? null : data.ends_on || null,
         }))
         .post(route('admin.strategic-calendar.store'), {
             preserveScroll: true,
@@ -135,9 +203,10 @@ function submitEdit(sourceId) {
     editForm
         .transform((data) => ({
             ...data,
-            company_id: data.company_id || null,
+            company_ids: data.company_ids ?? [],
             recurrence: data.recurrence || null,
             recurrence_ends_on: data.recurrence ? data.recurrence_ends_on || null : null,
+            ends_on: data.recurrence ? null : data.ends_on || null,
         }))
         .put(route('admin.strategic-calendar.update', sourceId), {
             preserveScroll: true,
@@ -255,28 +324,24 @@ function destroyAttachment(attachmentId) {
                                             {{ editForm.errors.title }}
                                         </p>
                                     </div>
-                                    <div class="grid gap-3 sm:grid-cols-2">
-                                        <div>
-                                            <label class="text-xs font-medium text-slate-600">Tipo</label>
-                                            <select
-                                                v-model="editForm.kind"
-                                                class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                                            >
-                                                <option v-for="k in kinds" :key="k.value" :value="k.value">
-                                                    {{ k.label }}
-                                                </option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label class="text-xs font-medium text-slate-600">Data inicial</label>
-                                            <input
-                                                v-model="editForm.occurs_on"
-                                                type="date"
-                                                required
-                                                class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                                            />
-                                        </div>
+                                    <div>
+                                        <label class="text-xs font-medium text-slate-600">Tipo</label>
+                                        <select
+                                            v-model="editForm.kind"
+                                            class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                                        >
+                                            <option v-for="k in kinds" :key="k.value" :value="k.value">
+                                                {{ k.label }}
+                                            </option>
+                                        </select>
                                     </div>
+                                    <DateRangeFields
+                                        v-model:occurs-on="editForm.occurs_on"
+                                        v-model:ends-on="editForm.ends_on"
+                                        compact
+                                        :disable-ends-on="showEditRecurrenceEnd"
+                                        disable-recurrence-hint
+                                    />
                                     <div class="grid gap-3 sm:grid-cols-2">
                                         <div>
                                             <label class="text-xs font-medium text-slate-600">Repetição</label>
@@ -308,16 +373,11 @@ function destroyAttachment(attachmentId) {
                                         />
                                     </div>
                                     <div>
-                                        <label class="text-xs font-medium text-slate-600">Empresa</label>
-                                        <select
-                                            v-model="editForm.company_id"
-                                            class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                                        >
-                                            <option value="">Todas</option>
-                                            <option v-for="c in companies" :key="c.id" :value="String(c.id)">
-                                                {{ c.name }}
-                                            </option>
-                                        </select>
+                                        <CompanyAudienceMultiSelect
+                                            v-model="editForm.company_ids"
+                                            :companies="companies"
+                                            compact
+                                        />
                                     </div>
 
                                     <div class="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
@@ -387,6 +447,12 @@ function destroyAttachment(attachmentId) {
                                         </span>
                                     </div>
                                     <p class="font-semibold text-slate-900">{{ item.title }}</p>
+                                    <p
+                                        v-if="item.range_starts_on || item.occurs_on"
+                                        class="mt-0.5 text-xs font-medium text-slate-500"
+                                    >
+                                        {{ formatStrategicCalendarDateRange(item.range_starts_on ?? item.occurs_on, item.ends_on) }}
+                                    </p>
                                     <p v-if="item.description" class="mt-1 line-clamp-2 text-sm text-slate-600">
                                         {{ item.description }}
                                     </p>
@@ -396,8 +462,8 @@ function destroyAttachment(attachmentId) {
                                         :attachments="item.attachments"
                                         compact
                                     />
-                                    <p v-if="item.company?.name" class="mt-1 text-xs text-slate-500">
-                                        {{ item.company.name }}
+                                    <p v-if="audienceLabel(item)" class="mt-1 text-xs text-slate-500">
+                                        {{ audienceLabel(item) }}
                                     </p>
                                 </div>
                                 <div class="flex shrink-0 flex-col gap-1">
@@ -422,7 +488,7 @@ function destroyAttachment(attachmentId) {
                 </section>
 
                 <section v-else class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center">
-                    <p class="text-sm text-slate-500">Nenhum evento ou rito neste dia.</p>
+                    <p class="text-sm text-slate-500">Nenhum evento ou Ritual neste dia.</p>
                 </section>
 
                 <section>
@@ -455,26 +521,22 @@ function destroyAttachment(attachmentId) {
                                 {{ createForm.errors.title }}
                             </p>
                         </div>
-                        <div class="grid gap-3 sm:grid-cols-2">
-                            <div>
-                                <label class="text-xs font-medium text-slate-600">Tipo</label>
-                                <select
-                                    v-model="createForm.kind"
-                                    class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                                >
-                                    <option v-for="k in kinds" :key="k.value" :value="k.value">{{ k.label }}</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-xs font-medium text-slate-600">Data</label>
-                                <input
-                                    v-model="createForm.occurs_on"
-                                    type="date"
-                                    required
-                                    class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                                />
-                            </div>
+                        <div>
+                            <label class="text-xs font-medium text-slate-600">Tipo</label>
+                            <select
+                                v-model="createForm.kind"
+                                class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                            >
+                                <option v-for="k in kinds" :key="k.value" :value="k.value">{{ k.label }}</option>
+                            </select>
                         </div>
+                        <DateRangeFields
+                            v-model:occurs-on="createForm.occurs_on"
+                            v-model:ends-on="createForm.ends_on"
+                            compact
+                            :disable-ends-on="showCreateRecurrenceEnd"
+                            disable-recurrence-hint
+                        />
                         <div class="grid gap-3 sm:grid-cols-2">
                             <div>
                                 <label class="text-xs font-medium text-slate-600">Repetição</label>
@@ -505,16 +567,11 @@ function destroyAttachment(attachmentId) {
                                 class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                             />
                         </div>
-                        <div>
-                            <label class="text-xs font-medium text-slate-600">Empresa</label>
-                            <select
-                                v-model="createForm.company_id"
-                                class="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                            >
-                                <option value="">Todas</option>
-                                <option v-for="c in companies" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
-                            </select>
-                        </div>
+                        <CompanyAudienceMultiSelect
+                            v-model="createForm.company_ids"
+                            :companies="companies"
+                            compact
+                        />
                         <p class="text-xs text-slate-500">
                             Após criar o item, você poderá anexar arquivos na edição.
                         </p>

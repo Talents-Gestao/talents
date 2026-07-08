@@ -5,6 +5,7 @@ import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { formatStrategicCalendarDateRange, isMultiDayRange } from '@/utils/strategicCalendarDate';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -21,6 +22,18 @@ const props = defineProps({
     recurrences: { type: Array, default: () => [] },
     maxAttachmentMb: { type: Number, default: 512 },
 });
+
+function audienceLabel(row) {
+    if (row.audience_label) {
+        return row.audience_label;
+    }
+
+    if (row.companies?.length) {
+        return row.companies.map((company) => company.name).join(', ');
+    }
+
+    return row.company?.name ?? 'Todas as empresas';
+}
 
 const companyFilter = ref(props.filters?.company_id ? String(props.filters.company_id) : '');
 const kindFilter = ref(props.filters?.kind ?? '');
@@ -141,7 +154,7 @@ function closeDayModal() {
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 class="text-xl font-semibold leading-tight text-slate-900">Calendário estratégico</h2>
                 <Link :href="route('admin.strategic-calendar.create')" class="btn-primary !py-2.5 text-sm">
-                    Novo evento ou rito
+                    Novo evento ou Ritual
                 </Link>
             </div>
         </template>
@@ -159,28 +172,18 @@ function closeDayModal() {
                         Todos
                     </button>
                     <button
+                        v-for="kind in kinds"
+                        :key="kind.value"
                         type="button"
                         class="rounded-full px-3 py-1.5 text-xs font-semibold transition sm:text-sm"
                         :class="
-                            kindFilter === 'event'
+                            kindFilter === kind.value
                                 ? 'bg-white text-slate-900 shadow-sm'
                                 : 'text-slate-600 hover:text-slate-900'
                         "
-                        @click="setKind('event')"
+                        @click="setKind(kind.value)"
                     >
-                        Evento
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded-full px-3 py-1.5 text-xs font-semibold transition sm:text-sm"
-                        :class="
-                            kindFilter === 'rito'
-                                ? 'bg-white text-slate-900 shadow-sm'
-                                : 'text-slate-600 hover:text-slate-900'
-                        "
-                        @click="setKind('rito')"
-                    >
-                        Rito
+                        {{ kind.label }}
                     </button>
                 </div>
             </div>
@@ -250,7 +253,13 @@ function closeDayModal() {
                 >
                     <div class="min-w-0 flex-1 space-y-2">
                         <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <template v-if="isMultiDayRange(row.occurs_on, row.ends_on)">
+                                <span class="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-sm tabular-nums text-slate-700">
+                                    {{ formatStrategicCalendarDateRange(row.occurs_on, row.ends_on) }}
+                                </span>
+                            </template>
                             <input
+                                v-else
                                 type="date"
                                 :value="row.occurs_on || ''"
                                 class="rounded-md border border-slate-200 px-2 py-1 text-sm tabular-nums text-slate-700"
@@ -265,7 +274,7 @@ function closeDayModal() {
                             </span>
                         </div>
                         <p class="font-medium text-slate-900">{{ row.title }}</p>
-                        <p class="text-sm text-slate-500">{{ row.company?.name ?? 'Todas as empresas' }}</p>
+                        <p class="text-sm text-slate-500">{{ audienceLabel(row) }}</p>
                         <p v-if="row.attachments_count" class="text-xs text-talents-700">
                             {{ row.attachments_count === 1 ? '1 anexo' : `${row.attachments_count} anexos` }}
                         </p>

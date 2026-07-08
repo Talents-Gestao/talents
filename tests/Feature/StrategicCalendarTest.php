@@ -149,7 +149,7 @@ class StrategicCalendarTest extends TestCase
         $this->actingAs($user)
             ->post('/admin/calendario-estrategico', [
                 'title' => 'X',
-                'kind' => StrategicCalendarItemKind::Rito->value,
+                'kind' => StrategicCalendarItemKind::Ritual->value,
                 'occurs_on' => '2026-01-01',
             ])
             ->assertForbidden();
@@ -303,9 +303,9 @@ class StrategicCalendarTest extends TestCase
         Carbon::setTestNow('2026-05-15');
 
         $item = StrategicCalendarItem::query()->create([
-            'title' => 'Rito semanal',
+                'title' => 'Ritual semanal',
             'description' => null,
-            'kind' => StrategicCalendarItemKind::Rito,
+            'kind' => StrategicCalendarItemKind::Ritual,
             'occurs_on' => '2026-05-01',
             'recurrence' => StrategicCalendarRecurrence::Weekly,
             'company_id' => null,
@@ -321,6 +321,171 @@ class StrategicCalendarTest extends TestCase
         $this->assertSame('2026-05-29', $occurrences[4]['occurs_on']);
     }
 
+    public function test_date_range_expands_each_day_in_visible_month(): void
+    {
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Recesso de fim de ano',
+            'description' => null,
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => '2026-12-24',
+            'ends_on' => '2026-12-31',
+            'company_id' => null,
+        ]);
+
+        $rangeStart = Carbon::parse('2026-12-01')->startOfDay();
+        $rangeEnd = Carbon::parse('2026-12-31')->endOfDay();
+
+        $occurrences = StrategicCalendarOccurrenceExpander::occurrencesForItem($item, $rangeStart, $rangeEnd);
+
+        $this->assertCount(8, $occurrences);
+        $this->assertSame('2026-12-24', $occurrences[0]['occurs_on']);
+        $this->assertSame('2026-12-31', $occurrences[7]['occurs_on']);
+        $this->assertSame('2026-12-31', $occurrences[0]['ends_on']);
+        $this->assertSame('2026-12-24', $occurrences[0]['range_starts_on']);
+    }
+
+    public function test_date_range_spanning_months_appears_in_both_month_queries(): void
+    {
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Feriado prolongado',
+            'description' => null,
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => '2026-04-28',
+            'ends_on' => '2026-05-03',
+            'company_id' => null,
+        ]);
+
+        $aprilEnd = Carbon::parse('2026-04-30')->endOfDay();
+        $aprilStart = Carbon::parse('2026-04-01')->startOfDay();
+        $mayStart = Carbon::parse('2026-05-01')->startOfDay();
+        $mayEnd = Carbon::parse('2026-05-31')->endOfDay();
+
+        $april = StrategicCalendarOccurrenceExpander::occurrencesForItem($item, $aprilStart, $aprilEnd);
+        $may = StrategicCalendarOccurrenceExpander::occurrencesForItem($item, $mayStart, $mayEnd);
+
+        $this->assertCount(3, $april);
+        $this->assertSame('2026-04-28', $april[0]['occurs_on']);
+        $this->assertSame('2026-04-30', $april[2]['occurs_on']);
+        $this->assertCount(3, $may);
+        $this->assertSame('2026-05-01', $may[0]['occurs_on']);
+        $this->assertSame('2026-05-03', $may[2]['occurs_on']);
+    }
+
+    public function test_super_admin_can_create_item_with_date_range(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $this->actingAs($admin)
+            ->post('/admin/calendario-estrategico', [
+                'title' => 'Carnaval',
+                'description' => 'Recesso coletivo',
+                'kind' => StrategicCalendarItemKind::Event->value,
+                'occurs_on' => '2026-02-14',
+                'ends_on' => '2026-02-18',
+            ])
+            ->assertRedirect();
+
+        $item = StrategicCalendarItem::query()->where('title', 'Carnaval')->first();
+        $this->assertNotNull($item);
+        $this->assertSame('2026-02-14', $item->occurs_on?->toDateString());
+        $this->assertSame('2026-02-18', $item->ends_on?->toDateString());
+        $this->assertNull($item->recurrence);
+    }
+
+    public function test_date_range_and_recurrence_are_mutually_exclusive(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $this->actingAs($admin)
+            ->post('/admin/calendario-estrategico', [
+                'title' => 'Inválido',
+                'kind' => StrategicCalendarItemKind::Event->value,
+                'occurs_on' => '2026-03-01',
+                'ends_on' => '2026-03-05',
+                'recurrence' => StrategicCalendarRecurrence::Weekly->value,
+            ])
+            ->assertSessionHasErrors(['ends_on', 'recurrence']);
+    }
+
+    public function test_super_admin_can_create_item_for_multiple_companies(): void
+    {
+        $companyA = $this->baseCompany();
+        $companyB = Company::query()->create([
+            'name' => 'Empresa B',
+            'cnpj' => '33.333.333/0001-33',
+            'is_active' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+        ]);
+        $admin = User::factory()->superAdmin()->create();
+
+        $this->actingAs($admin)
+            ->post('/admin/calendario-estrategico', [
+                'title' => 'Treinamento conjunto',
+                'kind' => StrategicCalendarItemKind::Event->value,
+                'occurs_on' => '2026-08-01',
+                'company_ids' => [$companyA->id, $companyB->id],
+            ])
+            ->assertRedirect();
+
+        $item = StrategicCalendarItem::query()->where('title', 'Treinamento conjunto')->first();
+        $this->assertNotNull($item);
+        $this->assertNull($item->company_id);
+        $this->assertEqualsCanonicalizing(
+            [$companyA->id, $companyB->id],
+            $item->companies()->pluck('companies.id')->all(),
+        );
+    }
+
+    public function test_client_sees_item_when_assigned_via_company_pivot(): void
+    {
+        $companyA = $this->baseCompany();
+        $companyA->update(['strategic_calendar_access' => true]);
+        $companyB = Company::query()->create([
+            'name' => 'Empresa B',
+            'cnpj' => '44.444.444/0001-44',
+            'is_active' => true,
+            'strategic_calendar_access' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+        ]);
+
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Para A e B',
+            'description' => null,
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => '2026-05-12',
+            'company_id' => null,
+        ]);
+        $item->companies()->sync([$companyA->id, $companyB->id]);
+
+        $userA = User::factory()->companyAdmin($companyA->id)->create();
+        $userB = User::factory()->companyAdmin($companyB->id)->create();
+        $outsider = Company::query()->create([
+            'name' => 'Empresa C',
+            'cnpj' => '55.555.555/0001-55',
+            'is_active' => true,
+            'strategic_calendar_access' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+        ]);
+        $userC = User::factory()->companyAdmin($outsider->id)->create();
+
+        $this->actingAs($userA)
+            ->get('/client/calendario-estrategico?year=2026&month=5')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('monthItems', 1)
+                ->where('monthItems.0.title', 'Para A e B'));
+
+        $this->actingAs($userB)
+            ->get('/client/calendario-estrategico?year=2026&month=5')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->has('monthItems', 1));
+
+        $this->actingAs($userC)
+            ->get('/client/calendario-estrategico?year=2026&month=5')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->has('monthItems', 0));
+    }
+
     public function test_client_can_toggle_completion_without_affecting_other_company(): void
     {
         $companyA = $this->baseCompany();
@@ -334,9 +499,9 @@ class StrategicCalendarTest extends TestCase
         ]);
 
         $item = StrategicCalendarItem::query()->create([
-            'title' => 'Rito mensal',
+                'title' => 'Ritual mensal',
             'description' => null,
-            'kind' => StrategicCalendarItemKind::Rito,
+            'kind' => StrategicCalendarItemKind::Ritual,
             'occurs_on' => '2026-09-10',
             'company_id' => null,
         ]);
@@ -379,9 +544,9 @@ class StrategicCalendarTest extends TestCase
         $user = User::factory()->companyAdmin($company->id)->create();
 
         $item = StrategicCalendarItem::query()->create([
-            'title' => 'Rito semanal',
+                'title' => 'Ritual semanal',
             'description' => null,
-            'kind' => StrategicCalendarItemKind::Rito,
+            'kind' => StrategicCalendarItemKind::Ritual,
             'occurs_on' => '2026-09-04',
             'recurrence' => StrategicCalendarRecurrence::Weekly,
             'company_id' => null,
@@ -651,5 +816,41 @@ class StrategicCalendarTest extends TestCase
         $response->assertHeader('Content-Type', 'video/mp4');
         $this->assertStringContainsString('inline', (string) $response->headers->get('Content-Disposition'));
         $this->assertStringContainsString('treinamento.mp4', (string) $response->headers->get('Content-Disposition'));
+    }
+
+    public function test_super_admin_can_create_birthday_and_client_sees_it(): void
+    {
+        $company = $this->baseCompany();
+        $company->update(['strategic_calendar_access' => true]);
+
+        $admin = User::factory()->superAdmin()->create();
+
+        $this->actingAs($admin)
+            ->post('/admin/calendario-estrategico', [
+                'title' => 'Aniversário — Maria Silva',
+                'description' => 'Parabéns à Maria!',
+                'kind' => StrategicCalendarItemKind::Birthday->value,
+                'occurs_on' => '2026-08-12',
+                'company_ids' => [$company->id],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('strategic_calendar_items', [
+            'title' => 'Aniversário — Maria Silva',
+            'kind' => 'birthday',
+        ]);
+
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $this->withoutVite();
+
+        $this->actingAs($user)
+            ->get('/client/calendario-estrategico?year=2026&month=8')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Client/StrategicCalendar/Index')
+                ->where('kindLabels.birthday', 'Aniversário')
+                ->where('monthItems.0.kind', 'birthday')
+                ->where('monthItems.0.title', 'Aniversário — Maria Silva'));
     }
 }

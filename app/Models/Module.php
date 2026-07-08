@@ -13,7 +13,7 @@ class Module extends Model
     /** @var string Chave usada em planos e em Company::hasMethodologyEnabled() */
     public const KEY_METODOLOGIA = 'metodologia';
 
-    /** @var string Calendário estratégico (eventos e ritos Talents) */
+    /** @var string Calendário estratégico (eventos e Rituais Talents) */
     public const KEY_CALENDARIO_ESTRATEGICO = 'calendario_estrategico';
 
     /** @var string Quadros Kanban / Tarefas */

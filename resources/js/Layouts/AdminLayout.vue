@@ -111,7 +111,8 @@ const configuracaoActive = computed(
     <SidebarLayout
         top-bar-title="Administração"
         :top-bar-show-search="false"
-        :top-bar-show-actions="false"
+        :top-bar-show-actions="true"
+        :top-bar-show-files="false"
     >
         <template #logo="{ collapsed }">
             <SidebarBrandMark

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Commercial;
 
+use App\Actions\Notices\PublishCommercialNotice;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialContractTemplate;
 use App\Models\CommercialProduct;
@@ -23,6 +24,7 @@ class ProposalController extends Controller
 {
     public function __construct(
         private readonly CommercialPricingService $pricing,
+        private readonly PublishCommercialNotice $notices,
     ) {}
 
     public function index(Request $request): Response
@@ -131,6 +133,12 @@ class ProposalController extends Controller
 
         $this->syncCatalogLines($proposal, $catalogLines);
 
+        if ($proposal->is_closed) {
+            $this->notices->proposalWon($proposal, $request->user());
+        } else {
+            $this->notices->proposalCreated($proposal, $request->user());
+        }
+
         return redirect()
             ->route('admin.comercial.propostas.edit', $proposal)
             ->with('success', "Proposta {$proposal->code} criada.");
@@ -164,6 +172,10 @@ class ProposalController extends Controller
         ]));
 
         $this->syncCatalogLines($proposal, $catalogLines);
+
+        if ($isClosed && ! $wasClosed) {
+            $this->notices->proposalWon($proposal->refresh(), $request->user());
+        }
 
         return redirect()
             ->route('admin.comercial.propostas.edit', $proposal)
@@ -350,6 +362,7 @@ class ProposalController extends Controller
             'discount_type' => $line->options['discount_type'] ?? 'percent',
             'discount_percent' => $line->options['discount_percent'] ?? '',
             'discount_value_cents' => (int) ($line->options['discount_value_cents'] ?? 0),
+            'observation' => (string) ($line->options['observation'] ?? ''),
         ])->values()->all();
         $payload['has_legacy_services'] = $proposal->hasLegacyServices();
         $payload['legacy_summary'] = $this->legacySummaryLines($proposal);
@@ -453,6 +466,7 @@ class ProposalController extends Controller
             'catalog_products.*.discount_type' => ['nullable', Rule::in(['percent', 'value'])],
             'catalog_products.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'catalog_products.*.discount_value_cents' => ['nullable', 'integer', 'min:0'],
+            'catalog_products.*.observation' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $data['commission_percent'] = (float) (CommercialSetting::current()->default_commission_percent ?? 0);

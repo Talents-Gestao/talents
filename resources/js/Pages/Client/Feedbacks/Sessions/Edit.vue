@@ -1,6 +1,7 @@
 <script setup>
 import FeedbackQuestionField from '@/Components/Feedback/FeedbackQuestionField.vue';
 import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccordion.vue';
+import FeedbackSectionExtraField from '@/Components/Feedback/FeedbackSectionExtraField.vue';
 import FeedbackStatusBadge from '@/Components/Feedback/FeedbackStatusBadge.vue';
 import FeedbacksLayout from '@/Components/Feedback/FeedbacksLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
@@ -8,6 +9,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { feedbackFieldClass } from '@/utils/feedbackStatus';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
+import { feedbackSectionIcon } from '@/utils/feedbackSectionIcons';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { reactive } from 'vue';
 
@@ -17,30 +19,52 @@ const props = defineProps({
 
 const answers = reactive({ ...(props.session.answers ?? {}) });
 
+const sectionExtras = reactive({ ...(props.session.section_extras ?? {}) });
+
+const ensureSectionExtra = (sectionId) => {
+    if (!sectionExtras[sectionId]) {
+        sectionExtras[sectionId] = { question: '', answer: '' };
+    }
+    return sectionExtras[sectionId];
+};
+
 const form = useForm({
     scheduled_at: props.session.scheduled_at ? props.session.scheduled_at.slice(0, 16) : '',
     next_alignment_at: props.session.next_alignment_at ? props.session.next_alignment_at.slice(0, 10) : '',
     answers: {},
+    section_extras: {},
     submit_for_signature: false,
 });
 
 const save = (forSignature = false) => {
     form.answers = { ...answers };
+    form.section_extras = { ...sectionExtras };
     form.submit_for_signature = forSignature;
     form.patch(feedbackRoute('sessions.update', props.session.id));
 };
 
-const sectionMeta = (section) => {
-    const total = section.questions?.length ?? 0;
-    if (!total || section.section_type === 'intro') return '';
+const isExtraFilled = (sectionId) => {
+    const extra = sectionExtras[sectionId];
+    if (!extra) return false;
+    return Boolean(extra.question?.trim() || extra.answer?.trim());
+};
 
-    const answered = section.questions.filter((q) => {
+const sectionMeta = (section) => {
+    if (section.section_type === 'intro') return '';
+
+    const total = (section.questions?.length ?? 0) + 1;
+
+    let answered = section.questions.filter((q) => {
         const val = answers[q.id];
         if (val == null || val === '') return false;
         if (Array.isArray(val)) return val.some(Boolean);
         if (typeof val === 'object') return Object.values(val).some((v) => v != null && v !== '');
         return true;
     }).length;
+
+    if (isExtraFilled(section.id)) {
+        answered += 1;
+    }
 
     return `${answered}/${total} preenchidas`;
 };
@@ -79,22 +103,27 @@ const sectionMeta = (section) => {
                 v-for="(section, index) in session.template?.sections || []"
                 :key="section.id"
                 :title="section.title"
+                :icon="feedbackSectionIcon(section.key)"
                 :description="section.description"
                 :meta="sectionMeta(section)"
+                :collapsible="section.section_type !== 'intro'"
                 :default-open="index === 0"
             >
-                <div v-if="section.section_type !== 'intro'" class="space-y-4 p-5">
-                    <FeedbackQuestionField
-                        v-for="q in section.questions"
-                        :key="q.id"
-                        :question="q"
-                        :model-value="answers[q.id]"
-                        @update:model-value="answers[q.id] = $event"
-                    />
-                </div>
-                <p v-else-if="!section.description" class="px-5 py-4 text-sm text-slate-500">
-                    Seção introdutória — leia o texto acima.
-                </p>
+                <template v-if="section.section_type !== 'intro'">
+                    <div class="space-y-4 p-5">
+                        <FeedbackQuestionField
+                            v-for="q in section.questions"
+                            :key="q.id"
+                            :question="q"
+                            :model-value="answers[q.id]"
+                            @update:model-value="answers[q.id] = $event"
+                        />
+                        <FeedbackSectionExtraField
+                            :model-value="ensureSectionExtra(section.id)"
+                            @update:model-value="sectionExtras[section.id] = $event"
+                        />
+                    </div>
+                </template>
             </FeedbackSectionAccordion>
         </div>
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Finance;
 
+use App\Actions\Notices\PublishCommercialNotice;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
@@ -16,6 +17,7 @@ class SaleController extends Controller
 {
     public function __construct(
         private readonly ProposalSaleConversionService $conversion,
+        private readonly PublishCommercialNotice $notices,
     ) {}
 
     public function index(Request $request): Response
@@ -94,6 +96,8 @@ class SaleController extends Controller
         ]);
 
         $sale = $this->conversion->convert($proposal, $data, $request->user()?->id);
+
+        $this->notices->saleCreated($sale, $request->user());
 
         return redirect()
             ->route('admin.financeiro.vendas.show', $sale)

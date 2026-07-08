@@ -1,8 +1,10 @@
 <script setup>
 import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
+import BirthdayConfetti from '@/Components/StrategicCalendar/BirthdayConfetti.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import { useStrategicCalendarTheme } from '@/composables/useStrategicCalendarTheme';
 import { kindTheme } from '@/utils/strategicCalendarThemes';
+import { isMultiDayRange } from '@/utils/strategicCalendarDate';
 import {
     formatDateNumeric,
     formatRelativeAgendaHeader,
@@ -74,10 +76,10 @@ const {
     previewBackground,
 } = useStrategicCalendarTheme();
 
-const KIND_ORDER = ['rito', 'event', 'task'];
+const KIND_ORDER = ['birthday', 'ritual', 'event', 'task'];
 
 function sortItemsByKind(items) {
-    const order = { rito: 0, event: 1, task: 2 };
+    const order = { birthday: 0, ritual: 1, event: 2, task: 3 };
     return [...items].sort(
         (a, b) => (order[a.kind] ?? 9) - (order[b.kind] ?? 9) || String(a.title).localeCompare(String(b.title)),
     );
@@ -255,7 +257,7 @@ const monthTitleCapitalized = computed(() => {
 const currentMonthTheme = computed(() => resolveForMonth(props.month));
 
 const visibleKindThemes = computed(() => {
-    const kinds = new Set(['event', 'rito']);
+    const kinds = new Set(['event', 'ritual']);
     for (const item of [...props.items, ...props.agendaItems]) {
         if (item?.kind) kinds.add(item.kind);
     }
@@ -266,6 +268,8 @@ const visibleKindThemes = computed(() => {
         ...kindTheme(kind),
     }));
 });
+
+const kindLabel = (kind) => props.kindLabels[kind] ?? kind;
 
 function syncSelectedDay() {
     const t = new Date();
@@ -284,7 +288,11 @@ watch(
     { immediate: true },
 );
 
-const kindLabel = (kind) => props.kindLabels[kind] ?? kind;
+const showFestiveEffects = computed(() => props.completionEnabled && !props.editable);
+
+function dayHasBirthday(items) {
+    return Array.isArray(items) && items.some((item) => item.kind === 'birthday');
+}
 
 function itemKindTheme(item) {
     return kindTheme(item?.kind);
@@ -296,16 +304,21 @@ const selectedDayIso = computed(() => {
 
 const selectedDayItems = computed(() => itemsByDay.value[selectedDayIso.value] ?? []);
 
+const selectedDayHasBirthday = computed(() =>
+    selectedDayItems.value.some((item) => item.kind === 'birthday'),
+);
+
 const selectedDayProgress = computed(() => {
-    const total = selectedDayItems.value.length;
+    const trackable = selectedDayItems.value.filter((item) => props.editable || item.kind !== 'birthday');
+    const total = trackable.length;
     if (!total) return null;
 
-    const done = selectedDayItems.value.filter((it) => it.completed).length;
+    const done = trackable.filter((it) => it.completed).length;
     return { done, total };
 });
 
 const selectedDayItemsGrouped = computed(() => {
-    const buckets = { rito: [], event: [], task: [] };
+    const buckets = { birthday: [], ritual: [], event: [], task: [] };
     for (const it of selectedDayItems.value) {
         const key = Object.prototype.hasOwnProperty.call(buckets, it.kind) ? it.kind : 'event';
         buckets[key].push(it);
@@ -411,6 +424,13 @@ function updateItemDate(item, newDate) {
     const sourceId = itemSourceId(item);
     if (!sourceId || String(item.occurs_on) === newDate) return;
 
+    if (isMultiDayRange(item.range_starts_on ?? item.occurs_on, item.ends_on)) {
+        const rangeStart = item.range_starts_on ?? item.occurs_on;
+        if (rangeStart !== item.occurs_on) {
+            return;
+        }
+    }
+
     router.patch(
         route(props.updateDateRoute, sourceId),
         { occurs_on: newDate },
@@ -427,7 +447,7 @@ function completionRouteFor(item) {
 }
 
 function canToggleCompletion(item) {
-    return props.completionEnabled && !props.editable && itemSourceId(item);
+    return props.completionEnabled && !props.editable && itemSourceId(item) && item?.kind !== 'birthday';
 }
 
 function toggleCompletion(item) {
@@ -794,7 +814,7 @@ function itemShellClass(item) {
                 </div>
             </div>
             <div v-else-if="showViewToggle" class="flex flex-wrap items-center gap-2 sm:ml-auto">
-                <p class="text-sm text-slate-500">Próximos eventos, ritos e tarefas (até 60 dias)</p>
+                <p class="text-sm text-slate-500">Próximos eventos, Rituais e tarefas (até 60 dias)</p>
                 <button type="button" class="btn-ghost !px-4 !py-2 text-xs sm:text-sm" @click="onGoToday">
                     Ir para hoje
                 </button>
@@ -888,6 +908,7 @@ function itemShellClass(item) {
                                     :style="monthCellStyle(cell)"
                                     @click="onPickDay(cell)"
                                 >
+                                    <BirthdayConfetti v-if="showFestiveEffects && dayHasBirthday(cell.items)" />
                                     <span
                                         class="px-2 pt-1.5 text-xs font-semibold tabular-nums"
                                         :class="
@@ -940,9 +961,10 @@ function itemShellClass(item) {
             <!-- Painel detalhe -->
             <div
                 v-if="!compact"
-                class="border-t border-slate-200/80 bg-slate-50/40 lg:w-[min(380px,34%)] lg:border-l lg:border-t-0 lg:shrink-0"
+                class="relative border-t border-slate-200/80 bg-slate-50/40 lg:w-[min(380px,34%)] lg:border-l lg:border-t-0 lg:shrink-0 overflow-hidden"
                 :class="rootPad"
             >
+                <BirthdayConfetti v-if="showFestiveEffects && selectedDayHasBirthday" />
                 <p
                     class="text-xs font-semibold uppercase tracking-wide text-slate-500"
                     :title="selectedDayHeaderTitle || undefined"

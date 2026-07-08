@@ -7,6 +7,7 @@ use App\Enums\StrategicCalendarRecurrence;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class StrategicCalendarItem extends Model
@@ -16,6 +17,7 @@ class StrategicCalendarItem extends Model
         'description',
         'kind',
         'occurs_on',
+        'ends_on',
         'recurrence',
         'recurrence_ends_on',
         'company_id',
@@ -25,6 +27,7 @@ class StrategicCalendarItem extends Model
     {
         return [
             'occurs_on' => 'date',
+            'ends_on' => 'date',
             'recurrence_ends_on' => 'date',
             'kind' => StrategicCalendarItemKind::class,
             'recurrence' => StrategicCalendarRecurrence::class,
@@ -34,6 +37,16 @@ class StrategicCalendarItem extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function companies(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Company::class,
+            'strategic_calendar_item_company',
+            'strategic_calendar_item_id',
+            'company_id',
+        )->withTimestamps();
     }
 
     public function attachments(): HasMany
@@ -56,13 +69,17 @@ class StrategicCalendarItem extends Model
     }
 
     /**
-     * Itens visíveis para a empresa: globais (company_id null) ou específicos da empresa.
+     * Itens visíveis para a empresa: globais, vinculados diretamente ou via pivot.
      */
     public function scopeForCompany(Builder $query, Company $company): Builder
     {
         return $query->where(function (Builder $q) use ($company) {
-            $q->whereNull('company_id')
-                ->orWhere('company_id', $company->id);
+            $q->where(function (Builder $global) {
+                $global->whereNull('company_id')
+                    ->whereDoesntHave('companies');
+            })
+                ->orWhere('company_id', $company->id)
+                ->orWhereHas('companies', fn (Builder $c) => $c->where('companies.id', $company->id));
         });
     }
 }

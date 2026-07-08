@@ -166,6 +166,7 @@ class CommercialProposalServiceLines
                 'key' => $slug,
                 'label' => $line->label_snapshot,
                 'detail' => (string) ($line->detail_snapshot ?? ''),
+                'observation' => trim((string) ($line->options['observation'] ?? '')),
                 'description' => self::resolveDescription(
                     $slug,
                     $overrides,

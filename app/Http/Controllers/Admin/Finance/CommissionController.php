@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Finance;
 
+use App\Actions\Notices\PublishCommercialNotice;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialCommission;
 use App\Models\User;
@@ -13,6 +14,10 @@ use Inertia\Response;
 
 class CommissionController extends Controller
 {
+    public function __construct(
+        private readonly PublishCommercialNotice $notices,
+    ) {}
+
     public function index(Request $request): Response
     {
         $q = CommercialCommission::query()
@@ -105,7 +110,13 @@ class CommissionController extends Controller
             $update['paid_at'] = null;
         }
 
+        $wasPaid = $commission->getOriginal('status') === CommercialCommission::STATUS_PAGA;
+
         $commission->update($update);
+
+        if ($data['status'] === CommercialCommission::STATUS_PAGA && ! $wasPaid) {
+            $this->notices->commissionPaid($commission->fresh(['sale', 'seller']), $request->user());
+        }
 
         return redirect()
             ->back()

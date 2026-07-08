@@ -7,12 +7,14 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
+import { feedbackSectionIcon } from '@/utils/feedbackSectionIcons';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { CalendarDaysIcon, UserIcon } from '@heroicons/vue/24/outline';
 import { computed } from 'vue';
 
 const props = defineProps({
     session: Object,
+    canExportPdf: { type: Boolean, default: false },
 });
 
 const page = usePage();
@@ -29,16 +31,22 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR') : '—'
 const formatDateShort = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
 
 const sectionMeta = (section) => {
-    const total = section.questions?.length ?? 0;
-    if (!total) return '';
+    if (section.section_type === 'intro') return '';
 
-    const answered = section.questions.filter((q) => {
+    const total = (section.questions?.length ?? 0) + 1;
+
+    let answered = section.questions.filter((q) => {
         const val = props.session.answers?.[q.id];
         if (val == null || val === '') return false;
         if (Array.isArray(val)) return val.some(Boolean);
         if (typeof val === 'object') return Object.values(val).some((v) => v != null && v !== '');
         return true;
     }).length;
+
+    const extra = props.session.section_extras?.[section.id];
+    if (extra?.question?.trim() || extra?.answer?.trim()) {
+        answered += 1;
+    }
 
     return `${answered}/${total} respondidas`;
 };
@@ -57,7 +65,7 @@ const sectionMeta = (section) => {
             >
                 <template #trailing>
                     <div class="flex flex-wrap gap-2">
-                        <a :href="feedbackRoute('sessions.pdf', session.id)">
+                        <a v-if="canExportPdf" :href="feedbackRoute('sessions.pdf', session.id)">
                             <SecondaryButton type="button">Exportar PDF</SecondaryButton>
                         </a>
                         <Link
@@ -113,19 +121,34 @@ const sectionMeta = (section) => {
                 v-for="(section, index) in session.template?.sections || []"
                 :key="section.id"
                 :title="section.title"
+                :icon="feedbackSectionIcon(section.key)"
                 :description="section.description"
                 :meta="sectionMeta(section)"
+                :collapsible="section.section_type !== 'intro'"
                 :default-open="index === 0"
             >
-                <div v-if="section.questions?.length" class="divide-y divide-slate-100">
-                    <div v-for="q in section.questions" :key="q.id" class="px-5 py-4">
-                        <p class="text-sm font-medium text-slate-800">{{ q.body }}</p>
-                        <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
-                            {{ formatAnswer(session.answers?.[q.id]) }}
-                        </p>
+                <template v-if="section.section_type !== 'intro'">
+                    <div v-if="section.questions?.length" class="divide-y divide-slate-100">
+                        <div v-for="q in section.questions" :key="q.id" class="px-5 py-4">
+                            <p class="text-sm font-medium text-slate-800">{{ q.body }}</p>
+                            <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
+                                {{ formatAnswer(session.answers?.[q.id]) }}
+                            </p>
+                        </div>
+                        <div
+                            v-if="session.section_extras?.[section.id]?.question || session.section_extras?.[section.id]?.answer"
+                            class="px-5 py-4"
+                        >
+                            <p class="text-sm font-medium text-slate-800">
+                                {{ session.section_extras[section.id].question || 'Pergunta extra' }}
+                            </p>
+                            <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
+                                {{ formatAnswer(session.section_extras[section.id].answer) }}
+                            </p>
+                        </div>
                     </div>
-                </div>
-                <p v-else class="px-5 py-4 text-sm text-slate-500">Sem perguntas nesta seção.</p>
+                    <p v-else class="px-5 py-4 text-sm text-slate-500">Sem perguntas nesta seção.</p>
+                </template>
             </FeedbackSectionAccordion>
         </div>
     </FeedbacksLayout>

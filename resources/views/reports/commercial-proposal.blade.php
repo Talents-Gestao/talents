@@ -177,6 +177,18 @@
             margin: 0 0 2px;
         }
 
+        .service-observation {
+            font-size: 10.5px;
+            color: #334155;
+            margin: 0 0 4px;
+            line-height: 1.45;
+        }
+
+        .service-observation strong {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
         .service-block {
             page-break-inside: avoid;
             margin-bottom: 2px;
@@ -415,6 +427,9 @@
                     <h3 class="service-title">{{ $index + 1 }}. {{ $line['label'] }}</h3>
                     @if(!empty($line['detail']))
                         <p class="service-detail">{{ $line['detail'] }}</p>
+                    @endif
+                    @if(!empty($line['observation']))
+                        <p class="service-observation"><strong>Observação:</strong> {{ $line['observation'] }}</p>
                     @endif
                     @if(!empty($line['discount_cents']) && (int) $line['discount_cents'] > 0)
                         <p class="investment">

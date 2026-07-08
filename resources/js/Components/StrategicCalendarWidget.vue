@@ -8,7 +8,7 @@ const props = defineProps({
     items: { type: Array, default: () => [] },
     year: { type: Number, required: true },
     month: { type: Number, required: true },
-    kindLabels: { type: Object, default: () => ({ event: 'Evento', rito: 'Rito' }) },
+    kindLabels: { type: Object, default: () => ({ event: 'Evento', ritual: 'Ritual', birthday: 'Aniversário' }) },
     title: { type: String, default: 'Calendário estratégico' },
     subtitle: { type: String, default: null },
     fullPageHref: { type: String, default: null },

@@ -90,6 +90,27 @@ docker compose exec app php artisan db:seed --class=FeedbackDemoSeeder --force
 
 (Só insere se ainda não existirem sessões na empresa demo.)
 
+## Tarefas (dados de teste)
+
+Após `db:seed`, o **`TasksDemoSeeder`** cria quadros, cards, labels, checklist e um processo modelo:
+
+| Cenário | Onde ver |
+|--------|----------|
+| Quadro **DEMO: Operações RH — Empresa Demo** | Admin → Tarefas / Client → Tarefas (RH) |
+| Card oculto ao cliente (`visibility=internal`) | Só no admin |
+| Card só do líder (atribuído) | `lider@empresa.local` em `/client/tarefas` |
+| Recorrência semanal | Card «Revisar indicadores semanais» |
+| Quadro Único (interno) com cards da Empresa Demo | `/admin/tarefas` |
+| Processo **DEMO: Onboarding NR-1** | Admin → Tarefas → Processos (ativar numa empresa) |
+
+Para repor só as tarefas demo:
+
+```bash
+docker compose exec app php artisan db:seed --class=TasksDemoSeeder --force
+```
+
+O seeder é **idempotente** (títulos `DEMO-TASK:*`).
+
 
 - **Empresa:** Empresa Demo (CNPJ fictício `00.000.000/0001-99` no seed).
 - **Usuário admin** não possui `company_id` (acesso global Talents).

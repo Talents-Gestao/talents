@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CompanyNoticeAudience;
 use App\Enums\CompanyNoticeEventKind;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CompanyNotice extends Model
 {
     protected $fillable = [
+        'audience',
         'company_id',
         'title',
         'body',
@@ -24,6 +26,7 @@ class CompanyNotice extends Model
     {
         return [
             'published_at' => 'datetime',
+            'audience' => CompanyNoticeAudience::class,
             'event_kind' => CompanyNoticeEventKind::class,
         ];
     }

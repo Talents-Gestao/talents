@@ -12,6 +12,7 @@ use App\Models\FeedbackSession;
 use App\Models\FeedbackSessionAnswer;
 use App\Models\FeedbackTemplate;
 use App\Models\FeedbackTemplateQuestion;
+use App\Models\FeedbackTemplateSection;
 use App\Models\User;
 use App\Support\Feedback\FeedbackVisibility;
 use App\Services\Feedback\FeedbackPdfService;
@@ -110,6 +111,7 @@ class FeedbackSessionController extends FeedbackCompanyController
 
         return Inertia::render('Client/Feedbacks/Sessions/Show', [
             'session' => $this->sessionPayload($session),
+            'canExportPdf' => FeedbackVisibility::actsAsCompanyAdmin($request->user()),
         ]);
     }
 
@@ -134,6 +136,9 @@ class FeedbackSessionController extends FeedbackCompanyController
             'scheduled_at' => ['nullable', 'date'],
             'next_alignment_at' => ['nullable', 'date'],
             'answers' => ['nullable', 'array'],
+            'section_extras' => ['nullable', 'array'],
+            'section_extras.*.question' => ['nullable', 'string', 'max:500'],
+            'section_extras.*.answer' => ['nullable', 'string', 'max:10000'],
             'submit_for_signature' => ['boolean'],
         ]);
 
@@ -141,12 +146,13 @@ class FeedbackSessionController extends FeedbackCompanyController
             'scheduled_at' => $data['scheduled_at'] ?? $session->scheduled_at,
             'next_alignment_at' => $data['next_alignment_at'] ?? $session->next_alignment_at,
             'status' => FeedbackSessionStatus::InProgress,
+            'section_extras' => $this->normalizeSectionExtras($session, $data['section_extras'] ?? []),
         ]);
 
         $this->syncAnswers($session, $data['answers'] ?? []);
 
         if ($request->boolean('submit_for_signature')) {
-            app(SendFeedbackSignatureInvites::class)->execute($session);
+            app(SendFeedbackSignatureInvites::class)->execute($session, $request->user());
 
             return $this->feedbackRedirect('sessions.show', $session, 'Convites de assinatura enviados por e-mail.');
         }
@@ -160,7 +166,7 @@ class FeedbackSessionController extends FeedbackCompanyController
         $this->authorizeSession($company, $session);
         abort_if($session->status === FeedbackSessionStatus::Completed, 403);
 
-        $action->execute($session);
+        $action->execute($session, $request->user());
 
         return $this->feedbackRedirect('sessions.show', $session, 'Convites de assinatura enviados por e-mail.');
     }
@@ -169,6 +175,7 @@ class FeedbackSessionController extends FeedbackCompanyController
     {
         $company = $this->company($request);
         $this->authorizeSession($company, $session);
+        abort_unless(FeedbackVisibility::actsAsCompanyAdmin($request->user()), 403);
 
         $filename = 'feedback-'.$session->id.'.pdf';
 
@@ -219,6 +226,41 @@ class FeedbackSessionController extends FeedbackCompanyController
     }
 
     /**
+     * @param  array<int|string, array{question?: string, answer?: string}>  $extras
+     * @return array<string, array{question: string, answer: string}>|null
+     */
+    private function normalizeSectionExtras(FeedbackSession $session, array $extras): ?array
+    {
+        $validSectionIds = FeedbackTemplateSection::query()
+            ->where('feedback_template_id', $session->feedback_template_id)
+            ->where('section_type', '!=', 'intro')
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id);
+
+        $normalized = [];
+
+        foreach ($extras as $sectionId => $extra) {
+            if (! $validSectionIds->contains((string) $sectionId) || ! is_array($extra)) {
+                continue;
+            }
+
+            $question = trim((string) ($extra['question'] ?? ''));
+            $answer = trim((string) ($extra['answer'] ?? ''));
+
+            if ($question === '' && $answer === '') {
+                continue;
+            }
+
+            $normalized[(string) $sectionId] = [
+                'question' => $question,
+                'answer' => $answer,
+            ];
+        }
+
+        return $normalized === [] ? null : $normalized;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function sessionPayload(FeedbackSession $session): array
@@ -249,6 +291,7 @@ class FeedbackSessionController extends FeedbackCompanyController
             'leader' => $session->leader?->only(['id', 'name', 'email']),
             'template' => $session->template,
             'answers' => $answers,
+            'section_extras' => $session->section_extras ?? [],
             'signatures' => $session->signatures->map(fn ($signature) => [
                 'id' => $signature->id,
                 'role' => $signature->role->value,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Complaint;
 
+use App\Actions\Notices\PublishComplaintNotice;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Complaint;
@@ -44,7 +45,7 @@ class PublicComplaintController extends Controller
         ]);
     }
 
-    public function store(Request $request, string $token): RedirectResponse
+    public function store(Request $request, string $token, PublishComplaintNotice $notices): RedirectResponse
     {
         $company = $this->findCompany($token);
 
@@ -91,6 +92,8 @@ class PublicComplaintController extends Controller
             'user_id' => null,
             'content' => 'Denúncia registrada com sucesso. Guarde o número de protocolo para acompanhar.',
         ]);
+
+        $notices->created($complaint);
 
         return redirect()
             ->route('denuncia.thanks', ['token' => $token, 'protocol' => $complaint->protocol]);

@@ -89,9 +89,12 @@ class HandleInertiaRequests extends Middleware
             ],
             'sessionExpiry' => Inertia::always(fn () => $this->sessionMetaForFrontend($request)),
             'nav' => [
-                'unread_notices_count' => fn () => $user && $user->contextCompanyId()
+                'unread_notices_count' => fn () => $user
                     ? app(UnreadNoticeCounter::class)->forUser($user)
                     : 0,
+                'notices_context' => fn () => $user
+                    ? (app(UnreadNoticeCounter::class)->contextFor($user)[0]->value ?? null)
+                    : null,
             ],
         ];
 
