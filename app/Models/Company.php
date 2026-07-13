@@ -44,6 +44,8 @@ class Company extends Model
         'rhid_access',
         'denuncias_access',
         'feedbacks_access',
+        'ferias_access',
+        'desligamento_access',
     ];
 
     protected function casts(): array
@@ -57,6 +59,8 @@ class Company extends Model
             'rhid_access' => 'boolean',
             'denuncias_access' => 'boolean',
             'feedbacks_access' => 'boolean',
+            'ferias_access' => 'boolean',
+            'desligamento_access' => 'boolean',
         ];
     }
 
@@ -264,6 +268,32 @@ class Company extends Model
         return $this->subscriptionHasModuleKey(Module::KEY_FEEDBACKS);
     }
 
+    public function hasFeriasEnabled(): bool
+    {
+        if ($this->ferias_access === false) {
+            return false;
+        }
+
+        if ($this->ferias_access === true) {
+            return true;
+        }
+
+        return $this->subscriptionHasModuleKey(Module::KEY_FERIAS);
+    }
+
+    public function hasDesligamentoEnabled(): bool
+    {
+        if ($this->desligamento_access === false) {
+            return false;
+        }
+
+        if ($this->desligamento_access === true) {
+            return true;
+        }
+
+        return $this->subscriptionHasModuleKey(Module::KEY_DESLIGAMENTO);
+    }
+
     public function activeSubscription(): ?Subscription
     {
         if ($this->activeSubscriptionResolved) {
@@ -327,6 +357,8 @@ class Company extends Model
             PermissionModule::Tarefas => $this->hasTasksEnabled(),
             PermissionModule::Denuncias => $this->hasComplaintsEnabled(),
             PermissionModule::Feedbacks => $this->hasFeedbacksEnabled(),
+            PermissionModule::Ferias => $this->hasFeriasEnabled(),
+            PermissionModule::Desligamento => $this->hasDesligamentoEnabled(),
         };
     }
 

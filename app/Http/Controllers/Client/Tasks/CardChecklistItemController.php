@@ -17,6 +17,7 @@ class CardChecklistItemController extends Controller
 
         $data = $request->validate([
             'text' => ['sometimes', 'string', 'max:2000'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'is_completed' => ['sometimes', 'boolean'],
             'position' => ['sometimes', 'numeric'],
         ]);

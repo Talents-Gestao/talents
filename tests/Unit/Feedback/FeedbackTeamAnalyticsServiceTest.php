@@ -81,5 +81,58 @@ class FeedbackTeamAnalyticsServiceTest extends TestCase
 
         $this->assertSame(1, $analyticsA['completed_count']);
         $this->assertSame(1, $analyticsB['completed_count']);
+        $this->assertNull($analyticsA['nine_box']);
+        $this->assertNull($analyticsB['nine_box']);
+    }
+
+    public function test_nine_box_is_built_for_company_admin_from_perception_answers(): void
+    {
+        $company = $this->createFeedbackCompany();
+        $admin = User::factory()->companyAdmin($company->id)->create();
+        $employee = $this->createFeedbackEmployee($company, $admin, [
+            'name' => 'Ana Souza',
+            'email' => 'ana@test.local',
+        ]);
+        $template = $this->seedFeedbackTemplate();
+
+        $behaviorQuestion = FeedbackTemplateQuestion::query()
+            ->where('key', 'perc_comportamento')
+            ->whereHas('section', fn ($q) => $q->where('feedback_template_id', $template->id))
+            ->firstOrFail();
+
+        $performanceQuestion = FeedbackTemplateQuestion::query()
+            ->where('key', 'perc_desempenho')
+            ->whereHas('section', fn ($q) => $q->where('feedback_template_id', $template->id))
+            ->firstOrFail();
+
+        $session = $this->createFeedbackSession($company, $admin, $employee, [
+            'status' => FeedbackSessionStatus::Completed,
+            'completed_at' => now(),
+        ]);
+
+        FeedbackSessionAnswer::create([
+            'feedback_session_id' => $session->id,
+            'feedback_template_question_id' => $behaviorQuestion->id,
+            'value_text' => 'acima',
+        ]);
+
+        FeedbackSessionAnswer::create([
+            'feedback_session_id' => $session->id,
+            'feedback_template_question_id' => $performanceQuestion->id,
+            'value_text' => 'dentro',
+        ]);
+
+        $analytics = app(FeedbackTeamAnalyticsService::class)->forCompany($company, $admin);
+
+        $this->assertNotNull($analytics['nine_box']);
+        $this->assertSame(1, $analytics['nine_box']['total']);
+
+        $cell = collect($analytics['nine_box']['cells'])->first(
+            fn (array $item) => $item['y'] === 'acima' && $item['x'] === 'dentro',
+        );
+
+        $this->assertNotNull($cell);
+        $this->assertSame(1, $cell['count']);
+        $this->assertContains('Ana Souza', $cell['employees']);
     }
 }

@@ -20,11 +20,67 @@ const props = defineProps({
 const page = usePage();
 const flashSuccess = computed(() => page.props.flash?.success);
 
-const formatAnswer = (val) => {
+const ccmLabels = {
+    start: 'Começar',
+    continue: 'Continuar',
+    improve: 'Melhorar',
+    stop: 'Cessar',
+};
+
+const isActionRow = (item) =>
+    item != null
+    && typeof item === 'object'
+    && !Array.isArray(item)
+    && ('action' in item || 'responsible' in item || 'deadline' in item);
+
+const formatAnswer = (val, question = null) => {
     if (val == null || val === '') return '—';
-    if (Array.isArray(val)) return val.filter(Boolean).join('\n• ');
-    if (typeof val === 'object') return JSON.stringify(val, null, 2);
-    return val;
+
+    if (Array.isArray(val)) {
+        if (val.length === 0) return '—';
+
+        if (question?.question_type === 'action_table' || val.some(isActionRow)) {
+            const lines = val
+                .filter((row) => row != null && typeof row === 'object')
+                .map((row, index) => {
+                    const action = String(row.action ?? '').trim();
+                    const responsible = String(row.responsible ?? '').trim();
+                    const deadline = String(row.deadline ?? '').trim();
+                    if (!action && !responsible && !deadline) return null;
+
+                    return `${index + 1}. ${action || '—'} · Responsável: ${responsible || '—'} · Prazo: ${deadline || '—'}`;
+                })
+                .filter(Boolean);
+
+            return lines.length ? lines.join('\n') : '—';
+        }
+
+        const items = val
+            .filter((item) => item != null && item !== '')
+            .map((item) => (typeof item === 'object' ? JSON.stringify(item) : String(item)));
+
+        if (!items.length) return '—';
+
+        return items.map((item) => `• ${item}`).join('\n');
+    }
+
+    if (typeof val === 'object') {
+        const keys = Object.keys(ccmLabels);
+        if (question?.question_type === 'ccm_block' || keys.some((key) => key in val)) {
+            return keys
+                .map((key) => `${ccmLabels[key]}: ${String(val[key] ?? '').trim() || '—'}`)
+                .join('\n');
+        }
+
+        return JSON.stringify(val, null, 2);
+    }
+
+    if (question?.question_type === 'single_choice' && Array.isArray(question.options)) {
+        const option = question.options.find((opt) => opt.value === val);
+        if (option?.label) return option.label;
+    }
+
+    return String(val);
 };
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR') : '—');
@@ -132,7 +188,7 @@ const sectionMeta = (section) => {
                         <div v-for="q in section.questions" :key="q.id" class="px-5 py-4">
                             <p class="text-sm font-medium text-slate-800">{{ q.body }}</p>
                             <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
-                                {{ formatAnswer(session.answers?.[q.id]) }}
+                                {{ formatAnswer(session.answers?.[q.id], q) }}
                             </p>
                         </div>
                         <div

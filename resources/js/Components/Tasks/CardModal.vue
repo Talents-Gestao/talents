@@ -77,6 +77,8 @@ const editingChecklistId = ref(null);
 const editingChecklistName = ref('');
 const editingChecklistItemId = ref(null);
 const editingChecklistItemText = ref('');
+/** Rascunhos locais de descrição por item (edição inline sem perder foco). */
+const itemDescriptionDrafts = ref({});
 const newChecklistItems = ref({});
 /** Itens por checklist (ordem local para arrastar). */
 const localChecklistItemsById = ref({});
@@ -155,10 +157,15 @@ function sortChecklists(checklists) {
 
 function syncLocalChecklistItems(card) {
     const map = {};
+    const descriptions = {};
     for (const cl of card?.checklists || []) {
         map[cl.id] = sortChecklistItems(cl.items);
+        for (const item of cl.items || []) {
+            descriptions[item.id] = item.description || '';
+        }
     }
     localChecklistItemsById.value = map;
+    itemDescriptionDrafts.value = descriptions;
 }
 
 function syncLocalChecklists(card) {
@@ -467,6 +474,12 @@ function cancelInlineEditItem() {
     editingChecklistItemText.value = '';
 }
 
+function checklistItemUpdateUrl(item) {
+    return props.isAdmin
+        ? route('admin.tarefas.checklist-itens.update', item.id)
+        : route('client.tarefas.checklist-itens.update', item.id);
+}
+
 function saveInlineEditItem(item) {
     if (!item || !item.id) return;
     const text = editingChecklistItemText.value.trim();
@@ -475,12 +488,8 @@ function saveInlineEditItem(item) {
         return;
     }
 
-    const url = props.isAdmin
-        ? route('admin.tarefas.checklist-itens.update', item.id)
-        : route('client.tarefas.checklist-itens.update', item.id);
-
     router.patch(
-        url,
+        checklistItemUpdateUrl(item),
         { text },
         {
             preserveScroll: true,
@@ -489,6 +498,42 @@ function saveInlineEditItem(item) {
                 cancelInlineEditItem();
                 reloadBoardPayloadAndSyncCard();
             },
+        },
+    );
+}
+
+function itemDescriptionDraft(item) {
+    if (!item?.id) return '';
+    if (itemDescriptionDrafts.value[item.id] === undefined) {
+        itemDescriptionDrafts.value = {
+            ...itemDescriptionDrafts.value,
+            [item.id]: item.description || '',
+        };
+    }
+    return itemDescriptionDrafts.value[item.id];
+}
+
+function setItemDescriptionDraft(item, value) {
+    if (!item?.id) return;
+    itemDescriptionDrafts.value = {
+        ...itemDescriptionDrafts.value,
+        [item.id]: value,
+    };
+}
+
+function saveItemDescription(item) {
+    if (isReadOnly.value || !item?.id) return;
+    const description = (itemDescriptionDrafts.value[item.id] ?? item.description ?? '').trim();
+    const previous = (item.description || '').trim();
+    if (description === previous) return;
+
+    router.patch(
+        checklistItemUpdateUrl(item),
+        { description: description || null },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => reloadBoardPayloadAndSyncCard(),
         },
     );
 }
@@ -730,7 +775,7 @@ function newItemDraft(checklistId) {
     if (!newChecklistItems.value[checklistId]) {
         newChecklistItems.value = {
             ...newChecklistItems.value,
-            [checklistId]: { text: '', due_date: '' },
+            [checklistId]: { text: '', description: '', due_date: '' },
         };
     }
     return newChecklistItems.value[checklistId];
@@ -748,6 +793,7 @@ function addChecklistItem(checklist) {
         route('admin.tarefas.checklists.itens.store', checklist.id),
         {
             text,
+            description: draft.description?.trim() || null,
             due_date: draft.due_date || null,
         },
         {
@@ -756,7 +802,7 @@ function addChecklistItem(checklist) {
             onSuccess: () => {
                 newChecklistItems.value = {
                     ...newChecklistItems.value,
-                    [checklist.id]: { text: '', due_date: '' },
+                    [checklist.id]: { text: '', description: '', due_date: '' },
                 };
                 reloadBoardPayloadAndSyncCard();
             },
@@ -1069,106 +1115,144 @@ function itemDueClass(item) {
                                 <li
                                     v-for="it in localChecklistItemsById[cl.id]"
                                     :key="it.id"
-                                    class="flex flex-wrap items-center gap-2 rounded-md bg-white"
+                                    class="rounded-md bg-white px-1 py-1.5"
                                 >
-                                    <button
-                                        v-if="isAdmin"
-                                        type="button"
-                                        class="checklist-drag-handle shrink-0 cursor-grab rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
-                                        title="Arrastar para reordenar"
-                                    >
-                                        <Bars3Icon class="h-4 w-4" aria-hidden="true" />
-                                    </button>
-                                    <input
-                                        type="checkbox"
-                                        :checked="it.is_completed"
-                                        class="shrink-0 rounded border-slate-300"
-                                        :disabled="isReadOnly"
-                                        @change="toggleItem(it)"
-                                    />
-                                    <TextInput
-                                        v-if="!isReadOnly && editingChecklistItemId === it.id"
-                                        v-model="editingChecklistItemText"
-                                        class="h-8 min-w-0 flex-1 border-slate-200 bg-white text-sm shadow-none"
-                                        @keydown.enter.prevent="saveInlineEditItem(it)"
-                                        @keydown.esc.prevent="cancelInlineEditItem"
-                                        @blur="saveInlineEditItem(it)"
-                                    />
-                                    <button
-                                        v-else-if="!isReadOnly"
-                                        type="button"
-                                        class="min-w-0 flex-1 text-left"
-                                        @click="startInlineEditItem(it)"
-                                    >
-                                        <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{ it.text }}</span>
-                                    </button>
-                                    <span
-                                        v-else
-                                        class="min-w-0 flex-1 text-left text-sm"
-                                        :class="it.is_completed ? 'text-slate-400 line-through' : 'text-slate-800'"
-                                    >
-                                        {{ it.text }}
-                                    </span>
-                                    <label
-                                        v-if="isAdmin"
-                                        class="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px]"
-                                        :class="itemDueClass(it)"
-                                        :title="it.due_date ? 'Vencimento da etapa' : 'Definir vencimento'"
-                                    >
-                                        <CalendarDaysIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <button
+                                            v-if="isAdmin"
+                                            type="button"
+                                            class="checklist-drag-handle shrink-0 cursor-grab rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
+                                            title="Arrastar para reordenar"
+                                        >
+                                            <Bars3Icon class="h-4 w-4" aria-hidden="true" />
+                                        </button>
                                         <input
-                                            type="date"
-                                            :value="it.due_date || ''"
-                                            class="w-[7.25rem] border-0 bg-transparent p-0 text-[11px] focus:ring-0"
-                                            @change="updateItemDueDate(it, $event.target.value)"
+                                            type="checkbox"
+                                            :checked="it.is_completed"
+                                            class="shrink-0 rounded border-slate-300"
+                                            :disabled="isReadOnly"
+                                            @change="toggleItem(it)"
                                         />
-                                    </label>
-                                    <span
-                                        v-else-if="it.due_date"
-                                        class="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px]"
-                                        :class="itemDueClass(it)"
-                                        :title="formatDateTitle(it.due_date)"
+                                        <TextInput
+                                            v-if="!isReadOnly && editingChecklistItemId === it.id"
+                                            v-model="editingChecklistItemText"
+                                            class="h-8 min-w-0 flex-1 border-slate-200 bg-white text-sm shadow-none"
+                                            placeholder="Título"
+                                            @keydown.enter.prevent="saveInlineEditItem(it)"
+                                            @keydown.esc.prevent="cancelInlineEditItem"
+                                            @blur="saveInlineEditItem(it)"
+                                        />
+                                        <button
+                                            v-else-if="!isReadOnly"
+                                            type="button"
+                                            class="min-w-0 flex-1 text-left"
+                                            @click="startInlineEditItem(it)"
+                                        >
+                                            <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{ it.text }}</span>
+                                        </button>
+                                        <span
+                                            v-else
+                                            class="min-w-0 flex-1 text-left text-sm"
+                                            :class="it.is_completed ? 'text-slate-400 line-through' : 'text-slate-800'"
+                                        >
+                                            {{ it.text }}
+                                        </span>
+                                        <label
+                                            v-if="isAdmin"
+                                            class="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px]"
+                                            :class="itemDueClass(it)"
+                                            :title="it.due_date ? 'Vencimento da etapa' : 'Definir vencimento'"
+                                        >
+                                            <CalendarDaysIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                            <input
+                                                type="date"
+                                                :value="it.due_date || ''"
+                                                class="w-[7.25rem] border-0 bg-transparent p-0 text-[11px] focus:ring-0"
+                                                @change="updateItemDueDate(it, $event.target.value)"
+                                            />
+                                        </label>
+                                        <span
+                                            v-else-if="it.due_date"
+                                            class="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px]"
+                                            :class="itemDueClass(it)"
+                                            :title="formatDateTitle(it.due_date)"
+                                        >
+                                            <CalendarDaysIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                                            {{ formatDateLabel(it.due_date) }}
+                                        </span>
+                                        <button
+                                            v-if="isAdmin"
+                                            type="button"
+                                            class="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                                            title="Excluir etapa"
+                                            @click="deleteChecklistItem(it)"
+                                        >
+                                            <TrashIcon class="h-4 w-4" aria-hidden="true" />
+                                        </button>
+                                    </div>
+                                    <div
+                                        class="mt-1.5 space-y-1"
+                                        :class="isAdmin ? 'pl-12' : 'pl-7'"
                                     >
-                                        <CalendarDaysIcon class="h-3.5 w-3.5" aria-hidden="true" />
-                                        {{ formatDateLabel(it.due_date) }}
-                                    </span>
-                                    <button
-                                        v-if="isAdmin"
-                                        type="button"
-                                        class="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
-                                        title="Excluir etapa"
-                                        @click="deleteChecklistItem(it)"
-                                    >
-                                        <TrashIcon class="h-4 w-4" aria-hidden="true" />
-                                    </button>
+                                        <textarea
+                                            v-if="!isReadOnly"
+                                            :value="itemDescriptionDraft(it)"
+                                            rows="2"
+                                            class="w-full resize-y rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 shadow-none placeholder:text-slate-400 focus:border-talents-500 focus:ring-talents-500"
+                                            placeholder="Descrição (opcional)"
+                                            @input="setItemDescriptionDraft(it, $event.target.value)"
+                                            @blur="saveItemDescription(it)"
+                                        />
+                                        <p
+                                            v-else-if="it.description"
+                                            class="whitespace-pre-wrap text-xs text-slate-600"
+                                        >
+                                            {{ it.description }}
+                                        </p>
+                                        <p
+                                            v-if="it.created_at"
+                                            class="text-[11px] text-slate-400"
+                                            :title="formatDateTitle(it.created_at)"
+                                        >
+                                            Criado em {{ formatDateLabel(it.created_at) }}
+                                        </p>
+                                    </div>
                                 </li>
                             </VueDraggable>
-                            <div v-if="isAdmin" class="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
-                                <TextInput
-                                    v-model="newItemDraft(cl.id).text"
-                                    :data-checklist-new-item="cl.id"
-                                    class="min-w-0 flex-1 border-slate-200 bg-white text-sm shadow-none"
-                                    placeholder="Nova etapa…"
-                                    @keydown.enter.prevent="addChecklistItem(cl)"
-                                />
-                                <label
-                                    class="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-1 text-[11px] text-slate-600"
-                                    title="Vencimento da etapa (opcional)"
-                                >
-                                    <CalendarDaysIcon class="h-3.5 w-3.5" aria-hidden="true" />
-                                    <input
-                                        v-model="newItemDraft(cl.id).due_date"
-                                        type="date"
-                                        class="w-[7.25rem] border-0 bg-transparent p-0 text-[11px] focus:ring-0"
+                            <div v-if="isAdmin" class="mt-2 space-y-2 border-t border-slate-100 pt-2">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <TextInput
+                                        v-model="newItemDraft(cl.id).text"
+                                        :data-checklist-new-item="cl.id"
+                                        class="min-w-0 flex-1 border-slate-200 bg-white text-sm shadow-none"
+                                        placeholder="Título da etapa…"
+                                        @keydown.enter.prevent="addChecklistItem(cl)"
                                     />
-                                </label>
-                                <button
-                                    type="button"
-                                    class="shrink-0 rounded-md border border-slate-300 px-2 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
-                                    @click="addChecklistItem(cl)"
-                                >
-                                    Adicionar
-                                </button>
+                                    <label
+                                        class="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-1 text-[11px] text-slate-600"
+                                        title="Vencimento da etapa (opcional)"
+                                    >
+                                        <CalendarDaysIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                                        <input
+                                            v-model="newItemDraft(cl.id).due_date"
+                                            type="date"
+                                            class="w-[7.25rem] border-0 bg-transparent p-0 text-[11px] focus:ring-0"
+                                        />
+                                    </label>
+                                    <button
+                                        type="button"
+                                        class="shrink-0 rounded-md border border-slate-300 px-2 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+                                        @click="addChecklistItem(cl)"
+                                    >
+                                        Adicionar
+                                    </button>
+                                </div>
+                                <textarea
+                                    v-model="newItemDraft(cl.id).description"
+                                    rows="2"
+                                    class="w-full resize-y rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 shadow-none placeholder:text-slate-400 focus:border-talents-500 focus:ring-talents-500"
+                                    placeholder="Descrição (opcional)"
+                                />
                             </div>
                         </div>
                     </VueDraggable>

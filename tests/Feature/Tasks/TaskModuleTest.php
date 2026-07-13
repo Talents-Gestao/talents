@@ -1560,4 +1560,167 @@ class TaskModuleTest extends TestCase
             ])
             ->assertSessionHasErrors('due_date');
     }
+
+    public function test_admin_can_create_checklist_item_with_description(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Lista',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'Tarefa',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $checklist = TaskChecklist::query()->create([
+            'task_card_id' => $card->id,
+            'name' => 'Testes',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/checklists/'.$checklist->id.'/itens', [
+                'text' => 'BIGFIVE',
+                'description' => 'Aplicar inventário de personalidade',
+                'due_date' => '2026-08-01',
+            ])
+            ->assertRedirect();
+
+        $item = TaskChecklistItem::query()
+            ->where('task_checklist_id', $checklist->id)
+            ->where('text', 'BIGFIVE')
+            ->first();
+
+        $this->assertNotNull($item);
+        $this->assertSame('Aplicar inventário de personalidade', $item->description);
+        $this->assertSame('2026-08-01', $item->due_date?->toDateString());
+        $this->assertNotNull($item->created_at);
+    }
+
+    public function test_admin_can_update_checklist_item_description(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Lista',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'Tarefa',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $checklist = TaskChecklist::query()->create([
+            'task_card_id' => $card->id,
+            'name' => 'Etapas',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        $item = TaskChecklistItem::query()->create([
+            'task_checklist_id' => $checklist->id,
+            'text' => 'SOLIDES',
+            'description' => 'Versão inicial',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/checklist-itens/'.$item->id, [
+                'text' => 'SOLIDES v2',
+                'description' => 'Atualizado pelo admin',
+            ])
+            ->assertRedirect();
+
+        $item->refresh();
+        $this->assertSame('SOLIDES v2', $item->text);
+        $this->assertSame('Atualizado pelo admin', $item->description);
+    }
+
+    public function test_client_cannot_update_checklist_item_same_as_title_rule(): void
+    {
+        $company = $this->baseCompany();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Lista',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'company_id' => $company->id,
+            'title' => 'Tarefa',
+            'position' => 1000,
+            'visibility' => 'inherit',
+            'is_archived' => false,
+        ]);
+
+        $checklist = TaskChecklist::query()->create([
+            'task_card_id' => $card->id,
+            'name' => 'Etapas',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        $item = TaskChecklistItem::query()->create([
+            'task_checklist_id' => $checklist->id,
+            'text' => 'SOLIDES',
+            'description' => 'Original',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        $client = User::factory()->companyAdmin($company->id)->create();
+        $this->actingAs($client)
+            ->patch('/client/tarefas/checklist-itens/'.$item->id, [
+                'text' => 'Novo título',
+                'description' => 'Nova descrição',
+            ])
+            ->assertForbidden();
+
+        $item->refresh();
+        $this->assertSame('SOLIDES', $item->text);
+        $this->assertSame('Original', $item->description);
+    }
 }

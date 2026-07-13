@@ -15,6 +15,7 @@ class TaskBoardChecklistItemController extends Controller
     {
         $data = $request->validate([
             'text' => ['required', 'string', 'max:2000'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'position' => ['nullable', 'numeric'],
             'due_date' => ['nullable', 'date'],
             'assignee_user_id' => ['nullable', 'exists:users,id'],
@@ -25,6 +26,7 @@ class TaskBoardChecklistItemController extends Controller
 
         $checklist->items()->create([
             'text' => $data['text'],
+            'description' => $data['description'] ?? null,
             'position' => $data['position'],
             'due_date' => $data['due_date'] ?? null,
             'assignee_user_id' => $data['assignee_user_id'] ?? null,
@@ -37,6 +39,7 @@ class TaskBoardChecklistItemController extends Controller
     {
         $data = $request->validate([
             'text' => ['sometimes', 'string', 'max:2000'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'position' => ['sometimes', 'numeric'],
             'is_completed' => ['sometimes', 'boolean'],
             'due_date' => ['nullable', 'date'],

@@ -22,14 +22,11 @@ const hasPendingRegistration = (companyId) => pendingRegistrationIdSet.has(Numbe
 const resendingId = ref(null);
 
 const resendInvitation = (company) => {
-    if (resendingId.value) {
+    if (resendingId.value || !hasPendingRegistration(company.id)) {
         return;
     }
     const email = company.contact_email || 'o e-mail de contacto';
-    const message = hasPendingRegistration(company.id)
-        ? `Reenviar o convite de cadastro para ${email}?`
-        : `Enviar link para redefinir a senha para ${email}?`;
-    if (!confirm(message)) {
+    if (!confirm(`Reenviar o convite de cadastro para ${email}?`)) {
         return;
     }
     resendingId.value = company.id;
@@ -103,21 +100,15 @@ const submit = () => {
                             <span v-if="hasPendingRegistration(c.id)" class="text-xs font-medium text-amber-700">Aguarda cadastro</span>
                             <span v-else class="text-xs text-gray-400">Concluído</span>
                         </td>
-                        <td class="px-4 py-3 text-right space-x-3">
+                        <td class="space-x-3 px-4 py-3 text-right">
                             <button
+                                v-if="hasPendingRegistration(c.id)"
                                 type="button"
-                                class="text-sm font-medium hover:underline disabled:opacity-50"
-                                :class="hasPendingRegistration(c.id) ? 'text-amber-700' : 'text-talents-700'"
+                                class="text-sm font-medium text-amber-700 hover:underline disabled:opacity-50"
                                 :disabled="resendingId === c.id"
                                 @click="resendInvitation(c)"
                             >
-                                {{
-                                    resendingId === c.id
-                                        ? 'Enviando…'
-                                        : hasPendingRegistration(c.id)
-                                          ? 'Reenviar convite'
-                                          : 'Redefinir senha'
-                                }}
+                                {{ resendingId === c.id ? 'Enviando…' : 'Reenviar convite' }}
                             </button>
                             <Link :href="route('admin.companies.show', c.id)" class="font-medium text-talents-700 hover:underline">Ver</Link>
                         </td>

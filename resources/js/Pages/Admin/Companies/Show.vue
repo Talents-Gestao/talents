@@ -80,6 +80,23 @@ const subscriptionStatusClass = (status) => {
     return 'bg-amber-50 text-amber-800 ring-amber-200/80';
 };
 
+const subscriptionStatusLabel = (status) => {
+    const s = String(status || '').toLowerCase();
+    if (s === 'active') {
+        return 'Ativa';
+    }
+    if (s === 'cancelled' || s === 'canceled') {
+        return 'Cancelada';
+    }
+    if (s === 'pending') {
+        return 'Pendente';
+    }
+    if (s === 'expired') {
+        return 'Expirada';
+    }
+    return status || '—';
+};
+
 const roleLabelClass = (role) => {
     const r = String(role || '').toLowerCase();
     if (r.includes('admin')) {
@@ -210,7 +227,7 @@ const deleteCompany = () => {
                                     ? 'Enviando…'
                                     : pendingRegistration
                                       ? 'Reenviar convite de cadastro'
-                                      : 'Enviar link de redefinição de senha'
+                                      : 'Redefinir senha'
                             }}
                         </button>
                         <Link
@@ -320,10 +337,10 @@ const deleteCompany = () => {
                         >
                             <span class="text-sm font-medium text-slate-800">{{ sub.plan?.name || 'Plano' }}</span>
                             <span
-                                class="inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ring-1"
+                                class="inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
                                 :class="subscriptionStatusClass(sub.status)"
                             >
-                                {{ sub.status }}
+                                {{ subscriptionStatusLabel(sub.status) }}
                             </span>
                         </li>
                     </ul>

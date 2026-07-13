@@ -11,9 +11,13 @@ use App\Http\Controllers\Admin\Commercial\PreviewController as CommercialPreview
 use App\Http\Controllers\Admin\Commercial\ProposalController as CommercialProposalController;
 use App\Http\Controllers\Admin\Commercial\SettingsController as CommercialSettingsController;
 use App\Http\Controllers\Admin\FeedbackCompanySelectController;
+use App\Http\Controllers\Admin\FeriasCompanySelectController;
+use App\Http\Controllers\Admin\DesligamentoCompanySelectController;
 use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
 use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
+use App\Http\Controllers\Client\Ferias\EmployeeLeaveController;
+use App\Http\Controllers\Client\Desligamento\ExitInterviewController;
 use App\Http\Controllers\Admin\Finance\CommissionController as FinanceCommissionController;
 use App\Http\Controllers\Admin\Finance\FinanceDashboardController;
 use App\Http\Controllers\Admin\Finance\InstallmentController as FinanceInstallmentController;
@@ -158,6 +162,33 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::patch('sessions/{session}', [FeedbackSessionController::class, 'update'])->name('sessions.update');
             Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
             Route::get('sessions/{session}/pdf', [FeedbackSessionController::class, 'pdf'])->name('sessions.pdf');
+        });
+    });
+
+    Route::middleware('admin.can:ferias')->prefix('ferias')->name('ferias.')->group(function () {
+        Route::get('/', [EmployeeLeaveController::class, 'index'])->name('index');
+        Route::post('company', [FeriasCompanySelectController::class, 'store'])->name('company.store');
+
+        Route::middleware('ferias.company')->group(function () {
+            Route::get('create', [EmployeeLeaveController::class, 'create'])->name('create');
+            Route::post('/', [EmployeeLeaveController::class, 'store'])->name('store');
+            Route::get('{leave}/edit', [EmployeeLeaveController::class, 'edit'])->name('edit');
+            Route::put('{leave}', [EmployeeLeaveController::class, 'update'])->name('update');
+            Route::delete('{leave}', [EmployeeLeaveController::class, 'destroy'])->name('destroy');
+        });
+    });
+
+    Route::middleware('admin.can:desligamento')->prefix('desligamento')->name('desligamento.')->group(function () {
+        Route::get('/', [ExitInterviewController::class, 'index'])->name('index');
+        Route::post('company', [DesligamentoCompanySelectController::class, 'store'])->name('company.store');
+
+        Route::middleware('desligamento.company')->group(function () {
+            Route::get('create', [ExitInterviewController::class, 'create'])->name('create');
+            Route::post('/', [ExitInterviewController::class, 'store'])->name('store');
+            Route::get('{interview}', [ExitInterviewController::class, 'show'])->name('show');
+            Route::get('{interview}/edit', [ExitInterviewController::class, 'edit'])->name('edit');
+            Route::put('{interview}', [ExitInterviewController::class, 'update'])->name('update');
+            Route::delete('{interview}', [ExitInterviewController::class, 'destroy'])->name('destroy');
         });
     });
 

@@ -348,9 +348,11 @@ final class BoardPresenter
                 'items' => $cl->items->map(fn ($it) => [
                     'id' => $it->id,
                     'text' => $it->text,
+                    'description' => $it->description,
                     'position' => $it->position,
                     'is_completed' => $it->is_completed,
                     'due_date' => $it->due_date?->toDateString(),
+                    'created_at' => $it->created_at?->toDateString(),
                     'assignee_user_id' => $it->assignee_user_id,
                 ])->values(),
             ])->values(),

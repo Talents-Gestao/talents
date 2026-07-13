@@ -31,6 +31,9 @@ class AdminHomeResolver
         'training' => 'admin.training.index',
         'equipe' => 'admin.users.index',
         'entrevistas' => 'admin.entrevistas.index',
+        'feedbacks' => 'admin.feedbacks.index',
+        'ferias' => 'admin.ferias.index',
+        'desligamento' => 'admin.survey-templates.index',
     ];
 
     public function routeNameFor(User $user): ?string

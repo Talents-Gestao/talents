@@ -8,6 +8,8 @@ use App\Http\Controllers\Client\DepartmentController;
 use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
 use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
+use App\Http\Controllers\Client\Ferias\EmployeeLeaveController;
+use App\Http\Controllers\Client\Desligamento\ExitInterviewController;
 use App\Http\Controllers\Client\ExportController;
 use App\Http\Controllers\Client\ImportController;
 use App\Http\Controllers\Client\MethodologyController as ClientMethodologyController;
@@ -174,6 +176,25 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::patch('sessions/{session}', [FeedbackSessionController::class, 'update'])->name('sessions.update');
         Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
         Route::get('sessions/{session}/pdf', [FeedbackSessionController::class, 'pdf'])->name('sessions.pdf');
+    });
+
+    Route::middleware(['company_admin', 'can.module:ferias'])->prefix('ferias')->name('ferias.')->group(function () {
+        Route::get('/', [EmployeeLeaveController::class, 'index'])->name('index');
+        Route::get('create', [EmployeeLeaveController::class, 'create'])->name('create');
+        Route::post('/', [EmployeeLeaveController::class, 'store'])->name('store');
+        Route::get('{leave}/edit', [EmployeeLeaveController::class, 'edit'])->name('edit');
+        Route::put('{leave}', [EmployeeLeaveController::class, 'update'])->name('update');
+        Route::delete('{leave}', [EmployeeLeaveController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::middleware(['company_admin', 'can.module:desligamento'])->prefix('desligamento')->name('desligamento.')->group(function () {
+        Route::get('/', [ExitInterviewController::class, 'index'])->name('index');
+        Route::get('create', [ExitInterviewController::class, 'create'])->name('create');
+        Route::post('/', [ExitInterviewController::class, 'store'])->name('store');
+        Route::get('{interview}', [ExitInterviewController::class, 'show'])->name('show');
+        Route::get('{interview}/edit', [ExitInterviewController::class, 'edit'])->name('edit');
+        Route::put('{interview}', [ExitInterviewController::class, 'update'])->name('update');
+        Route::delete('{interview}', [ExitInterviewController::class, 'destroy'])->name('destroy');
     });
 
     Route::middleware('can.module:tarefas')->prefix('tarefas')->name('tarefas.')->group(function () {

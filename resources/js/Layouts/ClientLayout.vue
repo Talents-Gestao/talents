@@ -10,7 +10,7 @@ import { computed } from 'vue';
 const { can } = usePermissions();
 
 const showVozDoTime = computed(
-    () => can('pesquisas', 'view') || can('denuncias', 'view'),
+    () => can('pesquisas', 'view') || can('denuncias', 'view') || can('desligamento', 'view'),
 );
 
 import {
@@ -27,6 +27,7 @@ import {
     ChatBubbleLeftRightIcon,
     RocketLaunchIcon,
     ShieldExclamationIcon,
+    SunIcon,
     UsersIcon,
 } from '@heroicons/vue/24/outline';
 </script>
@@ -74,6 +75,14 @@ import {
                     label="Denúncias"
                     :collapsed="collapsed"
                 />
+                <SidebarNavItem
+                    v-if="can('desligamento', 'view')"
+                    :href="route('client.desligamento.index')"
+                    :active="route().current('client.desligamento.*')"
+                    :icon="ClipboardDocumentListIcon"
+                    label="Desligamento"
+                    :collapsed="collapsed"
+                />
             </SidebarNavSection>
             <SidebarNavItem
                 v-if="can('metodologia', 'view')"
@@ -89,6 +98,14 @@ import {
                 :active="route().current('client.feedbacks.*')"
                 :icon="ChatBubbleLeftRightIcon"
                 label="Feedbacks internos"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                v-if="can('ferias', 'view')"
+                :href="route('client.ferias.index')"
+                :active="route().current('client.ferias.*')"
+                :icon="SunIcon"
+                label="Férias"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

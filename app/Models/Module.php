@@ -28,6 +28,12 @@ class Module extends Model
     /** @var string Feedbacks internos líder ↔ colaborador */
     public const KEY_FEEDBACKS = 'feedbacks';
 
+    /** @var string Gestão de férias dos colaboradores */
+    public const KEY_FERIAS = 'ferias';
+
+    /** @var string Pesquisa / entrevista de desligamento */
+    public const KEY_DESLIGAMENTO = 'desligamento';
+
     protected $fillable = ['key', 'name', 'description'];
 
     public function plans(): BelongsToMany

@@ -213,6 +213,11 @@ class User extends Authenticatable
             };
         }
 
+        // Férias / Desligamento: apenas administradores da empresa (company_admin já retornou true acima).
+        if ($module === PermissionModule::Ferias || $module === PermissionModule::Desligamento) {
+            return false;
+        }
+
         return $this->permissions()
             ->where('module', $module->value)
             ->where('action', $action->value)
