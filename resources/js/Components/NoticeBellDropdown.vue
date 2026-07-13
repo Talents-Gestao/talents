@@ -1,21 +1,34 @@
 <script setup>
-import { BellIcon } from '@heroicons/vue/24/outline';
+import { BellIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { formatRelativeDate } from '@/utils/dateOnly';
-import { Link, usePage } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const page = usePage();
+
+const POLL_INTERVAL_MS = 60000;
 
 const open = ref(false);
 const loading = ref(false);
 const notices = ref([]);
 const unreadCount = ref(Number(page.props.nav?.unread_notices_count ?? 0));
 
-const rootRef = ref(null);
-const menuStyle = ref({});
+let pollTimer = null;
 
-const showNotices = computed(() => Boolean(page.props.auth?.user?.company_id));
+// 'company' → portal do cliente; 'talents' → portal admin; null → sem avisos.
+const noticesContext = computed(() => page.props.nav?.notices_context ?? null);
+const isTalentsContext = computed(() => noticesContext.value === 'talents');
+const showNotices = computed(() => noticesContext.value !== null);
+
+const routes = computed(() => {
+    const prefix = isTalentsContext.value ? 'admin.notices' : 'client.notices';
+    return {
+        recent: () => route(`${prefix}.recent`),
+        markRead: (id) => route(`${prefix}.mark-read`, id),
+        markAllRead: () => route(`${prefix}.mark-all-read`),
+    };
+});
 
 const badgeLabel = computed(() => {
     if (unreadCount.value <= 0) return null;
@@ -37,7 +50,7 @@ function formatPublished(iso) {
 async function fetchNotices() {
     loading.value = true;
     try {
-        const { data } = await axios.get(route('client.notices.recent'));
+        const { data } = await axios.get(routes.value.recent());
         notices.value = data.notices ?? [];
         unreadCount.value = Number(data.unread_count ?? 0);
     } catch {
@@ -47,15 +60,26 @@ async function fetchNotices() {
     }
 }
 
+async function refreshUnreadCount() {
+    if (!showNotices.value || open.value) return;
+
+    try {
+        const { data } = await axios.get(routes.value.recent());
+        unreadCount.value = Number(data.unread_count ?? unreadCount.value);
+    } catch {
+        // silencioso — o badge continua com o último valor conhecido
+    }
+}
+
 async function markRead(notice) {
     if (notice.read) return;
 
     try {
-        const { data } = await axios.post(route('client.notices.mark-read', notice.id));
+        const { data } = await axios.post(routes.value.markRead(notice.id));
         notice.read = true;
         unreadCount.value = Number(data.unread_count ?? unreadCount.value);
     } catch {
-        // silencioso — o utilizador pode marcar na página completa
+        // silencioso
     }
 }
 
@@ -63,32 +87,12 @@ async function markAllRead() {
     if (unreadCount.value <= 0) return;
 
     try {
-        const { data } = await axios.post(route('client.notices.mark-all-read'));
+        const { data } = await axios.post(routes.value.markAllRead());
         notices.value = notices.value.map((notice) => ({ ...notice, read: true }));
         unreadCount.value = Number(data.unread_count ?? 0);
     } catch {
         // silencioso
     }
-}
-
-function positionMenu() {
-    const root = rootRef.value;
-    if (!root || !open.value) return;
-
-    const triggerEl = root.querySelector('[data-notice-bell-trigger]');
-    if (!triggerEl) return;
-
-    const rect = triggerEl.getBoundingClientRect();
-    const panelWidth = 360;
-    const gap = 8;
-    let left = rect.right - panelWidth;
-    left = Math.max(8, Math.min(left, window.innerWidth - panelWidth - 8));
-
-    menuStyle.value = {
-        left: `${left}px`,
-        top: `${rect.bottom + gap}px`,
-        width: `${panelWidth}px`,
-    };
 }
 
 function toggle() {
@@ -99,45 +103,48 @@ function close() {
     open.value = false;
 }
 
-function onViewportChange() {
-    if (open.value) positionMenu();
-}
-
 function closeOnEscape(event) {
     if (open.value && event.key === 'Escape') {
         close();
     }
 }
 
-watch(open, async (isOpen) => {
+watch(open, (isOpen) => {
     if (isOpen) {
-        await fetchNotices();
-        await nextTick();
-        positionMenu();
+        fetchNotices();
     }
 });
 
+function startPolling() {
+    if (pollTimer || !showNotices.value) return;
+    pollTimer = window.setInterval(() => {
+        if (!document.hidden) {
+            refreshUnreadCount();
+        }
+    }, POLL_INTERVAL_MS);
+}
+
 onMounted(() => {
     document.addEventListener('keydown', closeOnEscape);
-    window.addEventListener('resize', onViewportChange);
-    window.addEventListener('scroll', onViewportChange, true);
+    startPolling();
 });
 
 onUnmounted(() => {
     document.removeEventListener('keydown', closeOnEscape);
-    window.removeEventListener('resize', onViewportChange);
-    window.removeEventListener('scroll', onViewportChange, true);
+    if (pollTimer) {
+        window.clearInterval(pollTimer);
+        pollTimer = null;
+    }
 });
 </script>
 
 <template>
-    <div v-if="showNotices" ref="rootRef" class="relative">
+    <div v-if="showNotices" class="relative">
         <button
             type="button"
-            data-notice-bell-trigger
             class="relative rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-talents-500/30"
             :aria-expanded="open"
-            aria-haspopup="true"
+            aria-haspopup="dialog"
             aria-label="Avisos"
             @click.stop="toggle"
         >
@@ -151,82 +158,113 @@ onUnmounted(() => {
         </button>
 
         <Teleport to="body">
-            <div
-                v-show="open"
-                class="fixed inset-0 z-[200]"
-                aria-hidden="true"
-                @click="close"
-            />
-
-            <div
-                v-show="open"
-                class="fixed z-[210] overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-200/80"
-                :style="menuStyle"
-                role="menu"
+            <Transition
+                enter-active-class="transition-opacity duration-300 ease-out"
+                enter-from-class="opacity-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition-opacity duration-200 ease-in"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
             >
-                <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-                    <h3 class="text-sm font-semibold text-slate-900">Avisos</h3>
-                    <button
-                        v-if="unreadCount > 0"
-                        type="button"
-                        class="text-xs font-medium text-talents-700 transition hover:text-talents-900"
-                        @click.stop="markAllRead"
-                    >
-                        Marcar todos como lidos
-                    </button>
-                </div>
+                <div
+                    v-if="open"
+                    class="fixed inset-0 z-[200] bg-slate-900/40 backdrop-blur-sm"
+                    aria-hidden="true"
+                    @click="close"
+                />
+            </Transition>
 
-                <div class="max-h-[min(24rem,60vh)] overflow-y-auto">
-                    <div v-if="loading" class="px-4 py-8 text-center text-sm text-slate-500">
-                        A carregar…
+            <Transition
+                enter-active-class="transform transition-transform duration-300 ease-out"
+                enter-from-class="translate-x-full"
+                enter-to-class="translate-x-0"
+                leave-active-class="transform transition-transform duration-200 ease-in"
+                leave-from-class="translate-x-0"
+                leave-to-class="translate-x-full"
+            >
+                <aside
+                    v-if="open"
+                    class="fixed inset-y-0 right-0 z-[210] flex w-full max-w-sm flex-col overflow-hidden rounded-l-2xl bg-white shadow-2xl ring-1 ring-slate-200/70"
+                    role="dialog"
+                    aria-label="Avisos"
+                >
+                    <header class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-talents-50 text-talents-700">
+                                <BellIcon class="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h2 class="text-sm font-semibold text-slate-900">Avisos</h2>
+                                <p class="text-xs text-slate-500">
+                                    {{ unreadCount > 0 ? `${unreadCount} não lido(s)` : 'Tudo em dia' }}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-talents-500/30"
+                            aria-label="Fechar"
+                            @click="close"
+                        >
+                            <XMarkIcon class="h-5 w-5" />
+                        </button>
+                    </header>
+
+                    <div v-if="unreadCount > 0" class="border-b border-slate-100 px-5 py-2.5 text-right">
+                        <button
+                            type="button"
+                            class="text-xs font-medium text-talents-700 transition hover:text-talents-900"
+                            @click="markAllRead"
+                        >
+                            Marcar todos como lidos
+                        </button>
                     </div>
 
-                    <ul v-else-if="notices.length" class="divide-y divide-slate-100">
-                        <li v-for="notice in notices" :key="notice.id">
-                            <button
-                                type="button"
-                                class="flex w-full gap-3 px-4 py-3 text-left transition hover:bg-slate-50"
-                                :class="notice.read ? 'opacity-80' : 'bg-rose-50/40'"
-                                @click.stop="markRead(notice)"
-                            >
-                                <span
-                                    class="mt-1.5 h-2 w-2 shrink-0 rounded-full"
-                                    :class="notice.read ? 'bg-transparent' : 'bg-rose-600'"
-                                    aria-hidden="true"
-                                />
-                                <span class="min-w-0 flex-1">
-                                    <span class="block truncate text-sm font-medium text-slate-900">
-                                        {{ notice.title }}
-                                    </span>
-                                    <span class="mt-0.5 line-clamp-2 text-xs leading-relaxed text-slate-600">
-                                        {{ notice.body }}
-                                    </span>
-                                    <time
-                                        class="mt-1 block text-[11px] text-slate-400"
-                                        :datetime="notice.published_at"
-                                    >
-                                        {{ formatPublished(notice.published_at) }}
-                                    </time>
-                                </span>
-                            </button>
-                        </li>
-                    </ul>
+                    <div class="flex-1 overflow-y-auto">
+                        <div v-if="loading" class="px-5 py-12 text-center text-sm text-slate-500">
+                            A carregar…
+                        </div>
 
-                    <p v-else class="px-4 py-8 text-center text-sm text-slate-500">
-                        Nenhum aviso por enquanto.
-                    </p>
-                </div>
+                        <ul v-else-if="notices.length" class="divide-y divide-slate-100">
+                            <li v-for="notice in notices" :key="notice.id">
+                                <button
+                                    type="button"
+                                    class="flex w-full gap-3 px-5 py-4 text-left transition hover:bg-slate-50"
+                                    :class="notice.read ? 'opacity-80' : 'bg-rose-50/40'"
+                                    @click="markRead(notice)"
+                                >
+                                    <span
+                                        class="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+                                        :class="notice.read ? 'bg-transparent' : 'bg-rose-600'"
+                                        aria-hidden="true"
+                                    />
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block text-sm font-medium text-slate-900">
+                                            {{ notice.title }}
+                                        </span>
+                                        <span class="mt-0.5 block text-xs leading-relaxed text-slate-600">
+                                            {{ notice.body }}
+                                        </span>
+                                        <time
+                                            class="mt-1.5 block text-[11px] text-slate-400"
+                                            :datetime="notice.published_at"
+                                        >
+                                            {{ formatPublished(notice.published_at) }}
+                                        </time>
+                                    </span>
+                                </button>
+                            </li>
+                        </ul>
 
-                <div class="border-t border-slate-100 px-4 py-2.5">
-                    <Link
-                        :href="route('client.notices.index')"
-                        class="block rounded-lg py-2 text-center text-sm font-medium text-talents-700 transition hover:bg-slate-50 hover:text-talents-900"
-                        @click="close"
-                    >
-                        Ver todos os avisos
-                    </Link>
-                </div>
-            </div>
+                        <div v-else class="flex flex-col items-center justify-center px-5 py-16 text-center">
+                            <span class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                                <BellIcon class="h-6 w-6" />
+                            </span>
+                            <p class="mt-3 text-sm text-slate-500">Nenhum aviso por enquanto.</p>
+                        </div>
+                    </div>
+                </aside>
+            </Transition>
         </Teleport>
     </div>
 </template>

@@ -1,0 +1,10 @@
+<?php
+
+declare(strict_types=1);
+
+return json_decode(
+    file_get_contents(resource_path('data/metamorfose-quotes.json')),
+    true,
+    512,
+    JSON_THROW_ON_ERROR,
+);

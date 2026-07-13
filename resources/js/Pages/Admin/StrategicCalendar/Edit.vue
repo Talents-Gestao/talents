@@ -2,12 +2,14 @@
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
+import DateRangeFields from '@/Components/StrategicCalendar/DateRangeFields.vue';
+import CompanyAudienceMultiSelect from '@/Components/StrategicCalendar/CompanyAudienceMultiSelect.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { PlusIcon } from '@heroicons/vue/24/outline';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     item: Object,
@@ -26,17 +28,39 @@ const recurrenceEndsOn = props.item.recurrence_ends_on
     ? String(props.item.recurrence_ends_on).slice(0, 10)
     : '';
 
+const endsOn = props.item.ends_on ? String(props.item.ends_on).slice(0, 10) : '';
+
 const form = useForm({
     title: props.item.title,
     description: props.item.description ?? '',
     kind: props.item.kind,
     occurs_on: occursOn,
+    ends_on: endsOn,
     recurrence: props.item.recurrence ?? '',
     recurrence_ends_on: recurrenceEndsOn,
-    company_id: props.item.company_id ? String(props.item.company_id) : '',
+    company_ids: props.item.company_ids ?? [],
 });
 
 const showRecurrenceEnd = computed(() => Boolean(form.recurrence));
+
+watch(
+    () => form.recurrence,
+    (value) => {
+        if (value) {
+            form.ends_on = '';
+        }
+    },
+);
+
+watch(
+    () => form.ends_on,
+    (value) => {
+        if (value) {
+            form.recurrence = '';
+            form.recurrence_ends_on = '';
+        }
+    },
+);
 const attachments = computed(() => props.item.attachments ?? []);
 const uploadProgress = ref(0);
 const uploadProcessing = ref(false);
@@ -45,9 +69,10 @@ const uploadError = ref('');
 const submit = () => {
     form.transform((data) => ({
         ...data,
-        company_id: data.company_id || null,
+        company_ids: data.company_ids ?? [],
         recurrence: data.recurrence || null,
         recurrence_ends_on: data.recurrence ? data.recurrence_ends_on || null : null,
+        ends_on: data.recurrence ? null : data.ends_on || null,
     })).put(route('admin.strategic-calendar.update', props.item.id));
 };
 
@@ -107,7 +132,7 @@ function destroyAttachment(attachmentId) {
         <template #header>
             <FormPageHeader
                 :back-href="route('admin.strategic-calendar.index')"
-                title="Editar evento ou rito"
+                title="Editar evento ou Ritual"
             />
         </template>
 
@@ -126,10 +151,11 @@ function destroyAttachment(attachmentId) {
                     <option v-for="k in kinds" :key="k.value" :value="k.value">{{ k.label }}</option>
                 </select>
             </div>
-            <div>
-                <InputLabel for="occurs_on" value="Data inicial" />
-                <TextInput id="occurs_on" v-model="form.occurs_on" type="date" class="mt-1 block w-full max-w-[12rem]" required />
-            </div>
+            <DateRangeFields
+                v-model:occurs-on="form.occurs_on"
+                v-model:ends-on="form.ends_on"
+                :disable-ends-on="showRecurrenceEnd"
+            />
             <div>
                 <InputLabel for="recurrence" value="Repetição" />
                 <select
@@ -196,18 +222,7 @@ function destroyAttachment(attachmentId) {
                     </div>
                 </div>
             </div>
-            <div>
-                <InputLabel for="company_id" value="Empresa (opcional)" />
-                <p class="mt-0.5 text-xs text-gray-500">Em branco = todas as empresas com o módulo habilitado.</p>
-                <select
-                    id="company_id"
-                    v-model="form.company_id"
-                    class="mt-1 block w-full rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                >
-                    <option value="">Todas</option>
-                    <option v-for="c in companies" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
-                </select>
-            </div>
+            <CompanyAudienceMultiSelect v-model="form.company_ids" :companies="companies" />
             <PrimaryButton :disabled="form.processing">Atualizar</PrimaryButton>
         </form>
     </AdminLayout>

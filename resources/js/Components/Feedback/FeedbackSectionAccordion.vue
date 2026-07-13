@@ -1,16 +1,24 @@
 <script setup>
 import { ChevronDownIcon } from '@heroicons/vue/24/outline';
+import { computed, useSlots } from 'vue';
 
 defineProps({
     title: { type: String, required: true },
+    icon: { type: String, default: '' },
     description: { type: String, default: '' },
     defaultOpen: { type: Boolean, default: false },
     meta: { type: String, default: '' },
+    collapsible: { type: Boolean, default: true },
 });
+
+const slots = useSlots();
+
+const hasSlotContent = computed(() => (slots.default?.() ?? []).length > 0);
 </script>
 
 <template>
     <details
+        v-if="collapsible"
         class="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm open:border-talents-200/80 open:shadow-md"
         :open="defaultOpen || undefined"
     >
@@ -19,6 +27,7 @@ defineProps({
         >
             <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-2">
+                    <span v-if="icon" class="shrink-0 text-base leading-none" aria-hidden="true">{{ icon }}</span>
                     <h3 class="min-w-0 text-pretty font-semibold text-talents-900">{{ title }}</h3>
                     <span
                         v-if="meta"
@@ -43,4 +52,22 @@ defineProps({
             <slot />
         </div>
     </details>
+
+    <div
+        v-else
+        class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm"
+    >
+        <div class="bg-gradient-to-r from-talents-50/60 to-white px-5 py-4">
+            <div class="flex flex-wrap items-center gap-2">
+                <span v-if="icon" class="shrink-0 text-base leading-none" aria-hidden="true">{{ icon }}</span>
+                <h3 class="min-w-0 text-pretty font-semibold text-talents-900">{{ title }}</h3>
+            </div>
+            <p v-if="description" class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
+                {{ description }}
+            </p>
+        </div>
+        <div v-if="hasSlotContent" class="border-t border-slate-100">
+            <slot />
+        </div>
+    </div>
 </template>

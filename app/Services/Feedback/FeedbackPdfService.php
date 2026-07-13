@@ -29,6 +29,7 @@ class FeedbackPdfService
         return Pdf::loadView('reports.feedback-session', [
             'session' => $session,
             'answersByQuestion' => $session->answers->keyBy('feedback_template_question_id'),
+            'sectionExtras' => $session->section_extras ?? [],
         ])->setPaper('a4');
     }
 }

@@ -7,6 +7,8 @@ use App\Enums\StrategicCalendarItemKind;
 use App\Models\Company;
 use App\Models\StrategicCalendarItem;
 use App\Models\User;
+use App\Support\StrategicCalendarAudience;
+use App\Support\StrategicCalendarDateLabel;
 use Illuminate\Support\Collection;
 
 class PublishStrategicCalendarChangeNotice
@@ -54,20 +56,7 @@ class PublishStrategicCalendarChangeNotice
      */
     private function affectedCompanies(StrategicCalendarItem $item): Collection
     {
-        if ($item->company_id) {
-            $company = Company::query()->find($item->company_id);
-
-            return $company && $company->hasStrategicCalendarEnabled()
-                ? collect([$company])
-                : collect();
-        }
-
-        return Company::query()
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get()
-            ->filter(fn (Company $company) => $company->hasStrategicCalendarEnabled())
-            ->values();
+        return StrategicCalendarAudience::affectedCompanies($item);
     }
 
     private function isDuplicateRecent(int $companyId, int $itemId, CompanyNoticeEventKind $eventKind): bool
@@ -90,7 +79,7 @@ class PublishStrategicCalendarChangeNotice
         string $kindLabel,
         ?string $previousOccursOn,
     ): array {
-        $dateLabel = $item->occurs_on?->format('d/m/Y') ?? '—';
+        $dateLabel = StrategicCalendarDateLabel::format($item->occurs_on, $item->ends_on);
 
         return match ($eventKind) {
             CompanyNoticeEventKind::Created => [

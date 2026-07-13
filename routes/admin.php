@@ -99,6 +99,11 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('avisos', [AdminCompanyNoticeController::class, 'store'])->name('notices.store');
     });
 
+    // Sino de avisos internos da Talents — acessível a qualquer administrador.
+    Route::get('avisos/recentes', [AdminCompanyNoticeController::class, 'recent'])->name('notices.recent');
+    Route::post('avisos/{notice}/lido', [AdminCompanyNoticeController::class, 'markRead'])->name('notices.mark-read');
+    Route::post('avisos/marcar-todos-lidos', [AdminCompanyNoticeController::class, 'markAllRead'])->name('notices.mark-all-read');
+
     Route::middleware('admin.can:companies')->group(function () {
         Route::get('companies/{company}/rhid-metrics', [RhidPortfolioController::class, 'companyMetrics'])
             ->name('companies.rhid-metrics');

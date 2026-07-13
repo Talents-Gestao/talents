@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\StrategicCalendarRecurrence;
 use App\Models\StrategicCalendarItem;
+use App\Support\StrategicCalendarAudience;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -21,15 +22,26 @@ class StrategicCalendarOccurrenceExpander
         $end = $rangeEnd->toDateString();
 
         return $query->where(function (Builder $q) use ($start, $end) {
-            $q->whereBetween('occurs_on', [$start, $end])
-                ->orWhere(function (Builder $q2) use ($start, $end) {
-                    $q2->whereNotNull('recurrence')
-                        ->where('occurs_on', '<=', $end)
-                        ->where(function (Builder $q3) use ($start) {
-                            $q3->whereNull('recurrence_ends_on')
-                                ->orWhere('recurrence_ends_on', '>=', $start);
+            $q->where(function (Builder $single) use ($start, $end) {
+                $single->whereNull('recurrence')
+                    ->where(function (Builder $span) use ($start, $end) {
+                        $span->where(function (Builder $point) use ($start, $end) {
+                            $point->whereNull('ends_on')
+                                ->whereBetween('occurs_on', [$start, $end]);
+                        })->orWhere(function (Builder $range) use ($start, $end) {
+                            $range->whereNotNull('ends_on')
+                                ->where('occurs_on', '<=', $end)
+                                ->where('ends_on', '>=', $start);
                         });
-                });
+                    });
+            })->orWhere(function (Builder $q2) use ($start, $end) {
+                $q2->whereNotNull('recurrence')
+                    ->where('occurs_on', '<=', $end)
+                    ->where(function (Builder $q3) use ($start) {
+                        $q3->whereNull('recurrence_ends_on')
+                            ->orWhere('recurrence_ends_on', '>=', $start);
+                    });
+            });
         });
     }
 
@@ -70,11 +82,7 @@ class StrategicCalendarOccurrenceExpander
         $rangeEnd = $rangeEnd->copy()->endOfDay();
 
         if (! $item->recurrence instanceof StrategicCalendarRecurrence) {
-            if ($anchor->between($rangeStart, $rangeEnd)) {
-                return [self::toOccurrenceArray($item, $anchor, $attachmentDownloadRouteName)];
-            }
-
-            return [];
+            return self::nonRecurringOccurrences($item, $anchor, $rangeStart, $rangeEnd, $attachmentDownloadRouteName);
         }
 
         $hardEnd = $item->recurrence_ends_on
@@ -113,6 +121,42 @@ class StrategicCalendarOccurrenceExpander
         return $occurrences;
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private static function nonRecurringOccurrences(
+        StrategicCalendarItem $item,
+        Carbon $anchor,
+        Carbon $rangeStart,
+        Carbon $rangeEnd,
+        ?string $attachmentDownloadRouteName,
+    ): array {
+        $spanEnd = $item->ends_on?->copy()->startOfDay() ?? $anchor->copy();
+
+        if ($spanEnd->lt($anchor)) {
+            return [];
+        }
+
+        $loopStart = $anchor->gt($rangeStart) ? $anchor->copy() : $rangeStart->copy();
+        $loopEnd = $spanEnd->lt($rangeEnd) ? $spanEnd->copy() : $rangeEnd->copy();
+
+        if ($loopStart->gt($loopEnd)) {
+            return [];
+        }
+
+        $occurrences = [];
+        $current = $loopStart->copy();
+        $safety = 0;
+
+        while ($current->lte($loopEnd) && $safety < self::MAX_OCCURRENCES_PER_ITEM) {
+            $occurrences[] = self::toOccurrenceArray($item, $current, $attachmentDownloadRouteName);
+            $current->addDay();
+            $safety++;
+        }
+
+        return $occurrences;
+    }
+
     private static function advance(
         Carbon $current,
         StrategicCalendarRecurrence $recurrence,
@@ -142,10 +186,14 @@ class StrategicCalendarOccurrenceExpander
             'description' => $item->description,
             'kind' => $item->kind instanceof \BackedEnum ? $item->kind->value : $item->kind,
             'occurs_on' => $iso,
+            'ends_on' => $item->ends_on?->toDateString(),
+            'range_starts_on' => $item->occurs_on->toDateString(),
             'company_id' => $item->company_id,
             'company' => $item->relationLoaded('company') && $item->company
                 ? ['id' => $item->company->id, 'name' => $item->company->name]
                 : null,
+            'companies' => StrategicCalendarAudience::companiesPayload($item),
+            'audience_label' => StrategicCalendarAudience::label($item),
             'recurrence' => $item->recurrence instanceof \BackedEnum ? $item->recurrence->value : $item->recurrence,
             'recurrence_label' => $item->recurrence?->label(),
             'recurrence_ends_on' => $item->recurrence_ends_on?->toDateString(),

@@ -1,6 +1,7 @@
 <script setup>
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import CommercialAdjustmentFields from '@/Components/Comercial/CommercialAdjustmentFields.vue';
+import CatalogProductObservationField from '@/Components/Comercial/CatalogProductObservationField.vue';
 import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
@@ -40,6 +41,7 @@ const buildCatalogProductsInitial = () => {
             discount_type: ex.discount_type ?? 'percent',
             discount_percent: ex.discount_percent ?? '',
             discount_value_cents: ex.discount_value_cents ?? 0,
+            observation: ex.observation ?? '',
         };
     });
 };
@@ -162,6 +164,7 @@ const catalogSelection = (productId) => {
             discount_type: 'percent',
             discount_percent: '',
             discount_value_cents: 0,
+            observation: '',
         };
         form.catalog_products.push(sel);
     }
@@ -239,6 +242,15 @@ const isProductSelected = (product) => {
     return !!sel.enabled;
 };
 
+/** Produto marcado no formulário (checkbox/modalidade), mesmo antes do preço estar calculado. */
+const isProductMarked = (product) => {
+    const sel = catalogSelection(product.id);
+    if (product.pricing_type === 'fixed_modality') {
+        return !!sel.modality;
+    }
+    return !!sel.enabled;
+};
+
 const flexibleRatesForProduct = (product) => enabledFlexibleRates(product);
 
 const unitsLabelForMode = (mode) => {
@@ -257,11 +269,30 @@ const palestrasProductSelected = computed(() =>
     props.catalogProducts.some((p) => p.slug === 'palestras' && isProductSelected(p)),
 );
 
-const activePdfServices = computed(() =>
-    props.catalogProducts
-        .filter((product) => isProductSelected(product))
-        .map((product) => ({ key: product.slug, label: product.name })),
-);
+const activePdfServices = computed(() => {
+    const seen = new Set();
+    const items = [];
+
+    const add = (key, label) => {
+        if (!key || seen.has(key)) {
+            return;
+        }
+        seen.add(key);
+        items.push({ key, label });
+    };
+
+    (legacySummary.value || []).forEach((line) => add(line.key, line.label));
+
+    (catalogLines.value || []).forEach((line) => add(line.key, line.label));
+
+    props.catalogProducts.forEach((product) => {
+        if (isProductMarked(product)) {
+            add(product.slug, product.name);
+        }
+    });
+
+    return items;
+});
 
 // Consulta CNPJ (Receita Federal) — reaproveita o endpoint já existente.
 const cnpjLookupLoading = ref(false);
@@ -503,7 +534,6 @@ const services = computed(() => {
                                     />
                                     <div class="flex-1">
                                         <div class="font-medium text-slate-900">{{ product.name }}</div>
-                                        <p v-if="product.description" class="text-xs text-slate-500">{{ product.description }}</p>
                                     </div>
                                     <div class="text-right text-sm tabular-nums text-slate-700">
                                         {{ formatBRL(catalogLineCents(product.id)) }}
@@ -514,6 +544,10 @@ const services = computed(() => {
                                     :selection="catalogSelection(product.id)"
                                     :subtotal-cents="catalogLineSubtotal(product.id)"
                                     :total-cents="catalogLineCents(product.id)"
+                                />
+                                <CatalogProductObservationField
+                                    v-if="isProductMarked(product)"
+                                    v-model="catalogSelection(product.id).observation"
                                 />
                             </div>
 
@@ -545,6 +579,10 @@ const services = computed(() => {
                                     :subtotal-cents="catalogLineSubtotal(product.id)"
                                     :total-cents="catalogLineCents(product.id)"
                                 />
+                                <CatalogProductObservationField
+                                    v-if="isProductMarked(product)"
+                                    v-model="catalogSelection(product.id).observation"
+                                />
                             </div>
 
                             <div
@@ -559,7 +597,6 @@ const services = computed(() => {
                                     />
                                     <div class="flex-1">
                                         <div class="font-medium text-slate-900">{{ product.name }}</div>
-                                        <p v-if="product.description" class="text-xs text-slate-500">{{ product.description }}</p>
                                     </div>
                                     <div class="text-right text-sm tabular-nums text-slate-700">
                                         {{ formatBRL(catalogLineCents(product.id)) }}
@@ -621,6 +658,10 @@ const services = computed(() => {
                                     :subtotal-cents="catalogLineSubtotal(product.id)"
                                     :total-cents="catalogLineCents(product.id)"
                                 />
+                                <CatalogProductObservationField
+                                    v-if="isProductMarked(product)"
+                                    v-model="catalogSelection(product.id).observation"
+                                />
                             </div>
 
                             <div
@@ -658,6 +699,10 @@ const services = computed(() => {
                                     :selection="catalogSelection(product.id)"
                                     :subtotal-cents="catalogLineSubtotal(product.id)"
                                     :total-cents="catalogLineCents(product.id)"
+                                />
+                                <CatalogProductObservationField
+                                    v-if="isProductMarked(product)"
+                                    v-model="catalogSelection(product.id).observation"
                                 />
                             </div>
                         </template>
@@ -724,12 +769,12 @@ const services = computed(() => {
                 </section>
 
                 <!-- Descrições dos serviços no PDF -->
-                <section v-if="activePdfServices.length" class="surface-card p-6">
+                <section class="surface-card p-6">
                     <h3 class="text-lg font-semibold text-slate-900">Descrições no PDF</h3>
                     <p class="mt-1 text-xs text-slate-500">
                         Textos exibidos em cada serviço da proposta. Preenchidos automaticamente; clique para editar.
                     </p>
-                    <div class="mt-4 space-y-3">
+                    <div v-if="activePdfServices.length" class="mt-4 space-y-3">
                         <div
                             v-for="svc in activePdfServices"
                             :key="svc.key"
@@ -762,6 +807,9 @@ const services = computed(() => {
                             </div>
                         </div>
                     </div>
+                    <p v-else class="mt-4 text-sm text-slate-500">
+                        Selecione um ou mais produtos acima para personalizar as descrições exibidas no PDF.
+                    </p>
                 </section>
 
                 <!-- Palestra — evento (contrato) -->

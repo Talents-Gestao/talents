@@ -143,11 +143,11 @@ const perceptionSeries = computed(() => {
                 <StatCard :label="isCompanyAdmin ? 'Colaboradores' : 'Minha equipe'" :value="employeeCount" :interactive="false">
                     <template #icon><UserGroupIcon class="h-6 w-6" /></template>
                 </StatCard>
+                <StatCard label="Feedbacks recentes" :value="recentSessions.length" :interactive="false">
+                    <template #icon><ChartBarIcon class="h-6 w-6" /></template>
+                </StatCard>
                 <StatCard label="Feedbacks concluídos" :value="analytics.completed_count ?? 0" :interactive="false">
                     <template #icon><CheckCircleIcon class="h-6 w-6" /></template>
-                </StatCard>
-                <StatCard label="Sessões recentes" :value="recentSessions.length" :interactive="false">
-                    <template #icon><ChartBarIcon class="h-6 w-6" /></template>
                 </StatCard>
             </div>
 

@@ -84,7 +84,7 @@ const toggleUpcoming = (row) => {
                     </span>
                 </div>
                 <p class="mt-1 max-w-2xl text-sm text-slate-500">
-                    Veja eventos, ritos e tarefas no calendário ou nas próximas datas abaixo.
+                    Veja eventos, Rituais e tarefas no calendário ou nas próximas datas abaixo.
                 </p>
             </div>
         </template>
@@ -122,6 +122,7 @@ const toggleUpcoming = (row) => {
                                     {{ row.title }}
                                 </span>
                                 <button
+                                    v-if="row.kind !== 'birthday'"
                                     type="button"
                                     class="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold transition"
                                     :class="row.completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700'"

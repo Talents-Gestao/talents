@@ -4,17 +4,23 @@ declare(strict_types=1);
 
 namespace App\Actions\Feedback;
 
+use App\Actions\Notices\PublishFeedbackNotice;
 use App\Enums\FeedbackSessionStatus;
 use App\Enums\FeedbackSignatureRole;
 use App\Mail\FeedbackSignatureInvitationMail;
 use App\Models\FeedbackSession;
 use App\Models\FeedbackSessionSignature;
+use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class SendFeedbackSignatureInvites
 {
-    public function execute(FeedbackSession $session): void
+    public function __construct(
+        private readonly PublishFeedbackNotice $notices,
+    ) {}
+
+    public function execute(FeedbackSession $session, ?User $actor = null): void
     {
         $session->load(['employee', 'leader']);
 
@@ -56,5 +62,7 @@ class SendFeedbackSignatureInvites
         }
 
         $session->update(['status' => FeedbackSessionStatus::AwaitingSignatures]);
+
+        $this->notices->awaitingSignature($session, $actor);
     }
 }

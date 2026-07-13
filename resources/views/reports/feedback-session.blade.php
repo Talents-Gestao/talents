@@ -58,6 +58,13 @@
                 </div>
             </div>
         @endforeach
+        @php $extra = $sectionExtras[(string) $section->id] ?? null; @endphp
+        @if ($extra && (($extra['question'] ?? '') !== '' || ($extra['answer'] ?? '') !== ''))
+            <div class="question">
+                <div class="label">{{ $extra['question'] ?: 'Pergunta extra' }}</div>
+                <div class="value">{{ $extra['answer'] ?: '—' }}</div>
+            </div>
+        @endif
     @endforeach
 
     <div class="signatures">

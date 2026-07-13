@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\Complaint;
 use App\Models\StrategicCalendarItem;
 use App\Models\Survey;
+use App\Support\MetamorfoseDailyQuote;
 use App\Support\StrategicCalendarClientEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Support\StrategicCalendarPeriod;
@@ -129,7 +130,7 @@ class DashboardController extends Controller
             }
 
             $masters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
-                StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'attachments']),
+                StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'companies:id,name', 'attachments']),
                 $today,
                 $weekEnd,
             )->orderBy('occurs_on')->orderBy('id')->get();
@@ -173,7 +174,7 @@ class DashboardController extends Controller
             $queryEnd = $range ? min($monthEnd, $range['end']) : $monthEnd;
 
             $masters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
-                StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'attachments']),
+                StrategicCalendarItem::query()->forCompany($company)->with(['company:id,name', 'companies:id,name', 'attachments']),
                 $queryStart,
                 $queryEnd,
             )->orderBy('occurs_on')->orderBy('id')->get();
@@ -216,6 +217,7 @@ class DashboardController extends Controller
             'actionPlanHref' => $actionPlanHref,
             'complaintsPublicUrl' => $complaintsPublicUrl,
             'dashboardCalendar' => $dashboardCalendar,
+            'dailyQuote' => app(MetamorfoseDailyQuote::class)->forDate(),
         ]);
     }
 }

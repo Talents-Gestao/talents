@@ -84,10 +84,15 @@ return [
             'color' => '#0ea5e9',
             'background' => '#e0f2fe',
         ],
-        'rito' => [
-            'label' => 'Rito',
+        'ritual' => [
+            'label' => 'Ritual',
             'color' => '#ef4444',
             'background' => '#fee2e2',
+        ],
+        'birthday' => [
+            'label' => 'Aniversário',
+            'color' => '#d97706',
+            'background' => '#fde68a',
         ],
         'task' => [
             'label' => 'Tarefa',

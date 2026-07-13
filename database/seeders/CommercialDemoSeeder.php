@@ -58,7 +58,7 @@ class CommercialDemoSeeder extends Seeder
                 'created_at' => now()->subDays(14),
                 'notes' => 'Demo: proposta mais antiga na fila — prioridade de atendimento.',
                 'pdf_subtitle' => 'Consultoria em Gestão de Pessoas e Calendário Estratégico',
-                'pdf_objetivo' => 'Apoiar a SOEM na estruturação da gestão de pessoas, com ritos mensais e acompanhamento da liderança.',
+                'pdf_objetivo' => 'Apoiar a SOEM na estruturação da gestão de pessoas, com Rituais mensais e acompanhamento da liderança.',
             ],
             [
                 'code' => 'PROP-DEMO-0002',
@@ -106,7 +106,7 @@ class CommercialDemoSeeder extends Seeder
 
     private function seedClosedWithoutSale(User $luciana, ?User $admin): void
     {
-        $this->upsertClosedProposal([
+        $proposal = $this->upsertClosedProposal([
             'code' => 'PROP-DEMO-0005',
             'client_name' => 'Viva Saúde — pronta para converter',
             'client_cnpj' => '55.666.777/0001-88',
@@ -121,6 +121,9 @@ class CommercialDemoSeeder extends Seeder
             'created_at' => now()->subDays(20),
             'notes' => 'Demo: fechada/ganha, ainda sem venda — use «Converter em venda» na listagem.',
         ], $admin);
+
+        // Repõe o cenário se alguém converteu manualmente durante testes.
+        $this->clearProposalSale($proposal);
     }
 
     private function seedSalesAndCommissions(User $karen, User $luciana, ?User $admin): void
@@ -411,5 +414,19 @@ class CommercialDemoSeeder extends Seeder
         $commission->created_at = $createdAt;
         $commission->updated_at = now();
         $commission->saveQuietly();
+    }
+
+    /**
+     * Remove venda vinculada à proposta (ex.: PROP-DEMO-0005 convertida em teste manual).
+     */
+    private function clearProposalSale(CommercialProposal $proposal): void
+    {
+        $sale = $proposal->sale()->first();
+        if (! $sale) {
+            return;
+        }
+
+        $sale->delete();
+        $proposal->unsetRelation('sale');
     }
 }

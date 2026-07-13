@@ -96,9 +96,9 @@ class CompanyNoticeTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('admin.strategic-calendar.store'), [
-                'title' => 'Rito mensal',
+                'title' => 'Ritual mensal',
                 'description' => 'Descrição',
-                'kind' => StrategicCalendarItemKind::Rito->value,
+                'kind' => StrategicCalendarItemKind::Ritual->value,
                 'occurs_on' => now()->addWeek()->toDateString(),
                 'company_id' => $company->id,
             ])

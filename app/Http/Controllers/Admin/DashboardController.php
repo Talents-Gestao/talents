@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\Complaint;
 use App\Models\LandingInterestSubmission;
 use App\Models\StrategicCalendarItem;
+use App\Support\MetamorfoseDailyQuote;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Models\Subscription;
 use App\Models\Survey;
@@ -105,7 +106,7 @@ class DashboardController extends Controller
         ]);
 
         $recentLeads = LandingInterestSubmission::query()
-            ->whereNull('mail_sent_at')
+            ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->limit(8)
             ->get(['id', 'name', 'email', 'phone', 'company', 'message', 'mail_sent_at', 'created_at']);
@@ -113,7 +114,7 @@ class DashboardController extends Controller
         $today = Carbon::today()->startOfDay();
         $weekEnd = $today->copy()->addDays(7)->endOfDay();
         $masters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
-            StrategicCalendarItem::query()->with(['company:id,name', 'attachments']),
+            StrategicCalendarItem::query()->with(['company:id,name', 'companies:id,name', 'attachments']),
             $today,
             $weekEnd,
         )->orderBy('occurs_on')->orderBy('id')->get();
@@ -179,6 +180,7 @@ class DashboardController extends Controller
             'recentLeads' => $recentLeads,
             'upcomingCalendar' => $upcomingCalendar,
             'subscriptionsDueSoon' => $subscriptionsDueSoon,
+            'dailyQuote' => app(MetamorfoseDailyQuote::class)->forDate(),
             'calendarKindLabels' => collect(StrategicCalendarItemKind::cases())
                 ->mapWithKeys(fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()])
                 ->all(),

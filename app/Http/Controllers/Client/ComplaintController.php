@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Client;
 
+use App\Actions\Notices\PublishComplaintNotice;
 use App\Http\Controllers\Controller;
 use App\Mail\ComplaintReporterNotificationMail;
 use App\Models\Complaint;
@@ -85,7 +86,7 @@ class ComplaintController extends Controller
         ]);
     }
 
-    public function updateStatus(Request $request, Complaint $complaint): RedirectResponse
+    public function updateStatus(Request $request, Complaint $complaint, PublishComplaintNotice $notices): RedirectResponse
     {
         abort_unless($complaint->company_id === $this->companyId($request), 404);
 
@@ -112,6 +113,7 @@ class ComplaintController extends Controller
 
         if ($previous !== $data['status']) {
             $this->notifyReporterIfIdentified($complaint, 'status', ['status' => $data['status']]);
+            $notices->statusUpdated($complaint, $previous, $data['status'], $request->user());
         }
 
         return back()->with('success', 'Status atualizado.');

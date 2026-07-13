@@ -14,7 +14,7 @@ return new class extends Migration
             $calId = DB::table('modules')->insertGetId([
                 'key' => 'calendario_estrategico',
                 'name' => 'Calendário estratégico',
-                'description' => 'Eventos e ritos orientados pela Talents para acompanhamento das empresas.',
+                'description' => 'Eventos e Rituais orientados pela Talents para acompanhamento das empresas.',
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);

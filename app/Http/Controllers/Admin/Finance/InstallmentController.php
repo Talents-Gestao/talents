@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Finance;
 
+use App\Actions\Notices\PublishCommercialNotice;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialSaleInstallment;
 use Illuminate\Http\RedirectResponse;
@@ -12,6 +13,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InstallmentController extends Controller
 {
+    public function __construct(
+        private readonly PublishCommercialNotice $notices,
+    ) {}
+
     public function registerPayment(Request $request, CommercialSaleInstallment $installment): RedirectResponse
     {
         $data = $request->validate([
@@ -52,9 +57,15 @@ class InstallmentController extends Controller
             );
         }
 
+        $wasPaid = $installment->getOriginal('status') === CommercialSaleInstallment::STATUS_PAGO;
+
         $installment->update($update);
 
         $installment->sale->recalculateStatus();
+
+        if ($data['status'] === CommercialSaleInstallment::STATUS_PAGO && ! $wasPaid) {
+            $this->notices->installmentPaid($installment->fresh('sale'), $request->user());
+        }
 
         return redirect()
             ->route('admin.financeiro.vendas.show', $installment->sale_id)

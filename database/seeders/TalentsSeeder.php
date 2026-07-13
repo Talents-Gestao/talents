@@ -39,7 +39,7 @@ class TalentsSeeder extends Seeder
             ['key' => Module::KEY_CALENDARIO_ESTRATEGICO],
             [
                 'name' => 'Calendário estratégico',
-                'description' => 'Eventos e ritos orientados pela Talents para acompanhamento das empresas.',
+                'description' => 'Eventos e Rituais orientados pela Talents para acompanhamento das empresas.',
             ]
         );
 

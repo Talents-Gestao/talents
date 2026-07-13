@@ -2,6 +2,7 @@
 
 namespace App\Actions\Notices;
 
+use App\Enums\CompanyNoticeAudience;
 use App\Models\CompanyNotice;
 use App\Models\CompanyNoticeRead;
 use App\Models\User;
@@ -21,8 +22,18 @@ class MarkNoticeRead
 
     public function markAllForUser(User $user, int $companyId): int
     {
+        return $this->markAllForContext($user, CompanyNoticeAudience::Company, $companyId);
+    }
+
+    public function markAllForContext(User $user, CompanyNoticeAudience $audience, ?int $companyId): int
+    {
         $noticeIds = CompanyNotice::query()
-            ->where('company_id', $companyId)
+            ->where('audience', $audience->value)
+            ->when(
+                $companyId !== null,
+                fn ($query) => $query->where('company_id', $companyId),
+                fn ($query) => $query->whereNull('company_id'),
+            )
             ->where('published_at', '<=', now())
             ->whereDoesntHave('reads', fn ($query) => $query->where('user_id', $user->id))
             ->pluck('id');

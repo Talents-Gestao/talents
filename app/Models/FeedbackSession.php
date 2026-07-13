@@ -22,6 +22,7 @@ class FeedbackSession extends Model
         'scheduled_at',
         'next_alignment_at',
         'completed_at',
+        'section_extras',
     ];
 
     protected function casts(): array
@@ -31,6 +32,7 @@ class FeedbackSession extends Model
             'scheduled_at' => 'datetime',
             'next_alignment_at' => 'datetime',
             'completed_at' => 'datetime',
+            'section_extras' => 'array',
         ];
     }
 

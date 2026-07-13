@@ -292,4 +292,24 @@ class CommercialPricingServiceTest extends TestCase
         $this->assertStringContainsString('R$ 1.250,00', $r['catalog_lines'][0]['detail']);
         $this->assertSame(125000, $r['catalog_lines'][0]['options']['custom_cents']);
     }
+
+    public function test_catalog_line_preserves_product_observation_in_options(): void
+    {
+        $product = $this->makeProduct(20, 'palestras', CommercialProductPricingType::Fixed, [
+            'amount_cents' => 157700,
+        ]);
+
+        $r = $this->calculateWithProducts([
+            [
+                'product_id' => 20,
+                'enabled' => true,
+                'observation' => 'Inclui material didático e certificado.',
+            ],
+        ], 10, collect([$product]));
+
+        $this->assertSame(
+            'Inclui material didático e certificado.',
+            $r['catalog_lines'][0]['options']['observation'],
+        );
+    }
 }

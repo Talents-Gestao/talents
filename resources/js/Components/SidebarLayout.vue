@@ -1,5 +1,6 @@
 <script setup>
 import AppTopBar from '@/Components/AppTopBar.vue';
+import NoticeBellDropdown from '@/Components/NoticeBellDropdown.vue';
 import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { computed, onBeforeUnmount, provide, ref, useSlots, watch } from 'vue';
 
@@ -28,6 +29,10 @@ defineProps({
         default: true,
     },
     topBarShowActions: {
+        type: Boolean,
+        default: true,
+    },
+    topBarShowFiles: {
         type: Boolean,
         default: true,
     },
@@ -189,6 +194,9 @@ const hasAside = computed(() => Boolean(slots.aside));
                         <Bars3Icon class="h-6 w-6" />
                     </button>
                     <span class="text-sm font-semibold tracking-tight text-slate-900">Menu</span>
+                    <div class="ml-auto">
+                        <NoticeBellDropdown />
+                    </div>
                 </div>
 
                 <slot v-if="$slots.topbar" name="topbar" />
@@ -199,6 +207,7 @@ const hasAside = computed(() => Boolean(slots.aside));
                     :search-placeholder="topBarSearchPlaceholder"
                     :show-search="topBarShowSearch"
                     :show-actions="topBarShowActions"
+                    :show-files="topBarShowFiles"
                 />
 
                 <header

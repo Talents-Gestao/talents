@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\CompanyEmployee;
 use App\Models\FeedbackSession;
 use App\Models\FeedbackTemplate;
+use App\Models\FeedbackTemplateSection;
 use App\Models\User;
 use Database\Seeders\FeedbackTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -401,6 +402,118 @@ class FeedbackModuleTest extends TestCase
             'company_id' => $company->id,
             'company_employee_id' => $employee->id,
             'leader_user_id' => $admin->id,
+        ]);
+    }
+
+    public function test_session_update_persists_section_extra_question(): void
+    {
+        $this->seed(FeedbackTemplateSeeder::class);
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Feedback',
+            'feedbacks_access' => true,
+        ]);
+        $this->subscribeCompanyToNr1($company);
+        $admin = User::factory()->companyAdmin($company->id)->create();
+
+        $template = FeedbackTemplate::query()->whereNull('company_id')->firstOrFail();
+        $section = FeedbackTemplateSection::query()
+            ->where('feedback_template_id', $template->id)
+            ->where('key', 'termometro')
+            ->firstOrFail();
+
+        $employee = CompanyEmployee::create([
+            'company_id' => $company->id,
+            'name' => 'Maria',
+            'email' => 'maria@empresa.local',
+            'leader_user_id' => $admin->id,
+        ]);
+
+        $session = FeedbackSession::create([
+            'company_id' => $company->id,
+            'feedback_template_id' => $template->id,
+            'company_employee_id' => $employee->id,
+            'leader_user_id' => $admin->id,
+            'title' => 'Feedback com extra',
+            'status' => FeedbackSessionStatus::InProgress,
+            'scheduled_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('client.feedbacks.sessions.update', $session), [
+                'section_extras' => [
+                    (string) $section->id => [
+                        'question' => 'O que mais te motivou?',
+                        'answer' => 'O reconhecimento da equipe.',
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $session->refresh();
+
+        $this->assertSame([
+            (string) $section->id => [
+                'question' => 'O que mais te motivou?',
+                'answer' => 'O reconhecimento da equipe.',
+            ],
+        ], $session->section_extras);
+    }
+
+    public function test_company_admin_can_export_session_pdf(): void
+    {
+        $this->seed(FeedbackTemplateSeeder::class);
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Feedback',
+            'feedbacks_access' => true,
+        ]);
+        $this->subscribeCompanyToNr1($company);
+        $admin = User::factory()->companyAdmin($company->id)->create();
+
+        $session = $this->createFeedbackSession($company, $admin);
+
+        $this->actingAs($admin)
+            ->get(route('client.feedbacks.sessions.pdf', $session))
+            ->assertOk();
+    }
+
+    public function test_company_user_cannot_export_session_pdf(): void
+    {
+        $this->seed(FeedbackTemplateSeeder::class);
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Feedback',
+            'feedbacks_access' => true,
+        ]);
+        $this->subscribeCompanyToNr1($company);
+        $leader = User::factory()->companyUser($company->id)->create();
+
+        $session = $this->createFeedbackSession($company, $leader);
+
+        $this->actingAs($leader)
+            ->get(route('client.feedbacks.sessions.pdf', $session))
+            ->assertForbidden();
+    }
+
+    private function createFeedbackSession(Company $company, User $leader): FeedbackSession
+    {
+        $template = FeedbackTemplate::query()->whereNull('company_id')->firstOrFail();
+        $employee = CompanyEmployee::create([
+            'company_id' => $company->id,
+            'name' => 'Ana',
+            'email' => 'ana@empresa.local',
+            'leader_user_id' => $leader->id,
+        ]);
+
+        return FeedbackSession::create([
+            'company_id' => $company->id,
+            'feedback_template_id' => $template->id,
+            'company_employee_id' => $employee->id,
+            'leader_user_id' => $leader->id,
+            'title' => 'Feedback PDF',
+            'status' => FeedbackSessionStatus::Completed,
+            'scheduled_at' => now(),
         ]);
     }
 }

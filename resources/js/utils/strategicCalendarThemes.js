@@ -40,7 +40,8 @@ export const monthThemes = Object.fromEntries(
 
 export const kindThemes = {
     event: { label: 'Evento', color: '#0284c7', background: '#bae6fd' },
-    rito: { label: 'Rito', color: '#dc2626', background: '#fecaca' },
+    ritual: { label: 'Ritual', color: '#dc2626', background: '#fecaca' },
+    birthday: { label: 'Aniversário', color: '#d97706', background: '#fde68a' },
     task: { label: 'Tarefa', color: '#059669', background: '#a7f3d0' },
 };
 

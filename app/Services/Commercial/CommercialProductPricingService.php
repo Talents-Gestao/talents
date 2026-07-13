@@ -165,6 +165,7 @@ class CommercialProductPricingService
             'discount_type' => $selection['discount_type'] ?? null,
             'discount_percent' => isset($selection['discount_percent']) ? (float) $selection['discount_percent'] : null,
             'discount_value_cents' => isset($selection['discount_value_cents']) ? (int) $selection['discount_value_cents'] : null,
+            'observation' => filled($selection['observation'] ?? null) ? trim((string) $selection['observation']) : null,
             'subtotal_cents' => ($result['subtotal_cents'] ?? 0) > 0 ? (int) $result['subtotal_cents'] : null,
         ], fn ($v) => $v !== null && $v !== '');
     }

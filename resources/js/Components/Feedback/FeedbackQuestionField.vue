@@ -1,5 +1,6 @@
 <script setup>
 import { feedbackFieldClass } from '@/utils/feedbackStatus';
+import { TrashIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     question: { type: Object, required: true },
@@ -23,6 +24,12 @@ const setBullet = (index, value) => {
 
 const addBullet = () => update([...bulletItems(), '']);
 
+const removeBullet = (index) => {
+    const items = bulletItems();
+    if (items.length <= 1) return;
+    update(items.filter((_, i) => i !== index));
+};
+
 const ccmValue = (key) => {
     const v = props.modelValue;
     return v && typeof v === 'object' ? v[key] ?? '' : '';
@@ -33,10 +40,26 @@ const setCcm = (key, value) => {
 };
 
 const ccmLabels = {
-    start: { title: 'Começar', tone: 'border-l-emerald-400 bg-emerald-50/50' },
-    continue: { title: 'Continuar', tone: 'border-l-sky-400 bg-sky-50/50' },
-    improve: { title: 'Melhorar', tone: 'border-l-amber-400 bg-amber-50/50' },
-    stop: { title: 'Cessar', tone: 'border-l-rose-400 bg-rose-50/50' },
+    start: {
+        title: 'Começar',
+        description: 'Novos comportamentos, atividades ou responsabilidades.',
+        tone: 'border-l-emerald-400 bg-emerald-50/50',
+    },
+    continue: {
+        title: 'Continuar',
+        description: 'Práticas que estão gerando bons resultados e devem ser mantidas.',
+        tone: 'border-l-sky-400 bg-sky-50/50',
+    },
+    improve: {
+        title: 'Melhorar',
+        description: 'Pontos que necessitam de evolução ou aperfeiçoamento.',
+        tone: 'border-l-amber-400 bg-amber-50/50',
+    },
+    stop: {
+        title: 'Cessar',
+        description: 'Comportamentos ou hábitos que precisam ser interrompidos.',
+        tone: 'border-l-rose-400 bg-rose-50/50',
+    },
 };
 
 const actionRows = () => {
@@ -51,6 +74,12 @@ const setActionRow = (index, field, value) => {
 };
 
 const addActionRow = () => update([...actionRows(), { action: '', responsible: '', deadline: '' }]);
+
+const removeActionRow = (index) => {
+    const rows = actionRows();
+    if (rows.length <= 1) return;
+    update(rows.filter((_, i) => i !== index));
+};
 </script>
 
 <template>
@@ -93,35 +122,54 @@ const addActionRow = () => update([...actionRows(), { action: '', responsible: '
         </div>
 
         <div v-else-if="question.question_type === 'bullet_list'" class="mt-3 space-y-2">
-            <input
-                v-for="(item, idx) in bulletItems()"
-                :key="idx"
-                type="text"
-                :class="feedbackFieldClass"
-                :value="item"
-                placeholder="Descreva um ponto"
-                @input="setBullet(idx, $event.target.value)"
-            />
+            <div v-for="(item, idx) in bulletItems()" :key="idx" class="flex items-center gap-2">
+                <input
+                    type="text"
+                    :class="feedbackFieldClass + ' flex-1'"
+                    :value="item"
+                    placeholder="Descreva um ponto"
+                    @input="setBullet(idx, $event.target.value)"
+                />
+                <button
+                    v-if="bulletItems().length > 1"
+                    type="button"
+                    class="shrink-0 rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                    title="Remover item"
+                    @click="removeBullet(idx)"
+                >
+                    <TrashIcon class="h-5 w-5" aria-hidden="true" />
+                </button>
+            </div>
             <button type="button" class="text-sm font-medium text-talents-700 hover:underline" @click="addBullet">
                 + Adicionar item
             </button>
         </div>
 
-        <div v-else-if="question.question_type === 'ccm_block'" class="mt-3 grid gap-3 md:grid-cols-2">
-            <div
-                v-for="key in ['start', 'continue', 'improve', 'stop']"
-                :key="key"
-                class="rounded-xl border-l-4 p-3"
-                :class="ccmLabels[key].tone"
-            >
-                <label class="text-xs font-bold uppercase tracking-wide text-slate-600">{{ ccmLabels[key].title }}</label>
-                <textarea
-                    rows="3"
-                    :class="feedbackFieldClass + ' mt-2 bg-white'"
-                    :value="ccmValue(key)"
-                    @input="setCcm(key, $event.target.value)"
-                />
+        <div v-else-if="question.question_type === 'ccm_block'" class="mt-3 space-y-3">
+            <p class="text-sm leading-relaxed text-slate-600">
+                Com base nos alinhamentos realizados acima, registre as ações definidas para o próximo ciclo de desenvolvimento.
+            </p>
+            <div class="grid gap-3 md:grid-cols-2">
+                <div
+                    v-for="key in ['start', 'continue', 'improve', 'stop']"
+                    :key="key"
+                    class="rounded-xl border-l-4 p-3"
+                    :class="ccmLabels[key].tone"
+                >
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">{{ ccmLabels[key].title }}</label>
+                    <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ ccmLabels[key].description }}</p>
+                    <textarea
+                        rows="3"
+                        :class="feedbackFieldClass + ' mt-2 bg-white'"
+                        :value="ccmValue(key)"
+                        @input="setCcm(key, $event.target.value)"
+                    />
+                </div>
             </div>
+            <p class="text-xs leading-relaxed text-slate-500">
+                Considere, quando necessário: artigos, livros, palestras, workshops, mentorias, cursos, treinamentos,
+                alinhamentos, reuniões, feedbacks, rotina de organização e recursos necessários.
+            </p>
         </div>
 
         <div v-else-if="question.question_type === 'action_table'" class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -131,6 +179,7 @@ const addActionRow = () => update([...actionRows(), { action: '', responsible: '
                         <th class="p-3">Ação</th>
                         <th class="p-3">Responsável</th>
                         <th class="p-3">Prazo</th>
+                        <th v-if="actionRows().length > 1" class="p-3 w-12"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -143,6 +192,16 @@ const addActionRow = () => update([...actionRows(), { action: '', responsible: '
                         </td>
                         <td class="p-2">
                             <input :class="feedbackFieldClass + ' mt-0'" :value="row.deadline" @input="setActionRow(idx, 'deadline', $event.target.value)" />
+                        </td>
+                        <td v-if="actionRows().length > 1" class="p-2 text-center">
+                            <button
+                                type="button"
+                                class="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                                title="Remover linha"
+                                @click="removeActionRow(idx)"
+                            >
+                                <TrashIcon class="h-5 w-5" aria-hidden="true" />
+                            </button>
                         </td>
                     </tr>
                 </tbody>
