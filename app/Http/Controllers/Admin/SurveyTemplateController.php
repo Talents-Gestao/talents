@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminPermissionModule;
+use App\Enums\PermissionAction;
 use App\Http\Controllers\Controller;
+use App\Models\ExitInterview;
 use App\Models\Survey;
 use App\Models\SurveyTemplate;
 use App\Models\SurveyTemplateQuestion;
 use App\Models\SurveyTemplateSection;
 use App\Services\SurveyTemplateVersioningService;
+use App\Support\Desligamento\DesligamentoCompanyContext;
+use App\Support\Desligamento\ExitInterviewScript;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +26,7 @@ class SurveyTemplateController extends Controller
         private readonly SurveyTemplateVersioningService $versioning
     ) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $templates = SurveyTemplate::query()
             ->with('forkedFrom:id,title')
@@ -31,7 +36,77 @@ class SurveyTemplateController extends Controller
 
         return Inertia::render('Admin/SurveyTemplates/Index', [
             'templates' => $templates,
+            'exitInterview' => $this->exitInterviewPanel($request),
         ]);
+    }
+
+    /**
+     * @return array{
+     *   sections: list<array{key: string, title: string, questions: list<array{key: string, body: string, hint?: string}>}>,
+     *   consultantNoteFields: list<array{key: string, label: string}>,
+     *   canManage: bool,
+     *   needsCompanySelection: bool,
+     *   companyPicker: list<array{id: int, name: string}>|null,
+     *   activeCompany: array{id: int, name: string}|null,
+     *   interviews: array{data: list<array<string, mixed>>}|null
+     * }
+     */
+    private function exitInterviewPanel(Request $request): array
+    {
+        $user = Auth::user();
+        $canManage = (bool) $user?->canAccessAdmin(AdminPermissionModule::Desligamento, PermissionAction::View);
+
+        $panel = [
+            'sections' => ExitInterviewScript::sections(),
+            'consultantNoteFields' => ExitInterviewScript::consultantNoteFields(),
+            'canManage' => $canManage,
+            'needsCompanySelection' => false,
+            'companyPicker' => null,
+            'activeCompany' => null,
+            'interviews' => null,
+        ];
+
+        if (! $canManage) {
+            return $panel;
+        }
+
+        $context = app(DesligamentoCompanyContext::class);
+        $panel['companyPicker'] = $context->availableCompanies()->all();
+
+        if ($context->needsCompanySelection($request)) {
+            $panel['needsCompanySelection'] = true;
+
+            return $panel;
+        }
+
+        $company = $context->tryResolve($request);
+        if (! $company) {
+            $panel['needsCompanySelection'] = true;
+
+            return $panel;
+        }
+
+        $panel['activeCompany'] = $company->only(['id', 'name']);
+        $panel['interviews'] = [
+            'data' => ExitInterview::query()
+                ->where('company_id', $company->id)
+                ->with(['employee:id,name,email'])
+                ->orderByDesc('interview_date')
+                ->orderByDesc('id')
+                ->limit(20)
+                ->get()
+                ->map(fn (ExitInterview $interview) => [
+                    'id' => $interview->id,
+                    'interview_date' => $interview->interview_date?->toDateString(),
+                    'status' => $interview->status->value,
+                    'status_label' => $interview->status->label(),
+                    'employee' => $interview->employee?->only(['id', 'name', 'email']),
+                ])
+                ->values()
+                ->all(),
+        ];
+
+        return $panel;
     }
 
     public function create(): Response

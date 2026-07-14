@@ -9,10 +9,12 @@ use App\Models\Company;
 use App\Models\CompanyEmployee;
 use App\Models\FeedbackSession;
 use App\Models\FeedbackTemplate;
+use App\Models\FeedbackTemplateQuestion;
 use App\Models\FeedbackTemplateSection;
 use App\Models\User;
 use Database\Seeders\FeedbackTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 class FeedbackModuleTest extends TestCase
@@ -494,6 +496,119 @@ class FeedbackModuleTest extends TestCase
         $this->actingAs($leader)
             ->get(route('client.feedbacks.sessions.pdf', $session))
             ->assertForbidden();
+    }
+
+    public function test_company_admin_sees_leader_self_section_but_company_user_does_not(): void
+    {
+        $this->seed(FeedbackTemplateSeeder::class);
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Feedback',
+            'feedbacks_access' => true,
+        ]);
+        $this->subscribeCompanyToNr1($company);
+        $admin = User::factory()->companyAdmin($company->id)->create();
+        $leader = User::factory()->companyUser($company->id)->create();
+
+        $template = FeedbackTemplate::query()->whereNull('company_id')->firstOrFail();
+        $employee = CompanyEmployee::create([
+            'company_id' => $company->id,
+            'name' => 'Maria',
+            'email' => 'maria@empresa.local',
+            'leader_user_id' => $leader->id,
+        ]);
+
+        $session = FeedbackSession::create([
+            'company_id' => $company->id,
+            'feedback_template_id' => $template->id,
+            'company_employee_id' => $employee->id,
+            'leader_user_id' => $leader->id,
+            'title' => 'Feedback Maria',
+            'status' => FeedbackSessionStatus::InProgress,
+            'scheduled_at' => now(),
+        ]);
+
+        $this->withoutVite();
+
+        $this->actingAs($admin)
+            ->get(route('client.feedbacks.sessions.edit', $session))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Client/Feedbacks/Sessions/Edit')
+                ->has('session.template.sections')
+                ->where(
+                    'session.template.sections',
+                    fn ($sections) => collect($sections)->contains(
+                        fn ($section) => ($section['audience'] ?? null) === 'leader_self'
+                            || ($section['key'] ?? null) === 'dev_lider_self'
+                            || str_contains((string) ($section['title'] ?? ''), 'líder para o líder'),
+                    ),
+                ));
+
+        $this->actingAs($leader)
+            ->get(route('client.feedbacks.sessions.edit', $session))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Client/Feedbacks/Sessions/Edit')
+                ->where(
+                    'session.template.sections',
+                    fn ($sections) => collect($sections)->every(
+                        fn ($section) => ($section['audience'] ?? null) !== 'leader_self'
+                            && ($section['key'] ?? null) !== 'dev_lider_self',
+                    ),
+                ));
+    }
+
+    public function test_company_user_cannot_save_leader_self_answers(): void
+    {
+        $this->seed(FeedbackTemplateSeeder::class);
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Feedback',
+            'feedbacks_access' => true,
+        ]);
+        $this->subscribeCompanyToNr1($company);
+        $leader = User::factory()->companyUser($company->id)->create();
+
+        $template = FeedbackTemplate::query()->whereNull('company_id')->firstOrFail();
+        $employee = CompanyEmployee::create([
+            'company_id' => $company->id,
+            'name' => 'Maria',
+            'email' => 'maria@empresa.local',
+            'leader_user_id' => $leader->id,
+        ]);
+
+        $session = FeedbackSession::create([
+            'company_id' => $company->id,
+            'feedback_template_id' => $template->id,
+            'company_employee_id' => $employee->id,
+            'leader_user_id' => $leader->id,
+            'title' => 'Feedback Maria',
+            'status' => FeedbackSessionStatus::InProgress,
+            'scheduled_at' => now(),
+        ]);
+
+        $question = FeedbackTemplateQuestion::query()
+            ->whereHas(
+                'section',
+                fn ($q) => $q
+                    ->where('feedback_template_id', $session->feedback_template_id)
+                    ->where('audience', 'leader_self'),
+            )
+            ->firstOrFail();
+
+        $this->actingAs($leader)
+            ->patch(route('client.feedbacks.sessions.update', $session), [
+                'answers' => [
+                    $question->id => 'Resposta indevida',
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('feedback_session_answers', [
+            'feedback_session_id' => $session->id,
+            'feedback_template_question_id' => $question->id,
+        ]);
     }
 
     private function createFeedbackSession(Company $company, User $leader): FeedbackSession

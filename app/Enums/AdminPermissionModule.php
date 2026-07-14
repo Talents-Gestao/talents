@@ -22,6 +22,8 @@ enum AdminPermissionModule: string
     case Equipe = 'equipe';
     case Entrevistas = 'entrevistas';
     case Feedbacks = 'feedbacks';
+    case Ferias = 'ferias';
+    case Desligamento = 'desligamento';
 
     public function label(): string
     {
@@ -44,6 +46,8 @@ enum AdminPermissionModule: string
             self::Equipe => 'Equipe',
             self::Entrevistas => 'Entrevistas (IA)',
             self::Feedbacks => 'Feedbacks internos',
+            self::Ferias => 'Férias',
+            self::Desligamento => 'Pesquisa de Desligamento',
         };
     }
 
@@ -71,6 +75,8 @@ enum AdminPermissionModule: string
             self::Equipe,
             self::Entrevistas,
             self::Feedbacks,
+            self::Ferias,
+            self::Desligamento,
         ];
     }
 }

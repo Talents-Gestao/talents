@@ -2,6 +2,7 @@
 import SidebarBrandMark from '@/Components/SidebarBrandMark.vue';
 import SidebarLayout from '@/Components/SidebarLayout.vue';
 import SidebarNavItem from '@/Components/SidebarNavItem.vue';
+import SidebarNavSection from '@/Components/SidebarNavSection.vue';
 import SidebarUserCard from '@/Components/SidebarUserCard.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { usePage } from '@inertiajs/vue3';
@@ -17,6 +18,7 @@ import {
     MegaphoneIcon,
     PresentationChartLineIcon,
     RocketLaunchIcon,
+    SunIcon,
     UserPlusIcon,
     ViewColumnsIcon,
 } from '@heroicons/vue/24/outline';
@@ -25,6 +27,10 @@ const { canAdmin } = useAdminPermissions();
 const page = usePage();
 const adminHomeUrl = computed(
     () => page.props.auth?.user?.admin_home_url ?? route('admin.dashboard'),
+);
+
+const showVozDoTime = computed(
+    () => canAdmin('survey_templates') || canAdmin('desligamento'),
 );
 
 const showComercial = computed(
@@ -198,14 +204,29 @@ const configuracaoActive = computed(
             />
 
             <SidebarNavItem
-                v-if="canAdmin('survey_templates')"
-                :href="route('admin.survey-templates.index')"
-                :active="route().current('admin.survey-templates.*')"
-                :icon="MegaphoneIcon"
-                label="Voz do Time"
+                v-if="canAdmin('ferias')"
+                :href="route('admin.ferias.index')"
+                :active="route().current('admin.ferias.*')"
+                :icon="SunIcon"
+                label="Férias"
                 :collapsed="collapsed"
                 :compact="compact"
             />
+
+            <SidebarNavSection v-if="showVozDoTime" label="Voz do Time" :collapsed="collapsed">
+                <SidebarNavItem
+                    v-if="canAdmin('survey_templates') || canAdmin('desligamento')"
+                    :href="route('admin.survey-templates.index')"
+                    :active="
+                        route().current('admin.survey-templates.*') ||
+                        route().current('admin.desligamento.*')
+                    "
+                    :icon="MegaphoneIcon"
+                    label="Mapeamentos"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+            </SidebarNavSection>
 
             <SidebarNavItem
                 v-if="canAdmin('strategic_calendar')"

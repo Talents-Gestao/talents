@@ -75,6 +75,22 @@ class TalentsSeeder extends Seeder
             ]
         );
 
+        $ferias = Module::query()->firstOrCreate(
+            ['key' => Module::KEY_FERIAS],
+            [
+                'name' => 'Férias',
+                'description' => 'Gestão de períodos de férias dos colaboradores.',
+            ]
+        );
+
+        $desligamento = Module::query()->firstOrCreate(
+            ['key' => Module::KEY_DESLIGAMENTO],
+            [
+                'name' => 'Pesquisa de Desligamento',
+                'description' => 'Roteiro de entrevista de desligamento preenchido pelo admin.',
+            ]
+        );
+
         $plan = Plan::query()->firstOrCreate(
             ['slug' => 'nr1-pro'],
             [
@@ -86,7 +102,7 @@ class TalentsSeeder extends Seeder
             ]
         );
 
-        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id, $rhid->id, $denuncias->id, $feedbacks->id]);
+        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id, $rhid->id, $denuncias->id, $feedbacks->id, $ferias->id, $desligamento->id]);
 
         $admin = User::query()->firstOrCreate(
             ['email' => 'admin@talents.local'],

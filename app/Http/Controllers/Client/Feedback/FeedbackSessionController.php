@@ -110,7 +110,7 @@ class FeedbackSessionController extends FeedbackCompanyController
         $this->authorizeSession($company, $session);
 
         return Inertia::render('Client/Feedbacks/Sessions/Show', [
-            'session' => $this->sessionPayload($session),
+            'session' => $this->sessionPayload($session, $request->user()),
             'canExportPdf' => FeedbackVisibility::actsAsCompanyAdmin($request->user()),
         ]);
     }
@@ -122,7 +122,7 @@ class FeedbackSessionController extends FeedbackCompanyController
         abort_if(in_array($session->status, [FeedbackSessionStatus::Completed, FeedbackSessionStatus::Cancelled], true), 403);
 
         return Inertia::render('Client/Feedbacks/Sessions/Edit', [
-            'session' => $this->sessionPayload($session),
+            'session' => $this->sessionPayload($session, $request->user()),
         ]);
     }
 
@@ -146,10 +146,14 @@ class FeedbackSessionController extends FeedbackCompanyController
             'scheduled_at' => $data['scheduled_at'] ?? $session->scheduled_at,
             'next_alignment_at' => $data['next_alignment_at'] ?? $session->next_alignment_at,
             'status' => FeedbackSessionStatus::InProgress,
-            'section_extras' => $this->normalizeSectionExtras($session, $data['section_extras'] ?? []),
+            'section_extras' => $this->normalizeSectionExtras(
+                $session,
+                $data['section_extras'] ?? [],
+                $request->user(),
+            ),
         ]);
 
-        $this->syncAnswers($session, $data['answers'] ?? []);
+        $this->syncAnswers($session, $data['answers'] ?? [], $request->user());
 
         if ($request->boolean('submit_for_signature')) {
             app(SendFeedbackSignatureInvites::class)->execute($session, $request->user());
@@ -185,11 +189,19 @@ class FeedbackSessionController extends FeedbackCompanyController
     /**
      * @param  array<int|string, mixed>  $answers
      */
-    private function syncAnswers(FeedbackSession $session, array $answers): void
+    private function syncAnswers(FeedbackSession $session, array $answers, User $user): void
     {
-        $questionIds = FeedbackTemplateQuestion::query()
-            ->whereHas('section', fn ($q) => $q->where('feedback_template_id', $session->feedback_template_id))
-            ->pluck('id');
+        $questionsQuery = FeedbackTemplateQuestion::query()
+            ->whereHas('section', fn ($q) => $q->where('feedback_template_id', $session->feedback_template_id));
+
+        if (! FeedbackVisibility::canViewLeaderSelfSections($user)) {
+            $questionsQuery->whereHas(
+                'section',
+                fn ($q) => $q->where('audience', '!=', FeedbackVisibility::AUDIENCE_LEADER_SELF),
+            );
+        }
+
+        $questionIds = $questionsQuery->pluck('id');
 
         foreach ($answers as $questionId => $payload) {
             if (! $questionIds->contains((int) $questionId)) {
@@ -229,11 +241,17 @@ class FeedbackSessionController extends FeedbackCompanyController
      * @param  array<int|string, array{question?: string, answer?: string}>  $extras
      * @return array<string, array{question: string, answer: string}>|null
      */
-    private function normalizeSectionExtras(FeedbackSession $session, array $extras): ?array
+    private function normalizeSectionExtras(FeedbackSession $session, array $extras, User $user): ?array
     {
-        $validSectionIds = FeedbackTemplateSection::query()
+        $sectionsQuery = FeedbackTemplateSection::query()
             ->where('feedback_template_id', $session->feedback_template_id)
-            ->where('section_type', '!=', 'intro')
+            ->where('section_type', '!=', 'intro');
+
+        if (! FeedbackVisibility::canViewLeaderSelfSections($user)) {
+            $sectionsQuery->where('audience', '!=', FeedbackVisibility::AUDIENCE_LEADER_SELF);
+        }
+
+        $validSectionIds = $sectionsQuery
             ->pluck('id')
             ->map(fn ($id) => (string) $id);
 
@@ -257,13 +275,40 @@ class FeedbackSessionController extends FeedbackCompanyController
             ];
         }
 
+        if (! FeedbackVisibility::canViewLeaderSelfSections($user)) {
+            $leaderSelfSectionIds = FeedbackTemplateSection::query()
+                ->where('feedback_template_id', $session->feedback_template_id)
+                ->where('audience', FeedbackVisibility::AUDIENCE_LEADER_SELF)
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id);
+
+            $existing = $session->section_extras ?? [];
+            foreach ($leaderSelfSectionIds as $sectionId) {
+                if (! isset($existing[$sectionId]) || ! is_array($existing[$sectionId])) {
+                    continue;
+                }
+
+                $question = trim((string) ($existing[$sectionId]['question'] ?? ''));
+                $answer = trim((string) ($existing[$sectionId]['answer'] ?? ''));
+
+                if ($question === '' && $answer === '') {
+                    continue;
+                }
+
+                $normalized[$sectionId] = [
+                    'question' => $question,
+                    'answer' => $answer,
+                ];
+            }
+        }
+
         return $normalized === [] ? null : $normalized;
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function sessionPayload(FeedbackSession $session): array
+    private function sessionPayload(FeedbackSession $session, User $user): array
     {
         $session->load([
             'employee.department',
@@ -274,9 +319,49 @@ class FeedbackSessionController extends FeedbackCompanyController
             'signatures',
         ]);
 
+        $canViewLeaderSelf = FeedbackVisibility::canViewLeaderSelfSections($user);
+
+        if ($session->template && ! $canViewLeaderSelf) {
+            $session->template->setRelation(
+                'sections',
+                $session->template->sections
+                    ->reject(fn (FeedbackTemplateSection $section) => $section->audience === FeedbackVisibility::AUDIENCE_LEADER_SELF)
+                    ->values(),
+            );
+        }
+
+        $hiddenQuestionIds = collect();
+        if (! $canViewLeaderSelf && $session->template) {
+            $hiddenQuestionIds = FeedbackTemplateQuestion::query()
+                ->whereHas(
+                    'section',
+                    fn ($q) => $q
+                        ->where('feedback_template_id', $session->feedback_template_id)
+                        ->where('audience', FeedbackVisibility::AUDIENCE_LEADER_SELF),
+                )
+                ->pluck('id');
+        }
+
         $answers = [];
         foreach ($session->answers as $answer) {
+            if ($hiddenQuestionIds->contains($answer->feedback_template_question_id)) {
+                continue;
+            }
             $answers[$answer->feedback_template_question_id] = $answer->value_json ?? $answer->value_text;
+        }
+
+        $sectionExtras = $session->section_extras ?? [];
+        if (! $canViewLeaderSelf && $session->template) {
+            $hiddenSectionIds = FeedbackTemplateSection::query()
+                ->where('feedback_template_id', $session->feedback_template_id)
+                ->where('audience', FeedbackVisibility::AUDIENCE_LEADER_SELF)
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->all();
+
+            $sectionExtras = collect($sectionExtras)
+                ->reject(fn ($_, $sectionId) => in_array((string) $sectionId, $hiddenSectionIds, true))
+                ->all();
         }
 
         return [
@@ -291,7 +376,7 @@ class FeedbackSessionController extends FeedbackCompanyController
             'leader' => $session->leader?->only(['id', 'name', 'email']),
             'template' => $session->template,
             'answers' => $answers,
-            'section_extras' => $session->section_extras ?? [],
+            'section_extras' => $sectionExtras,
             'signatures' => $session->signatures->map(fn ($signature) => [
                 'id' => $signature->id,
                 'role' => $signature->role->value,

@@ -25,10 +25,7 @@ defineProps({
             </div>
 
             <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-talents-100/80">Frase do dia</p>
-                    <span class="text-[11px] text-talents-100/60">{{ quote.deck_title }}</span>
-                </div>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-talents-100/80">Frase do dia</p>
 
                 <h3 class="mt-2 text-lg font-bold uppercase tracking-wide text-white sm:text-xl">
                     {{ quote.word }}
@@ -37,10 +34,6 @@ defineProps({
                 <blockquote class="mt-3 text-sm leading-relaxed text-talents-50/95 sm:text-base">
                     “{{ quote.phrase }}”
                 </blockquote>
-
-                <p class="mt-3 text-[11px] font-medium text-talents-100/65">
-                    {{ quote.card_label }}
-                </p>
             </div>
         </div>
     </article>

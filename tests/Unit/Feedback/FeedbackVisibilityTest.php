@@ -104,5 +104,8 @@ class FeedbackVisibilityTest extends TestCase
         $this->assertTrue(FeedbackVisibility::actsAsCompanyAdmin($admin));
         $this->assertTrue(FeedbackVisibility::actsAsCompanyAdmin($rh));
         $this->assertFalse(FeedbackVisibility::actsAsCompanyAdmin($leader));
+        $this->assertTrue(FeedbackVisibility::canViewLeaderSelfSections($admin));
+        $this->assertTrue(FeedbackVisibility::canViewLeaderSelfSections($rh));
+        $this->assertFalse(FeedbackVisibility::canViewLeaderSelfSections($leader));
     }
 }

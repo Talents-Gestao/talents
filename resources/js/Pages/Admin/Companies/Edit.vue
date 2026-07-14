@@ -41,6 +41,20 @@ const denunciasAccessMode = () => {
     return 'inherit';
 };
 
+const feriasAccessMode = () => {
+    const v = props.company.ferias_access;
+    if (v === true) return 'enabled';
+    if (v === false) return 'disabled';
+    return 'inherit';
+};
+
+const desligamentoAccessMode = () => {
+    const v = props.company.desligamento_access;
+    if (v === true) return 'enabled';
+    if (v === false) return 'disabled';
+    return 'inherit';
+};
+
 const form = useForm({
     name: props.company.name,
     contact_email: props.company.contact_email ?? '',
@@ -61,6 +75,8 @@ const form = useForm({
     tasks_access_mode: tasksAccessMode(),
     rhid_access_mode: rhidAccessMode(),
     denuncias_access_mode: denunciasAccessMode(),
+    ferias_access_mode: feriasAccessMode(),
+    desligamento_access_mode: desligamentoAccessMode(),
     plan_id: props.activePlanId ?? null,
 });
 
@@ -237,6 +253,36 @@ const submit = () => {
                 <select
                     id="denuncias_access_mode"
                     v-model="form.denuncias_access_mode"
+                    class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option value="inherit">Seguir o plano</option>
+                    <option value="enabled">Forçar habilitado</option>
+                    <option value="disabled">Forçar desabilitado</option>
+                </select>
+            </div>
+            <div>
+                <InputLabel for="ferias_access_mode" value="Férias" />
+                <p class="mt-0.5 text-xs text-gray-500">
+                    Por padrão segue o plano (módulo «ferias»). Pode forçar por empresa.
+                </p>
+                <select
+                    id="ferias_access_mode"
+                    v-model="form.ferias_access_mode"
+                    class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option value="inherit">Seguir o plano</option>
+                    <option value="enabled">Forçar habilitado</option>
+                    <option value="disabled">Forçar desabilitado</option>
+                </select>
+            </div>
+            <div>
+                <InputLabel for="desligamento_access_mode" value="Pesquisa de Desligamento" />
+                <p class="mt-0.5 text-xs text-gray-500">
+                    Por padrão segue o plano (módulo «desligamento»). Pode forçar por empresa.
+                </p>
+                <select
+                    id="desligamento_access_mode"
+                    v-model="form.desligamento_access_mode"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
                     <option value="inherit">Seguir o plano</option>

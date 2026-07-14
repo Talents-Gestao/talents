@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class FeedbackVisibility
 {
+    public const AUDIENCE_LEADER_SELF = 'leader_self';
+
     public static function userCanAccessModule(User $user, Company $company): bool
     {
         if (! $company->hasFeedbacksEnabled()) {
@@ -28,6 +30,14 @@ final class FeedbackVisibility
     public static function actsAsCompanyAdmin(User $user): bool
     {
         return $user->isCompanyAdmin() || $user->isSuperAdmin();
+    }
+
+    /**
+     * Secção «Perguntas do líder para o líder» — visível apenas ao perfil admin.
+     */
+    public static function canViewLeaderSelfSections(User $user): bool
+    {
+        return self::actsAsCompanyAdmin($user);
     }
 
     /**

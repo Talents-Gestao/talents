@@ -1,6 +1,7 @@
 <script setup>
 import FeedbackCompanyPicker from '@/Components/Feedback/FeedbackCompanyPicker.vue';
 import FeedbackSessionCard from '@/Components/Feedback/FeedbackSessionCard.vue';
+import NineBoxMatrix from '@/Components/Feedback/NineBoxMatrix.vue';
 import ApexChart from '@/Components/Charts/ApexChart.vue';
 import SectionHeader from '@/Components/Dashboard/SectionHeader.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
@@ -29,11 +30,16 @@ const needsCompanySelection = computed(
     () => props.isAdminContext && props.companyPicker?.length && !props.activeCompany,
 );
 
+const hasNineBox = computed(
+    () => props.isCompanyAdmin && (props.analytics.nine_box?.total ?? 0) > 0,
+);
+
 const hasCharts = computed(
     () =>
         props.analytics.thermometer?.series?.some((n) => n > 0) ||
         props.analytics.timeline?.series?.length ||
-        props.analytics.perceptions?.series?.[0]?.some((n) => n > 0),
+        props.analytics.perceptions?.series?.[0]?.some((n) => n > 0) ||
+        hasNineBox.value,
 );
 
 const thermometerOptions = computed(() => ({
@@ -161,7 +167,17 @@ const perceptionSeries = computed(() => {
                     <ApexChart type="area" height="280" :options="timelineOptions" :series="timelineSeries" />
                 </div>
                 <div
-                    v-if="perceptionSeries[0].data.some((n) => n > 0)"
+                    v-if="hasNineBox"
+                    class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm lg:col-span-2"
+                >
+                    <SectionHeader
+                        title="Percepções"
+                        subtitle="Comportamento × desempenho, com direcionamento por quadrante"
+                    />
+                    <NineBoxMatrix class="mt-4" :nine-box="analytics.nine_box" />
+                </div>
+                <div
+                    v-else-if="perceptionSeries[0].data.some((n) => n > 0)"
                     class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm lg:col-span-2"
                 >
                     <SectionHeader title="Percepções da liderança" subtitle="Comportamento vs desempenho" />

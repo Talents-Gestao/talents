@@ -53,4 +53,9 @@ class CompanyEmployee extends Model
     {
         return $this->hasMany(FeedbackSession::class);
     }
+
+    public function leaves(): HasMany
+    {
+        return $this->hasMany(EmployeeLeave::class);
+    }
 }

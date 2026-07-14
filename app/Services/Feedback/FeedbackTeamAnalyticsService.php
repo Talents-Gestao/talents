@@ -7,13 +7,23 @@ namespace App\Services\Feedback;
 use App\Models\Company;
 use App\Models\FeedbackSession;
 use App\Models\User;
+use App\Support\Feedback\FeedbackVisibility;
+use Illuminate\Support\Collection;
 
 class FeedbackTeamAnalyticsService
 {
+    private const PERCEPTION_KEYS = ['abaixo', 'dentro', 'acima'];
+
     /**
      * @return array{
      *   thermometer: array{labels: list<string>, series: list<int>},
-     *   perceptions: array{labels: list<string>, series: list<int>},
+     *   perceptions: array{labels: list<string>, series: list<list<int>>},
+     *   nine_box: array{
+     *     x_axis: array{key: string, label: string, levels: list<array{value: string, label: string}>},
+     *     y_axis: array{key: string, label: string, levels: list<array{value: string, label: string}>},
+     *     cells: list<array{x: string, y: string, count: int, employees: list<string>}>,
+     *     total: int,
+     *   }|null,
      *   timeline: array{labels: list<string>, series: list<int>},
      *   strengths: list<string>,
      *   weaknesses: list<string>,
@@ -25,7 +35,7 @@ class FeedbackTeamAnalyticsService
         $query = FeedbackSession::query()
             ->where('company_id', $company->id)
             ->where('status', 'completed')
-            ->with(['answers.question']);
+            ->with(['answers.question', 'employee:id,name']);
 
         if ($viewer && $viewer->isCompanyUser() && ! $viewer->isSuperAdmin()) {
             $query->where('leader_user_id', $viewer->id);
@@ -80,6 +90,7 @@ class FeedbackTeamAnalyticsService
         }
 
         $timeline = $this->buildTimeline($company, $viewer);
+        $canViewNineBox = $viewer !== null && FeedbackVisibility::actsAsCompanyAdmin($viewer);
 
         return [
             'thermometer' => [
@@ -93,10 +104,97 @@ class FeedbackTeamAnalyticsService
                     array_map(fn (string $k) => $performanceCounts[$k], $perceptionKeys),
                 ],
             ],
+            'nine_box' => $canViewNineBox ? $this->buildNineBox($sessions) : null,
             'timeline' => $timeline,
             'strengths' => $this->topTerms($strengths, 5),
             'weaknesses' => array_values(array_unique($weaknesses)),
             'completed_count' => $sessions->count(),
+        ];
+    }
+
+    /**
+     * Matriz 3×3: desempenho (X) × comportamento (Y), ambos em abaixo/dentro/acima.
+     *
+     * @param  Collection<int, FeedbackSession>  $sessions
+     * @return array{
+     *   x_axis: array{key: string, label: string, levels: list<array{value: string, label: string}>},
+     *   y_axis: array{key: string, label: string, levels: list<array{value: string, label: string}>},
+     *   cells: list<array{x: string, y: string, count: int, employees: list<string>}>,
+     *   total: int,
+     * }
+     */
+    private function buildNineBox(Collection $sessions): array
+    {
+        $levels = [
+            ['value' => 'abaixo', 'label' => 'Abaixo'],
+            ['value' => 'dentro', 'label' => 'Dentro'],
+            ['value' => 'acima', 'label' => 'Acima'],
+        ];
+
+        /** @var array<string, array{count: int, employees: list<string>}> $buckets */
+        $buckets = [];
+        foreach (self::PERCEPTION_KEYS as $y) {
+            foreach (self::PERCEPTION_KEYS as $x) {
+                $buckets["{$y}|{$x}"] = ['count' => 0, 'employees' => []];
+            }
+        }
+
+        foreach ($sessions as $session) {
+            $behavior = null;
+            $performance = null;
+
+            foreach ($session->answers as $answer) {
+                $key = $answer->question?->key;
+                $value = is_string($answer->value_text) ? $answer->value_text : null;
+
+                if ($key === 'perc_comportamento' && in_array($value, self::PERCEPTION_KEYS, true)) {
+                    $behavior = $value;
+                }
+                if ($key === 'perc_desempenho' && in_array($value, self::PERCEPTION_KEYS, true)) {
+                    $performance = $value;
+                }
+            }
+
+            if ($behavior === null || $performance === null) {
+                continue;
+            }
+
+            $bucketKey = "{$behavior}|{$performance}";
+            $buckets[$bucketKey]['count']++;
+            $name = $session->employee?->name;
+            if (is_string($name) && $name !== '' && ! in_array($name, $buckets[$bucketKey]['employees'], true)) {
+                $buckets[$bucketKey]['employees'][] = $name;
+            }
+        }
+
+        $cells = [];
+        $total = 0;
+        foreach (self::PERCEPTION_KEYS as $y) {
+            foreach (self::PERCEPTION_KEYS as $x) {
+                $bucket = $buckets["{$y}|{$x}"];
+                $total += $bucket['count'];
+                $cells[] = [
+                    'x' => $x,
+                    'y' => $y,
+                    'count' => $bucket['count'],
+                    'employees' => $bucket['employees'],
+                ];
+            }
+        }
+
+        return [
+            'x_axis' => [
+                'key' => 'perc_desempenho',
+                'label' => 'Desempenho',
+                'levels' => $levels,
+            ],
+            'y_axis' => [
+                'key' => 'perc_comportamento',
+                'label' => 'Comportamento',
+                'levels' => $levels,
+            ],
+            'cells' => $cells,
+            'total' => $total,
         ];
     }
 

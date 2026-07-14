@@ -17,6 +17,8 @@ enum PermissionModule: string
     case Capacitacao = 'capacitacao';
     case Tarefas = 'tarefas';
     case Feedbacks = 'feedbacks';
+    case Ferias = 'ferias';
+    case Desligamento = 'desligamento';
 
     public function label(): string
     {
@@ -34,6 +36,8 @@ enum PermissionModule: string
             self::Capacitacao => 'Capacitação',
             self::Tarefas => 'Tarefas',
             self::Feedbacks => 'Feedbacks internos',
+            self::Ferias => 'Férias',
+            self::Desligamento => 'Pesquisa de Desligamento',
         };
     }
 
@@ -56,6 +60,8 @@ enum PermissionModule: string
             self::Capacitacao,
             self::Tarefas,
             self::Feedbacks,
+            self::Ferias,
+            self::Desligamento,
         ];
     }
 }

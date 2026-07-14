@@ -63,6 +63,7 @@ class FeedbackDashboardController extends FeedbackCompanyController
      * @return array{
      *   thermometer: array{labels: list<string>, series: list<int>},
      *   perceptions: array{labels: list<string>, series: list<int>},
+     *   nine_box: null,
      *   timeline: array{labels: list<string>, series: list<int>},
      *   strengths: list<string>,
      *   weaknesses: list<string>,
@@ -74,6 +75,7 @@ class FeedbackDashboardController extends FeedbackCompanyController
         return [
             'thermometer' => ['labels' => [], 'series' => []],
             'perceptions' => ['labels' => [], 'series' => []],
+            'nine_box' => null,
             'timeline' => ['labels' => [], 'series' => []],
             'strengths' => [],
             'weaknesses' => [],
