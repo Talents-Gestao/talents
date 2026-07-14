@@ -21,6 +21,7 @@ import {
     PresentationChartLineIcon,
     RocketLaunchIcon,
     SunIcon,
+    UserGroupIcon,
     UserPlusIcon,
     ViewColumnsIcon,
 } from '@heroicons/vue/24/outline';
@@ -59,10 +60,7 @@ const comercialActive = computed(
 );
 
 const showClientes = computed(
-    () =>
-        canAdmin('companies') ||
-        canAdmin('landing_interest') ||
-        canAdmin('rhid'),
+    () => canAdmin('companies') || canAdmin('landing_interest'),
 );
 
 const comingSoonModule = computed(() => {
@@ -84,9 +82,6 @@ const clientesFallbackHref = computed(() => {
     if (canAdmin('landing_interest')) {
         return route('admin.landing-interest.index');
     }
-    if (canAdmin('rhid')) {
-        return route('admin.rhid.index');
-    }
     return route('admin.dashboard');
 });
 
@@ -94,12 +89,29 @@ const clientesActive = computed(
     () =>
         route().current('admin.companies.*') ||
         route().current('admin.landing-interest.*') ||
+        isComingSoon('diagnostico-empresarial', 'contratos-fechados'),
+);
+
+const showRecursosHumanos = computed(
+    () => canAdmin('rhid') || canAdmin('companies'),
+);
+
+const recursosHumanosFallbackHref = computed(() => {
+    if (canAdmin('rhid')) {
+        return route('admin.rhid.index');
+    }
+    if (canAdmin('companies')) {
+        return comingSoonHref('cadastro-colaboradores');
+    }
+    return route('admin.dashboard');
+});
+
+const recursosHumanosActive = computed(
+    () =>
         route().current('admin.rhid.*') ||
         isComingSoon(
             'ponto',
-            'diagnostico-empresarial',
             'cadastro-colaboradores',
-            'contratos-fechados',
             'regulamento-interno',
             'controle-uniformes',
             'destaques-mes',
@@ -300,6 +312,37 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
+                    v-if="canAdmin('companies')"
+                    :href="comingSoonHref('diagnostico-empresarial')"
+                    :active="isComingSoon('diagnostico-empresarial')"
+                    label="Diagnóstico empresarial"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                    badge="Em breve"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('companies')"
+                    :href="comingSoonHref('contratos-fechados')"
+                    :active="isComingSoon('contratos-fechados')"
+                    label="Contratos fechados"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                    badge="Em breve"
+                />
+            </SidebarNavGroup>
+
+            <SidebarNavGroup
+                v-if="showRecursosHumanos"
+                label="Recursos Humanos"
+                :icon="UserGroupIcon"
+                :collapsed="collapsed"
+                :compact="compact"
+                :active="recursosHumanosActive"
+                :fallback-href="recursosHumanosFallbackHref"
+            >
+                <SidebarNavItem
                     v-if="canAdmin('rhid')"
                     :href="route('admin.rhid.index')"
                     :active="route().current('admin.rhid.*')"
@@ -320,29 +363,9 @@ const isComercialSettingsTab = (tab) => {
                 />
                 <SidebarNavItem
                     v-if="canAdmin('companies')"
-                    :href="comingSoonHref('diagnostico-empresarial')"
-                    :active="isComingSoon('diagnostico-empresarial')"
-                    label="Diagnóstico empresarial"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                    badge="Em breve"
-                />
-                <SidebarNavItem
-                    v-if="canAdmin('companies')"
                     :href="comingSoonHref('cadastro-colaboradores')"
                     :active="isComingSoon('cadastro-colaboradores')"
                     label="Cadastro de colaboradores"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                    badge="Em breve"
-                />
-                <SidebarNavItem
-                    v-if="canAdmin('companies')"
-                    :href="comingSoonHref('contratos-fechados')"
-                    :active="isComingSoon('contratos-fechados')"
-                    label="Contratos fechados"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
