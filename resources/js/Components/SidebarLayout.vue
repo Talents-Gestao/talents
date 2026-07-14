@@ -2,7 +2,16 @@
 import AppTopBar from '@/Components/AppTopBar.vue';
 import NoticeBellDropdown from '@/Components/NoticeBellDropdown.vue';
 import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline';
-import { computed, onBeforeUnmount, provide, ref, useSlots, watch } from 'vue';
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    provide,
+    ref,
+    useSlots,
+    watch,
+} from 'vue';
 
 const LABELS_SHOW_DELAY_MS = 80;
 const WIDTH_COLLAPSE_START_MS = 120;
@@ -44,8 +53,13 @@ const asideHovered = ref(false);
 const labelsVisible = ref(false);
 const mobileOpen = ref(false);
 
+const navEl = ref(null);
+const canScrollMore = ref(false);
+
 let showLabelsTimer = null;
 let hideWidthTimer = null;
+let navResizeObserver = null;
+let navMutationObserver = null;
 
 const clearSidebarTimers = () => {
     if (showLabelsTimer) {
@@ -58,11 +72,24 @@ const clearSidebarTimers = () => {
     }
 };
 
+const updateScrollHints = () => {
+    const el = navEl.value;
+    if (!el) {
+        canScrollMore.value = false;
+        return;
+    }
+
+    const overflow = el.scrollHeight - el.clientHeight > 2;
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+    canScrollMore.value = overflow && !atBottom;
+};
+
 const onAsideEnter = () => {
     clearSidebarTimers();
     asideHovered.value = true;
     showLabelsTimer = setTimeout(() => {
         labelsVisible.value = true;
+        nextTick(updateScrollHints);
     }, LABELS_SHOW_DELAY_MS);
 };
 
@@ -74,20 +101,46 @@ const onAsideLeave = () => {
     labelsVisible.value = false;
     hideWidthTimer = setTimeout(() => {
         asideHovered.value = false;
+        nextTick(updateScrollHints);
     }, WIDTH_COLLAPSE_START_MS);
 };
 
-onBeforeUnmount(clearSidebarTimers);
+onMounted(() => {
+    const el = navEl.value;
+    if (!el) {
+        return;
+    }
+
+    if (typeof ResizeObserver !== 'undefined') {
+        navResizeObserver = new ResizeObserver(() => updateScrollHints());
+        navResizeObserver.observe(el);
+    }
+
+    if (typeof MutationObserver !== 'undefined') {
+        navMutationObserver = new MutationObserver(() => updateScrollHints());
+        navMutationObserver.observe(el, { childList: true, subtree: true });
+    }
+
+    nextTick(updateScrollHints);
+});
+
+onBeforeUnmount(() => {
+    clearSidebarTimers();
+    navResizeObserver?.disconnect();
+    navMutationObserver?.disconnect();
+});
 
 watch(mobileOpen, (open) => {
     clearSidebarTimers();
     if (open) {
         asideHovered.value = true;
         labelsVisible.value = true;
+        nextTick(updateScrollHints);
         return;
     }
     labelsVisible.value = false;
     asideHovered.value = false;
+    nextTick(updateScrollHints);
 });
 
 const collapsed = computed(() => {
@@ -96,6 +149,8 @@ const collapsed = computed(() => {
     }
     return !labelsVisible.value;
 });
+
+watch(collapsed, () => nextTick(updateScrollHints));
 
 const asideWide = computed(() => asideHovered.value || mobileOpen.value);
 const compact = computed(() => !asideWide.value && !mobileOpen.value);
@@ -106,6 +161,25 @@ const closeMobileSidebar = () => {
 
 provide('closeMobileSidebar', closeMobileSidebar);
 provide('sidebarCompact', compact);
+
+/** Acordeão: no máximo um SidebarNavGroup aberto de cada vez. */
+const openNavGroupId = ref(null);
+provide('sidebarNavAccordion', {
+    openGroupId: openNavGroupId,
+    setOpenGroup(id) {
+        openNavGroupId.value = id;
+    },
+    clearOpenGroup(id) {
+        if (openNavGroupId.value === id) {
+            openNavGroupId.value = null;
+        }
+    },
+});
+
+watch(openNavGroupId, () => {
+    // Aguarda animação de max-height do submenu (~200ms).
+    window.setTimeout(() => updateScrollHints(), 220);
+});
 
 const asideWidthClass = computed(() => (asideWide.value ? 'lg:w-64' : 'lg:w-16'));
 
@@ -155,13 +229,23 @@ const hasAside = computed(() => Boolean(slots.aside));
                     <slot name="logo" :collapsed="collapsed" :compact="compact" />
                 </div>
 
-                <nav
-                    class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain py-4 scrollbar-none"
-                >
-                    <div class="flex flex-col gap-0.5 px-2">
-                        <slot name="navigation" :collapsed="collapsed" :compact="compact" />
-                    </div>
-                </nav>
+                <div class="relative min-h-0 flex-1">
+                    <nav
+                        ref="navEl"
+                        class="h-full overflow-y-auto overflow-x-hidden overscroll-y-contain py-4 scrollbar-none"
+                        @scroll.passive="updateScrollHints"
+                    >
+                        <div class="flex flex-col gap-0.5 px-2">
+                            <slot name="navigation" :collapsed="collapsed" :compact="compact" />
+                        </div>
+                    </nav>
+
+                    <div
+                        class="pointer-events-none absolute inset-x-0 bottom-0 h-7 bg-gradient-to-t from-white/70 via-white/25 to-transparent transition-opacity duration-200"
+                        :class="canScrollMore ? 'opacity-100' : 'opacity-0'"
+                        aria-hidden="true"
+                    />
+                </div>
 
                 <div class="shrink-0 overflow-hidden border-t border-slate-200/70 px-2 py-2">
                     <slot name="user" :collapsed="collapsed" :compact="compact" />

@@ -30,6 +30,11 @@ class SyncUserPermissions
                 continue;
             }
 
+            // Empresa só consulta desligamento; criar/editar/excluir ficam no admin Talents.
+            if ($mod === PermissionModule::Desligamento && $act !== PermissionAction::View) {
+                continue;
+            }
+
             $workspace->permissions()->create([
                 'module' => $mod->value,
                 'action' => $act->value,

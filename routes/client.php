@@ -187,14 +187,10 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::delete('{leave}', [EmployeeLeaveController::class, 'destroy'])->name('destroy');
     });
 
-    Route::middleware(['company_admin', 'can.module:desligamento'])->prefix('desligamento')->name('desligamento.')->group(function () {
+    // Empresa: apenas consulta (relatórios). Preenchimento fica no admin Talents.
+    Route::middleware('can.module:desligamento')->prefix('desligamento')->name('desligamento.')->group(function () {
         Route::get('/', [ExitInterviewController::class, 'index'])->name('index');
-        Route::get('create', [ExitInterviewController::class, 'create'])->name('create');
-        Route::post('/', [ExitInterviewController::class, 'store'])->name('store');
         Route::get('{interview}', [ExitInterviewController::class, 'show'])->name('show');
-        Route::get('{interview}/edit', [ExitInterviewController::class, 'edit'])->name('edit');
-        Route::put('{interview}', [ExitInterviewController::class, 'update'])->name('update');
-        Route::delete('{interview}', [ExitInterviewController::class, 'destroy'])->name('destroy');
     });
 
     Route::middleware('can.module:tarefas')->prefix('tarefas')->name('tarefas.')->group(function () {

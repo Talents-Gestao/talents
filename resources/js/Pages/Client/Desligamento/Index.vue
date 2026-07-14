@@ -21,6 +21,23 @@ const props = defineProps({
 const page = usePage();
 const flashSuccess = computed(() => page.props.flash?.success);
 const needsPicker = computed(() => props.isAdminContext && !props.activeCompany);
+const canManage = computed(() => props.isAdminContext);
+
+const headerSubtitle = computed(() => {
+    if (props.activeCompany) {
+        return `Empresa: ${props.activeCompany.name}`;
+    }
+    if (props.isAdminContext) {
+        return 'Roteiro preenchido presencialmente com o colaborador';
+    }
+    return 'Consulta das entrevistas de desligamento realizadas pela Talents';
+});
+
+const emptyMessage = computed(() =>
+    props.isAdminContext
+        ? 'Nenhuma pesquisa cadastrada. Os colaboradores vêm do RHID (Control iD).'
+        : 'Nenhuma pesquisa de desligamento disponível para consulta.',
+);
 
 const localFilters = reactive({
     q: props.filters.q ?? '',
@@ -71,13 +88,9 @@ const remove = (id) => {
         <template #header>
             <FormPageHeader
                 title="Pesquisa de Desligamento"
-                :subtitle="
-                    activeCompany
-                        ? `Empresa: ${activeCompany.name}`
-                        : 'Roteiro preenchido presencialmente com o colaborador'
-                "
+                :subtitle="headerSubtitle"
             >
-                <template v-if="!needsPicker" #trailing>
+                <template v-if="canManage && !needsPicker" #trailing>
                     <Link :href="desligamentoRoute('create')">
                         <PrimaryButton type="button">Nova pesquisa</PrimaryButton>
                     </Link>
@@ -171,21 +184,23 @@ const remove = (id) => {
                                         >
                                             <EyeIcon class="h-4 w-4" />
                                         </Link>
-                                        <Link
-                                            :href="desligamentoRoute('edit', item.id)"
-                                            class="rounded-lg p-2 text-slate-500 transition hover:bg-talents-50 hover:text-talents-700"
-                                            title="Editar"
-                                        >
-                                            <PencilSquareIcon class="h-4 w-4" />
-                                        </Link>
-                                        <button
-                                            type="button"
-                                            class="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
-                                            title="Excluir"
-                                            @click="remove(item.id)"
-                                        >
-                                            <TrashIcon class="h-4 w-4" />
-                                        </button>
+                                        <template v-if="canManage">
+                                            <Link
+                                                :href="desligamentoRoute('edit', item.id)"
+                                                class="rounded-lg p-2 text-slate-500 transition hover:bg-talents-50 hover:text-talents-700"
+                                                title="Editar"
+                                            >
+                                                <PencilSquareIcon class="h-4 w-4" />
+                                            </Link>
+                                            <button
+                                                type="button"
+                                                class="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
+                                                title="Excluir"
+                                                @click="remove(item.id)"
+                                            >
+                                                <TrashIcon class="h-4 w-4" />
+                                            </button>
+                                        </template>
                                     </div>
                                 </td>
                             </tr>
@@ -194,7 +209,7 @@ const remove = (id) => {
                 </div>
                 <ListEmptyState
                     v-if="!interviews.data?.length"
-                    message="Nenhuma pesquisa cadastrada. Os colaboradores vêm do RHID (Control iD)."
+                    :message="emptyMessage"
                 />
             </div>
         </template>

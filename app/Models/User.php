@@ -195,6 +195,11 @@ class User extends Authenticatable
         }
 
         if ($this->isCompanyAdmin()) {
+            // Desligamento: empresa só consulta; preenchimento é feito pelo admin Talents.
+            if ($module === PermissionModule::Desligamento) {
+                return $action === PermissionAction::View;
+            }
+
             return true;
         }
 
@@ -213,9 +218,21 @@ class User extends Authenticatable
             };
         }
 
-        // Férias / Desligamento: apenas administradores da empresa (company_admin já retornou true acima).
-        if ($module === PermissionModule::Ferias || $module === PermissionModule::Desligamento) {
+        // Férias: apenas administradores da empresa (company_admin já retornou true acima).
+        if ($module === PermissionModule::Ferias) {
             return false;
+        }
+
+        // Desligamento: company_user só com permissão de view (relatórios).
+        if ($module === PermissionModule::Desligamento) {
+            if ($action !== PermissionAction::View) {
+                return false;
+            }
+
+            return $this->permissions()
+                ->where('module', $module->value)
+                ->where('action', PermissionAction::View->value)
+                ->exists();
         }
 
         return $this->permissions()
@@ -322,6 +339,11 @@ class User extends Authenticatable
             $matrix = [];
             $allActions = array_map(static fn (PermissionAction $a) => $a->value, PermissionAction::all());
             foreach ($active as $modVal) {
+                // Empresa só vê relatórios de desligamento (sem criar/editar na matriz do frontend).
+                if ($modVal === PermissionModule::Desligamento->value) {
+                    $matrix[$modVal] = [PermissionAction::View->value];
+                    continue;
+                }
                 $matrix[$modVal] = $allActions;
             }
 
@@ -339,6 +361,13 @@ class User extends Authenticatable
 
         foreach ($rows as $p) {
             if (! in_array($p->module->value, $active, true)) {
+                continue;
+            }
+            // Desligamento no client: só view (criação fica no admin Talents).
+            if (
+                $p->module === PermissionModule::Desligamento
+                && $p->action !== PermissionAction::View
+            ) {
                 continue;
             }
             $matrix[$p->module->value] ??= [];
