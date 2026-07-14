@@ -1,18 +1,22 @@
 <script setup>
-import ClientLayout from '@/Layouts/ClientLayout.vue';
+import ComplaintsLayout from '@/Components/Complaints/ComplaintsLayout.vue';
+import { complaintRoute } from '@/composables/useComplaintRoutes';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
-const props = defineProps({ complaint: Object });
+const props = defineProps({
+    complaint: Object,
+    isAdminContext: { type: Boolean, default: false },
+});
 
 const statusForm = useForm({ status: props.complaint.status });
 const msgForm = useForm({ content: '' });
 
 const updateStatus = () => {
-    statusForm.patch(route('client.complaints.status', props.complaint.id));
+    statusForm.patch(complaintRoute('status', props.complaint.id));
 };
 
 const sendMessage = () => {
-    msgForm.post(route('client.complaints.messages.store', props.complaint.id), {
+    msgForm.post(complaintRoute('messages.store', props.complaint.id), {
         preserveScroll: true,
         onSuccess: () => msgForm.reset('content'),
     });
@@ -32,11 +36,11 @@ const statusLabel = (s) => {
 <template>
     <Head :title="`Denúncia ${complaint.protocol}`" />
 
-    <ClientLayout>
+    <ComplaintsLayout>
         <template #header>
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <Link :href="route('client.complaints.index')" class="text-sm text-talents-700 hover:underline">← Voltar</Link>
+                    <Link :href="complaintRoute('index')" class="text-sm text-talents-700 hover:underline">← Voltar</Link>
                     <h2 class="mt-1 text-xl font-semibold text-talents-900">Denúncia</h2>
                     <p class="font-mono text-sm text-gray-600">{{ complaint.protocol }}</p>
                 </div>
@@ -129,5 +133,5 @@ const statusLabel = (s) => {
                 </ul>
             </div>
         </div>
-    </ClientLayout>
+    </ComplaintsLayout>
 </template>
