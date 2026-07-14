@@ -1,12 +1,17 @@
-import { isMultiDayRange } from '@/utils/strategicCalendarDate';
+import { eachInclusiveIsoDay, isMultiDayRange } from '@/utils/strategicCalendarDate';
 
 /**
- * @param {Record<string, unknown>} item
- * @returns {boolean}
+ * Só há tirinha multi-dia quando existe `ends_on` (intervalo explícito).
+ * Sem término: evento de um dia — inclusive ocorrências de recorrência
+ * (nelas `range_starts_on` é a âncora da série, não o início de um span).
  */
 export function isSpanningCalendarEvent(item) {
+    const end = sliceIso(item?.ends_on);
+    if (!end) {
+        return false;
+    }
+
     const start = sliceIso(item?.range_starts_on || item?.occurs_on);
-    const end = sliceIso(item?.ends_on || item?.occurs_on);
 
     return isMultiDayRange(start, end);
 }
@@ -17,7 +22,7 @@ export function isSpanningCalendarEvent(item) {
  */
 export function spanningEventKey(item) {
     const start = sliceIso(item?.range_starts_on || item?.occurs_on);
-    const end = sliceIso(item?.ends_on || item?.occurs_on);
+    const end = sliceIso(item?.ends_on);
     const source = item?.source_id ?? item?.id;
 
     return `${source}|${start}|${end}`;
@@ -25,6 +30,7 @@ export function spanningEventKey(item) {
 
 /**
  * Empacota eventos multi-dia de uma semana (7 células) em lanes horizontais estilo Google Agenda.
+ * O span é sempre inclusivo (ex.: 14 a 18 = todos os dias de 14 até 18 nessa semana).
  *
  * @param {Array<{ iso: string|null, items?: Array<Record<string, unknown>> }>} weekCells
  * @param {{ maxLanes?: number, maxSinglePerCell?: number }} [options]
@@ -42,6 +48,7 @@ export function spanningEventKey(item) {
  *   laneCount: number,
  *   singleDayByCol: Array<Array<Record<string, unknown>>>,
  *   moreByCol: number[],
+ *   spanningCols: boolean[],
  * }}
  */
 export function packWeekSpanningSegments(weekCells, options = {}) {
@@ -51,6 +58,15 @@ export function packWeekSpanningSegments(weekCells, options = {}) {
 
     const firstIso = sliceIso(cells[0]?.iso);
     const lastIso = sliceIso(cells[6]?.iso);
+
+    /** @type {Map<string, number>} */
+    const colByIso = new Map();
+    for (let col = 0; col < 7; col += 1) {
+        const iso = sliceIso(cells[col]?.iso);
+        if (iso) {
+            colByIso.set(iso, col);
+        }
+    }
 
     /** @type {Array<{ key: string, item: Record<string, unknown>, startCol: number, endCol: number, span: number, continuesBefore: boolean, continuesAfter: boolean }>} */
     const candidates = [];
@@ -69,18 +85,18 @@ export function packWeekSpanningSegments(weekCells, options = {}) {
             seen.add(key);
 
             const rangeStart = sliceIso(item.range_starts_on || item.occurs_on);
-            const rangeEnd = sliceIso(item.ends_on || item.occurs_on);
+            const rangeEnd = sliceIso(item.ends_on);
             if (!rangeStart || !rangeEnd) {
                 continue;
             }
 
             let startCol = -1;
             let endCol = -1;
-            for (let col = 0; col < 7; col += 1) {
-                const iso = sliceIso(cells[col]?.iso);
-                if (!iso || iso < rangeStart || iso > rangeEnd) {
+            for (const iso of eachInclusiveIsoDay(rangeStart, rangeEnd)) {
+                if (!colByIso.has(iso)) {
                     continue;
                 }
+                const col = colByIso.get(iso);
                 if (startCol === -1) {
                     startCol = col;
                 }
@@ -134,6 +150,10 @@ export function packWeekSpanningSegments(weekCells, options = {}) {
 
     const laneCount = laneOccupiedUntil.length;
 
+    const spanningCols = Array.from({ length: 7 }, (_, col) =>
+        segments.some((segment) => col >= segment.startCol && col <= segment.endCol),
+    );
+
     const singleDayByCol = cells.map((cell) =>
         (cell?.items ?? []).filter((item) => !isSpanningCalendarEvent(item)),
     );
@@ -158,6 +178,7 @@ export function packWeekSpanningSegments(weekCells, options = {}) {
         laneCount,
         singleDayByCol: singleDayByCol.map((items) => items.slice(0, maxSinglePerCell)),
         moreByCol,
+        spanningCols,
     };
 }
 
