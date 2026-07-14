@@ -14,6 +14,7 @@ const props = defineProps({
     mode: String,
     interview: Object,
     employees: { type: Array, default: () => [] },
+    rhidReady: { type: Boolean, default: false },
     statusOptions: { type: Array, default: () => [] },
     sections: { type: Array, default: () => [] },
     consultantNoteFields: { type: Array, default: () => [] },
@@ -41,11 +42,18 @@ const emptyNotes = () => {
 };
 
 const form = useForm({
-    company_employee_id: props.interview?.company_employee_id ?? '',
+    rhid_person_id: props.interview?.rhid_person_id ?? '',
     interview_date: props.interview?.interview_date ?? '',
     status: props.interview?.status ?? 'draft',
     answers: reactive(emptyAnswers()),
     consultant_notes: reactive(emptyNotes()),
+});
+
+const emptyHint = computed(() => {
+    if (!props.rhidReady) {
+        return 'Configure a integração RHID (Control iD) da empresa para listar colaboradores.';
+    }
+    return 'Nenhum colaborador ativo encontrado no RHID/Control iD.';
 });
 
 const backHref = computed(() =>
@@ -82,16 +90,19 @@ const submit = () => {
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div>
                             <InputLabel value="Colaborador" />
-                            <select v-model="form.company_employee_id" required :class="fieldClass">
+                            <select
+                                v-model="form.rhid_person_id"
+                                required
+                                :disabled="!employees.length"
+                                :class="fieldClass"
+                            >
                                 <option value="" disabled>Selecione</option>
                                 <option v-for="employee in employees" :key="employee.id" :value="employee.id">
                                     {{ employee.name }}
                                 </option>
                             </select>
-                            <InputError :message="form.errors.company_employee_id" />
-                            <p v-if="!employees.length" class="mt-2 text-xs text-amber-700">
-                                Nenhum colaborador. Cadastre em Feedbacks internos → Colaboradores.
-                            </p>
+                            <InputError :message="form.errors.rhid_person_id" />
+                            <p v-if="!employees.length" class="mt-2 text-xs text-amber-700">{{ emptyHint }}</p>
                         </div>
                         <div>
                             <InputLabel value="Data da entrevista" />

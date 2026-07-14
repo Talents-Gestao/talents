@@ -5,15 +5,21 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\EmployeeLeaveStatus;
+use App\Models\Concerns\HasRhidCollaborator;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EmployeeLeave extends Model
 {
+    use HasRhidCollaborator;
+
     protected $fillable = [
         'company_id',
         'company_employee_id',
+        'rhid_person_id',
+        'employee_name',
+        'employee_email',
         'start_date',
         'end_date',
         'status',

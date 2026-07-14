@@ -1,5 +1,4 @@
 <script setup>
-import DesligamentoCompanyPicker from '@/Components/Desligamento/DesligamentoCompanyPicker.vue';
 import ExitInterviewAccordions from '@/Components/Desligamento/ExitInterviewAccordions.vue';
 import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccordion.vue';
 import TableEmptyRow from '@/Components/TableEmptyRow.vue';
@@ -117,23 +116,15 @@ const removeInterview = (id) => {
                 </div>
             </FeedbackSectionAccordion>
 
-            <div v-if="exitInterview.canManage && exitInterview.needsCompanySelection" class="mx-auto max-w-xl">
-                <DesligamentoCompanyPicker :companies="exitInterview.companyPicker || []" />
-            </div>
-
-            <DesligamentoCompanyPicker
-                v-else-if="exitInterview.canManage && exitInterview.companyPicker?.length"
-                compact
-                :companies="exitInterview.companyPicker"
-                :active-company-id="exitInterview.activeCompany?.id"
-            />
-
             <ExitInterviewAccordions
                 mode="preview"
                 :sections="exitInterview.sections"
                 :consultant-note-fields="exitInterview.consultantNoteFields"
                 :show-manage="exitInterview.canManage && !!exitInterview.activeCompany"
                 :interviews="exitInterview.interviews"
+                :company-picker="exitInterview.canManage ? exitInterview.companyPicker : null"
+                :active-company-id="exitInterview.activeCompany?.id"
+                :needs-company-selection="exitInterview.needsCompanySelection"
                 @remove="removeInterview"
             />
         </div>

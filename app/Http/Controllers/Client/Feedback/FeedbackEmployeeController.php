@@ -6,162 +6,55 @@ namespace App\Http\Controllers\Client\Feedback;
 
 use App\Http\Controllers\Concerns\ResolvesFeedbackRoutes;
 use App\Models\CompanyEmployee;
-use App\Models\Department;
-use App\Models\FeedbackSession;
-use App\Models\Position;
-use App\Models\User;
-use App\Support\Feedback\FeedbackVisibility;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class FeedbackEmployeeController extends FeedbackCompanyController
 {
     use ResolvesFeedbackRoutes;
-    public function index(Request $request): Response
+
+    public function index(Request $request): RedirectResponse
     {
-        $company = $this->company($request);
-
-        $employees = FeedbackVisibility::scopeEmployees(
-            CompanyEmployee::query()->where('company_id', $company->id),
-            $request->user(),
-        )
-            ->with(['department', 'position', 'leader'])
-            ->orderBy('name')
-            ->paginate(20);
-
-        return Inertia::render('Client/Feedbacks/Employees/Index', [
-            'employees' => $employees,
-        ]);
+        return $this->deprecatedRedirect($request);
     }
 
-    public function create(Request $request): Response
+    public function create(Request $request): RedirectResponse
     {
-        $company = $this->company($request);
-
-        return Inertia::render('Client/Feedbacks/Employees/Form', [
-            'mode' => 'create',
-            'employee' => null,
-            ...$this->formOptions($company),
-        ]);
+        return $this->deprecatedRedirect($request);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $company = $this->company($request);
-        $data = $this->validated($request, $company);
-
-        CompanyEmployee::create([
-            'company_id' => $company->id,
-            ...$data,
-        ]);
-
-        return $this->feedbackRedirect('employees.index', message: 'Colaborador cadastrado.');
+        return $this->deprecatedRedirect($request);
     }
 
-    public function show(Request $request, CompanyEmployee $employee): Response
+    public function show(Request $request, CompanyEmployee $employee): RedirectResponse
     {
-        $company = $this->company($request);
-        FeedbackVisibility::authorizeEmployee($request->user(), $employee);
-
-        $employee->load(['department', 'position', 'leader']);
-        $sessionsQuery = FeedbackSession::query()
-            ->where('company_employee_id', $employee->id)
-            ->with(['leader', 'template'])
-            ->orderByDesc('id');
-
-        $sessions = FeedbackVisibility::scopeSessions($sessionsQuery, $request->user())->get();
-
-        return Inertia::render('Client/Feedbacks/Employees/Show', [
-            'employee' => $employee,
-            'sessions' => $sessions,
-        ]);
+        return $this->deprecatedRedirect($request);
     }
 
-    public function edit(Request $request, CompanyEmployee $employee): Response
+    public function edit(Request $request, CompanyEmployee $employee): RedirectResponse
     {
-        $company = $this->company($request);
-        FeedbackVisibility::authorizeEmployee($request->user(), $employee);
-
-        return Inertia::render('Client/Feedbacks/Employees/Form', [
-            'mode' => 'edit',
-            'employee' => $employee->load(['department', 'position', 'leader']),
-            ...$this->formOptions($company),
-        ]);
+        return $this->deprecatedRedirect($request);
     }
 
     public function update(Request $request, CompanyEmployee $employee): RedirectResponse
     {
-        $company = $this->company($request);
-        FeedbackVisibility::authorizeEmployee($request->user(), $employee);
-
-        $employee->update($this->validated($request, $company));
-
-        return $this->feedbackRedirect('employees.show', $employee, 'Colaborador atualizado.');
+        return $this->deprecatedRedirect($request);
     }
 
     public function destroy(Request $request, CompanyEmployee $employee): RedirectResponse
     {
-        $company = $this->company($request);
-        FeedbackVisibility::authorizeEmployee($request->user(), $employee);
-
-        $employee->delete();
-
-        return $this->feedbackRedirect('employees.index', message: 'Colaborador removido.');
+        return $this->deprecatedRedirect($request);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function formOptions(\App\Models\Company $company): array
+    private function deprecatedRedirect(Request $request): RedirectResponse
     {
-        return [
-            'departments' => Department::query()->where('company_id', $company->id)->orderBy('name')->get(['id', 'name']),
-            'positions' => Position::query()->where('company_id', $company->id)->orderBy('name')->get(['id', 'name']),
-            'leaders' => User::query()
-                ->where('company_id', $company->id)
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get(['id', 'name', 'email']),
-        ];
-    }
+        $this->company($request);
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function validated(Request $request, \App\Models\Company $company): array
-    {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:32'],
-            'department_id' => ['nullable', 'exists:departments,id'],
-            'position_id' => ['nullable', 'exists:positions,id'],
-            'leader_user_id' => ['nullable', 'exists:users,id'],
-            'is_active' => ['boolean'],
-            'notes' => ['nullable', 'string', 'max:5000'],
-        ]);
-
-        if (! empty($data['department_id'])) {
-            abort_unless(
-                Department::query()->where('company_id', $company->id)->whereKey($data['department_id'])->exists(),
-                422,
-            );
-        }
-        if (! empty($data['position_id'])) {
-            abort_unless(
-                Position::query()->where('company_id', $company->id)->whereKey($data['position_id'])->exists(),
-                422,
-            );
-        }
-        if (! empty($data['leader_user_id'])) {
-            abort_unless(
-                User::query()->where('company_id', $company->id)->whereKey($data['leader_user_id'])->exists(),
-                422,
-            );
-        }
-
-        return $data;
+        return $this->feedbackRedirect(
+            'index',
+            message: 'Os colaboradores passam a vir do RHID (Control iD). Use o módulo RHID ou os selects nos fluxos de Feedback.',
+        );
     }
 }

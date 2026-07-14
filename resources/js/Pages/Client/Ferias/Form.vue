@@ -12,6 +12,7 @@ const props = defineProps({
     mode: String,
     leave: Object,
     employees: { type: Array, default: () => [] },
+    rhidReady: { type: Boolean, default: false },
     statusOptions: { type: Array, default: () => [] },
 });
 
@@ -19,12 +20,19 @@ const fieldClass =
     'mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/60';
 
 const form = useForm({
-    company_employee_id: props.leave?.company_employee_id ?? '',
+    rhid_person_id: props.leave?.rhid_person_id ?? '',
     start_date: props.leave?.start_date ?? '',
     end_date: props.leave?.end_date ?? '',
     status: props.leave?.status ?? 'scheduled',
     notes: props.leave?.notes ?? '',
 });
+
+const emptyHint = () => {
+    if (!props.rhidReady) {
+        return 'Configure a integração RHID (Control iD) da empresa para listar colaboradores.';
+    }
+    return 'Nenhum colaborador ativo encontrado no RHID/Control iD.';
+};
 
 const submit = () => {
     if (props.mode === 'edit') {
@@ -55,16 +63,19 @@ const submit = () => {
             <div class="space-y-5 p-6">
                 <div>
                     <InputLabel value="Colaborador" />
-                    <select v-model="form.company_employee_id" required :class="fieldClass">
+                    <select
+                        v-model="form.rhid_person_id"
+                        required
+                        :disabled="!employees.length"
+                        :class="fieldClass"
+                    >
                         <option value="" disabled>Selecione</option>
                         <option v-for="employee in employees" :key="employee.id" :value="employee.id">
                             {{ employee.name }}
                         </option>
                     </select>
-                    <InputError :message="form.errors.company_employee_id" />
-                    <p v-if="!employees.length" class="mt-2 text-xs text-amber-700">
-                        Nenhum colaborador ativo. Cadastre em Feedbacks internos → Colaboradores.
-                    </p>
+                    <InputError :message="form.errors.rhid_person_id" />
+                    <p v-if="!employees.length" class="mt-2 text-xs text-amber-700">{{ emptyHint() }}</p>
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">

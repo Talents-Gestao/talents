@@ -35,7 +35,7 @@ class FeedbackTeamAnalyticsService
         $query = FeedbackSession::query()
             ->where('company_id', $company->id)
             ->where('status', 'completed')
-            ->with(['answers.question', 'employee:id,name']);
+            ->with(['answers.question', 'employee:id,name,email']);
 
         if ($viewer && $viewer->isCompanyUser() && ! $viewer->isSuperAdmin()) {
             $query->where('leader_user_id', $viewer->id);
@@ -84,7 +84,7 @@ class FeedbackTeamAnalyticsService
                 }
 
                 if (in_array($key, ['perc_comportamento', 'perc_desempenho'], true) && $answer->value_text === 'abaixo') {
-                    $weaknesses[] = $session->employee?->name ?? 'Colaborador';
+                    $weaknesses[] = $session->collaboratorDisplayName();
                 }
             }
         }
@@ -161,8 +161,8 @@ class FeedbackTeamAnalyticsService
 
             $bucketKey = "{$behavior}|{$performance}";
             $buckets[$bucketKey]['count']++;
-            $name = $session->employee?->name;
-            if (is_string($name) && $name !== '' && ! in_array($name, $buckets[$bucketKey]['employees'], true)) {
+            $name = $session->collaboratorDisplayName();
+            if ($name !== '' && ! in_array($name, $buckets[$bucketKey]['employees'], true)) {
                 $buckets[$bucketKey]['employees'][] = $name;
             }
         }

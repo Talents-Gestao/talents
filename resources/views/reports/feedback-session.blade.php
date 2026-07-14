@@ -18,7 +18,7 @@
 <body>
     <h1>{{ $session->title }}</h1>
     <table class="meta">
-        <tr><td><strong>Colaborador(a):</strong></td><td>{{ $session->employee?->name }}</td></tr>
+        <tr><td><strong>Colaborador(a):</strong></td><td>{{ $session->collaboratorDisplayName() }}</td></tr>
         <tr><td><strong>Cargo:</strong></td><td>{{ $session->employee?->position?->name ?? '—' }}</td></tr>
         <tr><td><strong>Líder:</strong></td><td>{{ $session->leader?->name }}</td></tr>
         <tr><td><strong>Data:</strong></td><td>{{ $session->scheduled_at?->format('d/m/Y H:i') ?? '—' }}</td></tr>

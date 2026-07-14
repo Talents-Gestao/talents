@@ -5,16 +5,22 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\FeedbackSessionStatus;
+use App\Models\Concerns\HasRhidCollaborator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FeedbackSession extends Model
 {
+    use HasRhidCollaborator;
+
     protected $fillable = [
         'company_id',
         'feedback_template_id',
         'company_employee_id',
+        'rhid_person_id',
+        'employee_name',
+        'employee_email',
         'leader_user_id',
         'created_by_user_id',
         'title',

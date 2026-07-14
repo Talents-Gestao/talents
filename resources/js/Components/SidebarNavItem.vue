@@ -34,7 +34,7 @@ const props = defineProps({
     variant: {
         type: String,
         default: 'default',
-        validator: (value) => ['default', 'minimal'].includes(value),
+        validator: (value) => ['default', 'minimal', 'nested'].includes(value),
     },
     method: {
         type: String,
@@ -54,6 +54,7 @@ const props = defineProps({
 const closeMobileSidebar = inject('closeMobileSidebar', null);
 
 const isMinimal = computed(() => props.variant === 'minimal');
+const isNested = computed(() => props.variant === 'nested');
 
 const labelOpacityClass = computed(() =>
     props.collapsed
@@ -81,6 +82,15 @@ const linkClasses = computed(() => {
             return `${base} text-slate-900`;
         }
         return `${base} hover:text-slate-600`;
+    }
+
+    if (isNested.value) {
+        const base =
+            'group relative flex min-h-9 w-full items-center gap-2.5 overflow-hidden rounded-xl border border-transparent px-2.5 text-[13px] font-medium transition-[background-color,border-color,box-shadow,color] duration-200 ease-in-out';
+        if (props.active) {
+            return `${base} bg-talents-100/90 text-talents-900 shadow-sm ring-1 ring-talents-300/50`;
+        }
+        return `${base} text-slate-600 hover:bg-slate-100/80 hover:text-slate-900`;
     }
 
     const base =
@@ -124,6 +134,16 @@ const onNavigate = () => {
             <span
                 class="h-5 w-1 rounded-full transition-colors duration-200"
                 :class="indicatorClasses"
+            />
+        </span>
+        <span
+            v-else-if="isNested && !icon"
+            class="flex h-9 w-3 shrink-0 items-center justify-center"
+            aria-hidden="true"
+        >
+            <span
+                class="h-1.5 w-1.5 rounded-full transition-colors duration-200"
+                :class="props.active ? 'bg-talents-600' : 'bg-slate-300 group-hover:bg-talents-400'"
             />
         </span>
         <span

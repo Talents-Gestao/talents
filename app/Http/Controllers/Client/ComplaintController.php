@@ -1,13 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Client;
 
 use App\Actions\Notices\PublishComplaintNotice;
+use App\Http\Controllers\Concerns\ResolvesComplaintRoutes;
 use App\Http\Controllers\Controller;
 use App\Mail\ComplaintReporterNotificationMail;
 use App\Models\Complaint;
 use App\Models\ComplaintMessage;
 use App\Services\ComplaintAuditService;
+use App\Support\Complaints\ComplaintCompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -16,15 +20,30 @@ use Inertia\Response;
 
 class ComplaintController extends Controller
 {
+    use ResolvesComplaintRoutes;
+
     private function companyId(Request $request): int
     {
-        return (int) $request->user()->company_id;
+        return app(ComplaintCompanyContext::class)->resolve($request)->id;
     }
 
     public function index(Request $request): Response
     {
+        $context = app(ComplaintCompanyContext::class);
+
+        if ($context->needsCompanySelection($request)) {
+            return Inertia::render('Client/Complaints/Index', [
+                'complaints' => ['data' => [], 'links' => []],
+                'companyPicker' => $context->availableCompanies(),
+                'activeCompany' => null,
+                'isAdminContext' => true,
+            ]);
+        }
+
+        $companyId = $this->companyId($request);
+
         $complaints = Complaint::query()
-            ->where('company_id', $this->companyId($request))
+            ->where('company_id', $companyId)
             ->with('department')
             ->orderByDesc('id')
             ->paginate(20)
@@ -40,6 +59,9 @@ class ComplaintController extends Controller
 
         return Inertia::render('Client/Complaints/Index', [
             'complaints' => $complaints,
+            'companyPicker' => $context->isAdminContext($request) ? $context->availableCompanies() : null,
+            'activeCompany' => $context->resolve($request)->only(['id', 'name']),
+            'isAdminContext' => $context->isAdminContext($request),
         ]);
     }
 
@@ -83,6 +105,7 @@ class ComplaintController extends Controller
                     'created_at' => $log->created_at?->toIso8601String(),
                 ]),
             ],
+            'isAdminContext' => app(ComplaintCompanyContext::class)->isAdminContext($request),
         ]);
     }
 

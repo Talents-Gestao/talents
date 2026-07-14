@@ -13,17 +13,20 @@ use App\Http\Controllers\Admin\Commercial\SettingsController as CommercialSettin
 use App\Http\Controllers\Admin\FeedbackCompanySelectController;
 use App\Http\Controllers\Admin\FeriasCompanySelectController;
 use App\Http\Controllers\Admin\DesligamentoCompanySelectController;
+use App\Http\Controllers\Admin\ComplaintCompanySelectController;
 use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
 use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
 use App\Http\Controllers\Client\Ferias\EmployeeLeaveController;
 use App\Http\Controllers\Client\Desligamento\ExitInterviewController;
+use App\Http\Controllers\Client\ComplaintController;
 use App\Http\Controllers\Admin\Finance\CommissionController as FinanceCommissionController;
 use App\Http\Controllers\Admin\Finance\FinanceDashboardController;
 use App\Http\Controllers\Admin\Finance\InstallmentController as FinanceInstallmentController;
 use App\Http\Controllers\Admin\Finance\SaleController as FinanceSaleController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\CompanyUserController;
+use App\Http\Controllers\Admin\ComingSoonController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\LandingInterestSubmissionController;
 use App\Http\Controllers\Admin\MailSettingsController;
@@ -61,6 +64,10 @@ use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('em-breve/{module}', [ComingSoonController::class, 'show'])
+        ->where('module', '[a-z0-9\-]+')
+        ->name('coming-soon.show');
+
     Route::middleware('admin.can:dashboard')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
         Route::get('rhid/portfolio-metrics', [RhidPortfolioController::class, 'portfolioMetrics'])
@@ -189,6 +196,17 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::get('{interview}/edit', [ExitInterviewController::class, 'edit'])->name('edit');
             Route::put('{interview}', [ExitInterviewController::class, 'update'])->name('update');
             Route::delete('{interview}', [ExitInterviewController::class, 'destroy'])->name('destroy');
+        });
+    });
+
+    Route::middleware('admin.can:denuncias')->prefix('complaints')->name('complaints.')->group(function () {
+        Route::get('/', [ComplaintController::class, 'index'])->name('index');
+        Route::post('company', [ComplaintCompanySelectController::class, 'store'])->name('company.store');
+
+        Route::middleware('complaints.company')->group(function () {
+            Route::get('{complaint}', [ComplaintController::class, 'show'])->name('show');
+            Route::patch('{complaint}/status', [ComplaintController::class, 'updateStatus'])->name('status');
+            Route::post('{complaint}/messages', [ComplaintController::class, 'storeMessage'])->name('messages.store');
         });
     });
 

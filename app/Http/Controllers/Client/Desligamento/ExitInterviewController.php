@@ -7,10 +7,10 @@ namespace App\Http\Controllers\Client\Desligamento;
 use App\Enums\ExitInterviewStatus;
 use App\Http\Controllers\Concerns\ResolvesDesligamentoRoutes;
 use App\Models\Company;
-use App\Models\CompanyEmployee;
 use App\Models\ExitInterview;
 use App\Support\Desligamento\DesligamentoCompanyContext;
 use App\Support\Desligamento\ExitInterviewScript;
+use App\Support\Rhid\RhidPersonDirectory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -57,12 +57,16 @@ class ExitInterviewController extends DesligamentoCompanyController
 
         if ($request->filled('q')) {
             $term = '%'.mb_strtolower($request->string('q')->toString()).'%';
-            $query->whereHas(
-                'employee',
-                fn ($q) => $q
-                    ->whereRaw('LOWER(name) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(email) LIKE ?', [$term]),
-            );
+            $query->where(function ($q) use ($term) {
+                $q->whereRaw('LOWER(COALESCE(employee_name, \'\')) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(COALESCE(employee_email, \'\')) LIKE ?', [$term])
+                    ->orWhereHas(
+                        'employee',
+                        fn ($eq) => $eq
+                            ->whereRaw('LOWER(name) LIKE ?', [$term])
+                            ->orWhereRaw('LOWER(email) LIKE ?', [$term]),
+                    );
+            });
         }
 
         $interviews = $query->paginate(20)->withQueryString()->through(fn (ExitInterview $interview) => [
@@ -70,7 +74,7 @@ class ExitInterviewController extends DesligamentoCompanyController
             'interview_date' => $interview->interview_date?->toDateString(),
             'status' => $interview->status->value,
             'status_label' => $interview->status->label(),
-            'employee' => $interview->employee?->only(['id', 'name', 'email']),
+            'employee' => $interview->collaboratorPayload(),
             'creator' => $interview->creator?->only(['id', 'name']),
         ]);
 
@@ -94,7 +98,7 @@ class ExitInterviewController extends DesligamentoCompanyController
         return Inertia::render('Client/Desligamento/Form', [
             'mode' => 'create',
             'interview' => null,
-            ...$this->formOptions($company),
+            ...$this->formOptions($company, $request),
         ]);
     }
 
@@ -105,7 +109,10 @@ class ExitInterviewController extends DesligamentoCompanyController
 
         ExitInterview::query()->create([
             'company_id' => $company->id,
-            'company_employee_id' => $data['company_employee_id'],
+            'company_employee_id' => null,
+            'rhid_person_id' => $data['rhid_person_id'],
+            'employee_name' => $data['employee_name'],
+            'employee_email' => $data['employee_email'],
             'interview_date' => $data['interview_date'],
             'status' => $data['status'],
             'answers' => $data['answers'],
@@ -131,7 +138,7 @@ class ExitInterviewController extends DesligamentoCompanyController
                 'status_label' => $interview->status->label(),
                 'answers' => $interview->answers ?? [],
                 'consultant_notes' => $interview->consultant_notes ?? [],
-                'employee' => $interview->employee?->only(['id', 'name', 'email']),
+                'employee' => $interview->collaboratorPayload(),
                 'creator' => $interview->creator?->only(['id', 'name']),
             ],
             'sections' => ExitInterviewScript::sections(),
@@ -148,13 +155,13 @@ class ExitInterviewController extends DesligamentoCompanyController
             'mode' => 'edit',
             'interview' => [
                 'id' => $interview->id,
-                'company_employee_id' => $interview->company_employee_id,
+                'rhid_person_id' => $interview->rhid_person_id,
                 'interview_date' => $interview->interview_date?->toDateString(),
                 'status' => $interview->status->value,
                 'answers' => $interview->answers ?? [],
                 'consultant_notes' => $interview->consultant_notes ?? [],
             ],
-            ...$this->formOptions($company),
+            ...$this->formOptions($company, $request),
         ]);
     }
 
@@ -165,7 +172,10 @@ class ExitInterviewController extends DesligamentoCompanyController
         $data = $this->validated($request, $company);
 
         $interview->update([
-            'company_employee_id' => $data['company_employee_id'],
+            'company_employee_id' => null,
+            'rhid_person_id' => $data['rhid_person_id'],
+            'employee_name' => $data['employee_name'],
+            'employee_email' => $data['employee_email'],
             'interview_date' => $data['interview_date'],
             'status' => $data['status'],
             'answers' => $data['answers'],
@@ -187,19 +197,20 @@ class ExitInterviewController extends DesligamentoCompanyController
 
     /**
      * @return array{
-     *   employees: \Illuminate\Support\Collection<int, array{id: int, name: string}>,
+     *   employees: \Illuminate\Support\Collection<int, array{id: int, name: string, email: ?string}>,
+     *   rhidReady: bool,
      *   statusOptions: list<array{value: string, label: string}>,
      *   sections: list<array{key: string, title: string, questions: list<array{key: string, body: string, hint?: string}>}>,
      *   consultantNoteFields: list<array{key: string, label: string}>
      * }
      */
-    private function formOptions(Company $company): array
+    private function formOptions(Company $company, Request $request): array
     {
+        $directory = app(RhidPersonDirectory::class);
+
         return [
-            'employees' => CompanyEmployee::query()
-                ->where('company_id', $company->id)
-                ->orderBy('name')
-                ->get(['id', 'name']),
+            'employees' => $directory->activePersons($company, $request->user()),
+            'rhidReady' => $company->hasRhidEnabled() && $company->rhidConfigured(),
             'statusOptions' => $this->statusOptions(),
             'sections' => ExitInterviewScript::sections(),
             'consultantNoteFields' => ExitInterviewScript::consultantNoteFields(),
@@ -222,11 +233,13 @@ class ExitInterviewController extends DesligamentoCompanyController
 
     /**
      * @return array{
-     *   company_employee_id: int,
+     *   rhid_person_id: int,
+     *   employee_name: string,
+     *   employee_email: ?string,
      *   interview_date: ?string,
      *   status: ExitInterviewStatus,
-     *   answers: array<string, string>,
-     *   consultant_notes: array<string, string>
+     *   answers: array<string, string>|null,
+     *   consultant_notes: array<string, string>|null
      * }
      */
     private function validated(Request $request, Company $company): array
@@ -242,18 +255,25 @@ class ExitInterviewController extends DesligamentoCompanyController
         }
 
         $data = $request->validate([
-            'company_employee_id' => [
-                'required',
-                'integer',
-                Rule::exists('company_employees', 'id')->where(fn ($q) => $q->where('company_id', $company->id)),
-            ],
+            'rhid_person_id' => ['required', 'integer', 'min:1'],
             'interview_date' => ['nullable', 'date'],
             'status' => ['required', Rule::enum(ExitInterviewStatus::class)],
             'answers' => ['nullable', 'array'],
             'consultant_notes' => ['nullable', 'array'],
             ...$answerRules,
             ...$noteRules,
+        ], [
+            'rhid_person_id.required' => 'Selecione um colaborador do RHID.',
+        ], [
+            'rhid_person_id' => 'colaborador',
         ]);
+
+        $person = app(RhidPersonDirectory::class)->findActive(
+            $company,
+            (int) $data['rhid_person_id'],
+            $request->user(),
+        );
+        abort_unless($person !== null, 422, 'Colaborador não encontrado nos ativos do RHID/Control iD.');
 
         $answers = [];
         foreach (ExitInterviewScript::answerKeys() as $key) {
@@ -272,7 +292,9 @@ class ExitInterviewController extends DesligamentoCompanyController
         }
 
         return [
-            'company_employee_id' => (int) $data['company_employee_id'],
+            'rhid_person_id' => $person['id'],
+            'employee_name' => $person['name'],
+            'employee_email' => $person['email'],
             'interview_date' => $data['interview_date'] ?? null,
             'status' => ExitInterviewStatus::from($data['status']),
             'answers' => $answers === [] ? null : $answers,

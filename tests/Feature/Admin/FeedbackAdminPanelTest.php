@@ -52,7 +52,7 @@ class FeedbackAdminPanelTest extends TestCase
                 ->where('isAdminContext', true));
     }
 
-    public function test_super_admin_can_open_employees_list_in_admin_context(): void
+    public function test_super_admin_employees_route_redirects_to_feedbacks_index(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $company = Company::query()->create([
@@ -66,7 +66,6 @@ class FeedbackAdminPanelTest extends TestCase
         $this->actingAs($admin)
             ->withSession([FeedbackCompanyContext::SESSION_KEY => $company->id])
             ->get(route('admin.feedbacks.employees.index'))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page->component('Client/Feedbacks/Employees/Index'));
+            ->assertRedirect(route('admin.feedbacks.index'));
     }
 }

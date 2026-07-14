@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureCompanyAccess;
 use App\Http\Middleware\EnsureFeedbackCompanySelected;
 use App\Http\Middleware\EnsureFeriasCompanySelected;
 use App\Http\Middleware\EnsureDesligamentoCompanySelected;
+use App\Http\Middleware\EnsureComplaintCompanySelected;
 use App\Http\Middleware\EnsureCompanyAdmin;
 use App\Http\Middleware\EnsureModulePermission;
 use App\Http\Middleware\EnsureStrategicCalendarAccess;
@@ -56,6 +57,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'feedback.company' => EnsureFeedbackCompanySelected::class,
             'ferias.company' => EnsureFeriasCompanySelected::class,
             'desligamento.company' => EnsureDesligamentoCompanySelected::class,
+            'complaints.company' => EnsureComplaintCompanySelected::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
