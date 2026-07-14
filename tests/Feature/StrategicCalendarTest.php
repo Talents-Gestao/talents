@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\StrategicCalendarItemKind;
 use App\Enums\StrategicCalendarRecurrence;
+use App\Enums\StrategicCalendarSource;
 use App\Enums\StrategicCalendarViewPeriod;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use Carbon\Carbon;
@@ -138,6 +139,7 @@ class StrategicCalendarTest extends TestCase
         $this->assertDatabaseHas('strategic_calendar_items', [
             'title' => 'Revisão trimestral',
             'kind' => 'event',
+            'source' => 'talents',
         ]);
     }
 
@@ -852,5 +854,113 @@ class StrategicCalendarTest extends TestCase
                 ->where('kindLabels.birthday', 'Aniversário')
                 ->where('monthItems.0.kind', 'birthday')
                 ->where('monthItems.0.title', 'Aniversário — Maria Silva'));
+    }
+
+    public function test_client_can_create_company_agenda_item(): void
+    {
+        $company = $this->baseCompany();
+        $company->update(['strategic_calendar_access' => true]);
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $this->actingAs($user)
+            ->post('/client/calendario-estrategico', [
+                'title' => 'Reunião de líderes',
+                'description' => 'Alinhamento interno.',
+                'kind' => StrategicCalendarItemKind::Event->value,
+                'occurs_on' => '2026-07-20',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('strategic_calendar_items', [
+            'title' => 'Reunião de líderes',
+            'company_id' => $company->id,
+            'source' => 'company',
+            'created_by' => $user->id,
+        ]);
+    }
+
+    public function test_client_cannot_update_talents_agenda_item(): void
+    {
+        $company = $this->baseCompany();
+        $company->update(['strategic_calendar_access' => true]);
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Ritual Talents',
+            'kind' => StrategicCalendarItemKind::Ritual,
+            'occurs_on' => '2026-07-10',
+            'company_id' => $company->id,
+            'source' => StrategicCalendarSource::Talents,
+            'is_published' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->put('/client/calendario-estrategico/'.$item->id, [
+                'title' => 'Hack',
+                'kind' => StrategicCalendarItemKind::Event->value,
+                'occurs_on' => '2026-07-11',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_admin_cannot_update_company_agenda_item(): void
+    {
+        $company = $this->baseCompany();
+        $admin = User::factory()->superAdmin()->create();
+
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Evento interno',
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => '2026-07-12',
+            'company_id' => $company->id,
+            'source' => StrategicCalendarSource::Company,
+            'is_published' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->put('/admin/calendario-estrategico/'.$item->id, [
+                'title' => 'Hack admin',
+                'kind' => StrategicCalendarItemKind::Event->value,
+                'occurs_on' => '2026-07-12',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_client_can_filter_by_company_agenda(): void
+    {
+        $company = $this->baseCompany();
+        $company->update(['strategic_calendar_access' => true]);
+
+        StrategicCalendarItem::query()->create([
+            'title' => 'Evento Talents',
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => '2026-05-05',
+            'company_id' => $company->id,
+            'source' => StrategicCalendarSource::Talents,
+            'is_published' => true,
+        ]);
+
+        StrategicCalendarItem::query()->create([
+            'title' => 'Evento Empresa',
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => '2026-05-06',
+            'company_id' => $company->id,
+            'source' => StrategicCalendarSource::Company,
+            'is_published' => true,
+        ]);
+
+        $user = User::factory()->companyAdmin($company->id)->create();
+        $this->withoutVite();
+
+        $this->actingAs($user)
+            ->get('/client/calendario-estrategico?year=2026&month=5&agenda=company')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Client/StrategicCalendar/Index')
+                ->where('agendaFilter', 'company')
+                ->has('monthItems', 1)
+                ->where('monthItems.0.title', 'Evento Empresa')
+                ->where('monthItems.0.agenda', 'company')
+                ->where('monthItems.0.can_manage', true));
     }
 }

@@ -292,6 +292,7 @@ const weeksWithLanes = computed(() =>
             laneCount: packed.laneCount,
             singleDayByCol: packed.singleDayByCol,
             moreByCol: packed.moreByCol,
+            spanningCols: packed.spanningCols,
         };
     }),
 );
@@ -434,8 +435,9 @@ function onPickSpanningSegment(weekCells, segment) {
 }
 
 function spanningBarRadius(segment) {
-    const left = segment.continuesBefore ? '0' : '0.375rem';
-    const right = segment.continuesAfter ? '0' : '0.375rem';
+    // Google Agenda: canto arredondado só nas pontas reais do evento na semana.
+    const left = segment.continuesBefore ? '0' : '0.25rem';
+    const right = segment.continuesAfter ? '0' : '0.25rem';
 
     return `${left} ${right} ${right} ${left}`;
 }
@@ -444,8 +446,14 @@ function spanningBarStyle(segment) {
     return {
         ...itemChipStyle(segment.item),
         gridColumn: `${segment.startCol + 1} / span ${segment.span}`,
-        marginTop: `${1.65 + segment.lane * 1.35}rem`,
+        marginTop: `${1.55 + segment.lane * 1.2}rem`,
+        height: '1.15rem',
         borderRadius: spanningBarRadius(segment),
+        // Tirinha contínua: sem gap visual entre dias; flat nas pontas que “continuam”.
+        marginLeft: segment.continuesBefore ? '0' : '1px',
+        marginRight: segment.continuesAfter ? '0' : '1px',
+        borderWidth: '0',
+        boxShadow: 'none',
     };
 }
 
@@ -1010,13 +1018,13 @@ function itemShellClass(item) {
                                 <div
                                     class="relative z-0 flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5"
                                     :style="{
-                                        paddingTop: `${Math.max(week.laneCount, 0) * 1.35 + (week.laneCount ? 0.15 : 0)}rem`,
+                                        paddingTop: `${Math.max(week.laneCount, 0) * 1.2 + (week.laneCount ? 0.2 : 0)}rem`,
                                     }"
                                 >
                                     <div
                                         v-for="it in week.singleDayByCol[ci]"
                                         :key="it.id"
-                                        class="flex min-w-0 items-center gap-0.5 rounded-md border px-1 py-0.5"
+                                        class="flex min-w-0 items-center gap-0.5 rounded px-1 py-0.5"
                                         :class="it.completed ? 'opacity-75' : ''"
                                         :style="itemChipStyle(it)"
                                         :title="it.title"
@@ -1027,7 +1035,7 @@ function itemShellClass(item) {
                                             aria-hidden="true"
                                         />
                                         <span
-                                            class="min-w-0 truncate text-[10px] font-semibold leading-tight"
+                                            class="min-w-0 truncate text-[10px] font-medium leading-tight"
                                             :class="it.completed ? 'line-through opacity-80' : ''"
                                         >
                                             {{ it.title }}
@@ -1049,22 +1057,17 @@ function itemShellClass(item) {
                                 v-for="segment in week.segments"
                                 :key="segment.key"
                                 type="button"
-                                class="pointer-events-auto mx-0.5 flex h-5 min-w-0 items-center gap-0.5 self-start border px-1 text-left shadow-sm"
+                                class="pointer-events-auto flex min-w-0 items-center gap-0.5 self-start px-1.5 text-left"
                                 :class="segment.item.completed ? 'opacity-75' : ''"
                                 :style="spanningBarStyle(segment)"
                                 :title="segment.item.title"
                                 @click.stop="onPickSpanningSegment(week.cells, segment)"
                             >
-                                <ArrowPathIcon
-                                    v-if="hasRecurrence(segment.item)"
-                                    class="h-2.5 w-2.5 shrink-0 opacity-80"
-                                    aria-hidden="true"
-                                />
                                 <span
-                                    class="min-w-0 truncate text-[10px] font-semibold leading-tight"
+                                    class="min-w-0 truncate text-[10px] font-medium leading-none"
                                     :class="segment.item.completed ? 'line-through opacity-80' : ''"
                                 >
-                                    {{ segment.item.title }}
+                                    {{ segment.continuesBefore ? '' : segment.item.title }}
                                 </span>
                             </button>
                         </div>

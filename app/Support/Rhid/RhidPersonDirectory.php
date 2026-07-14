@@ -30,7 +30,7 @@ class RhidPersonDirectory
     public function activePersons(Company $company, ?User $actor = null): Collection
     {
         if (! $company->hasRhidEnabled() || ! $company->rhidConfigured()) {
-            return collect();
+            return $this->demoPersonsIfEnabled();
         }
 
         try {
@@ -70,8 +70,26 @@ class RhidPersonDirectory
         } catch (Throwable $e) {
             report($e);
 
+            return $this->demoPersonsIfEnabled();
+        }
+    }
+
+    /**
+     * @return Collection<int, array{id: int, name: string, email: ?string}>
+     */
+    private function demoPersonsIfEnabled(): Collection
+    {
+        if (! config('rhid.demo_persons')) {
             return collect();
         }
+
+        return collect([
+            ['id' => 900001, 'name' => 'Ana Souza (teste)', 'email' => 'ana.souza@teste.local'],
+            ['id' => 900002, 'name' => 'Bruno Lima (teste)', 'email' => 'bruno.lima@teste.local'],
+            ['id' => 900003, 'name' => 'Carla Mendes (teste)', 'email' => 'carla.mendes@teste.local'],
+            ['id' => 900004, 'name' => 'Diego Alves (teste)', 'email' => 'diego.alves@teste.local'],
+            ['id' => 900005, 'name' => 'Elena Costa (teste)', 'email' => 'elena.costa@teste.local'],
+        ]);
     }
 
     /**

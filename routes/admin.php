@@ -61,6 +61,7 @@ use App\Http\Controllers\Admin\Entrevistas\InterviewController;
 use App\Http\Controllers\Admin\Entrevistas\InterviewQuestionnaireController;
 use App\Http\Controllers\Admin\Entrevistas\InterviewReportController;
 use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
+use App\Http\Controllers\NewsFeedController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -114,6 +115,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::get('avisos/recentes', [AdminCompanyNoticeController::class, 'recent'])->name('notices.recent');
     Route::post('avisos/{notice}/lido', [AdminCompanyNoticeController::class, 'markRead'])->name('notices.mark-read');
     Route::post('avisos/marcar-todos-lidos', [AdminCompanyNoticeController::class, 'markAllRead'])->name('notices.mark-all-read');
+
+    Route::get('noticias', NewsFeedController::class)->name('news.feed');
 
     Route::middleware('admin.can:companies')->group(function () {
         Route::get('companies/{company}/rhid-metrics', [RhidPortfolioController::class, 'companyMetrics'])

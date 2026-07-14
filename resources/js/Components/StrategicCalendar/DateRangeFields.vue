@@ -58,7 +58,8 @@ function updateOccursOn(value) {
             v-if="!disableRecurrenceHint && !compact"
             class="text-xs text-gray-500 sm:col-span-2"
         >
-            Deixe em branco para um único dia. Use intervalo para feriados prolongados ou recessos.
+            Deixe em branco para um único dia (chip no dia, como no Google Agenda).
+            Com intervalo (ex.: 13/07 a 16/07), aparece a tirinha contínua cobrindo todos esses dias.
         </p>
         <p
             v-else-if="disableEndsOn && !compact"

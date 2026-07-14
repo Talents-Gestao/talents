@@ -16,6 +16,8 @@ const props = defineProps({
 
 const formatDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR') : '—');
 
+const canManage = computed(() => isDesligamentoAdminContext());
+
 const backHref = computed(() =>
     isDesligamentoAdminContext() ? route('admin.survey-templates.index') : desligamentoRoute('index'),
 );
@@ -34,7 +36,7 @@ const backLabel = computed(() => (isDesligamentoAdminContext() ? 'Mapeamentos' :
                 :title="interview.employee?.name ?? 'Pesquisa de desligamento'"
                 :subtitle="`Entrevista em ${formatDate(interview.interview_date)} · ${interview.status_label}`"
             >
-                <template #trailing>
+                <template v-if="canManage" #trailing>
                     <Link :href="desligamentoRoute('edit', interview.id)">
                         <PrimaryButton type="button">Editar</PrimaryButton>
                     </Link>
