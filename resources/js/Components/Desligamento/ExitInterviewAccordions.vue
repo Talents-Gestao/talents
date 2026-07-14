@@ -1,4 +1,5 @@
 <script setup>
+import DesligamentoCompanyPicker from '@/Components/Desligamento/DesligamentoCompanyPicker.vue';
 import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccordion.vue';
 import { desligamentoRoute } from '@/composables/useDesligamentoRoutes';
 import { Link } from '@inertiajs/vue3';
@@ -14,6 +15,9 @@ const props = defineProps({
     consultantNotes: { type: Object, default: null },
     interviews: { type: Object, default: null },
     showManage: { type: Boolean, default: false },
+    companyPicker: { type: Array, default: null },
+    activeCompanyId: { type: [Number, String], default: null },
+    needsCompanySelection: { type: Boolean, default: false },
     fieldClass: {
         type: String,
         default:
@@ -25,6 +29,10 @@ const emit = defineEmits(['remove']);
 
 const totalQuestions = computed(() =>
     props.sections.reduce((sum, section) => sum + (section.questions?.length ?? 0), 0),
+);
+
+const showCompanyPicker = computed(
+    () => props.mode === 'preview' && Array.isArray(props.companyPicker) && props.companyPicker.length > 0,
 );
 
 const isEditable = computed(() => props.mode === 'form');
@@ -54,6 +62,17 @@ const formatDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateStrin
         :meta="`${totalQuestions} perguntas`"
     >
         <div class="space-y-6 p-5">
+            <div v-if="showCompanyPicker && needsCompanySelection" class="mx-auto max-w-xl">
+                <DesligamentoCompanyPicker :companies="companyPicker" />
+            </div>
+
+            <DesligamentoCompanyPicker
+                v-else-if="showCompanyPicker && !needsCompanySelection"
+                compact
+                :companies="companyPicker"
+                :active-company-id="activeCompanyId"
+            />
+
             <div v-if="showManage" class="space-y-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <p class="text-sm text-slate-600">

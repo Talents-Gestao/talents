@@ -2,7 +2,6 @@
 import SidebarBrandMark from '@/Components/SidebarBrandMark.vue';
 import SidebarLayout from '@/Components/SidebarLayout.vue';
 import SidebarNavItem from '@/Components/SidebarNavItem.vue';
-import SidebarNavSection from '@/Components/SidebarNavSection.vue';
 import SidebarUserCard from '@/Components/SidebarUserCard.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { usePage } from '@inertiajs/vue3';
@@ -27,10 +26,6 @@ const { canAdmin } = useAdminPermissions();
 const page = usePage();
 const adminHomeUrl = computed(
     () => page.props.auth?.user?.admin_home_url ?? route('admin.dashboard'),
-);
-
-const showVozDoTime = computed(
-    () => canAdmin('survey_templates') || canAdmin('desligamento'),
 );
 
 const showComercial = computed(
@@ -213,20 +208,18 @@ const configuracaoActive = computed(
                 :compact="compact"
             />
 
-            <SidebarNavSection v-if="showVozDoTime" label="Voz do Time" :collapsed="collapsed">
-                <SidebarNavItem
-                    v-if="canAdmin('survey_templates') || canAdmin('desligamento')"
-                    :href="route('admin.survey-templates.index')"
-                    :active="
-                        route().current('admin.survey-templates.*') ||
-                        route().current('admin.desligamento.*')
-                    "
-                    :icon="MegaphoneIcon"
-                    label="Mapeamentos"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                />
-            </SidebarNavSection>
+            <SidebarNavItem
+                v-if="canAdmin('survey_templates') || canAdmin('desligamento')"
+                :href="route('admin.survey-templates.index')"
+                :active="
+                    route().current('admin.survey-templates.*') ||
+                    route().current('admin.desligamento.*')
+                "
+                :icon="MegaphoneIcon"
+                label="Mapeamentos"
+                :collapsed="collapsed"
+                :compact="compact"
+            />
 
             <SidebarNavItem
                 v-if="canAdmin('strategic_calendar')"

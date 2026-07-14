@@ -5,6 +5,7 @@ import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import { useStrategicCalendarTheme } from '@/composables/useStrategicCalendarTheme';
 import { kindTheme } from '@/utils/strategicCalendarThemes';
 import { isMultiDayRange } from '@/utils/strategicCalendarDate';
+import { packWeekSpanningSegments } from '@/utils/strategicCalendarMonthLanes';
 import {
     formatDateNumeric,
     formatRelativeAgendaHeader,
@@ -89,8 +90,16 @@ function hasRecurrence(item) {
     return Boolean(item?.recurrence || item?.recurrence_label);
 }
 
-function maxItemsVisibleInCell() {
+function maxSpanningLanes() {
     return props.compact ? 2 : 3;
+}
+
+function maxSingleDayChips() {
+    return props.compact ? 1 : 2;
+}
+
+function toDateIso(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 const monthPickerLabels = [
@@ -225,21 +234,44 @@ const weeks = computed(() => {
     const startPad = first.getDay();
     const daysInMonth = new Date(y, m, 0).getDate();
     const cells = [];
-    for (let i = 0; i < startPad; i++) {
-        cells.push({ day: null, iso: null, items: [] });
-    }
-    for (let d = 1; d <= daysInMonth; d++) {
-        const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+    for (let i = 0; i < startPad; i += 1) {
+        const date = new Date(y, m - 1, 1 - (startPad - i));
+        const iso = toDateIso(date);
         cells.push({
-            day: d,
+            day: null,
             iso,
+            inMonth: false,
             items: sortItemsByKind(itemsByDay.value[iso] ?? []),
             isToday: iso === todayIso.value,
         });
     }
-    while (cells.length % 7 !== 0) {
-        cells.push({ day: null, iso: null, items: [] });
+
+    for (let d = 1; d <= daysInMonth; d += 1) {
+        const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        cells.push({
+            day: d,
+            iso,
+            inMonth: true,
+            items: sortItemsByKind(itemsByDay.value[iso] ?? []),
+            isToday: iso === todayIso.value,
+        });
     }
+
+    while (cells.length % 7 !== 0) {
+        const previous = cells[cells.length - 1];
+        const date = new Date(`${previous.iso}T12:00:00`);
+        date.setDate(date.getDate() + 1);
+        const iso = toDateIso(date);
+        cells.push({
+            day: null,
+            iso,
+            inMonth: false,
+            items: sortItemsByKind(itemsByDay.value[iso] ?? []),
+            isToday: iso === todayIso.value,
+        });
+    }
+
     const rows = [];
     for (let i = 0; i < cells.length; i += 7) {
         rows.push(cells.slice(i, i + 7));
@@ -247,6 +279,22 @@ const weeks = computed(() => {
     return rows;
 });
 
+const weeksWithLanes = computed(() =>
+    weeks.value.map((row) => {
+        const packed = packWeekSpanningSegments(row, {
+            maxLanes: maxSpanningLanes(),
+            maxSinglePerCell: maxSingleDayChips(),
+        });
+
+        return {
+            cells: row,
+            segments: packed.segments,
+            laneCount: packed.laneCount,
+            singleDayByCol: packed.singleDayByCol,
+            moreByCol: packed.moreByCol,
+        };
+    }),
+);
 const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 const monthTitleCapitalized = computed(() => {
@@ -373,6 +421,32 @@ function onPickDay(cell) {
             emit('edit-day', cell.iso);
         }
     }
+}
+
+function onPickSpanningSegment(weekCells, segment) {
+    for (let col = segment.startCol; col <= segment.endCol; col += 1) {
+        const cell = weekCells[col];
+        if (cell?.day) {
+            onPickDay(cell);
+            return;
+        }
+    }
+}
+
+function spanningBarRadius(segment) {
+    const left = segment.continuesBefore ? '0' : '0.375rem';
+    const right = segment.continuesAfter ? '0' : '0.375rem';
+
+    return `${left} ${right} ${right} ${left}`;
+}
+
+function spanningBarStyle(segment) {
+    return {
+        ...itemChipStyle(segment.item),
+        gridColumn: `${segment.startCol + 1} / span ${segment.span}`,
+        marginTop: `${1.65 + segment.lane * 1.35}rem`,
+        borderRadius: spanningBarRadius(segment),
+    };
 }
 
 function openDayEditor() {
@@ -885,76 +959,116 @@ function itemShellClass(item) {
         <!-- Month + detail -->
         <div v-if="currentView === 'month'" :class="compact ? 'flex flex-col' : 'flex flex-col lg:flex-row'">
             <div class="min-w-0 flex-1" :class="rootPad">
-                <div role="grid" class="grid grid-cols-7 gap-px rounded-xl bg-slate-200/90 p-px">
-                    <div
-                        v-for="w in weekdayLabels"
-                        :key="w"
-                        class="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide sm:text-xs"
-                        :style="{
-                            backgroundColor: `${currentMonthTheme.background}99`,
-                            color: currentMonthTheme.color,
-                        }"
-                        role="columnheader"
-                    >
-                        {{ w }}
+                <div role="grid" class="overflow-hidden rounded-xl bg-slate-200/90 p-px">
+                    <div class="grid grid-cols-7 gap-px">
+                        <div
+                            v-for="w in weekdayLabels"
+                            :key="w"
+                            class="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide sm:text-xs"
+                            :style="{
+                                backgroundColor: `${currentMonthTheme.background}99`,
+                                color: currentMonthTheme.color,
+                            }"
+                            role="columnheader"
+                        >
+                            {{ w }}
+                        </div>
                     </div>
-                    <template v-for="(row, ri) in weeks" :key="ri">
-                        <template v-for="(cell, ci) in row" :key="`${ri}-${ci}`">
-                            <div class="bg-white" role="gridcell">
-                                <button
-                                    v-if="cell.day"
-                                    type="button"
-                                    :class="[monthCellClass(cell), cellMinH]"
-                                    :style="monthCellStyle(cell)"
-                                    @click="onPickDay(cell)"
+                    <div
+                        v-for="(week, ri) in weeksWithLanes"
+                        :key="ri"
+                        class="relative mt-px grid grid-cols-7 gap-px"
+                        role="row"
+                    >
+                        <div
+                            v-for="(cell, ci) in week.cells"
+                            :key="`${ri}-${ci}`"
+                            class="bg-white"
+                            role="gridcell"
+                        >
+                            <button
+                                v-if="cell.day"
+                                type="button"
+                                :class="[monthCellClass(cell), cellMinH]"
+                                :style="monthCellStyle(cell)"
+                                @click="onPickDay(cell)"
+                            >
+                                <BirthdayConfetti v-if="showFestiveEffects && dayHasBirthday(cell.items)" />
+                                <span
+                                    class="relative z-0 px-2 pt-1.5 text-xs font-semibold tabular-nums"
+                                    :class="
+                                        selectedDay === cell.day
+                                            ? ''
+                                            : cell.isToday
+                                              ? 'text-talents-700'
+                                              : 'text-slate-500'
+                                    "
+                                    :style="selectedDay === cell.day ? { color: currentMonthTheme.color } : {}"
                                 >
-                                    <BirthdayConfetti v-if="showFestiveEffects && dayHasBirthday(cell.items)" />
-                                    <span
-                                        class="px-2 pt-1.5 text-xs font-semibold tabular-nums"
-                                        :class="
-                                            selectedDay === cell.day
-                                                ? ''
-                                                : cell.isToday
-                                                  ? 'text-talents-700'
-                                                  : 'text-slate-500'
-                                        "
-                                        :style="selectedDay === cell.day ? { color: currentMonthTheme.color } : {}"
+                                    {{ cell.day }}
+                                </span>
+                                <div
+                                    class="relative z-0 flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5"
+                                    :style="{
+                                        paddingTop: `${Math.max(week.laneCount, 0) * 1.35 + (week.laneCount ? 0.15 : 0)}rem`,
+                                    }"
+                                >
+                                    <div
+                                        v-for="it in week.singleDayByCol[ci]"
+                                        :key="it.id"
+                                        class="flex min-w-0 items-center gap-0.5 rounded-md border px-1 py-0.5"
+                                        :class="it.completed ? 'opacity-75' : ''"
+                                        :style="itemChipStyle(it)"
+                                        :title="it.title"
                                     >
-                                        {{ cell.day }}
-                                    </span>
-                                    <div class="flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5">
-                                        <div
-                                            v-for="it in cell.items.slice(0, maxItemsVisibleInCell())"
-                                            :key="it.id"
-                                            class="flex min-w-0 items-center gap-0.5 rounded-md border px-1 py-0.5"
-                                            :class="it.completed ? 'opacity-75' : ''"
-                                            :style="itemChipStyle(it)"
-                                            :title="it.title"
-                                        >
-                                            <ArrowPathIcon
-                                                v-if="hasRecurrence(it)"
-                                                class="h-2.5 w-2.5 shrink-0 opacity-80"
-                                                aria-hidden="true"
-                                            />
-                                            <span
-                                                class="min-w-0 truncate text-[10px] font-semibold leading-tight"
-                                                :class="it.completed ? 'line-through opacity-80' : ''"
-                                            >
-                                                {{ it.title }}
-                                            </span>
-                                        </div>
+                                        <ArrowPathIcon
+                                            v-if="hasRecurrence(it)"
+                                            class="h-2.5 w-2.5 shrink-0 opacity-80"
+                                            aria-hidden="true"
+                                        />
                                         <span
-                                            v-if="cell.items.length > maxItemsVisibleInCell()"
-                                            class="px-0.5 text-[10px] font-semibold text-slate-500"
+                                            class="min-w-0 truncate text-[10px] font-semibold leading-tight"
+                                            :class="it.completed ? 'line-through opacity-80' : ''"
                                         >
-                                            +{{ cell.items.length - maxItemsVisibleInCell() }} mais
+                                            {{ it.title }}
                                         </span>
                                     </div>
-                                </button>
-                                <div v-else :class="['border-transparent', cellMinH]" />
-                            </div>
-                        </template>
-                    </template>
+                                    <span
+                                        v-if="week.moreByCol[ci] > 0"
+                                        class="px-0.5 text-[10px] font-semibold text-slate-500"
+                                    >
+                                        +{{ week.moreByCol[ci] }} mais
+                                    </span>
+                                </div>
+                            </button>
+                            <div v-else :class="['border-transparent bg-slate-50/40', cellMinH]" />
+                        </div>
+
+                        <div class="pointer-events-none absolute inset-0 z-10 grid grid-cols-7 gap-px">
+                            <button
+                                v-for="segment in week.segments"
+                                :key="segment.key"
+                                type="button"
+                                class="pointer-events-auto mx-0.5 flex h-5 min-w-0 items-center gap-0.5 self-start border px-1 text-left shadow-sm"
+                                :class="segment.item.completed ? 'opacity-75' : ''"
+                                :style="spanningBarStyle(segment)"
+                                :title="segment.item.title"
+                                @click.stop="onPickSpanningSegment(week.cells, segment)"
+                            >
+                                <ArrowPathIcon
+                                    v-if="hasRecurrence(segment.item)"
+                                    class="h-2.5 w-2.5 shrink-0 opacity-80"
+                                    aria-hidden="true"
+                                />
+                                <span
+                                    class="min-w-0 truncate text-[10px] font-semibold leading-tight"
+                                    :class="segment.item.completed ? 'line-through opacity-80' : ''"
+                                >
+                                    {{ segment.item.title }}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
