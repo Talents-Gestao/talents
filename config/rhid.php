@@ -175,4 +175,17 @@ return [
     */
     'default_schedule_tolerance_minutes' => (int) env('RHID_DEFAULT_SCHEDULE_TOLERANCE_MINUTES', 10),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Colaboradores fictícios (teste / local)
+    |--------------------------------------------------------------------------
+    |
+    | Quando a empresa não tem RHID configurado, devolve nomes de exemplo para
+    | selects de Feedbacks, Férias e Desligamento. Ativo em APP_ENV=local ou
+    | com RHID_DEMO_PERSONS=true. Nunca substitui a API se o RHID estiver ok.
+    |
+    */
+    'demo_persons' => filter_var(env('RHID_DEMO_PERSONS', false), FILTER_VALIDATE_BOOL)
+        || env('APP_ENV') === 'local',
+
 ];
