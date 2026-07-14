@@ -1,4 +1,5 @@
 <script setup>
+import NewsFeedDrawer from '@/Components/NewsFeedDrawer.vue';
 import NoticeBellDropdown from '@/Components/NoticeBellDropdown.vue';
 import { FolderIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 
@@ -60,6 +61,7 @@ defineProps({
             >
                 <FolderIcon class="h-6 w-6" />
             </button>
+            <NewsFeedDrawer />
             <NoticeBellDropdown />
         </div>
     </div>

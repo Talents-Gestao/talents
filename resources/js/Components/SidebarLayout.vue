@@ -1,5 +1,6 @@
 <script setup>
 import AppTopBar from '@/Components/AppTopBar.vue';
+import NewsFeedDrawer from '@/Components/NewsFeedDrawer.vue';
 import NoticeBellDropdown from '@/Components/NoticeBellDropdown.vue';
 import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline';
 import {
@@ -284,7 +285,8 @@ const hasAside = computed(() => Boolean(slots.aside));
                         <Bars3Icon class="h-6 w-6" />
                     </button>
                     <span class="text-sm font-semibold tracking-tight text-slate-900">Menu</span>
-                    <div class="ml-auto">
+                    <div class="ml-auto flex items-center gap-0.5">
+                        <NewsFeedDrawer />
                         <NoticeBellDropdown />
                     </div>
                 </div>

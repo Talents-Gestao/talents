@@ -6,6 +6,7 @@ use App\Actions\Notices\PublishStrategicCalendarChangeNotice;
 use App\Enums\CompanyNoticeEventKind;
 use App\Enums\StrategicCalendarItemKind;
 use App\Enums\StrategicCalendarRecurrence;
+use App\Enums\StrategicCalendarSource;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\StrategicCalendarItem;
@@ -129,6 +130,9 @@ class StrategicCalendarController extends Controller
         $companyIds = $data['company_ids'] ?? [];
         unset($data['company_ids']);
 
+        $data['source'] = StrategicCalendarSource::Talents;
+        $data['created_by'] = $request->user()?->id;
+
         $item = StrategicCalendarItem::query()->create($data);
         StrategicCalendarAudience::syncCompanies($item, $companyIds);
         $item->load(['companies', 'company']);
@@ -170,6 +174,8 @@ class StrategicCalendarController extends Controller
 
     public function updateDate(Request $request, StrategicCalendarItem $item, PublishStrategicCalendarChangeNotice $publishNotice): RedirectResponse
     {
+        abort_if($item->isCompanyAgenda(), 403, 'Itens da agenda interna da empresa só podem ser editados no portal do cliente.');
+
         $data = $request->validate([
             'occurs_on' => ['required', 'date'],
         ]);
@@ -203,9 +209,13 @@ class StrategicCalendarController extends Controller
 
     public function update(Request $request, StrategicCalendarItem $item, PublishStrategicCalendarChangeNotice $publishNotice): RedirectResponse
     {
+        abort_if($item->isCompanyAgenda(), 403, 'Itens da agenda interna da empresa só podem ser editados no portal do cliente.');
+
         $data = $this->validated($request);
         $companyIds = $data['company_ids'] ?? [];
         unset($data['company_ids']);
+
+        $data['source'] = StrategicCalendarSource::Talents;
 
         $item->update($data);
         StrategicCalendarAudience::syncCompanies($item, $companyIds);
@@ -219,6 +229,8 @@ class StrategicCalendarController extends Controller
 
     public function destroy(StrategicCalendarItem $item, Request $request, PublishStrategicCalendarChangeNotice $publishNotice): RedirectResponse
     {
+        abort_if($item->isCompanyAgenda(), 403, 'Itens da agenda interna da empresa só podem ser removidos no portal do cliente.');
+
         $publishNotice->handle($item, CompanyNoticeEventKind::Deleted, $request->user());
 
         $item->deleteAllAttachments();

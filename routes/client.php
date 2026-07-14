@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\NewsFeedController;
 use App\Http\Controllers\Client\ActionPlanController;
 use App\Http\Controllers\Client\ComplaintController;
 use App\Http\Controllers\Client\CompanyNoticeController as ClientCompanyNoticeController;
@@ -42,6 +43,8 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
     Route::get('avisos/recentes', [ClientCompanyNoticeController::class, 'recent'])->name('notices.recent');
     Route::post('avisos/{notice}/lido', [ClientCompanyNoticeController::class, 'markRead'])->name('notices.mark-read');
     Route::post('avisos/marcar-todos-lidos', [ClientCompanyNoticeController::class, 'markAllRead'])->name('notices.mark-all-read');
+
+    Route::get('noticias', NewsFeedController::class)->name('news.feed');
 
     Route::middleware(['company_admin', 'can.module:usuarios'])->group(function () {
         Route::resource('usuarios', UserController::class)->parameters(['usuarios' => 'user'])->except(['show']);
@@ -86,6 +89,9 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
 
     Route::middleware(['strategic_calendar', 'can.module:calendario_estrategico'])->group(function () {
         Route::get('calendario-estrategico', [ClientStrategicCalendarController::class, 'index'])->name('strategic-calendar.index');
+        Route::post('calendario-estrategico', [ClientStrategicCalendarController::class, 'store'])->name('strategic-calendar.store');
+        Route::put('calendario-estrategico/{item}', [ClientStrategicCalendarController::class, 'update'])->name('strategic-calendar.update');
+        Route::delete('calendario-estrategico/{item}', [ClientStrategicCalendarController::class, 'destroy'])->name('strategic-calendar.destroy');
         Route::patch('calendario-estrategico/{item}/conclusao', [ClientStrategicCalendarController::class, 'toggleCompletion'])
             ->name('strategic-calendar.toggle-completion');
         Route::patch('calendario-estrategico/tarefas/{card}/conclusao', [ClientStrategicCalendarController::class, 'toggleTaskCompletion'])

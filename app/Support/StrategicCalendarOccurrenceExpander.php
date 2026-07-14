@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\StrategicCalendarRecurrence;
 use App\Models\StrategicCalendarItem;
 use App\Support\StrategicCalendarAudience;
+use App\Enums\StrategicCalendarSource;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -189,6 +190,13 @@ class StrategicCalendarOccurrenceExpander
             'ends_on' => $item->ends_on?->toDateString(),
             'range_starts_on' => $item->occurs_on->toDateString(),
             'company_id' => $item->company_id,
+            'agenda' => $item->isCompanyAgenda()
+                ? StrategicCalendarSource::Company->value
+                : StrategicCalendarSource::Talents->value,
+            'agenda_label' => $item->isCompanyAgenda()
+                ? StrategicCalendarSource::Company->label()
+                : StrategicCalendarSource::Talents->label(),
+            'can_manage' => $item->isCompanyAgenda(),
             'company' => $item->relationLoaded('company') && $item->company
                 ? ['id' => $item->company->id, 'name' => $item->company->name]
                 : null,
