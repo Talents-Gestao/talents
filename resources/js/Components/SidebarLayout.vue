@@ -150,7 +150,13 @@ const collapsed = computed(() => {
     return !labelsVisible.value;
 });
 
-watch(collapsed, () => nextTick(updateScrollHints));
+watch(collapsed, (isCollapsed) => {
+    // Garante que todos os grupos fecham ao recolher (labels some / barra encolhe).
+    if (isCollapsed) {
+        openNavGroupId.value = null;
+    }
+    nextTick(updateScrollHints);
+});
 
 const asideWide = computed(() => asideHovered.value || mobileOpen.value);
 const compact = computed(() => !asideWide.value && !mobileOpen.value);

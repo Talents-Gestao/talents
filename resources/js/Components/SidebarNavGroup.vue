@@ -1,7 +1,7 @@
 <script setup>
 import { ChevronDownIcon } from '@heroicons/vue/24/outline';
 import { Link } from '@inertiajs/vue3';
-import { computed, inject, onMounted, ref, watch } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 
 const props = defineProps({
     label: {
@@ -34,7 +34,7 @@ const props = defineProps({
 const accordion = inject('sidebarNavAccordion', null);
 const groupId = props.label;
 
-const open = ref(props.active);
+const open = ref(false);
 
 const claimOpen = () => {
     accordion?.setOpenGroup(groupId);
@@ -45,6 +45,10 @@ const releaseOpen = () => {
 };
 
 const setOpen = (value) => {
+    if (value && props.collapsed) {
+        return;
+    }
+
     open.value = value;
     if (value) {
         claimOpen();
@@ -53,27 +57,23 @@ const setOpen = (value) => {
     }
 };
 
-onMounted(() => {
-    if (open.value) {
-        claimOpen();
-    }
-});
-
-watch(
-    () => props.active,
-    (isActive) => {
-        if (isActive) {
-            setOpen(true);
-        }
-    },
-);
-
 watch(
     () => props.collapsed,
     (isCollapsed) => {
         if (isCollapsed) {
-            setOpen(false);
-        } else if (props.active) {
+            open.value = false;
+            releaseOpen();
+        }
+        // Não reabre pelo fato da rota estar ativa — só por clique do utilizador.
+    },
+    { immediate: true },
+);
+
+watch(
+    () => props.active,
+    (isActive, wasActive) => {
+        // Só abre ao navegar para a secção, nunca ao recolher/expandir a barra.
+        if (isActive && wasActive === false && !props.collapsed) {
             setOpen(true);
         }
     },
@@ -155,8 +155,12 @@ const chevronClasses = computed(() => (open.value ? 'rotate-180' : ''));
         </button>
 
         <div
-            class="grid transition-[grid-template-rows,opacity,margin] duration-200 ease-in-out"
-            :class="submenuExpanded ? 'mt-0.5 grid-rows-[1fr] opacity-100' : 'mt-0 grid-rows-[0fr] opacity-0'"
+            class="grid transition-[grid-template-rows,opacity,margin] ease-in-out"
+            :class="[
+                submenuExpanded ? 'mt-0.5 grid-rows-[1fr] opacity-100 duration-200' : 'mt-0 grid-rows-[0fr] opacity-0',
+                collapsed ? 'pointer-events-none duration-75' : 'duration-200',
+            ]"
+            :aria-hidden="!submenuExpanded"
         >
             <div class="min-h-0 overflow-hidden">
                 <div class="space-y-0.5 border-l border-slate-200/80 pl-2 ml-4">
