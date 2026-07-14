@@ -24,18 +24,24 @@ class SendFeedbackSignatureInvites
     {
         $session->load(['employee', 'leader']);
 
-        $employee = $session->employee;
         $leader = $session->leader;
+        $employeeName = $session->collaboratorDisplayName();
+        $employeeEmail = $session->collaboratorEmail();
 
-        abort_unless($employee && $leader, 422, 'Colaborador ou líder inválido.');
+        abort_unless($leader, 422, 'Líder inválido.');
+        abort_unless(
+            filled($employeeEmail),
+            422,
+            'Colaborador sem e-mail no RHID/Control iD. Atualize o cadastro da pessoa ou complete o e-mail antes de enviar assinaturas.',
+        );
 
         $session->signatures()->delete();
 
         $pairs = [
             [
                 'role' => FeedbackSignatureRole::Employee,
-                'name' => $employee->name,
-                'email' => $employee->email,
+                'name' => $employeeName,
+                'email' => $employeeEmail,
             ],
             [
                 'role' => FeedbackSignatureRole::Leader,

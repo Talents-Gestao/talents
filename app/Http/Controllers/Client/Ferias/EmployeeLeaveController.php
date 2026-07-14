@@ -6,9 +6,9 @@ namespace App\Http\Controllers\Client\Ferias;
 
 use App\Enums\EmployeeLeaveStatus;
 use App\Http\Controllers\Concerns\ResolvesFeriasRoutes;
-use App\Models\CompanyEmployee;
 use App\Models\EmployeeLeave;
 use App\Support\Ferias\FeriasCompanyContext;
+use App\Support\Rhid\RhidPersonDirectory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -51,12 +51,16 @@ class EmployeeLeaveController extends FeriasCompanyController
 
         if ($request->filled('q')) {
             $term = '%'.mb_strtolower($request->string('q')->toString()).'%';
-            $query->whereHas(
-                'employee',
-                fn ($q) => $q
-                    ->whereRaw('LOWER(name) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(email) LIKE ?', [$term]),
-            );
+            $query->where(function ($q) use ($term) {
+                $q->whereRaw('LOWER(COALESCE(employee_name, \'\')) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(COALESCE(employee_email, \'\')) LIKE ?', [$term])
+                    ->orWhereHas(
+                        'employee',
+                        fn ($eq) => $eq
+                            ->whereRaw('LOWER(name) LIKE ?', [$term])
+                            ->orWhereRaw('LOWER(email) LIKE ?', [$term]),
+                    );
+            });
         }
 
         $leaves = $query->paginate(20)->withQueryString()->through(fn (EmployeeLeave $leave) => [
@@ -67,7 +71,7 @@ class EmployeeLeaveController extends FeriasCompanyController
             'status' => $leave->status->value,
             'status_label' => $leave->status->label(),
             'notes' => $leave->notes,
-            'employee' => $leave->employee?->only(['id', 'name', 'email']),
+            'employee' => $leave->collaboratorPayload(),
             'creator' => $leave->creator?->only(['id', 'name']),
         ]);
 
@@ -91,7 +95,7 @@ class EmployeeLeaveController extends FeriasCompanyController
         return Inertia::render('Client/Ferias/Form', [
             'mode' => 'create',
             'leave' => null,
-            ...$this->formOptions($company),
+            ...$this->formOptions($company, $request),
         ]);
     }
 
@@ -102,7 +106,10 @@ class EmployeeLeaveController extends FeriasCompanyController
 
         EmployeeLeave::query()->create([
             'company_id' => $company->id,
-            'company_employee_id' => $data['company_employee_id'],
+            'company_employee_id' => null,
+            'rhid_person_id' => $data['rhid_person_id'],
+            'employee_name' => $data['employee_name'],
+            'employee_email' => $data['employee_email'],
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
             'status' => $data['status'],
@@ -122,13 +129,13 @@ class EmployeeLeaveController extends FeriasCompanyController
             'mode' => 'edit',
             'leave' => [
                 'id' => $leave->id,
-                'company_employee_id' => $leave->company_employee_id,
+                'rhid_person_id' => $leave->rhid_person_id,
                 'start_date' => $leave->start_date?->toDateString(),
                 'end_date' => $leave->end_date?->toDateString(),
                 'status' => $leave->status->value,
                 'notes' => $leave->notes,
             ],
-            ...$this->formOptions($company),
+            ...$this->formOptions($company, $request),
         ]);
     }
 
@@ -139,7 +146,10 @@ class EmployeeLeaveController extends FeriasCompanyController
         $data = $this->validated($request, $company);
 
         $leave->update([
-            'company_employee_id' => $data['company_employee_id'],
+            'company_employee_id' => null,
+            'rhid_person_id' => $data['rhid_person_id'],
+            'employee_name' => $data['employee_name'],
+            'employee_email' => $data['employee_email'],
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
             'status' => $data['status'],
@@ -160,16 +170,19 @@ class EmployeeLeaveController extends FeriasCompanyController
     }
 
     /**
-     * @return array{employees: \Illuminate\Support\Collection<int, array{id: int, name: string}>, statusOptions: list<array{value: string, label: string}>}
+     * @return array{
+     *   employees: \Illuminate\Support\Collection<int, array{id: int, name: string, email: ?string}>,
+     *   rhidReady: bool,
+     *   statusOptions: list<array{value: string, label: string}>
+     * }
      */
-    private function formOptions(\App\Models\Company $company): array
+    private function formOptions(\App\Models\Company $company, Request $request): array
     {
+        $directory = app(RhidPersonDirectory::class);
+
         return [
-            'employees' => CompanyEmployee::query()
-                ->where('company_id', $company->id)
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get(['id', 'name']),
+            'employees' => $directory->activePersons($company, $request->user()),
+            'rhidReady' => $company->hasRhidEnabled() && $company->rhidConfigured(),
             'statusOptions' => $this->statusOptions(),
         ];
     }
@@ -189,25 +202,46 @@ class EmployeeLeaveController extends FeriasCompanyController
     }
 
     /**
-     * @return array{company_employee_id: int, start_date: string, end_date: string, status: string, notes: ?string}
+     * @return array{
+     *   rhid_person_id: int,
+     *   employee_name: string,
+     *   employee_email: ?string,
+     *   start_date: string,
+     *   end_date: string,
+     *   status: EmployeeLeaveStatus,
+     *   notes: ?string
+     * }
      */
     private function validated(Request $request, \App\Models\Company $company): array
     {
         $data = $request->validate([
-            'company_employee_id' => [
-                'required',
-                'integer',
-                Rule::exists('company_employees', 'id')->where(fn ($q) => $q->where('company_id', $company->id)),
-            ],
+            'rhid_person_id' => ['required', 'integer', 'min:1'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'status' => ['required', Rule::enum(EmployeeLeaveStatus::class)],
             'notes' => ['nullable', 'string', 'max:5000'],
+        ], [
+            'rhid_person_id.required' => 'Selecione um colaborador do RHID.',
+        ], [
+            'rhid_person_id' => 'colaborador',
         ]);
 
-        $data['status'] = EmployeeLeaveStatus::from($data['status']);
+        $person = app(RhidPersonDirectory::class)->findActive(
+            $company,
+            (int) $data['rhid_person_id'],
+            $request->user(),
+        );
+        abort_unless($person !== null, 422, 'Colaborador não encontrado nos ativos do RHID/Control iD.');
 
-        return $data;
+        return [
+            'rhid_person_id' => $person['id'],
+            'employee_name' => $person['name'],
+            'employee_email' => $person['email'],
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'],
+            'status' => EmployeeLeaveStatus::from($data['status']),
+            'notes' => $data['notes'] ?? null,
+        ];
     }
 
     private function authorizeLeave(\App\Models\Company $company, EmployeeLeave $leave): void

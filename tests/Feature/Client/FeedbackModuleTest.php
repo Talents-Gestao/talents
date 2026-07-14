@@ -37,7 +37,7 @@ class FeedbackModuleTest extends TestCase
             ->assertOk();
     }
 
-    public function test_company_admin_can_create_employee(): void
+    public function test_company_admin_employee_crud_redirects_to_feedbacks_index(): void
     {
         $company = Company::query()->create([
             'name' => 'Empresa Feedback',
@@ -52,12 +52,7 @@ class FeedbackModuleTest extends TestCase
                 'email' => 'maria@empresa.local',
                 'is_active' => true,
             ])
-            ->assertRedirect(route('client.feedbacks.employees.index'));
-
-        $this->assertDatabaseHas('company_employees', [
-            'company_id' => $company->id,
-            'email' => 'maria@empresa.local',
-        ]);
+            ->assertRedirect(route('client.feedbacks.index'));
     }
 
     public function test_cannot_access_other_company_employee(): void
@@ -78,7 +73,7 @@ class FeedbackModuleTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('client.feedbacks.employees.show', $employee))
-            ->assertForbidden();
+            ->assertRedirect(route('client.feedbacks.index'));
     }
 
     public function test_company_user_can_list_feedback_dashboard(): void
@@ -376,15 +371,17 @@ class FeedbackModuleTest extends TestCase
         $admin = User::factory()->companyAdmin($company->id)->create();
 
         $template = FeedbackTemplate::query()->whereNull('company_id')->firstOrFail();
-        $employee = CompanyEmployee::create([
-            'company_id' => $company->id,
-            'name' => 'Bruno Lima',
-            'email' => 'bruno@empresa.local',
-            'leader_user_id' => $admin->id,
-        ]);
+
+        $directory = \Mockery::mock(\App\Support\Rhid\RhidPersonDirectory::class);
+        $person = ['id' => 91, 'name' => 'Bruno Lima', 'email' => 'bruno@empresa.local'];
+        $directory->shouldReceive('activePersons')->andReturn(collect([$person]));
+        $directory->shouldReceive('findActive')->andReturnUsing(
+            fn ($c, $id) => (int) $id === 91 ? $person : null,
+        );
+        $this->app->instance(\App\Support\Rhid\RhidPersonDirectory::class, $directory);
 
         $payload = [
-            'company_employee_id' => $employee->id,
+            'rhid_person_id' => 91,
             'feedback_template_id' => $template->id,
             'leader_user_id' => $admin->id,
         ];
@@ -402,7 +399,8 @@ class FeedbackModuleTest extends TestCase
 
         $this->assertDatabaseHas('feedback_sessions', [
             'company_id' => $company->id,
-            'company_employee_id' => $employee->id,
+            'rhid_person_id' => 91,
+            'employee_name' => 'Bruno Lima',
             'leader_user_id' => $admin->id,
         ]);
     }

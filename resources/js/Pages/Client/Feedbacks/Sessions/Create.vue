@@ -7,16 +7,17 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { feedbackFieldClass } from '@/utils/feedbackStatus';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { Head, useForm } from '@inertiajs/vue3';
-import { computed, watch } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps({
-    employees: Array,
-    leaders: Array,
-    templates: Array,
+    employees: { type: Array, default: () => [] },
+    leaders: { type: Array, default: () => [] },
+    templates: { type: Array, default: () => [] },
+    rhidReady: { type: Boolean, default: false },
 });
 
 const form = useForm({
-    company_employee_id: props.employees[0]?.id ?? '',
+    rhid_person_id: props.employees[0]?.id ?? '',
     feedback_template_id: props.templates.find((t) => t.is_default)?.id ?? props.templates[0]?.id ?? '',
     leader_user_id: '',
     scheduled_at: '',
@@ -24,18 +25,16 @@ const form = useForm({
     title: '',
 });
 
-watch(
-    () => form.company_employee_id,
-    (id) => {
-        const emp = props.employees.find((e) => Number(e.id) === Number(id));
-        if (emp?.leader_user_id) {
-            form.leader_user_id = emp.leader_user_id;
-        }
-    },
-    { immediate: true },
+const canSubmit = computed(
+    () => Boolean(String(form.scheduled_at ?? '').trim()) && props.employees.length > 0,
 );
 
-const canSubmit = computed(() => Boolean(String(form.scheduled_at ?? '').trim()));
+const emptyHint = computed(() => {
+    if (!props.rhidReady) {
+        return 'Configure a integração RHID (Control iD) da empresa para listar colaboradores.';
+    }
+    return 'Nenhum colaborador ativo encontrado no RHID/Control iD.';
+});
 
 const submit = () => {
     if (!canSubmit.value) {
@@ -70,10 +69,12 @@ const submit = () => {
             <div class="space-y-5 p-6">
                 <div>
                     <InputLabel value="Colaborador" />
-                    <select v-model="form.company_employee_id" required :class="feedbackFieldClass">
+                    <select v-model="form.rhid_person_id" required :disabled="!employees.length" :class="feedbackFieldClass">
+                        <option value="" disabled>Selecione</option>
                         <option v-for="e in employees" :key="e.id" :value="e.id">{{ e.name }}</option>
                     </select>
-                    <InputError :message="form.errors.company_employee_id" />
+                    <InputError :message="form.errors.rhid_person_id" />
+                    <p v-if="!employees.length" class="mt-2 text-xs text-amber-700">{{ emptyHint }}</p>
                 </div>
                 <div>
                     <InputLabel value="Modelo" />

@@ -24,6 +24,7 @@ const props = defineProps({
     companyPicker: { type: Array, default: null },
     activeCompany: { type: Object, default: null },
     isAdminContext: { type: Boolean, default: false },
+    rhidCollaboratorsHref: { type: String, default: null },
 });
 
 const needsCompanySelection = computed(
@@ -120,12 +121,20 @@ const perceptionSeries = computed(() => {
                     </div>
                     <div class="flex flex-wrap gap-2 lg:justify-end">
                         <Link
-                            :href="feedbackRoute('employees.index')"
+                            v-if="rhidCollaboratorsHref"
+                            :href="rhidCollaboratorsHref"
                             class="inline-flex items-center gap-2 rounded-xl border border-talents-200 bg-white px-4 py-2.5 text-sm font-semibold text-talents-800 shadow-sm transition hover:border-talents-300 hover:bg-talents-50"
                         >
                             <UserGroupIcon class="h-4 w-4" />
-                            {{ isCompanyAdmin ? `Colaboradores (${employeeCount})` : `Minha equipe (${employeeCount})` }}
+                            {{ isCompanyAdmin ? `Colaboradores RHID (${employeeCount})` : `Equipe RHID (${employeeCount})` }}
                         </Link>
+                        <span
+                            v-else
+                            class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-600"
+                        >
+                            <UserGroupIcon class="h-4 w-4" />
+                            {{ isCompanyAdmin ? `Colaboradores (${employeeCount})` : `Minha equipe (${employeeCount})` }}
+                        </span>
                         <Link
                             :href="feedbackRoute('sessions.create')"
                             class="inline-flex items-center gap-2 rounded-xl bg-talents-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800"

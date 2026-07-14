@@ -7,7 +7,6 @@ namespace App\Http\Controllers\Client\Feedback;
 use App\Actions\Feedback\SendFeedbackSignatureInvites;
 use App\Enums\FeedbackSessionStatus;
 use App\Http\Controllers\Concerns\ResolvesFeedbackRoutes;
-use App\Models\CompanyEmployee;
 use App\Models\FeedbackSession;
 use App\Models\FeedbackSessionAnswer;
 use App\Models\FeedbackTemplate;
@@ -15,6 +14,7 @@ use App\Models\FeedbackTemplateQuestion;
 use App\Models\FeedbackTemplateSection;
 use App\Models\User;
 use App\Support\Feedback\FeedbackVisibility;
+use App\Support\Rhid\RhidPersonDirectory;
 use App\Services\Feedback\FeedbackPdfService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,28 +35,38 @@ class FeedbackSessionController extends FeedbackCompanyController
         )
             ->with(['employee', 'leader', 'template'])
             ->orderByDesc('id')
-            ->paginate(15);
+            ->paginate(15)
+            ->through(fn (FeedbackSession $session) => [
+                'id' => $session->id,
+                'title' => $session->title,
+                'status' => $session->status->value,
+                'status_label' => $session->status->label(),
+                'scheduled_at' => $session->scheduled_at?->toIso8601String(),
+                'employee' => $session->collaboratorPayload(),
+                'leader' => $session->leader?->only(['id', 'name', 'email']),
+                'template' => $session->template?->only(['id', 'title']),
+            ]);
 
         return Inertia::render('Client/Feedbacks/Sessions/Index', [
             'sessions' => $sessions,
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(Request $request, RhidPersonDirectory $directory): Response
     {
         $company = $this->company($request);
 
-        $employeesQuery = FeedbackVisibility::scopeEmployees(
-            CompanyEmployee::query()
-                ->where('company_id', $company->id)
-                ->where('is_active', true),
-            $request->user(),
-        );
+        $employees = $directory->activePersons($company, $request->user())
+            ->map(fn (array $person) => [
+                'id' => $person['id'],
+                'name' => $person['name'],
+                'email' => $person['email'],
+            ])
+            ->values();
 
         return Inertia::render('Client/Feedbacks/Sessions/Create', [
-            'employees' => $employeesQuery
-                ->orderBy('name')
-                ->get(['id', 'name', 'email', 'leader_user_id']),
+            'employees' => $employees,
+            'rhidReady' => $company->hasRhidEnabled() && $company->rhidConfigured(),
             'leaders' => User::query()
                 ->where('company_id', $company->id)
                 ->where('is_active', true)
@@ -66,22 +76,26 @@ class FeedbackSessionController extends FeedbackCompanyController
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, RhidPersonDirectory $directory): RedirectResponse
     {
         $company = $this->company($request);
         $data = $request->validate([
-            'company_employee_id' => ['required', 'exists:company_employees,id'],
+            'rhid_person_id' => ['required', 'integer', 'min:1'],
             'feedback_template_id' => ['required', 'exists:feedback_templates,id'],
             'leader_user_id' => ['required', 'exists:users,id'],
             'scheduled_at' => ['required', 'date'],
             'next_alignment_at' => ['nullable', 'date'],
             'title' => ['nullable', 'string', 'max:255'],
-        ], [], [
+        ], [
+            'rhid_person_id.required' => 'Selecione um colaborador do RHID.',
+        ], [
             'scheduled_at' => 'data do alinhamento',
+            'rhid_person_id' => 'colaborador',
         ]);
 
-        $employee = CompanyEmployee::query()->where('company_id', $company->id)->findOrFail($data['company_employee_id']);
-        FeedbackVisibility::authorizeEmployee($request->user(), $employee);
+        $person = $directory->findActive($company, (int) $data['rhid_person_id'], $request->user());
+        abort_unless($person !== null, 422, 'Colaborador não encontrado nos ativos do RHID/Control iD.');
+
         $template = FeedbackTemplate::query()->findOrFail($data['feedback_template_id']);
         abort_unless($this->templateAvailableToCompany($company, $template), 403);
 
@@ -92,10 +106,13 @@ class FeedbackSessionController extends FeedbackCompanyController
         $session = FeedbackSession::create([
             'company_id' => $company->id,
             'feedback_template_id' => $template->id,
-            'company_employee_id' => $employee->id,
+            'company_employee_id' => null,
+            'rhid_person_id' => $person['id'],
+            'employee_name' => $person['name'],
+            'employee_email' => $person['email'],
             'leader_user_id' => $data['leader_user_id'],
             'created_by_user_id' => $request->user()->id,
-            'title' => $data['title'] ?? 'Feedback — '.$employee->name,
+            'title' => $data['title'] ?? 'Feedback — '.$person['name'],
             'status' => FeedbackSessionStatus::InProgress,
             'scheduled_at' => $data['scheduled_at'],
             'next_alignment_at' => $data['next_alignment_at'] ?? null,
@@ -372,7 +389,7 @@ class FeedbackSessionController extends FeedbackCompanyController
             'scheduled_at' => $session->scheduled_at?->toIso8601String(),
             'next_alignment_at' => $session->next_alignment_at?->toIso8601String(),
             'completed_at' => $session->completed_at?->toIso8601String(),
-            'employee' => $session->employee,
+            'employee' => $session->collaboratorPayload(),
             'leader' => $session->leader?->only(['id', 'name', 'email']),
             'template' => $session->template,
             'answers' => $answers,

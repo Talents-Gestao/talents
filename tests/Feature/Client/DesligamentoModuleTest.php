@@ -6,9 +6,11 @@ namespace Tests\Feature\Client;
 
 use App\Enums\ExitInterviewStatus;
 use App\Models\Company;
-use App\Models\CompanyEmployee;
 use App\Models\ExitInterview;
+use App\Support\Rhid\RhidPersonDirectory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
+use Mockery;
 use Tests\TestCase;
 
 class DesligamentoModuleTest extends TestCase
@@ -25,12 +27,7 @@ class DesligamentoModuleTest extends TestCase
         $this->subscribeCompanyToNr1($company);
         $admin = \App\Models\User::factory()->companyAdmin($company->id)->create();
 
-        $employee = CompanyEmployee::query()->create([
-            'company_id' => $company->id,
-            'name' => 'Colaborador Saída',
-            'email' => 'saida@teste.local',
-            'is_active' => true,
-        ]);
+        $this->bindRhidPerson(77, 'Colaborador Saída', 'saida@teste.local');
 
         $this->withoutVite();
 
@@ -40,7 +37,7 @@ class DesligamentoModuleTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('client.desligamento.store'), [
-                'company_employee_id' => $employee->id,
+                'rhid_person_id' => 77,
                 'interview_date' => '2026-07-10',
                 'status' => ExitInterviewStatus::Completed->value,
                 'answers' => [
@@ -56,6 +53,8 @@ class DesligamentoModuleTest extends TestCase
 
         $interview = ExitInterview::query()->first();
         $this->assertNotNull($interview);
+        $this->assertSame(77, (int) $interview->rhid_person_id);
+        $this->assertSame('Colaborador Saída', $interview->employee_name);
         $this->assertSame('Experiência positiva no geral.', $interview->answers['q1']);
         $this->assertSame('Oportunidade externa.', $interview->consultant_notes['main_reasons']);
 
@@ -83,5 +82,18 @@ class DesligamentoModuleTest extends TestCase
         $this->actingAs($user)
             ->get(route('client.desligamento.index'))
             ->assertForbidden();
+    }
+
+    private function bindRhidPerson(int $id, string $name, string $email): void
+    {
+        $person = ['id' => $id, 'name' => $name, 'email' => $email];
+
+        $directory = Mockery::mock(RhidPersonDirectory::class);
+        $directory->shouldReceive('activePersons')->andReturn(new Collection([$person]));
+        $directory->shouldReceive('findActive')->andReturnUsing(
+            fn ($company, $personId) => (int) $personId === $id ? $person : null,
+        );
+
+        $this->app->instance(RhidPersonDirectory::class, $directory);
     }
 }

@@ -194,7 +194,7 @@ const remove = (id) => {
                 </div>
                 <ListEmptyState
                     v-if="!interviews.data?.length"
-                    message="Nenhuma pesquisa cadastrada. Cadastre colaboradores em Feedbacks internos, se ainda não existirem."
+                    message="Nenhuma pesquisa cadastrada. Os colaboradores vêm do RHID (Control iD)."
                 />
             </div>
         </template>

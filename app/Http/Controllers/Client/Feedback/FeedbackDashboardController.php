@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Client\Feedback;
 
-use App\Models\CompanyEmployee;
 use App\Models\FeedbackSession;
-use App\Services\Feedback\FeedbackTeamAnalyticsService;
 use App\Support\Feedback\FeedbackCompanyContext;
 use App\Support\Feedback\FeedbackVisibility;
+use App\Support\Rhid\RhidPersonDirectory;
+use App\Services\Feedback\FeedbackTeamAnalyticsService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class FeedbackDashboardController extends FeedbackCompanyController
 {
-    public function index(Request $request, FeedbackTeamAnalyticsService $analytics): Response
+    public function index(Request $request, FeedbackTeamAnalyticsService $analytics, RhidPersonDirectory $directory): Response
     {
         $context = app(FeedbackCompanyContext::class);
         $user = $request->user();
@@ -29,6 +29,7 @@ class FeedbackDashboardController extends FeedbackCompanyController
                 'companyPicker' => $context->availableCompanies(),
                 'activeCompany' => null,
                 'isAdminContext' => true,
+                'rhidCollaboratorsHref' => null,
             ]);
         }
 
@@ -42,20 +43,33 @@ class FeedbackDashboardController extends FeedbackCompanyController
 
         FeedbackVisibility::scopeSessions($sessionsQuery, $user);
 
-        $employeesQuery = CompanyEmployee::query()
-            ->where('company_id', $company->id)
-            ->where('is_active', true);
+        $employeeCount = $directory->activePersons($company, $user)->count();
+        $rhidHref = ($company->hasRhidEnabled() && $company->rhidConfigured() && ! $context->isAdminContext($request))
+            ? route('client.rhid.compliance.index')
+            : null;
 
-        FeedbackVisibility::scopeEmployees($employeesQuery, $user);
+        $recentSessions = $sessionsQuery->get()->map(function (FeedbackSession $session) {
+            return [
+                'id' => $session->id,
+                'title' => $session->title,
+                'status' => $session->status->value,
+                'status_label' => $session->status->label(),
+                'scheduled_at' => $session->scheduled_at?->toIso8601String(),
+                'employee' => $session->collaboratorPayload(),
+                'leader' => $session->leader?->only(['id', 'name', 'email']),
+                'template' => $session->template?->only(['id', 'title']),
+            ];
+        });
 
         return Inertia::render('Client/Feedbacks/Index', [
-            'recentSessions' => $sessionsQuery->get(),
+            'recentSessions' => $recentSessions,
             'analytics' => $analytics->forCompany($company, $user),
-            'employeeCount' => $employeesQuery->count(),
+            'employeeCount' => $employeeCount,
             'isCompanyAdmin' => FeedbackVisibility::actsAsCompanyAdmin($user),
             'companyPicker' => $context->isAdminContext($request) ? $context->availableCompanies() : null,
             'activeCompany' => $company->only(['id', 'name']),
             'isAdminContext' => $context->isAdminContext($request),
+            'rhidCollaboratorsHref' => $rhidHref,
         ]);
     }
 
