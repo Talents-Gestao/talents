@@ -12,7 +12,7 @@ use Illuminate\Support\Collection;
 use Throwable;
 
 /**
- * Lista colaboradores ativos do Control iD (RHID) para selects de Feedbacks / Férias / Desligamento.
+ * Lista colaboradores ativos do Control iD (RHID) para integrações e demos locais.
  */
 class RhidPersonDirectory
 {

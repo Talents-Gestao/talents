@@ -372,16 +372,9 @@ class FeedbackModuleTest extends TestCase
 
         $template = FeedbackTemplate::query()->whereNull('company_id')->firstOrFail();
 
-        $directory = \Mockery::mock(\App\Support\Rhid\RhidPersonDirectory::class);
-        $person = ['id' => 91, 'name' => 'Bruno Lima', 'email' => 'bruno@empresa.local'];
-        $directory->shouldReceive('activePersons')->andReturn(collect([$person]));
-        $directory->shouldReceive('findActive')->andReturnUsing(
-            fn ($c, $id) => (int) $id === 91 ? $person : null,
-        );
-        $this->app->instance(\App\Support\Rhid\RhidPersonDirectory::class, $directory);
-
         $payload = [
-            'rhid_person_id' => 91,
+            'employee_name' => 'Bruno Lima',
+            'employee_email' => 'bruno@empresa.local',
             'feedback_template_id' => $template->id,
             'leader_user_id' => $admin->id,
         ];
@@ -399,8 +392,9 @@ class FeedbackModuleTest extends TestCase
 
         $this->assertDatabaseHas('feedback_sessions', [
             'company_id' => $company->id,
-            'rhid_person_id' => 91,
+            'rhid_person_id' => null,
             'employee_name' => 'Bruno Lima',
+            'employee_email' => 'bruno@empresa.local',
             'leader_user_id' => $admin->id,
         ]);
     }

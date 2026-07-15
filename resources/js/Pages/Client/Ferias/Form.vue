@@ -7,12 +7,11 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { feriasRoute } from '@/composables/useFeriasRoutes';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const props = defineProps({
     mode: String,
     leave: Object,
-    employees: { type: Array, default: () => [] },
-    rhidReady: { type: Boolean, default: false },
     statusOptions: { type: Array, default: () => [] },
 });
 
@@ -20,21 +19,21 @@ const fieldClass =
     'mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/60';
 
 const form = useForm({
-    rhid_person_id: props.leave?.rhid_person_id ?? '',
+    employee_name: props.leave?.employee_name ?? '',
+    employee_email: props.leave?.employee_email ?? '',
     start_date: props.leave?.start_date ?? '',
     end_date: props.leave?.end_date ?? '',
     status: props.leave?.status ?? 'scheduled',
     notes: props.leave?.notes ?? '',
 });
 
-const emptyHint = () => {
-    if (!props.rhidReady) {
-        return 'Configure a integração RHID (Control iD) da empresa para listar colaboradores.';
-    }
-    return 'Nenhum colaborador ativo encontrado no RHID/Control iD.';
-};
+const canSubmit = computed(() => Boolean(String(form.employee_name ?? '').trim()));
 
 const submit = () => {
+    if (!canSubmit.value) {
+        return;
+    }
+
     if (props.mode === 'edit') {
         form.put(feriasRoute('update', props.leave.id));
     } else {
@@ -62,20 +61,29 @@ const submit = () => {
         >
             <div class="space-y-5 p-6">
                 <div>
-                    <InputLabel value="Colaborador" />
-                    <select
-                        v-model="form.rhid_person_id"
+                    <InputLabel value="Nome do colaborador" />
+                    <input
+                        v-model="form.employee_name"
+                        type="text"
                         required
-                        :disabled="!employees.length"
+                        maxlength="255"
                         :class="fieldClass"
-                    >
-                        <option value="" disabled>Selecione</option>
-                        <option v-for="employee in employees" :key="employee.id" :value="employee.id">
-                            {{ employee.name }}
-                        </option>
-                    </select>
-                    <InputError :message="form.errors.rhid_person_id" />
-                    <p v-if="!employees.length" class="mt-2 text-xs text-amber-700">{{ emptyHint() }}</p>
+                        placeholder="Ex.: Maria Silva"
+                        autocomplete="name"
+                    />
+                    <InputError :message="form.errors.employee_name" />
+                </div>
+
+                <div>
+                    <InputLabel value="E-mail (opcional)" />
+                    <input
+                        v-model="form.employee_email"
+                        type="email"
+                        maxlength="255"
+                        :class="fieldClass"
+                        autocomplete="email"
+                    />
+                    <InputError :message="form.errors.employee_email" />
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">
@@ -112,7 +120,7 @@ const submit = () => {
                 <Link :href="feriasRoute('index')">
                     <SecondaryButton type="button">Cancelar</SecondaryButton>
                 </Link>
-                <PrimaryButton type="submit" :disabled="form.processing || !employees.length">
+                <PrimaryButton type="submit" :disabled="form.processing || !canSubmit">
                     {{ mode === 'edit' ? 'Salvar' : 'Cadastrar' }}
                 </PrimaryButton>
             </div>

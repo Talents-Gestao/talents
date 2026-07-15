@@ -10,7 +10,6 @@ use App\Models\Company;
 use App\Models\ExitInterview;
 use App\Support\Desligamento\DesligamentoCompanyContext;
 use App\Support\Desligamento\ExitInterviewScript;
-use App\Support\Rhid\RhidPersonDirectory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -110,7 +109,7 @@ class ExitInterviewController extends DesligamentoCompanyController
         ExitInterview::query()->create([
             'company_id' => $company->id,
             'company_employee_id' => null,
-            'rhid_person_id' => $data['rhid_person_id'],
+            'rhid_person_id' => null,
             'employee_name' => $data['employee_name'],
             'employee_email' => $data['employee_email'],
             'interview_date' => $data['interview_date'],
@@ -155,7 +154,8 @@ class ExitInterviewController extends DesligamentoCompanyController
             'mode' => 'edit',
             'interview' => [
                 'id' => $interview->id,
-                'rhid_person_id' => $interview->rhid_person_id,
+                'employee_name' => $interview->employee_name,
+                'employee_email' => $interview->employee_email,
                 'interview_date' => $interview->interview_date?->toDateString(),
                 'status' => $interview->status->value,
                 'answers' => $interview->answers ?? [],
@@ -173,7 +173,7 @@ class ExitInterviewController extends DesligamentoCompanyController
 
         $interview->update([
             'company_employee_id' => null,
-            'rhid_person_id' => $data['rhid_person_id'],
+            'rhid_person_id' => null,
             'employee_name' => $data['employee_name'],
             'employee_email' => $data['employee_email'],
             'interview_date' => $data['interview_date'],
@@ -197,8 +197,6 @@ class ExitInterviewController extends DesligamentoCompanyController
 
     /**
      * @return array{
-     *   employees: \Illuminate\Support\Collection<int, array{id: int, name: string, email: ?string}>,
-     *   rhidReady: bool,
      *   statusOptions: list<array{value: string, label: string}>,
      *   sections: list<array{key: string, title: string, questions: list<array{key: string, body: string, hint?: string}>}>,
      *   consultantNoteFields: list<array{key: string, label: string}>
@@ -206,11 +204,7 @@ class ExitInterviewController extends DesligamentoCompanyController
      */
     private function formOptions(Company $company, Request $request): array
     {
-        $directory = app(RhidPersonDirectory::class);
-
         return [
-            'employees' => $directory->activePersons($company, $request->user()),
-            'rhidReady' => $company->hasRhidEnabled() && $company->rhidConfigured(),
             'statusOptions' => $this->statusOptions(),
             'sections' => ExitInterviewScript::sections(),
             'consultantNoteFields' => ExitInterviewScript::consultantNoteFields(),
@@ -233,7 +227,6 @@ class ExitInterviewController extends DesligamentoCompanyController
 
     /**
      * @return array{
-     *   rhid_person_id: int,
      *   employee_name: string,
      *   employee_email: ?string,
      *   interview_date: ?string,
@@ -255,25 +248,21 @@ class ExitInterviewController extends DesligamentoCompanyController
         }
 
         $data = $request->validate([
-            'rhid_person_id' => ['required', 'integer', 'min:1'],
+            'employee_name' => ['required', 'string', 'max:255'],
+            'employee_email' => ['nullable', 'email', 'max:255'],
             'interview_date' => ['nullable', 'date'],
             'status' => ['required', Rule::enum(ExitInterviewStatus::class)],
             'answers' => ['nullable', 'array'],
             'consultant_notes' => ['nullable', 'array'],
             ...$answerRules,
             ...$noteRules,
-        ], [
-            'rhid_person_id.required' => 'Selecione um colaborador do RHID.',
-        ], [
-            'rhid_person_id' => 'colaborador',
+        ], [], [
+            'employee_name' => 'nome do colaborador',
+            'employee_email' => 'e-mail do colaborador',
         ]);
 
-        $person = app(RhidPersonDirectory::class)->findActive(
-            $company,
-            (int) $data['rhid_person_id'],
-            $request->user(),
-        );
-        abort_unless($person !== null, 422, 'Colaborador não encontrado nos ativos do RHID/Control iD.');
+        $employeeName = trim($data['employee_name']);
+        $employeeEmail = isset($data['employee_email']) ? trim((string) $data['employee_email']) : '';
 
         $answers = [];
         foreach (ExitInterviewScript::answerKeys() as $key) {
@@ -292,9 +281,8 @@ class ExitInterviewController extends DesligamentoCompanyController
         }
 
         return [
-            'rhid_person_id' => $person['id'],
-            'employee_name' => $person['name'],
-            'employee_email' => $person['email'],
+            'employee_name' => $employeeName,
+            'employee_email' => $employeeEmail !== '' ? $employeeEmail : null,
             'interview_date' => $data['interview_date'] ?? null,
             'status' => ExitInterviewStatus::from($data['status']),
             'answers' => $answers === [] ? null : $answers,

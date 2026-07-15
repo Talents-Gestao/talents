@@ -8,7 +8,6 @@ use App\Enums\EmployeeLeaveStatus;
 use App\Http\Controllers\Concerns\ResolvesFeriasRoutes;
 use App\Models\EmployeeLeave;
 use App\Support\Ferias\FeriasCompanyContext;
-use App\Support\Rhid\RhidPersonDirectory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -107,7 +106,7 @@ class EmployeeLeaveController extends FeriasCompanyController
         EmployeeLeave::query()->create([
             'company_id' => $company->id,
             'company_employee_id' => null,
-            'rhid_person_id' => $data['rhid_person_id'],
+            'rhid_person_id' => null,
             'employee_name' => $data['employee_name'],
             'employee_email' => $data['employee_email'],
             'start_date' => $data['start_date'],
@@ -129,7 +128,8 @@ class EmployeeLeaveController extends FeriasCompanyController
             'mode' => 'edit',
             'leave' => [
                 'id' => $leave->id,
-                'rhid_person_id' => $leave->rhid_person_id,
+                'employee_name' => $leave->employee_name,
+                'employee_email' => $leave->employee_email,
                 'start_date' => $leave->start_date?->toDateString(),
                 'end_date' => $leave->end_date?->toDateString(),
                 'status' => $leave->status->value,
@@ -147,7 +147,7 @@ class EmployeeLeaveController extends FeriasCompanyController
 
         $leave->update([
             'company_employee_id' => null,
-            'rhid_person_id' => $data['rhid_person_id'],
+            'rhid_person_id' => null,
             'employee_name' => $data['employee_name'],
             'employee_email' => $data['employee_email'],
             'start_date' => $data['start_date'],
@@ -171,18 +171,12 @@ class EmployeeLeaveController extends FeriasCompanyController
 
     /**
      * @return array{
-     *   employees: \Illuminate\Support\Collection<int, array{id: int, name: string, email: ?string}>,
-     *   rhidReady: bool,
      *   statusOptions: list<array{value: string, label: string}>
      * }
      */
     private function formOptions(\App\Models\Company $company, Request $request): array
     {
-        $directory = app(RhidPersonDirectory::class);
-
         return [
-            'employees' => $directory->activePersons($company, $request->user()),
-            'rhidReady' => $company->hasRhidEnabled() && $company->rhidConfigured(),
             'statusOptions' => $this->statusOptions(),
         ];
     }
@@ -203,7 +197,6 @@ class EmployeeLeaveController extends FeriasCompanyController
 
     /**
      * @return array{
-     *   rhid_person_id: int,
      *   employee_name: string,
      *   employee_email: ?string,
      *   start_date: string,
@@ -215,28 +208,23 @@ class EmployeeLeaveController extends FeriasCompanyController
     private function validated(Request $request, \App\Models\Company $company): array
     {
         $data = $request->validate([
-            'rhid_person_id' => ['required', 'integer', 'min:1'],
+            'employee_name' => ['required', 'string', 'max:255'],
+            'employee_email' => ['nullable', 'email', 'max:255'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'status' => ['required', Rule::enum(EmployeeLeaveStatus::class)],
             'notes' => ['nullable', 'string', 'max:5000'],
-        ], [
-            'rhid_person_id.required' => 'Selecione um colaborador do RHID.',
-        ], [
-            'rhid_person_id' => 'colaborador',
+        ], [], [
+            'employee_name' => 'nome do colaborador',
+            'employee_email' => 'e-mail do colaborador',
         ]);
 
-        $person = app(RhidPersonDirectory::class)->findActive(
-            $company,
-            (int) $data['rhid_person_id'],
-            $request->user(),
-        );
-        abort_unless($person !== null, 422, 'Colaborador não encontrado nos ativos do RHID/Control iD.');
+        $employeeName = trim($data['employee_name']);
+        $employeeEmail = isset($data['employee_email']) ? trim((string) $data['employee_email']) : '';
 
         return [
-            'rhid_person_id' => $person['id'],
-            'employee_name' => $person['name'],
-            'employee_email' => $person['email'],
+            'employee_name' => $employeeName,
+            'employee_email' => $employeeEmail !== '' ? $employeeEmail : null,
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
             'status' => EmployeeLeaveStatus::from($data['status']),
