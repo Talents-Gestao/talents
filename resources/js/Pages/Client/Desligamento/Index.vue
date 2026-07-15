@@ -21,7 +21,7 @@ const props = defineProps({
 const page = usePage();
 const flashSuccess = computed(() => page.props.flash?.success);
 const needsPicker = computed(() => props.isAdminContext && !props.activeCompany);
-const canManage = computed(() => props.isAdminContext);
+const canManage = computed(() => !needsPicker.value);
 
 const headerSubtitle = computed(() => {
     if (props.activeCompany) {
@@ -30,13 +30,13 @@ const headerSubtitle = computed(() => {
     if (props.isAdminContext) {
         return 'Roteiro preenchido presencialmente com o colaborador';
     }
-    return 'Consulta das entrevistas de desligamento realizadas pela Talents';
+    return 'Registre e acompanhe as entrevistas de desligamento da empresa';
 });
 
 const emptyMessage = computed(() =>
     props.isAdminContext
-        ? 'Nenhuma pesquisa cadastrada. Os colaboradores vêm do RHID (Control iD).'
-        : 'Nenhuma pesquisa de desligamento disponível para consulta.',
+        ? 'Nenhuma pesquisa cadastrada ainda para esta empresa.'
+        : 'Nenhuma pesquisa de desligamento cadastrada. Clique em «Nova pesquisa» para começar.',
 );
 
 const localFilters = reactive({

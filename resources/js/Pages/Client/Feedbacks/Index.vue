@@ -12,19 +12,16 @@ import {
     ChartBarIcon,
     ChatBubbleLeftRightIcon,
     CheckCircleIcon,
-    UserGroupIcon,
 } from '@heroicons/vue/24/outline';
 import { computed } from 'vue';
 
 const props = defineProps({
     recentSessions: { type: Array, default: () => [] },
     analytics: { type: Object, default: () => ({}) },
-    employeeCount: { type: Number, default: 0 },
     isCompanyAdmin: { type: Boolean, default: false },
     companyPicker: { type: Array, default: null },
     activeCompany: { type: Object, default: null },
     isAdminContext: { type: Boolean, default: false },
-    rhidCollaboratorsHref: { type: String, default: null },
 });
 
 const needsCompanySelection = computed(
@@ -121,21 +118,6 @@ const perceptionSeries = computed(() => {
                     </div>
                     <div class="flex flex-wrap gap-2 lg:justify-end">
                         <Link
-                            v-if="rhidCollaboratorsHref"
-                            :href="rhidCollaboratorsHref"
-                            class="inline-flex items-center gap-2 rounded-xl border border-talents-200 bg-white px-4 py-2.5 text-sm font-semibold text-talents-800 shadow-sm transition hover:border-talents-300 hover:bg-talents-50"
-                        >
-                            <UserGroupIcon class="h-4 w-4" />
-                            {{ isCompanyAdmin ? `Colaboradores RHID (${employeeCount})` : `Equipe RHID (${employeeCount})` }}
-                        </Link>
-                        <span
-                            v-else
-                            class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-600"
-                        >
-                            <UserGroupIcon class="h-4 w-4" />
-                            {{ isCompanyAdmin ? `Colaboradores (${employeeCount})` : `Minha equipe (${employeeCount})` }}
-                        </span>
-                        <Link
                             :href="feedbackRoute('sessions.create')"
                             class="inline-flex items-center gap-2 rounded-xl bg-talents-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800"
                         >
@@ -154,10 +136,7 @@ const perceptionSeries = computed(() => {
                 class="mt-6"
             />
 
-            <div class="mt-8 grid gap-4 sm:grid-cols-3">
-                <StatCard :label="isCompanyAdmin ? 'Colaboradores' : 'Minha equipe'" :value="employeeCount" :interactive="false">
-                    <template #icon><UserGroupIcon class="h-6 w-6" /></template>
-                </StatCard>
+            <div class="mt-8 grid gap-4 sm:grid-cols-2">
                 <StatCard label="Feedbacks recentes" :value="recentSessions.length" :interactive="false">
                     <template #icon><ChartBarIcon class="h-6 w-6" /></template>
                 </StatCard>
@@ -247,7 +226,7 @@ const perceptionSeries = computed(() => {
                 >
                     <ChatBubbleLeftRightIcon class="mx-auto h-10 w-10 text-talents-300" />
                     <p class="mt-3 text-sm font-medium text-talents-900">Nenhum feedback registrado ainda</p>
-                    <p class="mt-1 text-sm text-slate-600">Comece cadastrando um colaborador e abrindo o primeiro alinhamento.</p>
+                    <p class="mt-1 text-sm text-slate-600">Informe o nome do colaborador e abra o primeiro alinhamento.</p>
                     <Link
                         :href="feedbackRoute('sessions.create')"
                         class="mt-4 inline-flex rounded-xl bg-talents-700 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-800"

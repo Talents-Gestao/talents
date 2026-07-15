@@ -17,7 +17,7 @@ class DesligamentoModuleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_company_admin_can_view_exit_interviews_but_cannot_mutate(): void
+    public function test_company_admin_can_crud_exit_interviews(): void
     {
         $company = Company::query()->create([
             'name' => 'Empresa Desligamento',
@@ -27,18 +27,6 @@ class DesligamentoModuleTest extends TestCase
         $this->subscribeCompanyToNr1($company);
         $admin = \App\Models\User::factory()->companyAdmin($company->id)->create();
 
-        $interview = ExitInterview::query()->create([
-            'company_id' => $company->id,
-            'rhid_person_id' => 77,
-            'employee_name' => 'Colaborador Saída',
-            'employee_email' => 'saida@teste.local',
-            'interview_date' => '2026-07-10',
-            'status' => ExitInterviewStatus::Completed,
-            'answers' => ['q1' => 'Experiência positiva no geral.'],
-            'consultant_notes' => ['main_reasons' => 'Oportunidade externa.'],
-            'created_by' => $admin->id,
-        ]);
-
         $this->withoutVite();
 
         $this->actingAs($admin)
@@ -46,16 +34,51 @@ class DesligamentoModuleTest extends TestCase
             ->assertOk();
 
         $this->actingAs($admin)
+            ->get(route('client.desligamento.create'))
+            ->assertOk();
+
+        $this->actingAs($admin)
+            ->post(route('client.desligamento.store'), [
+                'employee_name' => 'Colaborador Saída',
+                'employee_email' => 'saida@teste.local',
+                'interview_date' => '2026-07-10',
+                'status' => ExitInterviewStatus::Completed->value,
+                'answers' => ['q1' => 'Experiência positiva no geral.'],
+                'consultant_notes' => ['main_reasons' => 'Oportunidade externa.'],
+            ])
+            ->assertRedirect(route('client.desligamento.index'));
+
+        $interview = ExitInterview::query()->first();
+        $this->assertNotNull($interview);
+        $this->assertSame('Colaborador Saída', $interview->employee_name);
+        $this->assertNull($interview->rhid_person_id);
+
+        $this->actingAs($admin)
             ->get(route('client.desligamento.show', $interview))
             ->assertOk();
 
-        $this->assertFalse(\Illuminate\Support\Facades\Route::has('client.desligamento.store'));
-        $this->assertFalse(\Illuminate\Support\Facades\Route::has('client.desligamento.destroy'));
-        $this->assertFalse(\Illuminate\Support\Facades\Route::has('client.desligamento.create'));
-        $this->assertFalse(\Illuminate\Support\Facades\Route::has('client.desligamento.edit'));
-        $this->assertFalse(\Illuminate\Support\Facades\Route::has('client.desligamento.update'));
+        $this->actingAs($admin)
+            ->get(route('client.desligamento.edit', $interview))
+            ->assertOk();
 
-        $this->assertDatabaseHas('exit_interviews', ['id' => $interview->id]);
+        $this->actingAs($admin)
+            ->put(route('client.desligamento.update', $interview), [
+                'employee_name' => 'Colaborador Saída Atualizado',
+                'employee_email' => 'saida@teste.local',
+                'interview_date' => '2026-07-11',
+                'status' => ExitInterviewStatus::Draft->value,
+                'answers' => ['q1' => 'Atualizado.'],
+                'consultant_notes' => ['main_reasons' => 'Mudança de cidade.'],
+            ])
+            ->assertRedirect(route('client.desligamento.index'));
+
+        $this->assertSame('Colaborador Saída Atualizado', $interview->fresh()->employee_name);
+
+        $this->actingAs($admin)
+            ->delete(route('client.desligamento.destroy', $interview))
+            ->assertRedirect(route('client.desligamento.index'));
+
+        $this->assertDatabaseMissing('exit_interviews', ['id' => $interview->id]);
     }
 
     public function test_company_user_with_view_permission_can_read_desligamento(): void
@@ -76,7 +99,6 @@ class DesligamentoModuleTest extends TestCase
 
         $interview = ExitInterview::query()->create([
             'company_id' => $company->id,
-            'rhid_person_id' => 88,
             'employee_name' => 'Colaborador Vista',
             'employee_email' => 'vista@teste.local',
             'interview_date' => '2026-07-11',
@@ -95,6 +117,13 @@ class DesligamentoModuleTest extends TestCase
         $this->actingAs($user)
             ->get(route('client.desligamento.show', $interview))
             ->assertOk();
+
+        $this->actingAs($user)
+            ->post(route('client.desligamento.store'), [
+                'employee_name' => 'Sem permissão',
+                'status' => ExitInterviewStatus::Draft->value,
+            ])
+            ->assertForbidden();
     }
 
     public function test_company_user_without_permission_cannot_access_desligamento(): void

@@ -7,10 +7,7 @@ namespace Tests\Feature\Client;
 use App\Enums\EmployeeLeaveStatus;
 use App\Models\Company;
 use App\Models\EmployeeLeave;
-use App\Support\Rhid\RhidPersonDirectory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Collection;
-use Mockery;
 use Tests\TestCase;
 
 class FeriasModuleTest extends TestCase
@@ -27,8 +24,6 @@ class FeriasModuleTest extends TestCase
         $this->subscribeCompanyToNr1($company);
         $admin = \App\Models\User::factory()->companyAdmin($company->id)->create();
 
-        $this->bindRhidPerson(42, 'Colaborador Férias', 'colab-ferias@teste.local');
-
         $this->withoutVite();
 
         $this->actingAs($admin)
@@ -37,7 +32,8 @@ class FeriasModuleTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('client.ferias.store'), [
-                'rhid_person_id' => 42,
+                'employee_name' => 'Colaborador Férias',
+                'employee_email' => 'colab-ferias@teste.local',
                 'start_date' => '2026-08-01',
                 'end_date' => '2026-08-15',
                 'status' => EmployeeLeaveStatus::Scheduled->value,
@@ -47,13 +43,14 @@ class FeriasModuleTest extends TestCase
 
         $leave = EmployeeLeave::query()->first();
         $this->assertNotNull($leave);
-        $this->assertSame(42, (int) $leave->rhid_person_id);
+        $this->assertNull($leave->rhid_person_id);
         $this->assertSame('Colaborador Férias', $leave->employee_name);
         $this->assertSame(15, $leave->daysCount());
 
         $this->actingAs($admin)
             ->put(route('client.ferias.update', $leave), [
-                'rhid_person_id' => 42,
+                'employee_name' => 'Colaborador Férias',
+                'employee_email' => 'colab-ferias@teste.local',
                 'start_date' => '2026-08-01',
                 'end_date' => '2026-08-20',
                 'status' => EmployeeLeaveStatus::InProgress->value,
@@ -83,18 +80,5 @@ class FeriasModuleTest extends TestCase
         $this->actingAs($user)
             ->get(route('client.ferias.index'))
             ->assertForbidden();
-    }
-
-    private function bindRhidPerson(int $id, string $name, string $email): void
-    {
-        $person = ['id' => $id, 'name' => $name, 'email' => $email];
-
-        $directory = Mockery::mock(RhidPersonDirectory::class);
-        $directory->shouldReceive('activePersons')->andReturn(new Collection([$person]));
-        $directory->shouldReceive('findActive')->andReturnUsing(
-            fn ($company, $personId) => (int) $personId === $id ? $person : null,
-        );
-
-        $this->app->instance(RhidPersonDirectory::class, $directory);
     }
 }

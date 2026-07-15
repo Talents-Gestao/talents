@@ -14,7 +14,6 @@ use App\Models\FeedbackTemplateQuestion;
 use App\Models\FeedbackTemplateSection;
 use App\Models\User;
 use App\Support\Feedback\FeedbackVisibility;
-use App\Support\Rhid\RhidPersonDirectory;
 use App\Services\Feedback\FeedbackPdfService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -52,21 +51,11 @@ class FeedbackSessionController extends FeedbackCompanyController
         ]);
     }
 
-    public function create(Request $request, RhidPersonDirectory $directory): Response
+    public function create(Request $request): Response
     {
         $company = $this->company($request);
 
-        $employees = $directory->activePersons($company, $request->user())
-            ->map(fn (array $person) => [
-                'id' => $person['id'],
-                'name' => $person['name'],
-                'email' => $person['email'],
-            ])
-            ->values();
-
         return Inertia::render('Client/Feedbacks/Sessions/Create', [
-            'employees' => $employees,
-            'rhidReady' => $company->hasRhidEnabled() && $company->rhidConfigured(),
             'leaders' => User::query()
                 ->where('company_id', $company->id)
                 ->where('is_active', true)
@@ -76,25 +65,26 @@ class FeedbackSessionController extends FeedbackCompanyController
         ]);
     }
 
-    public function store(Request $request, RhidPersonDirectory $directory): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $company = $this->company($request);
         $data = $request->validate([
-            'rhid_person_id' => ['required', 'integer', 'min:1'],
+            'employee_name' => ['required', 'string', 'max:255'],
+            'employee_email' => ['nullable', 'email', 'max:255'],
             'feedback_template_id' => ['required', 'exists:feedback_templates,id'],
             'leader_user_id' => ['required', 'exists:users,id'],
             'scheduled_at' => ['required', 'date'],
             'next_alignment_at' => ['nullable', 'date'],
             'title' => ['nullable', 'string', 'max:255'],
-        ], [
-            'rhid_person_id.required' => 'Selecione um colaborador do RHID.',
-        ], [
+        ], [], [
+            'employee_name' => 'nome do colaborador',
+            'employee_email' => 'e-mail do colaborador',
             'scheduled_at' => 'data do alinhamento',
-            'rhid_person_id' => 'colaborador',
         ]);
 
-        $person = $directory->findActive($company, (int) $data['rhid_person_id'], $request->user());
-        abort_unless($person !== null, 422, 'Colaborador não encontrado nos ativos do RHID/Control iD.');
+        $employeeName = trim($data['employee_name']);
+        $employeeEmail = isset($data['employee_email']) ? trim((string) $data['employee_email']) : '';
+        $employeeEmail = $employeeEmail !== '' ? $employeeEmail : null;
 
         $template = FeedbackTemplate::query()->findOrFail($data['feedback_template_id']);
         abort_unless($this->templateAvailableToCompany($company, $template), 403);
@@ -107,12 +97,12 @@ class FeedbackSessionController extends FeedbackCompanyController
             'company_id' => $company->id,
             'feedback_template_id' => $template->id,
             'company_employee_id' => null,
-            'rhid_person_id' => $person['id'],
-            'employee_name' => $person['name'],
-            'employee_email' => $person['email'],
+            'rhid_person_id' => null,
+            'employee_name' => $employeeName,
+            'employee_email' => $employeeEmail,
             'leader_user_id' => $data['leader_user_id'],
             'created_by_user_id' => $request->user()->id,
-            'title' => $data['title'] ?? 'Feedback — '.$person['name'],
+            'title' => $data['title'] ?? 'Feedback — '.$employeeName,
             'status' => FeedbackSessionStatus::InProgress,
             'scheduled_at' => $data['scheduled_at'],
             'next_alignment_at' => $data['next_alignment_at'] ?? null,

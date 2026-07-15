@@ -7,7 +7,6 @@ namespace App\Http\Controllers\Client\Feedback;
 use App\Models\FeedbackSession;
 use App\Support\Feedback\FeedbackCompanyContext;
 use App\Support\Feedback\FeedbackVisibility;
-use App\Support\Rhid\RhidPersonDirectory;
 use App\Services\Feedback\FeedbackTeamAnalyticsService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,7 +14,7 @@ use Inertia\Response;
 
 class FeedbackDashboardController extends FeedbackCompanyController
 {
-    public function index(Request $request, FeedbackTeamAnalyticsService $analytics, RhidPersonDirectory $directory): Response
+    public function index(Request $request, FeedbackTeamAnalyticsService $analytics): Response
     {
         $context = app(FeedbackCompanyContext::class);
         $user = $request->user();
@@ -24,12 +23,10 @@ class FeedbackDashboardController extends FeedbackCompanyController
             return Inertia::render('Client/Feedbacks/Index', [
                 'recentSessions' => [],
                 'analytics' => $this->emptyAnalytics(),
-                'employeeCount' => 0,
                 'isCompanyAdmin' => true,
                 'companyPicker' => $context->availableCompanies(),
                 'activeCompany' => null,
                 'isAdminContext' => true,
-                'rhidCollaboratorsHref' => null,
             ]);
         }
 
@@ -42,11 +39,6 @@ class FeedbackDashboardController extends FeedbackCompanyController
             ->limit(10);
 
         FeedbackVisibility::scopeSessions($sessionsQuery, $user);
-
-        $employeeCount = $directory->activePersons($company, $user)->count();
-        $rhidHref = ($company->hasRhidEnabled() && $company->rhidConfigured() && ! $context->isAdminContext($request))
-            ? route('client.rhid.compliance.index')
-            : null;
 
         $recentSessions = $sessionsQuery->get()->map(function (FeedbackSession $session) {
             return [
@@ -64,12 +56,10 @@ class FeedbackDashboardController extends FeedbackCompanyController
         return Inertia::render('Client/Feedbacks/Index', [
             'recentSessions' => $recentSessions,
             'analytics' => $analytics->forCompany($company, $user),
-            'employeeCount' => $employeeCount,
             'isCompanyAdmin' => FeedbackVisibility::actsAsCompanyAdmin($user),
             'companyPicker' => $context->isAdminContext($request) ? $context->availableCompanies() : null,
             'activeCompany' => $company->only(['id', 'name']),
             'isAdminContext' => $context->isAdminContext($request),
-            'rhidCollaboratorsHref' => $rhidHref,
         ]);
     }
 
@@ -81,7 +71,7 @@ class FeedbackDashboardController extends FeedbackCompanyController
      *   timeline: array{labels: list<string>, series: list<int>},
      *   strengths: list<string>,
      *   weaknesses: list<string>,
-     *   completed_count: int,
+     *   completed_count: int
      * }
      */
     private function emptyAnalytics(): array

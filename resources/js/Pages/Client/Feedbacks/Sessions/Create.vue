@@ -10,14 +10,13 @@ import { Head, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const props = defineProps({
-    employees: { type: Array, default: () => [] },
     leaders: { type: Array, default: () => [] },
     templates: { type: Array, default: () => [] },
-    rhidReady: { type: Boolean, default: false },
 });
 
 const form = useForm({
-    rhid_person_id: props.employees[0]?.id ?? '',
+    employee_name: '',
+    employee_email: '',
     feedback_template_id: props.templates.find((t) => t.is_default)?.id ?? props.templates[0]?.id ?? '',
     leader_user_id: '',
     scheduled_at: '',
@@ -26,15 +25,10 @@ const form = useForm({
 });
 
 const canSubmit = computed(
-    () => Boolean(String(form.scheduled_at ?? '').trim()) && props.employees.length > 0,
+    () =>
+        Boolean(String(form.employee_name ?? '').trim()) &&
+        Boolean(String(form.scheduled_at ?? '').trim()),
 );
-
-const emptyHint = computed(() => {
-    if (!props.rhidReady) {
-        return 'Configure a integração RHID (Control iD) da empresa para listar colaboradores.';
-    }
-    return 'Nenhum colaborador ativo encontrado no RHID/Control iD.';
-});
 
 const submit = () => {
     if (!canSubmit.value) {
@@ -54,7 +48,7 @@ const submit = () => {
                 :back-href="feedbackRoute('index')"
                 back-label="Feedbacks"
                 title="Novo feedback"
-                subtitle="Escolha o colaborador e o modelo de alinhamento"
+                subtitle="Informe o colaborador e o modelo de alinhamento"
             />
         </template>
 
@@ -68,13 +62,32 @@ const submit = () => {
 
             <div class="space-y-5 p-6">
                 <div>
-                    <InputLabel value="Colaborador" />
-                    <select v-model="form.rhid_person_id" required :disabled="!employees.length" :class="feedbackFieldClass">
-                        <option value="" disabled>Selecione</option>
-                        <option v-for="e in employees" :key="e.id" :value="e.id">{{ e.name }}</option>
-                    </select>
-                    <InputError :message="form.errors.rhid_person_id" />
-                    <p v-if="!employees.length" class="mt-2 text-xs text-amber-700">{{ emptyHint }}</p>
+                    <InputLabel value="Nome do colaborador" />
+                    <input
+                        v-model="form.employee_name"
+                        type="text"
+                        required
+                        maxlength="255"
+                        :class="feedbackFieldClass"
+                        placeholder="Ex.: Maria Silva"
+                        autocomplete="name"
+                    />
+                    <InputError :message="form.errors.employee_name" />
+                </div>
+                <div>
+                    <InputLabel value="E-mail do colaborador (opcional)" />
+                    <input
+                        v-model="form.employee_email"
+                        type="email"
+                        maxlength="255"
+                        :class="feedbackFieldClass"
+                        placeholder="Para convite de assinatura digital"
+                        autocomplete="email"
+                    />
+                    <InputError :message="form.errors.employee_email" />
+                    <p class="mt-1.5 text-xs text-slate-500">
+                        Necessário apenas se for enviar o convite de assinatura por e-mail.
+                    </p>
                 </div>
                 <div>
                     <InputLabel value="Modelo" />

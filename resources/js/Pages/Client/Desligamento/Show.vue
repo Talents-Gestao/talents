@@ -16,7 +16,7 @@ const props = defineProps({
 
 const formatDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR') : '—');
 
-const canManage = computed(() => isDesligamentoAdminContext());
+const canManage = computed(() => true);
 
 const backHref = computed(() =>
     isDesligamentoAdminContext() ? route('admin.survey-templates.index') : desligamentoRoute('index'),

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Desligamento;
 
 /**
- * Roteiro fixo da Pesquisa de Desligamento (preenchimento presencial pelo admin).
+ * Roteiro fixo da Pesquisa de Desligamento (preenchimento presencial na empresa ou pela Talents).
  */
 final class ExitInterviewScript
 {

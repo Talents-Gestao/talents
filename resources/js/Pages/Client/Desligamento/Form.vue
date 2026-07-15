@@ -13,8 +13,6 @@ import { computed, reactive } from 'vue';
 const props = defineProps({
     mode: String,
     interview: Object,
-    employees: { type: Array, default: () => [] },
-    rhidReady: { type: Boolean, default: false },
     statusOptions: { type: Array, default: () => [] },
     sections: { type: Array, default: () => [] },
     consultantNoteFields: { type: Array, default: () => [] },
@@ -42,19 +40,15 @@ const emptyNotes = () => {
 };
 
 const form = useForm({
-    rhid_person_id: props.interview?.rhid_person_id ?? '',
+    employee_name: props.interview?.employee_name ?? '',
+    employee_email: props.interview?.employee_email ?? '',
     interview_date: props.interview?.interview_date ?? '',
     status: props.interview?.status ?? 'draft',
     answers: reactive(emptyAnswers()),
     consultant_notes: reactive(emptyNotes()),
 });
 
-const emptyHint = computed(() => {
-    if (!props.rhidReady) {
-        return 'Configure a integração RHID (Control iD) da empresa para listar colaboradores.';
-    }
-    return 'Nenhum colaborador ativo encontrado no RHID/Control iD.';
-});
+const canSubmit = computed(() => Boolean(String(form.employee_name ?? '').trim()));
 
 const backHref = computed(() =>
     isDesligamentoAdminContext() ? route('admin.survey-templates.index') : desligamentoRoute('index'),
@@ -63,6 +57,10 @@ const backHref = computed(() =>
 const backLabel = computed(() => (isDesligamentoAdminContext() ? 'Mapeamentos' : 'Desligamento'));
 
 const submit = () => {
+    if (!canSubmit.value) {
+        return;
+    }
+
     if (props.mode === 'edit') {
         form.put(desligamentoRoute('update', props.interview.id));
     } else {
@@ -89,20 +87,17 @@ const submit = () => {
                 <div class="space-y-5 p-6">
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div>
-                            <InputLabel value="Colaborador" />
-                            <select
-                                v-model="form.rhid_person_id"
+                            <InputLabel value="Nome do colaborador" />
+                            <input
+                                v-model="form.employee_name"
+                                type="text"
                                 required
-                                :disabled="!employees.length"
+                                maxlength="255"
                                 :class="fieldClass"
-                            >
-                                <option value="" disabled>Selecione</option>
-                                <option v-for="employee in employees" :key="employee.id" :value="employee.id">
-                                    {{ employee.name }}
-                                </option>
-                            </select>
-                            <InputError :message="form.errors.rhid_person_id" />
-                            <p v-if="!employees.length" class="mt-2 text-xs text-amber-700">{{ emptyHint }}</p>
+                                placeholder="Ex.: Maria Silva"
+                                autocomplete="name"
+                            />
+                            <InputError :message="form.errors.employee_name" />
                         </div>
                         <div>
                             <InputLabel value="Data da entrevista" />
@@ -110,14 +105,27 @@ const submit = () => {
                             <InputError :message="form.errors.interview_date" />
                         </div>
                     </div>
-                    <div class="max-w-xs">
-                        <InputLabel value="Status" />
-                        <select v-model="form.status" required :class="fieldClass">
-                            <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
-                                {{ opt.label }}
-                            </option>
-                        </select>
-                        <InputError :message="form.errors.status" />
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <InputLabel value="E-mail (opcional)" />
+                            <input
+                                v-model="form.employee_email"
+                                type="email"
+                                maxlength="255"
+                                :class="fieldClass"
+                                autocomplete="email"
+                            />
+                            <InputError :message="form.errors.employee_email" />
+                        </div>
+                        <div>
+                            <InputLabel value="Status" />
+                            <select v-model="form.status" required :class="fieldClass">
+                                <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
+                                    {{ opt.label }}
+                                </option>
+                            </select>
+                            <InputError :message="form.errors.status" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -135,7 +143,7 @@ const submit = () => {
                 <Link :href="backHref">
                     <SecondaryButton type="button">Cancelar</SecondaryButton>
                 </Link>
-                <PrimaryButton type="submit" :disabled="form.processing || !employees.length">
+                <PrimaryButton type="submit" :disabled="form.processing || !canSubmit">
                     {{ mode === 'edit' ? 'Salvar' : 'Cadastrar' }}
                 </PrimaryButton>
             </div>
