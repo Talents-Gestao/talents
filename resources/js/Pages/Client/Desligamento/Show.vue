@@ -85,17 +85,19 @@ const revokeLink = () => {
                 :subtitle="`Entrevista em ${formatDate(interview.interview_date)} · ${interview.status_label}`"
             >
                 <template #trailing>
-                    <a :href="desligamentoRoute('pdf', interview.id)">
-                        <SecondaryButton type="button">
-                            <span class="inline-flex items-center gap-1.5">
-                                <ArrowDownTrayIcon class="h-4 w-4" />
-                                Baixar PDF
-                            </span>
-                        </SecondaryButton>
-                    </a>
-                    <Link :href="desligamentoRoute('edit', interview.id)">
-                        <PrimaryButton type="button">Editar</PrimaryButton>
-                    </Link>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <a :href="desligamentoRoute('pdf', interview.id)" class="inline-flex">
+                            <SecondaryButton type="button">
+                                <span class="inline-flex items-center gap-1.5">
+                                    <ArrowDownTrayIcon class="h-4 w-4" />
+                                    Baixar PDF
+                                </span>
+                            </SecondaryButton>
+                        </a>
+                        <Link :href="desligamentoRoute('edit', interview.id)" class="inline-flex">
+                            <PrimaryButton type="button">Editar</PrimaryButton>
+                        </Link>
+                    </div>
                 </template>
             </FormPageHeader>
         </template>
