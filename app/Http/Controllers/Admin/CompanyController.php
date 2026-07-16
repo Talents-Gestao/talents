@@ -264,6 +264,7 @@ class CompanyController extends Controller
             'denuncias_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'ferias_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'desligamento_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
+            'acompanhamento_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'plan_id' => ['nullable', 'exists:plans,id'],
         ]);
 
@@ -317,6 +318,14 @@ class CompanyController extends Controller
         $desligamentoMode = $data['desligamento_access_mode'];
         unset($data['desligamento_access_mode']);
         $data['desligamento_access'] = match ($desligamentoMode) {
+            'enabled' => true,
+            'disabled' => false,
+            default => null,
+        };
+
+        $acompanhamentoMode = $data['acompanhamento_access_mode'];
+        unset($data['acompanhamento_access_mode']);
+        $data['acompanhamento_access'] = match ($acompanhamentoMode) {
             'enabled' => true,
             'disabled' => false,
             default => null,

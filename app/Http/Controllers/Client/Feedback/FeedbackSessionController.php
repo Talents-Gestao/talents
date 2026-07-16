@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Client\Feedback;
 
+use App\Actions\Company\ResolveOrCreateCompanyEmployee;
 use App\Actions\Feedback\SendFeedbackSignatureInvites;
 use App\Enums\FeedbackSessionStatus;
 use App\Http\Controllers\Concerns\ResolvesFeedbackRoutes;
@@ -13,6 +14,7 @@ use App\Models\FeedbackTemplate;
 use App\Models\FeedbackTemplateQuestion;
 use App\Models\FeedbackTemplateSection;
 use App\Models\User;
+use App\Support\Company\CompanyEmployeeDirectory;
 use App\Support\Feedback\FeedbackVisibility;
 use App\Services\Feedback\FeedbackPdfService;
 use Illuminate\Http\RedirectResponse;
@@ -62,6 +64,7 @@ class FeedbackSessionController extends FeedbackCompanyController
                 ->orderBy('name')
                 ->get(['id', 'name', 'email']),
             'templates' => $this->availableTemplates($company),
+            'employees' => app(CompanyEmployeeDirectory::class)->suggestionsFor($company),
         ]);
     }
 
@@ -93,10 +96,17 @@ class FeedbackSessionController extends FeedbackCompanyController
             abort_unless((int) $data['leader_user_id'] === (int) $request->user()->id, 403);
         }
 
+        $employee = app(ResolveOrCreateCompanyEmployee::class)->execute(
+            $company,
+            $employeeName,
+            $employeeEmail,
+            (int) $data['leader_user_id'],
+        );
+
         $session = FeedbackSession::create([
             'company_id' => $company->id,
             'feedback_template_id' => $template->id,
-            'company_employee_id' => null,
+            'company_employee_id' => $employee->id,
             'rhid_person_id' => null,
             'employee_name' => $employeeName,
             'employee_email' => $employeeEmail,

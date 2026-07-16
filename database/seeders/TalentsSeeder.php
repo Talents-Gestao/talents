@@ -91,6 +91,14 @@ class TalentsSeeder extends Seeder
             ]
         );
 
+        $acompanhamento = Module::query()->firstOrCreate(
+            ['key' => Module::KEY_ACOMPANHAMENTO],
+            [
+                'name' => 'Acompanhamento',
+                'description' => 'Acompanhamento visual das fases de contratação (processo operacional na Sólides).',
+            ]
+        );
+
         $plan = Plan::query()->firstOrCreate(
             ['slug' => 'nr1-pro'],
             [
@@ -102,7 +110,7 @@ class TalentsSeeder extends Seeder
             ]
         );
 
-        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id, $rhid->id, $denuncias->id, $feedbacks->id, $ferias->id, $desligamento->id]);
+        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id, $rhid->id, $denuncias->id, $feedbacks->id, $ferias->id, $desligamento->id, $acompanhamento->id]);
 
         $admin = User::query()->firstOrCreate(
             ['email' => 'admin@talents.local'],

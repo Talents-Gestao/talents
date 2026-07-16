@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Client\Ferias;
 
+use App\Actions\Company\ResolveOrCreateCompanyEmployee;
 use App\Enums\EmployeeLeaveStatus;
 use App\Http\Controllers\Concerns\ResolvesFeriasRoutes;
 use App\Models\EmployeeLeave;
+use App\Support\Company\CompanyEmployeeDirectory;
 use App\Support\Ferias\FeriasCompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -103,9 +105,15 @@ class EmployeeLeaveController extends FeriasCompanyController
         $company = $this->company($request);
         $data = $this->validated($request, $company);
 
+        $employee = app(ResolveOrCreateCompanyEmployee::class)->execute(
+            $company,
+            $data['employee_name'],
+            $data['employee_email'],
+        );
+
         EmployeeLeave::query()->create([
             'company_id' => $company->id,
-            'company_employee_id' => null,
+            'company_employee_id' => $employee->id,
             'rhid_person_id' => null,
             'employee_name' => $data['employee_name'],
             'employee_email' => $data['employee_email'],
@@ -145,8 +153,14 @@ class EmployeeLeaveController extends FeriasCompanyController
         $this->authorizeLeave($company, $leave);
         $data = $this->validated($request, $company);
 
+        $employee = app(ResolveOrCreateCompanyEmployee::class)->execute(
+            $company,
+            $data['employee_name'],
+            $data['employee_email'],
+        );
+
         $leave->update([
-            'company_employee_id' => null,
+            'company_employee_id' => $employee->id,
             'rhid_person_id' => null,
             'employee_name' => $data['employee_name'],
             'employee_email' => $data['employee_email'],
@@ -171,13 +185,15 @@ class EmployeeLeaveController extends FeriasCompanyController
 
     /**
      * @return array{
-     *   statusOptions: list<array{value: string, label: string}>
+     *   statusOptions: list<array{value: string, label: string}>,
+     *   employees: list<array{id: int, name: string, email: ?string}>
      * }
      */
     private function formOptions(\App\Models\Company $company, Request $request): array
     {
         return [
             'statusOptions' => $this->statusOptions(),
+            'employees' => app(CompanyEmployeeDirectory::class)->suggestionsFor($company),
         ];
     }
 

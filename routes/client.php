@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Client\AcompanhamentoController;
 use App\Http\Controllers\NewsFeedController;
 use App\Http\Controllers\Client\ActionPlanController;
 use App\Http\Controllers\Client\ComplaintController;
@@ -191,6 +192,10 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('{leave}/edit', [EmployeeLeaveController::class, 'edit'])->name('edit');
         Route::put('{leave}', [EmployeeLeaveController::class, 'update'])->name('update');
         Route::delete('{leave}', [EmployeeLeaveController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::middleware('can.module:acompanhamento')->prefix('acompanhamento')->name('acompanhamento.')->group(function () {
+        Route::get('/', [AcompanhamentoController::class, 'index'])->name('index');
     });
 
     Route::middleware('can.module:desligamento')->prefix('desligamento')->name('desligamento.')->group(function () {

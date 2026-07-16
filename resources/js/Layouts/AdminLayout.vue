@@ -141,8 +141,9 @@ const contratacaoFallbackHref = computed(() => {
 const contratacaoActive = computed(
     () =>
         route().current('admin.solides.*') ||
+        route().current('admin.acompanhamento.*') ||
         route().current('admin.entrevistas.*') ||
-        isComingSoon('profiler', 'timeline'),
+        isComingSoon('profiler'),
 );
 
 const showReunioes = computed(() => canAdmin('entrevistas'));
@@ -453,19 +454,18 @@ const isComercialSettingsTab = (tab) => {
                 />
                 <SidebarNavItem
                     v-if="canAdmin('solides')"
-                    :href="comingSoonHref('profiler')"
-                    :active="isComingSoon('profiler')"
-                    label="Profiler"
+                    :href="route('admin.acompanhamento.index')"
+                    :active="route().current('admin.acompanhamento.*')"
+                    label="Acompanhamento"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
-                    badge="Em breve"
                 />
                 <SidebarNavItem
                     v-if="canAdmin('solides')"
-                    :href="comingSoonHref('timeline')"
-                    :active="isComingSoon('timeline')"
-                    label="Timeline"
+                    :href="comingSoonHref('profiler')"
+                    :active="isComingSoon('profiler')"
+                    label="Profiler"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"

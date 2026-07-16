@@ -34,6 +34,9 @@ class Module extends Model
     /** @var string Pesquisa / entrevista de desligamento */
     public const KEY_DESLIGAMENTO = 'desligamento';
 
+    /** @var string Acompanhamento visual das fases de contratação */
+    public const KEY_ACOMPANHAMENTO = 'acompanhamento';
+
     protected $fillable = ['key', 'name', 'description'];
 
     public function plans(): BelongsToMany

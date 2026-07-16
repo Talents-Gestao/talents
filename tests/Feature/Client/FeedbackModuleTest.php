@@ -397,6 +397,15 @@ class FeedbackModuleTest extends TestCase
             'employee_email' => 'bruno@empresa.local',
             'leader_user_id' => $admin->id,
         ]);
+
+        $session = FeedbackSession::query()->where('company_id', $company->id)->first();
+        $this->assertNotNull($session?->company_employee_id);
+        $this->assertDatabaseHas('company_employees', [
+            'id' => $session->company_employee_id,
+            'company_id' => $company->id,
+            'name' => 'Bruno Lima',
+            'email' => 'bruno@empresa.local',
+        ]);
     }
 
     public function test_session_update_persists_section_extra_question(): void

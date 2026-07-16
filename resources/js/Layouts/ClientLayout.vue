@@ -25,6 +25,7 @@ import {
     HomeIcon,
     MegaphoneIcon,
     ChatBubbleLeftRightIcon,
+    FlagIcon,
     RocketLaunchIcon,
     ShieldExclamationIcon,
     SunIcon,
@@ -84,6 +85,14 @@ import {
                     :collapsed="collapsed"
                 />
             </SidebarNavSection>
+            <SidebarNavItem
+                v-if="can('acompanhamento', 'view')"
+                :href="route('client.acompanhamento.index')"
+                :active="route().current('client.acompanhamento.*')"
+                :icon="FlagIcon"
+                label="Acompanhamento"
+                :collapsed="collapsed"
+            />
             <SidebarNavItem
                 v-if="can('metodologia', 'view')"
                 :href="route('client.metodologia.index')"
