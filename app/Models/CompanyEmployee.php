@@ -14,10 +14,25 @@ class CompanyEmployee extends Model
         'company_id',
         'name',
         'email',
+        'birth_date',
         'phone',
+        'address_zip',
+        'address_street',
+        'address_number',
+        'address_complement',
+        'address_neighborhood',
+        'address_city',
+        'address_state',
+        'emergency_contact_name',
+        'emergency_contact_relationship',
+        'emergency_contact_phone',
         'department_id',
         'position_id',
         'leader_user_id',
+        'admission_date',
+        'work_schedule',
+        'cpf',
+        'rg',
         'is_active',
         'notes',
     ];
@@ -26,6 +41,8 @@ class CompanyEmployee extends Model
     {
         return [
             'is_active' => 'boolean',
+            'birth_date' => 'date',
+            'admission_date' => 'date',
         ];
     }
 
@@ -57,5 +74,10 @@ class CompanyEmployee extends Model
     public function leaves(): HasMany
     {
         return $this->hasMany(EmployeeLeave::class);
+    }
+
+    public function exitInterviews(): HasMany
+    {
+        return $this->hasMany(ExitInterview::class);
     }
 }

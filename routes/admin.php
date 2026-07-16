@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\Finance\FinanceDashboardController;
 use App\Http\Controllers\Admin\Finance\InstallmentController as FinanceInstallmentController;
 use App\Http\Controllers\Admin\Finance\SaleController as FinanceSaleController;
 use App\Http\Controllers\Admin\CompanyController;
+use App\Http\Controllers\Admin\CompanyEmployeeController;
 use App\Http\Controllers\Admin\CompanyUserController;
 use App\Http\Controllers\Admin\ComingSoonController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -120,6 +121,11 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::get('noticias', NewsFeedController::class)->name('news.feed');
 
     Route::middleware('admin.can:companies')->group(function () {
+        Route::get('colaboradores/lookup-cep', [CompanyEmployeeController::class, 'lookupCep'])
+            ->name('colaboradores.lookup-cep');
+        Route::resource('colaboradores', CompanyEmployeeController::class)
+            ->parameters(['colaboradores' => 'employee']);
+
         Route::get('companies/{company}/rhid-metrics', [RhidPortfolioController::class, 'companyMetrics'])
             ->name('companies.rhid-metrics');
         Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');

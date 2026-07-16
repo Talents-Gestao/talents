@@ -101,7 +101,7 @@ const recursosHumanosFallbackHref = computed(() => {
         return route('admin.rhid.index');
     }
     if (canAdmin('companies')) {
-        return comingSoonHref('cadastro-colaboradores');
+        return route('admin.colaboradores.index');
     }
     return route('admin.dashboard');
 });
@@ -109,9 +109,9 @@ const recursosHumanosFallbackHref = computed(() => {
 const recursosHumanosActive = computed(
     () =>
         route().current('admin.rhid.*') ||
+        route().current('admin.colaboradores.*') ||
         isComingSoon(
             'ponto',
-            'cadastro-colaboradores',
             'regulamento-interno',
             'controle-uniformes',
             'destaques-mes',
@@ -362,13 +362,12 @@ const isComercialSettingsTab = (tab) => {
                 />
                 <SidebarNavItem
                     v-if="canAdmin('companies')"
-                    :href="comingSoonHref('cadastro-colaboradores')"
-                    :active="isComingSoon('cadastro-colaboradores')"
+                    :href="route('admin.colaboradores.index')"
+                    :active="route().current('admin.colaboradores.*')"
                     label="Cadastro de colaboradores"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
-                    badge="Em breve"
                 />
                 <SidebarNavItem
                     v-if="canAdmin('companies')"
