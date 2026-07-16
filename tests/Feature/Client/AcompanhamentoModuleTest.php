@@ -43,8 +43,8 @@ class AcompanhamentoModuleTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Client/Acompanhamento/Index')
                 ->where('active_stage', HiringProcessStage::EntrevistaGestor->value)
-                ->has('processes', 1)
-                ->where('processes.0.title', 'Coordenador Comercial'));
+                ->has('columns', 6)
+                ->where('columns.3.processes.0.title', 'Coordenador Comercial'));
     }
 
     public function test_company_admin_forbidden_when_module_disabled(): void
@@ -91,10 +91,9 @@ class AcompanhamentoModuleTest extends TestCase
             ->get(route('client.acompanhamento.index'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('all_processes', 1)
-                ->where('all_processes.0.title', 'Vaga própria')
-                ->has('processes', 1)
-                ->where('processes.0.title', 'Vaga própria'));
+                ->has('columns', 6)
+                ->where('columns.0.processes.0.title', 'Vaga própria')
+                ->where('stage_counts.'.HiringProcessStage::AnaliseCurriculo->value, 1));
     }
 
     public function test_company_user_needs_permission(): void

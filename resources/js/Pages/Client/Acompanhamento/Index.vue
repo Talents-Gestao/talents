@@ -1,7 +1,7 @@
 <script setup>
 import HiringProcessStepper from '@/Components/HiringProcessStepper.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { BriefcaseIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline';
 
@@ -9,8 +9,7 @@ const props = defineProps({
     stages: { type: Array, required: true },
     active_stage: { type: String, required: true },
     stage_counts: { type: Object, required: true },
-    processes: { type: Array, required: true },
-    all_processes: { type: Array, required: true },
+    columns: { type: Array, required: true },
     company_name: { type: String, required: true },
 });
 
@@ -22,22 +21,17 @@ watch(
     },
 );
 
-const activeStageLabel = computed(() => {
-    const s = props.stages.find((x) => x.value === currentStage.value);
-    return s?.label ?? '';
-});
-
 const totalCount = computed(() =>
     Object.values(props.stage_counts || {}).reduce((sum, n) => sum + (Number(n) || 0), 0),
 );
 
 const onStageChange = (stage) => {
     currentStage.value = stage;
-    router.get(
-        route('client.acompanhamento.index'),
-        { stage },
-        { preserveState: true, replace: true },
-    );
+    document.getElementById(`stage-col-${stage}`)?.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest',
+    });
 };
 
 const formatDate = (iso) => {
@@ -77,8 +71,7 @@ const formatDate = (iso) => {
                     <div class="mb-4">
                         <p class="text-xs font-semibold uppercase tracking-wider text-talents-600">Funil de contratação</p>
                         <p class="mt-0.5 text-sm text-slate-600">
-                            {{ totalCount }} processo(s) ·
-                            <span class="font-semibold text-talents-800">{{ activeStageLabel }}</span>
+                            {{ totalCount }} processo(s) · visão somente leitura
                         </p>
                     </div>
                     <HiringProcessStepper
@@ -90,86 +83,60 @@ const formatDate = (iso) => {
                 </div>
 
                 <div class="px-4 py-5 sm:px-6">
-                    <div class="mb-4 flex items-baseline justify-between gap-2">
-                        <h3 class="text-base font-semibold text-talents-900">Processos nesta fase</h3>
-                        <span class="text-xs font-medium tabular-nums text-slate-500">
-                            {{ processes.length }} de {{ totalCount }}
-                        </span>
-                    </div>
-
-                    <ul v-if="processes.length" class="grid gap-3 sm:grid-cols-2">
-                        <li
-                            v-for="p in processes"
-                            :key="p.id"
-                            class="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm transition hover:border-talents-200 hover:shadow-md"
+                    <div class="flex items-start gap-3 overflow-x-auto pb-2">
+                        <div
+                            v-for="col in columns"
+                            :id="`stage-col-${col.value}`"
+                            :key="col.value"
+                            class="flex w-72 shrink-0 flex-col rounded-2xl bg-slate-100/80 p-2.5 ring-1 ring-slate-200/80"
+                            :class="currentStage === col.value ? 'ring-2 ring-talents-300 bg-talents-50/50' : ''"
                         >
-                            <div class="flex items-start gap-3">
-                                <span
-                                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-talents-100 text-talents-700"
-                                >
-                                    <BriefcaseIcon class="h-5 w-5" />
-                                </span>
+                            <header class="mb-2 flex items-start justify-between gap-2 px-1.5 pt-1">
                                 <div class="min-w-0">
-                                    <p class="font-semibold text-slate-900">{{ p.title }}</p>
-                                    <p class="mt-1 text-sm text-talents-700">{{ p.current_stage_label }}</p>
-                                    <p v-if="p.updated_at" class="mt-2 flex items-center gap-1 text-xs text-slate-500">
-                                        <CalendarDaysIcon class="h-3.5 w-3.5" />
-                                        Atualizado em {{ formatDate(p.updated_at) }}
+                                    <h3 class="truncate text-sm font-semibold text-slate-900" :title="col.label">
+                                        {{ col.label }}
+                                    </h3>
+                                    <p class="mt-0.5 text-[11px] font-medium tabular-nums text-slate-500">
+                                        {{ col.processes.length }} processo(s)
                                     </p>
                                 </div>
-                            </div>
-                        </li>
-                    </ul>
+                            </header>
 
-                    <div
-                        v-else
-                        class="rounded-2xl border border-dashed border-talents-200 bg-gradient-to-b from-talents-50/40 to-white px-6 py-12 text-center"
-                    >
-                        <div
-                            class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-talents-100 text-talents-700"
-                        >
-                            <BriefcaseIcon class="h-6 w-6" />
+                            <div class="flex min-h-[12rem] flex-1 flex-col gap-2">
+                                <div
+                                    v-for="p in col.processes"
+                                    :key="p.id"
+                                    class="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200"
+                                >
+                                    <div class="flex items-start gap-2">
+                                        <span
+                                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-talents-100 text-talents-700"
+                                        >
+                                            <BriefcaseIcon class="h-4 w-4" />
+                                        </span>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm font-semibold leading-snug text-slate-900">{{ p.title }}</p>
+                                            <p
+                                                v-if="p.updated_at"
+                                                class="mt-1.5 flex items-center gap-1 text-[11px] text-slate-500"
+                                            >
+                                                <CalendarDaysIcon class="h-3 w-3" />
+                                                {{ formatDate(p.updated_at) }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p
+                                    v-if="!col.processes.length"
+                                    class="rounded-xl border border-dashed border-slate-300 px-2 py-10 text-center text-xs text-slate-400"
+                                >
+                                    Nenhum processo
+                                </p>
+                            </div>
                         </div>
-                        <p class="mt-4 font-semibold text-talents-900">Nenhum processo nesta fase</p>
-                        <p class="mx-auto mt-1 max-w-sm text-sm text-slate-600">
-                            Quando a Talents avançar um processo, ele aparecerá aqui.
-                        </p>
                     </div>
                 </div>
-            </section>
-
-            <section
-                v-if="all_processes.length"
-                class="rounded-2xl border border-talents-200/80 bg-white p-4 shadow-sm sm:p-6"
-            >
-                <div class="mb-4">
-                    <h3 class="text-base font-semibold text-talents-900">Visão geral</h3>
-                    <p class="mt-0.5 text-sm text-slate-600">Todos os processos e a fase atual de cada um.</p>
-                </div>
-                <ul class="space-y-3">
-                    <li
-                        v-for="p in all_processes"
-                        :key="'all-' + p.id"
-                        class="rounded-2xl border border-slate-100 bg-gradient-to-br from-slate-50/90 to-white p-4"
-                    >
-                        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                            <p class="font-semibold text-slate-900">{{ p.title }}</p>
-                            <span
-                                class="inline-flex rounded-full bg-talents-100 px-2.5 py-1 text-xs font-semibold text-talents-800"
-                            >
-                                {{ p.current_stage_label }}
-                            </span>
-                        </div>
-                        <HiringProcessStepper
-                            :stages="stages"
-                            :current-stage="p.current_stage"
-                            :stage-counts="{}"
-                            :progress-stage="p.current_stage"
-                            :interactive="false"
-                            compact
-                        />
-                    </li>
-                </ul>
             </section>
         </div>
     </ClientLayout>

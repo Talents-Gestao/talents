@@ -22,48 +22,48 @@ class AcompanhamentoController extends Controller
         $stageFilter = $request->string('stage')->toString();
         $activeStage = HiringProcessStage::tryFrom($stageFilter) ?? HiringProcessStage::AnaliseCurriculo;
 
-        $baseQuery = HiringProcess::query()->where('company_id', $company->id);
-
-        $rawCounts = (clone $baseQuery)
-            ->selectRaw('current_stage, count(*) as aggregate')
-            ->groupBy('current_stage')
-            ->pluck('aggregate', 'current_stage');
-
-        $stageCounts = [];
-        foreach (HiringProcessStage::ordered() as $stage) {
-            $stageCounts[$stage->value] = (int) ($rawCounts[$stage->value] ?? 0);
-        }
-
-        $processes = (clone $baseQuery)
-            ->where('current_stage', $activeStage->value)
-            ->orderByDesc('updated_at')
-            ->get()
-            ->map(fn (HiringProcess $p) => [
-                'id' => $p->id,
-                'title' => $p->title,
-                'current_stage' => $p->current_stage->value,
-                'current_stage_label' => $p->current_stage->label(),
-                'updated_at' => $p->updated_at?->toIso8601String(),
-            ]);
-
         $allProcesses = HiringProcess::query()
             ->where('company_id', $company->id)
             ->orderByDesc('updated_at')
-            ->get()
-            ->map(fn (HiringProcess $p) => [
-                'id' => $p->id,
-                'title' => $p->title,
-                'current_stage' => $p->current_stage->value,
-                'current_stage_label' => $p->current_stage->label(),
-                'updated_at' => $p->updated_at?->toIso8601String(),
-            ]);
+            ->get();
+
+        $stageCounts = [];
+        foreach (HiringProcessStage::ordered() as $stage) {
+            $stageCounts[$stage->value] = 0;
+        }
+        foreach ($allProcesses as $process) {
+            $key = $process->current_stage->value;
+            $stageCounts[$key] = ($stageCounts[$key] ?? 0) + 1;
+        }
+
+        $mapProcess = fn (HiringProcess $p) => [
+            'id' => $p->id,
+            'title' => $p->title,
+            'current_stage' => $p->current_stage->value,
+            'current_stage_label' => $p->current_stage->label(),
+            'updated_at' => $p->updated_at?->toIso8601String(),
+        ];
+
+        $columns = [];
+        foreach (HiringProcessStage::ordered() as $stage) {
+            $columns[] = [
+                'value' => $stage->value,
+                'label' => $stage->label(),
+                'order' => $stage->order(),
+                'count' => $stageCounts[$stage->value] ?? 0,
+                'processes' => $allProcesses
+                    ->filter(fn (HiringProcess $p) => $p->current_stage === $stage)
+                    ->values()
+                    ->map($mapProcess)
+                    ->all(),
+            ];
+        }
 
         return Inertia::render('Client/Acompanhamento/Index', [
             'stages' => HiringProcessStage::options(),
             'active_stage' => $activeStage->value,
             'stage_counts' => $stageCounts,
-            'processes' => $processes,
-            'all_processes' => $allProcesses,
+            'columns' => $columns,
             'company_name' => $company->name,
         ]);
     }

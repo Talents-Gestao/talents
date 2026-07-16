@@ -30,7 +30,30 @@ class HiringProcessAdminTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Admin/Acompanhamento/Index')
                 ->has('stages', 6)
+                ->has('columns', 6)
                 ->where('active_stage', HiringProcessStage::AnaliseCurriculo->value));
+    }
+
+    public function test_admin_can_move_stage_from_board_and_stay_on_page(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = Company::query()->create(['name' => 'Empresa Board', 'is_active' => true]);
+        $process = HiringProcess::query()->create([
+            'company_id' => $company->id,
+            'title' => 'Vaga Drag',
+            'current_stage' => HiringProcessStage::AnaliseCurriculo,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.acompanhamento.index'))
+            ->patch(route('admin.acompanhamento.update', $process), [
+                'current_stage' => HiringProcessStage::EntrevistaPresencial->value,
+                'from_board' => true,
+            ])
+            ->assertRedirect(route('admin.acompanhamento.index'));
+
+        $process->refresh();
+        $this->assertSame(HiringProcessStage::EntrevistaPresencial, $process->current_stage);
     }
 
     public function test_admin_without_solides_permission_is_forbidden(): void
