@@ -121,9 +121,7 @@ const recursosHumanosActive = computed(
 const showMetamorfose = computed(() => canAdmin('methodology'));
 
 const metamorfoseActive = computed(
-    () =>
-        route().current('admin.metodologia.*') ||
-        route().current('admin.methodology-templates.*'),
+    () => route().current('admin.methodology-templates.*'),
 );
 
 const showContratacao = computed(() => canAdmin('solides') || canAdmin('entrevistas'));
@@ -411,19 +409,8 @@ const isComercialSettingsTab = (tab) => {
                 :collapsed="collapsed"
                 :compact="compact"
                 :active="metamorfoseActive"
-                :fallback-href="route('admin.metodologia.index')"
+                :fallback-href="route('admin.methodology-templates.index')"
             >
-                <SidebarNavItem
-                    :href="route('admin.metodologia.index')"
-                    :active="
-                        route().current('admin.metodologia.*') &&
-                        !route().current('admin.methodology-templates.*')
-                    "
-                    label="Metamorfose"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                />
                 <SidebarNavItem
                     :href="route('admin.methodology-templates.index')"
                     :active="route().current('admin.methodology-templates.*')"
