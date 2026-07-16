@@ -210,16 +210,6 @@ onUnmounted(() => {
                         </button>
                     </header>
 
-                    <div v-if="unreadCount > 0" class="border-b border-slate-100 px-5 py-2.5 text-right">
-                        <button
-                            type="button"
-                            class="text-xs font-medium text-talents-700 transition hover:text-talents-900"
-                            @click="markAllRead"
-                        >
-                            Marcar todos como lidos
-                        </button>
-                    </div>
-
                     <div class="flex-1 overflow-y-auto">
                         <div v-if="loading" class="px-5 py-12 text-center text-sm text-slate-500">
                             A carregar…
@@ -263,6 +253,19 @@ onUnmounted(() => {
                             <p class="mt-3 text-sm text-slate-500">Nenhum aviso por enquanto.</p>
                         </div>
                     </div>
+
+                    <footer
+                        v-if="unreadCount > 0"
+                        class="shrink-0 border-t border-slate-100 bg-slate-50/80 px-5 py-3"
+                    >
+                        <button
+                            type="button"
+                            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-talents-700 shadow-sm transition hover:border-talents-200 hover:bg-talents-50 hover:text-talents-900"
+                            @click="markAllRead"
+                        >
+                            Marcar todos como lidos
+                        </button>
+                    </footer>
                 </aside>
             </Transition>
         </Teleport>
