@@ -16,6 +16,7 @@ const props = defineProps({
     statusOptions: { type: Array, default: () => [] },
     sections: { type: Array, default: () => [] },
     consultantNoteFields: { type: Array, default: () => [] },
+    employees: { type: Array, default: () => [] },
 });
 
 const fieldClass =
@@ -49,6 +50,17 @@ const form = useForm({
 });
 
 const canSubmit = computed(() => Boolean(String(form.employee_name ?? '').trim()));
+
+const onEmployeeNameInput = () => {
+    const name = String(form.employee_name ?? '').trim().toLowerCase();
+    if (!name) {
+        return;
+    }
+    const match = props.employees.find((e) => String(e.name ?? '').trim().toLowerCase() === name);
+    if (match?.email && !String(form.employee_email ?? '').trim()) {
+        form.employee_email = match.email;
+    }
+};
 
 const backHref = computed(() =>
     isDesligamentoAdminContext() ? route('admin.survey-templates.index') : desligamentoRoute('index'),
@@ -91,12 +103,19 @@ const submit = () => {
                             <input
                                 v-model="form.employee_name"
                                 type="text"
+                                list="desligamento-employee-suggestions"
                                 required
                                 maxlength="255"
                                 :class="fieldClass"
                                 placeholder="Ex.: Maria Silva"
                                 autocomplete="name"
+                                @change="onEmployeeNameInput"
                             />
+                            <datalist id="desligamento-employee-suggestions">
+                                <option v-for="e in employees" :key="e.id" :value="e.name">
+                                    {{ e.email || 'Sem e-mail' }}
+                                </option>
+                            </datalist>
                             <InputError :message="form.errors.employee_name" />
                         </div>
                         <div>

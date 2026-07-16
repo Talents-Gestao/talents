@@ -44,7 +44,14 @@ class FeriasModuleTest extends TestCase
         $leave = EmployeeLeave::query()->first();
         $this->assertNotNull($leave);
         $this->assertNull($leave->rhid_person_id);
+        $this->assertNotNull($leave->company_employee_id);
         $this->assertSame('Colaborador Férias', $leave->employee_name);
+        $this->assertDatabaseHas('company_employees', [
+            'id' => $leave->company_employee_id,
+            'company_id' => $company->id,
+            'name' => 'Colaborador Férias',
+            'email' => 'colab-ferias@teste.local',
+        ]);
         $this->assertSame(15, $leave->daysCount());
 
         $this->actingAs($admin)

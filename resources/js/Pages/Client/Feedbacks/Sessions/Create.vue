@@ -12,6 +12,7 @@ import { computed } from 'vue';
 const props = defineProps({
     leaders: { type: Array, default: () => [] },
     templates: { type: Array, default: () => [] },
+    employees: { type: Array, default: () => [] },
 });
 
 const form = useForm({
@@ -29,6 +30,17 @@ const canSubmit = computed(
         Boolean(String(form.employee_name ?? '').trim()) &&
         Boolean(String(form.scheduled_at ?? '').trim()),
 );
+
+const onEmployeeNameInput = () => {
+    const name = String(form.employee_name ?? '').trim().toLowerCase();
+    if (!name) {
+        return;
+    }
+    const match = props.employees.find((e) => String(e.name ?? '').trim().toLowerCase() === name);
+    if (match?.email && !String(form.employee_email ?? '').trim()) {
+        form.employee_email = match.email;
+    }
+};
 
 const submit = () => {
     if (!canSubmit.value) {
@@ -66,13 +78,23 @@ const submit = () => {
                     <input
                         v-model="form.employee_name"
                         type="text"
+                        list="feedback-employee-suggestions"
                         required
                         maxlength="255"
                         :class="feedbackFieldClass"
                         placeholder="Ex.: Maria Silva"
                         autocomplete="name"
+                        @change="onEmployeeNameInput"
                     />
+                    <datalist id="feedback-employee-suggestions">
+                        <option v-for="e in employees" :key="e.id" :value="e.name">
+                            {{ e.email || 'Sem e-mail' }}
+                        </option>
+                    </datalist>
                     <InputError :message="form.errors.employee_name" />
+                    <p class="mt-1.5 text-xs text-slate-500">
+                        Digite o nome. Se já existir na empresa, pode escolher na lista de sugestões.
+                    </p>
                 </div>
                 <div>
                     <InputLabel value="E-mail do colaborador (opcional)" />

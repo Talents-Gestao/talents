@@ -182,7 +182,7 @@ const remove = (id) => {
                 </div>
                 <ListEmptyState
                     v-if="!leaves.data?.length"
-                    message="Nenhum período de férias cadastrado. Os colaboradores vêm do RHID (Control iD)."
+                    message="Nenhum período de férias cadastrado. Informe o nome do colaborador ao criar um novo período."
                 />
             </div>
         </template>
