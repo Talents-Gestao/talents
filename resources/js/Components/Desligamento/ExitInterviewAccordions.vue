@@ -15,6 +15,7 @@ const props = defineProps({
     consultantNotes: { type: Object, default: null },
     interviews: { type: Object, default: null },
     showManage: { type: Boolean, default: false },
+    hideConsultantNotes: { type: Boolean, default: false },
     companyPicker: { type: Array, default: null },
     activeCompanyId: { type: [Number, String], default: null },
     needsCompanySelection: { type: Boolean, default: false },
@@ -191,6 +192,7 @@ const formatDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateStrin
             </div>
 
             <FeedbackSectionAccordion
+                v-if="!hideConsultantNotes"
                 title="Anotações da Consultora (preenchimento interno da Talents)"
                 description="Uso interno — não compartilhado com o colaborador"
                 :default-open="false"
