@@ -55,6 +55,13 @@ const desligamentoAccessMode = () => {
     return 'inherit';
 };
 
+const acompanhamentoAccessMode = () => {
+    const v = props.company.acompanhamento_access;
+    if (v === true) return 'enabled';
+    if (v === false) return 'disabled';
+    return 'inherit';
+};
+
 const form = useForm({
     name: props.company.name,
     contact_email: props.company.contact_email ?? '',
@@ -77,6 +84,7 @@ const form = useForm({
     denuncias_access_mode: denunciasAccessMode(),
     ferias_access_mode: feriasAccessMode(),
     desligamento_access_mode: desligamentoAccessMode(),
+    acompanhamento_access_mode: acompanhamentoAccessMode(),
     plan_id: props.activePlanId ?? null,
 });
 
@@ -283,6 +291,21 @@ const submit = () => {
                 <select
                     id="desligamento_access_mode"
                     v-model="form.desligamento_access_mode"
+                    class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option value="inherit">Seguir o plano</option>
+                    <option value="enabled">Forçar habilitado</option>
+                    <option value="disabled">Forçar desabilitado</option>
+                </select>
+            </div>
+            <div>
+                <InputLabel for="acompanhamento_access_mode" value="Acompanhamento" />
+                <p class="mt-0.5 text-xs text-gray-500">
+                    Por padrão segue o plano (módulo «acompanhamento»). Pode forçar por empresa.
+                </p>
+                <select
+                    id="acompanhamento_access_mode"
+                    v-model="form.acompanhamento_access_mode"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
                     <option value="inherit">Seguir o plano</option>

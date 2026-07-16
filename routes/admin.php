@@ -40,6 +40,7 @@ use App\Http\Controllers\Admin\RhidPanelController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SolidesCurriculumController;
 use App\Http\Controllers\Admin\SolidesSettingsController;
+use App\Http\Controllers\Admin\HiringProcessController;
 use App\Http\Controllers\Admin\CompanyNoticeController as AdminCompanyNoticeController;
 use App\Http\Controllers\Admin\StrategicCalendarController as AdminStrategicCalendarController;
 use App\Http\Controllers\Admin\SurveyTemplateController;
@@ -237,6 +238,13 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
     Route::middleware('admin.can:solides')->group(function () {
         Route::get('solides/curriculos', [SolidesCurriculumController::class, 'index'])->name('solides.curriculos.index');
+
+        Route::get('acompanhamento', [HiringProcessController::class, 'index'])->name('acompanhamento.index');
+        Route::post('acompanhamento', [HiringProcessController::class, 'store'])->name('acompanhamento.store');
+        Route::patch('acompanhamento/{hiringProcess}', [HiringProcessController::class, 'update'])->name('acompanhamento.update');
+        Route::post('acompanhamento/{hiringProcess}/avancar', [HiringProcessController::class, 'advance'])->name('acompanhamento.advance');
+        Route::post('acompanhamento/{hiringProcess}/recuar', [HiringProcessController::class, 'retreat'])->name('acompanhamento.retreat');
+        Route::delete('acompanhamento/{hiringProcess}', [HiringProcessController::class, 'destroy'])->name('acompanhamento.destroy');
     });
 
     Route::middleware('admin.can:training')->group(function () {

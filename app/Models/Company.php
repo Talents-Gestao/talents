@@ -46,6 +46,7 @@ class Company extends Model
         'feedbacks_access',
         'ferias_access',
         'desligamento_access',
+        'acompanhamento_access',
     ];
 
     protected function casts(): array
@@ -61,7 +62,13 @@ class Company extends Model
             'feedbacks_access' => 'boolean',
             'ferias_access' => 'boolean',
             'desligamento_access' => 'boolean',
+            'acompanhamento_access' => 'boolean',
         ];
+    }
+
+    public function hiringProcesses(): HasMany
+    {
+        return $this->hasMany(HiringProcess::class);
     }
 
     public function taskBoards(): HasMany
@@ -294,6 +301,19 @@ class Company extends Model
         return $this->subscriptionHasModuleKey(Module::KEY_DESLIGAMENTO);
     }
 
+    public function hasAcompanhamentoEnabled(): bool
+    {
+        if ($this->acompanhamento_access === false) {
+            return false;
+        }
+
+        if ($this->acompanhamento_access === true) {
+            return true;
+        }
+
+        return $this->subscriptionHasModuleKey(Module::KEY_ACOMPANHAMENTO);
+    }
+
     public function activeSubscription(): ?Subscription
     {
         if ($this->activeSubscriptionResolved) {
@@ -359,6 +379,7 @@ class Company extends Model
             PermissionModule::Feedbacks => $this->hasFeedbacksEnabled(),
             PermissionModule::Ferias => $this->hasFeriasEnabled(),
             PermissionModule::Desligamento => $this->hasDesligamentoEnabled(),
+            PermissionModule::Acompanhamento => $this->hasAcompanhamentoEnabled(),
         };
     }
 
