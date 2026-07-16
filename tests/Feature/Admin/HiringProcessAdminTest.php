@@ -30,30 +30,37 @@ class HiringProcessAdminTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Admin/Acompanhamento/Index')
                 ->has('stages', 6)
-                ->has('columns', 6)
+                ->has('processes')
                 ->where('active_stage', HiringProcessStage::AnaliseCurriculo->value));
     }
 
-    public function test_admin_can_move_stage_from_board_and_stay_on_page(): void
+    public function test_admin_can_reorder_processes_in_stage_list(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
-        $company = Company::query()->create(['name' => 'Empresa Board', 'is_active' => true]);
-        $process = HiringProcess::query()->create([
+        $company = Company::query()->create(['name' => 'Empresa Lista', 'is_active' => true]);
+        $first = HiringProcess::query()->create([
             'company_id' => $company->id,
-            'title' => 'Vaga Drag',
+            'title' => 'Primeiro',
             'current_stage' => HiringProcessStage::AnaliseCurriculo,
+            'sort_order' => 1,
+        ]);
+        $second = HiringProcess::query()->create([
+            'company_id' => $company->id,
+            'title' => 'Segundo',
+            'current_stage' => HiringProcessStage::AnaliseCurriculo,
+            'sort_order' => 2,
         ]);
 
         $this->actingAs($admin)
             ->from(route('admin.acompanhamento.index'))
-            ->patch(route('admin.acompanhamento.update', $process), [
-                'current_stage' => HiringProcessStage::EntrevistaPresencial->value,
-                'from_board' => true,
+            ->post(route('admin.acompanhamento.reorder'), [
+                'stage' => HiringProcessStage::AnaliseCurriculo->value,
+                'ordered_ids' => [$second->id, $first->id],
             ])
-            ->assertRedirect(route('admin.acompanhamento.index'));
+            ->assertRedirect();
 
-        $process->refresh();
-        $this->assertSame(HiringProcessStage::EntrevistaPresencial, $process->current_stage);
+        $this->assertSame(1, $second->fresh()->sort_order);
+        $this->assertSame(2, $first->fresh()->sort_order);
     }
 
     public function test_admin_without_solides_permission_is_forbidden(): void

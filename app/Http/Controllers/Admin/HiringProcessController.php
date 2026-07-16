@@ -28,30 +28,38 @@ class HiringProcessController extends Controller
 
         $search = trim($request->string('q')->toString());
 
-        $baseQuery = HiringProcess::query()
-            ->with(['company:id,name', 'updatedByUser:id,name']);
-
+        $countsQuery = HiringProcess::query();
         if ($companyId !== null) {
-            $baseQuery->where('company_id', $companyId);
+            $countsQuery->where('company_id', $companyId);
         }
         if ($search !== '') {
-            $this->applySearchFilter($baseQuery, $search);
+            $this->applySearchFilter($countsQuery, $search);
         }
 
-        $allProcesses = (clone $baseQuery)
-            ->orderByDesc('updated_at')
-            ->get();
+        $rawCounts = $countsQuery
+            ->selectRaw('current_stage, count(*) as aggregate')
+            ->groupBy('current_stage')
+            ->pluck('aggregate', 'current_stage');
 
         $stageCounts = [];
         foreach (HiringProcessStage::ordered() as $stage) {
-            $stageCounts[$stage->value] = 0;
-        }
-        foreach ($allProcesses as $process) {
-            $key = $process->current_stage->value;
-            $stageCounts[$key] = ($stageCounts[$key] ?? 0) + 1;
+            $stageCounts[$stage->value] = (int) ($rawCounts[$stage->value] ?? 0);
         }
 
-        $mapProcess = fn (HiringProcess $p) => [
+        $processesQuery = HiringProcess::query()
+            ->with(['company:id,name', 'updatedByUser:id,name'])
+            ->where('current_stage', $activeStage->value)
+            ->orderBy('sort_order')
+            ->orderByDesc('updated_at');
+
+        if ($companyId !== null) {
+            $processesQuery->where('company_id', $companyId);
+        }
+        if ($search !== '') {
+            $this->applySearchFilter($processesQuery, $search);
+        }
+
+        $processes = $processesQuery->get()->map(fn (HiringProcess $p) => [
             'id' => $p->id,
             'title' => $p->title,
             'notes' => $p->notes,
@@ -65,22 +73,7 @@ class HiringProcessController extends Controller
             'updated_at' => $p->updated_at?->toIso8601String(),
             'can_advance' => $p->current_stage->next() !== null,
             'can_retreat' => $p->current_stage->previous() !== null,
-        ];
-
-        $columns = [];
-        foreach (HiringProcessStage::ordered() as $stage) {
-            $columns[] = [
-                'value' => $stage->value,
-                'label' => $stage->label(),
-                'order' => $stage->order(),
-                'count' => $stageCounts[$stage->value] ?? 0,
-                'processes' => $allProcesses
-                    ->filter(fn (HiringProcess $p) => $p->current_stage === $stage)
-                    ->values()
-                    ->map($mapProcess)
-                    ->all(),
-            ];
-        }
+        ]);
 
         $companies = Company::query()
             ->where('is_active', true)
@@ -92,7 +85,7 @@ class HiringProcessController extends Controller
             'stages' => HiringProcessStage::options(),
             'active_stage' => $activeStage->value,
             'stage_counts' => $stageCounts,
-            'columns' => $columns,
+            'processes' => $processes,
             'companies' => $companies,
             'filters' => [
                 'stage' => $activeStage->value,
@@ -116,16 +109,21 @@ class HiringProcessController extends Controller
             $stage = HiringProcessStage::from((string) $stage);
         }
 
+        $nextOrder = (int) HiringProcess::query()
+            ->where('current_stage', $stage->value)
+            ->max('sort_order');
+
         HiringProcess::query()->create([
             'company_id' => (int) $data['company_id'],
             'title' => $data['title'],
             'current_stage' => $stage,
             'notes' => $data['notes'] ?? null,
+            'sort_order' => $nextOrder + 1,
             'updated_by' => $request->user()?->id,
         ]);
 
         return redirect()
-            ->route('admin.acompanhamento.index', $this->indexQuery($request, $stage->value))
+            ->route('admin.acompanhamento.index', ['stage' => $stage->value])
             ->with('success', 'Processo de acompanhamento criado.');
     }
 
@@ -156,13 +154,46 @@ class HiringProcessController extends Controller
         $hiringProcess->updated_by = $request->user()?->id;
         $hiringProcess->save();
 
-        if ($request->boolean('from_board')) {
-            return back()->with('success', 'Processo movido para '.$hiringProcess->current_stage->label().'.');
+        return redirect()
+            ->route('admin.acompanhamento.index', [
+                'stage' => $hiringProcess->current_stage->value,
+            ])
+            ->with('success', 'Processo atualizado.');
+    }
+
+    public function reorder(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'stage' => ['required', Rule::enum(HiringProcessStage::class)],
+            'ordered_ids' => ['required', 'array', 'min:1'],
+            'ordered_ids.*' => ['integer', 'distinct', 'exists:hiring_processes,id'],
+        ]);
+
+        $stage = $data['stage'] instanceof HiringProcessStage
+            ? $data['stage']
+            : HiringProcessStage::from((string) $data['stage']);
+
+        $ids = array_map('intval', $data['ordered_ids']);
+
+        $ownedIds = HiringProcess::query()
+            ->where('current_stage', $stage->value)
+            ->whereIn('id', $ids)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        abort_unless(count($ownedIds) === count($ids), 422);
+
+        foreach ($ids as $index => $id) {
+            HiringProcess::query()
+                ->whereKey($id)
+                ->update([
+                    'sort_order' => $index + 1,
+                    'updated_by' => $request->user()?->id,
+                ]);
         }
 
-        return redirect()
-            ->route('admin.acompanhamento.index', $this->indexQuery($request, $hiringProcess->current_stage->value))
-            ->with('success', 'Processo atualizado.');
+        return back()->with('success', 'Ordem da lista atualizada.');
     }
 
     public function advance(Request $request, HiringProcess $hiringProcess): RedirectResponse
@@ -177,7 +208,7 @@ class HiringProcessController extends Controller
         $hiringProcess->save();
 
         return redirect()
-            ->route('admin.acompanhamento.index', $this->indexQuery($request, $next->value))
+            ->route('admin.acompanhamento.index', ['stage' => $next->value])
             ->with('success', 'Processo avançado para '.$next->label().'.');
     }
 
@@ -193,7 +224,7 @@ class HiringProcessController extends Controller
         $hiringProcess->save();
 
         return redirect()
-            ->route('admin.acompanhamento.index', $this->indexQuery($request, $previous->value))
+            ->route('admin.acompanhamento.index', ['stage' => $previous->value])
             ->with('success', 'Processo movido para '.$previous->label().'.');
     }
 
@@ -205,27 +236,6 @@ class HiringProcessController extends Controller
         return redirect()
             ->route('admin.acompanhamento.index', ['stage' => $stage])
             ->with('success', 'Processo removido.');
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function indexQuery(Request $request, ?string $stage = null): array
-    {
-        $query = [];
-        if ($stage !== null && $stage !== '') {
-            $query['stage'] = $stage;
-        }
-        $companyId = $request->integer('company_id') ?: null;
-        if ($companyId) {
-            $query['company_id'] = $companyId;
-        }
-        $q = trim($request->string('q')->toString());
-        if ($q !== '') {
-            $query['q'] = $q;
-        }
-
-        return $query;
     }
 
     private function applySearchFilter($query, string $search): void

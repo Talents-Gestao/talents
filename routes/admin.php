@@ -241,6 +241,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
         Route::get('acompanhamento', [HiringProcessController::class, 'index'])->name('acompanhamento.index');
         Route::post('acompanhamento', [HiringProcessController::class, 'store'])->name('acompanhamento.store');
+        Route::post('acompanhamento/reordenar', [HiringProcessController::class, 'reorder'])->name('acompanhamento.reorder');
         Route::patch('acompanhamento/{hiringProcess}', [HiringProcessController::class, 'update'])->name('acompanhamento.update');
         Route::post('acompanhamento/{hiringProcess}/avancar', [HiringProcessController::class, 'advance'])->name('acompanhamento.advance');
         Route::post('acompanhamento/{hiringProcess}/recuar', [HiringProcessController::class, 'retreat'])->name('acompanhamento.retreat');

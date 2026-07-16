@@ -22,7 +22,7 @@ const props = defineProps({
     stages: { type: Array, required: true },
     active_stage: { type: String, required: true },
     stage_counts: { type: Object, required: true },
-    columns: { type: Array, required: true },
+    processes: { type: Array, required: true },
     companies: { type: Array, required: true },
     filters: { type: Object, required: true },
 });
@@ -35,18 +35,22 @@ watch(
     },
 );
 
-const localColumns = ref(cloneColumns(props.columns));
+const localProcesses = ref(cloneProcesses(props.processes));
 watch(
-    () => props.columns,
-    (cols) => {
-        localColumns.value = cloneColumns(cols);
+    () => props.processes,
+    (list) => {
+        localProcesses.value = cloneProcesses(list);
     },
     { deep: true },
 );
 
 const searchQ = ref(props.filters.q ?? '');
 const companyId = ref(props.filters.company_id ? String(props.filters.company_id) : '');
-const movingId = ref(null);
+
+const activeStageLabel = computed(() => {
+    const s = props.stages.find((x) => x.value === currentStage.value);
+    return s?.label ?? '';
+});
 
 const totalProcesses = computed(() =>
     Object.values(props.stage_counts || {}).reduce((sum, n) => sum + (Number(n) || 0), 0),
@@ -55,10 +59,9 @@ const totalProcesses = computed(() =>
 const fieldClass =
     'mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70';
 
-function cloneColumns(columns) {
-    return JSON.parse(JSON.stringify(columns ?? []));
+function cloneProcesses(list) {
+    return JSON.parse(JSON.stringify(list ?? []));
 }
-
 const navigate = (overrides = {}) => {
     const params = {
         stage: overrides.stage ?? currentStage.value,
@@ -73,11 +76,7 @@ const navigate = (overrides = {}) => {
 
 const onStageChange = (stage) => {
     currentStage.value = stage;
-    document.getElementById(`stage-col-${stage}`)?.scrollIntoView({
-        behavior: 'smooth',
-        inline: 'center',
-        block: 'nearest',
-    });
+    navigate({ stage });
 };
 
 const applyFilters = () => {
@@ -93,11 +92,7 @@ const createForm = useForm({
 });
 
 const submitCreate = () => {
-    createForm.transform((data) => ({
-        ...data,
-        company_id: data.company_id,
-        q: searchQ.value || undefined,
-    })).post(route('admin.acompanhamento.store'), {
+    createForm.post(route('admin.acompanhamento.store'), {
         preserveScroll: true,
         onSuccess: () => {
             createForm.reset();
@@ -107,42 +102,32 @@ const submitCreate = () => {
     });
 };
 
-const persistStage = (processId, stage) => {
-    movingId.value = processId;
+const moveStage = (processId, stage) => {
     router.patch(
         route('admin.acompanhamento.update', processId),
-        {
-            current_stage: stage,
-            from_board: true,
-        },
-        {
-            preserveScroll: true,
-            onFinish: () => {
-                movingId.value = null;
-            },
-            onError: () => {
-                localColumns.value = cloneColumns(props.columns);
-            },
-        },
+        { current_stage: stage },
+        { preserveScroll: true },
     );
 };
 
-const onCardDragEnd = (_columnStage, evt) => {
-    const cardEl = evt?.item;
-    const processId = Number(cardEl?.dataset?.processId);
-    if (!processId) {
+const onListDragEnd = (evt) => {
+    if (evt?.oldIndex === evt?.newIndex) {
         return;
     }
 
-    const fromEl = evt?.from?.closest?.('[data-stage]');
-    const toEl = evt?.to?.closest?.('[data-stage]');
-    const fromStage = fromEl?.dataset?.stage;
-    const toStage = toEl?.dataset?.stage;
-    if (!toStage || fromStage === toStage) {
-        return;
-    }
-
-    persistStage(processId, toStage);
+    router.post(
+        route('admin.acompanhamento.reorder'),
+        {
+            stage: currentStage.value,
+            ordered_ids: localProcesses.value.map((p) => p.id),
+        },
+        {
+            preserveScroll: true,
+            onError: () => {
+                localProcesses.value = cloneProcesses(props.processes);
+            },
+        },
+    );
 };
 
 const advance = (processId) => {
@@ -169,7 +154,7 @@ const destroyProcess = (processId) => {
             <div>
                 <h2 class="text-xl font-semibold leading-tight text-talents-900">Acompanhamento</h2>
                 <p class="mt-1 text-sm text-slate-600">
-                    Arraste os processos entre as fases. O trabalho operacional continua na Sólides.
+                    Lista por fase — arraste para cima ou para baixo para reordenar. O processo operacional continua na Sólides.
                 </p>
             </div>
         </template>
@@ -196,7 +181,8 @@ const destroyProcess = (processId) => {
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wider text-talents-600">Funil de contratação</p>
                             <p class="mt-0.5 text-sm text-slate-600">
-                                {{ totalProcesses }} processo(s) · arraste os cards entre as colunas
+                                {{ totalProcesses }} processo(s) no total · fase selecionada:
+                                <span class="font-semibold text-talents-800">{{ activeStageLabel }}</span>
                             </p>
                         </div>
                         <Link
@@ -214,7 +200,7 @@ const destroyProcess = (processId) => {
                     />
                 </div>
 
-                <div class="space-y-4 px-4 py-5 sm:px-6">
+                <div class="space-y-5 px-4 py-5 sm:px-6">
                     <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row">
                             <div class="relative flex-1">
@@ -286,100 +272,109 @@ const destroyProcess = (processId) => {
                         </form>
                     </div>
 
-                    <div class="flex items-start gap-3 overflow-x-auto pb-2">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <h3 class="text-base font-semibold text-talents-900">Processos nesta fase</h3>
+                        <span class="text-xs font-medium tabular-nums text-slate-500">
+                            {{ localProcesses.length }} resultado(s)
+                        </span>
+                    </div>
+
+                    <VueDraggable
+                        v-if="localProcesses.length"
+                        v-model="localProcesses"
+                        item-key="id"
+                        handle=".drag-handle"
+                        class="grid gap-3"
+                        ghost-class="opacity-40"
+                        :animation="160"
+                        @end="onListDragEnd"
+                    >
                         <div
-                            v-for="col in localColumns"
-                            :id="`stage-col-${col.value}`"
-                            :key="col.value"
-                            class="flex w-72 shrink-0 flex-col rounded-2xl bg-slate-100/80 p-2.5 ring-1 ring-slate-200/80"
-                            :class="currentStage === col.value ? 'ring-2 ring-talents-300 bg-talents-50/50' : ''"
+                            v-for="p in localProcesses"
+                            :key="p.id"
+                            class="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm transition hover:border-talents-200 hover:shadow-md sm:p-5"
                         >
-                            <header class="mb-2 flex items-start justify-between gap-2 px-1.5 pt-1">
-                                <div class="min-w-0">
-                                    <h3 class="truncate text-sm font-semibold text-slate-900" :title="col.label">
-                                        {{ col.label }}
-                                    </h3>
-                                    <p class="mt-0.5 text-[11px] font-medium tabular-nums text-slate-500">
-                                        {{ col.processes.length }} processo(s)
-                                    </p>
-                                </div>
-                            </header>
-
-                            <div
-                                :data-stage="col.value"
-                                class="relative flex min-h-[14rem] flex-1 flex-col"
-                            >
-                                <VueDraggable
-                                    v-model="col.processes"
-                                    group="acompanhamento-processes"
-                                    item-key="id"
-                                    class="flex min-h-[12rem] flex-1 flex-col gap-2 rounded-xl px-0.5 py-0.5"
-                                    ghost-class="opacity-40"
-                                    :animation="160"
-                                    @end="(e) => onCardDragEnd(col.value, e)"
-                                >
-                                    <div
-                                        v-for="p in col.processes"
-                                        :key="p.id"
-                                        :data-process-id="p.id"
-                                        class="group cursor-grab rounded-xl bg-white p-3 text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-talents-300 active:cursor-grabbing"
-                                        :class="movingId === p.id ? 'opacity-60' : ''"
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div class="flex min-w-0 flex-1 gap-3">
+                                    <button
+                                        type="button"
+                                        class="drag-handle mt-0.5 shrink-0 cursor-grab rounded-lg p-1 text-slate-300 transition hover:bg-slate-50 hover:text-talents-600 active:cursor-grabbing"
+                                        title="Arrastar para reordenar"
+                                        aria-label="Arrastar para reordenar"
                                     >
-                                        <div class="flex items-start gap-2">
-                                            <Bars3Icon class="mt-0.5 h-4 w-4 shrink-0 text-slate-300 group-hover:text-talents-500" />
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-sm font-semibold leading-snug text-slate-900">{{ p.title }}</p>
-                                                <p class="mt-1 flex items-center gap-1 text-[11px] text-slate-500">
-                                                    <BuildingOffice2Icon class="h-3 w-3 text-talents-600" />
-                                                    <span class="truncate">{{ p.company?.name ?? '—' }}</span>
-                                                </p>
-                                                <p v-if="p.notes" class="mt-2 line-clamp-2 text-[11px] text-slate-500">
-                                                    {{ p.notes }}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            class="mt-3 flex flex-wrap gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"
+                                        <Bars3Icon class="h-5 w-5" />
+                                    </button>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-base font-semibold text-slate-900">{{ p.title }}</p>
+                                        <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
+                                            <span class="inline-flex items-center gap-1">
+                                                <BuildingOffice2Icon class="h-3.5 w-3.5 text-talents-600" />
+                                                {{ p.company?.name ?? '—' }}
+                                            </span>
+                                            <span v-if="p.updated_by_name" class="text-slate-400">·</span>
+                                            <span v-if="p.updated_by_name">atualizado por {{ p.updated_by_name }}</span>
+                                        </p>
+                                        <p
+                                            v-if="p.notes"
+                                            class="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600"
                                         >
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-600 hover:bg-white disabled:opacity-40"
-                                                :disabled="!p.can_retreat"
-                                                title="Recuar"
-                                                @click.stop="retreat(p.id)"
-                                            >
-                                                <ArrowLeftIcon class="h-3 w-3" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center rounded-lg bg-talents-600 px-2 py-1 text-[10px] font-semibold text-white hover:bg-talents-700 disabled:opacity-40"
-                                                :disabled="!p.can_advance"
-                                                title="Avançar"
-                                                @click.stop="advance(p.id)"
-                                            >
-                                                <ArrowRightIcon class="h-3 w-3" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center rounded-lg border border-red-100 bg-white px-2 py-1 text-[10px] font-semibold text-red-600 hover:bg-red-50"
-                                                title="Remover"
-                                                @click.stop="destroyProcess(p.id)"
-                                            >
-                                                <TrashIcon class="h-3 w-3" />
-                                            </button>
-                                        </div>
+                                            {{ p.notes }}
+                                        </p>
                                     </div>
-                                </VueDraggable>
+                                </div>
 
-                                <p
-                                    v-if="!col.processes.length"
-                                    class="pointer-events-none absolute inset-x-1 top-8 rounded-xl border border-dashed border-slate-300 px-2 py-10 text-center text-xs text-slate-400"
-                                >
-                                    Solte aqui
-                                </p>
+                                <div class="flex flex-wrap items-center gap-2 lg:justify-end">
+                                    <select
+                                        class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
+                                        :value="p.current_stage"
+                                        @change="moveStage(p.id, $event.target.value)"
+                                    >
+                                        <option v-for="s in stages" :key="s.value" :value="s.value">{{ s.label }}</option>
+                                    </select>
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
+                                        :disabled="!p.can_retreat"
+                                        @click="retreat(p.id)"
+                                    >
+                                        <ArrowLeftIcon class="h-3.5 w-3.5" />
+                                        Recuar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1 rounded-xl bg-talents-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-talents-700 disabled:opacity-40"
+                                        :disabled="!p.can_advance"
+                                        @click="advance(p.id)"
+                                    >
+                                        Avançar
+                                        <ArrowRightIcon class="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1 rounded-xl border border-red-100 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                                        @click="destroyProcess(p.id)"
+                                    >
+                                        <TrashIcon class="h-3.5 w-3.5" />
+                                        Remover
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                    </VueDraggable>
+
+                    <div
+                        v-else
+                        class="rounded-2xl border border-dashed border-talents-200 bg-gradient-to-b from-talents-50/50 to-white px-6 py-14 text-center"
+                    >
+                        <div
+                            class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-talents-100 text-talents-700"
+                        >
+                            <BuildingOffice2Icon class="h-6 w-6" />
+                        </div>
+                        <p class="mt-4 font-semibold text-talents-900">Nenhum processo nesta fase</p>
+                        <p class="mx-auto mt-1 max-w-sm text-sm text-slate-600">
+                            Crie um processo ou avance itens de outras fases do funil.
+                        </p>
                     </div>
                 </div>
             </section>
