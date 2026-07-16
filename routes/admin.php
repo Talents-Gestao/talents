@@ -121,6 +121,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::get('noticias', NewsFeedController::class)->name('news.feed');
 
     Route::middleware('admin.can:companies')->group(function () {
+        Route::get('colaboradores/lookup-cep', [CompanyEmployeeController::class, 'lookupCep'])
+            ->name('colaboradores.lookup-cep');
         Route::resource('colaboradores', CompanyEmployeeController::class)
             ->parameters(['colaboradores' => 'employee']);
 

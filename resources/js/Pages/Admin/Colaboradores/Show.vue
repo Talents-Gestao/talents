@@ -88,9 +88,37 @@ const remove = () => {
                         <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">E-mail</dt>
                         <dd class="mt-1 text-sm text-slate-900">{{ display(employee.email) }}</dd>
                     </div>
-                    <div class="sm:col-span-2">
-                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Endereço</dt>
-                        <dd class="mt-1 text-sm text-slate-900">{{ display(employee.address) }}</dd>
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">CEP</dt>
+                        <dd class="mt-1 text-sm text-slate-900">{{ display(employee.address_zip) }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Rua</dt>
+                        <dd class="mt-1 text-sm text-slate-900">{{ display(employee.address_street) }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Número</dt>
+                        <dd class="mt-1 text-sm text-slate-900">{{ display(employee.address_number) }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Complemento</dt>
+                        <dd class="mt-1 text-sm text-slate-900">{{ display(employee.address_complement) }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bairro</dt>
+                        <dd class="mt-1 text-sm text-slate-900">{{ display(employee.address_neighborhood) }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cidade / UF</dt>
+                        <dd class="mt-1 text-sm text-slate-900">
+                            {{
+                                display(
+                                    [employee.address_city, employee.address_state]
+                                        .filter((part) => String(part ?? '').trim() !== '')
+                                        .join(' — ') || null,
+                                )
+                            }}
+                        </dd>
                     </div>
                 </dl>
             </section>

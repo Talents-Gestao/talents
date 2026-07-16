@@ -10,11 +10,15 @@ use App\Models\CompanyEmployee;
 use App\Models\Department;
 use App\Models\Position;
 use App\Models\User;
+use App\Services\ViaCepService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use InvalidArgumentException;
+use RuntimeException;
 
 class CompanyEmployeeController extends Controller
 {
@@ -57,6 +61,19 @@ class CompanyEmployeeController extends Controller
                 'q' => $search !== '' ? $search : null,
             ],
         ]);
+    }
+
+    public function lookupCep(Request $request, ViaCepService $viaCep): JsonResponse
+    {
+        $request->validate([
+            'cep' => ['required', 'string', 'max:16'],
+        ]);
+
+        try {
+            return response()->json($viaCep->lookup($request->string('cep')->toString()));
+        } catch (InvalidArgumentException|RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
     public function create(Request $request): Response
@@ -155,7 +172,13 @@ class CompanyEmployeeController extends Controller
             ],
             'birth_date' => ['nullable', 'date'],
             'phone' => ['nullable', 'string', 'max:32'],
-            'address' => ['nullable', 'string', 'max:500'],
+            'address_zip' => ['nullable', 'string', 'max:16'],
+            'address_street' => ['nullable', 'string', 'max:255'],
+            'address_number' => ['nullable', 'string', 'max:32'],
+            'address_complement' => ['nullable', 'string', 'max:120'],
+            'address_neighborhood' => ['nullable', 'string', 'max:120'],
+            'address_city' => ['nullable', 'string', 'max:120'],
+            'address_state' => ['nullable', 'string', 'size:2'],
             'emergency_contact_name' => ['nullable', 'string', 'max:255'],
             'emergency_contact_relationship' => ['nullable', 'string', 'max:120'],
             'emergency_contact_phone' => ['nullable', 'string', 'max:32'],
@@ -182,7 +205,13 @@ class CompanyEmployeeController extends Controller
             'email' => 'e-mail',
             'birth_date' => 'data de nascimento',
             'phone' => 'telefone',
-            'address' => 'endereço',
+            'address_zip' => 'CEP',
+            'address_street' => 'rua',
+            'address_number' => 'número',
+            'address_complement' => 'complemento',
+            'address_neighborhood' => 'bairro',
+            'address_city' => 'cidade',
+            'address_state' => 'UF',
             'emergency_contact_name' => 'nome do contato de emergência',
             'emergency_contact_relationship' => 'parentesco',
             'emergency_contact_phone' => 'telefone do contato de emergência',
@@ -210,7 +239,15 @@ class CompanyEmployeeController extends Controller
             'email' => $email !== '' ? $email : null,
             'birth_date' => $data['birth_date'] ?? null,
             'phone' => $this->nullableTrim($data['phone'] ?? null),
-            'address' => $this->nullableTrim($data['address'] ?? null),
+            'address_zip' => $this->nullableTrim($data['address_zip'] ?? null),
+            'address_street' => $this->nullableTrim($data['address_street'] ?? null),
+            'address_number' => $this->nullableTrim($data['address_number'] ?? null),
+            'address_complement' => $this->nullableTrim($data['address_complement'] ?? null),
+            'address_neighborhood' => $this->nullableTrim($data['address_neighborhood'] ?? null),
+            'address_city' => $this->nullableTrim($data['address_city'] ?? null),
+            'address_state' => ($state = strtoupper($this->nullableTrim($data['address_state'] ?? null) ?? '')) !== ''
+                ? $state
+                : null,
             'emergency_contact_name' => $this->nullableTrim($data['emergency_contact_name'] ?? null),
             'emergency_contact_relationship' => $this->nullableTrim($data['emergency_contact_relationship'] ?? null),
             'emergency_contact_phone' => $this->nullableTrim($data['emergency_contact_phone'] ?? null),
@@ -325,7 +362,13 @@ class CompanyEmployeeController extends Controller
             'email' => $e->email,
             'birth_date' => $e->birth_date?->toDateString(),
             'phone' => $e->phone,
-            'address' => $e->address,
+            'address_zip' => $e->address_zip,
+            'address_street' => $e->address_street,
+            'address_number' => $e->address_number,
+            'address_complement' => $e->address_complement,
+            'address_neighborhood' => $e->address_neighborhood,
+            'address_city' => $e->address_city,
+            'address_state' => $e->address_state,
             'emergency_contact_name' => $e->emergency_contact_name,
             'emergency_contact_relationship' => $e->emergency_contact_relationship,
             'emergency_contact_phone' => $e->emergency_contact_phone,

@@ -6,7 +6,9 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { maskPhoneBr } from '@/utils/formatPhone';
+import axios from 'axios';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 const props = defineProps({
     mode: { type: String, required: true },
@@ -26,7 +28,13 @@ const form = useForm({
     email: props.employee?.email ?? '',
     birth_date: props.employee?.birth_date ?? '',
     phone: maskPhoneBr(props.employee?.phone ?? ''),
-    address: props.employee?.address ?? '',
+    address_zip: props.employee?.address_zip ?? '',
+    address_street: props.employee?.address_street ?? '',
+    address_number: props.employee?.address_number ?? '',
+    address_complement: props.employee?.address_complement ?? '',
+    address_neighborhood: props.employee?.address_neighborhood ?? '',
+    address_city: props.employee?.address_city ?? '',
+    address_state: props.employee?.address_state ?? '',
     emergency_contact_name: props.employee?.emergency_contact_name ?? '',
     emergency_contact_relationship: props.employee?.emergency_contact_relationship ?? '',
     emergency_contact_phone: maskPhoneBr(props.employee?.emergency_contact_phone ?? ''),
@@ -40,6 +48,12 @@ const form = useForm({
     is_active: props.employee?.is_active ?? true,
     notes: props.employee?.notes ?? '',
 });
+
+const cepLookupLoading = ref(false);
+const cepLookupError = ref('');
+const lastLookedUpCep = ref('');
+
+const cepDigits = (value) => String(value ?? '').replace(/\D/g, '').slice(0, 8);
 
 const onPhoneInput = (field) => (event) => {
     form[field] = maskPhoneBr(event.target.value);
@@ -55,6 +69,60 @@ const maskCpf = (value) => {
 
 const onCpfInput = (event) => {
     form.cpf = maskCpf(event.target.value);
+};
+
+const maskCep = (value) => {
+    const digits = cepDigits(value);
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+};
+
+const fetchAddressFromCep = async (digits) => {
+    if (digits.length !== 8 || digits === lastLookedUpCep.value || cepLookupLoading.value) {
+        return;
+    }
+
+    cepLookupError.value = '';
+    cepLookupLoading.value = true;
+    lastLookedUpCep.value = digits;
+
+    try {
+        const { data } = await axios.get(route('admin.colaboradores.lookup-cep'), {
+            params: { cep: digits },
+        });
+        form.address_zip = data.address_zip ?? maskCep(digits);
+        form.address_street = data.address_street ?? '';
+        form.address_neighborhood = data.address_neighborhood ?? '';
+        form.address_city = data.address_city ?? '';
+        form.address_state = data.address_state ?? '';
+        if (data.address_complement) {
+            form.address_complement = data.address_complement;
+        }
+    } catch (e) {
+        lastLookedUpCep.value = '';
+        const d = e.response?.data;
+        const msg =
+            typeof d?.message === 'string'
+                ? d.message
+                : d?.errors?.cep?.[0] ?? 'Não foi possível consultar o CEP.';
+        cepLookupError.value = msg;
+    } finally {
+        cepLookupLoading.value = false;
+    }
+};
+
+const onCepInput = (event) => {
+    const masked = maskCep(event.target.value);
+    form.address_zip = masked;
+    cepLookupError.value = '';
+
+    const digits = cepDigits(masked);
+    if (digits.length < 8) {
+        lastLookedUpCep.value = '';
+        return;
+    }
+
+    fetchAddressFromCep(digits);
 };
 
 const submit = () => {
@@ -118,10 +186,58 @@ const backHref =
                         <input v-model="form.email" type="email" :class="fieldClass" />
                         <InputError :message="form.errors.email" />
                     </div>
+                    <div>
+                        <InputLabel value="CEP" />
+                        <p class="mt-0.5 text-xs text-slate-500">
+                            Ao digitar os 8 dígitos, o endereço é preenchido automaticamente.
+                        </p>
+                        <input
+                            :value="form.address_zip"
+                            inputmode="numeric"
+                            placeholder="00000-000"
+                            maxlength="9"
+                            :class="[fieldClass, 'max-w-[10rem]']"
+                            @input="onCepInput"
+                        />
+                        <p v-if="cepLookupLoading" class="mt-2 text-xs text-slate-500">Consultando CEP…</p>
+                        <p v-else-if="cepLookupError" class="mt-2 text-sm text-red-600">{{ cepLookupError }}</p>
+                        <InputError :message="form.errors.address_zip" />
+                    </div>
                     <div class="sm:col-span-2">
-                        <InputLabel value="Endereço" />
-                        <input v-model="form.address" :class="fieldClass" />
-                        <InputError :message="form.errors.address" />
+                        <InputLabel value="Rua" />
+                        <input v-model="form.address_street" :class="fieldClass" />
+                        <InputError :message="form.errors.address_street" />
+                    </div>
+                    <div>
+                        <InputLabel value="Número" />
+                        <input v-model="form.address_number" :class="fieldClass" />
+                        <InputError :message="form.errors.address_number" />
+                    </div>
+                    <div>
+                        <InputLabel value="Complemento" />
+                        <input v-model="form.address_complement" placeholder="Apto, bloco…" :class="fieldClass" />
+                        <InputError :message="form.errors.address_complement" />
+                    </div>
+                    <div>
+                        <InputLabel value="Bairro" />
+                        <input v-model="form.address_neighborhood" :class="fieldClass" />
+                        <InputError :message="form.errors.address_neighborhood" />
+                    </div>
+                    <div>
+                        <InputLabel value="Cidade" />
+                        <input v-model="form.address_city" :class="fieldClass" />
+                        <InputError :message="form.errors.address_city" />
+                    </div>
+                    <div>
+                        <InputLabel value="UF" />
+                        <input
+                            :value="form.address_state"
+                            maxlength="2"
+                            placeholder="SP"
+                            class="mt-1 block w-full max-w-[5rem] rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm uppercase text-slate-900 shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
+                            @input="form.address_state = String($event.target.value || '').toUpperCase().slice(0, 2)"
+                        />
+                        <InputError :message="form.errors.address_state" />
                     </div>
                 </div>
             </section>

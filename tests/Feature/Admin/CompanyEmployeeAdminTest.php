@@ -10,6 +10,7 @@ use App\Models\Department;
 use App\Models\Position;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -40,7 +41,13 @@ class CompanyEmployeeAdminTest extends TestCase
                 'email' => 'maria@empresa.local',
                 'birth_date' => '1990-05-10',
                 'phone' => '(11) 98765-4321',
-                'address' => 'Rua das Flores, 100',
+                'address_zip' => '01310-100',
+                'address_street' => 'Avenida Paulista',
+                'address_number' => '1000',
+                'address_complement' => 'Sala 10',
+                'address_neighborhood' => 'Bela Vista',
+                'address_city' => 'São Paulo',
+                'address_state' => 'SP',
                 'emergency_contact_name' => 'João Silva',
                 'emergency_contact_relationship' => 'Cônjuge',
                 'emergency_contact_phone' => '(11) 91234-5678',
@@ -59,7 +66,13 @@ class CompanyEmployeeAdminTest extends TestCase
         $this->assertNotNull($employee);
         $this->assertSame('Maria Silva', $employee->name);
         $this->assertSame('maria@empresa.local', $employee->email);
-        $this->assertSame('Rua das Flores, 100', $employee->address);
+        $this->assertSame('01310-100', $employee->address_zip);
+        $this->assertSame('Avenida Paulista', $employee->address_street);
+        $this->assertSame('1000', $employee->address_number);
+        $this->assertSame('Sala 10', $employee->address_complement);
+        $this->assertSame('Bela Vista', $employee->address_neighborhood);
+        $this->assertSame('São Paulo', $employee->address_city);
+        $this->assertSame('SP', $employee->address_state);
         $this->assertSame('João Silva', $employee->emergency_contact_name);
         $this->assertSame('Cônjuge', $employee->emergency_contact_relationship);
         $this->assertSame('123.456.789-00', $employee->cpf);
@@ -104,5 +117,34 @@ class CompanyEmployeeAdminTest extends TestCase
             ->assertRedirect();
 
         $this->assertDatabaseMissing('company_employees', ['id' => $employee->id]);
+    }
+
+    public function test_admin_can_lookup_cep_via_viacep(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        Http::fake([
+            'viacep.com.br/*' => Http::response([
+                'cep' => '01310-100',
+                'logradouro' => 'Avenida Paulista',
+                'complemento' => 'de 612 a 899 - lado par',
+                'bairro' => 'Bela Vista',
+                'localidade' => 'São Paulo',
+                'uf' => 'SP',
+                'erro' => false,
+            ], 200),
+        ]);
+
+        $this->actingAs($admin)
+            ->getJson(route('admin.colaboradores.lookup-cep', ['cep' => '01310-100']))
+            ->assertOk()
+            ->assertJson([
+                'address_zip' => '01310-100',
+                'address_street' => 'Avenida Paulista',
+                'address_neighborhood' => 'Bela Vista',
+                'address_city' => 'São Paulo',
+                'address_state' => 'SP',
+                'address_complement' => 'de 612 a 899 - lado par',
+            ]);
     }
 }
