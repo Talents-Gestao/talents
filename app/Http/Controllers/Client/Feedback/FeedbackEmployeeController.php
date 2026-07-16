@@ -54,7 +54,7 @@ class FeedbackEmployeeController extends FeedbackCompanyController
 
         return $this->feedbackRedirect(
             'index',
-            message: 'Os colaboradores passam a vir do RHID (Control iD). Use o módulo RHID ou os selects nos fluxos de Feedback.',
+            message: 'O colaborador é informado por nome nos fluxos de Feedback, Férias e Desligamento e fica registado na empresa automaticamente.',
         );
     }
 }

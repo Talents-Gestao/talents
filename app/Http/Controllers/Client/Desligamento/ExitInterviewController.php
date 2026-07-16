@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Client\Desligamento;
 
+use App\Actions\Company\ResolveOrCreateCompanyEmployee;
 use App\Enums\ExitInterviewStatus;
 use App\Http\Controllers\Concerns\ResolvesDesligamentoRoutes;
 use App\Models\Company;
 use App\Models\ExitInterview;
+use App\Support\Company\CompanyEmployeeDirectory;
 use App\Support\Desligamento\DesligamentoCompanyContext;
 use App\Support\Desligamento\ExitInterviewScript;
 use Illuminate\Http\RedirectResponse;
@@ -106,9 +108,15 @@ class ExitInterviewController extends DesligamentoCompanyController
         $company = $this->company($request);
         $data = $this->validated($request, $company);
 
+        $employee = app(ResolveOrCreateCompanyEmployee::class)->execute(
+            $company,
+            $data['employee_name'],
+            $data['employee_email'],
+        );
+
         ExitInterview::query()->create([
             'company_id' => $company->id,
-            'company_employee_id' => null,
+            'company_employee_id' => $employee->id,
             'rhid_person_id' => null,
             'employee_name' => $data['employee_name'],
             'employee_email' => $data['employee_email'],
@@ -171,8 +179,14 @@ class ExitInterviewController extends DesligamentoCompanyController
         $this->authorizeInterview($company, $interview);
         $data = $this->validated($request, $company);
 
+        $employee = app(ResolveOrCreateCompanyEmployee::class)->execute(
+            $company,
+            $data['employee_name'],
+            $data['employee_email'],
+        );
+
         $interview->update([
-            'company_employee_id' => null,
+            'company_employee_id' => $employee->id,
             'rhid_person_id' => null,
             'employee_name' => $data['employee_name'],
             'employee_email' => $data['employee_email'],
@@ -199,7 +213,8 @@ class ExitInterviewController extends DesligamentoCompanyController
      * @return array{
      *   statusOptions: list<array{value: string, label: string}>,
      *   sections: list<array{key: string, title: string, questions: list<array{key: string, body: string, hint?: string}>}>,
-     *   consultantNoteFields: list<array{key: string, label: string}>
+     *   consultantNoteFields: list<array{key: string, label: string}>,
+     *   employees: list<array{id: int, name: string, email: ?string}>
      * }
      */
     private function formOptions(Company $company, Request $request): array
@@ -208,6 +223,7 @@ class ExitInterviewController extends DesligamentoCompanyController
             'statusOptions' => $this->statusOptions(),
             'sections' => ExitInterviewScript::sections(),
             'consultantNoteFields' => ExitInterviewScript::consultantNoteFields(),
+            'employees' => app(CompanyEmployeeDirectory::class)->suggestionsFor($company),
         ];
     }
 

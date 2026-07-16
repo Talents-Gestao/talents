@@ -52,6 +52,13 @@ class DesligamentoModuleTest extends TestCase
         $this->assertNotNull($interview);
         $this->assertSame('Colaborador Saída', $interview->employee_name);
         $this->assertNull($interview->rhid_person_id);
+        $this->assertNotNull($interview->company_employee_id);
+        $this->assertDatabaseHas('company_employees', [
+            'id' => $interview->company_employee_id,
+            'company_id' => $company->id,
+            'name' => 'Colaborador Saída',
+            'email' => 'saida@teste.local',
+        ]);
 
         $this->actingAs($admin)
             ->get(route('client.desligamento.show', $interview))
