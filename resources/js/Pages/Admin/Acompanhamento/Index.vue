@@ -7,6 +7,14 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import {
+    ArrowLeftIcon,
+    ArrowRightIcon,
+    BuildingOffice2Icon,
+    MagnifyingGlassIcon,
+    PlusIcon,
+    TrashIcon,
+} from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     stages: { type: Array, required: true },
@@ -32,6 +40,13 @@ const activeStageLabel = computed(() => {
     const s = props.stages.find((x) => x.value === currentStage.value);
     return s?.label ?? '';
 });
+
+const totalProcesses = computed(() =>
+    Object.values(props.stage_counts || {}).reduce((sum, n) => sum + (Number(n) || 0), 0),
+);
+
+const fieldClass =
+    'mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70';
 
 const navigate = (overrides = {}) => {
     const params = {
@@ -104,174 +119,212 @@ const destroyProcess = (processId) => {
         <template #header>
             <div>
                 <h2 class="text-xl font-semibold leading-tight text-talents-900">Acompanhamento</h2>
-                <p class="mt-1 text-sm text-gray-600">
-                    Status visual das fases de contratação para as empresas. O processo operacional continua na Sólides.
+                <p class="mt-1 text-sm text-slate-600">
+                    Status visual das fases de contratação. O processo operacional continua na Sólides.
                 </p>
             </div>
         </template>
 
         <div
             v-if="$page.props.flash?.success"
-            class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+            class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
         >
             {{ $page.props.flash.success }}
         </div>
         <div
             v-if="$page.props.flash?.error"
-            class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
         >
             {{ $page.props.flash.error }}
         </div>
 
-        <div class="space-y-6">
-            <div class="rounded-2xl border border-talents-200 bg-white p-4 shadow-sm sm:p-6">
-                <HiringProcessStepper
-                    :stages="stages"
-                    :current-stage="currentStage"
-                    :stage-counts="stage_counts"
-                    @update:current-stage="onStageChange"
-                />
-
-                <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                        <h3 class="text-lg font-semibold text-talents-900">Processos</h3>
-                        <p class="text-sm text-gray-600">
-                            Fase atual: <strong>{{ activeStageLabel }}</strong>
-                            — {{ processes.length }} processo(s)
-                        </p>
+        <div class="space-y-5">
+            <section
+                class="overflow-hidden rounded-2xl border border-talents-200/80 bg-gradient-to-b from-talents-50/90 via-white to-white shadow-sm"
+            >
+                <div class="border-b border-talents-100/80 px-4 py-4 sm:px-6 sm:py-5">
+                    <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-talents-600">Funil de contratação</p>
+                            <p class="mt-0.5 text-sm text-slate-600">
+                                {{ totalProcesses }} processo(s) no total · fase selecionada:
+                                <span class="font-semibold text-talents-800">{{ activeStageLabel }}</span>
+                            </p>
+                        </div>
+                        <Link
+                            :href="route('admin.solides.curriculos.index')"
+                            class="inline-flex items-center gap-1.5 rounded-xl border border-talents-200 bg-white px-3 py-2 text-xs font-semibold text-talents-800 shadow-sm transition hover:bg-talents-50"
+                        >
+                            Banco de talentos
+                        </Link>
                     </div>
-                    <div class="flex flex-wrap gap-2">
+                    <HiringProcessStepper
+                        :stages="stages"
+                        :current-stage="currentStage"
+                        :stage-counts="stage_counts"
+                        @update:current-stage="onStageChange"
+                    />
+                </div>
+
+                <div class="space-y-5 px-4 py-5 sm:px-6">
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row">
+                            <div class="relative flex-1">
+                                <MagnifyingGlassIcon
+                                    class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                                />
+                                <input
+                                    v-model="searchQ"
+                                    type="search"
+                                    class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
+                                    placeholder="Busque por vaga ou empresa"
+                                    @keyup.enter="applyFilters"
+                                />
+                            </div>
+                            <select v-model="companyId" :class="fieldClass + ' sm:w-56'" class="!mt-0">
+                                <option value="">Todas as empresas</option>
+                                <option v-for="c in companies" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
+                            </select>
+                            <button
+                                type="button"
+                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                                @click="applyFilters"
+                            >
+                                Filtrar
+                            </button>
+                        </div>
                         <button
                             type="button"
-                            class="inline-flex items-center rounded-lg border border-talents-300 bg-white px-3 py-2 text-sm font-semibold text-talents-800 hover:bg-talents-50"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-talents-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
                             @click="showCreate = !showCreate"
                         >
+                            <PlusIcon class="h-4 w-4" />
                             {{ showCreate ? 'Cancelar' : 'Novo processo' }}
                         </button>
                     </div>
-                </div>
 
-                <div class="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <TextInput
-                        v-model="searchQ"
-                        type="search"
-                        class="w-full sm:flex-1"
-                        placeholder="Busque por vaga ou empresa"
-                        @keyup.enter="applyFilters"
-                    />
-                    <select
-                        v-model="companyId"
-                        class="rounded-md border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    <div
+                        v-if="showCreate"
+                        class="rounded-2xl border border-talents-200 bg-talents-50/40 p-4 sm:p-5"
                     >
-                        <option value="">Todas as empresas</option>
-                        <option v-for="c in companies" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
-                    </select>
-                    <PrimaryButton type="button" @click="applyFilters">Filtrar</PrimaryButton>
-                </div>
+                        <h4 class="text-sm font-semibold text-talents-900">Novo processo</h4>
+                        <form class="mt-3 grid gap-3 sm:grid-cols-2" @submit.prevent="submitCreate">
+                            <div>
+                                <InputLabel for="create_company" value="Empresa" />
+                                <select id="create_company" v-model="createForm.company_id" :class="fieldClass" required>
+                                    <option value="" disabled>Selecione</option>
+                                    <option v-for="c in companies" :key="c.id" :value="c.id">{{ c.name }}</option>
+                                </select>
+                                <InputError class="mt-1" :message="createForm.errors.company_id" />
+                            </div>
+                            <div>
+                                <InputLabel for="create_title" value="Vaga / processo" />
+                                <TextInput id="create_title" v-model="createForm.title" :class="fieldClass" required />
+                                <InputError class="mt-1" :message="createForm.errors.title" />
+                            </div>
+                            <div>
+                                <InputLabel for="create_stage" value="Fase inicial" />
+                                <select id="create_stage" v-model="createForm.current_stage" :class="fieldClass">
+                                    <option v-for="s in stages" :key="s.value" :value="s.value">{{ s.label }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <InputLabel for="create_notes" value="Notas (opcional)" />
+                                <TextInput id="create_notes" v-model="createForm.notes" :class="fieldClass" />
+                            </div>
+                            <div class="sm:col-span-2">
+                                <PrimaryButton :disabled="createForm.processing">Criar processo</PrimaryButton>
+                            </div>
+                        </form>
+                    </div>
 
-                <div v-if="showCreate" class="mt-6 rounded-xl border border-talents-200 bg-talents-50/50 p-4">
-                    <h4 class="font-semibold text-talents-900">Novo processo</h4>
-                    <form class="mt-3 grid gap-3 sm:grid-cols-2" @submit.prevent="submitCreate">
-                        <div>
-                            <InputLabel for="create_company" value="Empresa" />
-                            <select
-                                id="create_company"
-                                v-model="createForm.company_id"
-                                class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                required
-                            >
-                                <option value="" disabled>Selecione</option>
-                                <option v-for="c in companies" :key="c.id" :value="c.id">{{ c.name }}</option>
-                            </select>
-                            <InputError class="mt-1" :message="createForm.errors.company_id" />
-                        </div>
-                        <div>
-                            <InputLabel for="create_title" value="Vaga / processo" />
-                            <TextInput id="create_title" v-model="createForm.title" class="mt-1 block w-full" required />
-                            <InputError class="mt-1" :message="createForm.errors.title" />
-                        </div>
-                        <div>
-                            <InputLabel for="create_stage" value="Fase inicial" />
-                            <select
-                                id="create_stage"
-                                v-model="createForm.current_stage"
-                                class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            >
-                                <option v-for="s in stages" :key="s.value" :value="s.value">{{ s.label }}</option>
-                            </select>
-                        </div>
-                        <div>
-                            <InputLabel for="create_notes" value="Notas (opcional)" />
-                            <TextInput id="create_notes" v-model="createForm.notes" class="mt-1 block w-full" />
-                        </div>
-                        <div class="sm:col-span-2">
-                            <PrimaryButton :disabled="createForm.processing">Criar</PrimaryButton>
-                        </div>
-                    </form>
-                </div>
+                    <div class="flex items-baseline justify-between gap-2">
+                        <h3 class="text-base font-semibold text-talents-900">Processos nesta fase</h3>
+                        <span class="text-xs font-medium tabular-nums text-slate-500">
+                            {{ processes.length }} resultado(s)
+                        </span>
+                    </div>
 
-                <ul v-if="processes.length" class="mt-6 divide-y divide-slate-100 rounded-xl border border-slate-200">
-                    <li
-                        v-for="p in processes"
-                        :key="p.id"
-                        class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                    <ul v-if="processes.length" class="grid gap-3">
+                        <li
+                            v-for="p in processes"
+                            :key="p.id"
+                            class="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm transition hover:border-talents-200 hover:shadow-md sm:p-5"
+                        >
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-base font-semibold text-slate-900">{{ p.title }}</p>
+                                    <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
+                                        <span class="inline-flex items-center gap-1">
+                                            <BuildingOffice2Icon class="h-3.5 w-3.5 text-talents-600" />
+                                            {{ p.company?.name ?? '—' }}
+                                        </span>
+                                        <span v-if="p.updated_by_name" class="text-slate-400">·</span>
+                                        <span v-if="p.updated_by_name">atualizado por {{ p.updated_by_name }}</span>
+                                    </p>
+                                    <p
+                                        v-if="p.notes"
+                                        class="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600"
+                                    >
+                                        {{ p.notes }}
+                                    </p>
+                                </div>
+
+                                <div class="flex flex-wrap items-center gap-2 lg:justify-end">
+                                    <select
+                                        class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
+                                        :value="p.current_stage"
+                                        @change="moveStage(p.id, $event.target.value)"
+                                    >
+                                        <option v-for="s in stages" :key="s.value" :value="s.value">{{ s.label }}</option>
+                                    </select>
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
+                                        :disabled="!p.can_retreat"
+                                        @click="retreat(p.id)"
+                                    >
+                                        <ArrowLeftIcon class="h-3.5 w-3.5" />
+                                        Recuar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1 rounded-xl bg-talents-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-talents-700 disabled:opacity-40"
+                                        :disabled="!p.can_advance"
+                                        @click="advance(p.id)"
+                                    >
+                                        Avançar
+                                        <ArrowRightIcon class="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1 rounded-xl border border-red-100 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                                        @click="destroyProcess(p.id)"
+                                    >
+                                        <TrashIcon class="h-3.5 w-3.5" />
+                                        Remover
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div
+                        v-else
+                        class="rounded-2xl border border-dashed border-talents-200 bg-gradient-to-b from-talents-50/50 to-white px-6 py-14 text-center"
                     >
-                        <div class="min-w-0">
-                            <p class="font-semibold text-slate-900">{{ p.title }}</p>
-                            <p class="text-sm text-slate-600">
-                                {{ p.company?.name ?? '—' }}
-                                <span v-if="p.updated_by_name"> · atualizado por {{ p.updated_by_name }}</span>
-                            </p>
-                            <p v-if="p.notes" class="mt-1 text-sm text-slate-500">{{ p.notes }}</p>
+                        <div
+                            class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-talents-100 text-talents-700"
+                        >
+                            <BuildingOffice2Icon class="h-6 w-6" />
                         </div>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <select
-                                class="rounded-md border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                :value="p.current_stage"
-                                @change="moveStage(p.id, $event.target.value)"
-                            >
-                                <option v-for="s in stages" :key="s.value" :value="s.value">{{ s.label }}</option>
-                            </select>
-                            <button
-                                type="button"
-                                class="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-                                :disabled="!p.can_retreat"
-                                @click="retreat(p.id)"
-                            >
-                                Recuar
-                            </button>
-                            <button
-                                type="button"
-                                class="rounded-lg bg-talents-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-talents-700 disabled:opacity-40"
-                                :disabled="!p.can_advance"
-                                @click="advance(p.id)"
-                            >
-                                Avançar
-                            </button>
-                            <button
-                                type="button"
-                                class="rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
-                                @click="destroyProcess(p.id)"
-                            >
-                                Remover
-                            </button>
-                        </div>
-                    </li>
-                </ul>
-                <div
-                    v-else
-                    class="mt-6 rounded-xl border border-dashed border-talents-200 bg-talents-50/40 px-6 py-12 text-center"
-                >
-                    <p class="font-medium text-talents-900">Nenhum processo nesta fase</p>
-                    <p class="mt-1 text-sm text-gray-600">Crie um processo ou avance processos de outras fases.</p>
+                        <p class="mt-4 font-semibold text-talents-900">Nenhum processo nesta fase</p>
+                        <p class="mx-auto mt-1 max-w-sm text-sm text-slate-600">
+                            Crie um processo ou avance itens de outras fases do funil.
+                        </p>
+                    </div>
                 </div>
-            </div>
-
-            <p class="text-xs text-slate-500">
-                <Link :href="route('admin.solides.curriculos.index')" class="text-talents-700 hover:underline">
-                    Abrir Banco de talentos (Sólides)
-                </Link>
-            </p>
+            </section>
         </div>
     </AdminLayout>
 </template>
