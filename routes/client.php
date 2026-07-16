@@ -203,6 +203,9 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('create', [ExitInterviewController::class, 'create'])->name('create');
         Route::post('/', [ExitInterviewController::class, 'store'])->name('store');
         Route::get('{interview}', [ExitInterviewController::class, 'show'])->name('show');
+        Route::get('{interview}/pdf', [ExitInterviewController::class, 'pdf'])->name('pdf');
+        Route::post('{interview}/link', [ExitInterviewController::class, 'shareLink'])->name('link.store');
+        Route::delete('{interview}/link', [ExitInterviewController::class, 'revokeLink'])->name('link.destroy');
         Route::get('{interview}/edit', [ExitInterviewController::class, 'edit'])->name('edit');
         Route::put('{interview}', [ExitInterviewController::class, 'update'])->name('update');
         Route::delete('{interview}', [ExitInterviewController::class, 'destroy'])->name('destroy');

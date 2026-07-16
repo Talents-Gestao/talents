@@ -32,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(base_path('routes/complaint.php'));
             Route::middleware('web')->group(base_path('routes/methodology.php'));
             Route::middleware('web')->group(base_path('routes/feedback.php'));
+            Route::middleware('web')->group(base_path('routes/desligamento.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {

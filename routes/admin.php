@@ -197,6 +197,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::get('create', [ExitInterviewController::class, 'create'])->name('create');
             Route::post('/', [ExitInterviewController::class, 'store'])->name('store');
             Route::get('{interview}', [ExitInterviewController::class, 'show'])->name('show');
+            Route::get('{interview}/pdf', [ExitInterviewController::class, 'pdf'])->name('pdf');
+            Route::post('{interview}/link', [ExitInterviewController::class, 'shareLink'])->name('link.store');
+            Route::delete('{interview}/link', [ExitInterviewController::class, 'revokeLink'])->name('link.destroy');
             Route::get('{interview}/edit', [ExitInterviewController::class, 'edit'])->name('edit');
             Route::put('{interview}', [ExitInterviewController::class, 'update'])->name('update');
             Route::delete('{interview}', [ExitInterviewController::class, 'destroy'])->name('destroy');
@@ -241,6 +244,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
         Route::get('acompanhamento', [HiringProcessController::class, 'index'])->name('acompanhamento.index');
         Route::post('acompanhamento', [HiringProcessController::class, 'store'])->name('acompanhamento.store');
+        Route::post('acompanhamento/reordenar', [HiringProcessController::class, 'reorder'])->name('acompanhamento.reorder');
         Route::patch('acompanhamento/{hiringProcess}', [HiringProcessController::class, 'update'])->name('acompanhamento.update');
         Route::post('acompanhamento/{hiringProcess}/avancar', [HiringProcessController::class, 'advance'])->name('acompanhamento.advance');
         Route::post('acompanhamento/{hiringProcess}/recuar', [HiringProcessController::class, 'retreat'])->name('acompanhamento.retreat');

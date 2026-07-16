@@ -9,11 +9,13 @@ use App\Enums\ExitInterviewStatus;
 use App\Http\Controllers\Concerns\ResolvesDesligamentoRoutes;
 use App\Models\Company;
 use App\Models\ExitInterview;
+use App\Services\Desligamento\ExitInterviewPdfService;
 use App\Support\Company\CompanyEmployeeDirectory;
 use App\Support\Desligamento\DesligamentoCompanyContext;
 use App\Support\Desligamento\ExitInterviewScript;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -147,10 +149,60 @@ class ExitInterviewController extends DesligamentoCompanyController
                 'consultant_notes' => $interview->consultant_notes ?? [],
                 'employee' => $interview->collaboratorPayload(),
                 'creator' => $interview->creator?->only(['id', 'name']),
+                'public_url' => $interview->publicUrl(),
+                'has_public_link' => filled($interview->public_token),
+                'employee_submitted_at' => $interview->employee_submitted_at?->toIso8601String(),
+                'accepts_employee_responses' => $interview->acceptsEmployeeResponses(),
             ],
             'sections' => ExitInterviewScript::sections(),
             'consultantNoteFields' => ExitInterviewScript::consultantNoteFields(),
         ]);
+    }
+
+    public function pdf(Request $request, ExitInterview $interview, ExitInterviewPdfService $pdf): HttpResponse
+    {
+        $company = $this->company($request);
+        $this->authorizeInterview($company, $interview);
+
+        $filename = 'desligamento-'.$interview->id.'.pdf';
+
+        return $pdf->download($interview, includeConsultantNotes: true)->download($filename);
+    }
+
+    public function shareLink(Request $request, ExitInterview $interview): RedirectResponse
+    {
+        $company = $this->company($request);
+        $this->authorizeInterview($company, $interview);
+
+        abort_if(
+            $interview->employee_submitted_at !== null,
+            422,
+            'Esta pesquisa já foi respondida pelo colaborador.',
+        );
+
+        abort_if(
+            $interview->status === ExitInterviewStatus::Completed,
+            422,
+            'Pesquisa já concluída. Use rascunho para enviar o link ao colaborador.',
+        );
+
+        $interview->ensurePublicToken();
+
+        return $this->desligamentoRedirect(
+            'show',
+            $interview,
+            'Link gerado. Copie e envie ao colaborador para responder online.',
+        );
+    }
+
+    public function revokeLink(Request $request, ExitInterview $interview): RedirectResponse
+    {
+        $company = $this->company($request);
+        $this->authorizeInterview($company, $interview);
+
+        $interview->revokePublicToken();
+
+        return $this->desligamentoRedirect('show', $interview, 'Link público desativado.');
     }
 
     public function edit(Request $request, ExitInterview $interview): Response

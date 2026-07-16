@@ -147,4 +147,82 @@ class DesligamentoModuleTest extends TestCase
             ->get(route('client.desligamento.index'))
             ->assertForbidden();
     }
+
+    public function test_admin_can_download_exit_interview_pdf(): void
+    {
+        $company = Company::query()->create([
+            'name' => 'Empresa PDF',
+            'desligamento_access' => true,
+            'is_active' => true,
+        ]);
+        $this->subscribeCompanyToNr1($company);
+        $admin = \App\Models\User::factory()->companyAdmin($company->id)->create();
+
+        $interview = ExitInterview::query()->create([
+            'company_id' => $company->id,
+            'employee_name' => 'Colaborador PDF',
+            'employee_email' => 'pdf@teste.local',
+            'interview_date' => '2026-07-12',
+            'status' => ExitInterviewStatus::Completed,
+            'answers' => ['q1' => 'Boa experiência.'],
+            'consultant_notes' => ['main_reasons' => 'Nova oportunidade.'],
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('client.desligamento.pdf', $interview))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_public_link_allows_employee_to_submit_answers(): void
+    {
+        $company = Company::query()->create([
+            'name' => 'Empresa Link',
+            'desligamento_access' => true,
+            'is_active' => true,
+        ]);
+        $this->subscribeCompanyToNr1($company);
+        $admin = \App\Models\User::factory()->companyAdmin($company->id)->create();
+
+        $interview = ExitInterview::query()->create([
+            'company_id' => $company->id,
+            'employee_name' => 'Colaborador Remoto',
+            'employee_email' => 'remoto@teste.local',
+            'interview_date' => null,
+            'status' => ExitInterviewStatus::Draft,
+            'answers' => null,
+            'consultant_notes' => null,
+            'created_by' => $admin->id,
+        ]);
+
+        $this->withoutVite();
+
+        $this->actingAs($admin)
+            ->post(route('client.desligamento.link.store', $interview))
+            ->assertRedirect(route('client.desligamento.show', $interview));
+
+        $interview->refresh();
+        $this->assertNotNull($interview->public_token);
+
+        $this->get(route('desligamento.public.show', $interview->public_token))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Desligamento/Public/Take'));
+
+        $this->post(route('desligamento.public.submit', $interview->public_token), [
+            'answers' => [
+                'q1' => 'Resposta pelo link.',
+                'q4' => 'Mudança de cidade.',
+            ],
+        ])->assertRedirect(route('desligamento.public.thanks', $interview->public_token));
+
+        $interview->refresh();
+        $this->assertSame(ExitInterviewStatus::Completed, $interview->status);
+        $this->assertNotNull($interview->employee_submitted_at);
+        $this->assertSame('Resposta pelo link.', $interview->answers['q1']);
+
+        $this->get(route('desligamento.public.show', $interview->public_token))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Desligamento/Public/Closed'));
+    }
 }

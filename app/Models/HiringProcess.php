@@ -15,6 +15,7 @@ class HiringProcess extends Model
         'title',
         'current_stage',
         'notes',
+        'sort_order',
         'updated_by',
     ];
 
