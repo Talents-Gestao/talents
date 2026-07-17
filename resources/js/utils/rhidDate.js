@@ -116,23 +116,61 @@ export function formatPeriodPtBr(ini, fim) {
 
 /**
  * Formata datas no formato Microsoft JSON: /Date(1647918000000-0300)/
+ * Também aceita ISO / YYYY-MM-DD quando não for DotNet.
  * @param {unknown} val
+ * @param {{ withTime?: boolean }} [options]
  * @returns {string} data local pt-BR ou string vazia se invalido
  */
-export function formatRhidDotNetDate(val) {
+export function formatRhidDotNetDate(val, options = {}) {
+    const withTime = Boolean(options.withTime);
     if (val == null || val === '') {
         return '';
     }
     const s = String(val);
     const m = s.match(/\/Date\((-?\d+)/);
-    if (!m) {
+    let d = null;
+    if (m) {
+        d = new Date(parseInt(m[1], 10));
+    } else {
+        const iso = Date.parse(s);
+        if (!Number.isNaN(iso)) {
+            d = new Date(iso);
+        }
+    }
+    if (!d || Number.isNaN(d.getTime())) {
         return '';
     }
-    const d = new Date(parseInt(m[1], 10));
-    if (Number.isNaN(d.getTime())) {
-        return '';
+    if (withTime) {
+        return d.toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
     }
     return d.toLocaleDateString('pt-BR');
+}
+
+/**
+ * Periodo inicio → fim (DotNet JSON ou ISO), com hora.
+ * @param {unknown} start
+ * @param {unknown} end
+ * @returns {string}
+ */
+export function formatRhidDotNetDateRange(start, end) {
+    const a = formatRhidDotNetDate(start, { withTime: true });
+    const b = formatRhidDotNetDate(end, { withTime: true });
+    if (a && b) {
+        return a === b ? a : `${a} → ${b}`;
+    }
+    if (a) {
+        return a;
+    }
+    if (b) {
+        return b;
+    }
+    return '—';
 }
 
 /**

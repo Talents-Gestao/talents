@@ -94,8 +94,9 @@ function maxSpanningLanes() {
     return props.compact ? 2 : 3;
 }
 
+/** Sem teto: o scroll do dia limita a altura visual; "+N mais" fica só para tirinhas multi-dia. */
 function maxSingleDayChips() {
-    return props.compact ? 1 : 2;
+    return Number.POSITIVE_INFINITY;
 }
 
 function toDateIso(date) {
@@ -490,6 +491,10 @@ const rootShellClass = computed(() =>
 
 const cellMinH = computed(() =>
     props.compact ? 'min-h-[5rem]' : 'min-h-[5.75rem] sm:min-h-[6.5rem]',
+);
+
+const cellMaxH = computed(() =>
+    props.compact ? 'max-h-[7.25rem]' : 'max-h-[9rem] sm:max-h-[10rem]',
 );
 
 function itemSourceId(item) {
@@ -997,13 +1002,13 @@ function itemShellClass(item) {
                             <button
                                 v-if="cell.day"
                                 type="button"
-                                :class="[monthCellClass(cell), cellMinH]"
+                                :class="[monthCellClass(cell), cellMinH, cellMaxH, 'overflow-hidden']"
                                 :style="monthCellStyle(cell)"
                                 @click="onPickDay(cell)"
                             >
                                 <BirthdayConfetti v-if="showFestiveEffects && dayHasBirthday(cell.items)" />
                                 <span
-                                    class="relative z-0 px-2 pt-1.5 text-xs font-semibold tabular-nums"
+                                    class="relative z-0 shrink-0 px-2 pt-1.5 text-xs font-semibold tabular-nums"
                                     :class="
                                         selectedDay === cell.day
                                             ? ''
@@ -1016,10 +1021,11 @@ function itemShellClass(item) {
                                     {{ cell.day }}
                                 </span>
                                 <div
-                                    class="relative z-0 flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5"
+                                    class="relative z-0 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain px-1 pb-1.5 pt-0.5"
                                     :style="{
                                         paddingTop: `${Math.max(week.laneCount, 0) * 1.2 + (week.laneCount ? 0.2 : 0)}rem`,
                                     }"
+                                    @wheel.stop
                                 >
                                     <div
                                         v-for="it in week.singleDayByCol[ci]"
@@ -1043,13 +1049,13 @@ function itemShellClass(item) {
                                     </div>
                                     <span
                                         v-if="week.moreByCol[ci] > 0"
-                                        class="px-0.5 text-[10px] font-semibold text-slate-500"
+                                        class="shrink-0 px-0.5 text-[10px] font-semibold text-slate-500"
                                     >
                                         +{{ week.moreByCol[ci] }} mais
                                     </span>
                                 </div>
                             </button>
-                            <div v-else :class="['border-transparent bg-slate-50/40', cellMinH]" />
+                            <div v-else :class="['border-transparent bg-slate-50/40', cellMinH, cellMaxH]" />
                         </div>
 
                         <div class="pointer-events-none absolute inset-0 z-10 grid grid-cols-7 gap-px">
@@ -1078,7 +1084,7 @@ function itemShellClass(item) {
             <!-- Painel detalhe -->
             <div
                 v-if="!compact"
-                class="relative border-t border-slate-200/80 bg-slate-50/40 lg:w-[min(380px,34%)] lg:border-l lg:border-t-0 lg:shrink-0 overflow-hidden"
+                class="relative max-h-[min(70vh,720px)] overflow-y-auto overscroll-contain border-t border-slate-200/80 bg-slate-50/40 lg:w-[min(380px,34%)] lg:shrink-0 lg:border-l lg:border-t-0"
                 :class="rootPad"
             >
                 <BirthdayConfetti v-if="showFestiveEffects && selectedDayHasBirthday" />

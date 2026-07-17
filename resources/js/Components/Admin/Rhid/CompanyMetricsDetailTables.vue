@@ -1,4 +1,5 @@
 <script setup>
+import { formatRhidDotNetDate, formatRhidDotNetDateRange } from '@/utils/rhidDate';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -29,11 +30,12 @@ const filteredJustifications = computed(() => {
     if (!term) {
         return justificationItems.value;
     }
-    return justificationItems.value.filter((row) =>
-        [row.person_name, row.type, row.description, row.start, row.end]
+    return justificationItems.value.filter((row) => {
+        const period = formatRhidDotNetDateRange(row.start, row.end);
+        return [row.person_name, row.type, row.description, period]
             .filter(Boolean)
-            .some((v) => String(v).toLowerCase().includes(term)),
-    );
+            .some((v) => String(v).toLowerCase().includes(term));
+    });
 });
 
 const formatMinutes = (minutes) => {
@@ -46,6 +48,8 @@ const formatMinutes = (minutes) => {
     const m = abs % 60;
     return `${sign}${h}:${String(m).padStart(2, '0')}`;
 };
+
+const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true }) || '—';
 </script>
 
 <template>
@@ -234,8 +238,7 @@ const formatMinutes = (minutes) => {
                                 </td>
                                 <td class="px-4 py-2 text-slate-600">{{ row.type }}</td>
                                 <td class="px-4 py-2 text-xs text-slate-600">
-                                    {{ row.start || '—' }}
-                                    <span v-if="row.end"> → {{ row.end }}</span>
+                                    {{ formatRhidDotNetDateRange(row.start, row.end) }}
                                 </td>
                             </tr>
                             <tr v-if="!filteredJustifications.length">
@@ -268,7 +271,7 @@ const formatMinutes = (minutes) => {
                                 class="border-t border-slate-50"
                             >
                                 <td class="px-4 py-2 font-medium text-slate-800">{{ row.name }}</td>
-                                <td class="px-4 py-2 text-slate-600">{{ row.datetime || '—' }}</td>
+                                <td class="px-4 py-2 text-slate-600">{{ formatPunchDateTime(row.datetime) }}</td>
                             </tr>
                             <tr v-if="!(metrics.punches?.items ?? []).length">
                                 <td colspan="2" class="px-4 py-6 text-center text-slate-500">Sem marcacoes retornadas.</td>
