@@ -29,9 +29,9 @@ class HiringProcessAdminTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Admin/Acompanhamento/Index')
-                ->has('stages', 6)
+                ->has('stages', 8)
                 ->has('processes')
-                ->where('active_stage', HiringProcessStage::AnaliseCurriculo->value));
+                ->where('active_stage', HiringProcessStage::EngenhariaCargo->value));
     }
 
     public function test_admin_can_reorder_processes_in_stage_list(): void

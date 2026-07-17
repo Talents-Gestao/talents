@@ -20,7 +20,7 @@ class AcompanhamentoController extends Controller
         abort_unless($company->hasAcompanhamentoEnabled(), 403);
 
         $stageFilter = $request->string('stage')->toString();
-        $activeStage = HiringProcessStage::tryFrom($stageFilter) ?? HiringProcessStage::AnaliseCurriculo;
+        $activeStage = HiringProcessStage::tryFrom($stageFilter) ?? HiringProcessStage::EngenhariaCargo;
 
         $baseQuery = HiringProcess::query()->where('company_id', $company->id);
 

@@ -2,7 +2,9 @@
 /**
  * Stepper horizontal das fases de acompanhamento de contratação.
  */
-defineProps({
+import { computed } from 'vue';
+
+const props = defineProps({
     stages: {
         type: Array,
         required: true,
@@ -30,6 +32,12 @@ defineProps({
 });
 
 const emit = defineEmits(['update:currentStage']);
+
+const trackMinWidth = computed(() => {
+    const perStep = props.compact ? 112 : 148;
+    const connectors = Math.max(props.stages.length - 1, 0) * (props.compact ? 12 : 20);
+    return `${props.stages.length * perStep + connectors}px`;
+});
 
 const countFor = (stage, stageCounts) => {
     const n = stageCounts?.[stage.value];
@@ -67,20 +75,23 @@ const onClick = (stage, interactive) => {
 </script>
 
 <template>
-    <div class="w-full overflow-x-auto pb-1">
+    <div class="w-full overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:thin]">
         <nav
-            class="flex min-w-[760px] items-start"
-            :class="compact ? 'gap-0 px-1' : 'gap-0 px-2 pt-1'"
+            class="flex items-start"
+            :class="compact ? 'gap-1 px-1' : 'gap-1.5 px-1 pt-2 sm:gap-2 sm:px-2'"
+            :style="{ minWidth: trackMinWidth }"
             aria-label="Fases do acompanhamento"
         >
             <template v-for="(stage, index) in stages" :key="stage.value">
                 <button
                     type="button"
                     :disabled="!interactive"
-                    class="group relative flex min-w-0 flex-1 flex-col items-center text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2"
+                    class="group relative flex flex-col items-center text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2"
                     :class="[
                         interactive ? 'cursor-pointer' : 'cursor-default',
-                        compact ? 'gap-1 px-1 pb-2 pt-1' : 'gap-2 px-1.5 pb-3 pt-2',
+                        compact
+                            ? 'min-w-[6.5rem] max-w-[7.5rem] flex-1 gap-1.5 px-1.5 pb-2.5 pt-1'
+                            : 'min-w-[8.5rem] max-w-[10.5rem] flex-1 gap-2.5 px-2 pb-4 pt-2 sm:min-w-[9rem]',
                     ]"
                     @click="onClick(stage, interactive)"
                 >
@@ -113,7 +124,7 @@ const onClick = (stage, interactive) => {
                     </span>
 
                     <span
-                        class="line-clamp-2 font-medium leading-snug"
+                        class="line-clamp-3 px-0.5 font-medium leading-snug"
                         :class="[
                             compact ? 'text-[10px]' : 'text-[11px] sm:text-xs',
                             currentStage === stage.value ? 'text-talents-800' : 'text-slate-500 group-hover:text-talents-700',
@@ -124,7 +135,7 @@ const onClick = (stage, interactive) => {
 
                     <span
                         v-if="!compact"
-                        class="inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
+                        class="mt-0.5 inline-flex min-w-[1.75rem] items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
                         :class="
                             currentStage === stage.value
                                 ? 'bg-talents-100 text-talents-800'
@@ -136,15 +147,15 @@ const onClick = (stage, interactive) => {
 
                     <span
                         v-if="currentStage === stage.value"
-                        class="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-talents-600"
+                        class="absolute inset-x-4 bottom-0 h-0.5 rounded-full bg-talents-600"
                     />
                 </button>
 
                 <div
                     v-if="index < stages.length - 1"
-                    class="mt-[1.35rem] hidden h-0.5 w-3 shrink-0 self-start rounded-full sm:block sm:w-4"
+                    class="hidden h-0.5 shrink-0 self-start rounded-full sm:block"
                     :class="[
-                        compact ? 'mt-[0.85rem]' : 'sm:mt-[1.6rem]',
+                        compact ? 'mt-[0.85rem] w-3' : 'mt-[1.6rem] w-4 sm:w-5',
                         progressStage && isPast(stages[index], progressStage, stages)
                             ? 'bg-talents-400'
                             : 'bg-slate-200',

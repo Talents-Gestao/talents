@@ -73,10 +73,10 @@ const formatDate = (iso) => {
             <section
                 class="overflow-hidden rounded-2xl border border-talents-200/80 bg-gradient-to-b from-talents-50/90 via-white to-white shadow-sm"
             >
-                <div class="border-b border-talents-100/80 px-4 py-4 sm:px-6 sm:py-5">
-                    <div class="mb-4">
+                <div class="border-b border-talents-100/80 px-4 py-5 sm:px-6 sm:py-6">
+                    <div class="mb-5">
                         <p class="text-xs font-semibold uppercase tracking-wider text-talents-600">Funil de contratação</p>
-                        <p class="mt-0.5 text-sm text-slate-600">
+                        <p class="mt-1 text-sm text-slate-600">
                             {{ totalCount }} processo(s) ·
                             <span class="font-semibold text-talents-800">{{ activeStageLabel }}</span>
                         </p>
@@ -89,8 +89,8 @@ const formatDate = (iso) => {
                     />
                 </div>
 
-                <div class="px-4 py-5 sm:px-6">
-                    <div class="mb-4 flex items-baseline justify-between gap-2">
+                <div class="px-4 py-6 sm:px-6">
+                    <div class="mb-5 flex items-baseline justify-between gap-2">
                         <h3 class="text-base font-semibold text-talents-900">Processos nesta fase</h3>
                         <span class="text-xs font-medium tabular-nums text-slate-500">
                             {{ processes.length }} de {{ totalCount }}
