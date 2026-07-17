@@ -88,13 +88,16 @@ class AcompanhamentoModuleTest extends TestCase
         $this->withoutVite();
 
         $this->actingAs($admin)
-            ->get(route('client.acompanhamento.index'))
+            ->get(route('client.acompanhamento.index', [
+                'stage' => HiringProcessStage::AnaliseCurriculo->value,
+            ]))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('all_processes', 1)
                 ->where('all_processes.0.title', 'Vaga própria')
                 ->has('processes', 1)
-                ->where('processes.0.title', 'Vaga própria'));
+                ->where('processes.0.title', 'Vaga própria')
+                ->where('active_stage', HiringProcessStage::AnaliseCurriculo->value));
     }
 
     public function test_company_user_needs_permission(): void

@@ -48,7 +48,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->string('title');
-            $table->string('current_stage', 64)->default('analise_curriculo');
+            $table->string('current_stage', 64)->default('engenharia_cargo');
             $table->text('notes')->nullable();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

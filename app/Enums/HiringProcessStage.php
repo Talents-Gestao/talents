@@ -6,6 +6,8 @@ namespace App\Enums;
 
 enum HiringProcessStage: string
 {
+    case EngenhariaCargo = 'engenharia_cargo';
+    case AnuncioVagas = 'anuncio_vagas';
     case AnaliseCurriculo = 'analise_curriculo';
     case AnaliseComportamental = 'analise_comportamental';
     case EntrevistaPresencial = 'entrevista_presencial';
@@ -16,6 +18,8 @@ enum HiringProcessStage: string
     public function label(): string
     {
         return match ($this) {
+            self::EngenhariaCargo => 'Engenharia de Cargo',
+            self::AnuncioVagas => 'Anúncio de Vagas',
             self::AnaliseCurriculo => 'Análise de currículo',
             self::AnaliseComportamental => 'Análise Comportamental',
             self::EntrevistaPresencial => 'Entrevista Presencial',
@@ -28,12 +32,14 @@ enum HiringProcessStage: string
     public function order(): int
     {
         return match ($this) {
-            self::AnaliseCurriculo => 1,
-            self::AnaliseComportamental => 2,
-            self::EntrevistaPresencial => 3,
-            self::EntrevistaGestor => 4,
-            self::VisitaEmpresa => 5,
-            self::Contratacao => 6,
+            self::EngenhariaCargo => 1,
+            self::AnuncioVagas => 2,
+            self::AnaliseCurriculo => 3,
+            self::AnaliseComportamental => 4,
+            self::EntrevistaPresencial => 5,
+            self::EntrevistaGestor => 6,
+            self::VisitaEmpresa => 7,
+            self::Contratacao => 8,
         };
     }
 
@@ -43,6 +49,8 @@ enum HiringProcessStage: string
     public static function ordered(): array
     {
         return [
+            self::EngenhariaCargo,
+            self::AnuncioVagas,
             self::AnaliseCurriculo,
             self::AnaliseComportamental,
             self::EntrevistaPresencial,

@@ -19,7 +19,7 @@ class HiringProcessController extends Controller
     public function index(Request $request): Response
     {
         $stageFilter = $request->string('stage')->toString();
-        $activeStage = HiringProcessStage::tryFrom($stageFilter) ?? HiringProcessStage::AnaliseCurriculo;
+        $activeStage = HiringProcessStage::tryFrom($stageFilter) ?? HiringProcessStage::EngenhariaCargo;
 
         $companyId = $request->integer('company_id') ?: null;
         if ($companyId !== null && $companyId <= 0) {
@@ -104,7 +104,7 @@ class HiringProcessController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $stage = $data['current_stage'] ?? HiringProcessStage::AnaliseCurriculo;
+        $stage = $data['current_stage'] ?? HiringProcessStage::EngenhariaCargo;
         if (! $stage instanceof HiringProcessStage) {
             $stage = HiringProcessStage::from((string) $stage);
         }
