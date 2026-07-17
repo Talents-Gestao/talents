@@ -138,7 +138,7 @@ class StrategicCalendarController extends Controller
         $item->load(['companies', 'company']);
         $publishNotice->handle($item, CompanyNoticeEventKind::Created, $request->user());
 
-        return back()->with('success', 'Item do calendário criado.');
+        return $this->redirectAfterMutation('Item do calendário criado.');
     }
 
     public function edit(StrategicCalendarItem $item): InertiaResponse
@@ -224,7 +224,7 @@ class StrategicCalendarController extends Controller
 
         $publishNotice->handle($item, CompanyNoticeEventKind::Updated, $request->user());
 
-        return back()->with('success', 'Item atualizado.');
+        return $this->redirectAfterMutation('Item atualizado.');
     }
 
     public function destroy(StrategicCalendarItem $item, Request $request, PublishStrategicCalendarChangeNotice $publishNotice): RedirectResponse
@@ -236,7 +236,7 @@ class StrategicCalendarController extends Controller
         $item->deleteAllAttachments();
         $item->delete();
 
-        return back()->with('success', 'Item removido.');
+        return $this->redirectAfterMutation('Item removido.');
     }
 
     public function attachmentsStore(Request $request, StrategicCalendarItem $item): RedirectResponse
@@ -304,6 +304,26 @@ class StrategicCalendarController extends Controller
         }
 
         return $query;
+    }
+
+    /**
+     * Create/Edit (página própria) → lista.
+     * DayModal na lista → back(), para o Inertia respeitar preserveScroll.
+     */
+    private function redirectAfterMutation(string $message): RedirectResponse
+    {
+        $previousPath = parse_url((string) url()->previous(), PHP_URL_PATH) ?: '';
+
+        $cameFromFormPage = str_ends_with($previousPath, '/calendario-estrategico/create')
+            || (bool) preg_match('#/calendario-estrategico/[^/]+/edit$#', $previousPath);
+
+        if ($cameFromFormPage) {
+            return redirect()
+                ->route('admin.strategic-calendar.index')
+                ->with('success', $message);
+        }
+
+        return back()->with('success', $message);
     }
 
     /**

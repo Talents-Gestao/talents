@@ -2,7 +2,7 @@
 import AppTopBar from '@/Components/AppTopBar.vue';
 import NewsFeedDrawer from '@/Components/NewsFeedDrawer.vue';
 import NoticeBellDropdown from '@/Components/NoticeBellDropdown.vue';
-import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { Bars3Icon, MapPinIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import {
     computed,
     nextTick,
@@ -16,6 +16,7 @@ import {
 
 const LABELS_SHOW_DELAY_MS = 80;
 const WIDTH_COLLAPSE_START_MS = 120;
+const SIDEBAR_PINNED_KEY = 'talents.sidebar.pinned';
 
 defineProps({
     shellClass: {
@@ -50,6 +51,15 @@ defineProps({
 
 const slots = useSlots();
 
+const readPinnedPreference = () => {
+    try {
+        return window.localStorage.getItem(SIDEBAR_PINNED_KEY) === '1';
+    } catch {
+        return false;
+    }
+};
+
+const pinned = ref(false);
 const asideHovered = ref(false);
 const labelsVisible = ref(false);
 const mobileOpen = ref(false);
@@ -73,6 +83,31 @@ const clearSidebarTimers = () => {
     }
 };
 
+const applyPinnedState = (isPinned) => {
+    clearSidebarTimers();
+    if (isPinned) {
+        asideHovered.value = true;
+        labelsVisible.value = true;
+        return;
+    }
+    if (mobileOpen.value) {
+        return;
+    }
+    labelsVisible.value = false;
+    asideHovered.value = false;
+};
+
+const togglePinned = () => {
+    pinned.value = !pinned.value;
+    try {
+        window.localStorage.setItem(SIDEBAR_PINNED_KEY, pinned.value ? '1' : '0');
+    } catch {
+        // Preferência local é opcional.
+    }
+    applyPinnedState(pinned.value);
+    nextTick(updateScrollHints);
+};
+
 const updateScrollHints = () => {
     const el = navEl.value;
     if (!el) {
@@ -86,6 +121,9 @@ const updateScrollHints = () => {
 };
 
 const onAsideEnter = () => {
+    if (pinned.value) {
+        return;
+    }
     clearSidebarTimers();
     asideHovered.value = true;
     showLabelsTimer = setTimeout(() => {
@@ -95,7 +133,7 @@ const onAsideEnter = () => {
 };
 
 const onAsideLeave = () => {
-    if (mobileOpen.value) {
+    if (pinned.value || mobileOpen.value) {
         return;
     }
     clearSidebarTimers();
@@ -107,6 +145,11 @@ const onAsideLeave = () => {
 };
 
 onMounted(() => {
+    pinned.value = readPinnedPreference();
+    if (pinned.value) {
+        applyPinnedState(true);
+    }
+
     const el = navEl.value;
     if (!el) {
         return;
@@ -139,13 +182,18 @@ watch(mobileOpen, (open) => {
         nextTick(updateScrollHints);
         return;
     }
+    if (pinned.value) {
+        applyPinnedState(true);
+        nextTick(updateScrollHints);
+        return;
+    }
     labelsVisible.value = false;
     asideHovered.value = false;
     nextTick(updateScrollHints);
 });
 
 const collapsed = computed(() => {
-    if (mobileOpen.value) {
+    if (mobileOpen.value || pinned.value) {
         return false;
     }
     return !labelsVisible.value;
@@ -159,7 +207,7 @@ watch(collapsed, (isCollapsed) => {
     nextTick(updateScrollHints);
 });
 
-const asideWide = computed(() => asideHovered.value || mobileOpen.value);
+const asideWide = computed(() => pinned.value || asideHovered.value || mobileOpen.value);
 const compact = computed(() => !asideWide.value && !mobileOpen.value);
 
 const closeMobileSidebar = () => {
@@ -207,6 +255,10 @@ const mainMarginClass = computed(() =>
 );
 
 const hasAside = computed(() => Boolean(slots.aside));
+
+const pinButtonTitle = computed(() =>
+    pinned.value ? 'Desafixar menu' : 'Fixar menu',
+);
 </script>
 
 <template>
@@ -231,9 +283,27 @@ const hasAside = computed(() => Boolean(slots.aside));
         >
             <div class="flex h-full min-h-0 flex-col lg:overflow-visible">
                 <div
-                    class="flex min-h-[3.25rem] shrink-0 items-center border-b border-slate-200/70 px-2 py-3"
+                    class="flex min-h-[3.25rem] shrink-0 items-center gap-1 border-b border-slate-200/70 px-2 py-3"
                 >
-                    <slot name="logo" :collapsed="collapsed" :compact="compact" />
+                    <div class="min-w-0 flex-1">
+                        <slot name="logo" :collapsed="collapsed" :compact="compact" />
+                    </div>
+                    <button
+                        v-if="!collapsed"
+                        type="button"
+                        class="hidden shrink-0 items-center justify-center rounded-lg p-1.5 transition focus:outline-none focus:ring-2 focus:ring-talents-500/40 lg:inline-flex"
+                        :class="
+                            pinned
+                                ? 'bg-talents-50 text-talents-700 hover:bg-talents-100'
+                                : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+                        "
+                        :title="pinButtonTitle"
+                        :aria-label="pinButtonTitle"
+                        :aria-pressed="pinned"
+                        @click="togglePinned"
+                    >
+                        <MapPinIcon class="h-4 w-4" :class="pinned ? 'fill-talents-600/20' : ''" />
+                    </button>
                 </div>
 
                 <div class="relative min-h-0 flex-1">
