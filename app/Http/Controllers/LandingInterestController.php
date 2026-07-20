@@ -70,10 +70,24 @@ class LandingInterestController extends Controller
                 'exception' => $e,
             ]);
             $submission->update([
-                'mail_error' => Str::limit(mb_scrub((string) $e->getMessage(), 'UTF-8'), 2000),
+                'mail_error' => self::humanizeMailError($e->getMessage()),
             ]);
         }
 
         return back()->with('success', 'Recebemos seu interesse. Em breve entraremos em contato.');
+    }
+
+    /**
+     * Mensagem amigável para a lista admin (detalhe técnico fica no log).
+     */
+    private static function humanizeMailError(string $raw): string
+    {
+        $clean = Str::limit(mb_scrub($raw, 'UTF-8'), 2000);
+
+        if (str_contains($clean, 'htmlspecialchars()')) {
+            return 'Falha ao montar o conteúdo do e-mail de aviso.';
+        }
+
+        return $clean;
     }
 }
