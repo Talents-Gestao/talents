@@ -74,7 +74,7 @@ const showLoadingSkeleton = computed(() => props.loading && !props.metrics);
         </div>
 
         <p v-if="!rhidConfigured" class="mt-4 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-100">
-            Integracao RHID nao configurada. O cliente deve informar credenciais em RHID / Ponto no portal.
+            Integração RHID não configurada. O cliente deve informar credenciais em RHID / Ponto no portal.
         </p>
 
         <p

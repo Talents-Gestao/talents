@@ -97,6 +97,17 @@ const subscriptionStatusLabel = (status) => {
     return status || '—';
 };
 
+const roleLabel = (role) => {
+    const map = {
+        company_admin: 'Administrador da empresa',
+        company_user: 'Usuário da empresa',
+        super_admin: 'Administrador Talents',
+    };
+    const key = String(role || '').toLowerCase();
+
+    return map[key] ?? role ?? '—';
+};
+
 const roleLabelClass = (role) => {
     const r = String(role || '').toLowerCase();
     if (r.includes('admin')) {
@@ -516,10 +527,10 @@ const deleteCompany = () => {
                             <p class="text-xs text-slate-500">{{ u.email }}</p>
                         </div>
                         <span
-                            class="inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ring-1"
+                            class="inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
                             :class="roleLabelClass(u.role)"
                         >
-                            {{ u.role }}
+                            {{ roleLabel(u.role) }}
                         </span>
                     </li>
                 </ul>

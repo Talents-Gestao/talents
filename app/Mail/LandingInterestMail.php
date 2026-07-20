@@ -33,7 +33,7 @@ class LandingInterestMail extends Mailable
         return new Envelope(
             subject: 'Novo interesse na Talents — '.$safeName,
             replyTo: [
-                new Address($this->submitterEmail, $safeName !== '' ? $safeName : null),
+                new Address($this->submitterEmail, $safeName),
             ],
         );
     }

@@ -34,7 +34,7 @@ class LandingInterestSubmissionController extends Controller
             'company' => self::asUtf8String($s->company),
             'message' => self::asUtf8String($s->message),
             'mail_sent_at' => $s->mail_sent_at?->toIso8601String(),
-            'mail_error' => self::asUtf8String($s->mail_error),
+            'mail_error' => self::humanizeStoredMailError(self::asUtf8String($s->mail_error)),
             'created_at' => $s->created_at?->toIso8601String(),
         ];
     }
@@ -57,6 +57,22 @@ class LandingInterestSubmissionController extends Controller
         $clean = mb_scrub($value, 'UTF-8');
 
         return $clean === '' ? $whenEmpty : $clean;
+    }
+
+    /**
+     * Substitui erros técnicos antigos (ex.: TypeError do htmlspecialchars) por texto legível.
+     */
+    private static function humanizeStoredMailError(?string $error): ?string
+    {
+        if ($error === null || $error === '') {
+            return $error;
+        }
+
+        if (str_contains($error, 'htmlspecialchars()')) {
+            return 'Falha ao montar o e-mail de aviso (registo antigo; o envio já foi corrigido para novos leads).';
+        }
+
+        return $error;
     }
 
     /**

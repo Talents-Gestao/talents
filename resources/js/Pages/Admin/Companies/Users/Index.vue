@@ -12,6 +12,17 @@ const props = defineProps({
 
 const resendingId = ref(null);
 
+const roleLabel = (role) => {
+    const map = {
+        company_admin: 'Administrador da empresa',
+        company_user: 'Usuário da empresa',
+        super_admin: 'Administrador Talents',
+    };
+    const key = String(role || '').toLowerCase();
+
+    return map[key] ?? role ?? '—';
+};
+
 const remove = (userId) => {
     if (confirm('Remover este utilizador?')) {
         router.delete(route('admin.companies.users.destroy', [props.company.id, userId]));
@@ -72,7 +83,7 @@ const resendInvitation = (user) => {
                     <tr v-for="u in users" :key="u.id">
                         <td class="px-4 py-2 font-medium text-slate-900">{{ u.name }}</td>
                         <td class="px-4 py-2 text-slate-700">{{ u.email }}</td>
-                        <td class="px-4 py-2 text-slate-700">{{ u.role }}</td>
+                        <td class="px-4 py-2 text-slate-700">{{ roleLabel(u.role) }}</td>
                         <td class="px-4 py-2">
                             <span v-if="u.pending_registration" class="text-amber-700">Aguarda cadastro</span>
                             <span v-else :class="u.is_active ? 'text-emerald-700' : 'text-red-600'">
