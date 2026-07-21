@@ -145,7 +145,7 @@ class CommercialDemoSmokeTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Comercial/Propostas/Index')
+                ->component('Admin/Commercial/Proposals/Index')
                 ->where('queue_total', 4)
                 ->has('queue', 4)
                 ->where('queue.0.code', 'PROP-DEMO-0001')
@@ -166,7 +166,7 @@ class CommercialDemoSmokeTest extends TestCase
             ->get(route('admin.financeiro.comissoes.index', ['status' => 'a_pagar']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Financeiro/Comissoes/Index')
+                ->component('Admin/Finance/Commissions/Index')
                 ->where('summary.pending_count', 4)
                 ->where('summary.pending_cents', 665_000)
                 ->has('commissions.data', 4)
@@ -183,7 +183,7 @@ class CommercialDemoSmokeTest extends TestCase
             ->get(route('admin.financeiro.dashboard'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Financeiro/Dashboard')
+                ->component('Admin/Finance/Dashboard')
                 ->where('kpis.commissions_pending_cents', 665_000)
             );
 

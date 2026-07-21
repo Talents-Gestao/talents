@@ -35,7 +35,7 @@ class PontoPanelTest extends TestCase
             ->get(route('admin.ponto.index'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Admin/Ponto/Index')
+                ->component('Admin/TimeClock/Index')
                 ->has('companies', 1)
                 ->where('companies.0.name', 'Empresa RHID'));
     }

@@ -53,7 +53,7 @@ class CompanyEmployeeController extends Controller
 
         $employees = $query->paginate(20)->withQueryString()->through(fn (CompanyEmployee $e) => $this->listPayload($e));
 
-        return Inertia::render('Admin/Colaboradores/Index', [
+        return Inertia::render('Admin/Employees/Index', [
             'employees' => $employees,
             'companies' => $this->companiesOptions(),
             'filters' => [
@@ -83,7 +83,7 @@ class CompanyEmployeeController extends Controller
 
         $company = Company::query()->findOrFail($companyId);
 
-        return Inertia::render('Admin/Colaboradores/Form', [
+        return Inertia::render('Admin/Employees/Form', [
             'mode' => 'create',
             'employee' => null,
             'company' => $company->only(['id', 'name']),
@@ -115,7 +115,7 @@ class CompanyEmployeeController extends Controller
             'leader:id,name,email',
         ]);
 
-        return Inertia::render('Admin/Colaboradores/Show', [
+        return Inertia::render('Admin/Employees/Show', [
             'employee' => $this->detailPayload($employee),
         ]);
     }
@@ -124,7 +124,7 @@ class CompanyEmployeeController extends Controller
     {
         $employee->load(['company:id,name']);
 
-        return Inertia::render('Admin/Colaboradores/Form', [
+        return Inertia::render('Admin/Employees/Form', [
             'mode' => 'edit',
             'employee' => $this->formPayload($employee),
             'company' => $employee->company?->only(['id', 'name']),

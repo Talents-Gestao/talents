@@ -58,7 +58,7 @@ class MonthlyHighlightController extends Controller
             ->withQueryString()
             ->through(fn (CompanyMonthlyHighlight $row) => $this->listPayload($row));
 
-        return Inertia::render('Admin/DestaquesMes/Index', [
+        return Inertia::render('Admin/MonthlyHighlights/Index', [
             'highlights' => $highlights,
             'companies' => Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'categories' => MonthlyHighlightCategory::options(),
@@ -81,7 +81,7 @@ class MonthlyHighlightController extends Controller
 
         $now = now();
 
-        return Inertia::render('Admin/DestaquesMes/Form', [
+        return Inertia::render('Admin/MonthlyHighlights/Form', [
             'mode' => 'create',
             'highlight' => null,
             'companies' => Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
@@ -118,7 +118,7 @@ class MonthlyHighlightController extends Controller
     {
         $destaque_mes->load(['company:id,name']);
 
-        return Inertia::render('Admin/DestaquesMes/Form', [
+        return Inertia::render('Admin/MonthlyHighlights/Form', [
             'mode' => 'edit',
             'highlight' => $this->formPayload($destaque_mes),
             'companies' => Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),

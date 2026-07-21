@@ -36,7 +36,7 @@ class CommissionIndexTest extends TestCase
             ->get(route('admin.financeiro.comissoes.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Financeiro/Comissoes/Index')
+                ->component('Admin/Finance/Commissions/Index')
                 ->where('summary.pending_cents', 1000)
                 ->where('summary.pending_count', 1)
                 ->where('summary.paid_cents', 500)

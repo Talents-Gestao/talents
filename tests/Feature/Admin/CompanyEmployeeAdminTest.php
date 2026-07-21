@@ -31,7 +31,7 @@ class CompanyEmployeeAdminTest extends TestCase
             ->get(route('admin.colaboradores.index', ['company_id' => $company->id]))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Admin/Colaboradores/Index')
+                ->component('Admin/Employees/Index')
                 ->has('companies'));
 
         $this->actingAs($admin)
@@ -83,7 +83,7 @@ class CompanyEmployeeAdminTest extends TestCase
             ->get(route('admin.colaboradores.show', $employee))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Admin/Colaboradores/Show')
+                ->component('Admin/Employees/Show')
                 ->where('employee.name', 'Maria Silva'));
     }
 

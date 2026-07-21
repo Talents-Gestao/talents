@@ -1,5 +1,5 @@
 <script setup>
-import ExitInterviewAccordions from '@/Components/Desligamento/ExitInterviewAccordions.vue';
+import ExitInterviewAccordions from '@/Components/Offboarding/ExitInterviewAccordions.vue';
 import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccordion.vue';
 import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';

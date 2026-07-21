@@ -23,7 +23,7 @@ class ProcessTemplateController extends Controller
 
         $templates = $q->withCount(['lists', 'boards'])->paginate(20)->withQueryString();
 
-        return Inertia::render('Admin/Tarefas/Processos/Index', [
+        return Inertia::render('Admin/Tasks/Processes/Index', [
             'templates' => $templates,
             'filters' => $request->only(['only_active']),
         ]);
@@ -31,7 +31,7 @@ class ProcessTemplateController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Admin/Tarefas/Processos/Create');
+        return Inertia::render('Admin/Tasks/Processes/Create');
     }
 
     public function store(Request $request): RedirectResponse
@@ -65,7 +65,7 @@ class ProcessTemplateController extends Controller
     {
         $template->load(['lists.cards']);
 
-        return Inertia::render('Admin/Tarefas/Processos/Edit', [
+        return Inertia::render('Admin/Tasks/Processes/Edit', [
             'template' => $template,
             'visibilityListOptions' => [
                 ['value' => 'internal', 'label' => 'Interno'],

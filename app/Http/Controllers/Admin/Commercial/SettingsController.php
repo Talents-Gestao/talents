@@ -25,7 +25,7 @@ class SettingsController extends Controller
             $settings->pdf_descricoes_servicos
         );
 
-        return Inertia::render('Admin/Comercial/Configuracoes', [
+        return Inertia::render('Admin/Commercial/Settings', [
             'settings' => $settingsPayload,
             'contractTemplates' => CommercialContractTemplate::query()
                 ->orderBy('name')

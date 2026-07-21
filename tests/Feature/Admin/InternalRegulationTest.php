@@ -38,7 +38,7 @@ class InternalRegulationTest extends TestCase
             ->get(route('admin.regulamento-interno.index'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Admin/RegulamentoInterno/Index')
+                ->component('Admin/InternalRegulations/Index')
                 ->has('regulations.data', 1)
                 ->where('regulations.data.0.title', 'Regulamento geral'));
     }

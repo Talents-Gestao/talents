@@ -38,7 +38,7 @@ class InternalRegulationController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return Inertia::render('Admin/RegulamentoInterno/Index', [
+        return Inertia::render('Admin/InternalRegulations/Index', [
             'regulations' => $regulations,
             'companies' => Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'filters' => [
@@ -52,7 +52,7 @@ class InternalRegulationController extends Controller
     {
         $companyId = $request->integer('company_id') ?: null;
 
-        return Inertia::render('Admin/RegulamentoInterno/Form', [
+        return Inertia::render('Admin/InternalRegulations/Form', [
             'mode' => 'create',
             'regulation' => null,
             'companies' => Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
@@ -77,7 +77,7 @@ class InternalRegulationController extends Controller
     {
         $regulamento_interno->load(['company:id,name']);
 
-        return Inertia::render('Admin/RegulamentoInterno/Form', [
+        return Inertia::render('Admin/InternalRegulations/Form', [
             'mode' => 'edit',
             'regulation' => [
                 'id' => $regulamento_interno->id,

@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
-use App\Support\Desligamento\DesligamentoCompanyContext;
+use App\Support\Offboarding\DesligamentoCompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 

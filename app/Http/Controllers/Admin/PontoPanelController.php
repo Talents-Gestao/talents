@@ -34,7 +34,7 @@ class PontoPanelController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'segment', 'rhid_base_url', 'rhid_email', 'rhid_domain']);
 
-        return Inertia::render('Admin/Ponto/Index', [
+        return Inertia::render('Admin/TimeClock/Index', [
             'companies' => $companies,
             'segments' => $companies->pluck('segment')->filter()->unique()->sort()->values(),
         ]);

@@ -62,7 +62,7 @@ class BoardController extends Controller
                 ];
             });
 
-        return Inertia::render('Client/Tarefas/Index', [
+        return Inertia::render('Client/Tasks/Index', [
             'boards' => $boards,
         ]);
     }
@@ -75,7 +75,7 @@ class BoardController extends Controller
         $payload = BoardPresenter::forClient($board, (int) $user->company_id, $user);
         $companyUsers = BoardPresenter::companyUsersForMentions((int) $user->company_id);
 
-        return Inertia::render('Client/Tarefas/Show', [
+        return Inertia::render('Client/Tasks/Show', [
             'boardPayload' => $payload,
             'companyUsers' => $companyUsers,
         ]);

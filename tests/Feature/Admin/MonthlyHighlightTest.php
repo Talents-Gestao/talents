@@ -43,7 +43,7 @@ class MonthlyHighlightTest extends TestCase
             ->get(route('admin.destaques-mes.index'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Admin/DestaquesMes/Index')
+                ->component('Admin/MonthlyHighlights/Index')
                 ->has('highlights.data', 1)
                 ->where('highlights.data.0.person_name', 'Ana Silva'));
     }

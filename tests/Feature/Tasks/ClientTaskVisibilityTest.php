@@ -103,7 +103,7 @@ class ClientTaskVisibilityTest extends TestCase
             ->get('/client/tarefas')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Client/Tarefas/Index')
+                ->component('Client/Tasks/Index')
                 ->has('boards', 1)
                 ->where('boards.0.id', $board->id)
                 ->where('boards.0.cards_count', 2));
@@ -133,7 +133,7 @@ class ClientTaskVisibilityTest extends TestCase
             ->get('/client/tarefas')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Client/Tarefas/Index')
+                ->component('Client/Tasks/Index')
                 ->has('boards', 0));
 
         $this->actingAs($outsider)
@@ -154,7 +154,7 @@ class ClientTaskVisibilityTest extends TestCase
             ->get('/client/tarefas')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Client/Tarefas/Index')
+                ->component('Client/Tasks/Index')
                 ->has('boards', 1)
                 ->where('boards.0.id', $board->id)
                 ->where('boards.0.cards_count', 1));
@@ -183,7 +183,7 @@ class ClientTaskVisibilityTest extends TestCase
             ->get('/client/tarefas')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Client/Tarefas/Index')
+                ->component('Client/Tasks/Index')
                 ->has('boards', 1)
                 ->where('boards.0.cards_count', 2));
 

@@ -85,7 +85,7 @@ class ProposalController extends Controller
 
         $commercialSettings = CommercialSetting::current();
 
-        return Inertia::render('Admin/Comercial/Propostas/Index', [
+        return Inertia::render('Admin/Commercial/Proposals/Index', [
             'proposals' => $proposals,
             'queue' => $queue,
             'queue_total' => $queueTotal,
@@ -106,7 +106,7 @@ class ProposalController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Admin/Comercial/Propostas/Form', [
+        return Inertia::render('Admin/Commercial/Proposals/Form', [
             'mode' => 'create',
             'proposal' => null,
             'sellers' => $this->sellersOptions(),
@@ -146,7 +146,7 @@ class ProposalController extends Controller
 
     public function edit(CommercialProposal $proposal): Response
     {
-        return Inertia::render('Admin/Comercial/Propostas/Form', [
+        return Inertia::render('Admin/Commercial/Proposals/Form', [
             'mode' => 'edit',
             'proposal' => $this->proposalFormPayload($proposal),
             'sellers' => $this->sellersOptions(),

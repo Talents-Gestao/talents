@@ -81,7 +81,7 @@ class HiringProcessController extends Controller
             ->get(['id', 'name'])
             ->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->name]);
 
-        return Inertia::render('Admin/Acompanhamento/Index', [
+        return Inertia::render('Admin/HiringFollowUp/Index', [
             'stages' => HiringProcessStage::options(),
             'active_stage' => $activeStage->value,
             'stage_counts' => $stageCounts,

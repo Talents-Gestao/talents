@@ -1,6 +1,6 @@
 <?php
 
-        use App\Http\Middleware\EnsureAdminPermission;
+use App\Http\Middleware\EnsureAdminPermission;
 use App\Http\Middleware\EnsureCompanyAccess;
 use App\Http\Middleware\EnsureFeedbackCompanySelected;
 use App\Http\Middleware\EnsureFeriasCompanySelected;
@@ -32,7 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(base_path('routes/complaint.php'));
             Route::middleware('web')->group(base_path('routes/methodology.php'));
             Route::middleware('web')->group(base_path('routes/feedback.php'));
-            Route::middleware('web')->group(base_path('routes/desligamento.php'));
+            Route::middleware('web')->group(base_path('routes/offboarding.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {

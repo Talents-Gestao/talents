@@ -69,7 +69,7 @@ class CommissionController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return Inertia::render('Admin/Financeiro/Comissoes/Index', [
+        return Inertia::render('Admin/Finance/Commissions/Index', [
             'commissions' => $commissions,
             'summary' => $summary,
             'filters' => $request->only(['search', 'seller_id', 'status']),
