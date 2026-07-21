@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -34,11 +35,6 @@ class ComingSoonController extends Controller
             'description' => 'Fluxo de gravação, cronômetro, transcrição e ata de reunião será disponibilizado em breve.',
             'permission' => AdminPermissionModule::Entrevistas,
         ],
-        'ponto' => [
-            'title' => 'Ponto',
-            'description' => 'Gestão de ponto dos colaboradores será disponibilizada em uma próxima versão.',
-            'permission' => AdminPermissionModule::Rhid,
-        ],
         'diagnostico-empresarial' => [
             'title' => 'Diagnóstico empresarial',
             'description' => 'O diagnóstico empresarial completo para clientes estará disponível em breve neste módulo.',
@@ -54,19 +50,9 @@ class ComingSoonController extends Controller
             'description' => 'Histórico de contratos fechados por cliente estará disponível em breve.',
             'permission' => AdminPermissionModule::Companies,
         ],
-        'regulamento-interno' => [
-            'title' => 'Regulamento interno',
-            'description' => 'Gestão de regulamento interno por empresa será disponibilizada em breve.',
-            'permission' => AdminPermissionModule::Companies,
-        ],
         'controle-uniformes' => [
             'title' => 'Controle de uniformes',
             'description' => 'Controle de uniformes por empresa será disponibilizado em breve.',
-            'permission' => AdminPermissionModule::Companies,
-        ],
-        'destaques-mes' => [
-            'title' => 'Destaques do mês',
-            'description' => 'Destaques do mês (produtividade, pontualidade, engajamento, atendimento, comercial e indicação) chegarão em breve.',
             'permission' => AdminPermissionModule::Companies,
         ],
         'contas-bancarias' => [
@@ -91,8 +77,20 @@ class ComingSoonController extends Controller
         ],
     ];
 
-    public function show(Request $request, string $module): Response
+    public function show(Request $request, string $module): Response|RedirectResponse
     {
+        if ($module === 'ponto') {
+            return redirect()->route('admin.ponto.index');
+        }
+
+        if ($module === 'regulamento-interno') {
+            return redirect()->route('admin.regulamento-interno.index');
+        }
+
+        if ($module === 'destaques-mes') {
+            return redirect()->route('admin.destaques-mes.index');
+        }
+
         $config = self::MODULES[$module] ?? null;
         abort_unless($config !== null, 404);
 
