@@ -62,7 +62,7 @@ class ProposalQueueTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Comercial/Propostas/Index')
+                ->component('Admin/Commercial/Proposals/Index')
                 ->where('queue_total', 3)
                 ->has('queue', 3)
                 ->where('queue.0.id', $oldest->id)

@@ -17,14 +17,16 @@ use App\Http\Controllers\Admin\ComplaintCompanySelectController;
 use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
 use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
-use App\Http\Controllers\Client\Ferias\EmployeeLeaveController;
-use App\Http\Controllers\Client\Desligamento\ExitInterviewController;
+use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
+use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
 use App\Http\Controllers\Client\ComplaintController;
 use App\Http\Controllers\Admin\Finance\CommissionController as FinanceCommissionController;
 use App\Http\Controllers\Admin\Finance\FinanceDashboardController;
 use App\Http\Controllers\Admin\Finance\InstallmentController as FinanceInstallmentController;
 use App\Http\Controllers\Admin\Finance\SaleController as FinanceSaleController;
 use App\Http\Controllers\Admin\CompanyController;
+use App\Http\Controllers\Admin\InternalRegulationController;
+use App\Http\Controllers\Admin\MonthlyHighlightController;
 use App\Http\Controllers\Admin\CompanyEmployeeController;
 use App\Http\Controllers\Admin\CompanyUserController;
 use App\Http\Controllers\Admin\ComingSoonController;
@@ -36,6 +38,7 @@ use App\Http\Controllers\Admin\MethodologyController as AdminMethodologyControll
 use App\Http\Controllers\Admin\MethodologyFormTemplateController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\PlatformCompanyController;
+use App\Http\Controllers\Admin\PontoPanelController;
 use App\Http\Controllers\Admin\RhidPortfolioController;
 use App\Http\Controllers\Admin\RhidPanelController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -59,9 +62,9 @@ use App\Http\Controllers\Admin\Tasks\TaskBoardListController;
 use App\Http\Controllers\Admin\Tasks\TaskBoardMemberController;
 use App\Http\Controllers\Admin\Tasks\TemplateCardController as TasksTemplateCardController;
 use App\Http\Controllers\Admin\Tasks\TemplateListController as TasksTemplateListController;
-use App\Http\Controllers\Admin\Entrevistas\InterviewController;
-use App\Http\Controllers\Admin\Entrevistas\InterviewQuestionnaireController;
-use App\Http\Controllers\Admin\Entrevistas\InterviewReportController;
+use App\Http\Controllers\Admin\Interviews\InterviewController;
+use App\Http\Controllers\Admin\Interviews\InterviewQuestionnaireController;
+use App\Http\Controllers\Admin\Interviews\InterviewReportController;
 use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
 use App\Http\Controllers\NewsFeedController;
 use Illuminate\Support\Facades\Route;
@@ -126,6 +129,12 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::resource('colaboradores', CompanyEmployeeController::class)
             ->parameters(['colaboradores' => 'employee']);
 
+        Route::resource('regulamento-interno', InternalRegulationController::class)
+            ->parameters(['regulamento-interno' => 'regulamento_interno']);
+
+        Route::resource('destaques-mes', MonthlyHighlightController::class)
+            ->parameters(['destaques-mes' => 'destaque_mes']);
+
         Route::get('companies/{company}/rhid-metrics', [RhidPortfolioController::class, 'companyMetrics'])
             ->name('companies.rhid-metrics');
         Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');
@@ -162,6 +171,27 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('/', [RhidPanelController::class, 'index'])->name('index');
         Route::get('summary', [RhidPanelController::class, 'summary'])->name('summary');
         Route::get('companies/{company}/metrics', [RhidPanelController::class, 'companyMetrics'])->name('companies.metrics');
+    });
+
+    Route::middleware('admin.can:rhid')->prefix('ponto')->name('ponto.')->group(function () {
+        Route::get('/', [PontoPanelController::class, 'index'])->name('index');
+        Route::get('companies/{company}/metrics', [PontoPanelController::class, 'companyMetrics'])->name('companies.metrics');
+        Route::get('companies/{company}/last-punches', [PontoPanelController::class, 'lastPunches'])->name('companies.last-punches');
+        Route::get('companies/{company}/people', [PontoPanelController::class, 'people'])->name('companies.people');
+        Route::get('companies/{company}/schedule-adherence', [PontoPanelController::class, 'scheduleAdherence'])
+            ->name('companies.schedule-adherence');
+        Route::get('companies/{company}/justification-types', [PontoPanelController::class, 'justificationTypes'])
+            ->name('companies.justification-types');
+        Route::post('companies/{company}/justifications/list', [PontoPanelController::class, 'listJustifications'])
+            ->name('companies.justifications.list');
+        Route::post('companies/{company}/justifications', [PontoPanelController::class, 'storeJustification'])
+            ->name('companies.justifications.store');
+        Route::put('companies/{company}/justifications/{id}', [PontoPanelController::class, 'updateJustification'])
+            ->name('companies.justifications.update')
+            ->whereNumber('id');
+        Route::delete('companies/{company}/justifications/{id}', [PontoPanelController::class, 'destroyJustification'])
+            ->name('companies.justifications.destroy')
+            ->whereNumber('id');
     });
 
     Route::middleware('admin.can:feedbacks')->prefix('feedbacks')->name('feedbacks.')->group(function () {

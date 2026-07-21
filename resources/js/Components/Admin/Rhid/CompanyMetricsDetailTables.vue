@@ -4,10 +4,17 @@ import { computed, ref } from 'vue';
 
 const props = defineProps({
     metrics: { type: Object, required: true },
+    /** bank | adherence | justifications | punches — omitir para mostrar tudo */
+    sections: {
+        type: Array,
+        default: null,
+    },
 });
 
 const bankSearch = ref('');
 const justSearch = ref('');
+
+const showSection = (key) => !props.sections || props.sections.includes(key);
 
 const bankRows = computed(() => props.metrics?.bank?.rows ?? []);
 
@@ -54,17 +61,17 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
 
 <template>
     <div class="mt-8 space-y-8">
-        <section class="surface-card overflow-hidden">
+        <section v-if="showSection('bank')" class="surface-card overflow-hidden">
             <div class="border-b border-slate-100 px-5 py-4">
                 <h4 class="text-sm font-semibold text-talents-800">
                     Banco de horas por colaborador
                 </h4>
                 <p class="mt-1 text-xs text-slate-500">
-                    Referencia: {{ metrics.bank?.reference_date_label || 'dia anterior' }}
+                    Referência: {{ metrics.bank?.reference_date_label || 'dia anterior' }}
                     <span v-if="metrics.bank?.mom_date_label">
-                        · comparacao MoM: {{ metrics.bank.mom_date_label }}
+                        · comparação MoM: {{ metrics.bank.mom_date_label }}
                     </span>
-                    · {{ bankRows.length }} colaborador(es) com saldo numerico
+                    · {{ bankRows.length }} colaborador(es) com saldo numérico
                 </p>
                 <input
                     v-model="bankSearch"
@@ -107,11 +114,11 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
             </div>
         </section>
 
-        <div class="grid gap-6 xl:grid-cols-2">
+        <div v-if="showSection('adherence')" class="grid gap-6 xl:grid-cols-2">
             <section class="surface-card overflow-hidden">
                 <div class="border-b border-slate-100 px-5 py-4">
                     <h4 class="text-sm font-semibold text-talents-800">Maiores atrasos na entrada</h4>
-                    <p class="mt-1 text-xs text-slate-500">Mes civil corrente · aderencia ao horario</p>
+                    <p class="mt-1 text-xs text-slate-500">Mês civil corrente · aderência ao horário</p>
                 </div>
                 <div class="max-h-80 overflow-auto">
                     <table class="min-w-full text-sm">
@@ -204,11 +211,11 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
         </div>
 
         <div class="grid gap-6 xl:grid-cols-2">
-            <section class="surface-card overflow-hidden">
+            <section v-if="showSection('justifications')" class="surface-card overflow-hidden">
                 <div class="border-b border-slate-100 px-5 py-4">
                     <h4 class="text-sm font-semibold text-talents-800">Justificativas (amostra)</h4>
                     <p class="mt-1 text-xs text-slate-500">
-                        Primeira pagina da API · {{ justificationItems.length }} registro(s) exibidos
+                        Primeira página da API · {{ justificationItems.length }} registro(s) exibidos
                     </p>
                     <input
                         v-model="justSearch"
@@ -223,7 +230,7 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                             <tr>
                                 <th class="px-4 py-2">Colaborador</th>
                                 <th class="px-4 py-2">Tipo</th>
-                                <th class="px-4 py-2">Periodo</th>
+                                <th class="px-4 py-2">Período</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -249,9 +256,13 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                 </div>
             </section>
 
-            <section class="surface-card overflow-hidden">
+            <section
+                v-if="showSection('punches')"
+                class="surface-card overflow-hidden"
+                :class="{ 'xl:col-span-2': !showSection('justifications') }"
+            >
                 <div class="border-b border-slate-100 px-5 py-4">
-                    <h4 class="text-sm font-semibold text-talents-800">Ultimas marcacoes RHID</h4>
+                    <h4 class="text-sm font-semibold text-talents-800">Últimas marcações RHID</h4>
                     <p class="mt-1 text-xs text-slate-500">
                         {{ metrics.punches?.count ?? 0 }} registro(s) · {{ metrics.punches?.distinct_collaborators ?? 0 }} colaborador(es)
                     </p>
@@ -274,7 +285,7 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                                 <td class="px-4 py-2 text-slate-600">{{ formatPunchDateTime(row.datetime) }}</td>
                             </tr>
                             <tr v-if="!(metrics.punches?.items ?? []).length">
-                                <td colspan="2" class="px-4 py-6 text-center text-slate-500">Sem marcacoes retornadas.</td>
+                                <td colspan="2" class="px-4 py-6 text-center text-slate-500">Sem marcações retornadas.</td>
                             </tr>
                         </tbody>
                     </table>

@@ -49,7 +49,7 @@ class SaleController extends Controller
 
         $sales = $q->paginate(15)->withQueryString();
 
-        return Inertia::render('Admin/Financeiro/Vendas/Index', [
+        return Inertia::render('Admin/Finance/Sales/Index', [
             'sales' => $sales,
             'filters' => $request->only(['search', 'status', 'seller_id']),
             'sellers' => \App\Models\User::query()
@@ -76,7 +76,7 @@ class SaleController extends Controller
             'commission.seller:id,name',
         ]);
 
-        return Inertia::render('Admin/Financeiro/Vendas/Show', [
+        return Inertia::render('Admin/Finance/Sales/Show', [
             'sale' => $sale,
             'paymentMethods' => [
                 'pix' => 'PIX',

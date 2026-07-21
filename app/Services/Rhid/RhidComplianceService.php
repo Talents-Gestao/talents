@@ -165,6 +165,28 @@ class RhidComplianceService
     }
 
     /**
+     * Atualiza justificativa (POST/PUT justification.svc/u — padrão Control iD).
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function updateJustification(Company $company, ?User $user, array $payload): array
+    {
+        $r = $this->client->request(
+            $company,
+            $user,
+            'POST',
+            'customerdb/justification.svc/u',
+            [
+                'body' => $payload,
+                'auditAction' => 'rhid.justifications.update',
+            ],
+        );
+
+        return $this->decodeJson($r, 'justifications.update');
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */

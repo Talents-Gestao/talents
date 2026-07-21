@@ -79,7 +79,7 @@ class FinanceDashboardController extends Controller
             ->limit(10)
             ->get(['id', 'code', 'client_name', 'seller_id', 'total_cents', 'status', 'sold_at']);
 
-        return Inertia::render('Admin/Financeiro/Dashboard', [
+        return Inertia::render('Admin/Finance/Dashboard', [
             'period' => $period,
             'kpis' => [
                 'receivable_cents' => $receivableCents,

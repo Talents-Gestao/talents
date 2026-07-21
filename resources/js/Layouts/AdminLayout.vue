@@ -109,13 +109,11 @@ const recursosHumanosFallbackHref = computed(() => {
 const recursosHumanosActive = computed(
     () =>
         route().current('admin.rhid.*') ||
+        route().current('admin.ponto.*') ||
         route().current('admin.colaboradores.*') ||
-        isComingSoon(
-            'ponto',
-            'regulamento-interno',
-            'controle-uniformes',
-            'destaques-mes',
-        ),
+        route().current('admin.regulamento-interno.*') ||
+        route().current('admin.destaques-mes.*') ||
+        isComingSoon('controle-uniformes'),
 );
 
 const showMetamorfose = computed(() => canAdmin('methodology'));
@@ -352,13 +350,12 @@ const isComercialSettingsTab = (tab) => {
                 />
                 <SidebarNavItem
                     v-if="canAdmin('rhid')"
-                    :href="comingSoonHref('ponto')"
-                    :active="isComingSoon('ponto')"
+                    :href="route('admin.ponto.index')"
+                    :active="route().current('admin.ponto.*')"
                     label="Ponto"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
-                    badge="Em breve"
                 />
                 <SidebarNavItem
                     v-if="canAdmin('companies')"
@@ -371,13 +368,12 @@ const isComercialSettingsTab = (tab) => {
                 />
                 <SidebarNavItem
                     v-if="canAdmin('companies')"
-                    :href="comingSoonHref('regulamento-interno')"
-                    :active="isComingSoon('regulamento-interno')"
+                    :href="route('admin.regulamento-interno.index')"
+                    :active="route().current('admin.regulamento-interno.*')"
                     label="Regulamento interno"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
-                    badge="Em breve"
                 />
                 <SidebarNavItem
                     v-if="canAdmin('companies')"
@@ -391,13 +387,12 @@ const isComercialSettingsTab = (tab) => {
                 />
                 <SidebarNavItem
                     v-if="canAdmin('companies')"
-                    :href="comingSoonHref('destaques-mes')"
-                    :active="isComingSoon('destaques-mes')"
+                    :href="route('admin.destaques-mes.index')"
+                    :active="route().current('admin.destaques-mes.*')"
                     label="Destaques do mês"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
-                    badge="Em breve"
                 />
             </SidebarNavGroup>
 

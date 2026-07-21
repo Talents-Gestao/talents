@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
-use App\Support\Ferias\FeriasCompanyContext;
+use App\Support\Leaves\FeriasCompanyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 

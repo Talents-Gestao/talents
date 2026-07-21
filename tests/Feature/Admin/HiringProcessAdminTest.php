@@ -28,7 +28,7 @@ class HiringProcessAdminTest extends TestCase
             ->get(route('admin.acompanhamento.index'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Admin/Acompanhamento/Index')
+                ->component('Admin/HiringFollowUp/Index')
                 ->has('stages', 8)
                 ->has('processes')
                 ->where('active_stage', HiringProcessStage::EngenhariaCargo->value));

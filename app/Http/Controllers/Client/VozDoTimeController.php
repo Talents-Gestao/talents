@@ -46,7 +46,7 @@ class VozDoTimeController extends Controller
                 ->count();
         }
 
-        return Inertia::render('Client/VozDoTime/Index', [
+        return Inertia::render('Client/TeamVoice/Index', [
             'surveysCount' => $surveysCount,
             'complaintsCount' => $complaintsCount,
             'openComplaintsCount' => $openComplaintsCount,

@@ -207,7 +207,7 @@ class DesligamentoModuleTest extends TestCase
 
         $this->get(route('desligamento.public.show', $interview->public_token))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->component('Desligamento/Public/Take'));
+            ->assertInertia(fn ($page) => $page->component('Offboarding/Public/Take'));
 
         $this->post(route('desligamento.public.submit', $interview->public_token), [
             'answers' => [
@@ -223,6 +223,6 @@ class DesligamentoModuleTest extends TestCase
 
         $this->get(route('desligamento.public.show', $interview->public_token))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->component('Desligamento/Public/Closed'));
+            ->assertInertia(fn ($page) => $page->component('Offboarding/Public/Closed'));
     }
 }

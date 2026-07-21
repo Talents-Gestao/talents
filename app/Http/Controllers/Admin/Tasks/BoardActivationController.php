@@ -15,7 +15,7 @@ class BoardActivationController extends Controller
 {
     public function create(): Response
     {
-        return Inertia::render('Admin/Tarefas/Quadros/Ativar', [
+        return Inertia::render('Admin/Tasks/Boards/Activate', [
             'companies' => Company::query()->orderBy('name')->get(['id', 'name']),
             'templates' => TaskProcessTemplate::query()
                 ->where('is_active', true)

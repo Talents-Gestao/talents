@@ -56,7 +56,7 @@ class DashboardController extends Controller
             ->limit(10)
             ->get(['id', 'code', 'client_name', 'seller_id', 'employee_count', 'total_final_cents', 'is_closed', 'created_at']);
 
-        return Inertia::render('Admin/Comercial/Dashboard', [
+        return Inertia::render('Admin/Commercial/Dashboard', [
             'period' => $period,
             'kpis' => array_merge($kpis, [
                 'pipeline_open_cents' => $pipelineOpenCents,

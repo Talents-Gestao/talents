@@ -60,7 +60,7 @@ class AcompanhamentoController extends Controller
                 'updated_at' => $p->updated_at?->toIso8601String(),
             ]);
 
-        return Inertia::render('Client/Acompanhamento/Index', [
+        return Inertia::render('Client/HiringFollowUp/Index', [
             'stages' => HiringProcessStage::options(),
             'active_stage' => $activeStage->value,
             'stage_counts' => $stageCounts,

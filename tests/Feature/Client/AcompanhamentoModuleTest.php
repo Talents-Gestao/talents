@@ -41,7 +41,7 @@ class AcompanhamentoModuleTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Client/Acompanhamento/Index')
+                ->component('Client/HiringFollowUp/Index')
                 ->where('active_stage', HiringProcessStage::EntrevistaGestor->value)
                 ->has('processes', 1)
                 ->where('processes.0.title', 'Coordenador Comercial'));

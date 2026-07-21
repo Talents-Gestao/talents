@@ -75,14 +75,14 @@ class TaskBoardController extends Controller
             ->get()
             ->map(fn (TaskBoard $board) => BoardPresenter::forAdminIndex($board));
 
-        return Inertia::render('Admin/Tarefas/Quadros/Index', [
+        return Inertia::render('Admin/Tasks/Boards/Index', [
             'boards' => $boards,
         ]);
     }
 
     public function create(): Response
     {
-        return Inertia::render('Admin/Tarefas/Quadros/Create');
+        return Inertia::render('Admin/Tasks/Boards/Create');
     }
 
     public function store(Request $request): RedirectResponse
@@ -132,7 +132,7 @@ class TaskBoardController extends Controller
         $teamUsers = BoardPresenter::allActiveTalentsTeamUsers();
         $companies = Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
-        return Inertia::render('Admin/Tarefas/Quadros/Show', [
+        return Inertia::render('Admin/Tasks/Boards/Show', [
             'boardPayload' => $payload,
             'activity' => $activity,
             'companyUsers' => $companyUsers,

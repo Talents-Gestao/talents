@@ -47,7 +47,7 @@ class SolidesCurriculumController extends Controller
         $configured = $setting !== null && $setting->safeApiToken() !== null;
 
         if (! $configured) {
-            return Inertia::render('Admin/Solides/Curriculos/Index', [
+            return Inertia::render('Admin/Solides/Resumes/Index', [
                 'configured' => false,
                 'view_mode' => $viewMode,
                 'filters' => $filterProps,
@@ -83,7 +83,7 @@ class SolidesCurriculumController extends Controller
             } catch (\Throwable $e) {
                 report($e);
 
-                return Inertia::render('Admin/Solides/Curriculos/Index', [
+                return Inertia::render('Admin/Solides/Resumes/Index', [
                     'configured' => true,
                     'view_mode' => 'grouped',
                     'filters' => $filterProps,
@@ -103,7 +103,7 @@ class SolidesCurriculumController extends Controller
                 ]);
             }
 
-            return Inertia::render('Admin/Solides/Curriculos/Index', [
+            return Inertia::render('Admin/Solides/Resumes/Index', [
                 'configured' => true,
                 'view_mode' => 'grouped',
                 'filters' => $filterProps,
@@ -139,7 +139,7 @@ class SolidesCurriculumController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return Inertia::render('Admin/Solides/Curriculos/Index', [
+            return Inertia::render('Admin/Solides/Resumes/Index', [
                 'configured' => true,
                 'view_mode' => 'list',
                 'filters' => $filterProps,
@@ -162,7 +162,7 @@ class SolidesCurriculumController extends Controller
         $curricula = array_map(fn (array $row) => self::scrubRow($row), $items);
         $hasNext = count($items) > 0;
 
-        return Inertia::render('Admin/Solides/Curriculos/Index', [
+        return Inertia::render('Admin/Solides/Resumes/Index', [
             'configured' => true,
             'view_mode' => 'list',
             'filters' => $filterProps,

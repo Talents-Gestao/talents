@@ -15,7 +15,7 @@ class PlatformCompanyController extends Controller
     {
         $settings = CommercialSetting::current();
 
-        return Inertia::render('Admin/Empresa/Edit', [
+        return Inertia::render('Admin/PlatformCompany/Edit', [
             'settings' => $settings->only([
                 'company_name',
                 'company_cnpj',
