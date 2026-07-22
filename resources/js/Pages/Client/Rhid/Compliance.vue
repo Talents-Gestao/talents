@@ -4185,34 +4185,36 @@ const justDeptBarChart = computed(() => {
 
                 <div v-if="espelhoImportsPage?.data?.length" class="rounded-md border border-slate-200 bg-slate-50/80 p-3 text-sm">
                     <h3 class="font-medium text-slate-800">Importacoes recentes</h3>
-                    <table class="mt-2 min-w-full text-xs">
-                        <thead>
-                            <tr class="text-left text-slate-600">
-                                <th class="p-2">Nº</th>
-                                <th class="p-2">Colaborador (RHID)</th>
-                                <th class="p-2">Período</th>
-                                <th class="p-2">Leitura</th>
-                                <th class="p-2"> </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="row in espelhoImportsPage.data" :key="row.id" class="border-t border-slate-200">
-                                <td class="p-2 tabular-nums">{{ row.id }}</td>
-                                <td class="p-2 font-mono">{{ row.id_person }}</td>
-                                <td class="whitespace-nowrap p-2">{{ formatPeriodPtBr(row.period_ini, row.period_fim) }}</td>
-                                <td class="p-2">{{ espelhoParseLabel(row.parse_status) }}</td>
-                                <td class="p-2">
-                                    <button
-                                        type="button"
-                                        class="font-medium text-talents-800 hover:underline"
-                                        @click="showEspelhoImportRow(row.id)"
-                                    >
-                                        Ver
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="mt-2 overflow-x-auto">
+                        <table class="min-w-full text-xs">
+                            <thead>
+                                <tr class="text-left text-slate-600">
+                                    <th class="p-2">Nº</th>
+                                    <th class="p-2">Colaborador (RHID)</th>
+                                    <th class="p-2">Período</th>
+                                    <th class="p-2">Leitura</th>
+                                    <th class="p-2"> </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="row in espelhoImportsPage.data" :key="row.id" class="border-t border-slate-200">
+                                    <td class="p-2 tabular-nums">{{ row.id }}</td>
+                                    <td class="p-2 font-mono">{{ row.id_person }}</td>
+                                    <td class="whitespace-nowrap p-2">{{ formatPeriodPtBr(row.period_ini, row.period_fim) }}</td>
+                                    <td class="p-2">{{ espelhoParseLabel(row.parse_status) }}</td>
+                                    <td class="p-2">
+                                        <button
+                                            type="button"
+                                            class="font-medium text-talents-800 hover:underline"
+                                            @click="showEspelhoImportRow(row.id)"
+                                        >
+                                            Ver
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 

@@ -125,76 +125,78 @@ const remove = (id) => {
         </div>
 
         <div class="surface-card overflow-hidden">
-            <table class="min-w-full divide-y divide-slate-100 text-sm">
-                <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    <tr>
-                        <th class="px-4 py-3">Colaborador</th>
-                        <th class="px-4 py-3">Categoria</th>
-                        <th class="px-4 py-3">Período</th>
-                        <th class="px-4 py-3">Empresa</th>
-                        <th class="px-4 py-3">Estado</th>
-                        <th class="px-4 py-3 text-right">Ações</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-50 bg-white">
-                    <tr v-for="row in highlights.data" :key="row.id" class="hover:bg-slate-50/70">
-                        <td class="px-4 py-3">
-                            <div class="flex items-center gap-3">
-                                <img
-                                    v-if="row.photo_url"
-                                    :src="row.photo_url"
-                                    :alt="row.person_name"
-                                    class="h-10 w-10 rounded-full object-cover ring-1 ring-slate-200"
-                                >
-                                <div
-                                    v-else
-                                    class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500 ring-1 ring-slate-200"
-                                >
-                                    {{ (row.person_name || '?').slice(0, 1).toUpperCase() }}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-100 text-sm">
+                    <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <tr>
+                            <th class="px-4 py-3">Colaborador</th>
+                            <th class="px-4 py-3">Categoria</th>
+                            <th class="px-4 py-3">Período</th>
+                            <th class="px-4 py-3">Empresa</th>
+                            <th class="px-4 py-3">Estado</th>
+                            <th class="px-4 py-3 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 bg-white">
+                        <tr v-for="row in highlights.data" :key="row.id" class="hover:bg-slate-50/70">
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-3">
+                                    <img
+                                        v-if="row.photo_url"
+                                        :src="row.photo_url"
+                                        :alt="row.person_name"
+                                        class="h-10 w-10 rounded-full object-cover ring-1 ring-slate-200"
+                                    >
+                                    <div
+                                        v-else
+                                        class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500 ring-1 ring-slate-200"
+                                    >
+                                        {{ (row.person_name || '?').slice(0, 1).toUpperCase() }}
+                                    </div>
+                                    <span class="font-medium text-slate-900">{{ row.person_name }}</span>
                                 </div>
-                                <span class="font-medium text-slate-900">{{ row.person_name }}</span>
-                            </div>
-                        </td>
-                        <td class="px-4 py-3 text-slate-600">{{ row.category_label }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ row.period_label }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ row.company?.name || '—' }}</td>
-                        <td class="px-4 py-3">
-                            <span
-                                class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
-                                :class="
-                                    row.is_published
-                                        ? 'bg-emerald-50 text-emerald-800 ring-emerald-200/80'
-                                        : 'bg-slate-100 text-slate-600 ring-slate-200/80'
-                                "
-                            >
-                                {{ row.is_published ? 'Publicado' : 'Rascunho' }}
-                            </span>
-                        </td>
-                        <td class="space-x-3 px-4 py-3 text-right">
-                            <Link
-                                :href="route('admin.destaques-mes.edit', row.id)"
-                                class="inline-flex items-center gap-1 font-medium text-talents-700 hover:underline"
-                            >
-                                <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
-                                Editar
-                            </Link>
-                            <button
-                                type="button"
-                                class="inline-flex items-center gap-1 font-medium text-rose-600 hover:underline"
-                                @click="remove(row.id)"
-                            >
-                                <TrashIcon class="h-4 w-4" aria-hidden="true" />
-                                Remover
-                            </button>
-                        </td>
-                    </tr>
-                    <tr v-if="!highlights.data?.length">
-                        <td colspan="6" class="px-4 py-10 text-center text-slate-500">
-                            Nenhum destaque encontrado. Crie o primeiro reconhecimento do mês.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                            </td>
+                            <td class="px-4 py-3 text-slate-600">{{ row.category_label }}</td>
+                            <td class="px-4 py-3 text-slate-600">{{ row.period_label }}</td>
+                            <td class="px-4 py-3 text-slate-600">{{ row.company?.name || '—' }}</td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
+                                    :class="
+                                        row.is_published
+                                            ? 'bg-emerald-50 text-emerald-800 ring-emerald-200/80'
+                                            : 'bg-slate-100 text-slate-600 ring-slate-200/80'
+                                    "
+                                >
+                                    {{ row.is_published ? 'Publicado' : 'Rascunho' }}
+                                </span>
+                            </td>
+                            <td class="space-x-3 px-4 py-3 text-right">
+                                <Link
+                                    :href="route('admin.destaques-mes.edit', row.id)"
+                                    class="inline-flex items-center gap-1 font-medium text-talents-700 hover:underline"
+                                >
+                                    <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
+                                    Editar
+                                </Link>
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center gap-1 font-medium text-rose-600 hover:underline"
+                                    @click="remove(row.id)"
+                                >
+                                    <TrashIcon class="h-4 w-4" aria-hidden="true" />
+                                    Remover
+                                </button>
+                            </td>
+                        </tr>
+                        <tr v-if="!highlights.data?.length">
+                            <td colspan="6" class="px-4 py-10 text-center text-slate-500">
+                                Nenhum destaque encontrado. Crie o primeiro reconhecimento do mês.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div

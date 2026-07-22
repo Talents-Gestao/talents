@@ -297,6 +297,7 @@ const weeksWithLanes = computed(() =>
         };
     }),
 );
+const weekdayLabelsShort = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 const monthTitleCapitalized = computed(() => {
@@ -490,11 +491,11 @@ const rootShellClass = computed(() =>
 );
 
 const cellMinH = computed(() =>
-    props.compact ? 'min-h-[5rem]' : 'min-h-[5.75rem] sm:min-h-[6.5rem]',
+    props.compact ? 'min-h-[3.75rem] sm:min-h-[5rem]' : 'min-h-[4.25rem] sm:min-h-[5.75rem] md:min-h-[6.5rem]',
 );
 
 const cellMaxH = computed(() =>
-    props.compact ? 'max-h-[7.25rem]' : 'max-h-[9rem] sm:max-h-[10rem]',
+    props.compact ? 'max-h-[6rem] sm:max-h-[7.25rem]' : 'max-h-[7.5rem] sm:max-h-[9rem] md:max-h-[10rem]',
 );
 
 function itemSourceId(item) {
@@ -972,110 +973,116 @@ function itemShellClass(item) {
         <!-- Month + detail -->
         <div v-if="currentView === 'month'" :class="compact ? 'flex flex-col' : 'flex flex-col lg:flex-row'">
             <div class="min-w-0 flex-1" :class="rootPad">
-                <div role="grid" class="overflow-hidden rounded-xl bg-slate-200/90 p-px">
-                    <div class="grid grid-cols-7 gap-px">
-                        <div
-                            v-for="w in weekdayLabels"
-                            :key="w"
-                            class="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide sm:text-xs"
-                            :style="{
-                                backgroundColor: `${currentMonthTheme.background}99`,
-                                color: currentMonthTheme.color,
-                            }"
-                            role="columnheader"
-                        >
-                            {{ w }}
-                        </div>
-                    </div>
+                <div class="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:overflow-visible sm:px-0">
                     <div
-                        v-for="(week, ri) in weeksWithLanes"
-                        :key="ri"
-                        class="relative mt-px grid grid-cols-7 gap-px"
-                        role="row"
+                        role="grid"
+                        class="min-w-[20rem] overflow-hidden rounded-xl bg-slate-200/90 p-px sm:min-w-0"
                     >
-                        <div
-                            v-for="(cell, ci) in week.cells"
-                            :key="`${ri}-${ci}`"
-                            class="bg-white"
-                            role="gridcell"
-                        >
-                            <button
-                                v-if="cell.day"
-                                type="button"
-                                :class="[monthCellClass(cell), cellMinH, cellMaxH, 'overflow-hidden']"
-                                :style="monthCellStyle(cell)"
-                                @click="onPickDay(cell)"
+                        <div class="grid grid-cols-7 gap-px">
+                            <div
+                                v-for="(w, wi) in weekdayLabels"
+                                :key="w + wi"
+                                class="px-0.5 py-1.5 text-center text-[9px] font-semibold uppercase tracking-wide sm:px-1 sm:py-2 sm:text-xs"
+                                :style="{
+                                    backgroundColor: `${currentMonthTheme.background}99`,
+                                    color: currentMonthTheme.color,
+                                }"
+                                role="columnheader"
                             >
-                                <BirthdayConfetti v-if="showFestiveEffects && dayHasBirthday(cell.items)" />
-                                <span
-                                    class="relative z-0 shrink-0 px-2 pt-1.5 text-xs font-semibold tabular-nums"
-                                    :class="
-                                        selectedDay === cell.day
-                                            ? ''
-                                            : cell.isToday
-                                              ? 'text-talents-700'
-                                              : 'text-slate-500'
-                                    "
-                                    :style="selectedDay === cell.day ? { color: currentMonthTheme.color } : {}"
+                                <span class="sm:hidden">{{ weekdayLabelsShort[wi] }}</span>
+                                <span class="hidden sm:inline">{{ w }}</span>
+                            </div>
+                        </div>
+                        <div
+                            v-for="(week, ri) in weeksWithLanes"
+                            :key="ri"
+                            class="relative mt-px grid grid-cols-7 gap-px"
+                            role="row"
+                        >
+                            <div
+                                v-for="(cell, ci) in week.cells"
+                                :key="`${ri}-${ci}`"
+                                class="bg-white"
+                                role="gridcell"
+                            >
+                                <button
+                                    v-if="cell.day"
+                                    type="button"
+                                    :class="[monthCellClass(cell), cellMinH, cellMaxH, 'overflow-hidden']"
+                                    :style="monthCellStyle(cell)"
+                                    @click="onPickDay(cell)"
                                 >
-                                    {{ cell.day }}
-                                </span>
-                                <div
-                                    class="relative z-0 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain px-1 pb-1.5 pt-0.5"
-                                    :style="{
-                                        paddingTop: `${Math.max(week.laneCount, 0) * 1.2 + (week.laneCount ? 0.2 : 0)}rem`,
-                                    }"
-                                    @wheel.stop
-                                >
-                                    <div
-                                        v-for="it in week.singleDayByCol[ci]"
-                                        :key="it.id"
-                                        class="flex min-w-0 items-center gap-0.5 rounded px-1 py-0.5"
-                                        :class="it.completed ? 'opacity-75' : ''"
-                                        :style="itemChipStyle(it)"
-                                        :title="it.title"
+                                    <BirthdayConfetti v-if="showFestiveEffects && dayHasBirthday(cell.items)" />
+                                    <span
+                                        class="relative z-0 shrink-0 px-2 pt-1.5 text-xs font-semibold tabular-nums"
+                                        :class="
+                                            selectedDay === cell.day
+                                                ? ''
+                                                : cell.isToday
+                                                  ? 'text-talents-700'
+                                                  : 'text-slate-500'
+                                        "
+                                        :style="selectedDay === cell.day ? { color: currentMonthTheme.color } : {}"
                                     >
-                                        <ArrowPathIcon
-                                            v-if="hasRecurrence(it)"
-                                            class="h-2.5 w-2.5 shrink-0 opacity-80"
-                                            aria-hidden="true"
-                                        />
-                                        <span
-                                            class="min-w-0 truncate text-[10px] font-medium leading-tight"
-                                            :class="it.completed ? 'line-through opacity-80' : ''"
+                                        {{ cell.day }}
+                                    </span>
+                                    <div
+                                        class="relative z-0 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain px-1 pb-1.5 pt-0.5"
+                                        :style="{
+                                            paddingTop: `${Math.max(week.laneCount, 0) * 1.2 + (week.laneCount ? 0.2 : 0)}rem`,
+                                        }"
+                                        @wheel.stop
+                                    >
+                                        <div
+                                            v-for="it in week.singleDayByCol[ci]"
+                                            :key="it.id"
+                                            class="flex min-w-0 items-center gap-0.5 rounded px-1 py-0.5"
+                                            :class="it.completed ? 'opacity-75' : ''"
+                                            :style="itemChipStyle(it)"
+                                            :title="it.title"
                                         >
-                                            {{ it.title }}
+                                            <ArrowPathIcon
+                                                v-if="hasRecurrence(it)"
+                                                class="h-2.5 w-2.5 shrink-0 opacity-80"
+                                                aria-hidden="true"
+                                            />
+                                            <span
+                                                class="min-w-0 truncate text-[10px] font-medium leading-tight"
+                                                :class="it.completed ? 'line-through opacity-80' : ''"
+                                            >
+                                                {{ it.title }}
+                                            </span>
+                                        </div>
+                                        <span
+                                            v-if="week.moreByCol[ci] > 0"
+                                            class="shrink-0 px-0.5 text-[10px] font-semibold text-slate-500"
+                                        >
+                                            +{{ week.moreByCol[ci] }} mais
                                         </span>
                                     </div>
-                                    <span
-                                        v-if="week.moreByCol[ci] > 0"
-                                        class="shrink-0 px-0.5 text-[10px] font-semibold text-slate-500"
-                                    >
-                                        +{{ week.moreByCol[ci] }} mais
-                                    </span>
-                                </div>
-                            </button>
-                            <div v-else :class="['border-transparent bg-slate-50/40', cellMinH, cellMaxH]" />
-                        </div>
+                                </button>
+                                <div v-else :class="['border-transparent bg-slate-50/40', cellMinH, cellMaxH]" />
+                            </div>
 
-                        <div class="pointer-events-none absolute inset-0 z-10 grid grid-cols-7 gap-px">
-                            <button
-                                v-for="segment in week.segments"
-                                :key="segment.key"
-                                type="button"
-                                class="pointer-events-auto flex min-w-0 items-center gap-0.5 self-start px-1.5 text-left"
-                                :class="segment.item.completed ? 'opacity-75' : ''"
-                                :style="spanningBarStyle(segment)"
-                                :title="segment.item.title"
-                                @click.stop="onPickSpanningSegment(week.cells, segment)"
-                            >
-                                <span
-                                    class="min-w-0 truncate text-[10px] font-medium leading-none"
-                                    :class="segment.item.completed ? 'line-through opacity-80' : ''"
+                            <div class="pointer-events-none absolute inset-0 z-10 grid grid-cols-7 gap-px">
+                                <button
+                                    v-for="segment in week.segments"
+                                    :key="segment.key"
+                                    type="button"
+                                    class="pointer-events-auto flex min-w-0 items-center gap-0.5 self-start px-1.5 text-left"
+                                    :class="segment.item.completed ? 'opacity-75' : ''"
+                                    :style="spanningBarStyle(segment)"
+                                    :title="segment.item.title"
+                                    @click.stop="onPickSpanningSegment(week.cells, segment)"
                                 >
-                                    {{ segment.continuesBefore ? '' : segment.item.title }}
-                                </span>
-                            </button>
+                                    <span
+                                        class="min-w-0 truncate text-[10px] font-medium leading-none"
+                                        :class="segment.item.completed ? 'line-through opacity-80' : ''"
+                                    >
+                                        {{ segment.continuesBefore ? '' : segment.item.title }}
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

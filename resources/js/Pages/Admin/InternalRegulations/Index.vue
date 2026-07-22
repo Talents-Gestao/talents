@@ -86,67 +86,69 @@ const remove = (id) => {
         </div>
 
         <div class="surface-card overflow-hidden">
-            <table class="min-w-full divide-y divide-slate-100 text-sm">
-                <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    <tr>
-                        <th class="px-4 py-3">Título</th>
-                        <th class="px-4 py-3">Empresa</th>
-                        <th class="px-4 py-3">Estado</th>
-                        <th class="px-4 py-3">Atualizado</th>
-                        <th class="px-4 py-3 text-right">Ações</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-50 bg-white">
-                    <tr v-for="row in regulations.data" :key="row.id" class="hover:bg-slate-50/70">
-                        <td class="px-4 py-3 font-medium text-slate-900">{{ row.title }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ row.company?.name || '—' }}</td>
-                        <td class="px-4 py-3">
-                            <span
-                                class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
-                                :class="
-                                    row.is_published
-                                        ? 'bg-emerald-50 text-emerald-800 ring-emerald-200/80'
-                                        : 'bg-slate-100 text-slate-600 ring-slate-200/80'
-                                "
-                            >
-                                {{ row.is_published ? 'Publicado' : 'Rascunho' }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 text-slate-500">
-                            {{
-                                row.updated_at
-                                    ? new Date(row.updated_at).toLocaleString('pt-BR', {
-                                          dateStyle: 'short',
-                                          timeStyle: 'short',
-                                      })
-                                    : '—'
-                            }}
-                        </td>
-                        <td class="space-x-3 px-4 py-3 text-right">
-                            <Link
-                                :href="route('admin.regulamento-interno.edit', row.id)"
-                                class="inline-flex items-center gap-1 font-medium text-talents-700 hover:underline"
-                            >
-                                <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
-                                Editar
-                            </Link>
-                            <button
-                                type="button"
-                                class="inline-flex items-center gap-1 font-medium text-rose-600 hover:underline"
-                                @click="remove(row.id)"
-                            >
-                                <TrashIcon class="h-4 w-4" aria-hidden="true" />
-                                Remover
-                            </button>
-                        </td>
-                    </tr>
-                    <tr v-if="!regulations.data?.length">
-                        <td colspan="5" class="px-4 py-10 text-center text-slate-500">
-                            Nenhum regulamento encontrado. Crie o primeiro documento.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-100 text-sm">
+                    <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <tr>
+                            <th class="px-4 py-3">Título</th>
+                            <th class="px-4 py-3">Empresa</th>
+                            <th class="px-4 py-3">Estado</th>
+                            <th class="px-4 py-3">Atualizado</th>
+                            <th class="px-4 py-3 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 bg-white">
+                        <tr v-for="row in regulations.data" :key="row.id" class="hover:bg-slate-50/70">
+                            <td class="px-4 py-3 font-medium text-slate-900">{{ row.title }}</td>
+                            <td class="px-4 py-3 text-slate-600">{{ row.company?.name || '—' }}</td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
+                                    :class="
+                                        row.is_published
+                                            ? 'bg-emerald-50 text-emerald-800 ring-emerald-200/80'
+                                            : 'bg-slate-100 text-slate-600 ring-slate-200/80'
+                                    "
+                                >
+                                    {{ row.is_published ? 'Publicado' : 'Rascunho' }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-slate-500">
+                                {{
+                                    row.updated_at
+                                        ? new Date(row.updated_at).toLocaleString('pt-BR', {
+                                              dateStyle: 'short',
+                                              timeStyle: 'short',
+                                          })
+                                        : '—'
+                                }}
+                            </td>
+                            <td class="space-x-3 px-4 py-3 text-right">
+                                <Link
+                                    :href="route('admin.regulamento-interno.edit', row.id)"
+                                    class="inline-flex items-center gap-1 font-medium text-talents-700 hover:underline"
+                                >
+                                    <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
+                                    Editar
+                                </Link>
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center gap-1 font-medium text-rose-600 hover:underline"
+                                    @click="remove(row.id)"
+                                >
+                                    <TrashIcon class="h-4 w-4" aria-hidden="true" />
+                                    Remover
+                                </button>
+                            </td>
+                        </tr>
+                        <tr v-if="!regulations.data?.length">
+                            <td colspan="5" class="px-4 py-10 text-center text-slate-500">
+                                Nenhum regulamento encontrado. Crie o primeiro documento.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div

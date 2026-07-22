@@ -184,7 +184,7 @@ onUnmounted(() => {
             >
                 <aside
                     v-if="open"
-                    class="fixed inset-y-0 right-0 z-[210] flex w-full max-w-sm flex-col overflow-hidden rounded-l-2xl bg-white shadow-2xl ring-1 ring-slate-200/70"
+                    class="fixed inset-y-0 right-0 z-[210] flex w-full flex-col overflow-hidden bg-white shadow-2xl ring-1 ring-slate-200/70 sm:max-w-sm sm:rounded-l-2xl"
                     role="dialog"
                     aria-label="Avisos"
                 >
