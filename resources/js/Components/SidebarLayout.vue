@@ -265,7 +265,7 @@ const pinButtonTitle = computed(() =>
     <div :class="shellClass">
         <div
             v-show="mobileOpen"
-            class="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
+            class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
             aria-hidden="true"
             @click="closeMobileSidebar"
         />
@@ -275,7 +275,7 @@ const pinButtonTitle = computed(() =>
                 asideWidthClass,
                 asideTransformClass,
                 sidebarTransitionClass,
-                'fixed z-50 flex w-64 flex-col overflow-hidden border border-white/80 bg-white/95 shadow-shell ring-1 ring-slate-200/40 will-change-[width,transform]',
+                'fixed z-50 flex w-full flex-col overflow-hidden border border-white/80 bg-white shadow-shell ring-1 ring-slate-200/40 will-change-[width,transform] lg:bg-white/95',
                 'inset-y-0 left-0 max-h-screen rounded-none lg:inset-auto lg:left-4 lg:top-4 lg:h-[calc(100vh-2rem)] lg:max-h-[calc(100vh-2rem)] lg:rounded-3xl lg:shadow-shell',
             ]"
             @mouseenter="onAsideEnter"
@@ -283,11 +283,19 @@ const pinButtonTitle = computed(() =>
         >
             <div class="flex h-full min-h-0 flex-col lg:overflow-visible">
                 <div
-                    class="flex min-h-[3.25rem] shrink-0 items-center gap-1 border-b border-slate-200/70 px-2 py-3"
+                    class="flex min-h-[3.25rem] shrink-0 items-center gap-1 border-b border-slate-200/70 px-2 py-3 sm:px-3"
                 >
                     <div class="min-w-0 flex-1">
                         <slot name="logo" :collapsed="collapsed" :compact="compact" />
                     </div>
+                    <button
+                        type="button"
+                        class="inline-flex shrink-0 items-center justify-center rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-talents-500/30 lg:hidden"
+                        aria-label="Fechar menu"
+                        @click="closeMobileSidebar"
+                    >
+                        <XMarkIcon class="h-5 w-5" />
+                    </button>
                     <button
                         v-if="!collapsed"
                         type="button"
@@ -364,7 +372,7 @@ const pinButtonTitle = computed(() =>
                 <slot v-if="$slots.topbar" name="topbar" />
                 <AppTopBar
                     v-else-if="showTopBar"
-                    class="hidden sm:flex"
+                    class="hidden lg:flex"
                     :title="topBarTitle"
                     :search-placeholder="topBarSearchPlaceholder"
                     :show-search="topBarShowSearch"

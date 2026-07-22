@@ -123,7 +123,7 @@ onUnmounted(() => {
             >
                 <aside
                     v-if="open"
-                    class="fixed inset-y-0 right-0 z-[210] flex w-full max-w-md flex-col overflow-hidden rounded-l-2xl bg-white shadow-2xl ring-1 ring-slate-200/70 sm:max-w-lg"
+                    class="fixed inset-y-0 right-0 z-[210] flex w-full flex-col overflow-hidden bg-white shadow-2xl ring-1 ring-slate-200/70 sm:max-w-md sm:rounded-l-2xl lg:max-w-lg"
                     role="dialog"
                     aria-label="Notícias"
                 >

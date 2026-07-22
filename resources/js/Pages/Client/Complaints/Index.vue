@@ -60,35 +60,37 @@ const categoryLabel = (c) => {
             />
 
             <div class="surface-card overflow-hidden">
-                <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 text-left font-medium text-gray-700">Protocolo</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-700">Tipo</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-700">Setor</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-700">Status</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-700">Data</th>
-                            <th class="px-4 py-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        <tr v-for="c in complaints.data" :key="c.id">
-                            <td class="px-4 py-3 font-mono text-xs">{{ c.protocol }}</td>
-                            <td class="px-4 py-3">{{ categoryLabel(c.category) }}</td>
-                            <td class="px-4 py-3 text-gray-600">{{ c.department_name || '—' }}</td>
-                            <td class="px-4 py-3">{{ statusLabel(c.status) }}</td>
-                            <td class="px-4 py-3 text-gray-600">{{ c.created_at }}</td>
-                            <td class="px-4 py-3 text-right">
-                                <Link
-                                    :href="complaintRoute('show', c.id)"
-                                    class="font-medium text-talents-700 hover:underline"
-                                >
-                                    Abrir
-                                </Link>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left font-medium text-gray-700">Protocolo</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-700">Tipo</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-700">Setor</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-700">Status</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-700">Data</th>
+                                <th class="px-4 py-3"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr v-for="c in complaints.data" :key="c.id">
+                                <td class="px-4 py-3 font-mono text-xs">{{ c.protocol }}</td>
+                                <td class="px-4 py-3">{{ categoryLabel(c.category) }}</td>
+                                <td class="px-4 py-3 text-gray-600">{{ c.department_name || '—' }}</td>
+                                <td class="px-4 py-3">{{ statusLabel(c.status) }}</td>
+                                <td class="px-4 py-3 text-gray-600">{{ c.created_at }}</td>
+                                <td class="px-4 py-3 text-right">
+                                    <Link
+                                        :href="complaintRoute('show', c.id)"
+                                        class="font-medium text-talents-700 hover:underline"
+                                    >
+                                        Abrir
+                                    </Link>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
                 <p v-if="!complaints.data?.length" class="px-4 py-8 text-center text-sm text-gray-500">
                     Nenhuma denúncia encontrada.
                 </p>

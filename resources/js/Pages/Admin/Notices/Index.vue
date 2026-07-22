@@ -31,28 +31,30 @@ defineProps({
         </template>
 
         <div class="surface-card overflow-hidden">
-            <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50">
-                    <tr>
-                        <th class="px-4 py-3 text-left font-medium text-slate-700">Empresa</th>
-                        <th class="px-4 py-3 text-left font-medium text-slate-700">Título</th>
-                        <th class="px-4 py-3 text-left font-medium text-slate-700">Publicado</th>
-                        <th class="px-4 py-3 text-left font-medium text-slate-700">Origem</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    <tr v-for="notice in notices.data" :key="notice.id">
-                        <td class="px-4 py-3 text-slate-700">{{ notice.company?.name ?? '—' }}</td>
-                        <td class="px-4 py-3 font-medium text-slate-900">{{ notice.title }}</td>
-                        <td class="px-4 py-3 text-slate-600">
-                            {{ notice.published_at ? new Date(notice.published_at).toLocaleString('pt-BR') : '—' }}
-                        </td>
-                        <td class="px-4 py-3 text-slate-600">
-                            {{ notice.source_type === 'strategic_calendar_item' ? 'Calendário' : 'Manual' }}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-slate-700">Empresa</th>
+                            <th class="px-4 py-3 text-left font-medium text-slate-700">Título</th>
+                            <th class="px-4 py-3 text-left font-medium text-slate-700">Publicado</th>
+                            <th class="px-4 py-3 text-left font-medium text-slate-700">Origem</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr v-for="notice in notices.data" :key="notice.id">
+                            <td class="px-4 py-3 text-slate-700">{{ notice.company?.name ?? '—' }}</td>
+                            <td class="px-4 py-3 font-medium text-slate-900">{{ notice.title }}</td>
+                            <td class="px-4 py-3 text-slate-600">
+                                {{ notice.published_at ? new Date(notice.published_at).toLocaleString('pt-BR') : '—' }}
+                            </td>
+                            <td class="px-4 py-3 text-slate-600">
+                                {{ notice.source_type === 'strategic_calendar_item' ? 'Calendário' : 'Manual' }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
             <p v-if="!notices.data?.length" class="px-4 py-8 text-center text-sm text-slate-500">
                 Nenhum aviso publicado.
             </p>

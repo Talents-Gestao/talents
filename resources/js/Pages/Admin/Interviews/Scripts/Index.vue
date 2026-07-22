@@ -46,47 +46,49 @@ const destroyQuestionnaire = (id, name) => {
         </div>
 
         <div v-else class="surface-card overflow-hidden">
-            <table class="min-w-full divide-y divide-gray-200 text-sm">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-4 py-3 text-left font-medium text-gray-700">Nome</th>
-                        <th class="px-4 py-3 text-left font-medium text-gray-700">Seções</th>
-                        <th class="px-4 py-3 text-left font-medium text-gray-700">Entrevistas</th>
-                        <th class="px-4 py-3 text-right font-medium text-gray-700">Ações</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    <tr v-for="q in questionnaires" :key="q.id">
-                        <td class="px-4 py-3">
-                            <span class="font-medium text-gray-900">{{ q.name }}</span>
-                            <span
-                                v-if="q.is_default"
-                                class="ml-2 inline-flex rounded-full bg-talents-100 px-2 py-0.5 text-xs text-talents-900"
-                            >
-                                Padrão
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 text-gray-700">{{ q.sections_count }}</td>
-                        <td class="px-4 py-3 text-gray-700">{{ q.interviews_count }}</td>
-                        <td class="px-4 py-3 text-right space-x-3">
-                            <Link
-                                :href="route('admin.entrevistas.roteiros.edit', q.id)"
-                                class="font-medium text-talents-700 hover:underline"
-                            >
-                                Editar
-                            </Link>
-                            <button
-                                v-if="!q.is_default"
-                                type="button"
-                                class="text-sm text-red-600 hover:underline"
-                                @click="destroyQuestionnaire(q.id, q.name)"
-                            >
-                                Excluir
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">Nome</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">Seções</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">Entrevistas</th>
+                            <th class="px-4 py-3 text-right font-medium text-gray-700">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <tr v-for="q in questionnaires" :key="q.id">
+                            <td class="px-4 py-3">
+                                <span class="font-medium text-gray-900">{{ q.name }}</span>
+                                <span
+                                    v-if="q.is_default"
+                                    class="ml-2 inline-flex rounded-full bg-talents-100 px-2 py-0.5 text-xs text-talents-900"
+                                >
+                                    Padrão
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-gray-700">{{ q.sections_count }}</td>
+                            <td class="px-4 py-3 text-gray-700">{{ q.interviews_count }}</td>
+                            <td class="px-4 py-3 text-right space-x-3">
+                                <Link
+                                    :href="route('admin.entrevistas.roteiros.edit', q.id)"
+                                    class="font-medium text-talents-700 hover:underline"
+                                >
+                                    Editar
+                                </Link>
+                                <button
+                                    v-if="!q.is_default"
+                                    type="button"
+                                    class="text-sm text-red-600 hover:underline"
+                                    @click="destroyQuestionnaire(q.id, q.name)"
+                                >
+                                    Excluir
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </AdminLayout>
 </template>

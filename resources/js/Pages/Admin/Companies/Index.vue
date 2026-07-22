@@ -52,7 +52,7 @@ const submit = () => {
 
     <AdminLayout>
         <template #header>
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 class="text-xl font-semibold leading-tight text-gray-900">Empresas</h2>
                 <Link
                     :href="route('admin.companies.create')"
@@ -69,53 +69,55 @@ const submit = () => {
         </form>
 
         <div class="surface-card overflow-hidden">
-            <table class="min-w-full divide-y divide-gray-200 text-sm text-gray-900">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-4 py-3 text-left font-medium text-gray-700">Nome</th>
-                        <th class="px-4 py-3 text-left font-medium text-gray-700">CNPJ</th>
-                        <th class="px-4 py-3 text-left font-medium text-gray-700">Segmento</th>
-                        <th class="px-4 py-3 text-left font-medium text-gray-700">Ativa</th>
-                        <th class="px-4 py-3 text-left font-medium text-gray-700">RHID</th>
-                        <th class="px-4 py-3 text-left font-medium text-gray-700">Cadastro</th>
-                        <th class="px-4 py-3"></th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    <tr v-for="c in companies.data" :key="c.id">
-                        <td class="px-4 py-3">{{ c.name }}</td>
-                        <td class="px-4 py-3">{{ c.cnpj || '—' }}</td>
-                        <td class="px-4 py-3">{{ c.segment || '—' }}</td>
-                        <td class="px-4 py-3">{{ c.is_active ? 'Sim' : 'Não' }}</td>
-                        <td class="px-4 py-3">
-                            <span
-                                v-if="isRhidConfigured(c.id)"
-                                class="inline-flex rounded-full bg-talents-100 px-2 py-0.5 text-[11px] font-semibold text-talents-800 ring-1 ring-talents-200"
-                            >
-                                Configurado
-                            </span>
-                            <span v-else class="text-xs text-gray-400">—</span>
-                        </td>
-                        <td class="px-4 py-3">
-                            <span v-if="hasPendingRegistration(c.id)" class="text-xs font-medium text-amber-700">Aguarda cadastro</span>
-                            <span v-else class="text-xs text-gray-400">Concluído</span>
-                        </td>
-                        <td class="space-x-3 px-4 py-3 text-right">
-                            <button
-                                v-if="hasPendingRegistration(c.id)"
-                                type="button"
-                                class="text-sm font-medium text-amber-700 hover:underline disabled:opacity-50"
-                                :disabled="resendingId === c.id"
-                                @click="resendInvitation(c)"
-                            >
-                                {{ resendingId === c.id ? 'Enviando…' : 'Reenviar convite' }}
-                            </button>
-                            <Link :href="route('admin.companies.show', c.id)" class="font-medium text-talents-700 hover:underline">Ver</Link>
-                        </td>
-                    </tr>
-                    <TableEmptyRow v-if="!companies.data.length" :colspan="7" message="Nenhuma empresa encontrada." />
-                </tbody>
-            </table>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm text-gray-900">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">Nome</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">CNPJ</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">Segmento</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">Ativa</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">RHID</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">Cadastro</th>
+                            <th class="px-4 py-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <tr v-for="c in companies.data" :key="c.id">
+                            <td class="px-4 py-3">{{ c.name }}</td>
+                            <td class="px-4 py-3">{{ c.cnpj || '—' }}</td>
+                            <td class="px-4 py-3">{{ c.segment || '—' }}</td>
+                            <td class="px-4 py-3">{{ c.is_active ? 'Sim' : 'Não' }}</td>
+                            <td class="px-4 py-3">
+                                <span
+                                    v-if="isRhidConfigured(c.id)"
+                                    class="inline-flex rounded-full bg-talents-100 px-2 py-0.5 text-[11px] font-semibold text-talents-800 ring-1 ring-talents-200"
+                                >
+                                    Configurado
+                                </span>
+                                <span v-else class="text-xs text-gray-400">—</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span v-if="hasPendingRegistration(c.id)" class="text-xs font-medium text-amber-700">Aguarda cadastro</span>
+                                <span v-else class="text-xs text-gray-400">Concluído</span>
+                            </td>
+                            <td class="space-x-3 px-4 py-3 text-right">
+                                <button
+                                    v-if="hasPendingRegistration(c.id)"
+                                    type="button"
+                                    class="text-sm font-medium text-amber-700 hover:underline disabled:opacity-50"
+                                    :disabled="resendingId === c.id"
+                                    @click="resendInvitation(c)"
+                                >
+                                    {{ resendingId === c.id ? 'Enviando…' : 'Reenviar convite' }}
+                                </button>
+                                <Link :href="route('admin.companies.show', c.id)" class="font-medium text-talents-700 hover:underline">Ver</Link>
+                            </td>
+                        </tr>
+                        <TableEmptyRow v-if="!companies.data.length" :colspan="7" message="Nenhuma empresa encontrada." />
+                    </tbody>
+                </table>
+            </div>
         </div>
     </AdminLayout>
 </template>

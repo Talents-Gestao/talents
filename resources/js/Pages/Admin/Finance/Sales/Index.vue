@@ -68,7 +68,7 @@ const statusClass = (s) =>
         <FinanceModuleNav />
 
         <div class="surface-card p-6">
-            <form class="grid gap-4 sm:grid-cols-4" @submit.prevent="applyFilters">
+            <form class="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4" @submit.prevent="applyFilters">
                 <div class="sm:col-span-2">
                     <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Buscar</label>
                     <input
