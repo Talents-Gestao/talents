@@ -1,0 +1,14 @@
+---
+description: Fluxo de trabalho Git - uma branch por demanda
+globs:
+alwaysApply: true
+---
+
+# Uma branch por demanda
+
+- Antes de começar qualquer alteração, confira a branch atual (`git branch --show-current`) e trabalhe nela — não troque nem crie uma nova sem eu pedir.
+- Se a demanda exigir uma branch nova, crie apenas UMA (ex.: `feature/nome-da-demanda`) e permaneça nela do início ao fim da tarefa.
+- Nunca crie branches extras para subtarefas, arquivos ou etapas intermediárias da mesma demanda — todo o trabalho fica na mesma branch.
+- Não execute `git checkout`, `git switch`, `git worktree add` nem crie novas branches por conta própria, mesmo que pareça mais organizado dividir o trabalho.
+- Ao terminar, não faça merge nem abra pull request sozinho — aguarde minha revisão.
+- Se a demanda parecer exigir mais de uma branch (partes independentes, por exemplo), pare e me pergunte antes de agir.

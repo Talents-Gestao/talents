@@ -7,7 +7,7 @@ import { Link } from '@inertiajs/vue3';
     <div class="app-shell flex min-h-screen flex-col items-center px-4 pb-10 pt-8 sm:justify-center sm:px-6 sm:pb-12 sm:pt-6">
         <div>
             <Link href="/">
-                <ApplicationLogo class="h-16 w-16 fill-current text-talents-500 sm:h-20 sm:w-20" />
+                <ApplicationLogo class="h-20 max-w-[280px] sm:h-24 sm:max-w-[320px]" />
             </Link>
         </div>
 

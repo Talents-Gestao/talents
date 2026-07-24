@@ -1,4 +1,13 @@
 <script setup>
+import {
+    ArrowTrendingUpIcon,
+    BuildingOffice2Icon,
+    ChartBarIcon,
+    HeartIcon,
+    ShieldCheckIcon,
+    SparklesIcon,
+    UserGroupIcon,
+} from '@heroicons/vue/24/outline';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import LandingLayout from '@/Components/Landing/LandingLayout.vue';
@@ -12,18 +21,43 @@ const title = 'Nossos Clientes — Talents Gestão de Pessoas';
 const description =
     'Empresas que confiam na Talents para transformar sua gestão de pessoas. Conheça cases, depoimentos e resultados de consultoria estratégica.';
 
+/** scale ajusta o peso visual de logos muito largos, quadrados ou com fundo embutido */
 const clients = [
-    { name: 'Fortex', logo: '/images/clientes/fortex.png' },
-    { name: 'Giraffas', logo: '/images/clientes/Giraffas.jpg' },
-    { name: 'KMR Embalagens', logo: '/images/clientes/kmr.png' },
-    { name: 'Mais Mais', logo: '/images/clientes/maismais.png' },
-    { name: 'Multibor', logo: '/images/clientes/multibor.png' },
-    { name: 'Pasqualino', logo: '/images/clientes/pasqualino.png' },
-    { name: 'PASSEG', logo: '/images/clientes/passeg.png' },
-    { name: 'Pontix', logo: '/images/clientes/pontix.jpeg' },
-    { name: 'Ramep', logo: '/images/clientes/ramep.jpg' },
-    { name: 'SOEM', logo: '/images/clientes/soem.png' },
-    { name: 'Wizzard', logo: '/images/clientes/wizzard.png' },
+    { name: 'Fortex', logo: '/images/clientes/fortex.png', scale: 0.88 },
+    { name: 'Giraffas', logo: '/images/clientes/Giraffas.png', scale: 1.22 },
+    { name: 'KMR Embalagens', logo: '/images/clientes/kmr.png', scale: 1 },
+    { name: 'Mais Mais', logo: '/images/clientes/maismais.png', scale: 1.05 },
+    { name: 'Multibor', logo: '/images/clientes/multibor.png', scale: 1.18 },
+    { name: 'Pasqualino', logo: '/images/clientes/pasqualino.png', scale: 0.92 },
+    { name: 'PASSEG', logo: '/images/clientes/passeg.png', scale: 1 },
+    { name: 'Pontix', logo: '/images/clientes/pontix.png', scale: 1.28 },
+    { name: 'Ramep', logo: '/images/clientes/ramep.png', scale: 0.88 },
+    { name: 'SOEM', logo: '/images/clientes/soem.png', scale: 1 },
+    { name: 'Wizzard', logo: '/images/clientes/wizzard.png', scale: 0.92 },
+];
+
+const highlights = [
+    {
+        title: 'Liderança e times',
+        description: 'Clareza comportamental para líderes e equipes alinhadas.',
+        icon: UserGroupIcon,
+    },
+    {
+        title: 'Cultura organizacional',
+        description: 'Ambientes mais conscientes, estratégicos e humanos.',
+        icon: BuildingOffice2Icon,
+    },
+    {
+        title: 'Resultado sustentável',
+        description: 'Pessoas conectadas à estratégia e ao crescimento.',
+        icon: ChartBarIcon,
+    },
+];
+
+const trustPoints = [
+    { label: 'Consultoria estratégica', icon: SparklesIcon },
+    { label: 'Desenvolvimento humano', icon: HeartIcon },
+    { label: 'Método próprio Talents', icon: ChartBarIcon },
 ];
 
 const testimonials = [
@@ -32,18 +66,30 @@ const testimonials = [
             'A Talents trouxe clareza comportamental para nossa liderança e ajudou a alinhar equipes com mais consciência estratégica.',
         author: 'Diretora de RH',
         company: 'Empresa do setor industrial',
+        initials: 'RH',
+        accent: 'from-violet-500/15 via-white to-white',
+        bar: 'bg-violet-500',
+        avatar: 'bg-violet-100 text-violet-800 ring-violet-200/70',
     },
     {
         quote:
             'Mais do que diagnóstico, encontramos direcionamento prático para fortalecer cultura, comunicação e engajamento.',
         author: 'Gestor de Pessoas',
         company: 'Empresa de serviços',
+        initials: 'GP',
+        accent: 'from-fuchsia-500/15 via-white to-white',
+        bar: 'bg-fuchsia-500',
+        avatar: 'bg-fuchsia-100 text-fuchsia-800 ring-fuchsia-200/70',
     },
     {
         quote:
             'A metodologia da Talents conectou comportamento humano com estratégia — exatamente o que precisávamos.',
         author: 'CEO',
         company: 'Empresa em transformação',
+        initials: 'CE',
+        accent: 'from-talents-500/15 via-white to-white',
+        bar: 'bg-talents-600',
+        avatar: 'bg-talents-100 text-talents-800 ring-talents-200/70',
     },
 ];
 
@@ -53,18 +99,33 @@ const cases = [
         description:
             'Programa de desenvolvimento comportamental para líderes, com foco em comunicação assertiva e gestão de equipes.',
         result: 'Maior clareza relacional e redução de conflitos internos.',
+        icon: UserGroupIcon,
+        accent: 'from-violet-500/15 via-white to-white',
+        bar: 'bg-violet-500',
+        iconWrap: 'bg-violet-100 text-violet-700 ring-violet-200/70',
+        chip: 'bg-violet-50 text-violet-800 ring-violet-100',
     },
     {
         title: 'Cultura e engajamento',
         description:
             'Diagnóstico estratégico e mapeamento comportamental para alinhar cultura organizacional à estratégia da empresa.',
         result: 'Equipes mais conectadas ao propósito e ao desenvolvimento.',
+        icon: SparklesIcon,
+        accent: 'from-fuchsia-500/15 via-white to-white',
+        bar: 'bg-fuchsia-500',
+        iconWrap: 'bg-fuchsia-100 text-fuchsia-700 ring-fuchsia-200/70',
+        chip: 'bg-fuchsia-50 text-fuchsia-800 ring-fuchsia-100',
     },
     {
         title: 'Saúde organizacional e NR-1',
         description:
             'Apoio na gestão de riscos psicossociais com método, escuta do time e plano de ação estruturado.',
         result: 'Mais conformidade e ambiente emocionalmente mais saudável.',
+        icon: ShieldCheckIcon,
+        accent: 'from-indigo-500/15 via-white to-white',
+        bar: 'bg-indigo-500',
+        iconWrap: 'bg-indigo-100 text-indigo-700 ring-indigo-200/70',
+        chip: 'bg-indigo-50 text-indigo-800 ring-indigo-100',
     },
 ];
 
@@ -93,64 +154,223 @@ const breadcrumbJsonLd = computed(() =>
             </component>
         </template>
 
-        <section class="mx-auto max-w-6xl px-4 py-16 md:py-20">
-            <p class="text-sm font-semibold uppercase tracking-widest text-talents-600">Prova social</p>
-            <h1 class="mt-4 text-4xl font-bold leading-tight text-slate-900 md:text-5xl">Nossos Clientes</h1>
-            <p class="mt-6 max-w-3xl text-lg leading-relaxed text-slate-600">
-                Empresas que confiam na Talents para transformar sua gestão de pessoas através de consultoria
-                estratégica, comportamento e desenvolvimento humano.
-            </p>
-        </section>
+        <section class="relative overflow-hidden border-b border-white/30">
+            <div
+                class="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-talents-400/20 blur-3xl"
+                aria-hidden="true"
+            />
+            <div
+                class="pointer-events-none absolute -bottom-20 left-10 h-56 w-56 rounded-full bg-violet-300/20 blur-3xl"
+                aria-hidden="true"
+            />
 
-        <section class="py-12">
-            <div class="mx-auto max-w-6xl px-4">
-                <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Empresas atendidas</h2>
-                <div class="mx-auto mt-10 grid max-w-4xl grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                    <div
-                        v-for="client in clients"
-                        :key="client.name"
-                        class="group flex h-20 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/90 px-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-talents-300 hover:shadow-md"
-                    >
-                        <img
-                            :src="client.logo"
-                            :alt="`Logo ${client.name} — cliente Talents`"
-                            class="max-h-10 w-auto object-contain transition duration-200 group-hover:scale-105"
-                        />
+            <div class="relative mx-auto max-w-6xl px-4 py-14 md:py-20">
+                <div class="grid items-center gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-12">
+                    <div>
+                        <p class="text-sm font-semibold uppercase tracking-widest text-talents-600">
+                            Prova social
+                        </p>
+                        <h1 class="mt-4 text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
+                            Empresas que transformam pessoas em estratégia
+                        </h1>
+                        <p class="mt-5 max-w-xl text-lg leading-relaxed text-slate-600">
+                            Da indústria ao varejo e serviços: organizações que confiam na Talents para
+                            fortalecer liderança, cultura e desenvolvimento humano com método.
+                        </p>
+
+                        <div class="mt-6 flex flex-wrap gap-2">
+                            <span
+                                v-for="point in trustPoints"
+                                :key="point.label"
+                                class="inline-flex items-center gap-2 rounded-full border border-talents-200/80 bg-white/80 px-3 py-1.5 text-xs font-semibold text-talents-800 shadow-sm"
+                            >
+                                <component :is="point.icon" class="h-3.5 w-3.5 text-talents-600" aria-hidden="true" />
+                                {{ point.label }}
+                            </span>
+                        </div>
+
+                        <div class="mt-8 flex flex-wrap gap-3">
+                            <a href="#empresas-atendidas" class="btn-primary"> Ver empresas atendidas </a>
+                            <Link :href="route('landing.contato')" class="btn-secondary">
+                                Quero ser o próximo case
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+                        <div
+                            class="rounded-3xl border border-talents-200/70 bg-gradient-to-br from-talents-600 to-talents-800 p-6 text-white shadow-lg sm:col-span-3 lg:col-span-1"
+                        >
+                            <p class="text-xs font-semibold uppercase tracking-widest text-talents-100">
+                                Rede Talents
+                            </p>
+                            <p class="mt-3 text-4xl font-bold tabular-nums md:text-5xl">
+                                {{ clients.length }}+
+                            </p>
+                            <p class="mt-2 text-sm leading-relaxed text-talents-100/90">
+                                empresas acompanhadas com consultoria estratégica em gestão de pessoas.
+                            </p>
+                        </div>
+
+                        <article
+                            v-for="item in highlights"
+                            :key="item.title"
+                            class="rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm sm:p-5"
+                        >
+                            <div
+                                class="inline-flex rounded-xl bg-talents-50 p-2 text-talents-700 ring-1 ring-talents-100"
+                            >
+                                <component :is="item.icon" class="h-5 w-5" aria-hidden="true" />
+                            </div>
+                            <h2 class="mt-3 text-sm font-bold text-slate-900">{{ item.title }}</h2>
+                            <p class="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm">
+                                {{ item.description }}
+                            </p>
+                        </article>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section class="py-16">
+        <section id="empresas-atendidas" class="scroll-mt-24 py-14 md:py-16">
             <div class="mx-auto max-w-6xl px-4">
-                <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Depoimentos</h2>
-                <p class="mx-auto mt-3 max-w-2xl text-center text-sm text-slate-500">
-                    Conteúdo placeholder — substituir por depoimentos reais quando disponíveis.
-                </p>
-                <div class="mt-10 grid gap-6 md:grid-cols-3">
+                <div class="mx-auto max-w-2xl text-center">
+                    <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">
+                        Parcerias
+                    </p>
+                    <h2 class="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">Empresas atendidas</h2>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600 md:text-base">
+                        Marcas de diferentes setores que escolheram a Talents para evoluir pessoas e resultados.
+                    </p>
+                </div>
+                <div class="mx-auto mt-10 grid max-w-5xl grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+                    <div
+                        v-for="client in clients"
+                        :key="client.name"
+                        class="group flex h-32 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/90 px-6 py-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-talents-300 hover:shadow-md sm:h-36"
+                    >
+                        <span
+                            class="flex h-12 w-[9.5rem] shrink-0 items-center justify-center sm:h-14 sm:w-44"
+                        >
+                            <img
+                                :src="client.logo"
+                                :alt="`Logo ${client.name} — cliente Talents`"
+                                class="h-full w-full object-contain"
+                                :style="{
+                                    transform: `scale(${client.scale})`,
+                                    transformOrigin: 'center center',
+                                }"
+                            />
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="border-t border-white/20 bg-white/40 py-14 backdrop-blur-sm md:py-16">
+            <div class="mx-auto max-w-6xl px-4">
+                <div class="mx-auto max-w-2xl text-center">
+                    <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">
+                        Voz dos clientes
+                    </p>
+                    <h2 class="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">Depoimentos</h2>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600 md:text-base">
+                        Percepções de quem viveu a consultoria Talents na prática.
+                    </p>
+                    <p class="mt-2 text-xs text-slate-400">
+                        Conteúdo ilustrativo — substituir por depoimentos reais quando disponíveis.
+                    </p>
+                </div>
+                <div class="mt-10 grid gap-5 md:grid-cols-3">
                     <article
                         v-for="item in testimonials"
                         :key="item.author"
-                        class="surface-card-soft flex flex-col p-6"
+                        class="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-talents-200 hover:shadow-lg"
+                        :class="item.accent"
                     >
-                        <p class="flex-1 text-sm leading-relaxed text-slate-600">"{{ item.quote }}"</p>
-                        <div class="mt-4 border-t border-slate-200/60 pt-4">
-                            <p class="text-sm font-semibold text-slate-900">{{ item.author }}</p>
-                            <p class="text-xs text-slate-500">{{ item.company }}</p>
+                        <span
+                            class="absolute inset-x-0 top-0 h-1 opacity-90"
+                            :class="item.bar"
+                            aria-hidden="true"
+                        />
+                        <span
+                            class="font-serif text-5xl leading-none text-talents-300/80"
+                            aria-hidden="true"
+                        >
+                            “
+                        </span>
+                        <p class="mt-2 flex-1 text-sm leading-relaxed text-slate-700">
+                            {{ item.quote }}
+                        </p>
+                        <div class="mt-6 flex items-center gap-3 border-t border-slate-200/70 pt-4">
+                            <span
+                                class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-1"
+                                :class="item.avatar"
+                            >
+                                {{ item.initials }}
+                            </span>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-900">{{ item.author }}</p>
+                                <p class="text-xs text-slate-500">{{ item.company }}</p>
+                            </div>
                         </div>
                     </article>
                 </div>
             </div>
         </section>
 
-        <section class="py-12">
+        <section class="py-14 md:py-16">
             <div class="mx-auto max-w-6xl px-4">
-                <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Cases de transformação</h2>
-                <div class="mt-10 grid gap-6 md:grid-cols-3">
-                    <article v-for="item in cases" :key="item.title" class="surface-card-soft p-6">
-                        <h3 class="text-lg font-semibold text-slate-900">{{ item.title }}</h3>
-                        <p class="mt-2 text-sm leading-relaxed text-slate-600">{{ item.description }}</p>
-                        <p class="mt-4 text-sm font-medium text-talents-700">{{ item.result }}</p>
+                <div class="mx-auto max-w-2xl text-center">
+                    <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">
+                        Resultados
+                    </p>
+                    <h2 class="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">
+                        Cases de transformação
+                    </h2>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600 md:text-base">
+                        Frentes em que a metodologia Talents gera impacto concreto nas organizações.
+                    </p>
+                </div>
+                <div class="mt-10 grid gap-5 md:grid-cols-3">
+                    <article
+                        v-for="(item, index) in cases"
+                        :key="item.title"
+                        class="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-talents-200 hover:shadow-lg"
+                        :class="item.accent"
+                    >
+                        <span
+                            class="absolute inset-x-0 top-0 h-1 opacity-90"
+                            :class="item.bar"
+                            aria-hidden="true"
+                        />
+                        <div class="flex items-start justify-between gap-3">
+                            <div
+                                class="inline-flex rounded-2xl p-2.5 ring-1 transition group-hover:scale-105"
+                                :class="item.iconWrap"
+                            >
+                                <component :is="item.icon" class="h-5 w-5" aria-hidden="true" />
+                            </div>
+                            <span class="text-xs font-bold tabular-nums text-slate-300">
+                                {{ String(index + 1).padStart(2, '0') }}
+                            </span>
+                        </div>
+                        <h3 class="mt-4 text-lg font-bold text-slate-900">{{ item.title }}</h3>
+                        <p class="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
+                            {{ item.description }}
+                        </p>
+                        <div
+                            class="mt-5 rounded-2xl px-3 py-2.5 text-xs leading-relaxed ring-1"
+                            :class="item.chip"
+                        >
+                            <span class="inline-flex items-center gap-1.5 font-bold uppercase tracking-wide">
+                                <ArrowTrendingUpIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                                Resultado
+                            </span>
+                            <p class="mt-1 font-medium normal-case tracking-normal">
+                                {{ item.result }}
+                            </p>
+                        </div>
                     </article>
                 </div>
             </div>

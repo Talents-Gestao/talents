@@ -1,0 +1,46 @@
+---
+description: Frontend Vue/Vite no Docker — quando usar build vs HMR e após pull/merge
+globs: resources/js/**/*,resources/css/**/*,vite.config.js,package.json
+alwaysApply: true
+---
+
+# Frontend (Vite) — Docker local
+
+**Não** rode `npm` no host Windows. Use o serviço `node` do Compose (profile `tools` ou `dev`).
+
+## Desenvolvimento do dia a dia (recomendado)
+
+Com HMR ativo **não** é preciso `npm run build` a cada alteração em `.vue` / `.js` / `.css`:
+
+```bash
+docker compose up -d
+docker compose --profile dev up vite
+```
+
+App em http://localhost:8080; Vite em http://localhost:5173. Edições no frontend atualizam no browser.
+
+## Quando rodar `npm run build`
+
+Obrigatório se o browser serve assets de `public/build/` **sem** o Vite em dev:
+
+- Após `git pull`, merge ou troca de branch com mudanças em `resources/js` ou `resources/css`
+- Quando a UI local não reflete o código-fonte (ex.: sidebar/menu antigo)
+- Para validar o bundle de produção localmente
+
+```bash
+docker compose --profile tools run --rm node npm run build
+```
+
+`docker compose restart` ou `up -d` **não** recompila o frontend.
+
+## Só backend (PHP)
+
+Alterações em `app/`, rotas, migrations → **sem** `npm run build`. Use `docker compose exec app` para Artisan.
+
+## Após build ou pull com mudança de UI
+
+Sugerir hard refresh (`Ctrl+Shift+R`) ou limpar service worker de builds antigos em dev.
+
+## Produção
+
+O `docker/Dockerfile` já executa `npm run build` no estágio de imagem; Coolify/CI seguem esse fluxo.
