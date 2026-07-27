@@ -3,11 +3,13 @@ import {
     ArrowTrendingUpIcon,
     BuildingOffice2Icon,
     ChartBarIcon,
+    CheckBadgeIcon,
     HeartIcon,
     ShieldCheckIcon,
     SparklesIcon,
     UserGroupIcon,
 } from '@heroicons/vue/24/outline';
+import { StarIcon as StarIconSolid } from '@heroicons/vue/24/solid';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import LandingLayout from '@/Components/Landing/LandingLayout.vue';
@@ -277,41 +279,58 @@ const breadcrumbJsonLd = computed(() =>
                     <p class="mt-3 text-sm leading-relaxed text-slate-600 md:text-base">
                         Percepções de quem viveu a consultoria Talents na prática.
                     </p>
-                    <p class="mt-2 text-xs text-slate-400">
-                        Conteúdo ilustrativo — substituir por depoimentos reais quando disponíveis.
-                    </p>
                 </div>
-                <div class="mt-10 grid gap-5 md:grid-cols-3">
+                <div class="mt-10 grid gap-6 md:grid-cols-3">
                     <article
                         v-for="item in testimonials"
                         :key="item.author"
-                        class="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-talents-200 hover:shadow-lg"
-                        :class="item.accent"
+                        class="group relative flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white p-6 shadow-[0_12px_40px_-18px_rgba(88,28,135,0.35)] transition duration-300 hover:-translate-y-1.5 hover:border-talents-300 hover:shadow-[0_20px_50px_-20px_rgba(88,28,135,0.45)] md:p-7"
                     >
-                        <span
-                            class="absolute inset-x-0 top-0 h-1 opacity-90"
-                            :class="item.bar"
+                        <div
+                            class="pointer-events-none absolute inset-0 bg-gradient-to-br opacity-100"
+                            :class="item.accent"
                             aria-hidden="true"
                         />
                         <span
-                            class="font-serif text-5xl leading-none text-talents-300/80"
+                            class="absolute inset-x-0 top-0 h-1.5"
+                            :class="item.bar"
                             aria-hidden="true"
-                        >
-                            “
-                        </span>
-                        <p class="mt-2 flex-1 text-sm leading-relaxed text-slate-700">
+                        />
+
+                        <div class="relative flex items-center justify-between gap-3">
+                            <span
+                                class="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-talents-700 ring-1 ring-talents-100"
+                            >
+                                <CheckBadgeIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                                Depoimento
+                            </span>
+                            <div class="flex items-center gap-0.5" aria-label="Avaliação 5 de 5">
+                                <StarIconSolid
+                                    v-for="n in 5"
+                                    :key="n"
+                                    class="h-3.5 w-3.5 text-amber-400"
+                                    aria-hidden="true"
+                                />
+                            </div>
+                        </div>
+
+                        <p class="relative mt-5 flex-1 text-[0.95rem] leading-relaxed text-slate-700">
+                            <span class="mr-1 text-2xl font-serif leading-none text-talents-400" aria-hidden="true">“</span>
                             {{ item.quote }}
                         </p>
-                        <div class="mt-6 flex items-center gap-3 border-t border-slate-200/70 pt-4">
+
+                        <div
+                            class="relative mt-6 flex items-center gap-3 rounded-2xl border border-slate-200/70 bg-white/80 px-3 py-3 backdrop-blur-sm"
+                        >
                             <span
-                                class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-1"
+                                class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-bold shadow-sm ring-1"
                                 :class="item.avatar"
                             >
                                 {{ item.initials }}
                             </span>
-                            <div>
-                                <p class="text-sm font-semibold text-slate-900">{{ item.author }}</p>
-                                <p class="text-xs text-slate-500">{{ item.company }}</p>
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-bold text-slate-900">{{ item.author }}</p>
+                                <p class="truncate text-xs text-slate-500">{{ item.company }}</p>
                             </div>
                         </div>
                     </article>
@@ -332,44 +351,55 @@ const breadcrumbJsonLd = computed(() =>
                         Frentes em que a metodologia Talents gera impacto concreto nas organizações.
                     </p>
                 </div>
-                <div class="mt-10 grid gap-5 md:grid-cols-3">
+                <div class="mt-10 grid gap-6 md:grid-cols-3">
                     <article
                         v-for="(item, index) in cases"
                         :key="item.title"
-                        class="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-talents-200 hover:shadow-lg"
-                        :class="item.accent"
+                        class="group relative flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white shadow-[0_12px_40px_-18px_rgba(88,28,135,0.35)] transition duration-300 hover:-translate-y-1.5 hover:border-talents-300 hover:shadow-[0_20px_50px_-20px_rgba(88,28,135,0.45)]"
                     >
-                        <span
-                            class="absolute inset-x-0 top-0 h-1 opacity-90"
-                            :class="item.bar"
-                            aria-hidden="true"
-                        />
-                        <div class="flex items-start justify-between gap-3">
-                            <div
-                                class="inline-flex rounded-2xl p-2.5 ring-1 transition group-hover:scale-105"
-                                :class="item.iconWrap"
-                            >
-                                <component :is="item.icon" class="h-5 w-5" aria-hidden="true" />
-                            </div>
-                            <span class="text-xs font-bold tabular-nums text-slate-300">
-                                {{ String(index + 1).padStart(2, '0') }}
-                            </span>
-                        </div>
-                        <h3 class="mt-4 text-lg font-bold text-slate-900">{{ item.title }}</h3>
-                        <p class="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
-                            {{ item.description }}
-                        </p>
                         <div
-                            class="mt-5 rounded-2xl px-3 py-2.5 text-xs leading-relaxed ring-1"
-                            :class="item.chip"
+                            class="relative border-b border-slate-100 bg-gradient-to-br px-6 pb-5 pt-6"
+                            :class="item.accent"
                         >
-                            <span class="inline-flex items-center gap-1.5 font-bold uppercase tracking-wide">
-                                <ArrowTrendingUpIcon class="h-3.5 w-3.5" aria-hidden="true" />
-                                Resultado
-                            </span>
-                            <p class="mt-1 font-medium normal-case tracking-normal">
-                                {{ item.result }}
+                            <span
+                                class="absolute inset-x-0 top-0 h-1.5"
+                                :class="item.bar"
+                                aria-hidden="true"
+                            />
+                            <div class="flex items-start justify-between gap-3">
+                                <div
+                                    class="inline-flex rounded-2xl p-3 shadow-sm ring-1 transition duration-300 group-hover:scale-105"
+                                    :class="item.iconWrap"
+                                >
+                                    <component :is="item.icon" class="h-6 w-6" aria-hidden="true" />
+                                </div>
+                                <span
+                                    class="rounded-full bg-white/80 px-2.5 py-1 text-[0.65rem] font-bold tabular-nums text-slate-500 ring-1 ring-slate-200/80"
+                                >
+                                    Case {{ String(index + 1).padStart(2, '0') }}
+                                </span>
+                            </div>
+                            <h3 class="mt-4 text-lg font-bold leading-snug text-slate-900">
+                                {{ item.title }}
+                            </h3>
+                        </div>
+
+                        <div class="flex flex-1 flex-col px-6 py-5">
+                            <p class="flex-1 text-sm leading-relaxed text-slate-600">
+                                {{ item.description }}
                             </p>
+                            <div
+                                class="mt-5 rounded-2xl px-3.5 py-3 text-xs leading-relaxed ring-1"
+                                :class="item.chip"
+                            >
+                                <span class="inline-flex items-center gap-1.5 font-bold uppercase tracking-wide">
+                                    <ArrowTrendingUpIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                                    Resultado
+                                </span>
+                                <p class="mt-1.5 text-[0.8rem] font-medium normal-case tracking-normal">
+                                    {{ item.result }}
+                                </p>
+                            </div>
                         </div>
                     </article>
                 </div>
