@@ -22,6 +22,11 @@ const navLinks = [
     { label: 'Nossos Clientes', route: 'landing.clientes', href: null },
     { label: 'Sobre', route: 'landing.sobre', href: null },
     { label: 'Contato', route: 'landing.contato', href: null },
+    {
+        label: 'Vagas',
+        href: 'https://talents.vagas.solides.com.br/',
+        external: true,
+    },
 ];
 
 const canonicalUrl = computed(() => {
@@ -81,14 +86,24 @@ defineExpose({ openContact });
                 </Link>
 
                 <nav class="hidden items-center gap-1 lg:flex">
-                    <Link
-                        v-for="item in navLinks"
-                        :key="item.label"
-                        :href="item.href ?? route(item.route)"
-                        class="landing-nav-link"
-                    >
-                        {{ item.label }}
-                    </Link>
+                    <template v-for="item in navLinks" :key="item.label">
+                        <a
+                            v-if="item.external"
+                            :href="item.href"
+                            class="landing-nav-link"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            {{ item.label }}
+                        </a>
+                        <Link
+                            v-else
+                            :href="item.href ?? route(item.route)"
+                            class="landing-nav-link"
+                        >
+                            {{ item.label }}
+                        </Link>
+                    </template>
                     <Link
                         v-if="canRegister && !$page.props.auth.user"
                         :href="route('register')"
@@ -136,15 +151,26 @@ defineExpose({ openContact });
                 class="border-t border-white/60 bg-white/95 px-4 py-4 lg:hidden"
             >
                 <div class="flex flex-col gap-1">
-                    <Link
-                        v-for="item in navLinks"
-                        :key="item.label"
-                        :href="item.href ?? route(item.route)"
-                        class="landing-nav-link block"
-                        @click="mobileOpen = false"
-                    >
-                        {{ item.label }}
-                    </Link>
+                    <template v-for="item in navLinks" :key="item.label">
+                        <a
+                            v-if="item.external"
+                            :href="item.href"
+                            class="landing-nav-link block"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            @click="mobileOpen = false"
+                        >
+                            {{ item.label }}
+                        </a>
+                        <Link
+                            v-else
+                            :href="item.href ?? route(item.route)"
+                            class="landing-nav-link block"
+                            @click="mobileOpen = false"
+                        >
+                            {{ item.label }}
+                        </Link>
+                    </template>
                     <Link
                         v-if="canRegister && !$page.props.auth.user"
                         :href="route('register')"
@@ -191,6 +217,14 @@ defineExpose({ openContact });
                     <Link :href="route('landing.clientes')" class="text-talents-700 hover:underline">Nossos Clientes</Link>
                     <Link :href="route('landing.sobre')" class="text-talents-700 hover:underline">Sobre</Link>
                     <Link :href="route('landing.contato')" class="text-talents-700 hover:underline">Contato</Link>
+                    <a
+                        href="https://talents.vagas.solides.com.br/"
+                        class="text-talents-700 hover:underline"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Vagas
+                    </a>
                 </div>
             </div>
         </footer>

@@ -121,7 +121,14 @@ const breadcrumbJsonLd = computed(() =>
                     <LandingCardGrid :items="pillars" columns="md:grid-cols-2 lg:grid-cols-4" />
                 </div>
                 <div class="mt-10 text-center">
-                    <Link :href="route('landing.contato')" class="btn-primary"> Saiba Mais </Link>
+                    <a
+                        href="https://wa.me/message/PCQFKYWHCPIBF1"
+                        class="btn-primary"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Contrate seu talento aqui
+                    </a>
                 </div>
             </div>
         </section>

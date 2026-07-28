@@ -29,6 +29,17 @@ const search = ref('');
 const selectedSegment = ref('');
 const activeTab = ref('resumo');
 
+(() => {
+    try {
+        const fromQuery = Number(new URLSearchParams(window.location.search).get('company'));
+        if (fromQuery && props.companies.some((c) => Number(c.id) === fromQuery)) {
+            selectedCompanyId.value = fromQuery;
+        }
+    } catch {
+        /* ignore */
+    }
+})();
+
 const companyLoading = ref(false);
 const companyError = ref(null);
 const companyMetrics = ref(null);
