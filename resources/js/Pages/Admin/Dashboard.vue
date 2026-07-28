@@ -1,6 +1,5 @@
 <script setup>
 import ApexChart from '@/Components/Charts/ApexChart.vue';
-import DailyQuoteCard from '@/Components/Dashboard/DailyQuoteCard.vue';
 import EmptyState from '@/Components/Dashboard/EmptyState.vue';
 import HealthBadge from '@/Components/Dashboard/HealthBadge.vue';
 import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
@@ -25,7 +24,6 @@ const props = defineProps({
     recentLeads: Array,
     upcomingCalendar: Array,
     subscriptionsDueSoon: Array,
-    dailyQuote: { type: Object, default: null },
     calendarKindLabels: { type: Object, default: () => ({}) },
 });
 
@@ -186,8 +184,6 @@ const leadWhatsappUrl = computed(() => {
                 </Link>
             </div>
         </template>
-
-        <DailyQuoteCard v-if="dailyQuote" :quote="dailyQuote" class="mb-8" />
 
         <!-- Hero + status (estilo cartões principais) -->
         <div class="mb-8 grid gap-4 lg:grid-cols-4">

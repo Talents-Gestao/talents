@@ -31,19 +31,7 @@ defineProps({
         type: String,
         default: '',
     },
-    topBarSearchPlaceholder: {
-        type: String,
-        default: 'Buscar…',
-    },
-    topBarShowSearch: {
-        type: Boolean,
-        default: true,
-    },
     topBarShowActions: {
-        type: Boolean,
-        default: true,
-    },
-    topBarShowFiles: {
         type: Boolean,
         default: true,
     },
@@ -374,10 +362,7 @@ const pinButtonTitle = computed(() =>
                     v-else-if="showTopBar"
                     class="hidden lg:flex"
                     :title="topBarTitle"
-                    :search-placeholder="topBarSearchPlaceholder"
-                    :show-search="topBarShowSearch"
                     :show-actions="topBarShowActions"
-                    :show-files="topBarShowFiles"
                 />
 
                 <header

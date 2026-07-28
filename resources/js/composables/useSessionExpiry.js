@@ -31,6 +31,14 @@ export function useSessionExpiry(onWarning) {
     }
 
     function schedule(session) {
+        if (!page.props?.auth?.user) {
+            clearTimers();
+            warningVisible.value = false;
+            scheduledForExpiresAt = null;
+
+            return;
+        }
+
         if (!session?.expires_at) {
             if (import.meta.env.DEV) {
                 console.warn(

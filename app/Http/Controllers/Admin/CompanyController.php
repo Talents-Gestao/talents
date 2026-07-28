@@ -7,6 +7,9 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Mail\CompanyAdminInvitationMail;
 use App\Models\Company;
+use App\Models\CompanyEmployee;
+use App\Models\CompanyInternalRegulation;
+use App\Models\CompanyMonthlyHighlight;
 use App\Models\MethodologyFormTemplate;
 use App\Models\Plan;
 use App\Models\Subscription;
@@ -192,7 +195,7 @@ class CompanyController extends Controller
         return redirect()->route('admin.companies.show', $company)->with('success', 'Empresa criada.'.$mailMessage);
     }
 
-    public function show(Company $company): Response
+    public function show(Request $request, Company $company): Response
     {
         $company->load([
             'subscriptions.plan.modules',
@@ -202,8 +205,15 @@ class CompanyController extends Controller
             'surveys' => fn ($q) => $q->orderByDesc('id'),
         ]);
 
-        return Inertia::render('Admin/Companies/Show', [
+        $tab = $request->string('tab')->toString();
+        $validTabs = ['empresa', 'rhid', 'ponto', 'colaboradores', 'regulamento', 'uniformes', 'destaques'];
+        if (! in_array($tab, $validTabs, true)) {
+            $tab = 'empresa';
+        }
+
+        $payload = [
             'company' => $company,
+            'tab' => $tab,
             'rhidConfigured' => $company->rhidConfigured(),
             'planIncludesMetodologia' => $company->hasMethodologyEnabled(),
             'pendingRegistration' => $company->hasPendingRegistration(),
@@ -214,7 +224,68 @@ class CompanyController extends Controller
             'plans' => Plan::query()->where('is_active', true)->get(),
             'templates' => SurveyTemplate::query()->where('is_active', true)->get(['id', 'title']),
             'methodologyTemplates' => MethodologyFormTemplate::query()->where('is_active', true)->orderBy('title')->get(['id', 'title']),
-        ]);
+            'employees' => [],
+            'regulations' => [],
+            'highlights' => [],
+        ];
+
+        if ($tab === 'colaboradores') {
+            $payload['employees'] = CompanyEmployee::query()
+                ->where('company_id', $company->id)
+                ->with([
+                    'department:id,name',
+                    'position:id,name',
+                ])
+                ->orderBy('name')
+                ->limit(100)
+                ->get()
+                ->map(static fn (CompanyEmployee $e) => [
+                    'id' => $e->id,
+                    'name' => $e->name,
+                    'email' => $e->email,
+                    'is_active' => $e->is_active,
+                    'department' => $e->department?->name,
+                    'position' => $e->position?->name,
+                ])
+                ->values()
+                ->all();
+        }
+
+        if ($tab === 'regulamento') {
+            $payload['regulations'] = CompanyInternalRegulation::query()
+                ->where('company_id', $company->id)
+                ->orderByDesc('updated_at')
+                ->limit(50)
+                ->get(['id', 'title', 'updated_at'])
+                ->map(static fn (CompanyInternalRegulation $row) => [
+                    'id' => $row->id,
+                    'title' => $row->title,
+                    'updated_at' => $row->updated_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all();
+        }
+
+        if ($tab === 'destaques') {
+            $payload['highlights'] = CompanyMonthlyHighlight::query()
+                ->where('company_id', $company->id)
+                ->orderByDesc('year')
+                ->orderByDesc('month')
+                ->orderBy('person_name')
+                ->limit(50)
+                ->get()
+                ->map(static fn (CompanyMonthlyHighlight $row) => [
+                    'id' => $row->id,
+                    'person_name' => $row->person_name,
+                    'category_label' => $row->category->label(),
+                    'period_label' => $row->periodLabel(),
+                    'is_published' => $row->is_published,
+                ])
+                ->values()
+                ->all();
+        }
+
+        return Inertia::render('Admin/Companies/Show', $payload);
     }
 
     public function edit(Company $company): Response

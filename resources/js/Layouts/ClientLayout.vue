@@ -4,15 +4,8 @@ import SidebarLayout from '@/Components/SidebarLayout.vue';
 import SidebarNavItem from '@/Components/SidebarNavItem.vue';
 import SidebarNavSection from '@/Components/SidebarNavSection.vue';
 import SidebarUserCard from '@/Components/SidebarUserCard.vue';
+import DailyQuoteCard from '@/Components/Dashboard/DailyQuoteCard.vue';
 import { usePermissions } from '@/composables/usePermissions';
-import { computed } from 'vue';
-
-const { can } = usePermissions();
-
-const showVozDoTime = computed(
-    () => can('pesquisas', 'view') || can('denuncias', 'view') || can('desligamento', 'view'),
-);
-
 import {
     AcademicCapIcon,
     ArrowRightOnRectangleIcon,
@@ -31,6 +24,21 @@ import {
     SunIcon,
     UsersIcon,
 } from '@heroicons/vue/24/outline';
+import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const page = usePage();
+const { can } = usePermissions();
+
+const showVozDoTime = computed(
+    () => can('pesquisas', 'view') || can('denuncias', 'view') || can('desligamento', 'view'),
+);
+
+const dailyQuote = computed(() => page.props.dailyQuote ?? null);
+
+const showDailyQuote = computed(
+    () => !!dailyQuote.value && route().current('client.dashboard'),
+);
 </script>
 
 <template>
@@ -204,6 +212,7 @@ import {
             <slot name="aside" />
         </template>
 
+        <DailyQuoteCard v-if="showDailyQuote" :quote="dailyQuote" class="mb-8" />
         <slot />
     </SidebarLayout>
 </template>

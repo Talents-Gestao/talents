@@ -48,6 +48,11 @@ const close = () => {
     }
 };
 
+const onDialogCancel = (e) => {
+    e.preventDefault();
+    close();
+};
+
 const closeOnEscape = (e) => {
     if (e.key === 'Escape') {
         e.preventDefault();
@@ -58,11 +63,14 @@ const closeOnEscape = (e) => {
     }
 };
 
-onMounted(() => document.addEventListener('keydown', closeOnEscape));
+onMounted(() => {
+    document.addEventListener('keydown', closeOnEscape);
+    dialog.value?.addEventListener('cancel', onDialogCancel);
+});
 
 onUnmounted(() => {
     document.removeEventListener('keydown', closeOnEscape);
-
+    dialog.value?.removeEventListener('cancel', onDialogCancel);
     document.body.style.overflow = '';
 });
 

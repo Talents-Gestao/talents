@@ -3,13 +3,11 @@ import {
     ArrowTrendingUpIcon,
     BuildingOffice2Icon,
     ChartBarIcon,
-    CheckBadgeIcon,
     HeartIcon,
     ShieldCheckIcon,
     SparklesIcon,
     UserGroupIcon,
 } from '@heroicons/vue/24/outline';
-import { StarIcon as StarIconSolid } from '@heroicons/vue/24/solid';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import LandingLayout from '@/Components/Landing/LandingLayout.vue';
@@ -21,7 +19,7 @@ defineProps({
 
 const title = 'Nossos Clientes — Talents Gestão de Pessoas';
 const description =
-    'Empresas que confiam na Talents para transformar sua gestão de pessoas. Conheça cases, depoimentos e resultados de consultoria estratégica.';
+    'Empresas que confiam na Talents para transformar sua gestão de pessoas. Conheça cases e resultados de consultoria estratégica.';
 
 /** scale ajusta o peso visual de logos muito largos, quadrados ou com fundo embutido */
 const clients = [
@@ -60,39 +58,6 @@ const trustPoints = [
     { label: 'Consultoria estratégica', icon: SparklesIcon },
     { label: 'Desenvolvimento humano', icon: HeartIcon },
     { label: 'Método próprio Talents', icon: ChartBarIcon },
-];
-
-const testimonials = [
-    {
-        quote:
-            'A Talents trouxe clareza comportamental para nossa liderança e ajudou a alinhar equipes com mais consciência estratégica.',
-        author: 'Diretora de RH',
-        company: 'Empresa do setor industrial',
-        initials: 'RH',
-        accent: 'from-violet-500/15 via-white to-white',
-        bar: 'bg-violet-500',
-        avatar: 'bg-violet-100 text-violet-800 ring-violet-200/70',
-    },
-    {
-        quote:
-            'Mais do que diagnóstico, encontramos direcionamento prático para fortalecer cultura, comunicação e engajamento.',
-        author: 'Gestor de Pessoas',
-        company: 'Empresa de serviços',
-        initials: 'GP',
-        accent: 'from-fuchsia-500/15 via-white to-white',
-        bar: 'bg-fuchsia-500',
-        avatar: 'bg-fuchsia-100 text-fuchsia-800 ring-fuchsia-200/70',
-    },
-    {
-        quote:
-            'A metodologia da Talents conectou comportamento humano com estratégia — exatamente o que precisávamos.',
-        author: 'CEO',
-        company: 'Empresa em transformação',
-        initials: 'CE',
-        accent: 'from-talents-500/15 via-white to-white',
-        bar: 'bg-talents-600',
-        avatar: 'bg-talents-100 text-talents-800 ring-talents-200/70',
-    },
 ];
 
 const cases = [
@@ -167,15 +132,15 @@ const breadcrumbJsonLd = computed(() =>
             />
 
             <div class="relative mx-auto max-w-6xl px-4 py-14 md:py-20">
-                <div class="grid items-center gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-12">
+                <div class="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-10">
                     <div>
                         <p class="text-sm font-semibold uppercase tracking-widest text-talents-600">
                             Prova social
                         </p>
-                        <h1 class="mt-4 text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
+                        <h1 class="mt-4 text-3xl font-bold leading-tight text-slate-900 md:text-4xl">
                             Empresas que transformam pessoas em estratégia
                         </h1>
-                        <p class="mt-5 max-w-xl text-lg leading-relaxed text-slate-600">
+                        <p class="mt-5 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg">
                             Da indústria ao varejo e serviços: organizações que confiam na Talents para
                             fortalecer liderança, cultura e desenvolvimento humano com método.
                         </p>
@@ -199,9 +164,9 @@ const breadcrumbJsonLd = computed(() =>
                         </div>
                     </div>
 
-                    <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                         <div
-                            class="rounded-3xl border border-talents-200/70 bg-gradient-to-br from-talents-600 to-talents-800 p-6 text-white shadow-lg sm:col-span-3 lg:col-span-1"
+                            class="rounded-3xl border border-talents-200/70 bg-gradient-to-br from-talents-600 to-talents-800 p-6 text-white shadow-lg sm:p-7"
                         >
                             <p class="text-xs font-semibold uppercase tracking-widest text-talents-100">
                                 Rede Talents
@@ -217,15 +182,15 @@ const breadcrumbJsonLd = computed(() =>
                         <article
                             v-for="item in highlights"
                             :key="item.title"
-                            class="rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm sm:p-5"
+                            class="rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm sm:p-6"
                         >
                             <div
-                                class="inline-flex rounded-xl bg-talents-50 p-2 text-talents-700 ring-1 ring-talents-100"
+                                class="inline-flex rounded-xl bg-talents-50 p-2.5 text-talents-700 ring-1 ring-talents-100"
                             >
                                 <component :is="item.icon" class="h-5 w-5" aria-hidden="true" />
                             </div>
-                            <h2 class="mt-3 text-sm font-bold text-slate-900">{{ item.title }}</h2>
-                            <p class="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm">
+                            <h2 class="mt-3 text-base font-bold text-slate-900">{{ item.title }}</h2>
+                            <p class="mt-1.5 text-sm leading-relaxed text-slate-600">
                                 {{ item.description }}
                             </p>
                         </article>
@@ -269,76 +234,7 @@ const breadcrumbJsonLd = computed(() =>
             </div>
         </section>
 
-        <section class="border-t border-white/20 bg-white/40 py-14 backdrop-blur-sm md:py-16">
-            <div class="mx-auto max-w-6xl px-4">
-                <div class="mx-auto max-w-2xl text-center">
-                    <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">
-                        Voz dos clientes
-                    </p>
-                    <h2 class="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">Depoimentos</h2>
-                    <p class="mt-3 text-sm leading-relaxed text-slate-600 md:text-base">
-                        Percepções de quem viveu a consultoria Talents na prática.
-                    </p>
-                </div>
-                <div class="mt-10 grid gap-6 md:grid-cols-3">
-                    <article
-                        v-for="item in testimonials"
-                        :key="item.author"
-                        class="group relative flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white p-6 shadow-[0_12px_40px_-18px_rgba(88,28,135,0.35)] transition duration-300 hover:-translate-y-1.5 hover:border-talents-300 hover:shadow-[0_20px_50px_-20px_rgba(88,28,135,0.45)] md:p-7"
-                    >
-                        <div
-                            class="pointer-events-none absolute inset-0 bg-gradient-to-br opacity-100"
-                            :class="item.accent"
-                            aria-hidden="true"
-                        />
-                        <span
-                            class="absolute inset-x-0 top-0 h-1.5"
-                            :class="item.bar"
-                            aria-hidden="true"
-                        />
-
-                        <div class="relative flex items-center justify-between gap-3">
-                            <span
-                                class="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-talents-700 ring-1 ring-talents-100"
-                            >
-                                <CheckBadgeIcon class="h-3.5 w-3.5" aria-hidden="true" />
-                                Depoimento
-                            </span>
-                            <div class="flex items-center gap-0.5" aria-label="Avaliação 5 de 5">
-                                <StarIconSolid
-                                    v-for="n in 5"
-                                    :key="n"
-                                    class="h-3.5 w-3.5 text-amber-400"
-                                    aria-hidden="true"
-                                />
-                            </div>
-                        </div>
-
-                        <p class="relative mt-5 flex-1 text-[0.95rem] leading-relaxed text-slate-700">
-                            <span class="mr-1 text-2xl font-serif leading-none text-talents-400" aria-hidden="true">“</span>
-                            {{ item.quote }}
-                        </p>
-
-                        <div
-                            class="relative mt-6 flex items-center gap-3 rounded-2xl border border-slate-200/70 bg-white/80 px-3 py-3 backdrop-blur-sm"
-                        >
-                            <span
-                                class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-bold shadow-sm ring-1"
-                                :class="item.avatar"
-                            >
-                                {{ item.initials }}
-                            </span>
-                            <div class="min-w-0">
-                                <p class="truncate text-sm font-bold text-slate-900">{{ item.author }}</p>
-                                <p class="truncate text-xs text-slate-500">{{ item.company }}</p>
-                            </div>
-                        </div>
-                    </article>
-                </div>
-            </div>
-        </section>
-
-        <section class="py-14 md:py-16">
+        <section class="border-t border-white/20 py-14 md:py-16">
             <div class="mx-auto max-w-6xl px-4">
                 <div class="mx-auto max-w-2xl text-center">
                     <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">

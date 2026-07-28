@@ -111,7 +111,7 @@ class InternalRegulationController extends Controller
         $regulamento_interno->delete();
 
         return redirect()
-            ->route('admin.regulamento-interno.index', ['company_id' => $companyId])
+            ->route('admin.companies.show', ['company' => $companyId, 'tab' => 'regulamento'])
             ->with('success', 'Regulamento interno removido.');
     }
 

@@ -9,7 +9,6 @@ use App\Models\Company;
 use App\Models\Complaint;
 use App\Models\StrategicCalendarItem;
 use App\Models\Survey;
-use App\Support\MetamorfoseDailyQuote;
 use App\Support\StrategicCalendarClientEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Support\StrategicCalendarPeriod;
@@ -217,7 +216,6 @@ class DashboardController extends Controller
             'actionPlanHref' => $actionPlanHref,
             'complaintsPublicUrl' => $complaintsPublicUrl,
             'dashboardCalendar' => $dashboardCalendar,
-            'dailyQuote' => app(MetamorfoseDailyQuote::class)->forDate(),
         ]);
     }
 }

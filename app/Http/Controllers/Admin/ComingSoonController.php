@@ -91,6 +91,10 @@ class ComingSoonController extends Controller
             return redirect()->route('admin.destaques-mes.index');
         }
 
+        if ($module === 'diagnostico-empresarial') {
+            return redirect()->route('admin.diagnostico-empresarial.index');
+        }
+
         $config = self::MODULES[$module] ?? null;
         abort_unless($config !== null, 404);
 
