@@ -4,6 +4,7 @@ import SidebarLayout from '@/Components/SidebarLayout.vue';
 import SidebarNavGroup from '@/Components/SidebarNavGroup.vue';
 import SidebarNavItem from '@/Components/SidebarNavItem.vue';
 import SidebarUserCard from '@/Components/SidebarUserCard.vue';
+import DailyQuoteCard from '@/Components/Dashboard/DailyQuoteCard.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -21,7 +22,6 @@ import {
     PresentationChartLineIcon,
     RocketLaunchIcon,
     SunIcon,
-    UserGroupIcon,
     UserPlusIcon,
     ViewColumnsIcon,
 } from '@heroicons/vue/24/outline';
@@ -31,6 +31,19 @@ const page = usePage();
 const adminHomeUrl = computed(
     () => page.props.auth?.user?.admin_home_url ?? route('admin.dashboard'),
 );
+
+const dailyQuote = computed(() => page.props.dailyQuote ?? null);
+
+const showDailyQuote = computed(() => {
+    if (!dailyQuote.value) {
+        return false;
+    }
+
+    const home = String(adminHomeUrl.value ?? '').split('?')[0];
+    const current = String(page.url ?? '').split('?')[0];
+
+    return home !== '' && current === home;
+});
 
 const canCommercialSettings = computed(
     () => canAdmin('comercial') || page.props.auth?.user?.can_commercial_settings,
@@ -89,31 +102,8 @@ const clientesActive = computed(
     () =>
         route().current('admin.companies.*') ||
         route().current('admin.landing-interest.*') ||
-        isComingSoon('diagnostico-empresarial', 'contratos-fechados'),
-);
-
-const showRecursosHumanos = computed(
-    () => canAdmin('rhid') || canAdmin('companies'),
-);
-
-const recursosHumanosFallbackHref = computed(() => {
-    if (canAdmin('rhid')) {
-        return route('admin.rhid.index');
-    }
-    if (canAdmin('companies')) {
-        return route('admin.colaboradores.index');
-    }
-    return route('admin.dashboard');
-});
-
-const recursosHumanosActive = computed(
-    () =>
-        route().current('admin.rhid.*') ||
-        route().current('admin.ponto.*') ||
-        route().current('admin.colaboradores.*') ||
-        route().current('admin.regulamento-interno.*') ||
-        route().current('admin.destaques-mes.*') ||
-        isComingSoon('controle-uniformes'),
+        route().current('admin.diagnostico-empresarial.*') ||
+        isComingSoon('contratos-fechados'),
 );
 
 const showMetamorfose = computed(() => canAdmin('methodology'));
@@ -210,9 +200,7 @@ const isComercialSettingsTab = (tab) => {
 <template>
     <SidebarLayout
         top-bar-title="Administração"
-        :top-bar-show-search="false"
         :top-bar-show-actions="true"
-        :top-bar-show-files="false"
     >
         <template #logo="{ collapsed }">
             <SidebarBrandMark
@@ -310,13 +298,12 @@ const isComercialSettingsTab = (tab) => {
                 />
                 <SidebarNavItem
                     v-if="canAdmin('companies')"
-                    :href="comingSoonHref('diagnostico-empresarial')"
-                    :active="isComingSoon('diagnostico-empresarial')"
+                    :href="route('admin.diagnostico-empresarial.index')"
+                    :active="route().current('admin.diagnostico-empresarial.*')"
                     label="Diagnóstico empresarial"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
-                    badge="Em breve"
                 />
                 <SidebarNavItem
                     v-if="canAdmin('companies')"
@@ -327,72 +314,6 @@ const isComercialSettingsTab = (tab) => {
                     :collapsed="collapsed"
                     :compact="compact"
                     badge="Em breve"
-                />
-            </SidebarNavGroup>
-
-            <SidebarNavGroup
-                v-if="showRecursosHumanos"
-                label="Recursos Humanos"
-                :icon="UserGroupIcon"
-                :collapsed="collapsed"
-                :compact="compact"
-                :active="recursosHumanosActive"
-                :fallback-href="recursosHumanosFallbackHref"
-            >
-                <SidebarNavItem
-                    v-if="canAdmin('rhid')"
-                    :href="route('admin.rhid.index')"
-                    :active="route().current('admin.rhid.*')"
-                    label="Portfólio RHID"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                />
-                <SidebarNavItem
-                    v-if="canAdmin('rhid')"
-                    :href="route('admin.ponto.index')"
-                    :active="route().current('admin.ponto.*')"
-                    label="Gestão de ponto"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                />
-                <SidebarNavItem
-                    v-if="canAdmin('companies')"
-                    :href="route('admin.colaboradores.index')"
-                    :active="route().current('admin.colaboradores.*')"
-                    label="Cadastro de colaboradores"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                />
-                <SidebarNavItem
-                    v-if="canAdmin('companies')"
-                    :href="route('admin.regulamento-interno.index')"
-                    :active="route().current('admin.regulamento-interno.*')"
-                    label="Regulamento interno"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                />
-                <SidebarNavItem
-                    v-if="canAdmin('companies')"
-                    :href="comingSoonHref('controle-uniformes')"
-                    :active="isComingSoon('controle-uniformes')"
-                    label="Controle de uniformes"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                    badge="Em breve"
-                />
-                <SidebarNavItem
-                    v-if="canAdmin('companies')"
-                    :href="route('admin.destaques-mes.index')"
-                    :active="route().current('admin.destaques-mes.*')"
-                    label="Destaques do mês"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
                 />
             </SidebarNavGroup>
 
@@ -710,6 +631,7 @@ const isComercialSettingsTab = (tab) => {
             <slot name="aside" />
         </template>
 
+        <DailyQuoteCard v-if="showDailyQuote" :quote="dailyQuote" class="mb-8" />
         <slot />
     </SidebarLayout>
 </template>

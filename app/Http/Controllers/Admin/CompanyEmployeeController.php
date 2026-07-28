@@ -148,7 +148,7 @@ class CompanyEmployeeController extends Controller
         $employee->delete();
 
         return redirect()
-            ->route('admin.colaboradores.index', ['company_id' => $companyId])
+            ->route('admin.companies.show', ['company' => $companyId, 'tab' => 'colaboradores'])
             ->with('success', 'Colaborador removido.');
     }
 

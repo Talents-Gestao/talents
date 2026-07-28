@@ -8,7 +8,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { onMounted, ref } from 'vue';
+import { nextTick, onMounted, ref } from 'vue';
 
 const props = defineProps({
     canResetPassword: {
@@ -23,12 +23,19 @@ const props = defineProps({
     },
 });
 
+/** Mantém o aviso mesmo depois de limpar o query param da URL. */
+const showExpiredNotice = ref(props.sessionExpired);
 const expiredModalVisible = ref(false);
 
 onMounted(() => {
-    if (props.sessionExpired) {
-        expiredModalVisible.value = true;
+    if (!props.sessionExpired) {
+        return;
     }
+
+    // Abre o modal após o paint — evita conflito com autofocus do e-mail no <dialog>.
+    nextTick(() => {
+        expiredModalVisible.value = true;
+    });
 });
 
 const form = useForm({
@@ -45,9 +52,13 @@ const submit = () => {
     });
 };
 
-const closeExpiredModal = () => {
+const dismissExpiredNotice = () => {
     expiredModalVisible.value = false;
-    window.history.replaceState({}, '', route('login'));
+    showExpiredNotice.value = false;
+
+    if (window.location.search.includes('session_expired')) {
+        window.history.replaceState({}, '', route('login'));
+    }
 };
 </script>
 
@@ -58,23 +69,32 @@ const closeExpiredModal = () => {
         <Modal
             :show="expiredModalVisible"
             max-width="md"
-            @close="closeExpiredModal"
+            @close="dismissExpiredNotice"
         >
             <div class="p-6">
                 <h2 class="text-lg font-semibold text-gray-900">
                     Sessão expirada
                 </h2>
                 <p class="mt-3 text-sm text-gray-600">
-                    Sua sessão expirou por inatividade. É necessário fazer
+                    A sua sessão expirou por inatividade. É necessário fazer
                     login novamente para continuar.
                 </p>
                 <div class="mt-6 flex justify-end">
-                    <PrimaryButton type="button" @click="closeExpiredModal">
+                    <PrimaryButton type="button" @click="dismissExpiredNotice">
                         Entendi
                     </PrimaryButton>
                 </div>
             </div>
         </Modal>
+
+        <div
+            v-if="showExpiredNotice"
+            class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            role="status"
+        >
+            A sua sessão expirou por inatividade. Faça login novamente para
+            continuar.
+        </div>
 
         <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
             {{ status }}
@@ -86,11 +106,11 @@ const closeExpiredModal = () => {
 
                 <TextInput
                     id="email"
+                    v-model="form.email"
                     type="email"
                     class="mt-1 block w-full"
-                    v-model="form.email"
                     required
-                    autofocus
+                    :autofocus="!sessionExpired"
                     autocomplete="username"
                 />
 
@@ -103,9 +123,9 @@ const closeExpiredModal = () => {
                 <div class="relative mt-1">
                     <TextInput
                         id="password"
+                        v-model="form.password"
                         :type="showPassword ? 'text' : 'password'"
                         class="block w-full pe-10"
-                        v-model="form.password"
                         required
                         autocomplete="current-password"
                     />
@@ -126,9 +146,7 @@ const closeExpiredModal = () => {
             <div class="mt-4 block">
                 <label class="flex items-center">
                     <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-sm text-gray-600"
-                        >Remember me</span
-                    >
+                    <span class="ms-2 text-sm text-gray-600">Remember me</span>
                 </label>
             </div>
 

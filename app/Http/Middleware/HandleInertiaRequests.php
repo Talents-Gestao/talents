@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Support\AdminHomeResolver;
+use App\Support\MetamorfoseDailyQuote;
 use App\Support\Notices\UnreadNoticeCounter;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\Request;
@@ -96,6 +97,9 @@ class HandleInertiaRequests extends Middleware
                     ? (app(UnreadNoticeCounter::class)->contextFor($user)[0]->value ?? null)
                     : null,
             ],
+            'dailyQuote' => $user
+                ? app(MetamorfoseDailyQuote::class)->forDate()
+                : null,
         ];
 
         if (config('app.debug') && $request->headers->has('X-Inertia')) {

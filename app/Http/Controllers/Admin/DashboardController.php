@@ -8,7 +8,6 @@ use App\Models\Company;
 use App\Models\Complaint;
 use App\Models\LandingInterestSubmission;
 use App\Models\StrategicCalendarItem;
-use App\Support\MetamorfoseDailyQuote;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Models\Subscription;
 use App\Models\Survey;
@@ -180,7 +179,6 @@ class DashboardController extends Controller
             'recentLeads' => $recentLeads,
             'upcomingCalendar' => $upcomingCalendar,
             'subscriptionsDueSoon' => $subscriptionsDueSoon,
-            'dailyQuote' => app(MetamorfoseDailyQuote::class)->forDate(),
             'calendarKindLabels' => collect(StrategicCalendarItemKind::cases())
                 ->mapWithKeys(fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()])
                 ->all(),

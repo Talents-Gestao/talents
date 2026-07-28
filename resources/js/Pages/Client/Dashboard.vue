@@ -1,5 +1,4 @@
 <script setup>
-import DailyQuoteCard from '@/Components/Dashboard/DailyQuoteCard.vue';
 import EmptyState from '@/Components/Dashboard/EmptyState.vue';
 import HealthBadge from '@/Components/Dashboard/HealthBadge.vue';
 import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
@@ -45,7 +44,6 @@ const props = defineProps({
     actionPlanHref: { type: String, default: null },
     complaintsPublicUrl: { type: String, default: null },
     dashboardCalendar: { type: Object, default: null },
-    dailyQuote: { type: Object, default: null },
 });
 
 const companyName = computed(() => page.props.company?.name ?? '');
@@ -174,8 +172,6 @@ const attentionTotal = computed(() => {
                 </div>
             </div>
         </template>
-
-        <DailyQuoteCard v-if="dailyQuote" :quote="dailyQuote" class="mb-6" />
 
         <!-- Destaque: calendário + NR-1 -->
         <div class="mt-2 grid gap-4 lg:grid-cols-3">
