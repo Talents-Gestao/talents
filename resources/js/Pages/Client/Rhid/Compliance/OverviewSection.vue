@@ -41,6 +41,8 @@ const props = defineProps({
     overviewAdherencePreviousDiasCalendario: { type: [Number, null], default: null },
     overviewAdherenceWorstEntrada: { type: Array, required: true },
     overviewMonthlyCompliance: { type: [Object, null], default: null },
+    overviewMonthlyComplianceMonth: { type: String, required: true },
+    overviewMonthlyComplianceLoading: { type: Boolean, required: true },
     overviewJustTotal: { type: [Number, null], default: null },
     overviewJustAtestados: { type: [Number, null], default: null },
     overviewJustNote: { type: String, default: '' },
@@ -53,6 +55,7 @@ const props = defineProps({
 
 const emit = defineEmits([
     'refresh',
+    'monthly-compliance-month-change',
     'go-punches-adherence',
     'go-bank',
     'go-justifications',
@@ -127,6 +130,16 @@ const overviewMonthlyComplianceRows = computed(() => {
 });
 
 const overviewMonthlyComplianceResumo = computed(() => props.overviewMonthlyCompliance?.resumo ?? null);
+
+const overviewMonthlyComplianceMonthMax = computed(() => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+});
+
+const onMonthlyComplianceMonthInput = (event) => {
+    emit('monthly-compliance-month-change', event?.target?.value);
+};
 
 const overviewJustAtestadosPercent = computed(() => {
     const total = props.overviewJustTotal;
@@ -653,8 +666,8 @@ const trendBank = computed(() => {
 
             <!-- ============ Top 5 cumprimento do mês ============ -->
             <div class="rounded-2xl border border-emerald-200 bg-gradient-to-br from-white via-emerald-50/40 to-white p-4 shadow-sm">
-                <div class="mb-3 flex flex-wrap items-start justify-between gap-2">
-                    <div>
+                <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
                         <p class="text-sm font-semibold text-talents-800">
                             Top 5 — Cumprimento do mês completo
                         </p>
@@ -663,14 +676,32 @@ const trendBank = computed(() => {
                             feriados e atestados lançados no ponto, e férias.
                         </p>
                     </div>
-                    <span
-                        class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
-                    >
-                        Cumprimento
-                    </span>
+                    <div class="flex shrink-0 flex-wrap items-center gap-2">
+                        <label class="sr-only" for="overview-monthly-compliance-month">Mês de referência</label>
+                        <input
+                            id="overview-monthly-compliance-month"
+                            type="month"
+                            class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm focus:border-talents-400 focus:outline-none focus:ring-1 focus:ring-talents-400"
+                            :value="overviewMonthlyComplianceMonth"
+                            :max="overviewMonthlyComplianceMonthMax"
+                            :disabled="overviewLoading || overviewMonthlyComplianceLoading"
+                            @change="onMonthlyComplianceMonthInput"
+                        />
+                        <span
+                            class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                        >
+                            Cumprimento
+                        </span>
+                    </div>
                 </div>
                 <p
-                    v-if="overviewMonthlyComplianceResumo"
+                    v-if="overviewMonthlyComplianceLoading"
+                    class="mb-2 text-[11px] text-slate-500"
+                >
+                    Carregando ranking do mês selecionado…
+                </p>
+                <p
+                    v-else-if="overviewMonthlyComplianceResumo"
                     class="mb-2 text-[11px] text-slate-500"
                 >
                     {{ overviewMonthlyComplianceResumo.dias_uteis_no_periodo ?? '—' }} dia(s) útil(eis) no período
@@ -679,7 +710,7 @@ const trendBank = computed(() => {
                     </template>
                     · {{ overviewMonthlyComplianceResumo.colaboradores_avaliados ?? 0 }} colaborador(es) com espelho
                 </p>
-                <ol v-if="overviewMonthlyComplianceRows.length" class="space-y-2">
+                <ol v-if="!overviewMonthlyComplianceLoading && overviewMonthlyComplianceRows.length" class="space-y-2">
                     <li
                         v-for="(rw, ri) in overviewMonthlyComplianceRows"
                         :key="rw.id_person ?? ri"
@@ -724,7 +755,7 @@ const trendBank = computed(() => {
                         </span>
                     </li>
                 </ol>
-                <p v-else class="mt-2 text-center text-sm text-slate-500">
+                <p v-else-if="!overviewMonthlyComplianceLoading" class="mt-2 text-center text-sm text-slate-500">
                     Sem dados de cumprimento para este período — importe espelhos e configure a escala da empresa.
                 </p>
             </div>
