@@ -73,6 +73,7 @@ const overviewLoadedAt = ref(null);
 const overviewPunchesSample = ref(null);
 const overviewBankRows = ref([]);
 const overviewAdherence = ref(null);
+const overviewMonthlyCompliance = ref(null);
 const overviewJustTotal = ref(null);
 const overviewJustAtestados = ref(null);
 const overviewJustNote = ref('');
@@ -1116,6 +1117,7 @@ const loadOverviewData = async () => {
     clearErr();
     overviewBankRowsPrevMonthEnd.value = null;
     overviewAdherencePrevious.value = null;
+    overviewMonthlyCompliance.value = null;
     overviewJustTotalPrevious.value = null;
     overviewJustAtestadosPrevious.value = null;
     overviewJustNotePrevious.value = '';
@@ -1124,17 +1126,21 @@ const loadOverviewData = async () => {
         const { first: pFirst, last: pLast } = previousMonthRangeHtmlDates();
         const dateParamToday = toRhidYmd(todayHtmlDate()) || todayHtmlDate();
         const dateParamPrevMonthEnd = toRhidYmd(pLast) || pLast.replace(/\D/g, '').slice(0, 8);
-        const [punchRes, bankRes, adhRes, typesRes] = await Promise.all([
+        const [punchRes, bankRes, adhRes, typesRes, monthlyRes] = await Promise.all([
             axios.get(route('client.rhid.api.last-punches')),
             axios.get(route('client.rhid.api.person-bank-hours.all'), { params: { date: dateParamToday } }),
             axios.get(route('client.rhid.api.espelhos.schedule-adherence'), {
                 params: { ini: mFirst, fim: mLast },
             }),
             axios.get(route('client.rhid.api.justification-types')),
+            axios.get(route('client.rhid.api.espelhos.monthly-compliance'), {
+                params: { ini: mFirst, fim: mLast },
+            }),
         ]);
         overviewPunchesSample.value = punchRes.data;
         overviewBankRows.value = Array.isArray(bankRes.data?.rows) ? bankRes.data.rows : [];
         overviewAdherence.value = adhRes.data;
+        overviewMonthlyCompliance.value = monthlyRes.data;
 
         const iniStr = toRhidYmd(mFirst);
         const fimStr = toRhidYmd(mLast);
@@ -2879,6 +2885,7 @@ const justDeptBarChart = computed(() => {
                 :overview-adherence-dias-calendario="overviewAdherenceDiasCalendario"
                 :overview-adherence-previous-dias-calendario="overviewAdherencePreviousDiasCalendario"
                 :overview-adherence-worst-entrada="overviewAdherenceWorstEntrada"
+                :overview-monthly-compliance="overviewMonthlyCompliance"
                 :overview-just-total="overviewJustTotal"
                 :overview-just-atestados="overviewJustAtestados"
                 :overview-just-note="overviewJustNote"

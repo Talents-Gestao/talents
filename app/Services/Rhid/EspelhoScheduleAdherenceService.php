@@ -2,12 +2,18 @@
 
 namespace App\Services\Rhid;
 
+use App\Enums\EmployeeLeaveStatus;
 use App\Models\Company;
+use App\Models\EmployeeLeave;
 use App\Models\RhidEspelhoDay;
 use App\Models\RhidEspelhoImport;
+use App\Models\User;
+use App\Support\RhidJustificationAnalytics;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class EspelhoScheduleAdherenceService
 {
@@ -17,6 +23,11 @@ class EspelhoScheduleAdherenceService
 
     /** Destaques na API/UI: colaboradores com melhor / pior aderência às marcações esperadas (entrada + almoço). */
     public const HIGHLIGHT_RANK = 5;
+
+    /** Limite de páginas ao listar justificativas RHID (espelha JUST_ANALYTICS_MAX_PAGES no frontend). */
+    public const JUSTIFICATION_MAX_PAGES = 50;
+
+    public const JUSTIFICATION_PAGE_SIZE = 100;
 
     /** ISO-8601: 1 = seg … 7 = dom — alinhado a PunchScheduleSettingsService::DAY_KEYS */
     private const DAY_KEY_BY_ISO = [
@@ -32,6 +43,7 @@ class EspelhoScheduleAdherenceService
     public function __construct(
         private readonly PunchScheduleSettingsService $scheduleSettings,
         private readonly RhidPersonSchedulePreferenceService $personSchedulePreferences,
+        private readonly RhidComplianceService $rhidCompliance,
     ) {}
 
     /**
@@ -217,6 +229,421 @@ class EspelhoScheduleAdherenceService
             'ranking_melhor_aderencia_marcacoes' => $rankingMelhorAderencia,
             'diagnostics' => $diagnostics,
         ];
+    }
+
+    /**
+     * Top N colaboradores com melhor cumprimento do mês (presença completa nos dias úteis),
+     * descontando fins de semana (via escala), feriados/atestados (justificativas RHID) e férias.
+     *
+     * @return array<string, mixed>
+     */
+    public function monthlyComplianceRanking(
+        Company $company,
+        CarbonInterface $ini,
+        CarbonInterface $fim,
+        ?User $user = null,
+    ): array {
+        $settings = $this->scheduleSettings->getForCompany($company);
+        $tolerance = $this->toleranceMinutes($settings);
+        $workingDates = $this->workingDatesInPeriod($ini, $fim, $settings);
+
+        $prefMap = $this->personSchedulePreferences->secondLunchMapForCompany($company->id);
+        $autoDetectAllowed = ! empty($settings['segundo_almoco']);
+
+        [$feriadoDates, $atestadoDatesByPerson, $justificationsLoaded] = $this->loadJustificationExclusions(
+            $company,
+            $user,
+            $ini,
+            $fim,
+        );
+        $feriasDatesByPerson = $this->loadFeriasDatesByPerson($company->id, $ini, $fim);
+
+        $days = $this->loadDedupedDays($company->id, $ini, $fim, null);
+
+        /** @var array<int, array<string, mixed>> $byPerson */
+        $byPerson = [];
+
+        foreach ($days as $item) {
+            /** @var RhidEspelhoDay $day */
+            $day = $item['day'];
+            $idPersonRow = (int) $item['id_person'];
+            $rowJson = is_array($day->row_json) ? $day->row_json : [];
+            $refDate = Carbon::parse($day->ref_date)->startOfDay();
+            $dateStr = $refDate->toDateString();
+            $isoDow = (int) $refDate->format('N');
+            $dayKey = self::DAY_KEY_BY_ISO[$isoDow] ?? null;
+            if ($dayKey === null) {
+                continue;
+            }
+
+            $daySchedule = $settings['dias'][$dayKey] ?? null;
+            if (! is_array($daySchedule) || empty($daySchedule['ativo'])) {
+                continue;
+            }
+
+            $fragment = $this->pickFragment($rowJson, $idPersonRow);
+            if ($fragment === null) {
+                continue;
+            }
+
+            $nome = trim((string) ($fragment['nome'] ?? ''));
+            if ($nome === '') {
+                $nome = '—';
+            }
+
+            if (! isset($byPerson[$idPersonRow])) {
+                $byPerson[$idPersonRow] = [
+                    'id_person' => $idPersonRow,
+                    'nome' => $nome,
+                    'datas_cumpridas' => [],
+                    'total_atraso_entrada_minutos' => 0,
+                ];
+            }
+            $byPerson[$idPersonRow]['nome'] = $nome;
+
+            $hasManualPref = array_key_exists($idPersonRow, $prefMap);
+            $useSecond = $prefMap[$idPersonRow] ?? false;
+            $allowAuto = $autoDetectAllowed && ! $hasManualPref;
+            $analysis = $this->analyzeDayFragment($fragment, $daySchedule, $tolerance, $settings, $useSecond, $allowAuto);
+            if ($analysis === null) {
+                continue;
+            }
+
+            $byPerson[$idPersonRow]['datas_cumpridas'][$dateStr] = true;
+            $byPerson[$idPersonRow]['total_atraso_entrada_minutos'] += (int) $analysis['atraso_entrada_minutos'];
+        }
+
+        $ranking = [];
+        foreach ($byPerson as $idPerson => $agg) {
+            $excluded = [];
+            foreach ($feriadoDates as $d => $_) {
+                $excluded[$d] = true;
+            }
+            foreach ($atestadoDatesByPerson[$idPerson] ?? [] as $d => $_) {
+                $excluded[$d] = true;
+            }
+            foreach ($feriasDatesByPerson[$idPerson] ?? [] as $d => $_) {
+                $excluded[$d] = true;
+            }
+
+            $diasEsperadosSet = [];
+            foreach ($workingDates as $d => $_) {
+                if (! isset($excluded[$d])) {
+                    $diasEsperadosSet[$d] = true;
+                }
+            }
+            $diasEsperados = count($diasEsperadosSet);
+            if ($diasEsperados === 0) {
+                continue;
+            }
+
+            $diasCumpridos = 0;
+            foreach ($diasEsperadosSet as $d => $_) {
+                if (! empty($agg['datas_cumpridas'][$d])) {
+                    $diasCumpridos++;
+                }
+            }
+
+            $feriadoExcluidos = 0;
+            foreach ($workingDates as $d => $_) {
+                if (isset($feriadoDates[$d])) {
+                    $feriadoExcluidos++;
+                }
+            }
+            $atestadoExcluidos = 0;
+            foreach ($workingDates as $d => $_) {
+                if (isset($atestadoDatesByPerson[$idPerson][$d]) && ! isset($feriadoDates[$d])) {
+                    $atestadoExcluidos++;
+                }
+            }
+            $feriasExcluidos = 0;
+            foreach ($workingDates as $d => $_) {
+                if (
+                    isset($feriasDatesByPerson[$idPerson][$d])
+                    && ! isset($feriadoDates[$d])
+                    && ! isset($atestadoDatesByPerson[$idPerson][$d])
+                ) {
+                    $feriasExcluidos++;
+                }
+            }
+
+            $percentual = round(($diasCumpridos / $diasEsperados) * 100, 1);
+            $completou = $diasCumpridos === $diasEsperados;
+
+            $ranking[] = [
+                'id_person' => (int) $idPerson,
+                'nome' => $agg['nome'],
+                'dias_esperados' => $diasEsperados,
+                'dias_cumpridos' => $diasCumpridos,
+                'dias_feriado_excluidos' => $feriadoExcluidos,
+                'dias_atestado_excluidos' => $atestadoExcluidos,
+                'dias_ferias_excluidos' => $feriasExcluidos,
+                'percentual' => $percentual,
+                'completou_mes_todo' => $completou,
+                'total_atraso_entrada_minutos' => (int) $agg['total_atraso_entrada_minutos'],
+            ];
+        }
+
+        usort($ranking, static function (array $a, array $b): int {
+            if ($a['completou_mes_todo'] !== $b['completou_mes_todo']) {
+                return $b['completou_mes_todo'] <=> $a['completou_mes_todo'];
+            }
+            if ($a['percentual'] !== $b['percentual']) {
+                return $b['percentual'] <=> $a['percentual'];
+            }
+            if ($a['dias_cumpridos'] !== $b['dias_cumpridos']) {
+                return $b['dias_cumpridos'] <=> $a['dias_cumpridos'];
+            }
+            if ($a['total_atraso_entrada_minutos'] !== $b['total_atraso_entrada_minutos']) {
+                return $a['total_atraso_entrada_minutos'] <=> $b['total_atraso_entrada_minutos'];
+            }
+
+            return strcasecmp($a['nome'], $b['nome']);
+        });
+
+        $ranking = array_slice($ranking, 0, self::HIGHLIGHT_RANK);
+        foreach ($ranking as &$row) {
+            unset($row['total_atraso_entrada_minutos']);
+        }
+        unset($row);
+
+        return [
+            'resumo' => [
+                'ini' => $ini->toDateString(),
+                'fim' => $fim->toDateString(),
+                'dias_uteis_no_periodo' => count($workingDates),
+                'dias_feriado_no_periodo' => count(array_intersect_key($feriadoDates, $workingDates)),
+                'colaboradores_avaliados' => count($byPerson),
+                'justificativas_carregadas' => $justificationsLoaded,
+            ],
+            'ranking_cumprimento_mes' => array_values($ranking),
+        ];
+    }
+
+    /**
+     * Datas úteis (escala ativa) no período — chaves YYYY-MM-DD.
+     *
+     * @param  array<string, mixed>  $settings
+     * @return array<string, true>
+     */
+    public function workingDatesInPeriod(CarbonInterface $ini, CarbonInterface $fim, array $settings): array
+    {
+        $diasAtivosKeys = [];
+        foreach (PunchScheduleSettingsService::DAY_KEYS as $k) {
+            $d = $settings['dias'][$k] ?? null;
+            if (is_array($d) && ! empty($d['ativo'])) {
+                $diasAtivosKeys[] = $k;
+            }
+        }
+
+        $out = [];
+        $cursor = $ini->copy()->startOfDay();
+        $end = $fim->copy()->startOfDay();
+        while ($cursor->lte($end)) {
+            $iso = (int) $cursor->format('N');
+            $k = self::DAY_KEY_BY_ISO[$iso] ?? null;
+            if ($k !== null && in_array($k, $diasAtivosKeys, true)) {
+                $out[$cursor->toDateString()] = true;
+            }
+            $cursor->addDay();
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array{0: array<string, true>, 1: array<int, array<string, true>>, 2: bool}
+     */
+    private function loadJustificationExclusions(
+        Company $company,
+        ?User $user,
+        CarbonInterface $ini,
+        CarbonInterface $fim,
+    ): array {
+        $feriadoDates = [];
+        $atestadoDatesByPerson = [];
+
+        if (! $company->rhidConfigured()) {
+            return [$feriadoDates, $atestadoDatesByPerson, false];
+        }
+
+        try {
+            $typesPayload = $this->rhidCompliance->listJustificationTypes($company, $user);
+            $typeMap = RhidJustificationAnalytics::buildTypeMapFromPayload($typesPayload);
+
+            $rows = [];
+            $recordsTotal = null;
+            for ($page = 0; $page < self::JUSTIFICATION_MAX_PAGES; $page++) {
+                $payload = $this->rhidCompliance->listJustifications($company, $user, [
+                    'ini' => $ini->toDateString(),
+                    'fim' => $fim->toDateString(),
+                    'page' => $page,
+                    'maxSize' => self::JUSTIFICATION_PAGE_SIZE,
+                ]);
+                $chunk = RhidJustificationAnalytics::extractListItems($payload);
+                if (isset($payload['recordsTotal']) && is_numeric($payload['recordsTotal'])) {
+                    $recordsTotal = (int) $payload['recordsTotal'];
+                }
+                $rows = array_merge($rows, $chunk);
+                if (count($chunk) < self::JUSTIFICATION_PAGE_SIZE) {
+                    break;
+                }
+                if ($recordsTotal !== null && count($rows) >= $recordsTotal) {
+                    break;
+                }
+            }
+
+            foreach ($rows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $range = $this->justificationDateRange($row, $ini, $fim);
+                if ($range === null) {
+                    continue;
+                }
+
+                $isFeriado = RhidJustificationAnalytics::isFeriadoByKeyword($row, $typeMap);
+                $isAtestado = RhidJustificationAnalytics::isAtestadoByKeyword($row, $typeMap);
+                if (! $isFeriado && ! $isAtestado) {
+                    continue;
+                }
+
+                $pid = $row['idPerson'] ?? $row['id_person'] ?? null;
+                $personId = is_numeric($pid) ? (int) $pid : null;
+
+                [$rangeIni, $rangeFim] = $range;
+                $cursor = $rangeIni->copy()->startOfDay();
+                $end = $rangeFim->copy()->startOfDay();
+                while ($cursor->lte($end)) {
+                    $ds = $cursor->toDateString();
+                    if ($isFeriado) {
+                        $feriadoDates[$ds] = true;
+                    }
+                    if ($isAtestado && $personId !== null) {
+                        $atestadoDatesByPerson[$personId][$ds] = true;
+                    }
+                    $cursor->addDay();
+                }
+            }
+
+            return [$feriadoDates, $atestadoDatesByPerson, true];
+        } catch (Throwable $e) {
+            Log::warning('rhid.monthly_compliance.justifications_failed', [
+                'company_id' => $company->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [[], [], false];
+        }
+    }
+
+    /**
+     * @return array<int, array<string, true>>
+     */
+    private function loadFeriasDatesByPerson(int $companyId, CarbonInterface $ini, CarbonInterface $fim): array
+    {
+        $leaves = EmployeeLeave::query()
+            ->where('company_id', $companyId)
+            ->whereNotNull('rhid_person_id')
+            ->where('status', '!=', EmployeeLeaveStatus::Cancelled->value)
+            ->whereDate('start_date', '<=', $fim->toDateString())
+            ->whereDate('end_date', '>=', $ini->toDateString())
+            ->get(['rhid_person_id', 'start_date', 'end_date']);
+
+        $out = [];
+        foreach ($leaves as $leave) {
+            $pid = (int) $leave->rhid_person_id;
+            $start = Carbon::parse($leave->start_date)->max($ini->copy()->startOfDay());
+            $end = Carbon::parse($leave->end_date)->min($fim->copy()->startOfDay());
+            $cursor = $start->copy()->startOfDay();
+            while ($cursor->lte($end)) {
+                $out[$pid][$cursor->toDateString()] = true;
+                $cursor->addDay();
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array{0: Carbon, 1: Carbon}|null
+     */
+    private function justificationDateRange(array $row, CarbonInterface $periodIni, CarbonInterface $periodFim): ?array
+    {
+        $iniRaw = $row['inicio'] ?? $row['Inicio'] ?? $row['inicioStrColumn'] ?? $row['inicioStr'] ?? $row['ini'] ?? null;
+        $fimRaw = $row['fim'] ?? $row['Fim'] ?? $row['fimStrColumn'] ?? $row['fimStr'] ?? null;
+
+        $ini = $this->parseFlexibleDate($iniRaw);
+        $fim = $this->parseFlexibleDate($fimRaw);
+        if ($ini === null && $fim === null) {
+            return null;
+        }
+        $ini ??= $fim;
+        $fim ??= $ini;
+        if ($ini === null || $fim === null) {
+            return null;
+        }
+        if ($fim->lt($ini)) {
+            [$ini, $fim] = [$fim, $ini];
+        }
+
+        $clippedIni = $ini->copy()->max($periodIni->copy()->startOfDay());
+        $clippedFim = $fim->copy()->min($periodFim->copy()->startOfDay());
+        if ($clippedFim->lt($clippedIni)) {
+            return null;
+        }
+
+        return [$clippedIni->startOfDay(), $clippedFim->startOfDay()];
+    }
+
+    private function parseFlexibleDate(mixed $raw): ?Carbon
+    {
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        if ($raw instanceof CarbonInterface) {
+            return Carbon::instance($raw)->startOfDay();
+        }
+        if (is_numeric($raw)) {
+            $n = (int) $raw;
+            // epoch ms vs seconds
+            if ($n > 1_000_000_000_000) {
+                return Carbon::createFromTimestampMs($n)->startOfDay();
+            }
+            if ($n > 1_000_000_000) {
+                return Carbon::createFromTimestamp($n)->startOfDay();
+            }
+        }
+
+        $s = trim((string) $raw);
+        if ($s === '') {
+            return null;
+        }
+
+        if (preg_match('/\/Date\((-?\d+)/', $s, $m)) {
+            return Carbon::createFromTimestampMs((int) $m[1])->startOfDay();
+        }
+
+        $digits = preg_replace('/\D/', '', $s) ?? '';
+        if (strlen($digits) >= 8) {
+            $ymd = substr($digits, 0, 8);
+            // Prefer Ymd when starts with 19/20; otherwise assume dmy from display strings
+            $y = (int) substr($ymd, 0, 4);
+            if ($y >= 1900 && $y <= 2100 && checkdate((int) substr($ymd, 4, 2), (int) substr($ymd, 6, 2), $y)) {
+                return Carbon::createFromFormat('Ymd', $ymd)->startOfDay();
+            }
+        }
+
+        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})/', $s, $m)) {
+            return Carbon::createFromFormat('d/m/Y', $m[0])->startOfDay();
+        }
+
+        try {
+            return Carbon::parse($s)->startOfDay();
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -792,7 +1219,10 @@ class EspelhoScheduleAdherenceService
             ->join('rhid_espelho_imports as i', 'i.id', '=', 'rhid_espelho_days.import_id')
             ->where('i.company_id', $companyId)
             ->where('i.parse_status', 'ok')
-            ->whereBetween('rhid_espelho_days.ref_date', [$ini->toDateString(), $fim->toDateString()]);
+            // Inclui o dia final completo: em SQLite `ref_date` pode vir como 'Y-m-d 00:00:00',
+            // e whereBetween com fim 'Y-m-d' excluiria esse dia (string '… 00:00:00' > 'Y-m-d').
+            ->where('rhid_espelho_days.ref_date', '>=', $ini->toDateString())
+            ->where('rhid_espelho_days.ref_date', '<=', $fim->toDateString().' 23:59:59');
 
         if ($idPerson !== null) {
             $q->where('i.id_person', $idPerson);
