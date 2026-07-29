@@ -40,6 +40,7 @@ const props = defineProps({
     overviewAdherenceDiasCalendario: { type: [Number, null], default: null },
     overviewAdherencePreviousDiasCalendario: { type: [Number, null], default: null },
     overviewAdherenceWorstEntrada: { type: Array, required: true },
+    overviewMonthlyCompliance: { type: [Object, null], default: null },
     overviewJustTotal: { type: [Number, null], default: null },
     overviewJustAtestados: { type: [Number, null], default: null },
     overviewJustNote: { type: String, default: '' },
@@ -119,6 +120,13 @@ const overviewAdherenceScore = computed(() => {
     const score = Math.min(100, Math.round((dias / 22) * 100));
     return score;
 });
+
+const overviewMonthlyComplianceRows = computed(() => {
+    const rows = props.overviewMonthlyCompliance?.ranking_cumprimento_mes;
+    return Array.isArray(rows) ? rows : [];
+});
+
+const overviewMonthlyComplianceResumo = computed(() => props.overviewMonthlyCompliance?.resumo ?? null);
 
 const overviewJustAtestadosPercent = computed(() => {
     const total = props.overviewJustTotal;
@@ -641,6 +649,84 @@ const trendBank = computed(() => {
                         Ver justificativas →
                     </button>
                 </div>
+            </div>
+
+            <!-- ============ Top 5 cumprimento do mês ============ -->
+            <div class="rounded-2xl border border-emerald-200 bg-gradient-to-br from-white via-emerald-50/40 to-white p-4 shadow-sm">
+                <div class="mb-3 flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                        <p class="text-sm font-semibold text-talents-800">
+                            Top 5 — Cumprimento do mês completo
+                        </p>
+                        <p class="mt-0.5 text-[11px] text-slate-500">
+                            Presença completa nos dias úteis (mín. 4 marcações), descontando fins de semana,
+                            feriados e atestados lançados no ponto, e férias.
+                        </p>
+                    </div>
+                    <span
+                        class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                    >
+                        Cumprimento
+                    </span>
+                </div>
+                <p
+                    v-if="overviewMonthlyComplianceResumo"
+                    class="mb-2 text-[11px] text-slate-500"
+                >
+                    {{ overviewMonthlyComplianceResumo.dias_uteis_no_periodo ?? '—' }} dia(s) útil(eis) no período
+                    <template v-if="overviewMonthlyComplianceResumo.dias_feriado_no_periodo">
+                        · {{ overviewMonthlyComplianceResumo.dias_feriado_no_periodo }} feriado(s)
+                    </template>
+                    · {{ overviewMonthlyComplianceResumo.colaboradores_avaliados ?? 0 }} colaborador(es) com espelho
+                </p>
+                <ol v-if="overviewMonthlyComplianceRows.length" class="space-y-2">
+                    <li
+                        v-for="(rw, ri) in overviewMonthlyComplianceRows"
+                        :key="rw.id_person ?? ri"
+                        class="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2 text-sm"
+                    >
+                        <span class="flex min-w-0 items-center gap-2">
+                            <span
+                                class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+                                :class="
+                                    rw.completou_mes_todo
+                                        ? 'bg-emerald-100 text-emerald-800'
+                                        : 'bg-talents-100 text-talents-700'
+                                "
+                            >
+                                {{ String(ri + 1).padStart(2, '0') }}
+                            </span>
+                            <Link
+                                v-if="rw.id_person != null"
+                                :href="route('client.rhid.collaborators.show', rw.id_person)"
+                                class="truncate font-medium text-talents-800 hover:underline"
+                            >
+                                {{ rw.nome }}
+                            </Link>
+                            <span v-else class="truncate font-medium text-slate-800">{{ rw.nome }}</span>
+                        </span>
+                        <span class="flex shrink-0 items-center gap-2">
+                            <span
+                                v-if="rw.completou_mes_todo"
+                                class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800"
+                            >
+                                100%
+                            </span>
+                            <span
+                                v-else
+                                class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700"
+                            >
+                                {{ rw.percentual ?? 0 }}%
+                            </span>
+                            <span class="tabular-nums text-xs text-slate-600">
+                                {{ rw.dias_cumpridos ?? 0 }}/{{ rw.dias_esperados ?? 0 }} dias
+                            </span>
+                        </span>
+                    </li>
+                </ol>
+                <p v-else class="mt-2 text-center text-sm text-slate-500">
+                    Sem dados de cumprimento para este período — importe espelhos e configure a escala da empresa.
+                </p>
             </div>
 
             <!-- ============ TOP críticos ============ -->

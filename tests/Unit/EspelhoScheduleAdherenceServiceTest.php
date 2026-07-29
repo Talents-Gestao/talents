@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Services\Rhid\EspelhoScheduleAdherenceService;
 use App\Services\Rhid\PunchScheduleSettingsService;
+use App\Services\Rhid\RhidComplianceService;
 use App\Services\Rhid\RhidPersonSchedulePreferenceService;
 use PHPUnit\Framework\TestCase;
 
@@ -17,6 +18,7 @@ class EspelhoScheduleAdherenceServiceTest extends TestCase
         $this->svc = new EspelhoScheduleAdherenceService(
             new PunchScheduleSettingsService,
             new RhidPersonSchedulePreferenceService,
+            $this->createMock(RhidComplianceService::class),
         );
     }
 
@@ -203,5 +205,39 @@ class EspelhoScheduleAdherenceServiceTest extends TestCase
         $this->assertSame(1, $r['lunch_interval_used']);
         $this->assertSame(0, $r['atraso_saida_almoco_minutos']);
         $this->assertSame(0, $r['atraso_volta_almoco_minutos']);
+    }
+
+    public function test_working_dates_in_period_respects_active_weekdays(): void
+    {
+        $blankDay = [
+            'ativo' => false,
+            'entrada' => null,
+            'saida_almoco' => null,
+            'volta_almoco' => null,
+            'saida' => null,
+        ];
+        $settings = [
+            'dias' => [
+                'seg' => array_merge($blankDay, ['ativo' => true, 'entrada' => '08:00']),
+                'ter' => array_merge($blankDay, ['ativo' => true, 'entrada' => '08:00']),
+                'qua' => array_merge($blankDay, ['ativo' => true, 'entrada' => '08:00']),
+                'qui' => array_merge($blankDay, ['ativo' => true, 'entrada' => '08:00']),
+                'sex' => array_merge($blankDay, ['ativo' => true, 'entrada' => '08:00']),
+                'sab' => $blankDay,
+                'dom' => $blankDay,
+            ],
+        ];
+
+        $dates = $this->svc->workingDatesInPeriod(
+            \Carbon\Carbon::parse('2026-04-06'),
+            \Carbon\Carbon::parse('2026-04-12'),
+            $settings,
+        );
+
+        $this->assertArrayHasKey('2026-04-06', $dates); // seg
+        $this->assertArrayHasKey('2026-04-10', $dates); // sex
+        $this->assertArrayNotHasKey('2026-04-11', $dates); // sab
+        $this->assertArrayNotHasKey('2026-04-12', $dates); // dom
+        $this->assertCount(5, $dates);
     }
 }

@@ -46,6 +46,24 @@ final class RhidJustificationAnalytics
     }
 
     /**
+     * Considera feriado quando o tipo ou justificativa/descrição contém "feriad" (sem distinguir maiúsculas).
+     *
+     * @param  array<string, mixed>  $row
+     * @param  array<string, array<string, mixed>>  $typeMap
+     */
+    public static function isFeriadoByKeyword(array $row, array $typeMap): bool
+    {
+        $tid = $row['idJustificationType'] ?? null;
+        $label = self::justificationTypeLabel($tid, $typeMap);
+        if (preg_match('/feriad/i', $label)) {
+            return true;
+        }
+        $j = ($row['justificativa'] ?? '').' '.($row['description'] ?? '');
+
+        return (bool) preg_match('/feriad/i', $j);
+    }
+
+    /**
      * @param  array<string, array<string, mixed>>  $typeMap
      */
     public static function justificationTypeLabel(mixed $id, array $typeMap): string
