@@ -18,6 +18,7 @@ const props = defineProps({
     settings: { type: Object, required: true },
     catalogProducts: { type: Array, default: () => [] },
     pdfOptionalSectionOptions: { type: Array, default: () => [] },
+    paymentMethodOptions: { type: Array, default: () => [] },
 });
 
 const settingsRef = ref({ ...props.settings });
@@ -67,6 +68,7 @@ const formInitial = props.proposal
           seller_id: props.proposal.seller_id ?? '',
           is_closed: !!props.proposal.is_closed,
           notes: props.proposal.notes ?? '',
+          payment_method: props.proposal.payment_method ?? '',
           palestra_topic: props.proposal.palestra_topic ?? '',
           palestra_event_date: props.proposal.palestra_event_date ?? '',
           palestra_start_time: props.proposal.palestra_start_time ?? '',
@@ -93,6 +95,7 @@ const formInitial = props.proposal
           seller_id: '',
           is_closed: false,
           notes: '',
+          payment_method: '',
           palestra_topic: '',
           palestra_event_date: '',
           palestra_start_time: '',
@@ -903,6 +906,31 @@ const services = computed(() => {
                             </select>
                             <p v-if="!sellers.length" class="mt-1 text-xs text-amber-700">
                                 Nenhum vendedor marcado como Comercial. Marque usuários como "Comercial" no cadastro de usuários.
+                            </p>
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                Forma de pagamento (PDF)
+                            </label>
+                            <select
+                                v-model="form.payment_method"
+                                required
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            >
+                                <option value="">— Selecionar —</option>
+                                <option
+                                    v-for="opt in paymentMethodOptions"
+                                    :key="opt.value"
+                                    :value="opt.value"
+                                >
+                                    {{ opt.label }}
+                                </option>
+                            </select>
+                            <p class="mt-1 text-xs text-slate-500">
+                                Aparece na secção «Condições de Pagamento» do PDF desta proposta.
+                            </p>
+                            <p v-if="form.errors.payment_method" class="mt-1 text-xs text-rose-600">
+                                {{ form.errors.payment_method }}
                             </p>
                         </div>
                         <div class="sm:col-span-2">

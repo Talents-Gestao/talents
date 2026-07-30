@@ -19,8 +19,8 @@ class EnsureFeriasCompanySelected
     {
         if ($this->context->needsCompanySelection($request)) {
             return redirect()
-                ->route('admin.ferias.index')
-                ->with('info', 'Selecione uma empresa para continuar.');
+                ->route('admin.companies.index')
+                ->with('info', 'Abra uma empresa e use a aba Férias para gerir os períodos.');
         }
 
         return $next($request);

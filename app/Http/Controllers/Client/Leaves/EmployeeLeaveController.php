@@ -20,21 +20,22 @@ class EmployeeLeaveController extends FeriasCompanyController
 {
     use ResolvesFeriasRoutes;
 
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
         $context = app(FeriasCompanyContext::class);
 
         if ($context->needsCompanySelection($request)) {
-            return Inertia::render('Client/Leaves/Index', [
-                'leaves' => ['data' => [], 'links' => []],
-                'companyPicker' => $context->availableCompanies(),
-                'activeCompany' => null,
-                'isAdminContext' => true,
-                'filters' => [
-                    'q' => '',
-                    'status' => '',
-                ],
-                'statusOptions' => $this->statusOptions(),
+            return redirect()
+                ->route('admin.companies.index')
+                ->with('success', 'Abra uma empresa e use a aba Férias para gerir os períodos.');
+        }
+
+        if ($context->isAdminContext($request)) {
+            $company = $this->company($request);
+
+            return redirect()->route('admin.companies.show', [
+                'company' => $company->id,
+                'tab' => 'ferias',
             ]);
         }
 
@@ -78,9 +79,9 @@ class EmployeeLeaveController extends FeriasCompanyController
 
         return Inertia::render('Client/Leaves/Index', [
             'leaves' => $leaves,
-            'companyPicker' => $context->isAdminContext($request) ? $context->availableCompanies() : null,
+            'companyPicker' => null,
             'activeCompany' => $company->only(['id', 'name']),
-            'isAdminContext' => $context->isAdminContext($request),
+            'isAdminContext' => false,
             'filters' => [
                 'q' => $request->string('q')->toString(),
                 'status' => $request->string('status')->toString(),
@@ -186,14 +187,24 @@ class EmployeeLeaveController extends FeriasCompanyController
     /**
      * @return array{
      *   statusOptions: list<array{value: string, label: string}>,
-     *   employees: list<array{id: int, name: string, email: ?string}>
+     *   employees: list<array{id: int, name: string, email: ?string}>,
+     *   returnHref: string,
+     *   returnLabel: string,
+     *   isAdminContext: bool
      * }
      */
     private function formOptions(\App\Models\Company $company, Request $request): array
     {
+        $isAdmin = app(FeriasCompanyContext::class)->isAdminContext($request);
+
         return [
             'statusOptions' => $this->statusOptions(),
             'employees' => app(CompanyEmployeeDirectory::class)->suggestionsFor($company),
+            'returnHref' => $isAdmin
+                ? route('admin.companies.show', ['company' => $company->id, 'tab' => 'ferias'])
+                : route('client.ferias.index'),
+            'returnLabel' => $isAdmin ? 'Empresa' : 'Férias',
+            'isAdminContext' => $isAdmin,
         ];
     }
 

@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Client;
 
+use App\Enums\HiringProcessStage;
 use App\Enums\StrategicCalendarItemKind;
 use App\Http\Controllers\Controller;
 use App\Models\ActionPlanItem;
 use App\Models\Company;
 use App\Models\Complaint;
+use App\Models\HiringProcess;
 use App\Models\StrategicCalendarItem;
 use App\Models\Survey;
 use App\Support\StrategicCalendarClientEnricher;
@@ -199,6 +201,15 @@ class DashboardController extends Controller
 
         $actionPlanHref = $lastSurvey ? route('client.surveys.action-plan', $lastSurvey->id) : null;
 
+        $activeHiringProcessesCount = 0;
+        $user = $request->user();
+        if ($user?->isCompanyAdmin()) {
+            $activeHiringProcessesCount = HiringProcess::query()
+                ->where('company_id', $companyId)
+                ->where('current_stage', '!=', HiringProcessStage::Contratacao->value)
+                ->count();
+        }
+
         return Inertia::render('Client/Dashboard', [
             'activeSurveys' => $activeSurveys,
             'lastSurvey' => $lastSurvey,
@@ -208,6 +219,7 @@ class DashboardController extends Controller
                 'section_results' => $sectionResults,
             ],
             'pendingComplaintsCount' => $pendingComplaintsCount,
+            'activeHiringProcessesCount' => $activeHiringProcessesCount,
             'openActionPlanCount' => $openActionPlanCount,
             'openActionPlanItems' => $openActionPlanItems,
             'pendingTasks' => $pendingTasks,

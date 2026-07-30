@@ -6,13 +6,15 @@ defineProps({
     backLabel: { type: String, default: 'Voltar' },
     title: { type: String, required: true },
     subtitle: { type: String, default: null },
+    /** Em create/edit, false = voltar pela hierarquia (backHref), não pelo histórico. */
+    preferHistory: { type: Boolean, default: false },
 });
 </script>
 
 <template>
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0">
-            <BackLink :href="backHref" :label="backLabel" />
+            <BackLink :href="backHref" :label="backLabel" :prefer-history="preferHistory" />
             <h2 class="mt-2 text-xl font-semibold leading-tight text-slate-900">{{ title }}</h2>
             <p v-if="subtitle" class="mt-1 text-sm text-slate-600">{{ subtitle }}</p>
         </div>

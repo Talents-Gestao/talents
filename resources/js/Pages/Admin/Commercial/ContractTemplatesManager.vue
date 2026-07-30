@@ -1,4 +1,5 @@
 <script setup>
+import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import Link from '@tiptap/extension-link';
 import StarterKit from '@tiptap/starter-kit';
@@ -268,13 +269,7 @@ const docxUrl = (t) => route('admin.comercial.contract-templates.docx', t.id);
             </table>
         </div>
 
-        <div
-            v-if="modal.open"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            role="dialog"
-            aria-modal="true"
-            @click.self="closeModal"
-        >
+        <FullScreenOverlay :show="modal.open" @close="closeModal">
             <div class="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
                 <h3 class="text-lg font-semibold text-slate-900">
                     {{ modal.editing ? 'Editar modelo' : 'Novo modelo' }}
@@ -411,6 +406,6 @@ const docxUrl = (t) => route('admin.comercial.contract-templates.docx', t.id);
                     </div>
                 </div>
             </div>
-        </div>
+        </FullScreenOverlay>
     </div>
 </template>

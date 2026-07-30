@@ -70,6 +70,7 @@ class ProposalProductObservationTest extends TestCase
             'client_name' => 'Empresa Observação',
             'employee_count' => 5,
             'is_closed' => false,
+            'payment_method' => 'pix',
             'catalog_products' => [
                 [
                     'product_id' => $product->id,

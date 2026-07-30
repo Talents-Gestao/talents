@@ -14,6 +14,9 @@ const props = defineProps({
     leave: Object,
     statusOptions: { type: Array, default: () => [] },
     employees: { type: Array, default: () => [] },
+    returnHref: { type: String, default: null },
+    returnLabel: { type: String, default: 'Férias' },
+    isAdminContext: { type: Boolean, default: false },
 });
 
 const fieldClass =
@@ -27,6 +30,9 @@ const form = useForm({
     status: props.leave?.status ?? 'scheduled',
     notes: props.leave?.notes ?? '',
 });
+
+const backHref = computed(() => props.returnHref || feriasRoute('index'));
+const backLabel = computed(() => props.returnLabel || 'Férias');
 
 const canSubmit = computed(() => Boolean(String(form.employee_name ?? '').trim()));
 
@@ -60,8 +66,8 @@ const submit = () => {
     <FeriasLayout>
         <template #header>
             <FormPageHeader
-                :back-href="feriasRoute('index')"
-                back-label="Férias"
+                :back-href="backHref"
+                :back-label="backLabel"
                 :title="mode === 'edit' ? 'Editar período' : 'Novo período'"
                 subtitle="Registre o intervalo de férias do colaborador"
             />
@@ -139,7 +145,7 @@ const submit = () => {
             </div>
 
             <div class="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-4">
-                <Link :href="feriasRoute('index')">
+                <Link :href="backHref">
                     <SecondaryButton type="button">Cancelar</SecondaryButton>
                 </Link>
                 <PrimaryButton type="submit" :disabled="form.processing || !canSubmit">

@@ -5,14 +5,19 @@
 @foreach($lines as $line)
     @php
         $trimmed = ltrim($line);
+        // Bullet tipográfico (•) ou hífen; mb_* / regex Unicode evita corromper UTF-8
+        // (substr de 1 byte em «•» deixa bytes inválidos → � no PDF).
         $isBullet = $trimmed !== '' && (str_starts_with($trimmed, '•') || str_starts_with($trimmed, '-'));
+        $bulletBody = $isBullet
+            ? ltrim((string) preg_replace('/^[•\-]\s*/u', '', $trimmed))
+            : '';
     @endphp
     @if($isBullet)
         @if(!$inList)
             <ul class="desc-bullets">
             @php $inList = true; @endphp
         @endif
-        <li>{{ ltrim(substr($trimmed, 1)) }}</li>
+        <li>{{ $bulletBody }}</li>
     @else
         @if($inList)
             </ul>
@@ -20,7 +25,7 @@
         @endif
         @if($trimmed !== '')
             @if(str_starts_with($trimmed, 'Objetivo:'))
-                <p class="desc-paragraph"><strong>Objetivo:</strong>{{ substr($trimmed, 9) }}</p>
+                <p class="desc-paragraph"><strong>Objetivo:</strong>{{ mb_substr($trimmed, 9) }}</p>
             @elseif($trimmed === 'O que contempla:' || str_starts_with($trimmed, 'O que contempla:'))
                 <p class="desc-paragraph"><strong>O que contempla:</strong></p>
             @elseif($trimmed === 'Temas abordados:' || str_starts_with($trimmed, 'Temas abordados:'))

@@ -172,25 +172,41 @@ const leadWhatsappUrl = computed(() => {
                 <h2 class="truncate text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
                     Visão geral Talents
                 </h2>
-                <Link
-                    v-if="Number(stats.pending_complaints_total) > 0"
-                    :href="route('admin.companies.index')"
-                    class="dashboard-header-cta group"
-                >
-                    <span class="dashboard-header-cta-badge">
-                        {{ stats.pending_complaints_total }}
-                    </span>
-                    Denúncias pendentes
-                </Link>
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <Link
+                        v-if="Number(stats.active_hiring_processes_total) > 0"
+                        :href="route('admin.acompanhamento.index')"
+                        class="dashboard-header-cta group"
+                    >
+                        <span class="dashboard-header-cta-badge">
+                            {{ stats.active_hiring_processes_total }}
+                        </span>
+                        {{
+                            Number(stats.active_hiring_processes_total) === 1
+                                ? 'Vaga ativa no acompanhamento'
+                                : 'Vagas ativas no acompanhamento'
+                        }}
+                    </Link>
+                    <Link
+                        v-if="Number(stats.pending_complaints_total) > 0"
+                        :href="route('admin.companies.index')"
+                        class="dashboard-header-cta group"
+                    >
+                        <span class="dashboard-header-cta-badge">
+                            {{ stats.pending_complaints_total }}
+                        </span>
+                        Denúncias pendentes
+                    </Link>
+                </div>
             </div>
         </template>
 
         <!-- Hero + status (estilo cartões principais) -->
-        <div class="mb-8 grid gap-4 lg:grid-cols-4">
+        <div class="mb-8 grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-4">
             <div
                 role="button"
                 tabindex="0"
-                class="dashboard-hero group cursor-pointer text-left transition hover:shadow-xl hover:ring-2 hover:ring-talents-300/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-300/60 lg:col-span-2"
+                class="dashboard-hero group min-w-0 cursor-pointer text-left transition hover:shadow-xl hover:ring-2 hover:ring-talents-300/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-300/60 lg:col-span-2"
                 aria-haspopup="dialog"
                 @click="showCalendarModal = true"
                 @keydown.enter.prevent="showCalendarModal = true"
@@ -296,7 +312,7 @@ const leadWhatsappUrl = computed(() => {
             <div
                 role="button"
                 tabindex="0"
-                class="dashboard-accent-dark group cursor-pointer text-left text-white transition hover:shadow-xl hover:ring-2 hover:ring-talents-300/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-300/60"
+                class="dashboard-accent-dark group min-w-0 cursor-pointer text-left text-white transition hover:shadow-xl hover:ring-2 hover:ring-talents-300/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-300/60"
                 aria-haspopup="dialog"
                 @click="showAlertsModal = true"
                 @keydown.enter.prevent="showAlertsModal = true"
@@ -315,6 +331,15 @@ const leadWhatsappUrl = computed(() => {
                             <span class="text-sm text-talents-50/80">Denúncias abertas</span>
                             <span class="text-xl font-bold tabular-nums text-amber-200">{{ stats.pending_complaints_total }}</span>
                         </div>
+                        <div
+                            v-if="Number(stats.active_hiring_processes_total) > 0"
+                            class="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 ring-1 ring-white/10"
+                        >
+                            <span class="text-sm text-talents-50/80">Vagas ativas</span>
+                            <span class="text-xl font-bold tabular-nums text-violet-200">{{
+                                stats.active_hiring_processes_total
+                            }}</span>
+                        </div>
                     </div>
                 </div>
                 <Link
@@ -329,7 +354,7 @@ const leadWhatsappUrl = computed(() => {
             <div
                 role="button"
                 tabindex="0"
-                class="dashboard-accent-dark group cursor-pointer text-left text-white transition hover:shadow-xl hover:ring-2 hover:ring-talents-300/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-300/60"
+                class="dashboard-accent-dark group min-w-0 cursor-pointer text-left text-white transition hover:shadow-xl hover:ring-2 hover:ring-talents-300/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-300/60"
                 aria-haspopup="dialog"
                 @click="showLeadsModal = true"
                 @keydown.enter.prevent="showLeadsModal = true"
@@ -631,6 +656,22 @@ const leadWhatsappUrl = computed(() => {
                         <div class="rounded-xl px-4 py-3 ring-1 ring-white/10">
                             <p class="text-xs uppercase tracking-wide text-talents-100/70">Denúncias pendentes</p>
                             <p class="mt-1 text-2xl font-bold tabular-nums text-amber-200">{{ stats.pending_complaints_total }}</p>
+                        </div>
+                        <div
+                            v-if="Number(stats.active_hiring_processes_total) > 0"
+                            class="rounded-xl px-4 py-3 ring-1 ring-white/10 sm:col-span-2"
+                        >
+                            <p class="text-xs uppercase tracking-wide text-talents-100/70">Vagas ativas no acompanhamento</p>
+                            <p class="mt-1 text-2xl font-bold tabular-nums text-violet-200">
+                                {{ stats.active_hiring_processes_total }}
+                            </p>
+                            <Link
+                                :href="route('admin.acompanhamento.index')"
+                                class="mt-2 inline-flex text-sm font-semibold text-white/90 underline-offset-2 hover:underline"
+                                @click="showAlertsModal = false"
+                            >
+                                Abrir acompanhamento
+                            </Link>
                         </div>
                     </div>
 

@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\HiringProcessStage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class HiringProcess extends Model
 {
@@ -15,6 +16,8 @@ class HiringProcess extends Model
         'title',
         'current_stage',
         'notes',
+        'notes_at',
+        'candidates_count',
         'sort_order',
         'updated_by',
     ];
@@ -23,6 +26,8 @@ class HiringProcess extends Model
     {
         return [
             'current_stage' => HiringProcessStage::class,
+            'notes_at' => 'datetime',
+            'candidates_count' => 'integer',
         ];
     }
 
@@ -34,5 +39,10 @@ class HiringProcess extends Model
     public function updatedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(HiringProcessComment::class)->orderBy('created_at');
     }
 }

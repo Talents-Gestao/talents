@@ -213,6 +213,14 @@ class User extends Authenticatable
             };
         }
 
+        // Acompanhamento: company_user vê, comenta e gerencia o funil; só não cria processos.
+        if ($module === PermissionModule::Acompanhamento) {
+            return match ($action) {
+                PermissionAction::View, PermissionAction::Edit, PermissionAction::Delete => true,
+                default => false,
+            };
+        }
+
         // Férias: apenas administradores da empresa (company_admin já retornou true acima).
         if ($module === PermissionModule::Ferias) {
             return false;
@@ -343,6 +351,18 @@ class User extends Authenticatable
             }
             $matrix[$p->module->value] ??= [];
             $matrix[$p->module->value][] = $p->action->value;
+        }
+
+        // Alinhado a canAccess(): company_user gerencia o funil; Create só company_admin / Talents.
+        if (in_array(PermissionModule::Acompanhamento->value, $active, true)) {
+            $matrix[PermissionModule::Acompanhamento->value] = array_values(array_unique(array_merge(
+                $matrix[PermissionModule::Acompanhamento->value] ?? [],
+                [
+                    PermissionAction::View->value,
+                    PermissionAction::Edit->value,
+                    PermissionAction::Delete->value,
+                ],
+            )));
         }
 
         foreach ($matrix as $key => $actions) {

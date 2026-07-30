@@ -8,6 +8,7 @@ use App\Enums\HiringProcessStage;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\HiringProcess;
+use App\Models\HiringProcessComment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -47,7 +48,11 @@ class HiringProcessController extends Controller
         }
 
         $processesQuery = HiringProcess::query()
-            ->with(['company:id,name', 'updatedByUser:id,name'])
+            ->with([
+                'company:id,name',
+                'updatedByUser:id,name',
+                'comments.user:id,name,role',
+            ])
             ->where('current_stage', $activeStage->value)
             ->orderBy('sort_order')
             ->orderByDesc('updated_at');
@@ -63,6 +68,8 @@ class HiringProcessController extends Controller
             'id' => $p->id,
             'title' => $p->title,
             'notes' => $p->notes,
+            'notes_at' => $p->notes_at?->toIso8601String(),
+            'candidates_count' => $p->candidates_count,
             'current_stage' => $p->current_stage->value,
             'current_stage_label' => $p->current_stage->label(),
             'company' => $p->company ? [
@@ -73,6 +80,7 @@ class HiringProcessController extends Controller
             'updated_at' => $p->updated_at?->toIso8601String(),
             'can_advance' => $p->current_stage->next() !== null,
             'can_retreat' => $p->current_stage->previous() !== null,
+            'comments' => $p->comments->map(fn (HiringProcessComment $c) => $c->toFrontend())->values()->all(),
         ]);
 
         $companies = Company::query()
@@ -102,6 +110,7 @@ class HiringProcessController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'current_stage' => ['nullable', Rule::enum(HiringProcessStage::class)],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'candidates_count' => ['nullable', 'integer', 'min:0', 'max:100000'],
         ]);
 
         $stage = $data['current_stage'] ?? HiringProcessStage::EngenhariaCargo;
@@ -113,11 +122,19 @@ class HiringProcessController extends Controller
             ->where('current_stage', $stage->value)
             ->max('sort_order');
 
+        $notes = isset($data['notes']) && trim((string) $data['notes']) !== ''
+            ? $data['notes']
+            : null;
+
         HiringProcess::query()->create([
             'company_id' => (int) $data['company_id'],
             'title' => $data['title'],
             'current_stage' => $stage,
-            'notes' => $data['notes'] ?? null,
+            'notes' => $notes,
+            'notes_at' => $notes !== null ? now() : null,
+            'candidates_count' => array_key_exists('candidates_count', $data) && $data['candidates_count'] !== null
+                ? (int) $data['candidates_count']
+                : null,
             'sort_order' => $nextOrder + 1,
             'updated_by' => $request->user()?->id,
         ]);
@@ -132,6 +149,7 @@ class HiringProcessController extends Controller
         $data = $request->validate([
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'candidates_count' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'current_stage' => ['sometimes', 'required', Rule::enum(HiringProcessStage::class)],
             'company_id' => ['sometimes', 'required', 'exists:companies,id'],
         ]);
@@ -140,7 +158,16 @@ class HiringProcessController extends Controller
             $hiringProcess->title = $data['title'];
         }
         if (array_key_exists('notes', $data)) {
-            $hiringProcess->notes = $data['notes'];
+            $notes = $data['notes'] !== null && trim((string) $data['notes']) !== ''
+                ? $data['notes']
+                : null;
+            $hiringProcess->notes = $notes;
+            $hiringProcess->notes_at = $notes !== null ? now() : null;
+        }
+        if (array_key_exists('candidates_count', $data)) {
+            $hiringProcess->candidates_count = $data['candidates_count'] !== null
+                ? (int) $data['candidates_count']
+                : null;
         }
         if (array_key_exists('company_id', $data)) {
             $hiringProcess->company_id = (int) $data['company_id'];
@@ -236,6 +263,20 @@ class HiringProcessController extends Controller
         return redirect()
             ->route('admin.acompanhamento.index', ['stage' => $stage])
             ->with('success', 'Processo removido.');
+    }
+
+    public function storeComment(Request $request, HiringProcess $hiringProcess): RedirectResponse
+    {
+        $data = $request->validate([
+            'body' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $hiringProcess->comments()->create([
+            'user_id' => (int) $request->user()->id,
+            'body' => trim($data['body']),
+        ]);
+
+        return back()->with('success', 'Observação publicada.');
     }
 
     private function applySearchFilter($query, string $search): void

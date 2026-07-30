@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Support\AdminHomeResolver;
+use App\Support\Hiring\ActiveHiringProcessCounter;
 use App\Support\MetamorfoseDailyQuote;
 use App\Support\Notices\UnreadNoticeCounter;
 use App\Support\WorkspaceManager;
@@ -96,6 +97,9 @@ class HandleInertiaRequests extends Middleware
                 'notices_context' => fn () => $user
                     ? (app(UnreadNoticeCounter::class)->contextFor($user)[0]->value ?? null)
                     : null,
+                'active_hiring_processes_count' => fn () => $user
+                    ? app(ActiveHiringProcessCounter::class)->forUser($user)
+                    : 0,
             ],
             'dailyQuote' => $user
                 ? app(MetamorfoseDailyQuote::class)->forDate()

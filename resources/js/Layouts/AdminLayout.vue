@@ -20,8 +20,6 @@ import {
     MegaphoneIcon,
     MicrophoneIcon,
     PresentationChartLineIcon,
-    RocketLaunchIcon,
-    SunIcon,
     UserPlusIcon,
     ViewColumnsIcon,
 } from '@heroicons/vue/24/outline';
@@ -33,6 +31,10 @@ const adminHomeUrl = computed(
 );
 
 const dailyQuote = computed(() => page.props.dailyQuote ?? null);
+
+const activeHiringProcessesCount = computed(
+    () => Number(page.props.nav?.active_hiring_processes_count ?? 0) || 0,
+);
 
 const showDailyQuote = computed(() => {
     if (!dailyQuote.value) {
@@ -106,12 +108,6 @@ const clientesActive = computed(
         isComingSoon('contratos-fechados'),
 );
 
-const showMetamorfose = computed(() => canAdmin('methodology'));
-
-const metamorfoseActive = computed(
-    () => route().current('admin.methodology-templates.*'),
-);
-
 const showContratacao = computed(() => canAdmin('solides') || canAdmin('entrevistas'));
 
 const contratacaoFallbackHref = computed(() => {
@@ -129,6 +125,7 @@ const contratacaoActive = computed(
         route().current('admin.solides.*') ||
         route().current('admin.acompanhamento.*') ||
         route().current('admin.entrevistas.*') ||
+        route().current('admin.reunioes.*') ||
         isComingSoon('profiler'),
 );
 
@@ -150,7 +147,7 @@ const showFinanceiro = computed(() => canAdmin('financeiro'));
 const financeiroActive = computed(
     () =>
         route().current('admin.financeiro.*') ||
-        isComingSoon('contas-bancarias', 'contas-a-pagar', 'contas-a-receber', 'formas-pagamento'),
+        isComingSoon('contas-bancarias', 'contas-a-receber'),
 );
 const showConfiguracao = computed(
     () => canAdmin('settings') || canAdmin('equipe') || canAdmin('empresa_talents'),
@@ -318,25 +315,6 @@ const isComercialSettingsTab = (tab) => {
             </SidebarNavGroup>
 
             <SidebarNavGroup
-                v-if="showMetamorfose"
-                label="Metamorfose"
-                :icon="RocketLaunchIcon"
-                :collapsed="collapsed"
-                :compact="compact"
-                :active="metamorfoseActive"
-                :fallback-href="route('admin.methodology-templates.index')"
-            >
-                <SidebarNavItem
-                    :href="route('admin.methodology-templates.index')"
-                    :active="route().current('admin.methodology-templates.*')"
-                    label="Modelos"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                />
-            </SidebarNavGroup>
-
-            <SidebarNavGroup
                 v-if="showContratacao"
                 label="Contratação"
                 :icon="UserPlusIcon"
@@ -362,6 +340,7 @@ const isComercialSettingsTab = (tab) => {
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
+                    :badge="activeHiringProcessesCount > 0 ? activeHiringProcessesCount : null"
                 />
                 <SidebarNavItem
                     v-if="canAdmin('solides')"
@@ -398,13 +377,12 @@ const isComercialSettingsTab = (tab) => {
 
             <SidebarNavItem
                 v-if="showReunioes"
-                :href="comingSoonHref('reunioes')"
-                :active="isComingSoon('reunioes')"
+                :href="route('admin.reunioes.index')"
+                :active="route().current('admin.reunioes.*')"
                 :icon="MicrophoneIcon"
                 label="Reuniões"
                 :collapsed="collapsed"
                 :compact="compact"
-                badge="Em breve"
             />
 
             <SidebarNavItem
@@ -413,16 +391,6 @@ const isComercialSettingsTab = (tab) => {
                 :active="route().current('admin.feedbacks.*')"
                 :icon="ChatBubbleLeftRightIcon"
                 label="Feedbacks"
-                :collapsed="collapsed"
-                :compact="compact"
-            />
-
-            <SidebarNavItem
-                v-if="canAdmin('ferias')"
-                :href="route('admin.ferias.index')"
-                :active="route().current('admin.ferias.*')"
-                :icon="SunIcon"
-                label="Férias"
                 :collapsed="collapsed"
                 :compact="compact"
             />
@@ -533,13 +501,12 @@ const isComercialSettingsTab = (tab) => {
                     badge="Em breve"
                 />
                 <SidebarNavItem
-                    :href="comingSoonHref('contas-a-pagar')"
-                    :active="isComingSoon('contas-a-pagar')"
+                    :href="route('admin.financeiro.contas-a-pagar.index')"
+                    :active="route().current('admin.financeiro.contas-a-pagar.*')"
                     label="Contas a pagar"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
-                    badge="Em breve"
                 />
                 <SidebarNavItem
                     :href="comingSoonHref('contas-a-receber')"
@@ -551,13 +518,12 @@ const isComercialSettingsTab = (tab) => {
                     badge="Em breve"
                 />
                 <SidebarNavItem
-                    :href="comingSoonHref('formas-pagamento')"
-                    :active="isComingSoon('formas-pagamento')"
+                    :href="route('admin.financeiro.formas-pagamento.index')"
+                    :active="route().current('admin.financeiro.formas-pagamento.*')"
                     label="Formas de pagamento"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
-                    badge="Em breve"
                 />
             </SidebarNavGroup>
             <SidebarNavGroup

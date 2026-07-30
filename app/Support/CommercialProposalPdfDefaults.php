@@ -81,7 +81,15 @@ TXT,
 
     public static function defaultPaymentConditions(): string
     {
-        return "• Parcelamento em até 5x no cartão de crédito;";
+        return '• Pagamento no cartão de crédito, com possibilidade de parcelamento;';
+    }
+
+    /**
+     * Condição padrão de permanência mínima para cancelamento do plano (PDF).
+     */
+    public static function defaultMinimumStayCondition(): string
+    {
+        return '• Permanência mínima de 90 (noventa) dias (3 meses) para cancelamento do plano.';
     }
 
     public static function defaultClosingText(): string

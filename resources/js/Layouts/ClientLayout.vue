@@ -36,6 +36,15 @@ const showVozDoTime = computed(
 
 const dailyQuote = computed(() => page.props.dailyQuote ?? null);
 
+const isCompanyAdmin = computed(() => page.props.auth?.user?.role === 'company_admin');
+
+const activeHiringProcessesCount = computed(() => {
+    if (!isCompanyAdmin.value) {
+        return 0;
+    }
+    return Number(page.props.nav?.active_hiring_processes_count ?? 0) || 0;
+});
+
 const showDailyQuote = computed(
     () => !!dailyQuote.value && route().current('client.dashboard'),
 );
@@ -100,6 +109,7 @@ const showDailyQuote = computed(
                 :icon="FlagIcon"
                 label="Acompanhamento"
                 :collapsed="collapsed"
+                :badge="activeHiringProcessesCount > 0 ? activeHiringProcessesCount : null"
             />
             <SidebarNavItem
                 v-if="can('metodologia', 'view')"

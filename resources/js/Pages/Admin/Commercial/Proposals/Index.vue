@@ -1,5 +1,6 @@
 <script setup>
 import CommercialModuleNav from '@/Components/Commercial/CommercialModuleNav.vue';
+import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { formatCnpj } from '@/utils/formatCnpj';
@@ -537,13 +538,7 @@ const submitConvert = () => {
             </div>
         </div>
 
-        <div
-            v-if="contractModalOpen"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            role="dialog"
-            aria-modal="true"
-            @click.self="closeContractModal"
-        >
+        <FullScreenOverlay :show="contractModalOpen" @close="closeContractModal">
             <div
                 class="max-h-[92vh] w-full overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
                 :class="generatedContractId ? 'max-w-4xl' : 'max-w-md'"
@@ -717,15 +712,9 @@ const submitConvert = () => {
                     </div>
                 </template>
             </div>
-        </div>
+        </FullScreenOverlay>
 
-        <div
-            v-if="convertModalOpen"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            role="dialog"
-            aria-modal="true"
-            @click.self="closeConvertModal"
-        >
+        <FullScreenOverlay :show="convertModalOpen" @close="closeConvertModal">
             <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
                 <h3 class="text-lg font-semibold text-slate-900">Converter em venda</h3>
                 <p v-if="convertProposal" class="mt-1 text-sm text-slate-600">
@@ -790,6 +779,6 @@ const submitConvert = () => {
                     </div>
                 </form>
             </div>
-        </div>
+        </FullScreenOverlay>
     </AdminLayout>
 </template>

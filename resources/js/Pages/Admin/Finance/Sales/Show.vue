@@ -1,5 +1,6 @@
 <script setup>
 import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
+import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
@@ -280,10 +281,10 @@ const onReceiptChange = (event) => {
             </div>
         </div>
 
-        <div
-            v-if="paymentModalOpen"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
-            @click.self="closePaymentModal"
+        <FullScreenOverlay
+            :show="paymentModalOpen"
+            overlay-class="bg-slate-900/50 p-4"
+            @close="closePaymentModal"
         >
             <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
                 <h3 class="text-lg font-semibold text-slate-900">
@@ -358,6 +359,6 @@ const onReceiptChange = (event) => {
                     </div>
                 </form>
             </div>
-        </div>
+        </FullScreenOverlay>
     </AdminLayout>
 </template>

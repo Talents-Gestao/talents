@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CommercialProposalPaymentMethod;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,6 +44,8 @@ class CommercialProposal extends Model
 
             'palestra_event_date' => 'date',
             'palestra_audience_estimate' => 'integer',
+
+            'payment_method' => CommercialProposalPaymentMethod::class,
 
             'service_descriptions' => 'array',
             'pdf_optional_sections' => 'array',

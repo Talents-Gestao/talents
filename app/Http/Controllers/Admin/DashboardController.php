@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\HiringProcessStage;
 use App\Enums\StrategicCalendarItemKind;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Complaint;
+use App\Models\HiringProcess;
 use App\Models\LandingInterestSubmission;
 use App\Models\StrategicCalendarItem;
 use App\Support\StrategicCalendarOccurrenceExpander;
@@ -155,6 +157,10 @@ class DashboardController extends Controller
             ->whereIn('status', ['new', 'under_review'])
             ->count();
 
+        $activeHiringProcessesTotal = HiringProcess::query()
+            ->where('current_stage', '!=', HiringProcessStage::Contratacao->value)
+            ->count();
+
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'companies_total' => $companiesCount,
@@ -165,6 +171,7 @@ class DashboardController extends Controller
                 'responses_total' => $responsesTotal,
                 'completion_rate' => $completionRate,
                 'pending_complaints_total' => $pendingComplaintsTotal,
+                'active_hiring_processes_total' => $activeHiringProcessesTotal,
                 'responses_sparkline' => $responsesLast30d,
                 'complaints_sparkline' => $complaintsLast30d,
             ],

@@ -3,6 +3,7 @@ import './bootstrap';
 
 import SessionExpiryMonitor from '@/Components/SessionExpiryMonitor.vue';
 import { isSessionExpiredHttpStatus, redirectToLoginExpired } from '@/utils/sessionExpiry';
+import { recordAppNavigation } from '@/utils/navigationHistory';
 import { registerSW } from 'virtual:pwa-register';
 import { createInertiaApp, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -10,6 +11,26 @@ import { createApp, h, Fragment } from 'vue';
 import { ZiggyRelativeVue } from '@/plugins/ziggyRelative';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Talents';
+
+let pendingVisitReplace = false;
+let replaceNextNavigation = false;
+
+router.on('before', (event) => {
+    const visit = event.detail.visit;
+    pendingVisitReplace = Boolean(visit?.replace);
+    const method = String(visit?.method ?? 'get').toLowerCase();
+    // Pós POST/PUT/PATCH/DELETE (ex.: salvar create), a página de destino substitui o formulário no histórico.
+    if (['post', 'put', 'patch', 'delete'].includes(method)) {
+        replaceNextNavigation = true;
+    }
+});
+
+router.on('navigate', (event) => {
+    const replace = pendingVisitReplace || replaceNextNavigation;
+    recordAppNavigation(event.detail.page.url, { replace });
+    pendingVisitReplace = false;
+    replaceNextNavigation = false;
+});
 
 router.on('exception', (event) => {
     const status = event.detail.response?.status;
@@ -57,6 +78,8 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.vue'),
         ),
     setup({ el, App, props, plugin }) {
+        recordAppNavigation(props.initialPage?.url ?? window.location.href);
+
         return createApp({
             render: () =>
                 h(Fragment, null, [

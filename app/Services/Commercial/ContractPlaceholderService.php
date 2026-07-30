@@ -123,7 +123,8 @@ class ContractPlaceholderService
             'empresa_representacao' => $empRepr,
             'cidade_estado' => (string) ($settings->company_city_state ?? ''),
             'foro_comarca' => $forum,
-            'forma_pagamento' => (string) ($settings->default_payment_terms ?? ''),
+            'forma_pagamento' => $proposal->payment_method?->contractText()
+                ?: (string) ($settings->default_payment_terms ?? ''),
             'prazo_dias' => $prazoDias,
             'validade_proposta_dias' => (string) $validadeDiasNum,
 

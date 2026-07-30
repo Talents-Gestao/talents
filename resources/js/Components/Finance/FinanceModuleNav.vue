@@ -20,6 +20,18 @@ const items = [
         href: () => route('admin.financeiro.comissoes.index'),
         isActive: () => route().current('admin.financeiro.comissoes.*'),
     },
+    {
+        id: 'contas-a-pagar',
+        label: 'Contas a pagar',
+        href: () => route('admin.financeiro.contas-a-pagar.index'),
+        isActive: () => route().current('admin.financeiro.contas-a-pagar.*'),
+    },
+    {
+        id: 'formas-pagamento',
+        label: 'Formas de pagamento',
+        href: () => route('admin.financeiro.formas-pagamento.index'),
+        isActive: () => route().current('admin.financeiro.formas-pagamento.*'),
+    },
 ];
 </script>
 

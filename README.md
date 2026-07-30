@@ -141,6 +141,7 @@ Use `docker-compose.prod.yml` no Coolify. Variáveis de ambiente e segredos fica
 - `/login` — Autenticação (cadastro público desativado)
 - `/admin/*` — Painel Talents (super admin)
 - `/admin/entrevistas` — Entrevistas por áudio (IA): upload, transcrição e relatório
+- `/admin/reunioes` — Reuniões (IA): gravação na página, transcrição e ata editável
 - `/client/*` — Painel da empresa
 - `/pesquisa/{token}` — Pesquisa anônima (link da campanha)
 - `/denuncia/{token}` — Canal de denúncia da empresa (token público)

@@ -350,7 +350,7 @@ function deleteBoard() {
         <Teleport to="body">
             <div
                 v-if="inviting"
-                class="fixed inset-0 z-40 flex items-start justify-center bg-slate-900/40 px-4 py-12"
+                class="fixed inset-0 z-[100] flex items-start justify-center bg-slate-900/40 px-4 py-12"
                 @click.self="inviting = false"
             >
                 <div class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">

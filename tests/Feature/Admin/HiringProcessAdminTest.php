@@ -79,6 +79,31 @@ class HiringProcessAdminTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_admin_can_create_process_with_notes_datetime_and_candidates(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = Company::query()->create(['name' => 'Empresa Candidatos', 'is_active' => true]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.acompanhamento.store'), [
+                'company_id' => $company->id,
+                'title' => 'Analista com candidatos',
+                'current_stage' => HiringProcessStage::AnaliseCurriculo->value,
+                'notes' => 'Primeira triagem',
+                'candidates_count' => 8,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('hiring_processes', [
+            'title' => 'Analista com candidatos',
+            'candidates_count' => 8,
+            'notes' => 'Primeira triagem',
+        ]);
+
+        $process = HiringProcess::query()->where('title', 'Analista com candidatos')->first();
+        $this->assertNotNull($process?->notes_at);
+    }
+
     public function test_admin_can_create_and_advance_process(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
@@ -106,6 +131,40 @@ class HiringProcessAdminTest extends TestCase
         $process->refresh();
         $this->assertSame(HiringProcessStage::AnaliseComportamental, $process->current_stage);
         $this->assertSame($admin->id, $process->updated_by);
+    }
+
+    public function test_admin_can_add_observation_that_persists_across_stages(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = Company::query()->create(['name' => 'Empresa Obs', 'is_active' => true]);
+        $process = HiringProcess::query()->create([
+            'company_id' => $company->id,
+            'title' => 'Vaga Obs',
+            'current_stage' => HiringProcessStage::AnaliseCurriculo,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.acompanhamento.index'))
+            ->post(route('admin.acompanhamento.comments.store', $process), [
+                'body' => 'Segue feedback do gestor',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($admin)
+            ->post(route('admin.acompanhamento.advance', $process))
+            ->assertRedirect();
+
+        $this->withoutVite();
+
+        $this->actingAs($admin)
+            ->get(route('admin.acompanhamento.index', [
+                'stage' => HiringProcessStage::AnaliseComportamental->value,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('processes', 1)
+                ->where('processes.0.comments.0.body', 'Segue feedback do gestor')
+                ->where('processes.0.comments.0.author_role', 'talents'));
     }
 
     public function test_admin_can_move_stage_via_update_and_retreat(): void
