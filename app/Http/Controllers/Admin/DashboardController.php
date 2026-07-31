@@ -10,6 +10,7 @@ use App\Models\Complaint;
 use App\Models\HiringProcess;
 use App\Models\LandingInterestSubmission;
 use App\Models\StrategicCalendarItem;
+use App\Support\StrategicCalendarLeaveEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Models\Subscription;
 use App\Models\Survey;
@@ -124,6 +125,11 @@ class DashboardController extends Controller
             $masters,
             $today,
             $weekEnd,
+        );
+        $upcomingCalendar = StrategicCalendarLeaveEnricher::enrich(
+            $upcomingCalendar,
+            $today,
+            $weekEnd,
         )->take(5)->values();
 
         $subscriptionsDueSoon = Subscription::query()
@@ -186,9 +192,11 @@ class DashboardController extends Controller
             'recentLeads' => $recentLeads,
             'upcomingCalendar' => $upcomingCalendar,
             'subscriptionsDueSoon' => $subscriptionsDueSoon,
-            'calendarKindLabels' => collect(StrategicCalendarItemKind::cases())
-                ->mapWithKeys(fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()])
-                ->all(),
+            'calendarKindLabels' => StrategicCalendarLeaveEnricher::mergeKindLabels(
+                collect(StrategicCalendarItemKind::cases())
+                    ->mapWithKeys(fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()])
+                    ->all()
+            ),
         ]);
     }
 

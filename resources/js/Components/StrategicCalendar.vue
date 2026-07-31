@@ -5,7 +5,15 @@ import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import { useStrategicCalendarTheme } from '@/composables/useStrategicCalendarTheme';
 import { kindTheme } from '@/utils/strategicCalendarThemes';
 import { isMultiDayRange } from '@/utils/strategicCalendarDate';
-import { packWeekSpanningSegments } from '@/utils/strategicCalendarMonthLanes';
+import {
+    CALENDAR_KIND_ORDER,
+    MONTH_DAY_NUMBER_OFFSET_REM,
+    MONTH_LANE_HEIGHT_REM,
+    calendarKindRank,
+    dayCellChipsPaddingTop,
+    packWeekSpanningSegments,
+    spanningLanesOverlayHeight,
+} from '@/utils/strategicCalendarMonthLanes';
 import {
     formatDateNumeric,
     formatRelativeAgendaHeader,
@@ -77,12 +85,13 @@ const {
     previewBackground,
 } = useStrategicCalendarTheme();
 
-const KIND_ORDER = ['birthday', 'ritual', 'event', 'task'];
+const KIND_ORDER = CALENDAR_KIND_ORDER;
 
 function sortItemsByKind(items) {
-    const order = { birthday: 0, ritual: 1, event: 2, task: 3 };
     return [...items].sort(
-        (a, b) => (order[a.kind] ?? 9) - (order[b.kind] ?? 9) || String(a.title).localeCompare(String(b.title)),
+        (a, b) =>
+            calendarKindRank(a.kind) - calendarKindRank(b.kind) ||
+            String(a.title).localeCompare(String(b.title), 'pt-BR'),
     );
 }
 
@@ -91,7 +100,8 @@ function hasRecurrence(item) {
 }
 
 function maxSpanningLanes() {
-    return props.compact ? 2 : 3;
+    // Mais faixas no mês completo reduz overflow de intervalos longos (ex.: férias multi-semana).
+    return props.compact ? 3 : 5;
 }
 
 /** Sem teto: o scroll do dia limita a altura visual; "+N mais" fica só para tirinhas multi-dia. */
@@ -369,7 +379,7 @@ const selectedDayProgress = computed(() => {
 });
 
 const selectedDayItemsGrouped = computed(() => {
-    const buckets = { birthday: [], ritual: [], event: [], task: [] };
+    const buckets = { birthday: [], ritual: [], event: [], task: [], leave: [] };
     for (const it of selectedDayItems.value) {
         const key = Object.prototype.hasOwnProperty.call(buckets, it.kind) ? it.kind : 'event';
         buckets[key].push(it);
@@ -448,7 +458,7 @@ function spanningBarStyle(segment) {
     return {
         ...itemChipStyle(segment.item),
         gridColumn: `${segment.startCol + 1} / span ${segment.span}`,
-        marginTop: `${1.55 + segment.lane * 1.2}rem`,
+        marginTop: `${MONTH_DAY_NUMBER_OFFSET_REM + segment.lane * MONTH_LANE_HEIGHT_REM}rem`,
         height: '1.15rem',
         borderRadius: spanningBarRadius(segment),
         // Tirinha contínua: sem gap visual entre dias; flat nas pontas que “continuam”.
@@ -502,6 +512,32 @@ function itemSourceId(item) {
     return item?.source_id ?? item?.id;
 }
 
+/**
+ * Só retém o wheel na célula se ela puder rolar na direção do gesto.
+ * Caso contrário deixa o evento subir e a página faz scroll.
+ */
+function onDayCellWheel(event) {
+    const el = event.currentTarget;
+    if (!(el instanceof HTMLElement)) {
+        return;
+    }
+
+    const canScroll = el.scrollHeight > el.clientHeight + 1;
+    if (!canScroll) {
+        return;
+    }
+
+    const deltaY = event.deltaY;
+    const atTop = el.scrollTop <= 0;
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+
+    if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) {
+        return;
+    }
+
+    event.stopPropagation();
+}
+
 function editItemUrl(item) {
     if (!props.editItemRoute) return null;
     return route(props.editItemRoute, itemSourceId(item));
@@ -535,7 +571,12 @@ function completionRouteFor(item) {
 }
 
 function canToggleCompletion(item) {
-    return props.completionEnabled && !props.editable && itemSourceId(item) && item?.kind !== 'birthday';
+    return props.completionEnabled
+        && !props.editable
+        && itemSourceId(item)
+        && item?.kind !== 'birthday'
+        && item?.source_type !== 'leave'
+        && item?.kind !== 'leave';
 }
 
 function toggleCompletion(item) {
@@ -1027,11 +1068,11 @@ function itemShellClass(item) {
                                         {{ cell.day }}
                                     </span>
                                     <div
-                                        class="relative z-0 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain px-1 pb-1.5 pt-0.5"
+                                        class="relative z-0 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1 pb-1.5 pt-0.5"
                                         :style="{
-                                            paddingTop: `${Math.max(week.laneCount, 0) * 1.2 + (week.laneCount ? 0.2 : 0)}rem`,
+                                            paddingTop: dayCellChipsPaddingTop(week.laneCount),
                                         }"
-                                        @wheel.stop
+                                        @wheel="onDayCellWheel"
                                     >
                                         <div
                                             v-for="it in week.singleDayByCol[ci]"
@@ -1064,7 +1105,10 @@ function itemShellClass(item) {
                                 <div v-else :class="['border-transparent bg-slate-50/40', cellMinH, cellMaxH]" />
                             </div>
 
-                            <div class="pointer-events-none absolute inset-0 z-10 grid grid-cols-7 gap-px">
+                            <div
+                                class="pointer-events-none absolute inset-x-0 top-0 z-10 grid grid-cols-7 gap-px overflow-hidden"
+                                :style="{ height: spanningLanesOverlayHeight(week.laneCount) }"
+                            >
                                 <button
                                     v-for="segment in week.segments"
                                     :key="segment.key"

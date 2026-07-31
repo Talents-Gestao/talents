@@ -12,6 +12,7 @@ use App\Models\Company;
 use App\Models\StrategicCalendarItem;
 use App\Models\StrategicCalendarItemAttachment;
 use App\Support\StrategicCalendarAudience;
+use App\Support\StrategicCalendarLeaveEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -34,7 +35,14 @@ class StrategicCalendarController extends Controller
 
         if ($request->filled('kind')) {
             $request->validate([
-                'kind' => ['required', 'string', Rule::enum(StrategicCalendarItemKind::class)],
+                'kind' => [
+                    'required',
+                    'string',
+                    Rule::in([
+                        ...array_column(StrategicCalendarItemKind::cases(), 'value'),
+                        StrategicCalendarLeaveEnricher::KIND,
+                    ]),
+                ],
             ]);
         }
 
@@ -74,6 +82,21 @@ class StrategicCalendarController extends Controller
             $monthEnd,
         );
 
+        $companyFilter = $request->filled('company_id') ? (int) $request->input('company_id') : null;
+        $kindFilter = $request->filled('kind') ? (string) $request->input('kind') : null;
+
+        if ($kindFilter === null || $kindFilter === StrategicCalendarLeaveEnricher::KIND) {
+            $monthItems = $kindFilter === StrategicCalendarLeaveEnricher::KIND
+                ? collect()
+                : $monthItems;
+            $monthItems = StrategicCalendarLeaveEnricher::enrich(
+                $monthItems,
+                $monthStart,
+                $monthEnd,
+                $companyFilter,
+            );
+        }
+
         $agendaEnd = now()->copy()->addDays(60)->endOfDay();
         $agendaStart = now()->copy()->startOfDay();
         $agendaMasterQuery = $this->filteredMasterQuery($request);
@@ -89,6 +112,22 @@ class StrategicCalendarController extends Controller
             $agendaEnd,
         );
 
+        if ($kindFilter === null || $kindFilter === StrategicCalendarLeaveEnricher::KIND) {
+            $agendaItems = $kindFilter === StrategicCalendarLeaveEnricher::KIND
+                ? collect()
+                : $agendaItems;
+            $agendaItems = StrategicCalendarLeaveEnricher::enrich(
+                $agendaItems,
+                $agendaStart,
+                $agendaEnd,
+                $companyFilter,
+            );
+        }
+
+        $kindLabels = collect(StrategicCalendarItemKind::cases())->mapWithKeys(
+            fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()]
+        )->all();
+
         return Inertia::render('Admin/StrategicCalendar/Index', [
             'items' => $items,
             'monthItems' => $monthItems,
@@ -97,9 +136,7 @@ class StrategicCalendarController extends Controller
             'calendarMonth' => $month,
             'filters' => $request->only(['company_id', 'kind']),
             'companies' => Company::query()->orderBy('name')->get(['id', 'name']),
-            'kindLabels' => collect(StrategicCalendarItemKind::cases())->mapWithKeys(
-                fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()]
-            ),
+            'kindLabels' => StrategicCalendarLeaveEnricher::mergeKindLabels($kindLabels),
             'recurrenceLabels' => collect(StrategicCalendarRecurrence::cases())->mapWithKeys(
                 fn (StrategicCalendarRecurrence $r) => [$r->value => $r->label()]
             ),

@@ -14,6 +14,7 @@ use App\Models\StrategicCalendarItem;
 use App\Models\StrategicCalendarItemAttachment;
 use App\Models\TaskCard;
 use App\Support\StrategicCalendarClientEnricher;
+use App\Support\StrategicCalendarLeaveEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Support\StrategicCalendarPeriod;
 use Carbon\Carbon;
@@ -66,6 +67,7 @@ class StrategicCalendarController extends Controller
             'client.strategic-calendar.attachment-download',
         );
         $monthItems = StrategicCalendarClientEnricher::enrich($monthItems, $company, $queryStart, $queryEnd);
+        $monthItems = $this->enrichLeavesForCompanyAdmin($request, $monthItems, $company, $queryStart, $queryEnd);
         $monthItems = $this->markManageable($monthItems);
 
         $upcomingStart = now()->startOfDay();
@@ -89,6 +91,7 @@ class StrategicCalendarController extends Controller
         $upcoming = $upcomingExpanded
             ->filter(fn (array $row) => $row['occurs_on'] >= $upcomingStart->toDateString())
             ->pipe(fn (Collection $rows) => StrategicCalendarClientEnricher::enrich($rows, $company, $upcomingStart, $upcomingEnd))
+            ->pipe(fn (Collection $rows) => $this->enrichLeavesForCompanyAdmin($request, $rows, $company, $upcomingStart, $upcomingEnd))
             ->pipe(fn (Collection $rows) => $this->markManageable($rows))
             ->sortBy([['occurs_on', 'asc'], ['kind', 'asc']])
             ->take(12)
@@ -118,6 +121,13 @@ class StrategicCalendarController extends Controller
             Carbon::parse($agendaStart)->startOfDay(),
             $agendaEndCarbon,
         );
+        $agendaItems = $this->enrichLeavesForCompanyAdmin(
+            $request,
+            $agendaItems,
+            $company,
+            Carbon::parse($agendaStart)->startOfDay(),
+            $agendaEndCarbon,
+        );
         $agendaItems = $this->markManageable($agendaItems);
 
         return Inertia::render('Client/StrategicCalendar/Index', [
@@ -132,7 +142,10 @@ class StrategicCalendarController extends Controller
             'canNavigateNext' => $view['canNavigateNext'],
             'kindLabels' => collect(StrategicCalendarItemKind::cases())->mapWithKeys(
                 fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()]
-            )->merge(['task' => 'Tarefa']),
+            )->merge([
+                'task' => 'Tarefa',
+                StrategicCalendarLeaveEnricher::KIND => StrategicCalendarLeaveEnricher::KIND_LABEL,
+            ]),
             'kinds' => collect([StrategicCalendarItemKind::Event, StrategicCalendarItemKind::Ritual])
                 ->map(fn (StrategicCalendarItemKind $k) => [
                     'value' => $k->value,
@@ -360,6 +373,31 @@ class StrategicCalendarController extends Controller
 
         abort_unless($visible, 404);
         abort_unless($item->isCompanyAgenda() && (int) $item->company_id === (int) $company->id, 403);
+    }
+
+    /**
+     * Férias no calendário da empresa: só administradores da empresa (não colaboradores).
+     *
+     * @param  Collection<int, array<string, mixed>>  $items
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function enrichLeavesForCompanyAdmin(
+        Request $request,
+        Collection $items,
+        \App\Models\Company $company,
+        Carbon $rangeStart,
+        Carbon $rangeEnd,
+    ): Collection {
+        if (! $request->user()?->isCompanyAdmin()) {
+            return $items;
+        }
+
+        return StrategicCalendarLeaveEnricher::enrich(
+            $items,
+            $rangeStart,
+            $rangeEnd,
+            (int) $company->id,
+        );
     }
 
     private function normalizeAgendaFilter(mixed $agenda): ?string

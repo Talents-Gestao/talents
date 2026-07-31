@@ -119,10 +119,11 @@ const recruitmentPhases = (() => {
             description: 'Admissão, relatórios e acompanhamento pós-contratação.',
             icon: UserPlusIcon,
             steps: [
+                'Visita do pré-candidato à empresa (opcional)',
                 'Envio do candidato para admissão',
                 'Relatórios (Profiler + Matcher)',
                 'Acompanhamento pós-contratação (3 meses) com direito a 1 recontratação',
-                'Análise comportamental semestral para acompanhar o desenvolvimento',
+                'Análise comportamental semestral para acompanhar o desenvolvimento (mediante a empresa)',
             ],
         },
     ];
@@ -265,20 +266,20 @@ const organizationJsonLd = computed(() =>
                     </p>
                 </div>
 
-                <div class="mt-10 grid items-center gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10">
-                    <div class="flex w-full justify-center lg:justify-start">
+                <div class="mt-10 flex flex-col gap-10">
+                    <div class="mx-auto w-full">
                         <img
-                            src="/images/pilares-borboleta.png?v=1250"
+                            src="/images/pilares-borboleta.png?v=20260731d"
                             alt="Infográfico dos 4 pilares Talents em formato de borboleta"
-                            width="1250"
-                            height="1250"
-                            class="h-auto w-full max-w-full object-contain"
+                            width="1920"
+                            height="1080"
+                            class="mx-auto block h-auto w-full object-contain"
                             loading="lazy"
                             decoding="async"
                         />
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                    <div class="mx-auto grid w-full grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
                     <article
                         v-for="(pillar, index) in methodologyPillars"
                         :key="pillar.title"
@@ -393,9 +394,6 @@ const organizationJsonLd = computed(() =>
                 </div>
 
                 <div class="mt-8 flex flex-wrap items-center gap-3">
-                    <Link :href="route('landing.contratacao')" class="btn-primary">
-                        Quero contratar com este método
-                    </Link>
                     <Link :href="route('landing.contato')" class="btn-secondary">
                         Falar com especialista
                     </Link>
