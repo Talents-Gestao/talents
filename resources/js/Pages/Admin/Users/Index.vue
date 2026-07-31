@@ -28,10 +28,8 @@ function functionLabel(user) {
     if (user.is_owner) {
         return { text: 'Proprietário', class: 'bg-violet-100 text-violet-800' };
     }
-    if (user.has_all_admin_permissions) {
-        return { text: 'Administrador', class: 'bg-talents-100 text-talents-800' };
-    }
-    return { text: 'Equipe', class: 'bg-slate-100 text-slate-700' };
+
+    return { text: 'Administrador', class: 'bg-talents-100 text-talents-800' };
 }
 
 const resendInvitation = (user) => {

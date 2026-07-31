@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
-use App\Actions\SyncAdminUserPermissions;
-use App\Enums\AdminPermissionModule;
-use App\Enums\PermissionAction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
@@ -36,16 +33,12 @@ class AdminDashboardDailyQuoteTest extends TestCase
                 ->where('dailyQuote.word', fn ($word) => is_string($word) && $word !== ''));
     }
 
-    public function test_admin_home_without_dashboard_permission_still_includes_daily_quote(): void
+    public function test_admin_home_includes_daily_quote_for_non_owner_super_admin(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => false]);
 
-        app(SyncAdminUserPermissions::class)->execute($admin->talentsWorkspace(), [
-            ['module' => AdminPermissionModule::Comercial->value, 'action' => PermissionAction::View->value],
-        ]);
-
         $this->actingAs($admin->fresh())
-            ->get(route('admin.comercial.dashboard'))
+            ->get(route('admin.dashboard'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('dailyQuote')

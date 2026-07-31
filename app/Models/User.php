@@ -127,18 +127,6 @@ class User extends Authenticatable
             ->whereRaw('1 = 0');
     }
 
-    public function adminPermissions(): HasMany
-    {
-        $workspace = $this->activeWorkspace();
-
-        if ($workspace) {
-            return $workspace->adminPermissions();
-        }
-
-        return $this->hasMany(AdminUserPermission::class, 'user_workspace_id')
-            ->whereRaw('1 = 0');
-    }
-
     public function talentsWorkspace(): ?UserWorkspace
     {
         return $this->workspaces()
@@ -238,41 +226,17 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($this->isOwner()) {
-            return true;
-        }
-
         if (! $this->isActive()) {
             return false;
         }
 
-        if ($this->relationLoaded('adminPermissions')) {
-            return $this->adminPermissions->contains(
-                fn (AdminUserPermission $p) => $p->module === $module && $p->action === $action
-            );
-        }
-
-        return $this->adminPermissions()
-            ->where('module', $module->value)
-            ->where('action', $action->value)
-            ->exists();
+        // Admin Talents = master: todos os super_admin ativos têm acesso total.
+        return true;
     }
 
     public function hasAllAdminPermissions(): bool
     {
-        if (! $this->isSuperAdmin()) {
-            return false;
-        }
-
-        foreach (AdminPermissionModule::all() as $module) {
-            foreach (PermissionAction::all() as $action) {
-                if (! $this->canAccessAdmin($module, $action)) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        return $this->isSuperAdmin() && $this->isActive();
     }
 
     /**
@@ -280,29 +244,11 @@ class User extends Authenticatable
      */
     public function adminPermissionMatrixForFrontend(): array
     {
-        if (! $this->isSuperAdmin()) {
+        if (! $this->isSuperAdmin() || ! $this->isActive()) {
             return [];
         }
 
-        if ($this->isOwner()) {
-            return ['*' => true];
-        }
-
-        $matrix = [];
-        $rows = $this->relationLoaded('adminPermissions')
-            ? $this->adminPermissions
-            : $this->adminPermissions()->get();
-
-        foreach ($rows as $p) {
-            $matrix[$p->module->value] ??= [];
-            $matrix[$p->module->value][] = $p->action->value;
-        }
-
-        foreach ($matrix as $key => $actions) {
-            $matrix[$key] = array_values(array_unique($actions));
-        }
-
-        return $matrix;
+        return ['*' => true];
     }
 
     /**

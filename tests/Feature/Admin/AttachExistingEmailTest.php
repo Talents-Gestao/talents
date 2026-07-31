@@ -72,9 +72,6 @@ class AttachExistingEmailTest extends TestCase
                 'email' => 'dual2@example.com',
                 'is_active' => true,
                 'is_commercial' => false,
-                'permissions' => [
-                    ['module' => 'dashboard', 'action' => 'view'],
-                ],
             ])
             ->assertRedirect(route('admin.users.index'));
 

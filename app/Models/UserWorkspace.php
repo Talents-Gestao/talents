@@ -44,11 +44,6 @@ class UserWorkspace extends Model
         return $this->hasMany(UserPermission::class);
     }
 
-    public function adminPermissions(): HasMany
-    {
-        return $this->hasMany(AdminUserPermission::class);
-    }
-
     public function isTalents(): bool
     {
         return $this->workspace_type === WorkspaceType::Talents;
