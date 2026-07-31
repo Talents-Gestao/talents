@@ -7,7 +7,7 @@ Foi solicitada a redefinição de senha do seu acesso ao portal Talents para a e
 Foi solicitada a redefinição de senha do seu acesso à equipe administrativa da plataforma Talents.
 @endif
 
-Seu usuário é o e-mail: {{ $user->email }}
+Seu utilizador é o e-mail: {{ $user->email }}
 
 Para redefinir sua senha, acesse:
 {{ $resetPasswordUrl }}
@@ -22,7 +22,7 @@ Foi criado um acesso ao portal Talents para a empresa {{ $company->name }}.
 Foi criado um acesso à equipe administrativa da plataforma Talents.
 @endif
 
-Seu usuário é o e-mail: {{ $user->email }}
+Seu utilizador é o e-mail: {{ $user->email }}
 
 Para definir sua senha, acesse:
 {{ $resetPasswordUrl }}

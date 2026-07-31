@@ -169,15 +169,23 @@ const formatDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateStrin
                 :default-open="mode !== 'preview'"
                 :meta="`${totalQuestions} perguntas`"
             >
-                <div class="space-y-4 p-5">
-                    <FeedbackSectionAccordion
+                <div class="space-y-8 p-5">
+                    <section
                         v-for="section in sections"
                         :key="section.key"
-                        :title="section.title"
-                        :default-open="mode !== 'preview'"
-                        :meta="`${section.questions?.length ?? 0} pergunta${(section.questions?.length ?? 0) === 1 ? '' : 's'}`"
+                        class="space-y-4"
                     >
-                        <div class="space-y-4 p-5">
+                        <div class="border-b border-slate-100 pb-2">
+                            <h4 class="text-sm font-semibold text-slate-900">
+                                {{ section.title }}
+                            </h4>
+                            <p class="mt-0.5 text-xs text-slate-500">
+                                {{ section.questions?.length ?? 0 }}
+                                pergunta{{ (section.questions?.length ?? 0) === 1 ? '' : 's' }}
+                            </p>
+                        </div>
+
+                        <div class="space-y-4">
                             <div
                                 v-for="question in section.questions"
                                 :key="question.key"
@@ -204,7 +212,7 @@ const formatDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateStrin
                                 </p>
                             </div>
                         </div>
-                    </FeedbackSectionAccordion>
+                    </section>
                 </div>
             </FeedbackSectionAccordion>
 

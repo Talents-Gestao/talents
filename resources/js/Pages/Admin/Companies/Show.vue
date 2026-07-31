@@ -158,7 +158,7 @@ const subscriptionStatusLabel = (status) => {
 const roleLabel = (role) => {
     const map = {
         company_admin: 'Administrador da empresa',
-        company_user: 'Usuário da empresa',
+        company_user: 'Utilizador da empresa',
         super_admin: 'Administrador Talents',
     };
     const key = String(role || '').toLowerCase();
@@ -585,7 +585,7 @@ const removeHighlight = (id) => {
                     <p v-else class="text-sm text-slate-500">Nenhuma pesquisa cadastrada para esta empresa.</p>
                 </CompanyShowAccordion>
 
-                <CompanyShowAccordion title="Usuários" description="Utilizadores vinculados a esta empresa">
+                <CompanyShowAccordion title="Utilizadores" description="Utilizadores vinculados a esta empresa">
                     <template #icon>
                         <UserGroupIcon class="h-5 w-5" />
                     </template>

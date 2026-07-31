@@ -81,7 +81,7 @@ export function departmentLabelForJustification(personId, personMap) {
     }
     const p = personMap?.[String(personId)];
     if (!p) {
-        return 'Sem cadastro (lista ate 500)';
+        return 'Sem cadastro (lista até 500)';
     }
     if (p.departmentName) {
         return p.departmentName;

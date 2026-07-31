@@ -80,7 +80,7 @@ class RhidSettingsController extends Controller
         try {
             $auth->getAccessToken($company, refresh: true);
 
-            return response()->json(['ok' => true, 'message' => 'Conexao OK. Token obtido.']);
+            return response()->json(['ok' => true, 'message' => 'Conexão OK. Token obtido.']);
         } catch (RhidDomainChoiceRequiredException $e) {
             return response()->json([
                 'ok' => false,

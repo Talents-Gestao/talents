@@ -457,7 +457,7 @@ class RhidComplianceService
             }
         }
 
-        throw $last ?? new RhidApiException('Lista de cargos RHID indisponivel.', 404);
+        throw $last ?? new RhidApiException('Lista de cargos RHID indisponível.', 404);
     }
 
     /**
@@ -619,7 +619,7 @@ class RhidComplianceService
             }
         }
 
-        throw $last ?? new RhidApiException('Lista de departamentos RHID indisponivel.', 404);
+        throw $last ?? new RhidApiException('Lista de departamentos RHID indisponível.', 404);
     }
 
     /**

@@ -87,7 +87,7 @@ class RhidClient
             };
         } catch (ConnectionException $e) {
             throw new RhidApiException(
-                'Sem conexao com o servidor RHID (rede, DNS ou timeout). Tente novamente.',
+                'Sem conexão com o servidor RHID (rede, DNS ou timeout). Tente novamente.',
                 null,
                 null,
                 0,
