@@ -74,7 +74,7 @@ class FeedbackSessionController extends FeedbackCompanyController
         $data = $request->validate([
             'employee_name' => ['required', 'string', 'max:255'],
             'employee_email' => ['nullable', 'email', 'max:255'],
-            'feedback_template_id' => ['required', 'exists:feedback_templates,id'],
+            'feedback_template_id' => ['nullable', 'exists:feedback_templates,id'],
             'leader_user_id' => ['required', 'exists:users,id'],
             'scheduled_at' => ['required', 'date'],
             'next_alignment_at' => ['nullable', 'date'],
@@ -83,14 +83,22 @@ class FeedbackSessionController extends FeedbackCompanyController
             'employee_name' => 'nome do colaborador',
             'employee_email' => 'e-mail do colaborador',
             'scheduled_at' => 'data do alinhamento',
+            'feedback_template_id' => 'modelo',
         ]);
 
         $employeeName = trim($data['employee_name']);
         $employeeEmail = isset($data['employee_email']) ? trim((string) $data['employee_email']) : '';
         $employeeEmail = $employeeEmail !== '' ? $employeeEmail : null;
 
-        $template = FeedbackTemplate::query()->findOrFail($data['feedback_template_id']);
-        abort_unless($this->templateAvailableToCompany($company, $template), 403);
+        $template = isset($data['feedback_template_id'])
+            ? FeedbackTemplate::query()->find($data['feedback_template_id'])
+            : null;
+
+        if ($template === null || ! $this->templateAvailableToCompany($company, $template)) {
+            $template = $this->availableTemplates($company)->first();
+        }
+
+        abort_if($template === null, 422, 'Nenhum modelo de feedback disponível. Execute o seed de modelos.');
 
         if ($request->user()->isCompanyUser() && ! $request->user()->isSuperAdmin()) {
             abort_unless((int) $data['leader_user_id'] === (int) $request->user()->id, 403);

@@ -14,6 +14,7 @@ import {
 } from '@heroicons/vue/24/outline';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import LandingButterflyPillars from '@/Components/Landing/LandingButterflyPillars.vue';
 import LandingCardGrid from '@/Components/Landing/LandingCardGrid.vue';
 import LandingLayout from '@/Components/Landing/LandingLayout.vue';
 
@@ -266,74 +267,8 @@ const organizationJsonLd = computed(() =>
                     </p>
                 </div>
 
-                <div class="mt-10 flex flex-col gap-10">
-                    <div class="mx-auto w-full">
-                        <img
-                            src="/images/pilares-borboleta.png?v=20260731d"
-                            alt="Infográfico dos 4 pilares Talents em formato de borboleta"
-                            width="1920"
-                            height="1080"
-                            class="mx-auto block h-auto w-full object-contain"
-                            loading="lazy"
-                            decoding="async"
-                        />
-                    </div>
-
-                    <div class="mx-auto grid w-full grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-                    <article
-                        v-for="(pillar, index) in methodologyPillars"
-                        :key="pillar.title"
-                        class="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-talents-200 hover:shadow-lg md:p-6"
-                        :class="pillar.accent"
-                    >
-                        <span
-                            class="absolute inset-x-0 top-0 h-1 opacity-90"
-                            :class="pillar.bar"
-                            aria-hidden="true"
-                        />
-
-                        <div class="flex items-start justify-between gap-3">
-                            <div
-                                class="inline-flex rounded-2xl p-2.5 ring-1 transition group-hover:scale-105"
-                                :class="pillar.iconWrap"
-                            >
-                                <component :is="pillar.icon" class="h-5 w-5" aria-hidden="true" />
-                            </div>
-                            <span class="text-xs font-bold tabular-nums text-slate-300">
-                                {{ String(index + 1).padStart(2, '0') }}
-                            </span>
-                        </div>
-
-                        <h3 class="mt-4 text-sm font-bold leading-snug text-slate-900 md:text-[0.95rem]">
-                            {{ pillar.title }}
-                        </h3>
-
-                        <ul class="mt-4 flex-1 space-y-2.5 text-sm leading-snug text-slate-600">
-                            <li
-                                v-for="item in pillar.items"
-                                :key="item"
-                                class="flex items-start gap-2.5"
-                            >
-                                <span
-                                    class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                                    :class="pillar.bullet"
-                                    aria-hidden="true"
-                                />
-                                <span>{{ item }}</span>
-                            </li>
-                        </ul>
-
-                        <div
-                            class="mt-5 rounded-2xl px-3 py-2.5 text-xs leading-relaxed ring-1"
-                            :class="pillar.chip"
-                        >
-                            <span class="font-bold uppercase tracking-wide">Objetivo</span>
-                            <p class="mt-1 font-medium normal-case tracking-normal">
-                                {{ pillar.objective }}
-                            </p>
-                        </div>
-                    </article>
-                    </div>
+                <div class="mt-10">
+                    <LandingButterflyPillars :pillars="methodologyPillars" />
                 </div>
             </div>
         </section>
