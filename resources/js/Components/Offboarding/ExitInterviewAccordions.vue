@@ -161,35 +161,52 @@ const formatDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateStrin
                     Nenhuma pesquisa cadastrada ainda para esta empresa.
                 </p>
 
-                <div class="border-t border-slate-100 pt-4">
-                    <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Roteiro da entrevista
-                    </p>
-                </div>
             </div>
 
-            <div v-for="section in sections" :key="section.key" class="space-y-4">
-                <h4 class="text-sm font-semibold text-talents-900">{{ section.title }}</h4>
-                <div v-for="question in section.questions" :key="question.key" class="space-y-1">
-                    <label class="block text-sm font-medium text-slate-800">{{ question.body }}</label>
-                    <p v-if="question.hint" class="text-xs text-slate-500">{{ question.hint }}</p>
-                    <textarea
-                        v-if="isEditable"
-                        v-model="answers[question.key]"
-                        rows="3"
-                        :class="fieldClass"
-                    />
-                    <p
-                        v-else-if="isShow"
-                        class="whitespace-pre-wrap rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700"
+            <FeedbackSectionAccordion
+                title="Roteiro da entrevista"
+                description="Perguntas preenchidas presencialmente com o colaborador"
+                :default-open="mode !== 'preview'"
+                :meta="`${totalQuestions} perguntas`"
+            >
+                <div class="space-y-4 p-5">
+                    <FeedbackSectionAccordion
+                        v-for="section in sections"
+                        :key="section.key"
+                        :title="section.title"
+                        :default-open="mode !== 'preview'"
+                        :meta="`${section.questions?.length ?? 0} pergunta${(section.questions?.length ?? 0) === 1 ? '' : 's'}`"
                     >
-                        {{ display(answers?.[question.key]) }}
-                    </p>
-                    <p v-else class="text-xs italic text-slate-400">
-                        Resposta preenchida na entrevista com o colaborador.
-                    </p>
+                        <div class="space-y-4 p-5">
+                            <div
+                                v-for="question in section.questions"
+                                :key="question.key"
+                                class="space-y-1"
+                            >
+                                <label class="block text-sm font-medium text-slate-800">{{
+                                    question.body
+                                }}</label>
+                                <p v-if="question.hint" class="text-xs text-slate-500">{{ question.hint }}</p>
+                                <textarea
+                                    v-if="isEditable"
+                                    v-model="answers[question.key]"
+                                    rows="3"
+                                    :class="fieldClass"
+                                />
+                                <p
+                                    v-else-if="isShow"
+                                    class="whitespace-pre-wrap rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-700"
+                                >
+                                    {{ display(answers?.[question.key]) }}
+                                </p>
+                                <p v-else class="text-xs italic text-slate-400">
+                                    Resposta preenchida na entrevista com o colaborador.
+                                </p>
+                            </div>
+                        </div>
+                    </FeedbackSectionAccordion>
                 </div>
-            </div>
+            </FeedbackSectionAccordion>
 
             <FeedbackSectionAccordion
                 v-if="!hideConsultantNotes"

@@ -26,7 +26,10 @@ class FeriasCompanySelectController extends Controller
         $request->session()->put(FeriasCompanyContext::SESSION_KEY, $company->id);
 
         return redirect()
-            ->route('admin.ferias.index')
+            ->route('admin.companies.show', [
+                'company' => $company->id,
+                'tab' => 'ferias',
+            ])
             ->with('success', 'Empresa selecionada: '.$company->name);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Commercial;
 
 use App\Actions\Notices\PublishCommercialNotice;
+use App\Enums\CommercialProposalPaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialContractTemplate;
 use App\Models\CommercialProduct;
@@ -113,6 +114,7 @@ class ProposalController extends Controller
             'settings' => $this->publicSettings(),
             'catalogProducts' => $this->catalogProductsPayload(),
             'pdfOptionalSectionOptions' => CommercialProposalPdfOptionalSections::options(),
+            'paymentMethodOptions' => CommercialProposalPaymentMethod::options(),
         ]);
     }
 
@@ -153,6 +155,7 @@ class ProposalController extends Controller
             'settings' => $this->publicSettings(),
             'catalogProducts' => $this->catalogProductsPayload(),
             'pdfOptionalSectionOptions' => CommercialProposalPdfOptionalSections::options(),
+            'paymentMethodOptions' => CommercialProposalPaymentMethod::options(),
         ]);
     }
 
@@ -384,7 +387,7 @@ class ProposalController extends Controller
             ['flag' => $proposal->svc_pesquisas, 'key' => 'pesquisas', 'label' => 'Pesquisas e Organograma', 'col' => 'total_pesquisas_cents'],
             ['flag' => $proposal->svc_profiler, 'key' => 'profiler', 'label' => 'Profiler — Diagnóstico Comportamental', 'col' => 'total_profiler_cents'],
             ['flag' => filled($proposal->svc_devolutiva), 'key' => 'devolutiva', 'label' => 'Devolutiva e Diagnóstico', 'col' => 'total_devolutiva_cents'],
-            ['flag' => $proposal->svc_nr1, 'key' => 'nr1', 'label' => 'NR-1 — Mapeamento (12 parcelas)', 'col' => 'total_nr1_cents'],
+            ['flag' => $proposal->svc_nr1, 'key' => 'nr1', 'label' => 'NR-1 — Mapeamento', 'col' => 'total_nr1_cents'],
             ['flag' => filled($proposal->svc_nr1_implantacao_modo), 'key' => 'nr1_implantacao', 'label' => 'NR-1 — Implantação', 'col' => 'total_nr1_implantacao_cents'],
             ['flag' => $proposal->svc_contratacao, 'key' => 'contratacao', 'label' => 'Contratação / Recrutamento', 'col' => 'total_contratacao_cents'],
             ['flag' => $proposal->svc_direcionamento, 'key' => 'direcionamento', 'label' => 'Direcionamento Estratégico', 'col' => 'total_direcionamento_cents'],
@@ -445,6 +448,7 @@ class ProposalController extends Controller
 
             'is_closed' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'payment_method' => ['required', Rule::in(CommercialProposalPaymentMethod::values())],
 
             'pdf_subtitle' => ['nullable', 'string', 'max:500'],
             'pdf_objetivo' => ['nullable', 'string', 'max:5000'],

@@ -1,4 +1,5 @@
 <script setup>
+import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, reactive, ref } from 'vue';
 
@@ -257,11 +258,7 @@ const typeLabel = (type) => props.pricingTypeLabels[type] ?? type;
             </table>
         </div>
 
-        <div
-            v-if="modalOpen"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            @click.self="modalOpen = false"
-        >
+        <FullScreenOverlay :show="modalOpen" @close="modalOpen = false">
             <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
                 <h4 class="text-lg font-semibold text-slate-900">
                     {{ editing ? 'Editar produto' : 'Novo produto' }}
@@ -433,6 +430,6 @@ const typeLabel = (type) => props.pricingTypeLabels[type] ?? type;
                     </div>
                 </form>
             </div>
-        </div>
+        </FullScreenOverlay>
     </section>
 </template>

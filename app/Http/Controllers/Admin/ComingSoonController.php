@@ -30,11 +30,6 @@ class ComingSoonController extends Controller
             'description' => 'Resumo do funil de contratação (candidatos, desclassificados, entrevistados) em sincronia com a Sólides chegará em uma próxima versão.',
             'permission' => AdminPermissionModule::Solides,
         ],
-        'reunioes' => [
-            'title' => 'Reuniões',
-            'description' => 'Fluxo de gravação, cronômetro, transcrição e ata de reunião será disponibilizado em breve.',
-            'permission' => AdminPermissionModule::Entrevistas,
-        ],
         'diagnostico-empresarial' => [
             'title' => 'Diagnóstico empresarial',
             'description' => 'O diagnóstico empresarial completo para clientes estará disponível em breve neste módulo.',
@@ -60,19 +55,9 @@ class ComingSoonController extends Controller
             'description' => 'Cadastro e conciliação de contas bancárias serão disponibilizados em breve no financeiro.',
             'permission' => AdminPermissionModule::Financeiro,
         ],
-        'contas-a-pagar' => [
-            'title' => 'Contas a pagar',
-            'description' => 'Módulo de contas a pagar será disponibilizado em breve.',
-            'permission' => AdminPermissionModule::Financeiro,
-        ],
         'contas-a-receber' => [
             'title' => 'Contas a receber',
             'description' => 'Módulo dedicado de contas a receber será disponibilizado em breve (hoje o acompanhamento ocorre via vendas e parcelas).',
-            'permission' => AdminPermissionModule::Financeiro,
-        ],
-        'formas-pagamento' => [
-            'title' => 'Formas de pagamento',
-            'description' => 'Cadastro de formas de pagamento será disponibilizado em breve.',
             'permission' => AdminPermissionModule::Financeiro,
         ],
     ];
@@ -93,6 +78,14 @@ class ComingSoonController extends Controller
 
         if ($module === 'diagnostico-empresarial') {
             return redirect()->route('admin.diagnostico-empresarial.index');
+        }
+
+        if ($module === 'contas-a-pagar') {
+            return redirect()->route('admin.financeiro.contas-a-pagar.index');
+        }
+
+        if ($module === 'formas-pagamento') {
+            return redirect()->route('admin.financeiro.formas-pagamento.index');
         }
 
         $config = self::MODULES[$module] ?? null;

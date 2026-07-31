@@ -30,16 +30,7 @@ final class CanonicalContractTemplates
 <p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>CONTRATADA:</strong> {{empresa_nome}}, CNPJ nº {{empresa_cnpj}}, com sede em {{empresa_endereco}}, e-mail {{empresa_email}}, telefone {{empresa_telefone}}, {{empresa_representacao}}, doravante denominada <strong>CONTRATADA</strong>.</p>
 
 <h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula primeira – Objeto</h2>
-<p style="font-size:11px;line-height:1.55;color:#0f172a;">O presente contrato tem como objeto a prestação de serviços de consultoria de gestão de pessoas, nos termos da <strong>Proposta Comercial nº {{proposta_codigo}}</strong> (emitida em {{proposta_emitida_em}}, com referência de validade conforme parametrização comercial), incluindo, conforme contratado, dentre outras entregas da natureza abaixo:</p>
-<ul style="margin:8px 0 12px;padding-left:18px;font-size:11px;line-height:1.5;color:#0f172a;">
-<li>Pesquisa de satisfação dos colaboradores;</li>
-<li>Aplicação de mapeamento comportamental;</li>
-<li>Entrega de relatório de mapeamento comportamental individual completo;</li>
-<li>Análise do relatório de mapeamento comportamental individual (conforme plano contratado);</li>
-<li>Devolutiva individual ou em grupo (conforme plano contratado);</li>
-<li>Engenharia de cargos e relatório Matcher (conforme plano contratado).</li>
-</ul>
-<p style="font-size:11px;line-height:1.5;color:#64748b;">A discriminação contratual efetiva, valores e totais — somente o que constar na proposta:</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">O presente contrato tem como objeto a prestação de serviços de consultoria de gestão de pessoas, nos termos da <strong>Proposta Comercial nº {{proposta_codigo}}</strong> (emitida em {{proposta_emitida_em}}, com referência de validade conforme parametrização comercial), restritos exclusivamente aos serviços efetivamente contratados na proposta, conforme discriminação e valores abaixo:</p>
 {{servicos_detalhada_html}}
 <p style="font-size:11px;line-height:1.55;color:#0f172a;margin-top:10px;"><strong>Honorário total:</strong> {{total_reais}} (<em>{{total_extenso}}</em>). Colaboradores considerados na proposta (quando aplicável): <strong>{{numero_funcionarios}}</strong>.</p>
 <p style="font-size:11px;line-height:1.45;color:#64748b;">Lista resumida dos serviços contratados: {{servicos_rotulos}}.</p>
@@ -56,7 +47,7 @@ final class CanonicalContractTemplates
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">§ 1º Em caso de inadimplência, os valores serão acrescidos de multa de 5% e juros de 1% ao mês sobre o saldo devedor.</p>
 
 <h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula quarta – Obrigações da contratada</h2>
-<p style="font-size:11px;line-height:1.55;color:#0f172a;">A CONTRATADA compromete-se a: (1) aplicar os mapeamentos comportamentais conforme os serviços contratados e as metodologias e ferramentas utilizadas; (2) entregar os relatórios de mapeamentos comportamentais individuais completos; (3) analisar os mapeamentos comportamentais individuais conforme os serviços contratados; (4) realizar as devolutivas individuais ou em grupo conforme os serviços contratados; (5) garantir confidencialidade sobre as informações coletadas; (6) reaplicar o mapeamento caso necessário, conforme frequência contratada (por exemplo, 6 meses ou 1 ano), para fins de acompanhar a evolução comportamental de cada colaborador.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">A CONTRATADA compromete-se a: (1) executar os serviços efetivamente contratados na proposta comercial vinculada a este instrumento, com diligência e qualidade profissional; (2) entregar os materiais, relatórios e demais produtos previstos nos serviços contratados; (3) garantir confidencialidade sobre as informações a que tiver acesso; (4) comunicar à CONTRATANTE eventual necessidade de reaplicação, acompanhamento ou ajuste dos serviços, quando previsto na proposta.</p>
 
 <h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula quinta – Obrigações da contratante</h2>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">A CONTRATANTE compromete-se a: (1) fornecer dados corretos e completos dos participantes avaliados; (2) efetuar o pagamento conforme as condições acordadas; (3) não compartilhar ou distribuir os relatórios com terceiros sem autorização da CONTRATADA.</p>

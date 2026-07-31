@@ -1,8 +1,8 @@
 <script setup>
 import { ChevronDownIcon } from '@heroicons/vue/24/outline';
-import { computed, useSlots } from 'vue';
+import { computed, onMounted, ref, useSlots } from 'vue';
 
-defineProps({
+const props = defineProps({
     title: { type: String, required: true },
     icon: { type: String, default: '' },
     description: { type: String, default: '' },
@@ -12,15 +12,23 @@ defineProps({
 });
 
 const slots = useSlots();
+const detailsRef = ref(null);
 
 const hasSlotContent = computed(() => (slots.default?.() ?? []).length > 0);
+
+// Não usar :open no template — o Vue reaplicava o atributo e impedia abrir/fechar.
+onMounted(() => {
+    if (props.defaultOpen && detailsRef.value) {
+        detailsRef.value.open = true;
+    }
+});
 </script>
 
 <template>
     <details
         v-if="collapsible"
+        ref="detailsRef"
         class="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm open:border-talents-200/80 open:shadow-md"
-        :open="defaultOpen || undefined"
     >
         <summary
             class="flex cursor-pointer list-none items-start justify-between gap-3 bg-gradient-to-r from-talents-50/60 to-white px-5 py-4 transition hover:from-talents-50/90 marker:content-none [&::-webkit-details-marker]:hidden"
@@ -44,7 +52,7 @@ const hasSlotContent = computed(() => (slots.default?.() ?? []).length > 0);
                 </p>
             </div>
             <ChevronDownIcon
-                class="mt-0.5 h-5 w-5 shrink-0 text-talents-500 transition-transform duration-200 group-open:rotate-180"
+                class="pointer-events-none mt-0.5 h-5 w-5 shrink-0 text-talents-500 transition-transform duration-200 group-open:rotate-180"
             />
         </summary>
 

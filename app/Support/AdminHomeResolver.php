@@ -32,7 +32,7 @@ class AdminHomeResolver
         'equipe' => 'admin.users.index',
         'entrevistas' => 'admin.entrevistas.index',
         'feedbacks' => 'admin.feedbacks.index',
-        'ferias' => 'admin.ferias.index',
+        'ferias' => 'admin.companies.index',
         'desligamento' => 'admin.survey-templates.index',
     ];
 

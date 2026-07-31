@@ -68,7 +68,6 @@ const remove = (id) => {
         <template #header>
             <FormPageHeader
                 :back-href="route('admin.dashboard')"
-                back-label="Dashboard"
                 title="Destaques do mês"
                 subtitle="Reconheça colaboradores com foto de perfil e categoria do mês"
             >

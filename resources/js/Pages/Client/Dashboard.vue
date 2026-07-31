@@ -36,6 +36,7 @@ const props = defineProps({
         default: () => ({ completion_rate: null, section_results: [] }),
     },
     pendingComplaintsCount: { type: Number, default: 0 },
+    activeHiringProcessesCount: { type: Number, default: 0 },
     openActionPlanCount: { type: Number, default: 0 },
     openActionPlanItems: { type: Array, default: () => [] },
     pendingTasks: { type: Array, default: () => [] },
@@ -86,11 +87,26 @@ const nextCalendarItem = computed(() => {
     return u[0];
 });
 
+const isCompanyAdmin = computed(() => page.props.auth?.user?.role === 'company_admin');
+
 const attentionTotal = computed(() => {
     let n = 0;
     if (can('denuncias', 'view')) n += props.pendingComplaintsCount || 0;
     if (can('tarefas', 'view')) n += props.pendingTasks?.length || 0;
+    if (isCompanyAdmin.value && can('acompanhamento', 'view')) {
+        n += props.activeHiringProcessesCount || 0;
+    }
     return n;
+});
+
+const attentionHref = computed(() => {
+    if (isCompanyAdmin.value && can('acompanhamento', 'view') && (props.activeHiringProcessesCount || 0) > 0) {
+        return route('client.acompanhamento.index');
+    }
+    if (can('denuncias', 'view') && (props.pendingComplaintsCount || 0) > 0) {
+        return route('client.complaints.index');
+    }
+    return route('client.tarefas.index');
 });
 </script>
 
@@ -118,7 +134,7 @@ const attentionTotal = computed(() => {
                 </div>
                 <Link
                     v-if="attentionTotal > 0"
-                    :href="can('denuncias', 'view') ? route('client.complaints.index') : route('client.tarefas.index')"
+                    :href="attentionHref"
                     class="dashboard-header-cta"
                 >
                     <span class="dashboard-header-cta-badge">
@@ -128,6 +144,30 @@ const attentionTotal = computed(() => {
                 </Link>
             </div>
         </template>
+
+        <div
+            v-if="isCompanyAdmin && can('acompanhamento', 'view') && activeHiringProcessesCount > 0"
+            class="mb-4 rounded-xl border border-talents-200 bg-talents-50 px-4 py-3 text-sm text-talents-900"
+        >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <p>
+                    <span class="font-semibold">
+                        {{
+                            activeHiringProcessesCount === 1
+                                ? 'Há 1 vaga ativa no acompanhamento.'
+                                : `Há ${activeHiringProcessesCount} vagas ativas no acompanhamento.`
+                        }}
+                    </span>
+                    Acompanhe o andamento das fases de contratação.
+                </p>
+                <Link
+                    :href="route('client.acompanhamento.index')"
+                    class="inline-flex shrink-0 rounded-xl bg-talents-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-talents-700"
+                >
+                    Ver acompanhamento
+                </Link>
+            </div>
+        </div>
 
         <template #aside>
             <div class="space-y-4">
@@ -153,6 +193,19 @@ const attentionTotal = computed(() => {
                         class="block font-medium text-talents-800 hover:underline"
                     >
                         Denúncias
+                    </Link>
+                    <Link
+                        v-if="can('acompanhamento', 'view')"
+                        :href="route('client.acompanhamento.index')"
+                        class="block font-medium text-talents-800 hover:underline"
+                    >
+                        Acompanhamento
+                        <span
+                            v-if="isCompanyAdmin && activeHiringProcessesCount > 0"
+                            class="ml-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-talents-600 px-1.5 py-0.5 text-[10px] font-bold text-white"
+                        >
+                            {{ activeHiringProcessesCount > 99 ? '99+' : activeHiringProcessesCount }}
+                        </span>
                     </Link>
                     <Link
                         v-if="can('tarefas', 'view')"

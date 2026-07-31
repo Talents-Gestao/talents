@@ -158,7 +158,7 @@ const onNavigate = () => {
             />
             <span
                 v-if="showCollapsedUnreadDot"
-                class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-600 ring-2 ring-white"
+                class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-talents-600 ring-2 ring-white"
                 aria-hidden="true"
             />
         </span>
@@ -171,7 +171,7 @@ const onNavigate = () => {
                 <span class="truncate">{{ label }}</span>
                 <span
                     v-if="numericBadge"
-                    class="ml-2 inline-flex min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold normal-case tracking-normal text-white"
+                    class="ml-2 inline-flex min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-talents-600 px-1.5 py-0.5 text-[10px] font-bold normal-case tracking-normal text-white"
                 >
                     {{ numericBadge > 99 ? '99+' : numericBadge }}
                 </span>

@@ -195,8 +195,31 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::delete('{leave}', [EmployeeLeaveController::class, 'destroy'])->name('destroy');
     });
 
-    Route::middleware('can.module:acompanhamento')->prefix('acompanhamento')->name('acompanhamento.')->group(function () {
-        Route::get('/', [AcompanhamentoController::class, 'index'])->name('index');
+    Route::prefix('acompanhamento')->name('acompanhamento.')->group(function () {
+        Route::get('/', [AcompanhamentoController::class, 'index'])
+            ->middleware('can.module:acompanhamento')
+            ->name('index');
+        Route::post('/', [AcompanhamentoController::class, 'store'])
+            ->middleware('can.module:acompanhamento,create')
+            ->name('store');
+        Route::post('reordenar', [AcompanhamentoController::class, 'reorder'])
+            ->middleware('can.module:acompanhamento,edit')
+            ->name('reorder');
+        Route::patch('{hiringProcess}', [AcompanhamentoController::class, 'update'])
+            ->middleware('can.module:acompanhamento,edit')
+            ->name('update');
+        Route::post('{hiringProcess}/avancar', [AcompanhamentoController::class, 'advance'])
+            ->middleware('can.module:acompanhamento,edit')
+            ->name('advance');
+        Route::post('{hiringProcess}/recuar', [AcompanhamentoController::class, 'retreat'])
+            ->middleware('can.module:acompanhamento,edit')
+            ->name('retreat');
+        Route::post('{hiringProcess}/observacoes', [AcompanhamentoController::class, 'storeComment'])
+            ->middleware('can.module:acompanhamento,edit')
+            ->name('comments.store');
+        Route::delete('{hiringProcess}', [AcompanhamentoController::class, 'destroy'])
+            ->middleware('can.module:acompanhamento,delete')
+            ->name('destroy');
     });
 
     Route::middleware('can.module:desligamento')->prefix('desligamento')->name('desligamento.')->group(function () {

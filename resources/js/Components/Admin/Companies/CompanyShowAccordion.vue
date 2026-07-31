@@ -1,7 +1,8 @@
 <script setup>
 import { ChevronDownIcon } from '@heroicons/vue/24/outline';
+import { onMounted, ref } from 'vue';
 
-defineProps({
+const props = defineProps({
     title: { type: String, required: true },
     description: { type: String, default: '' },
     defaultOpen: { type: Boolean, default: false },
@@ -11,17 +12,25 @@ defineProps({
         validator: (v) => ['default', 'danger'].includes(v),
     },
 });
+
+const detailsRef = ref(null);
+
+onMounted(() => {
+    if (props.defaultOpen && detailsRef.value) {
+        detailsRef.value.open = true;
+    }
+});
 </script>
 
 <template>
     <details
+        ref="detailsRef"
         class="group overflow-hidden rounded-3xl border shadow-sm open:shadow-md"
         :class="
             tone === 'danger'
                 ? 'border-red-200/80 bg-red-50/40 open:border-red-300'
                 : 'border-slate-200/80 bg-white open:border-talents-200/80'
         "
-        :open="defaultOpen || undefined"
     >
         <summary
             class="flex cursor-pointer list-none items-start justify-between gap-3 px-5 py-4 transition marker:content-none [&::-webkit-details-marker]:hidden sm:px-6"
@@ -57,7 +66,7 @@ defineProps({
                 </div>
             </div>
             <ChevronDownIcon
-                class="mt-1 h-5 w-5 shrink-0 transition-transform duration-200 group-open:rotate-180"
+                class="pointer-events-none mt-1 h-5 w-5 shrink-0 transition-transform duration-200 group-open:rotate-180"
                 :class="tone === 'danger' ? 'text-red-500' : 'text-talents-500'"
             />
         </summary>

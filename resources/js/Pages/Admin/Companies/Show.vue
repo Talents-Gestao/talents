@@ -2,12 +2,12 @@
 import CompanyShowAccordion from '@/Components/Admin/Companies/CompanyShowAccordion.vue';
 import RhidMetricsCard from '@/Components/Admin/Companies/RhidMetricsCard.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import BackLink from '@/Components/BackLink.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import Modal from '@/Components/Modal.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import {
-    ArrowLeftIcon,
     BuildingOffice2Icon,
     ChartBarIcon,
     ClipboardDocumentListIcon,
@@ -38,6 +38,8 @@ const props = defineProps({
     templates: Array,
     methodologyTemplates: { type: Array, default: () => [] },
     employees: { type: Array, default: () => [] },
+    leaves: { type: Array, default: () => [] },
+    feriasEnabled: { type: Boolean, default: false },
     regulations: { type: Array, default: () => [] },
     highlights: { type: Array, default: () => [] },
 });
@@ -57,6 +59,13 @@ const tabs = computed(() => {
 
     if (canAdmin('companies')) {
         items.push({ id: 'colaboradores', label: 'Colaboradores' });
+    }
+
+    if (canAdmin('ferias')) {
+        items.push({ id: 'ferias', label: 'Férias' });
+    }
+
+    if (canAdmin('companies')) {
         items.push({ id: 'regulamento', label: 'Regulamento interno' });
         items.push({ id: 'uniformes', label: 'Controle de uniformes', badge: 'Em breve' });
         items.push({ id: 'destaques', label: 'Destaques do mês' });
@@ -206,6 +215,25 @@ const removeEmployee = (id) => {
     }
 };
 
+const leaveStatusBadgeClass = (status) => {
+    const map = {
+        scheduled: 'bg-sky-50 text-sky-800 ring-sky-200',
+        in_progress: 'bg-amber-50 text-amber-800 ring-amber-200',
+        completed: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+        cancelled: 'bg-slate-100 text-slate-600 ring-slate-200',
+    };
+
+    return map[status] ?? 'bg-slate-100 text-slate-600 ring-slate-200';
+};
+
+const formatLeaveDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR') : '—');
+
+const removeLeave = (id) => {
+    if (confirm('Remover este período de férias?')) {
+        router.delete(route('admin.ferias.destroy', id), { preserveScroll: true });
+    }
+};
+
 const removeRegulation = (id) => {
     if (confirm('Remover este regulamento?')) {
         router.delete(route('admin.regulamento-interno.destroy', id), { preserveScroll: true });
@@ -224,13 +252,11 @@ const removeHighlight = (id) => {
 
     <AdminLayout>
         <template #header>
-            <Link
+            <BackLink
                 :href="route('admin.companies.index')"
-                class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-talents-700"
-            >
-                <ArrowLeftIcon class="h-4 w-4" aria-hidden="true" />
-                Empresas
-            </Link>
+                label="Empresas"
+                :prefer-history="false"
+            />
         </template>
 
         <div class="space-y-6">
@@ -723,6 +749,99 @@ const removeHighlight = (id) => {
                     </ul>
                     <p v-else class="px-5 py-8 text-center text-sm text-slate-500 sm:px-6">
                         Nenhum colaborador cadastrado para esta empresa.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Tab: Férias -->
+            <div v-else-if="activeTab === 'ferias'" class="space-y-4">
+                <div class="surface-card overflow-hidden">
+                    <div
+                        class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6"
+                    >
+                        <div class="flex items-start gap-3">
+                            <div
+                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-talents-50 text-talents-700"
+                            >
+                                <SunIcon class="h-5 w-5" aria-hidden="true" />
+                            </div>
+                            <div>
+                                <h2 class="text-base font-semibold text-slate-900">Férias</h2>
+                                <p class="text-sm text-slate-500">
+                                    Períodos de férias dos colaboradores desta empresa.
+                                </p>
+                            </div>
+                        </div>
+                        <Link v-if="feriasEnabled" :href="route('admin.ferias.create')">
+                            <span
+                                class="inline-flex rounded-full bg-talents-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800"
+                            >
+                                Novo período
+                            </span>
+                        </Link>
+                    </div>
+
+                    <p
+                        v-if="!feriasEnabled"
+                        class="mx-5 my-4 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-sm text-amber-900 sm:mx-6"
+                    >
+                        O módulo de Férias não está ativo para esta empresa (plano ou configuração de acesso).
+                    </p>
+
+                    <div v-else-if="leaves.length" class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead
+                                class="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                            >
+                                <tr>
+                                    <th class="px-5 py-3 sm:px-6">Colaborador</th>
+                                    <th class="px-5 py-3">Início</th>
+                                    <th class="px-5 py-3">Fim</th>
+                                    <th class="px-5 py-3">Dias</th>
+                                    <th class="px-5 py-3">Status</th>
+                                    <th class="px-5 py-3 text-right sm:px-6">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr v-for="leave in leaves" :key="leave.id" class="hover:bg-talents-50/30">
+                                    <td class="px-5 py-3.5 sm:px-6">
+                                        <p class="font-medium text-slate-800">{{ leave.employee?.name ?? '—' }}</p>
+                                        <p class="text-xs text-slate-500">{{ leave.employee?.email || '—' }}</p>
+                                    </td>
+                                    <td class="px-5 py-3.5 text-slate-700">{{ formatLeaveDate(leave.start_date) }}</td>
+                                    <td class="px-5 py-3.5 text-slate-700">{{ formatLeaveDate(leave.end_date) }}</td>
+                                    <td class="px-5 py-3.5 text-slate-700">{{ leave.days }}</td>
+                                    <td class="px-5 py-3.5">
+                                        <span
+                                            class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
+                                            :class="leaveStatusBadgeClass(leave.status)"
+                                        >
+                                            {{ leave.status_label }}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-3.5 sm:px-6">
+                                        <div class="flex items-center justify-end gap-3">
+                                            <Link
+                                                :href="route('admin.ferias.edit', leave.id)"
+                                                class="text-sm font-medium text-talents-700 hover:underline"
+                                            >
+                                                Editar
+                                            </Link>
+                                            <button
+                                                type="button"
+                                                class="text-sm font-medium text-red-600 hover:underline"
+                                                @click="removeLeave(leave.id)"
+                                            >
+                                                Remover
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p v-else-if="feriasEnabled" class="px-5 py-8 text-center text-sm text-slate-500 sm:px-6">
+                        Nenhum período de férias cadastrado para esta empresa.
                     </p>
                 </div>
             </div>

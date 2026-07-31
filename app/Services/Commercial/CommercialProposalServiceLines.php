@@ -29,7 +29,7 @@ class CommercialProposalServiceLines
             'pesquisas' => 'Pesquisas e Organograma',
             'profiler' => 'Profiler — Diagnóstico Comportamental',
             'devolutiva' => 'Devolutiva e Diagnóstico',
-            'nr1' => 'NR-1 — Mapeamento de Risco Psicossocial (12 parcelas)',
+            'nr1' => 'NR-1 — Mapeamento de Risco Psicossocial',
             'nr1_implantacao' => 'NR-1 — Implantação',
             'contratacao' => 'Contratação / Recrutamento',
             'direcionamento' => 'Direcionamento Estratégico',

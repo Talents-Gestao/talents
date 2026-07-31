@@ -346,9 +346,10 @@
 <body>
     @php
         $brl = fn ($cents) => 'R$ '.number_format(((int) $cents) / 100, 2, ',', '.');
-        $paymentConditions = filled($settings->pdf_condicoes_pagamento)
-            ? $settings->pdf_condicoes_pagamento
-            : \App\Support\CommercialProposalPdfDefaults::defaultPaymentConditions();
+        $paymentConditions = $proposal->payment_method?->pdfBullet();
+        if ($paymentConditions === null && filled($settings->pdf_condicoes_pagamento)) {
+            $paymentConditions = $settings->pdf_condicoes_pagamento;
+        }
         $closingText = filled($settings->pdf_texto_encerramento)
             ? $settings->pdf_texto_encerramento
             : \App\Support\CommercialProposalPdfDefaults::defaultClosingText();
@@ -494,7 +495,10 @@
         <hr class="section-divider">
         <h2>Condições de Pagamento</h2>
         <div class="section-text">
-            @include('reports.partials.description-text', ['text' => $paymentConditions])
+            @if(filled($paymentConditions))
+                @include('reports.partials.description-text', ['text' => $paymentConditions])
+            @endif
+            <p class="desc-paragraph">{{ \App\Support\CommercialProposalPdfDefaults::defaultMinimumStayCondition() }}</p>
             <p class="desc-paragraph">• Prazo de validade desta proposta: {{ $settings->pdf_validade_dias ?? 7 }} dias.</p>
         </div>
 

@@ -23,6 +23,8 @@ use App\Http\Controllers\Client\ComplaintController;
 use App\Http\Controllers\Admin\Finance\CommissionController as FinanceCommissionController;
 use App\Http\Controllers\Admin\Finance\FinanceDashboardController;
 use App\Http\Controllers\Admin\Finance\InstallmentController as FinanceInstallmentController;
+use App\Http\Controllers\Admin\Finance\PayableController as FinancePayableController;
+use App\Http\Controllers\Admin\Finance\PaymentMethodController as FinancePaymentMethodController;
 use App\Http\Controllers\Admin\Finance\SaleController as FinanceSaleController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\InternalRegulationController;
@@ -64,6 +66,7 @@ use App\Http\Controllers\Admin\Tasks\TaskBoardMemberController;
 use App\Http\Controllers\Admin\Tasks\TemplateCardController as TasksTemplateCardController;
 use App\Http\Controllers\Admin\Tasks\TemplateListController as TasksTemplateListController;
 use App\Http\Controllers\Admin\Interviews\InterviewController;
+use App\Http\Controllers\Admin\Meetings\MeetingController;
 use App\Http\Controllers\Admin\Interviews\InterviewQuestionnaireController;
 use App\Http\Controllers\Admin\Interviews\InterviewReportController;
 use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
@@ -288,6 +291,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::patch('acompanhamento/{hiringProcess}', [HiringProcessController::class, 'update'])->name('acompanhamento.update');
         Route::post('acompanhamento/{hiringProcess}/avancar', [HiringProcessController::class, 'advance'])->name('acompanhamento.advance');
         Route::post('acompanhamento/{hiringProcess}/recuar', [HiringProcessController::class, 'retreat'])->name('acompanhamento.retreat');
+        Route::post('acompanhamento/{hiringProcess}/observacoes', [HiringProcessController::class, 'storeComment'])->name('acompanhamento.comments.store');
         Route::delete('acompanhamento/{hiringProcess}', [HiringProcessController::class, 'destroy'])->name('acompanhamento.destroy');
     });
 
@@ -344,6 +348,19 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('comissoes', [FinanceCommissionController::class, 'index'])->name('comissoes.index');
         Route::patch('comissoes/{commission}', [FinanceCommissionController::class, 'update'])
             ->name('comissoes.update');
+
+        Route::resource('formas-pagamento', FinancePaymentMethodController::class)
+            ->except(['show'])
+            ->parameters(['formas-pagamento' => 'payment_method']);
+
+        Route::get('contas-a-pagar', [FinancePayableController::class, 'index'])->name('contas-a-pagar.index');
+        Route::get('contas-a-pagar/nova', [FinancePayableController::class, 'create'])->name('contas-a-pagar.create');
+        Route::post('contas-a-pagar', [FinancePayableController::class, 'store'])->name('contas-a-pagar.store');
+        Route::get('contas-a-pagar/{payable}/editar', [FinancePayableController::class, 'edit'])->name('contas-a-pagar.edit');
+        Route::put('contas-a-pagar/{payable}', [FinancePayableController::class, 'update'])->name('contas-a-pagar.update');
+        Route::delete('contas-a-pagar/{payable}', [FinancePayableController::class, 'destroy'])->name('contas-a-pagar.destroy');
+        Route::patch('contas-a-pagar/{payable}/pagar', [FinancePayableController::class, 'markPaid'])
+            ->name('contas-a-pagar.mark-paid');
     });
 
     Route::middleware('admin.can:tarefas')->prefix('tarefas')->name('tarefas.')->group(function () {
@@ -419,6 +436,17 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('{interview}/reprocessar', [InterviewController::class, 'reprocess'])->name('reprocess');
         Route::get('{interview}', [InterviewController::class, 'show'])->name('show');
         Route::delete('{interview}', [InterviewController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::middleware('admin.can:entrevistas')->prefix('reunioes')->name('reunioes.')->group(function () {
+        Route::get('/', [MeetingController::class, 'index'])->name('index');
+        Route::get('nova', [MeetingController::class, 'create'])->name('create');
+        Route::post('/', [MeetingController::class, 'store'])->name('store');
+        Route::post('{meeting}/audio', [MeetingController::class, 'storeAudio'])->name('audio.store');
+        Route::patch('{meeting}/ata', [MeetingController::class, 'updateMinutes'])->name('minutes.update');
+        Route::post('{meeting}/reprocessar', [MeetingController::class, 'reprocess'])->name('reprocess');
+        Route::get('{meeting}', [MeetingController::class, 'show'])->name('show');
+        Route::delete('{meeting}', [MeetingController::class, 'destroy'])->name('destroy');
     });
 
     Route::middleware('admin.can:equipe')->group(function () {

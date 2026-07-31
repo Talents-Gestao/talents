@@ -134,6 +134,9 @@ const pdfProductLabels = computed(() =>
                                 max="365"
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             />
+                            <p class="mt-1 text-xs text-slate-500">
+                                O PDF também inclui sempre a permanência mínima de 90 dias (3 meses) para cancelamento do plano.
+                            </p>
                         </div>
                         <div>
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Texto de aceite</label>
@@ -148,9 +151,13 @@ const pdfProductLabels = computed(() =>
                             <textarea
                                 v-model="form.pdf_condicoes_pagamento"
                                 rows="3"
-                                placeholder="Ex.: • Parcelamento em até 5x no cartão de crédito;"
+                                placeholder="Usado apenas em propostas antigas sem forma de pagamento definida"
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             />
+                            <p class="mt-1 text-xs text-slate-500">
+                                Nas propostas novas, a forma de pagamento (Boleto, PIX, crédito ou débito) é escolhida no formulário da proposta.
+                                Este texto só entra no PDF se a proposta ainda não tiver forma definida.
+                            </p>
                         </div>
                         <div>
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Texto de encerramento (PDF)</label>

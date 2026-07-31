@@ -6,9 +6,12 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import { formatCnpj, maskCnpj } from '@/utils/formatCnpj';
 import { StarIcon as StarOutline } from '@heroicons/vue/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/vue/24/solid';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import axios from 'axios';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     mode: { type: String, required: true },
@@ -22,7 +25,7 @@ const initial = props.diagnostic ?? props.prefill ?? {};
 const form = useForm({
     company_id: initial.company_id ?? '',
     company_name: initial.company_name ?? '',
-    cnpj: initial.cnpj ?? '',
+    cnpj: maskCnpj(initial.cnpj ?? ''),
     segment: initial.segment ?? '',
     employee_count: initial.employee_count ?? '',
     responsible_name: initial.responsible_name ?? '',
@@ -35,6 +38,60 @@ const form = useForm({
 
 const fieldClass =
     'mt-1 block w-full rounded-xl border-slate-200 shadow-sm focus:border-talents-400 focus:ring-talents-200/70';
+
+const lookupLoading = ref(false);
+const lookupError = ref('');
+const lookupSuccess = ref('');
+/** null | 'found' | 'not_found' */
+const cnpjLookupStatus = ref(null);
+
+const cnpjDigitCount = computed(() => (String(form.cnpj || '').match(/\d/g) || []).length);
+const canLookupCnpj = computed(() => cnpjDigitCount.value === 14);
+const cnpjBlocksSave = computed(() => cnpjLookupStatus.value === 'not_found');
+const canSubmit = computed(() => !form.processing && !lookupLoading.value && !cnpjBlocksSave.value);
+
+const fetchCnpjFromReceita = async () => {
+    lookupError.value = '';
+    lookupSuccess.value = '';
+    cnpjLookupStatus.value = null;
+    if (!canLookupCnpj.value) {
+        lookupError.value = 'Informe um CNPJ com 14 dígitos.';
+        return;
+    }
+    lookupLoading.value = true;
+    try {
+        const { data } = await axios.get(route('admin.companies.lookup-cnpj'), {
+            params: { cnpj: form.cnpj },
+        });
+        form.cnpj = maskCnpj(data.cnpj ?? form.cnpj);
+        lookupSuccess.value = 'Empresa encontrada';
+        cnpjLookupStatus.value = 'found';
+    } catch (e) {
+        const d = e.response?.data;
+        const apiMessage =
+            typeof d?.message === 'string'
+                ? d.message
+                : d?.errors?.cnpj?.[0] ?? '';
+
+        // Erros de infraestrutura/configuração: manter detalhe; CNPJ inválido/inexistente: label simples.
+        if (/configurada|limite|fila|indisponível|consultar o CNPJ|Resposta|14 dígitos/i.test(apiMessage)) {
+            lookupError.value = apiMessage;
+            cnpjLookupStatus.value = null;
+        } else {
+            lookupError.value = 'Empresa não encontrada';
+            cnpjLookupStatus.value = 'not_found';
+        }
+    } finally {
+        lookupLoading.value = false;
+    }
+};
+
+const onCnpjInput = (event) => {
+    form.cnpj = maskCnpj(event.target.value);
+    lookupError.value = '';
+    lookupSuccess.value = '';
+    cnpjLookupStatus.value = null;
+};
 
 const onCompanySelect = () => {
     const id = form.company_id ? Number(form.company_id) : null;
@@ -60,13 +117,22 @@ const clearForm = () => {
     form.company_history = '';
     form.biggest_challenge = '';
     form.hr_maturity = null;
+    lookupError.value = '';
+    lookupSuccess.value = '';
+    cnpjLookupStatus.value = null;
     form.clearErrors();
 };
 
 const submit = () => {
+    if (cnpjBlocksSave.value) {
+        lookupError.value = 'Empresa não encontrada';
+        return;
+    }
+
     const payload = {
         ...form.data(),
         company_id: form.company_id || null,
+        cnpj: formatCnpj(form.cnpj),
     };
 
     if (props.mode === 'create') {
@@ -139,7 +205,46 @@ const submit = () => {
 
                 <div>
                     <InputLabel for="cnpj" value="CNPJ" />
-                    <TextInput id="cnpj" v-model="form.cnpj" class="mt-1 block w-full" />
+                    <p class="mt-0.5 text-xs text-slate-500">
+                        Informe o CNPJ e busque na Receita Federal para verificar se a empresa existe.
+                    </p>
+                    <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                        <TextInput
+                            id="cnpj"
+                            v-model="form.cnpj"
+                            class="block w-full"
+                            placeholder="00.000.000/0001-00"
+                            inputmode="numeric"
+                            maxlength="18"
+                            @input="onCnpjInput"
+                        />
+                        <SecondaryButton
+                            type="button"
+                            class="shrink-0 justify-center disabled:!opacity-100 sm:self-auto sm:py-2"
+                            :disabled="form.processing || lookupLoading || !canLookupCnpj"
+                            @click="fetchCnpjFromReceita"
+                        >
+                            {{ lookupLoading ? 'Buscando…' : 'Buscar na Receita Federal' }}
+                        </SecondaryButton>
+                    </div>
+                    <p
+                        v-if="lookupError"
+                        class="mt-2 inline-flex rounded-lg bg-red-50 px-2.5 py-1 text-sm font-semibold text-red-700"
+                    >
+                        {{ lookupError }}
+                    </p>
+                    <p
+                        v-else-if="lookupSuccess"
+                        class="mt-2 inline-flex rounded-lg bg-emerald-50 px-2.5 py-1 text-sm font-semibold text-emerald-700"
+                    >
+                        {{ lookupSuccess }}
+                    </p>
+                    <p
+                        v-if="cnpjBlocksSave"
+                        class="mt-2 text-sm text-red-600"
+                    >
+                        Não é possível guardar o diagnóstico com um CNPJ inexistente. Corrija o CNPJ e busque novamente.
+                    </p>
                     <InputError class="mt-1" :message="form.errors.cnpj" />
                 </div>
 
@@ -233,7 +338,7 @@ const submit = () => {
                 </div>
 
                 <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
-                    <PrimaryButton type="submit" :disabled="form.processing">
+                    <PrimaryButton type="submit" :disabled="!canSubmit">
                         {{ mode === 'create' ? 'Guardar diagnóstico' : 'Atualizar diagnóstico' }}
                     </PrimaryButton>
                     <div class="flex items-center gap-3">

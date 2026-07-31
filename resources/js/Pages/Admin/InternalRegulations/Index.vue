@@ -46,7 +46,6 @@ const remove = (id) => {
         <template #header>
             <FormPageHeader
                 :back-href="route('admin.dashboard')"
-                back-label="Dashboard"
                 title="Regulamento interno"
                 subtitle="Documentos por empresa com editor de texto formatado"
             >
