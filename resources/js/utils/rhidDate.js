@@ -64,6 +64,35 @@ export function monthRangeHtmlDates() {
     return { first, last };
 }
 
+/**
+ * Primeiro e último dia civil do mês indicado (YYYY-MM).
+ * @param {string} yearMonth
+ * @returns {{ first: string, last: string }}
+ */
+export function monthRangeHtmlDatesFromYm(yearMonth) {
+    const m = String(yearMonth ?? '').trim();
+    if (!/^\d{4}-\d{2}$/.test(m)) {
+        return monthRangeHtmlDates();
+    }
+    const y = Number(m.slice(0, 4));
+    const mo = Number(m.slice(5, 7));
+    if (!Number.isFinite(y) || mo < 1 || mo > 12) {
+        return monthRangeHtmlDates();
+    }
+    const pad = (n) => String(n).padStart(2, '0');
+    const first = `${y}-${pad(mo)}-01`;
+    const lastDay = new Date(y, mo, 0).getDate();
+    const last = `${y}-${pad(mo)}-${pad(lastDay)}`;
+    return { first, last };
+}
+
+/** @returns {string} YYYY-MM do mês civil atual */
+export function currentYearMonthHtml() {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+}
+
 /** @returns {{ first: string, last: string }} primeiro e último dia do mês civil anterior ao atual */
 export function previousMonthRangeHtmlDates() {
     const now = new Date();

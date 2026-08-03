@@ -16,6 +16,8 @@ import {
     formatRhidBankBalanceDisplay,
     formatRhidBankBalanceMinutes,
     monthRangeHtmlDates,
+    monthRangeHtmlDatesFromYm,
+    currentYearMonthHtml,
     parseRhidBankBalanceMinutes,
     pickRhidPersonDisplayName,
     formatPeriodPtBr,
@@ -74,6 +76,8 @@ const overviewPunchesSample = ref(null);
 const overviewBankRows = ref([]);
 const overviewAdherence = ref(null);
 const overviewMonthlyCompliance = ref(null);
+const overviewMonthlyComplianceMonth = ref(currentYearMonthHtml());
+const overviewMonthlyComplianceLoading = ref(false);
 const overviewJustTotal = ref(null);
 const overviewJustAtestados = ref(null);
 const overviewJustNote = ref('');
@@ -1109,6 +1113,34 @@ const syncBankFiltersFromSelectors = () => {
     bankFilterPersonroles.value = String(bankSelPersonRole.value ?? '').trim();
 };
 
+const loadOverviewMonthlyCompliance = async () => {
+    if (!props.configured) {
+        return;
+    }
+    overviewMonthlyComplianceLoading.value = true;
+    try {
+        const { first, last } = monthRangeHtmlDatesFromYm(overviewMonthlyComplianceMonth.value);
+        const { data } = await axios.get(route('client.rhid.api.espelhos.monthly-compliance'), {
+            params: { ini: first, fim: last },
+        });
+        overviewMonthlyCompliance.value = data;
+    } catch (e) {
+        overviewMonthlyCompliance.value = null;
+        handleError(e);
+    } finally {
+        overviewMonthlyComplianceLoading.value = false;
+    }
+};
+
+const onOverviewMonthlyComplianceMonthChange = async (ym) => {
+    const next = String(ym ?? '').trim();
+    if (!/^\d{4}-\d{2}$/.test(next) || next === overviewMonthlyComplianceMonth.value) {
+        return;
+    }
+    overviewMonthlyComplianceMonth.value = next;
+    await loadOverviewMonthlyCompliance();
+};
+
 const loadOverviewData = async () => {
     if (!props.configured) {
         return;
@@ -1117,13 +1149,13 @@ const loadOverviewData = async () => {
     clearErr();
     overviewBankRowsPrevMonthEnd.value = null;
     overviewAdherencePrevious.value = null;
-    overviewMonthlyCompliance.value = null;
     overviewJustTotalPrevious.value = null;
     overviewJustAtestadosPrevious.value = null;
     overviewJustNotePrevious.value = '';
     try {
         const { first: mFirst, last: mLast } = monthRangeHtmlDates();
         const { first: pFirst, last: pLast } = previousMonthRangeHtmlDates();
+        const { first: mcFirst, last: mcLast } = monthRangeHtmlDatesFromYm(overviewMonthlyComplianceMonth.value);
         const dateParamToday = toRhidYmd(todayHtmlDate()) || todayHtmlDate();
         const dateParamPrevMonthEnd = toRhidYmd(pLast) || pLast.replace(/\D/g, '').slice(0, 8);
         const [punchRes, bankRes, adhRes, typesRes, monthlyRes] = await Promise.all([
@@ -1134,7 +1166,7 @@ const loadOverviewData = async () => {
             }),
             axios.get(route('client.rhid.api.justification-types')),
             axios.get(route('client.rhid.api.espelhos.monthly-compliance'), {
-                params: { ini: mFirst, fim: mLast },
+                params: { ini: mcFirst, fim: mcLast },
             }),
         ]);
         overviewPunchesSample.value = punchRes.data;
@@ -2886,6 +2918,8 @@ const justDeptBarChart = computed(() => {
                 :overview-adherence-previous-dias-calendario="overviewAdherencePreviousDiasCalendario"
                 :overview-adherence-worst-entrada="overviewAdherenceWorstEntrada"
                 :overview-monthly-compliance="overviewMonthlyCompliance"
+                :overview-monthly-compliance-month="overviewMonthlyComplianceMonth"
+                :overview-monthly-compliance-loading="overviewMonthlyComplianceLoading"
                 :overview-just-total="overviewJustTotal"
                 :overview-just-atestados="overviewJustAtestados"
                 :overview-just-note="overviewJustNote"
@@ -2895,6 +2929,7 @@ const justDeptBarChart = computed(() => {
                 :bank-display-value="bankDisplayValue"
                 :rhid-person-id="rhidPersonId"
                 @refresh="loadOverviewData"
+                @monthly-compliance-month-change="onOverviewMonthlyComplianceMonthChange"
                 @go-punches-adherence="tab = 'punches'; punchesSubTab = 'adherence'"
                 @go-bank="tab = 'bank'"
                 @go-justifications="tab = 'justifications'"
