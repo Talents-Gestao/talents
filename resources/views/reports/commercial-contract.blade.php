@@ -4,16 +4,24 @@
     <meta charset="utf-8">
     <title>Contrato — {{ $code }}</title>
     <style>
-        /* Margem inferior maior reserva espaço para o rodapé fixo (DomPDF) */
-        @page { margin: 12mm 16mm 22mm 16mm; }
+        /* Margem inferior maior reserva espaço para o rodapé do timbrado (DomPDF) */
+        /* Direita maior: reserva faixa para a borboleta do timbrado (não sobrepor o texto) */
+        @page { margin: 12mm 16mm 28mm 16mm; }
         body {
             font-family: DejaVu Sans, sans-serif;
             font-size: 12px;
             color: #0f172a;
             line-height: 1.45;
             margin: 0;
-            padding: 0 0 6mm;
+            padding: 0 0 8mm;
             box-sizing: border-box;
+        }
+        .doc-main {
+            position: relative;
+            z-index: 3;
+            /* Folga à direita (DomPDF respeita melhor margin do que padding) */
+            margin-right: 24mm;
+            width: auto;
         }
         .top-stripe {
             height: 3mm;
@@ -38,7 +46,25 @@
         .meta-val { font-size: 12px; color: #0f172a; font-weight: bold; }
         .contract-body { margin-top: 4px; }
         .contract-body table { border-collapse: collapse; }
-        /* Rodapé colado ao rodapé físico da página (pouco texto ou última página) */
+
+        /* Canto inferior direito, atrás do conteúdo — só decoração do timbrado */
+        .butterfly-decor {
+            position: fixed;
+            right: 2mm;
+            bottom: 30mm;
+            width: 20mm;
+            z-index: 1;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .butterfly-decor img {
+            width: 100%;
+            max-height: 28mm;
+            height: auto;
+            display: block;
+        }
+
+        /* Rodapé do timbrado oficial */
         .footer-wrap {
             position: fixed;
             bottom: 0;
@@ -50,26 +76,62 @@
             page-break-inside: avoid;
             z-index: 10;
         }
+        .footer-tagline {
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #510E62;
+            margin: 0 0 3px;
+        }
+        .footer-contacts {
+            text-align: center;
+            font-size: 7px;
+            color: #510E62;
+            margin: 0 0 3px;
+            line-height: 1.4;
+            font-weight: 700;
+        }
         .footer-meta {
             text-align: center;
-            font-size: 8px;
+            font-size: 7px;
             color: #94a3b8;
-            padding: 4px 0 4px;
+            padding: 2px 0 3px;
         }
         .footer-band {
             width: 100%;
             background: #4a2070;
             color: #fff;
-            font-size: 10px;
-            padding: 8px 0;
+            font-size: 9px;
+            padding: 6px 0;
         }
         .footer-band table { width: 100%; border-collapse: collapse; }
-        .footer-band td { vertical-align: middle; padding: 4px 16px; color: #fff; font-weight: bold; }
+        .footer-band td { vertical-align: middle; padding: 3px 16px; color: #fff; font-weight: bold; }
         .footer-band .col-left { text-align: left; }
         .footer-band .col-right { text-align: right; }
     </style>
 </head>
 <body>
+    @php
+        $footerAddress = filled($settings->company_address ?? null)
+            ? trim((string) $settings->company_address)
+            : 'Av. Fernão Dias Paes Leme, 1300 – Centro – Várzea Paulista – SP';
+
+        if (filled($settings->company_city_state ?? null) && ! str_contains($footerAddress, (string) $settings->company_city_state)) {
+            $footerAddress .= ' – '.$settings->company_city_state;
+        }
+
+        $footerEmail = filled($settings->company_email ?? null)
+            ? trim((string) $settings->company_email)
+            : 'contato@talentsgestao.com';
+
+        $footerPhone = filled($settings->company_phone ?? null)
+            ? trim((string) $settings->company_phone)
+            : '(11) 97570-3032';
+
+        $footerWebsite = 'www.talentsgestao.com';
+        $footerWhatsapp = '(11) 97570-3032';
+    @endphp
+
     <div class="doc-main">
         <div class="top-stripe"></div>
 
@@ -100,15 +162,28 @@
         </div>
     </div>
 
+    @if(!empty($butterflyBase64))
+        <div class="butterfly-decor">
+            <img src="{{ $butterflyBase64 }}" alt="">
+        </div>
+    @endif
+
     <div class="footer-wrap">
+        <p class="footer-tagline">Conectando Talentos e Transformando Negócios.</p>
+        <p class="footer-contacts">
+            {{ $footerAddress }}
+            | {{ $footerEmail }}
+            | {{ $footerWebsite }}
+            | {{ $footerPhone }}
+        </p>
         <div class="footer-meta">
             Contrato {{ $code }} — gerado em {{ now()->format('d/m/Y H:i') }}
         </div>
         <div class="footer-band">
             <table>
                 <tr>
-                    <td class="col-left">WhatsApp (11) 97570-3032</td>
-                    <td class="col-right">contato@talentsgestao.com</td>
+                    <td class="col-left">WhatsApp {{ $footerWhatsapp }}</td>
+                    <td class="col-right">{{ $footerEmail }}</td>
                 </tr>
             </table>
         </div>

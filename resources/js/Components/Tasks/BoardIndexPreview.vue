@@ -17,6 +17,29 @@ defineProps({
 
 const { isCollapsed: isListCollapsed, toggleCollapsed: toggleListCollapsed } = useCollapsedLists();
 
+/** A partir deste nº de cards, a coluna da prévia ganha max-height e scroll interno. */
+const LIST_SCROLL_AFTER_CARDS = 20;
+/** Altura aproximada de um card + gap na prévia (rem) — inclui badge/meta. */
+const LIST_CARD_SLOT_REM = 5.25;
+
+function listCardCount(list) {
+    return list?.cards?.length ?? 0;
+}
+
+function listNeedsCardScroll(list) {
+    return !isListCollapsed(list.id) && listCardCount(list) > LIST_SCROLL_AFTER_CARDS;
+}
+
+function listCardsScrollStyle(list) {
+    if (!listNeedsCardScroll(list)) {
+        return {};
+    }
+
+    return {
+        maxHeight: `min(${LIST_SCROLL_AFTER_CARDS * LIST_CARD_SLOT_REM}rem, calc(100dvh - 12rem))`,
+    };
+}
+
 const previewMenuOpenId = ref(null);
 const previewMenuPosition = ref(null);
 
@@ -117,13 +140,14 @@ onUnmounted(() => {
                 class="flex shrink-0 flex-col rounded-lg p-2 ring-1 ring-slate-200 transition-all duration-200"
                 :class="[
                     isListCollapsed(list.id) ? 'w-10 cursor-pointer' : 'w-64',
+                    listNeedsCardScroll(list) ? 'overflow-hidden' : '',
                     list.color ? '' : 'bg-white',
                 ]"
                 :style="listStyle(list)"
                 @click="isListCollapsed(list.id) && expandList(list)"
             >
                 <div
-                    class="mb-2 flex items-start justify-between gap-1 px-1"
+                    class="mb-2 flex shrink-0 items-start justify-between gap-1 px-1"
                     :class="isListCollapsed(list.id) ? 'mb-0 flex-col items-center' : ''"
                 >
                     <div
@@ -156,7 +180,12 @@ onUnmounted(() => {
                     </button>
                 </div>
 
-                <ul v-if="!isListCollapsed(list.id) && list.cards?.length" class="space-y-2">
+                <ul
+                    v-if="!isListCollapsed(list.id) && list.cards?.length"
+                    class="space-y-2"
+                    :class="listNeedsCardScroll(list) ? 'min-h-0 overflow-y-auto overscroll-y-contain' : ''"
+                    :style="listCardsScrollStyle(list)"
+                >
                     <li v-for="card in list.cards" :key="card.id">
                         <Link
                             :href="showRoute"

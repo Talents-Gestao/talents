@@ -145,6 +145,29 @@ function listColumnStyle(list) {
     };
 }
 
+/** A partir deste nº de cards, a coluna ganha max-height e scroll interno. */
+const LIST_SCROLL_AFTER_CARDS = 20;
+/** Altura aproximada de um card + gap (rem) — inclui badge/meta. */
+const LIST_CARD_SLOT_REM = 5.25;
+
+function listCardCount(list) {
+    return list?.cards?.length ?? 0;
+}
+
+function listNeedsCardScroll(list) {
+    return !isListCollapsed(list.id) && listCardCount(list) > LIST_SCROLL_AFTER_CARDS;
+}
+
+function listCardsScrollStyle(list) {
+    if (!listNeedsCardScroll(list)) {
+        return {};
+    }
+
+    return {
+        maxHeight: `min(${LIST_SCROLL_AFTER_CARDS * LIST_CARD_SLOT_REM}rem, calc(100dvh - 12rem))`,
+    };
+}
+
 function isListColorSelected(list, color) {
     const current = (list?.color || '').toLowerCase();
     const next = (color || '').toLowerCase();
@@ -547,6 +570,7 @@ function expandList(list) {
                     class="flex shrink-0 flex-col rounded-xl p-2 shadow-sm ring-1 ring-slate-200 transition-all duration-200"
                     :class="[
                         isListCollapsed(list.id) ? 'w-10 cursor-pointer' : 'w-72',
+                        listNeedsCardScroll(list) ? 'overflow-hidden' : '',
                         list.color ? '' : 'bg-slate-100',
                         list.is_archived ? 'opacity-60 ring-dashed ring-slate-300' : '',
                     ]"
@@ -554,7 +578,7 @@ function expandList(list) {
                     @click="isListCollapsed(list.id) && expandList(list)"
                 >
                 <header
-                    class="list-column-drag-handle flex items-start justify-between gap-2 px-1.5 pb-1 pt-1"
+                    class="list-column-drag-handle flex shrink-0 items-start justify-between gap-2 px-1.5 pb-1 pt-1"
                     :class="[
                         isListCollapsed(list.id) ? 'flex-col items-center gap-1' : '',
                         isAdmin && !list.is_archived ? 'cursor-grab active:cursor-grabbing' : '',
@@ -624,7 +648,13 @@ function expandList(list) {
                     group="kanban-cards"
                     item-key="id"
                     :disabled="!isAdmin || list.is_archived"
-                    class="flex min-h-[8px] flex-col gap-2 px-0.5"
+                    class="flex flex-col gap-2 px-0.5"
+                    :class="
+                        listNeedsCardScroll(list)
+                            ? 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain'
+                            : 'min-h-[8px]'
+                    "
+                    :style="listCardsScrollStyle(list)"
                     @end="(e) => onCardDragEnd(list.id, e)"
                 >
                     <div
@@ -706,7 +736,10 @@ function expandList(list) {
                     </div>
                 </VueDraggable>
 
-                <div v-if="isAdmin && !isListCollapsed(list.id) && !list.is_archived" class="px-0.5 pt-2">
+                <div
+                    v-if="isAdmin && !isListCollapsed(list.id) && !list.is_archived"
+                    class="shrink-0 px-0.5 pt-2"
+                >
                     <div v-if="composing[list.id]" class="space-y-2">
                         <div
                             v-if="

@@ -372,7 +372,7 @@
 
         $footerPhone = filled($settings->company_phone)
             ? trim((string) $settings->company_phone)
-            : '(11) 3109-6843';
+            : '(11) 97570-3032';
 
         $footerWebsite = 'www.talentsgestao.com';
     @endphp
