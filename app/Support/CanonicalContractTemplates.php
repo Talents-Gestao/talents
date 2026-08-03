@@ -27,7 +27,7 @@ final class CanonicalContractTemplates
 
 <p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>CONTRATANTE:</strong> {{cliente_nome}}, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº {{cliente_cnpj}}, com sede em {{cliente_endereco}}, neste ato representada por {{cliente_representante}}, doravante denominada <strong>CONTRATANTE</strong>.</p>
 
-<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>CONTRATADA:</strong> {{empresa_nome}}, CNPJ nº {{empresa_cnpj}}, com sede em {{empresa_endereco}}, e-mail {{empresa_email}}, telefone {{empresa_telefone}}, {{empresa_representacao}}, doravante denominada <strong>CONTRATADA</strong>.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>CONTRATADA:</strong> {{empresa_nome}}, CNPJ nº {{empresa_cnpj}}, com sede em {{empresa_endereco}}, e-mail {{empresa_email}}, {{empresa_representacao}}, doravante denominada <strong>CONTRATADA</strong>.</p>
 
 <h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula primeira – Objeto</h2>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">O presente contrato tem como objeto a prestação de serviços de consultoria de gestão de pessoas, nos termos da <strong>Proposta Comercial nº {{proposta_codigo}}</strong> (emitida em {{proposta_emitida_em}}, com referência de validade conforme parametrização comercial), restritos exclusivamente aos serviços efetivamente contratados na proposta, conforme discriminação e valores abaixo:</p>
@@ -42,7 +42,7 @@ final class CanonicalContractTemplates
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">A CONTRATANTE compromete-se a pagar à CONTRATADA os valores conforme plano e tabela da proposta acima.</p>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Forma de pagamento e condições:</strong></p>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">{{forma_pagamento}}</p>
-<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Dados para pagamento (referência):</strong> e-mail {{empresa_email}} — CNPJ {{empresa_cnpj}}.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Dados para pagamento (referência):</strong> CNPJ {{empresa_cnpj}}.</p>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">Os valores e condições apresentados neste instrumento têm validade de <strong>{{validade_proposta_dias}}</strong> dias a contar da data de envio à CONTRATANTE (parâmetro comercial alinhado ao PDF da proposta; validade calculada até {{validade_data}}). Após esse prazo, poderão ser revistos.</p>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">§ 1º Em caso de inadimplência, os valores serão acrescidos de multa de 5% e juros de 1% ao mês sobre o saldo devedor.</p>
 
@@ -76,7 +76,7 @@ HTML;
 <h1 style="font-size:15px;color:#4a2070;margin:0 0 14px;text-align:center;text-transform:uppercase;letter-spacing:0.04em;">Contratação de talentos</h1>
 
 <p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Contratante:</strong> {{cliente_nome}}, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº {{cliente_cnpj}}, com sede em {{cliente_endereco}}, neste ato representada por {{cliente_representante}}, doravante denominada <strong>CONTRATANTE</strong>.</p>
-<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Contratada:</strong> {{empresa_nome}}, CNPJ sob o nº {{empresa_cnpj}}, com sede em {{empresa_endereco}}, e-mail {{empresa_email}}, telefone {{empresa_telefone}}, {{empresa_representacao}}, doravante denominada <strong>CONTRATADA</strong>.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Contratada:</strong> {{empresa_nome}}, CNPJ sob o nº {{empresa_cnpj}}, com sede em {{empresa_endereco}}, e-mail {{empresa_email}}, {{empresa_representacao}}, doravante denominada <strong>CONTRATADA</strong>.</p>
 <hr style="border:none;border-top:1px solid #e2e8f0;margin:14px 0;" />
 
 <h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 1 – Objeto</h2>
@@ -124,7 +124,7 @@ HTML;
 </ul>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">Condições complementares parametrizadas (empresa / proposta):</p>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">{{forma_pagamento}}</p>
-<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Dados para pagamento:</strong> e-mail {{empresa_email}} — CNPJ {{empresa_cnpj}}.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>Dados para pagamento:</strong> CNPJ {{empresa_cnpj}}.</p>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>§ 1º</strong> O início dos trabalhos está condicionado ao pagamento da primeira parcela.</p>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>§ 2º</strong> O valor será calculado com base no salário bruto acordado entre a CONTRATANTE e o candidato contratado, independentemente do valor inicialmente previsto para a vaga.</p>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;"><strong>§ 3º</strong> A CONTRATANTE obriga-se a comunicar imediatamente qualquer reajuste de salário inicial acordado com o candidato, sob pena de multa de 1 (um) salário sobre o valor da vaga.</p>
@@ -290,7 +290,7 @@ HTML;
 <tr style="background:#f8fafc;"><th style="border:1px solid #e2e8f0;padding:8px;text-align:left;">Condição de pagamento</th><th style="border:1px solid #e2e8f0;padding:8px;text-align:left;">Detalhe</th></tr>
 <tr><td style="border:1px solid #e2e8f0;padding:8px;vertical-align:top;">Condições acordadas (texto comercial)</td><td style="border:1px solid #e2e8f0;padding:8px;">{{forma_pagamento}}</td></tr>
 </table>
-<p style="font-size:11px;line-height:1.55;color:#0f172a;">§ 1º O pagamento será realizado por transferência bancária ou Pix para os seguintes dados: e-mail: {{empresa_email}} | CNPJ: {{empresa_cnpj}}.</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;">§ 1º O pagamento será realizado por transferência bancária ou Pix para os seguintes dados: CNPJ {{empresa_cnpj}}.</p>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">§ 2º Em caso de atraso no pagamento, o valor devido será corrigido pelo índice IGPM, acrescido de multa de 2% e juros de 1% ao mês, sem prejuízo de outras medidas cabíveis.</p>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">§ 3º O não pagamento do sinal (quando aplicável) até a data acordada autoriza a CONTRATADA a não reservar a data na agenda, ficando a vaga disponível para outros clientes.</p>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">§ 4º Os custos de deslocamento (transporte, hospedagem e alimentação), quando aplicáveis, serão custeados pela CONTRATANTE e não estão incluídos no valor dos honorários acima.</p>

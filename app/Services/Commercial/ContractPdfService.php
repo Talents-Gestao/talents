@@ -2,6 +2,8 @@
 
 namespace App\Services\Commercial;
 
+use App\Models\CommercialSetting;
+use App\Support\TalentsButterflyDataUri;
 use App\Support\TalentsLogoDataUri;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\File;
@@ -20,7 +22,9 @@ class ContractPdfService
             'content_html' => $contentHtml,
             'code' => $code,
             'generatedAt' => $generatedAt ?? now(),
+            'settings' => CommercialSetting::current(),
             'logoBase64' => TalentsLogoDataUri::get(),
+            'butterflyBase64' => TalentsButterflyDataUri::get(),
         ]);
 
         $pdf->setOption('fontDir', $fontDir);

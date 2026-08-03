@@ -6,6 +6,11 @@ O conteúdo dos **três modelos padrão** é definido em código em `App\Support
 
 Os ficheiros `.docx` nesta pasta são **arquivo de referência** (versões antigas). O `ContractTemplateSeeder` **já não** converte DOCX para HTML no deploy.
 
+O **timbrado oficial** (cabeçalho/rodapé dos PDFs) está em `TIMBRADO-TALENTS-ATUALIZADO.docx`. Assets usados no DomPDF:
+
+- `public/images/logo.png` — logo do cabeçalho
+- `public/images/timbrado-butterfly.png` — borboleta decorativa do rodapé
+
 ## Atualizar manualmente no servidor
 
 ```bash

@@ -5,9 +5,22 @@ namespace App\Support;
 class TalentsButterflyDataUri
 {
     /**
-     * Recorta a borboleta do logo Talents e retorna data URI clareada para decoração no PDF.
+     * Borboleta do timbrado oficial (ou recorte do logo) como data URI para DomPDF.
      */
     public static function get(): ?string
+    {
+        $official = public_path('images/timbrado-butterfly.png');
+        if (is_file($official) && is_readable($official)) {
+            $raw = @file_get_contents($official);
+            if ($raw !== false && $raw !== '') {
+                return 'data:image/png;base64,'.base64_encode($raw);
+            }
+        }
+
+        return self::fromLogoCrop();
+    }
+
+    private static function fromLogoCrop(): ?string
     {
         if (! extension_loaded('gd')) {
             return null;
@@ -66,7 +79,6 @@ class TalentsButterflyDataUri
                 $g = ($rgba >> 8) & 0xFF;
                 $b = $rgba & 0xFF;
 
-                // Mistura com lavanda clara e reduz opacidade.
                 $mix = 0.55;
                 $newR = (int) round($r * (1 - $mix) + 180 * $mix);
                 $newG = (int) round($g * (1 - $mix) + 150 * $mix);
