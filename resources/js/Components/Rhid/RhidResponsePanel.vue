@@ -13,8 +13,8 @@ const KEY_LABELS = {
     percentual: 'Percentual',
     message: 'Mensagem',
     total: 'Total',
-    page: 'Pagina',
-    maxSize: 'Tamanho maximo',
+    page: 'Página',
+    maxSize: 'Tamanho máximo',
     status: 'Status',
     id: 'ID',
     name: 'Nome',
@@ -31,7 +31,7 @@ const formatCell = (val) => {
         return '—';
     }
     if (typeof val === 'boolean') {
-        return val ? 'Sim' : 'Nao';
+        return val ? 'Sim' : 'Não';
     }
     if (typeof val === 'number') {
         return String(val);

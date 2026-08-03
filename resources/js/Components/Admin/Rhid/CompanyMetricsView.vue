@@ -10,7 +10,7 @@ const props = defineProps({
     title: { type: String, default: 'Indicadores RHID (mês atual)' },
     description: {
         type: String,
-        default: 'Banco de horas do dia anterior (referencia consolidada), aderencia e justificativas no mes civil corrente.',
+        default: 'Banco de horas do dia anterior (referência consolidada), aderência e justificativas no mês civil corrente.',
     },
     rhidConfigured: { type: Boolean, default: false },
     loading: { type: Boolean, default: false },
@@ -35,7 +35,7 @@ const periodHint = computed(() => {
     if (!ref) {
         return props.description;
     }
-    return `Referencia de banco de horas: ${ref} (dia anterior ao consultado). Aderencia e justificativas: mes civil corrente.`;
+    return `Referência de banco de horas: ${ref} (dia anterior ao consultado). Aderência e justificativas: mês civil corrente.`;
 });
 
 const apiErrorMessage = computed(() => {
@@ -43,7 +43,7 @@ const apiErrorMessage = computed(() => {
         return props.metrics.error || 'Falha ao consultar indicadores RHID.';
     }
     if (props.metrics?.status === 'not_configured') {
-        return props.metrics.message || 'Integracao RHID nao configurada para esta empresa.';
+        return props.metrics.message || 'Integração RHID não configurada para esta empresa.';
     }
     return null;
 });
@@ -119,7 +119,7 @@ const showLoadingSkeleton = computed(() => props.loading && !props.metrics);
                     </span>
                 </div>
                 <div v-if="metrics.nr1?.risk_level" class="flex items-center gap-2">
-                    <span class="text-xs font-medium uppercase text-slate-500">NR-1 (ultima campanha)</span>
+                    <span class="text-xs font-medium uppercase text-slate-500">NR-1 (última campanha)</span>
                     <HealthBadge :risk-level="metrics.nr1.risk_level" />
                     <span v-if="metrics.nr1.average_score != null" class="text-xs tabular-nums text-slate-600">
                         {{ Number(metrics.nr1.average_score).toFixed(1) }}
@@ -132,7 +132,7 @@ const showLoadingSkeleton = computed(() => props.loading && !props.metrics);
                     Risco duplo
                 </span>
                 <span v-if="!metrics.integration?.ok" class="text-xs text-amber-800">
-                    Ultima falha API: {{ metrics.integration?.last_error || 'verifique credenciais' }}
+                    Última falha API: {{ metrics.integration?.last_error || 'verifique credenciais' }}
                 </span>
             </div>
 

@@ -33,7 +33,7 @@ class RhidEspelhoService
         $iniCompact = preg_replace('/\D/', '', $iniCompact) ?? '';
         $fimCompact = preg_replace('/\D/', '', $fimCompact) ?? '';
         if (strlen($iniCompact) !== 8 || strlen($fimCompact) !== 8) {
-            throw new RhidApiException('Periodo ini/fim deve usar 8 digitos (yyyyMMdd).');
+            throw new RhidApiException('Período ini/fim deve usar 8 dígitos (yyyyMMdd).');
         }
         $iniDate = Carbon::createFromFormat('Ymd', $iniCompact)->startOfDay();
         $fimDate = Carbon::createFromFormat('Ymd', $fimCompact)->startOfDay();
@@ -41,7 +41,7 @@ class RhidEspelhoService
             throw new RhidApiException('Data final anterior a inicial.');
         }
         if ($iniDate->diffInDays($fimDate) + 1 > 31) {
-            throw new RhidApiException('Periodo maximo de 31 dias.');
+            throw new RhidApiException('Período máximo de 31 dias.');
         }
 
         $binary = $this->reports->downloadSaveFileBody($company, $user, 'PDF', $guid);

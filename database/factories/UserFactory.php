@@ -2,9 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Actions\SyncAdminUserPermissions;
-use App\Enums\AdminPermissionModule;
-use App\Enums\PermissionAction;
 use App\Enums\UserRole;
 use App\Enums\WorkspaceType;
 use App\Models\User;
@@ -101,18 +98,6 @@ class UserFactory extends Factory
                 'is_active' => (bool) $user->is_active,
             ]);
 
-            if ($user->role !== UserRole::SuperAdmin || $user->isOwner()) {
-                return;
-            }
-
-            $perms = [];
-            foreach (AdminPermissionModule::all() as $module) {
-                foreach (PermissionAction::all() as $action) {
-                    $perms[] = ['module' => $module->value, 'action' => $action->value];
-                }
-            }
-
-            app(SyncAdminUserPermissions::class)->execute($workspace, $perms);
             app(WorkspaceManager::class)->syncLegacyUserColumns($user);
         });
     }

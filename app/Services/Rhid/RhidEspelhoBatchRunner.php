@@ -36,7 +36,7 @@ class RhidEspelhoBatchRunner
             return;
         }
         if (! $batch->user_id) {
-            $this->failBatch($batch, 'Usuário do lote não informado.');
+            $this->failBatch($batch, 'Utilizador do lote não informado.');
 
             return;
         }
@@ -64,7 +64,7 @@ class RhidEspelhoBatchRunner
                 $start = $this->reports->startPontoReport($company, $user, $body);
                 $guid = $start['guid'] ?? '';
                 if ($guid === '') {
-                    throw new RhidApiException('Resposta sem GUID ao iniciar relatorio RHID.');
+                    throw new RhidApiException('Resposta sem GUID ao iniciar relatório RHID.');
                 }
                 $this->waitUntilReportReady($company, $user, $guid);
                 $this->espelho->storePdfFromGuid(
@@ -214,6 +214,6 @@ class RhidEspelhoBatchRunner
             usleep(1_500_000);
         }
 
-        throw new RhidApiException('Tempo esgotado aguardando o relatorio no RHID (GUID).');
+        throw new RhidApiException('Tempo esgotado aguardando o relatório no RHID (GUID).');
     }
 }

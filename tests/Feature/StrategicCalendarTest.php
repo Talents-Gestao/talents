@@ -963,4 +963,181 @@ class StrategicCalendarTest extends TestCase
                 ->where('monthItems.0.agenda', 'company')
                 ->where('monthItems.0.can_manage', true));
     }
+
+    public function test_admin_calendar_includes_employee_leave_range(): void
+    {
+        $company = $this->baseCompany();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        \App\Models\EmployeeLeave::query()->create([
+            'company_id' => $company->id,
+            'employee_name' => 'Ana Silva',
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-12',
+            'status' => \App\Enums\EmployeeLeaveStatus::Scheduled,
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/calendario-estrategico?year=2026&month=8')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('kindLabels.leave', 'Férias')
+                ->has('monthItems', 3)
+                ->where('monthItems.0.kind', 'leave')
+                ->where('monthItems.0.title', 'Férias — Ana Silva')
+                ->where('monthItems.0.occurs_on', '2026-08-10')
+                ->where('monthItems.0.range_starts_on', '2026-08-10')
+                ->where('monthItems.0.ends_on', '2026-08-12')
+                ->where('monthItems.0.leave_starts_on', '2026-08-10')
+                ->where('monthItems.0.leave_ends_on', '2026-08-12')
+                ->where('monthItems.2.occurs_on', '2026-08-12'));
+    }
+
+    public function test_company_admin_calendar_includes_leaves(): void
+    {
+        $company = $this->baseCompany();
+        $company->update(['strategic_calendar_access' => true]);
+
+        \App\Models\EmployeeLeave::query()->create([
+            'company_id' => $company->id,
+            'employee_name' => 'Bruno Costa',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-02',
+            'status' => \App\Enums\EmployeeLeaveStatus::InProgress,
+        ]);
+
+        $companyAdmin = User::factory()->companyAdmin($company->id)->create();
+
+        $this->actingAs($companyAdmin)
+            ->get('/client/calendario-estrategico?year=2026&month=9')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('kindLabels.leave', 'Férias')
+                ->has('monthItems', 2)
+                ->where('monthItems.0.title', 'Férias — Bruno Costa')
+                ->where('monthItems.0.kind', 'leave'));
+    }
+
+    public function test_admin_calendar_includes_multi_week_leave_without_gaps(): void
+    {
+        $company = $this->baseCompany();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        \App\Models\EmployeeLeave::query()->create([
+            'company_id' => $company->id,
+            'employee_name' => 'Bruno Lima',
+            'start_date' => '2026-07-13',
+            'end_date' => '2026-07-31',
+            'status' => \App\Enums\EmployeeLeaveStatus::Scheduled,
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/calendario-estrategico?year=2026&month=7')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('monthItems', 19)
+                ->where('monthItems.0.occurs_on', '2026-07-13')
+                ->where('monthItems.0.range_starts_on', '2026-07-13')
+                ->where('monthItems.0.ends_on', '2026-07-31')
+                // Semana do meio (19–25) continua com o mesmo intervalo.
+                ->where('monthItems.6.occurs_on', '2026-07-19')
+                ->where('monthItems.6.range_starts_on', '2026-07-13')
+                ->where('monthItems.6.ends_on', '2026-07-31')
+                ->where('monthItems.18.occurs_on', '2026-07-31'));
+    }
+
+    public function test_admin_calendar_kind_filter_leave_returns_only_leaves(): void
+    {
+        $company = $this->baseCompany();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        StrategicCalendarItem::query()->create([
+            'title' => 'Evento Julho',
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => '2026-07-20',
+            'source' => StrategicCalendarSource::Talents,
+            'is_published' => true,
+        ]);
+
+        \App\Models\EmployeeLeave::query()->create([
+            'company_id' => $company->id,
+            'employee_name' => 'Filtro Kind',
+            'start_date' => '2026-07-20',
+            'end_date' => '2026-07-21',
+            'status' => \App\Enums\EmployeeLeaveStatus::Scheduled,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/calendario-estrategico?year=2026&month=7&kind=leave')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('monthItems', 2)
+                ->where('monthItems.0.kind', 'leave')
+                ->where('monthItems.1.kind', 'leave'));
+    }
+
+    public function test_admin_calendar_company_filter_scopes_leaves(): void
+    {
+        $companyA = $this->baseCompany();
+        $companyB = Company::query()->create([
+            'name' => 'Outra empresa',
+            'cnpj' => '22.222.222/0001-22',
+            'is_active' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+        ]);
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        \App\Models\EmployeeLeave::query()->create([
+            'company_id' => $companyA->id,
+            'employee_name' => 'Da A',
+            'start_date' => '2026-07-10',
+            'end_date' => '2026-07-10',
+            'status' => \App\Enums\EmployeeLeaveStatus::Scheduled,
+        ]);
+        \App\Models\EmployeeLeave::query()->create([
+            'company_id' => $companyB->id,
+            'employee_name' => 'Da B',
+            'start_date' => '2026-07-10',
+            'end_date' => '2026-07-10',
+            'status' => \App\Enums\EmployeeLeaveStatus::Scheduled,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/calendario-estrategico?year=2026&month=7&company_id='.$companyA->id)
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('monthItems', 1)
+                ->where('monthItems.0.title', 'Férias — Da A'));
+    }
+
+    public function test_regular_company_user_does_not_see_leaves_on_calendar(): void
+    {
+        $company = $this->baseCompany();
+        $company->update(['strategic_calendar_access' => true]);
+
+        \App\Models\EmployeeLeave::query()->create([
+            'company_id' => $company->id,
+            'employee_name' => 'Oculto',
+            'start_date' => '2026-09-05',
+            'end_date' => '2026-09-06',
+            'status' => \App\Enums\EmployeeLeaveStatus::Scheduled,
+        ]);
+
+        $user = User::factory()->companyUser($company->id)->create();
+        $workspace = $user->workspaces()->first();
+        $this->assertNotNull($workspace);
+        \App\Models\UserPermission::query()->create([
+            'user_workspace_id' => $workspace->id,
+            'module' => \App\Enums\PermissionModule::CalendarioEstrategico->value,
+            'action' => \App\Enums\PermissionAction::View->value,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/client/calendario-estrategico?year=2026&month=9')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('monthItems', 0));
+    }
 }

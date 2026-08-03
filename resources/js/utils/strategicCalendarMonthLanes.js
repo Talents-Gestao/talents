@@ -1,4 +1,11 @@
-import { eachInclusiveIsoDay, isMultiDayRange } from '@/utils/strategicCalendarDate';
+import { eachInclusiveIsoDay, isMultiDayRange } from './strategicCalendarDate.js';
+
+/** Espaço do número do dia + altura de cada lane (alinhado ao CSS do mês). */
+export const MONTH_DAY_NUMBER_OFFSET_REM = 1.55;
+export const MONTH_LANE_HEIGHT_REM = 1.2;
+
+/** Mesma ordem dos chips / painel do dia — férias não têm prioridade extra. */
+export const CALENDAR_KIND_ORDER = ['birthday', 'ritual', 'event', 'task', 'leave'];
 
 /**
  * Só há tirinha multi-dia quando existe `ends_on` (intervalo explícito).
@@ -29,8 +36,50 @@ export function spanningEventKey(item) {
 }
 
 /**
+ * @param {string|null|undefined} kind
+ * @returns {number}
+ */
+export function calendarKindRank(kind) {
+    const index = CALENDAR_KIND_ORDER.indexOf(String(kind ?? ''));
+
+    return index === -1 ? CALENDAR_KIND_ORDER.length : index;
+}
+
+/**
+ * Altura da faixa reservada às tirinhas (não pode cobrir chips / “+N mais”).
+ *
+ * @param {number} laneCount
+ * @returns {string}
+ */
+export function spanningLanesOverlayHeight(laneCount) {
+    const lanes = Math.max(0, Number(laneCount) || 0);
+    if (!lanes) {
+        return '0';
+    }
+
+    return `${MONTH_DAY_NUMBER_OFFSET_REM + lanes * MONTH_LANE_HEIGHT_REM}rem`;
+}
+
+/**
+ * padding-top da lista de chips do dia, alinhado às lanes.
+ *
+ * @param {number} laneCount
+ * @returns {string}
+ */
+export function dayCellChipsPaddingTop(laneCount) {
+    const lanes = Math.max(0, Number(laneCount) || 0);
+    if (!lanes) {
+        return '0.125rem';
+    }
+
+    return `${lanes * MONTH_LANE_HEIGHT_REM + 0.2}rem`;
+}
+
+/**
  * Empacota eventos multi-dia de uma semana (7 células) em lanes horizontais estilo Google Agenda.
  * O span é sempre inclusivo (ex.: 14 a 18 = todos os dias de 14 até 18 nessa semana).
+ * A ordem prioriza continuações da semana anterior (sem buracos no intervalo),
+ * depois início, duração e o mesmo rank de kind dos chips do dia.
  *
  * @param {Array<{ iso: string|null, items?: Array<Record<string, unknown>> }>} weekCells
  * @param {{ maxLanes?: number, maxSinglePerCell?: number }} [options]
@@ -119,12 +168,30 @@ export function packWeekSpanningSegments(weekCells, options = {}) {
         }
     }
 
-    candidates.sort(
-        (a, b) =>
-            a.startCol - b.startCol ||
-            b.span - a.span ||
-            String(a.item.title ?? '').localeCompare(String(b.item.title ?? ''), 'pt-BR'),
-    );
+    // Continuações da semana anterior primeiro: evita “buraco” no meio de um intervalo multi-semana.
+    candidates.sort((a, b) => {
+        const contDiff = Number(b.continuesBefore) - Number(a.continuesBefore);
+        if (contDiff !== 0) {
+            return contDiff;
+        }
+
+        const startDiff = a.startCol - b.startCol;
+        if (startDiff !== 0) {
+            return startDiff;
+        }
+
+        const spanDiff = b.span - a.span;
+        if (spanDiff !== 0) {
+            return spanDiff;
+        }
+
+        const kindDiff = calendarKindRank(a.item.kind) - calendarKindRank(b.item.kind);
+        if (kindDiff !== 0) {
+            return kindDiff;
+        }
+
+        return String(a.item.title ?? '').localeCompare(String(b.item.title ?? ''), 'pt-BR');
+    });
 
     /** @type {number[]} */
     const laneOccupiedUntil = [];

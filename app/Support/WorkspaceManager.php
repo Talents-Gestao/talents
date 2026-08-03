@@ -46,7 +46,7 @@ class WorkspaceManager
         return $user->workspaces()
             ->where('id', $workspaceId)
             ->where('is_active', true)
-            ->with(['company', 'permissions', 'adminPermissions'])
+            ->with(['company', 'permissions'])
             ->first();
     }
 

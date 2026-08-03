@@ -3,9 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\ResendUserInvitation;
-use App\Actions\SyncAdminUserPermissions;
-use App\Enums\AdminPermissionModule;
-use App\Enums\PermissionAction;
 use App\Enums\UserRole;
 use App\Enums\WorkspaceType;
 use App\Http\Controllers\Controller;
@@ -19,7 +16,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,7 +23,6 @@ use Inertia\Response;
 class AdminUserController extends Controller
 {
     public function __construct(
-        private SyncAdminUserPermissions $syncAdminUserPermissions,
         private ResendUserInvitation $resendUserInvitation,
         private WorkspaceManager $workspaceManager,
     ) {}
@@ -48,7 +43,6 @@ class AdminUserController extends Controller
                     'name' => $u->name,
                     'email' => $u->email,
                     'is_owner' => $workspace?->isOwner() ?? false,
-                    'has_all_admin_permissions' => $u->hasAllAdminPermissions(),
                     'is_active' => $workspace ? (bool) $workspace->is_active : $u->isActive(),
                     'is_commercial' => (bool) $u->is_commercial,
                     'pending_registration' => ! $u->hasCompletedRegistration(),
@@ -65,13 +59,12 @@ class AdminUserController extends Controller
         return Inertia::render('Admin/Users/Form', [
             'mode' => 'create',
             'user' => null,
-            ...$this->sharedFormProps(),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $this->validatedPayload($request, null, requirePermissions: true);
+        $validated = $this->validatedPayload($request, null);
 
         $existingUser = User::query()->where('email', $validated['email'])->first();
 
@@ -87,7 +80,7 @@ class AdminUserController extends Controller
                 'is_commercial' => $validated['is_commercial'] ?? $existingUser->is_commercial,
             ]);
 
-            $workspace = $this->workspaceManager->createTalentsWorkspace(
+            $this->workspaceManager->createTalentsWorkspace(
                 $existingUser,
                 isOwner: false,
                 isActive: $validated['is_active'] ?? true,
@@ -108,7 +101,7 @@ class AdminUserController extends Controller
                 'is_owner' => false,
             ]);
 
-            $workspace = $this->workspaceManager->createTalentsWorkspace(
+            $this->workspaceManager->createTalentsWorkspace(
                 $user,
                 isOwner: false,
                 isActive: $validated['is_active'] ?? true,
@@ -116,8 +109,6 @@ class AdminUserController extends Controller
 
             $mailMessage = 'Utilizador criado.';
         }
-
-        $this->syncAdminUserPermissions->execute($workspace, $validated['permissions'] ?? []);
 
         if (! $user->hasCompletedRegistration()) {
             try {
@@ -140,12 +131,6 @@ class AdminUserController extends Controller
     {
         $workspace = $this->assertTalentsWorkspace($user);
         $user->setActiveWorkspace($workspace);
-        $workspace->load('adminPermissions');
-
-        $initialPermissions = $workspace->adminPermissions->map(fn ($p) => [
-            'module' => $p->module->value,
-            'action' => $p->action->value,
-        ])->values()->all();
 
         return Inertia::render('Admin/Users/Form', [
             'mode' => 'edit',
@@ -156,9 +141,7 @@ class AdminUserController extends Controller
                 'is_owner' => $workspace->isOwner(),
                 'is_active' => (bool) $workspace->is_active,
                 'is_commercial' => (bool) $user->is_commercial,
-                'permissions' => $initialPermissions,
             ],
-            ...$this->sharedFormProps(),
         ]);
     }
 
@@ -167,7 +150,7 @@ class AdminUserController extends Controller
         $workspace = $this->assertTalentsWorkspace($user);
         $user->setActiveWorkspace($workspace);
 
-        $validated = $this->validatedPayload($request, $user, requirePermissions: ! $workspace->isOwner());
+        $validated = $this->validatedPayload($request, $user);
 
         if ($workspace->isOwner()) {
             if (($validated['is_active'] ?? $workspace->is_active) === false) {
@@ -197,8 +180,6 @@ class AdminUserController extends Controller
             $workspace->update([
                 'is_active' => $validated['is_active'] ?? $workspace->is_active,
             ]);
-
-            $this->syncAdminUserPermissions->execute($workspace, $validated['permissions'] ?? []);
         }
 
         $this->workspaceManager->syncLegacyUserColumns($user);
@@ -222,7 +203,6 @@ class AdminUserController extends Controller
             return redirect()->route('admin.users.index')->with('error', 'Tem de existir pelo menos um super administrador ativo.');
         }
 
-        $workspace->adminPermissions()->delete();
         $workspace->delete();
 
         if ($user->workspaces()->doesntExist()) {
@@ -267,42 +247,9 @@ class AdminUserController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function sharedFormProps(): array
+    private function validatedPayload(Request $request, ?User $existing): array
     {
-        $modules = [];
-        foreach (AdminPermissionModule::all() as $m) {
-            $modules[] = ['value' => $m->value, 'label' => $m->label()];
-        }
-
-        $actions = [];
-        foreach (PermissionAction::all() as $a) {
-            $actions[] = ['value' => $a->value, 'label' => $a->label()];
-        }
-
-        return [
-            'permissionModules' => $modules,
-            'permissionActions' => $actions,
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function validatedPayload(Request $request, ?User $existing, bool $requirePermissions): array
-    {
-        $permissionRules = $requirePermissions
-            ? [
-                'permissions' => ['required', 'array', 'min:1'],
-                'permissions.*.module' => ['required', Rule::enum(AdminPermissionModule::class)],
-                'permissions.*.action' => ['required', Rule::enum(PermissionAction::class)],
-            ]
-            : [
-                'permissions' => ['nullable', 'array'],
-                'permissions.*.module' => ['required', Rule::enum(AdminPermissionModule::class)],
-                'permissions.*.action' => ['required', Rule::enum(PermissionAction::class)],
-            ];
-
-        return $request->validate(array_merge([
+        return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',
@@ -327,7 +274,7 @@ class AdminUserController extends Controller
             ],
             'is_active' => ['boolean'],
             'is_commercial' => ['boolean'],
-        ], $permissionRules));
+        ]);
     }
 
     /**

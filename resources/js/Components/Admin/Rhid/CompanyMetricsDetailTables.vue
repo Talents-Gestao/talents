@@ -140,7 +140,7 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                                 <td class="px-4 py-2 text-right tabular-nums">{{ formatMinutes(row.maior_atraso_entrada_minutos) }}</td>
                             </tr>
                             <tr v-if="!(metrics.adherence?.ranking_atrasos_entrada ?? []).length">
-                                <td colspan="3" class="px-4 py-6 text-center text-slate-500">Sem dados no periodo.</td>
+                                <td colspan="3" class="px-4 py-6 text-center text-slate-500">Sem dados no período.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -149,14 +149,14 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
 
             <section class="surface-card overflow-hidden">
                 <div class="border-b border-slate-100 px-5 py-4">
-                    <h4 class="text-sm font-semibold text-talents-800">Infracoes de almoco</h4>
+                    <h4 class="text-sm font-semibold text-talents-800">Infrações de almoço</h4>
                 </div>
                 <div class="max-h-80 overflow-auto">
                     <table class="min-w-full text-sm">
                         <thead class="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
                             <tr>
                                 <th class="px-4 py-2">Colaborador</th>
-                                <th class="px-4 py-2 text-right">Dias c/ infracao</th>
+                                <th class="px-4 py-2 text-right">Dias c/ infração</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -169,7 +169,7 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                                 <td class="px-4 py-2 text-right tabular-nums">{{ row.dias_com_infracao_almoco ?? 0 }}</td>
                             </tr>
                             <tr v-if="!(metrics.adherence?.ranking_infracoes_almoco ?? []).length">
-                                <td colspan="2" class="px-4 py-6 text-center text-slate-500">Sem dados no periodo.</td>
+                                <td colspan="2" class="px-4 py-6 text-center text-slate-500">Sem dados no período.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -178,7 +178,7 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
 
             <section class="surface-card overflow-hidden xl:col-span-2">
                 <div class="border-b border-slate-100 px-5 py-4">
-                    <h4 class="text-sm font-semibold text-talents-800">Pior aderencia de marcacoes</h4>
+                    <h4 class="text-sm font-semibold text-talents-800">Pior aderência de marcações</h4>
                 </div>
                 <div class="max-h-80 overflow-auto">
                     <table class="min-w-full text-sm">
@@ -186,7 +186,7 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                             <tr>
                                 <th class="px-4 py-2">Colaborador</th>
                                 <th class="px-4 py-2 text-right">Penalidade total</th>
-                                <th class="px-4 py-2 text-right">Dias c/ infracao almoco</th>
+                                <th class="px-4 py-2 text-right">Dias c/ infração almoço</th>
                                 <th class="px-4 py-2 text-right">Dias analisados</th>
                             </tr>
                         </thead>
@@ -202,7 +202,7 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                                 <td class="px-4 py-2 text-right tabular-nums">{{ row.dias_analisados ?? 0 }}</td>
                             </tr>
                             <tr v-if="!(metrics.adherence?.ranking_pior_aderencia ?? []).length">
-                                <td colspan="4" class="px-4 py-6 text-center text-slate-500">Sem dados no periodo.</td>
+                                <td colspan="4" class="px-4 py-6 text-center text-slate-500">Sem dados no período.</td>
                             </tr>
                         </tbody>
                     </table>

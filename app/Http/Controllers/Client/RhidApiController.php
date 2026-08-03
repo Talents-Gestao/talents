@@ -513,7 +513,7 @@ class RhidApiController extends Controller
         $span = $ini->diffInDays($fim) + 1;
         if ($span > EspelhoScheduleAdherenceService::MAX_RANGE_DAYS) {
             return response()->json([
-                'message' => 'Periodo maximo de '.EspelhoScheduleAdherenceService::MAX_RANGE_DAYS.' dias.',
+                'message' => 'Período máximo de '.EspelhoScheduleAdherenceService::MAX_RANGE_DAYS.' dias.',
             ], 422);
         }
 
@@ -535,7 +535,7 @@ class RhidApiController extends Controller
         $span = $ini->diffInDays($fim) + 1;
         if ($span > EspelhoScheduleAdherenceService::MAX_RANGE_DAYS) {
             return response()->json([
-                'message' => 'Periodo maximo de '.EspelhoScheduleAdherenceService::MAX_RANGE_DAYS.' dias.',
+                'message' => 'Período máximo de '.EspelhoScheduleAdherenceService::MAX_RANGE_DAYS.' dias.',
             ], 422);
         }
 
@@ -558,7 +558,7 @@ class RhidApiController extends Controller
         $span = $ini->diffInDays($fim) + 1;
         if ($span > EspelhoScheduleAdherenceService::MAX_RANGE_DAYS) {
             return response()->json([
-                'message' => 'Periodo maximo de '.EspelhoScheduleAdherenceService::MAX_RANGE_DAYS.' dias.',
+                'message' => 'Período máximo de '.EspelhoScheduleAdherenceService::MAX_RANGE_DAYS.' dias.',
             ], 422);
         }
 

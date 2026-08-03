@@ -122,7 +122,7 @@ Painel admin em **`/admin/entrevistas`**: upload de gravação de entrevista (at
 
 **Produção (Coolify):** o volume `talents_storage` monta `storage/` (inclui áudios em `storage/app/private/interviews`). Nginx e PHP aceitam uploads até 512 MB.
 
-**Permissão admin:** módulo `entrevistas` — concedida automaticamente aos super admins não-owner na migration; owners têm acesso total.
+**Permissão admin:** qualquer `super_admin` ativo (Admin Talents) tem acesso total ao painel; a matriz granular por módulo foi removida.
 
 ### Usuários de demonstração (após `migrate --seed`)
 

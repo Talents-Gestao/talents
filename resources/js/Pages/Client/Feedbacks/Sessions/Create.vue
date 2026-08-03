@@ -7,7 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { feedbackFieldClass } from '@/utils/feedbackStatus';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { Head, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     leaders: { type: Array, default: () => [] },
@@ -15,20 +15,26 @@ const props = defineProps({
     employees: { type: Array, default: () => [] },
 });
 
+const defaultTemplate =
+    props.templates.find((t) => t.is_default) ?? props.templates[0] ?? null;
+
 const form = useForm({
     employee_name: '',
     employee_email: '',
-    feedback_template_id: props.templates.find((t) => t.is_default)?.id ?? props.templates[0]?.id ?? '',
+    feedback_template_id: defaultTemplate?.id ?? '',
     leader_user_id: '',
     scheduled_at: '',
     next_alignment_at: '',
     title: '',
 });
 
+const templateLabel = ref(defaultTemplate?.title ?? '');
+
 const canSubmit = computed(
     () =>
         Boolean(String(form.employee_name ?? '').trim()) &&
-        Boolean(String(form.scheduled_at ?? '').trim()),
+        Boolean(String(form.scheduled_at ?? '').trim()) &&
+        Boolean(form.feedback_template_id),
 );
 
 const onEmployeeNameInput = () => {
@@ -42,7 +48,36 @@ const onEmployeeNameInput = () => {
     }
 };
 
+const syncTemplateFromLabel = () => {
+    const typed = String(templateLabel.value ?? '').trim().toLowerCase();
+    if (!typed) {
+        form.feedback_template_id = defaultTemplate?.id ?? '';
+        templateLabel.value = defaultTemplate?.title ?? '';
+        return;
+    }
+
+    const exact = props.templates.find((t) => String(t.title ?? '').trim().toLowerCase() === typed);
+    if (exact) {
+        form.feedback_template_id = exact.id;
+        templateLabel.value = exact.title;
+        return;
+    }
+
+    const partial = props.templates.find((t) =>
+        String(t.title ?? '').trim().toLowerCase().includes(typed),
+    );
+    if (partial) {
+        form.feedback_template_id = partial.id;
+        templateLabel.value = partial.title;
+        return;
+    }
+
+    form.feedback_template_id = defaultTemplate?.id ?? '';
+    templateLabel.value = defaultTemplate?.title ?? templateLabel.value;
+};
+
 const submit = () => {
+    syncTemplateFromLabel();
     if (!canSubmit.value) {
         return;
     }
@@ -69,7 +104,9 @@ const submit = () => {
             @submit.prevent="submit"
         >
             <div class="border-b border-slate-100 bg-gradient-to-r from-talents-50/80 to-white px-6 py-5">
-                <p class="text-sm text-slate-600">O formulário seguirá o modelo Talents «Contrato de Expectativas».</p>
+                <p class="text-sm text-slate-600">
+                    Escolha o modelo de alinhamento (sugestões abaixo) ou mantenha o padrão Talents.
+                </p>
             </div>
 
             <div class="space-y-5 p-6">
@@ -113,9 +150,25 @@ const submit = () => {
                 </div>
                 <div>
                     <InputLabel value="Modelo" />
-                    <select v-model="form.feedback_template_id" required :class="feedbackFieldClass">
-                        <option v-for="t in templates" :key="t.id" :value="t.id">{{ t.title }}</option>
-                    </select>
+                    <input
+                        v-model="templateLabel"
+                        type="text"
+                        list="feedback-template-suggestions"
+                        required
+                        maxlength="255"
+                        :class="feedbackFieldClass"
+                        placeholder="Digite ou escolha o modelo de alinhamento"
+                        autocomplete="off"
+                        @change="syncTemplateFromLabel"
+                        @blur="syncTemplateFromLabel"
+                    />
+                    <datalist id="feedback-template-suggestions">
+                        <option v-for="t in templates" :key="t.id" :value="t.title" />
+                    </datalist>
+                    <InputError :message="form.errors.feedback_template_id" />
+                    <p class="mt-1.5 text-xs text-slate-500">
+                        Campo aberto com sugestões. Se o texto não bater com um modelo, usa-se o padrão Talents.
+                    </p>
                 </div>
                 <div>
                     <InputLabel value="Líder responsável" />

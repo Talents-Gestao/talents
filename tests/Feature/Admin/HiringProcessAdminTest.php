@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
-use App\Actions\SyncAdminUserPermissions;
-use App\Enums\AdminPermissionModule;
 use App\Enums\HiringProcessStage;
-use App\Enums\PermissionAction;
 use App\Models\Company;
 use App\Models\HiringProcess;
 use App\Models\User;
@@ -63,20 +60,13 @@ class HiringProcessAdminTest extends TestCase
         $this->assertSame(2, $first->fresh()->sort_order);
     }
 
-    public function test_admin_without_solides_permission_is_forbidden(): void
+    public function test_admin_talents_can_access_acompanhamento_without_granular_grants(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => false]);
 
-        app(SyncAdminUserPermissions::class)->execute($admin->talentsWorkspace(), [
-            [
-                'module' => AdminPermissionModule::Dashboard->value,
-                'action' => PermissionAction::View->value,
-            ],
-        ]);
-
         $this->actingAs($admin)
             ->get(route('admin.acompanhamento.index'))
-            ->assertForbidden();
+            ->assertOk();
     }
 
     public function test_admin_can_create_process_with_notes_datetime_and_candidates(): void

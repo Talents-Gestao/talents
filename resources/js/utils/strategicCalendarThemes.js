@@ -43,6 +43,7 @@ export const kindThemes = {
     ritual: { label: 'Ritual', color: '#dc2626', background: '#fecaca' },
     birthday: { label: 'Aniversário', color: '#d97706', background: '#fde68a' },
     task: { label: 'Tarefa', color: '#059669', background: '#a7f3d0' },
+    leave: { label: 'Férias', color: '#7c3aed', background: '#ede9fe' },
 };
 
 /** Contraste mínimo do acento sobre fundo claro (WCAG AA para texto grande). */

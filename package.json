@@ -5,7 +5,8 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "dev:docker": "vite"
+        "dev:docker": "vite",
+        "test:js": "node --test tests/JavaScript/**/*.test.mjs"
     },
     "devDependencies": {
         "@inertiajs/vue3": "^2.0.0",

@@ -217,7 +217,7 @@ const agendaBadgeClass = (agenda) =>
                                     {{ row.title }}
                                 </span>
                                 <button
-                                    v-if="row.kind !== 'birthday'"
+                                    v-if="row.kind !== 'birthday' && row.kind !== 'leave' && row.source_type !== 'leave'"
                                     type="button"
                                     class="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold transition"
                                     :class="row.completed ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700'"

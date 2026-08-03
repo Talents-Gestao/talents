@@ -271,7 +271,7 @@ const submit = () => {
             <div>
                 <InputLabel for="ferias_access_mode" value="Férias" />
                 <p class="mt-0.5 text-xs text-gray-500">
-                    Por padrão segue o plano (módulo «ferias»). Pode forçar por empresa.
+                    Por padrão segue o plano (módulo «férias»). Pode forçar por empresa.
                 </p>
                 <select
                     id="ferias_access_mode"
