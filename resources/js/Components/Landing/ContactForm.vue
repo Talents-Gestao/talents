@@ -1,4 +1,5 @@
 <script setup>
+import LandingInterestSourceField from '@/Components/Landing/LandingInterestSourceField.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 
 defineProps({
@@ -14,6 +15,7 @@ const form = useForm({
     phone: '',
     company: '',
     message: '',
+    source: 'site',
 });
 
 const submitInterest = () => {
@@ -21,6 +23,7 @@ const submitInterest = () => {
         preserveScroll: true,
         onSuccess: () => {
             form.reset('name', 'email', 'phone', 'company', 'message');
+            form.source = 'site';
         },
     });
 };
@@ -106,6 +109,11 @@ const submitInterest = () => {
                 />
                 <p v-if="form.errors.company" class="mt-1 text-sm text-red-600">{{ form.errors.company }}</p>
             </div>
+            <LandingInterestSourceField
+                id="interest-source"
+                v-model="form.source"
+                :error="form.errors.source"
+            />
             <div>
                 <label class="block text-sm font-medium text-slate-700" for="interest-message">
                     Mensagem <span class="font-normal text-slate-500">(opcional)</span>

@@ -33,7 +33,7 @@ enum AdminPermissionModule: string
             self::LandingInterest => 'Interessados',
             self::Companies => 'Empresas',
             self::Rhid => 'RHID - Empresas',
-            self::Plans => 'Planos',
+            self::Plans => 'Assinaturas',
             self::SurveyTemplates => 'Mapeamentos',
             self::Methodology => 'Direcionamento Estratégico',
             self::StrategicCalendar => 'Calendário estratégico',

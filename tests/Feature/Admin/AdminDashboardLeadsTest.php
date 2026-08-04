@@ -21,7 +21,7 @@ class AdminDashboardLeadsTest extends TestCase
         $this->withoutVite();
     }
 
-    public function test_dashboard_lists_recent_leads_even_after_notification_mail_was_sent(): void
+    public function test_dashboard_counts_lead_even_after_notification_mail_was_sent(): void
     {
         Mail::fake();
 
@@ -31,6 +31,7 @@ class AdminDashboardLeadsTest extends TestCase
             'phone' => '(11) 98888-7777',
             'company' => 'ACME',
             'message' => 'Gostaria de uma demo.',
+            'source' => 'site',
         ])->assertRedirect();
 
         $submission = LandingInterestSubmission::query()->where('email', 'joao@example.com')->firstOrFail();
@@ -43,8 +44,10 @@ class AdminDashboardLeadsTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Admin/Dashboard')
-                ->has('recentLeads', 1)
-                ->where('recentLeads.0.id', $submission->id)
-                ->where('recentLeads.0.email', 'joao@example.com'));
+                ->where('commercial.leads_new', 1)
+                ->has('leadsBySource')
+                ->where('leadsBySource', fn ($rows) => collect($rows)->contains(
+                    fn ($row) => ($row['key'] ?? null) === 'site' && (int) ($row['count'] ?? 0) === 1
+                )));
     }
 }

@@ -4,37 +4,58 @@ defineProps({
         type: Object,
         required: true,
     },
+    dateLabel: {
+        type: String,
+        default: '',
+    },
 });
 </script>
 
 <template>
-    <article class="dashboard-accent-dark relative overflow-hidden text-white">
-        <div class="dashboard-hero-blob -left-8 -top-8 h-36 w-36 bg-talents-300/25" />
-        <div class="dashboard-hero-blob right-0 top-0 h-28 w-28 translate-x-1/4 -translate-y-1/4 bg-violet-300/20" />
+    <article
+        class="dashboard-accent-dark relative overflow-hidden !px-6 !py-4 text-white shadow-sm !shadow-md sm:!px-7 sm:!py-4.5"
+    >
+        <div class="dashboard-hero-blob -left-8 -top-10 h-24 w-24 bg-talents-300/20" />
+        <div class="dashboard-hero-blob -right-6 -bottom-8 h-20 w-20 bg-violet-300/15" />
 
-        <div class="relative flex gap-4 p-5 sm:gap-5 sm:p-6">
-            <div
-                class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/8 ring-1 ring-white/15 sm:h-16 sm:w-16"
-                aria-hidden="true"
+        <div class="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+            <div class="flex min-w-0 items-center gap-3">
+                <div
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20"
+                    aria-hidden="true"
+                >
+                    <img
+                        src="/images/metamorfose-butterfly.png"
+                        alt=""
+                        class="h-6 w-6 object-contain mix-blend-screen"
+                    />
+                </div>
+                <div class="min-w-0">
+                    <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-talents-100/75">
+                        Frase do dia
+                    </p>
+                    <h3 class="mt-0.5 text-base font-bold uppercase tracking-wide text-white sm:text-lg">
+                        {{ quote.word }}
+                    </h3>
+                    <blockquote class="mt-0.5 text-[13px] leading-snug text-talents-50/90 sm:text-sm">
+                        “{{ quote.phrase }}”
+                    </blockquote>
+                </div>
+            </div>
+
+            <p
+                v-if="dateLabel"
+                class="flex shrink-0 items-center gap-2 text-xs font-medium text-talents-100/80 sm:text-sm"
             >
-                <img
-                    src="/images/metamorfose-butterfly.png"
-                    alt=""
-                    class="h-10 w-10 object-contain mix-blend-screen sm:h-11 sm:w-11"
-                />
-            </div>
-
-            <div class="min-w-0 flex-1">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-talents-100/80">Frase do dia</p>
-
-                <h3 class="mt-2 text-lg font-bold uppercase tracking-wide text-white sm:text-xl">
-                    {{ quote.word }}
-                </h3>
-
-                <blockquote class="mt-3 text-sm leading-relaxed text-talents-50/95 sm:text-base">
-                    “{{ quote.phrase }}”
-                </blockquote>
-            </div>
+                <svg class="h-4 w-4 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M6.75 3v2.25M17.25 3v2.25M3.75 8.25h16.5M5.25 5.25h13.5A1.5 1.5 0 0120.25 6.75v12.75A1.5 1.5 0 0118.75 21H5.25a1.5 1.5 0 01-1.5-1.5V6.75a1.5 1.5 0 011.5-1.5z"
+                    />
+                </svg>
+                {{ dateLabel }}
+            </p>
         </div>
     </article>
 </template>

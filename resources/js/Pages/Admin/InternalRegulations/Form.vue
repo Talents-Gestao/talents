@@ -8,6 +8,7 @@ import RichTextEditor from '@/Components/RichTextEditor.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     mode: { type: String, required: true },
@@ -21,14 +22,57 @@ const form = useForm({
     title: props.regulation?.title ?? '',
     body_html: props.regulation?.body_html ?? '',
     is_published: props.regulation?.is_published ?? false,
+    file: null,
+    remove_file: false,
 });
+
+const fileInput = ref(null);
+const selectedFileName = ref('');
+
+const existingFileName = computed(() => {
+    if (form.remove_file) {
+        return null;
+    }
+    return props.regulation?.file_name ?? null;
+});
+
+const fileStatusLabel = computed(() => {
+    if (selectedFileName.value) {
+        return selectedFileName.value;
+    }
+    if (existingFileName.value) {
+        return existingFileName.value;
+    }
+    return 'Opcional — PDF, DOC ou DOCX (máx. 20 MB)';
+});
+
+const onFileChange = (event) => {
+    const file = event.target.files?.[0] ?? null;
+    form.file = file;
+    form.remove_file = false;
+    selectedFileName.value = file?.name ?? '';
+};
+
+const clearFile = () => {
+    form.file = null;
+    selectedFileName.value = '';
+    form.remove_file = Boolean(props.regulation?.has_file);
+    if (fileInput.value) {
+        fileInput.value.value = '';
+    }
+};
 
 const submit = () => {
     if (props.mode === 'create') {
-        form.post(route('admin.regulamento-interno.store'));
+        form.post(route('admin.regulamento-interno.store'), { forceFormData: true });
         return;
     }
-    form.put(route('admin.regulamento-interno.update', props.regulation.id));
+    form.transform((data) => ({
+        ...data,
+        _method: 'put',
+    })).post(route('admin.regulamento-interno.update', props.regulation.id), {
+        forceFormData: true,
+    });
 };
 </script>
 
@@ -93,6 +137,36 @@ const submit = () => {
                     />
                 </div>
                 <InputError class="mt-1" :message="form.errors.body_html" />
+            </div>
+
+            <div>
+                <InputLabel for="file" value="Anexo (ficheiro)" />
+                <input
+                    id="file"
+                    ref="fileInput"
+                    type="file"
+                    class="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-talents-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-talents-800 hover:file:bg-talents-100"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    @change="onFileChange"
+                >
+                <p class="mt-1.5 text-xs text-slate-500">{{ fileStatusLabel }}</p>
+                <div v-if="existingFileName || selectedFileName" class="mt-2 flex flex-wrap items-center gap-3">
+                    <a
+                        v-if="mode === 'edit' && existingFileName && !selectedFileName"
+                        :href="route('admin.regulamento-interno.download', regulation.id)"
+                        class="text-sm font-medium text-talents-700 hover:underline"
+                    >
+                        Descarregar anexo atual
+                    </a>
+                    <button
+                        type="button"
+                        class="text-sm font-medium text-rose-600 hover:underline"
+                        @click="clearFile"
+                    >
+                        Remover anexo
+                    </button>
+                </div>
+                <InputError class="mt-1" :message="form.errors.file" />
             </div>
 
             <label class="inline-flex items-center gap-2 text-sm text-slate-700">

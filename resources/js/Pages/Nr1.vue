@@ -8,6 +8,7 @@ import {
     MagnifyingGlassIcon,
     XMarkIcon,
 } from '@heroicons/vue/24/outline';
+import LandingInterestSourceField from '@/Components/Landing/LandingInterestSourceField.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { onMounted, onUnmounted, ref } from 'vue';
 
@@ -24,6 +25,7 @@ const form = useForm({
     phone: '',
     company: '',
     message: '',
+    source: 'site',
 });
 
 const submitInterest = () => {
@@ -31,6 +33,7 @@ const submitInterest = () => {
         preserveScroll: true,
         onSuccess: () => {
             form.reset('name', 'email', 'phone', 'company', 'message');
+            form.source = 'site';
             showContactModal.value = false;
         },
     });
@@ -587,6 +590,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             />
                             <p v-if="form.errors.company" class="mt-1 text-sm text-red-600">{{ form.errors.company }}</p>
                         </div>
+                        <LandingInterestSourceField
+                            id="nr1-interest-source"
+                            v-model="form.source"
+                            :error="form.errors.source"
+                        />
                         <div>
                             <label class="block text-sm font-medium text-slate-700" for="nr1-interest-message"
                                 >Mensagem <span class="font-normal text-slate-500">(opcional)</span></label
@@ -693,6 +701,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 class="field-input"
                             />
                         </div>
+                        <LandingInterestSourceField
+                            id="nr1-modal-source"
+                            v-model="form.source"
+                            :error="form.errors.source"
+                        />
                         <div>
                             <label class="block text-sm font-medium text-slate-700" for="nr1-modal-message">Mensagem (opcional)</label>
                             <textarea

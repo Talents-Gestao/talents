@@ -94,14 +94,231 @@
     }
 
     /**
-     * Dashboard: cartões minimalistas com sopro rosa muito claro + lavanda (alinhado ao hero roxo).
+     * Admin Home design system — superfícies com presença; acentos de domínio
+     * (`*-accent-*`) só no Dashboard Admin (Client usa painéis base).
      */
     .dashboard-panel {
-        @apply rounded-3xl border border-slate-200/40 bg-gradient-to-br from-white via-white to-rose-50/20 p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-[border-color,box-shadow] duration-200 hover:border-talents-100/30 hover:shadow-[0_4px_20px_-6px_rgba(99,42,126,0.07)] sm:p-6;
+        @apply relative overflow-hidden rounded-3xl border border-slate-200/60 bg-[#fffcfe] p-5 shadow-[0_8px_30px_-12px_rgba(88,28,135,0.12),0_2px_6px_rgba(15,23,42,0.04)] transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-14px_rgba(88,28,135,0.18),0_4px_10px_rgba(15,23,42,0.05)] sm:p-6;
+        background-image:
+            radial-gradient(ellipse 80% 60% at 100% 0%, rgb(253 242 248 / 0.55), transparent 55%),
+            radial-gradient(ellipse 70% 50% at 0% 100%, rgb(245 243 255 / 0.45), transparent 50%),
+            linear-gradient(165deg, #ffffff 0%, #fffcfe 55%, #faf8fc 100%);
     }
 
     .dashboard-panel-compact {
-        @apply rounded-3xl border border-slate-200/40 bg-gradient-to-br from-white via-white to-rose-50/20 p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-[border-color,box-shadow] duration-200 hover:border-talents-100/30 hover:shadow-[0_3px_16px_-6px_rgba(99,42,126,0.06)];
+        @apply relative overflow-hidden rounded-3xl border border-slate-200/60 bg-[#fffcfe] p-4 shadow-[0_6px_24px_-10px_rgba(88,28,135,0.1),0_1px_3px_rgba(15,23,42,0.04)] transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-1 hover:border-talents-300/70 hover:shadow-[0_16px_36px_-12px_rgba(88,28,135,0.2),0_0_0_1px_rgba(139,92,246,0.12)] sm:p-5;
+        background-image:
+            radial-gradient(ellipse 90% 70% at 100% -10%, rgb(245 243 255 / 0.7), transparent 55%),
+            linear-gradient(160deg, #ffffff 0%, #fffcfe 100%);
+    }
+
+    .dashboard-panel-accent-finance {
+        @apply hover:border-emerald-300/55;
+        background-image:
+            radial-gradient(ellipse 75% 55% at 100% 0%, rgb(236 253 245 / 0.65), transparent 55%),
+            radial-gradient(ellipse 50% 40% at 0% 100%, rgb(253 242 248 / 0.35), transparent 50%),
+            linear-gradient(165deg, #ffffff 0%, #f8fffb 100%);
+    }
+
+    .dashboard-panel-accent-finance::before {
+        content: '';
+        @apply pointer-events-none absolute inset-x-0 top-0 z-10 h-[3px] bg-gradient-to-r from-emerald-600 via-emerald-400 to-teal-300/40;
+    }
+
+    .dashboard-panel-accent-commercial {
+        @apply hover:border-violet-300/60;
+        background-image:
+            radial-gradient(ellipse 75% 55% at 100% 0%, rgb(245 243 255 / 0.75), transparent 55%),
+            radial-gradient(ellipse 50% 40% at 0% 100%, rgb(253 242 248 / 0.4), transparent 50%),
+            linear-gradient(165deg, #ffffff 0%, #faf8ff 100%);
+    }
+
+    .dashboard-panel-accent-commercial::before {
+        content: '';
+        @apply pointer-events-none absolute inset-x-0 top-0 z-10 h-[3px] bg-gradient-to-r from-talents-700 via-violet-500 to-fuchsia-300/50;
+    }
+
+    .dashboard-panel-accent-calendar {
+        @apply hover:border-sky-300/55;
+        background-image:
+            radial-gradient(ellipse 75% 55% at 100% 0%, rgb(240 249 255 / 0.75), transparent 55%),
+            radial-gradient(ellipse 50% 40% at 0% 100%, rgb(245 243 255 / 0.35), transparent 50%),
+            linear-gradient(165deg, #ffffff 0%, #f7fbff 100%);
+    }
+
+    .dashboard-panel-accent-calendar::before {
+        content: '';
+        @apply pointer-events-none absolute inset-x-0 top-0 z-10 h-[3px] bg-gradient-to-r from-sky-600 via-sky-400 to-cyan-300/40;
+    }
+
+    .dashboard-panel-title {
+        @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500;
+    }
+
+    .dashboard-panel-heading {
+        @apply relative flex items-center justify-between gap-3;
+    }
+
+    .dashboard-panel-icon {
+        @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-[0_4px_14px_-4px_rgba(15,23,42,0.25)] ring-1 ring-white/40;
+    }
+
+    .dashboard-panel-icon-finance {
+        @apply bg-gradient-to-br from-emerald-500 to-teal-700;
+    }
+
+    .dashboard-panel-icon-commercial {
+        @apply bg-gradient-to-br from-talents-500 to-violet-800;
+    }
+
+    .dashboard-panel-icon-calendar {
+        @apply bg-gradient-to-br from-sky-400 to-sky-700;
+    }
+
+    .dashboard-panel-link {
+        @apply inline-flex items-center gap-1.5 text-sm font-semibold text-talents-800 transition-colors duration-200 hover:text-talents-900;
+    }
+
+    .dashboard-panel-link-arrow {
+        @apply inline-block transition-transform duration-200 group-hover/link:translate-x-1;
+    }
+
+    .dashboard-action-link {
+        @apply relative text-xs font-semibold text-talents-800 transition-colors duration-200 hover:text-talents-900;
+    }
+
+    .dashboard-action-link::after {
+        content: '';
+        @apply absolute inset-x-0 -bottom-0.5 h-px origin-left scale-x-0 bg-talents-600 transition-transform duration-300;
+    }
+
+    .dashboard-action-link:hover::after {
+        @apply scale-x-100;
+    }
+
+    .dashboard-metric-value {
+        @apply text-2xl font-bold tabular-nums tracking-tight text-slate-900 sm:text-[1.65rem];
+    }
+
+    .dashboard-metric-hint {
+        @apply mt-1.5 text-xs leading-relaxed text-slate-500;
+    }
+
+    .dashboard-instrument {
+        @apply rounded-2xl border border-slate-200/50 bg-white/80 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition duration-200 hover:border-emerald-200/60 hover:bg-white hover:shadow-sm;
+    }
+
+    .dashboard-instrument-label {
+        @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500;
+    }
+
+    .dashboard-instrument-value {
+        @apply mt-2 text-lg font-bold tabular-nums tracking-tight sm:text-xl;
+    }
+
+    .dashboard-forecast-strip {
+        @apply relative mt-auto flex items-center justify-between gap-3 rounded-2xl border border-emerald-100/70 bg-gradient-to-r from-emerald-50/90 via-white to-white px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)];
+    }
+
+    .dashboard-forecast-strip-neg {
+        @apply border-rose-100/80 from-rose-50/90;
+    }
+
+    .dashboard-pipeline-row {
+        @apply flex items-center justify-between gap-3 rounded-xl border border-violet-100/40 bg-white/70 px-3.5 py-2.5 transition duration-200 hover:border-violet-200/70 hover:bg-violet-50/40 hover:shadow-sm;
+    }
+
+    .dashboard-pipeline-row-hot {
+        @apply border-talents-200/70 bg-gradient-to-r from-talents-50/80 to-white ring-1 ring-talents-100/50;
+    }
+
+    .dashboard-twin-tile {
+        @apply rounded-2xl border border-violet-100/50 bg-gradient-to-br from-white to-violet-50/40 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)];
+    }
+
+    .dashboard-kpi-tile {
+        @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-talents-50 to-violet-100/80 text-talents-700 ring-1 ring-talents-100/70 transition duration-300 group-hover:from-talents-600 group-hover:to-violet-700 group-hover:text-white group-hover:ring-talents-500/40 group-hover:shadow-md;
+    }
+
+    .dashboard-kpi-icon {
+        @apply h-4 w-4 transition duration-300;
+    }
+
+    .dashboard-calendar-rail {
+        @apply relative space-y-0 pl-1;
+    }
+
+    .dashboard-calendar-item {
+        @apply relative flex gap-3 py-2.5 pl-5;
+    }
+
+    .dashboard-calendar-item:not(:last-child)::before {
+        content: '';
+        @apply absolute bottom-0 left-[0.4rem] top-5 w-px bg-gradient-to-b from-sky-300/80 to-sky-100/40;
+    }
+
+    .dashboard-calendar-dot {
+        @apply absolute left-0 top-4 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-sky-100 ring-2 ring-sky-400/80;
+    }
+
+    .dashboard-calendar-dot::after {
+        content: '';
+        @apply h-1.5 w-1.5 rounded-full bg-sky-600;
+    }
+
+    .dashboard-calendar-time {
+        @apply w-[3.4rem] shrink-0 pt-0.5 text-sm font-bold tabular-nums tracking-tight text-sky-800;
+    }
+
+    .dashboard-reveal {
+        animation: dashboard-reveal-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .dashboard-reveal-delay-1 {
+        animation-delay: 70ms;
+    }
+
+    .dashboard-reveal-delay-2 {
+        animation-delay: 140ms;
+    }
+
+    .dashboard-reveal-delay-3 {
+        animation-delay: 210ms;
+    }
+
+    @keyframes dashboard-reveal-in {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .dashboard-panel,
+        .dashboard-panel-compact {
+            @apply transition-none hover:translate-y-0;
+        }
+
+        .dashboard-reveal,
+        .dashboard-reveal-delay-1,
+        .dashboard-reveal-delay-2,
+        .dashboard-reveal-delay-3 {
+            animation: none;
+        }
+
+        .dashboard-panel-link-arrow,
+        .dashboard-kpi-tile,
+        .dashboard-action-link::after {
+            @apply transition-none;
+        }
+
+        .dashboard-panel-link-arrow {
+            @apply group-hover/link:translate-x-0;
+        }
     }
 
     /** KPI (StatCard): mesma família visual, ainda mais sóbrio */
@@ -142,16 +359,16 @@
 
     /** Linhas e blocos internos (listas, serviços) */
     .dashboard-inset-card {
-        @apply rounded-2xl border border-rose-100/25 bg-rose-50/10 p-4 transition hover:border-talents-100/25 hover:bg-rose-50/20;
+        @apply rounded-2xl border border-rose-100/35 bg-gradient-to-br from-rose-50/20 via-white to-white p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition duration-200 hover:border-talents-100/40 hover:from-rose-50/35;
     }
 
     .dashboard-inset-row {
-        @apply rounded-xl border border-rose-100/20 bg-rose-50/10 px-3 py-2 transition hover:border-talents-100/20 hover:bg-rose-50/20;
+        @apply rounded-xl border border-rose-100/30 bg-gradient-to-r from-rose-50/15 via-white to-white px-3.5 py-2.5 transition duration-200 hover:border-talents-100/35 hover:from-violet-50/25;
     }
 
     /** Item de lista em cartão (padding confortável) */
     .dashboard-inset-list-item {
-        @apply rounded-xl border border-rose-100/20 bg-rose-50/10 p-3 transition hover:border-talents-100/25 hover:bg-rose-50/20;
+        @apply rounded-xl border border-rose-100/30 bg-gradient-to-r from-rose-50/15 via-white to-white p-3 transition duration-200 hover:border-talents-100/35 hover:from-rose-50/30;
     }
 
     /** Tabs secundárias no painel */

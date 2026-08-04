@@ -7,17 +7,17 @@ defineProps({ plans: Object });
 </script>
 
 <template>
-    <Head title="Planos" />
+    <Head title="Assinaturas" />
 
     <AdminLayout>
         <template #header>
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h2 class="text-xl font-semibold leading-tight text-gray-900">Planos</h2>
+                <h2 class="text-xl font-semibold leading-tight text-gray-900">Assinaturas</h2>
                 <Link
                     :href="route('admin.plans.create')"
                     class="rounded-md bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-talents-700"
                 >
-                    Novo plano
+                    Nova assinatura
                 </Link>
             </div>
         </template>
@@ -28,7 +28,6 @@ defineProps({ plans: Object });
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-gray-700">Nome</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-700">Preço/mês (R$)</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-700">Módulos</th>
                             <th class="px-4 py-3"></th>
                         </tr>
@@ -36,7 +35,6 @@ defineProps({ plans: Object });
                     <tbody class="divide-y divide-gray-200">
                         <tr v-for="p in plans.data" :key="p.id">
                             <td class="px-4 py-3">{{ p.name }}</td>
-                            <td class="px-4 py-3">{{ (p.price_monthly_cents / 100).toFixed(2) }}</td>
                             <td class="px-4 py-3">
                                 <span v-for="m in p.modules" :key="m.id" class="mr-2 rounded bg-talents-100 px-2 py-0.5 text-xs text-talents-900">{{ m.name }}</span>
                             </td>
@@ -44,7 +42,7 @@ defineProps({ plans: Object });
                                 <Link :href="route('admin.plans.edit', p.id)" class="font-medium text-talents-700 hover:underline">Editar</Link>
                             </td>
                         </tr>
-                        <TableEmptyRow v-if="!plans.data.length" :colspan="4" message="Nenhum plano encontrado." />
+                        <TableEmptyRow v-if="!plans.data.length" :colspan="3" message="Nenhuma assinatura encontrada." />
                     </tbody>
                 </table>
             </div>

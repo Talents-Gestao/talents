@@ -17,23 +17,13 @@ class FeriasCompanyShowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_sees_ferias_tab_with_leaves_on_company_show(): void
+    public function test_legacy_ferias_tab_falls_back_to_empresa(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $company = Company::query()->create([
             'name' => 'Empresa Detalhe Férias',
             'ferias_access' => true,
             'is_active' => true,
-        ]);
-
-        EmployeeLeave::query()->create([
-            'company_id' => $company->id,
-            'employee_name' => 'Ana Silva',
-            'employee_email' => 'ana@teste.local',
-            'start_date' => '2026-08-01',
-            'end_date' => '2026-08-15',
-            'status' => EmployeeLeaveStatus::Scheduled,
-            'created_by' => $admin->id,
         ]);
 
         $this->withoutVite();
@@ -43,19 +33,12 @@ class FeriasCompanyShowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Admin/Companies/Show')
-                ->where('tab', 'ferias')
-                ->where('feriasEnabled', true)
-                ->has('leaves', 1)
-                ->where('leaves.0.employee.name', 'Ana Silva')
+                ->where('tab', 'empresa')
+                ->missing('leaves')
             );
-
-        $this->assertSame(
-            $company->id,
-            (int) session(FeriasCompanyContext::SESSION_KEY),
-        );
     }
 
-    public function test_admin_create_leave_redirects_to_company_ferias_tab(): void
+    public function test_admin_create_leave_redirects_to_ferias_index(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $company = Company::query()->create([
@@ -76,10 +59,7 @@ class FeriasCompanyShowTest extends TestCase
                 'status' => EmployeeLeaveStatus::Scheduled->value,
                 'notes' => 'Parcela 1',
             ])
-            ->assertRedirect(route('admin.companies.show', [
-                'company' => $company->id,
-                'tab' => 'ferias',
-            ]));
+            ->assertRedirect(route('admin.ferias.index'));
 
         $this->assertDatabaseHas('employee_leaves', [
             'company_id' => $company->id,
@@ -87,7 +67,7 @@ class FeriasCompanyShowTest extends TestCase
         ]);
     }
 
-    public function test_admin_ferias_index_redirects_to_company_show_when_session_set(): void
+    public function test_admin_ferias_index_lists_leaves_when_session_set(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $company = Company::query()->create([
@@ -96,21 +76,50 @@ class FeriasCompanyShowTest extends TestCase
             'is_active' => true,
         ]);
 
+        EmployeeLeave::query()->create([
+            'company_id' => $company->id,
+            'employee_name' => 'Ana Silva',
+            'employee_email' => 'ana@teste.local',
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-15',
+            'status' => EmployeeLeaveStatus::Scheduled,
+            'created_by' => $admin->id,
+        ]);
+
+        $this->withoutVite();
+
         $this->actingAs($admin)
             ->withSession([FeriasCompanyContext::SESSION_KEY => $company->id])
             ->get(route('admin.ferias.index'))
-            ->assertRedirect(route('admin.companies.show', [
-                'company' => $company->id,
-                'tab' => 'ferias',
-            ]));
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Client/Leaves/Index')
+                ->where('isAdminContext', true)
+                ->where('activeCompany.id', $company->id)
+                ->has('leaves.data', 1)
+                ->where('leaves.data.0.employee.name', 'Ana Silva')
+            );
     }
 
-    public function test_admin_ferias_index_without_company_redirects_to_companies_index(): void
+    public function test_admin_ferias_index_without_company_shows_picker(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        Company::query()->create([
+            'name' => 'Empresa Picker Férias',
+            'ferias_access' => true,
+            'is_active' => true,
+        ]);
+
+        $this->withoutVite();
 
         $this->actingAs($admin)
             ->get(route('admin.ferias.index'))
-            ->assertRedirect(route('admin.companies.index'));
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Client/Leaves/Index')
+                ->where('isAdminContext', true)
+                ->where('activeCompany', null)
+                ->has('companyPicker')
+            );
     }
 }

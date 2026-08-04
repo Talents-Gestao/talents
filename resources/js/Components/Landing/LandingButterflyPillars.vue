@@ -36,16 +36,16 @@ function closePanel() {
     >
         <div
             class="mx-auto w-full transition-[max-width] duration-300 ease-out"
-            :class="isOpen ? 'max-w-full lg:max-w-[56%]' : 'max-w-4xl'"
+            :class="isOpen ? 'max-w-full lg:max-w-[58%]' : 'max-w-5xl'"
         >
             <figure class="butterfly-split relative">
                 <img
-                    src="/images/pilares-borboleta.png?v=20260731d"
+                    src="/images/pilares-borboleta.png?v=20260804g"
                     alt="Infográfico dos 4 pilares Talents em formato de borboleta — clique numa asa para detalhar"
                     width="1920"
                     height="1080"
                     class="block h-auto w-full object-contain"
-                    loading="lazy"
+                    loading="eager"
                     decoding="async"
                 />
 

@@ -98,7 +98,16 @@ const remove = (id) => {
                     </thead>
                     <tbody class="divide-y divide-slate-50 bg-white">
                         <tr v-for="row in regulations.data" :key="row.id" class="hover:bg-slate-50/70">
-                            <td class="px-4 py-3 font-medium text-slate-900">{{ row.title }}</td>
+                            <td class="px-4 py-3 font-medium text-slate-900">
+                                <div>{{ row.title }}</div>
+                                <a
+                                    v-if="row.has_file"
+                                    :href="route('admin.regulamento-interno.download', row.id)"
+                                    class="mt-0.5 inline-block text-xs font-medium text-talents-700 hover:underline"
+                                >
+                                    {{ row.file_name || 'Descarregar anexo' }}
+                                </a>
+                            </td>
                             <td class="px-4 py-3 text-slate-600">{{ row.company?.name || '—' }}</td>
                             <td class="px-4 py-3">
                                 <span

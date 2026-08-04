@@ -4,7 +4,6 @@ import SidebarLayout from '@/Components/SidebarLayout.vue';
 import SidebarNavGroup from '@/Components/SidebarNavGroup.vue';
 import SidebarNavItem from '@/Components/SidebarNavItem.vue';
 import SidebarUserCard from '@/Components/SidebarUserCard.vue';
-import DailyQuoteCard from '@/Components/Dashboard/DailyQuoteCard.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -26,26 +25,10 @@ import {
 
 const { canAdmin } = useAdminPermissions();
 const page = usePage();
-const adminHomeUrl = computed(
-    () => page.props.auth?.user?.admin_home_url ?? route('admin.dashboard'),
-);
-
-const dailyQuote = computed(() => page.props.dailyQuote ?? null);
 
 const activeHiringProcessesCount = computed(
     () => Number(page.props.nav?.active_hiring_processes_count ?? 0) || 0,
 );
-
-const showDailyQuote = computed(() => {
-    if (!dailyQuote.value) {
-        return false;
-    }
-
-    const home = String(adminHomeUrl.value ?? '').split('?')[0];
-    const current = String(page.url ?? '').split('?')[0];
-
-    return home !== '' && current === home;
-});
 
 const canCommercialSettings = computed(
     () => canAdmin('comercial') || page.props.auth?.user?.can_commercial_settings,
@@ -201,7 +184,7 @@ const isComercialSettingsTab = (tab) => {
     >
         <template #logo="{ collapsed }">
             <SidebarBrandMark
-                :href="adminHomeUrl"
+                :href="route('admin.dashboard')"
                 :collapsed="collapsed"
                 isolated-icon
                 icon-src="/images/logo-icon.png"
@@ -241,7 +224,7 @@ const isComercialSettingsTab = (tab) => {
                     v-if="canAdmin('plans')"
                     :href="route('admin.plans.index')"
                     :active="route().current('admin.plans.*')"
-                    label="Planos"
+                    label="Assinaturas"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
@@ -589,6 +572,10 @@ const isComercialSettingsTab = (tab) => {
             </div>
         </template>
 
+        <template v-if="$slots.topbar" #topbar>
+            <slot name="topbar" />
+        </template>
+
         <template v-if="$slots.header" #header>
             <slot name="header" />
         </template>
@@ -597,7 +584,6 @@ const isComercialSettingsTab = (tab) => {
             <slot name="aside" />
         </template>
 
-        <DailyQuoteCard v-if="showDailyQuote" :quote="dailyQuote" class="mb-8" />
         <slot />
     </SidebarLayout>
 </template>

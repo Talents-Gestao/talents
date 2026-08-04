@@ -9,8 +9,6 @@ use App\Mail\CompanyAdminInvitationMail;
 use App\Models\Company;
 use App\Models\CompanyEmployee;
 use App\Models\CompanyInternalRegulation;
-use App\Models\CompanyMonthlyHighlight;
-use App\Models\EmployeeLeave;
 use App\Models\MethodologyFormTemplate;
 use App\Models\Plan;
 use App\Models\Subscription;
@@ -18,7 +16,6 @@ use App\Models\SurveyTemplate;
 use App\Models\User;
 use App\Services\ReceitaWsService;
 use App\Support\InvitationPassword;
-use App\Support\Leaves\FeriasCompanyContext;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -208,7 +205,7 @@ class CompanyController extends Controller
         ]);
 
         $tab = $request->string('tab')->toString();
-        $validTabs = ['empresa', 'rhid', 'ponto', 'colaboradores', 'ferias', 'regulamento', 'uniformes', 'destaques'];
+        $validTabs = ['empresa', 'ponto', 'colaboradores', 'regulamento'];
         if (! in_array($tab, $validTabs, true)) {
             $tab = 'empresa';
         }
@@ -217,7 +214,6 @@ class CompanyController extends Controller
             'company' => $company,
             'tab' => $tab,
             'rhidConfigured' => $company->rhidConfigured(),
-            'feriasEnabled' => $company->hasFeriasEnabled(),
             'planIncludesMetodologia' => $company->hasMethodologyEnabled(),
             'pendingRegistration' => $company->hasPendingRegistration(),
             'registrationAdminEmail' => $company->registrationAdmin()?->email,
@@ -228,9 +224,7 @@ class CompanyController extends Controller
             'templates' => SurveyTemplate::query()->where('is_active', true)->get(['id', 'title']),
             'methodologyTemplates' => MethodologyFormTemplate::query()->where('is_active', true)->orderBy('title')->get(['id', 'title']),
             'employees' => [],
-            'leaves' => [],
             'regulations' => [],
-            'highlights' => [],
         ];
 
         if ($tab === 'colaboradores') {
@@ -255,60 +249,18 @@ class CompanyController extends Controller
                 ->all();
         }
 
-        if ($tab === 'ferias') {
-            if ($company->hasFeriasEnabled()) {
-                $request->session()->put(FeriasCompanyContext::SESSION_KEY, $company->id);
-            }
-
-            $payload['leaves'] = EmployeeLeave::query()
-                ->where('company_id', $company->id)
-                ->with(['employee:id,name,email'])
-                ->orderByDesc('start_date')
-                ->orderByDesc('id')
-                ->limit(100)
-                ->get()
-                ->map(static fn (EmployeeLeave $leave) => [
-                    'id' => $leave->id,
-                    'start_date' => $leave->start_date?->toDateString(),
-                    'end_date' => $leave->end_date?->toDateString(),
-                    'days' => $leave->daysCount(),
-                    'status' => $leave->status->value,
-                    'status_label' => $leave->status->label(),
-                    'employee' => $leave->collaboratorPayload(),
-                ])
-                ->values()
-                ->all();
-        }
-
         if ($tab === 'regulamento') {
             $payload['regulations'] = CompanyInternalRegulation::query()
                 ->where('company_id', $company->id)
                 ->orderByDesc('updated_at')
                 ->limit(50)
-                ->get(['id', 'title', 'updated_at'])
+                ->get(['id', 'title', 'updated_at', 'file_name', 'file_path'])
                 ->map(static fn (CompanyInternalRegulation $row) => [
                     'id' => $row->id,
                     'title' => $row->title,
                     'updated_at' => $row->updated_at?->toIso8601String(),
-                ])
-                ->values()
-                ->all();
-        }
-
-        if ($tab === 'destaques') {
-            $payload['highlights'] = CompanyMonthlyHighlight::query()
-                ->where('company_id', $company->id)
-                ->orderByDesc('year')
-                ->orderByDesc('month')
-                ->orderBy('person_name')
-                ->limit(50)
-                ->get()
-                ->map(static fn (CompanyMonthlyHighlight $row) => [
-                    'id' => $row->id,
-                    'person_name' => $row->person_name,
-                    'category_label' => $row->category->label(),
-                    'period_label' => $row->periodLabel(),
-                    'is_published' => $row->is_published,
+                    'file_name' => $row->file_name,
+                    'has_file' => $row->hasFile(),
                 ])
                 ->values()
                 ->all();
