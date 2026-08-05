@@ -92,6 +92,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::middleware('admin.can:landing_interest')->group(function () {
         Route::get('/interessados-landing', [LandingInterestSubmissionController::class, 'index'])
             ->name('landing-interest.index');
+        Route::post('/interessados-landing', [LandingInterestSubmissionController::class, 'store'])
+            ->name('landing-interest.store');
     });
 
     Route::middleware('admin.can:strategic_calendar')->group(function () {
@@ -135,6 +137,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
         Route::resource('regulamento-interno', InternalRegulationController::class)
             ->parameters(['regulamento-interno' => 'regulamento_interno']);
+        Route::get('regulamento-interno/{regulamento_interno}/download', [InternalRegulationController::class, 'download'])
+            ->name('regulamento-interno.download');
 
         Route::resource('destaques-mes', MonthlyHighlightController::class)
             ->parameters(['destaques-mes' => 'destaque_mes']);

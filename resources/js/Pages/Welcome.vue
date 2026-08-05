@@ -16,6 +16,7 @@ import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import LandingButterflyPillars from '@/Components/Landing/LandingButterflyPillars.vue';
 import LandingCardGrid from '@/Components/Landing/LandingCardGrid.vue';
+import LandingHeroTypewriter from '@/Components/Landing/LandingHeroTypewriter.vue';
 import LandingLayout from '@/Components/Landing/LandingLayout.vue';
 
 defineProps({
@@ -173,7 +174,7 @@ const pillars = [
     },
 ];
 
-const anchorPhrases = [
+const heroTypewriterPhrases = [
     'Fortalecemos empresas através das pessoas.',
     'Transformamos pessoas em estratégias de crescimento.',
     'Mais clareza. Mais consciência. Mais resultado.',
@@ -226,13 +227,7 @@ const organizationJsonLd = computed(() =>
                     <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">
                         Consultoria estratégica em gestão de pessoas
                     </p>
-                    <h1 class="mt-3 text-2xl font-bold leading-snug text-slate-900 sm:text-3xl md:mt-4 md:text-4xl md:leading-tight lg:text-5xl">
-                        Transformamos pessoas em estratégias de crescimento.
-                    </h1>
-                    <p class="mt-4 text-base leading-relaxed text-slate-600 md:mt-6 md:text-lg">
-                        A Talents é uma consultoria estratégica em gestão de pessoas que ajuda empresas e profissionais
-                        através de comportamento, desenvolvimento humano e direcionamento estratégico.
-                    </p>
+                    <LandingHeroTypewriter />
                     <div class="mt-6 flex flex-wrap gap-3 md:mt-8">
                         <Link :href="route('landing.empresas')" class="btn-primary"> Para Empresas </Link>
                         <Link :href="route('landing.pessoas')" class="btn-secondary"> Para Pessoas </Link>
@@ -378,7 +373,7 @@ const organizationJsonLd = computed(() =>
                         </div>
                         <div class="space-y-3">
                             <p
-                                v-for="phrase in anchorPhrases"
+                                v-for="phrase in heroTypewriterPhrases"
                                 :key="phrase"
                                 class="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-medium text-talents-50"
                             >

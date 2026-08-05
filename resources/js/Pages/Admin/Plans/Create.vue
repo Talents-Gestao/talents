@@ -13,8 +13,6 @@ const props = defineProps({
 
 const form = useForm({
     name: '',
-    price_reais: '',
-    max_employees: null,
     max_surveys_per_year: null,
     strategic_calendar_view_period: '',
     module_ids: [],
@@ -22,11 +20,7 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.transform((data) => ({
-        ...data,
-        price_monthly_cents: Math.round(Number(String(data.price_reais).replace(',', '.')) * 100),
-        price_reais: undefined,
-    })).post(route('admin.plans.store'));
+    form.post(route('admin.plans.store'));
 };
 
 const toggleModule = (id) => {
@@ -38,25 +32,17 @@ const toggleModule = (id) => {
 </script>
 
 <template>
-    <Head title="Novo plano" />
+    <Head title="Nova assinatura" />
 
     <AdminLayout>
         <template #header>
-            <FormPageHeader :back-href="route('admin.plans.index')" title="Novo plano" />
+            <FormPageHeader :back-href="route('admin.plans.index')" title="Nova assinatura" />
         </template>
 
         <form class="max-w-xl space-y-4 surface-card p-6 text-slate-900" @submit.prevent="submit">
             <div>
                 <InputLabel for="name" value="Nome" />
                 <TextInput id="name" v-model="form.name" class="mt-1 block w-full" required />
-            </div>
-            <div>
-                <InputLabel for="price" value="Preço mensal (R$)" />
-                <TextInput id="price" v-model="form.price_reais" type="number" step="0.01" class="mt-1 block w-full" />
-            </div>
-            <div>
-                <InputLabel for="max_employees" value="Máx. colaboradores" />
-                <TextInput id="max_employees" type="number" v-model="form.max_employees" class="mt-1 block w-full" />
             </div>
             <div>
                 <InputLabel for="max_surveys" value="Máx. pesquisas / ano" />

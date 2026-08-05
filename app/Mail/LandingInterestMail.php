@@ -20,6 +20,7 @@ class LandingInterestMail extends Mailable
         public ?string $phone,
         public ?string $company,
         public ?string $submitterMessage,
+        public string $sourceLabel = 'Site',
     ) {}
 
     public function envelope(): Envelope

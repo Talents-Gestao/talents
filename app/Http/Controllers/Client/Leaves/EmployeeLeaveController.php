@@ -20,22 +20,22 @@ class EmployeeLeaveController extends FeriasCompanyController
 {
     use ResolvesFeriasRoutes;
 
-    public function index(Request $request): Response|RedirectResponse
+    public function index(Request $request): Response
     {
         $context = app(FeriasCompanyContext::class);
+        $isAdmin = $context->isAdminContext($request);
 
         if ($context->needsCompanySelection($request)) {
-            return redirect()
-                ->route('admin.companies.index')
-                ->with('success', 'Abra uma empresa e use a aba Férias para gerir os períodos.');
-        }
-
-        if ($context->isAdminContext($request)) {
-            $company = $this->company($request);
-
-            return redirect()->route('admin.companies.show', [
-                'company' => $company->id,
-                'tab' => 'ferias',
+            return Inertia::render('Client/Leaves/Index', [
+                'leaves' => ['data' => [], 'links' => []],
+                'companyPicker' => $context->availableCompanies(),
+                'activeCompany' => null,
+                'isAdminContext' => true,
+                'filters' => [
+                    'q' => $request->string('q')->toString(),
+                    'status' => $request->string('status')->toString(),
+                ],
+                'statusOptions' => $this->statusOptions(),
             ]);
         }
 
@@ -79,9 +79,9 @@ class EmployeeLeaveController extends FeriasCompanyController
 
         return Inertia::render('Client/Leaves/Index', [
             'leaves' => $leaves,
-            'companyPicker' => null,
+            'companyPicker' => $isAdmin ? $context->availableCompanies() : null,
             'activeCompany' => $company->only(['id', 'name']),
-            'isAdminContext' => false,
+            'isAdminContext' => $isAdmin,
             'filters' => [
                 'q' => $request->string('q')->toString(),
                 'status' => $request->string('status')->toString(),
@@ -201,9 +201,9 @@ class EmployeeLeaveController extends FeriasCompanyController
             'statusOptions' => $this->statusOptions(),
             'employees' => app(CompanyEmployeeDirectory::class)->suggestionsFor($company),
             'returnHref' => $isAdmin
-                ? route('admin.companies.show', ['company' => $company->id, 'tab' => 'ferias'])
+                ? route('admin.ferias.index')
                 : route('client.ferias.index'),
-            'returnLabel' => $isAdmin ? 'Empresa' : 'Férias',
+            'returnLabel' => 'Férias',
             'isAdminContext' => $isAdmin,
         ];
     }

@@ -1,5 +1,6 @@
-Alguém pediu para saber mais sobre a Talents pela landing.
+Alguém pediu para saber mais sobre a Talents.
 
+Origem: {{ $sourceLabel }}
 Nome: {{ $submitterName }}
 E-mail: {{ $submitterEmail }}
 Telefone / WhatsApp: {{ $phone ?? '—' }}

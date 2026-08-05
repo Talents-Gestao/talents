@@ -1,5 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
+import { inject } from 'vue';
 
 defineProps({
     href: {
@@ -19,13 +20,23 @@ defineProps({
         default: '/images/logo.png',
     },
 });
+
+const closeMobileSidebar = inject('closeMobileSidebar', null);
+
+const onNavigate = () => {
+    if (typeof closeMobileSidebar === 'function') {
+        closeMobileSidebar();
+    }
+};
 </script>
 
 <template>
     <Link
         :href="href"
-        class="flex h-10 w-full min-w-0 items-center overflow-hidden rounded-xl"
-        :title="collapsed ? 'Talents' : undefined"
+        class="group flex h-10 w-full min-w-0 cursor-pointer items-center overflow-hidden rounded-xl transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/40"
+        :title="collapsed ? 'Ir para a home' : undefined"
+        aria-label="Ir para a home"
+        @click="onNavigate"
     >
         <span
             :class="isolatedIcon ? 'flex h-10 w-[2.7rem] items-center justify-center' : 'relative h-10 w-[2.7rem] overflow-hidden'"

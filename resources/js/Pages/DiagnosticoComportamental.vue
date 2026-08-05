@@ -1,4 +1,5 @@
 <script setup>
+import LandingInterestSourceField from '@/Components/Landing/LandingInterestSourceField.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { onMounted, onUnmounted, ref } from 'vue';
 
@@ -15,6 +16,7 @@ const form = useForm({
     phone: '',
     company: '',
     message: '',
+    source: 'site',
 });
 
 const submitInterest = () => {
@@ -22,6 +24,7 @@ const submitInterest = () => {
         preserveScroll: true,
         onSuccess: () => {
             form.reset('name', 'email', 'phone', 'company', 'message');
+            form.source = 'site';
             showContactModal.value = false;
         },
     });
@@ -181,6 +184,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 class="field-input"
                             />
                         </div>
+                        <LandingInterestSourceField
+                            id="diag-source"
+                            v-model="form.source"
+                            :error="form.errors.source"
+                        />
                         <button
                             type="submit"
                             class="btn-primary w-full disabled:opacity-60"
@@ -229,6 +237,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             type="tel"
                             placeholder="Telefone / WhatsApp"
                             class="field-input w-full"
+                        />
+                        <LandingInterestSourceField
+                            id="diag-modal-source"
+                            v-model="form.source"
+                            :error="form.errors.source"
                         />
                         <button
                             type="submit"

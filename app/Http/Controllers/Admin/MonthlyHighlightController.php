@@ -161,7 +161,7 @@ class MonthlyHighlightController extends Controller
         $destaque_mes->delete();
 
         return redirect()
-            ->route('admin.companies.show', ['company' => $companyId, 'tab' => 'destaques'])
+            ->route('admin.destaques-mes.index', ['company_id' => $companyId])
             ->with('success', 'Destaque do mês removido.');
     }
 

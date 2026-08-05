@@ -2,8 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Leads\CreateLandingInterestSubmission;
+use App\Enums\LandingInterestSource;
 use App\Http\Controllers\Controller;
 use App\Models\LandingInterestSubmission;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,7 +23,26 @@ class LandingInterestSubmissionController extends Controller
 
         return Inertia::render('Admin/LandingInterest/Index', [
             'submissions' => self::scrubPaginatorArray($paginator->toArray()),
+            'sourceOptions' => LandingInterestSource::options(),
         ]);
+    }
+
+    public function store(Request $request, CreateLandingInterestSubmission $create): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:40'],
+            'company' => ['nullable', 'string', 'max:255'],
+            'message' => ['nullable', 'string', 'max:5000'],
+            'source' => ['required', 'string', Rule::enum(LandingInterestSource::class)],
+        ]);
+
+        $create->execute($data, $request->user());
+
+        return redirect()
+            ->route('admin.landing-interest.index')
+            ->with('success', 'Lead cadastrado com sucesso.');
     }
 
     /**
@@ -26,6 +50,8 @@ class LandingInterestSubmissionController extends Controller
      */
     private static function submissionRow(LandingInterestSubmission $s): array
     {
+        $source = $s->sourceEnum();
+
         return [
             'id' => $s->id,
             'name' => self::asUtf8String($s->name, ''),
@@ -33,6 +59,8 @@ class LandingInterestSubmissionController extends Controller
             'phone' => self::asUtf8String($s->phone),
             'company' => self::asUtf8String($s->company),
             'message' => self::asUtf8String($s->message),
+            'source' => $source->value,
+            'source_label' => $source->label(),
             'mail_sent_at' => $s->mail_sent_at?->toIso8601String(),
             'mail_error' => self::humanizeStoredMailError(self::asUtf8String($s->mail_error)),
             'created_at' => $s->created_at?->toIso8601String(),

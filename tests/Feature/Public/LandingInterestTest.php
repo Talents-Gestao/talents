@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Public;
 
+use App\Enums\LandingInterestSource;
 use App\Mail\LandingInterestMail;
 use App\Models\LandingInterestSubmission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,6 +35,7 @@ class LandingInterestTest extends TestCase
             'phone' => ' (11) 98888-7777 ',
             'company' => ' ACME ',
             'message' => ' Gostaria de uma demo. ',
+            'source' => LandingInterestSource::Site->value,
         ]);
 
         $response->assertRedirect('/');
@@ -45,6 +47,8 @@ class LandingInterestTest extends TestCase
             'phone' => '(11) 98888-7777',
             'company' => 'ACME',
             'message' => 'Gostaria de uma demo.',
+            'source' => 'site',
+            'created_by' => null,
         ]);
 
         $row = LandingInterestSubmission::query()->where('email', 'joao@example.com')->first();
@@ -56,8 +60,21 @@ class LandingInterestTest extends TestCase
                 && $mail->submitterEmail === 'joao@example.com'
                 && $mail->phone === '(11) 98888-7777'
                 && $mail->company === 'ACME'
-                && $mail->submitterMessage === 'Gostaria de uma demo.';
+                && $mail->submitterMessage === 'Gostaria de uma demo.'
+                && $mail->sourceLabel === 'Site';
         });
+    }
+
+    public function test_landing_interest_requires_source(): void
+    {
+        Mail::fake();
+
+        $this->from('/')->post(route('landing.interest'), [
+            'name' => 'Maria',
+            'email' => 'maria@example.com',
+        ])->assertSessionHasErrors('source');
+
+        Mail::assertNothingSent();
     }
 
     public function test_landing_interest_accepts_only_required_fields(): void
@@ -67,17 +84,24 @@ class LandingInterestTest extends TestCase
         $response = $this->from('/')->post(route('landing.interest'), [
             'name' => 'Maria',
             'email' => 'maria@example.com',
+            'source' => LandingInterestSource::WhatsApp->value,
         ]);
 
         $response->assertRedirect('/');
         $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('landing_interest_submissions', [
+            'email' => 'maria@example.com',
+            'source' => 'whatsapp',
+        ]);
 
         Mail::assertSent(LandingInterestMail::class, function (LandingInterestMail $mail) {
             return $mail->submitterName === 'Maria'
                 && $mail->submitterEmail === 'maria@example.com'
                 && $mail->phone === null
                 && $mail->company === null
-                && $mail->submitterMessage === null;
+                && $mail->submitterMessage === null
+                && $mail->sourceLabel === 'WhatsApp';
         });
     }
 
@@ -89,6 +113,7 @@ class LandingInterestTest extends TestCase
             phone: '11972599018',
             company: null,
             submitterMessage: null,
+            sourceLabel: 'Telefone',
         );
 
         $html = $mail->render();
@@ -96,6 +121,7 @@ class LandingInterestTest extends TestCase
         $this->assertStringContainsString('Leticia', $html);
         $this->assertStringContainsString('leticia@example.com', $html);
         $this->assertStringContainsString('11972599018', $html);
+        $this->assertStringContainsString('Telefone', $html);
         $this->assertStringContainsString('—', $html);
     }
 
@@ -103,10 +129,12 @@ class LandingInterestTest extends TestCase
     {
         Mail::fake();
         Config::set('public_rate_limits.landing_interest_per_minute', 3);
+        \Illuminate\Support\Facades\Cache::flush();
 
         $payload = [
             'name' => 'Teste',
             'email' => 'teste@example.com',
+            'source' => LandingInterestSource::Site->value,
         ];
 
         for ($i = 0; $i < 3; $i++) {

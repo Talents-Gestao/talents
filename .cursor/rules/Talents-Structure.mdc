@@ -1,0 +1,81 @@
+---
+description: 
+alwaysApply: true
+---
+
+Você está a trabalhar no projeto Talents (repositório talents/).
+ 
+## O que é o produto
+A Talents Gestão de Pessoas é uma consultoria estratégica em gestão de pessoas (comportamento, liderança, cultura, desenvolvimento humano) com sede em Várzea Paulista/SP, e também um SaaS multi-tenant em Laravel + Inertia/Vue.
+ 
+O produto combina:
+1) Marketing/landing com a metodologia dos 4 pilares: Metamorfose Comportamental, Contratação de Talentos, Direcionamento Estratégico e Gestão de Riscos Psicossociais (NR-1). Hero da Welcome com copy institucional e typewriter no título.
+2) Painel Admin Talents para a operação interna da consultoria (Home = Painel operacional com indicadores reais/aproximados).
+3) Painel Cliente por empresa (workspace Company), com módulos habilitados conforme plano/config.
+4) Superfícies públicas por token (pesquisas NR-1, denúncias, entrevista de desligamento, assinatura de feedback).
+ 
+Cadastro público está desativado; acesso é por login/convite.
+ 
+## Hierarquia de acesso
+- Admin Talents (super_admin): acesso master a todo o /admin/* (sem matriz granular de permissões admin).
+- Owner Talents (is_owner no workspace Talents): bypass especial em permissões de empresa.
+- Administrador da empresa (company_admin): /client/* com acesso total aos módulos habilitados; gerencia utilizadores; férias restritas a este papel nas rotas.
+- Utilizador da empresa (company_user): /client/* com permissões granulares por módulo/ação.
+ 
+Contexto de sessão via workspaces (Talents | Company). Módulos do cliente dependem de hasModuleEnabled / plano da empresa.
+ 
+## Painel Admin Talents (principais módulos)
+- **Home / Painel operacional**: 3 cards (Financeiro, Comercial, Calendário · hoje) + KPIs em grelha de 3 + gráficos (leads/funil/meta); frase do dia; CTAs de tarefas ADM e pendências no header. Dados via `AdminHomeDashboardBuilder` (BD + heurísticas; meta mensal por config/env).
+- Comercial: tabela de valores, **Assinaturas** (CRUD de planos SaaS — UI sem preço nem máx. colaboradores; rotas `plans` mantidas), propostas comerciais (PDF), templates de contrato (timbrado oficial), geração/envio de contratos (ZapSign)
+- Clientes: leads da landing (com origem/`source`), empresas (CNPJ/ReceitaWS), diagnóstico empresarial; “Contratos fechados” em breve
+- **Detalhe da empresa** (abas atuais): Empresa, Gestão de ponto (se permissão RHID), Colaboradores, Regulamento interno (rich text + anexo PDF/DOC/DOCX). Abas removidas do detalhe: Portfólio RHID, Destaques do mês, Férias, Uniformes/Controle da empresa (módulos podem existir noutros hubs — ver abaixo).
+- Contratação: banco de talentos (Sólides), acompanhamento de contratação (kanban), entrevistas IA (áudio → Whisper → relatório), roteiros; Profiler em breve
+- Reuniões: gravação, transcrição e ata com IA
+- Feedbacks (por empresa selecionada)
+- Voz do Time: templates de pesquisa NR-1, canal de denúncias; desligamento/pesquisas
+- Calendário estratégico + avisos internos
+- Tarefas: Kanban (templates/processos → quadros/cards)
+- Financeiro: vendas/conversão de propostas, comissões, contas a pagar, formas de pagamento; contas bancárias/a receber em breve
+- Capacitação: em breve
+- Configuração: Geral (Mia/IA, SMTP, Sólides), Equipe, Empresa Talents
+- Hubs que **continuam** fora do detalhe da empresa: Portfólio RHID (`/admin/rhid`), Destaques do mês (`/admin/destaques-mes`), Férias Admin (`/admin/ferias` com seleção de empresa)
+ 
+## Painel Cliente (principais módulos)
+- Painel (dashboard, inclusive Frase do dia)
+- Voz do Time: visão geral, pesquisas NR-1, denúncias, desligamento
+- Acompanhamento (funil pós-contratação)
+- Direcionamento Estratégico / metodologia
+- Feedbacks internos
+- Férias (company_admin)
+- Calendário estratégico
+- Tarefas (Kanban atribuído)
+- Setores / Cargos
+- RHID / Ponto (Control iD): compliance, espelhos, aderência, justificativas, dispositivos, AFD, banco de horas, Top 5 cumprimento, etc.
+- Utilizadores (company_admin)
+- Capacitação: em breve
+ 
+## Domínios de negócio centrais
+- NR-1 / riscos psicossociais: templates, campanhas, respostas anónimas, análise/IA, plano de ação, PDFs/relatórios
+- Comercial: propostas → contratos → vendas/financeiro; assinaturas SaaS (módulos do plano)
+- Contratação + IA: Sólides, funil, entrevistas e reuniões com transcrição/ata
+- RH operacional: feedbacks, férias, calendário, avisos, tarefas, estrutura organizacional
+- RHID: conformidade de ponto integrada (hub Admin + Gestão de ponto no detalhe da empresa)
+ 
+## Stack técnica
+- Backend: PHP 8.2+, Laravel 12, Sanctum, Breeze, PHPUnit
+- Frontend: Vue 3, Inertia.js 2, Vite, Tailwind, Heroicons, TipTap, ApexCharts
+- Infra local: Docker Compose (app, nginx, PostgreSQL, Redis, queue, vite)
+- Docs: DomPDF, PhpWord
+- Integrações: OpenAI/Anthropic (Mia), ReceitaWS, Sólides, RHID/Control iD, ZapSign
+- Produção: Coolify + docker-compose.prod.yml
+- Documentação de produto: `docs/PRD.md` (PRD vivo) + esta regra
+ 
+## Regras de trabalho neste repo
+- Responder em português (PT-BR) com acentuação correta em copy de UI
+- Não commitar/push sem autorização explícita do utilizador
+- Uma branch por demanda; não trocar de branch sozinho
+- Artisan/migrations e npm via Docker (não npm no host Windows)
+- Frontend: preferir Vite HMR; npm run build só quando necessário via profile tools
+ 
+## Resumo em uma frase
+A Talents é consultoria de gestão de pessoas + SaaS multi-tenant: o time Talents opera o Painel operacional, comercial/assinaturas, clientes, contratação com IA, NR-1 e finanças; cada empresa cliente opera Voz do Time, RHID/ponto, feedbacks, férias, calendário, tarefas e acompanhamento conforme o plano.

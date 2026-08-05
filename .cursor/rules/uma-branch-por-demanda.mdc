@@ -1,6 +1,5 @@
 ---
-description: Fluxo de trabalho Git - uma branch por demanda
-globs:
+description: 
 alwaysApply: true
 ---
 

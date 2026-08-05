@@ -40,8 +40,6 @@ class PlanController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'price_monthly_cents' => ['required', 'integer', 'min:0'],
-            'max_employees' => ['nullable', 'integer', 'min:0'],
             'max_surveys_per_year' => ['nullable', 'integer', 'min:0'],
             'module_ids' => ['array'],
             'module_ids.*' => ['exists:modules,id'],
@@ -52,8 +50,8 @@ class PlanController extends Controller
         $plan = Plan::create([
             'name' => $data['name'],
             'slug' => Str::slug($data['name'].'-'.uniqid()),
-            'price_monthly_cents' => $data['price_monthly_cents'],
-            'max_employees' => $data['max_employees'] ?? null,
+            'price_monthly_cents' => 0,
+            'max_employees' => null,
             'max_surveys_per_year' => $data['max_surveys_per_year'] ?? null,
             'strategic_calendar_view_period' => $data['strategic_calendar_view_period'] ?? null,
             'is_active' => $data['is_active'] ?? true,
@@ -61,7 +59,7 @@ class PlanController extends Controller
 
         $plan->modules()->sync($data['module_ids'] ?? []);
 
-        return redirect()->route('admin.plans.index')->with('success', 'Plano criado.');
+        return redirect()->route('admin.plans.index')->with('success', 'Assinatura criada.');
     }
 
     public function edit(Plan $plan): Response
@@ -83,8 +81,6 @@ class PlanController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'price_monthly_cents' => ['required', 'integer', 'min:0'],
-            'max_employees' => ['nullable', 'integer', 'min:0'],
             'max_surveys_per_year' => ['nullable', 'integer', 'min:0'],
             'module_ids' => ['array'],
             'module_ids.*' => ['exists:modules,id'],
@@ -94,8 +90,6 @@ class PlanController extends Controller
 
         $plan->update([
             'name' => $data['name'],
-            'price_monthly_cents' => $data['price_monthly_cents'],
-            'max_employees' => $data['max_employees'] ?? null,
             'max_surveys_per_year' => $data['max_surveys_per_year'] ?? null,
             'strategic_calendar_view_period' => $data['strategic_calendar_view_period'] ?? null,
             'is_active' => $data['is_active'] ?? true,
@@ -103,14 +97,14 @@ class PlanController extends Controller
 
         $plan->modules()->sync($data['module_ids'] ?? []);
 
-        return redirect()->route('admin.plans.index')->with('success', 'Plano atualizado.');
+        return redirect()->route('admin.plans.index')->with('success', 'Assinatura atualizada.');
     }
 
     public function destroy(Plan $plan): RedirectResponse
     {
         $plan->delete();
 
-        return redirect()->route('admin.plans.index')->with('success', 'Plano removido.');
+        return redirect()->route('admin.plans.index')->with('success', 'Assinatura removida.');
     }
 
     /**
