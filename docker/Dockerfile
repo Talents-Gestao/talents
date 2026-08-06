@@ -29,9 +29,10 @@ RUN npm run build
 # -----------------------------------------------------------------------------
 FROM php:8.3-fpm-alpine AS php
 
+# Extensoes e libs de build (sem ffmpeg — instalado no passo seguinte, repo community).
 RUN apk add --no-cache \
     git curl zip unzip libzip-dev libpng-dev libjpeg-turbo-dev freetype-dev libwebp-dev \
-    oniguruma-dev postgresql-dev icu-dev ffmpeg \
+    oniguruma-dev postgresql-dev icu-dev \
     linux-headers $PHPIZE_DEPS \
     && docker-php-ext-configure intl \
     && docker-php-ext-install -j"$(nproc)" pdo_pgsql pgsql bcmath intl opcache mbstring \
@@ -40,6 +41,13 @@ RUN apk add --no-cache \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && apk del $PHPIZE_DEPS linux-headers
+
+# ffmpeg (community): chunking de audio em Entrevistas / Reunioes.
+# Em alguns mirrors/imagens o community nao vem habilitado; forcamos a URL da mesma major.minor do Alpine.
+RUN set -eux; \
+    ALPINE_VER="$(cut -d. -f1,2 /etc/alpine-release)"; \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_VER}/community" >> /etc/apk/repositories; \
+    apk add --no-cache ffmpeg
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
