@@ -370,10 +370,6 @@
             ? trim((string) $settings->company_email)
             : 'contato@talentsgestao.com';
 
-        $footerPhone = filled($settings->company_phone)
-            ? trim((string) $settings->company_phone)
-            : '(11) 97570-3032';
-
         $footerWebsite = 'www.talentsgestao.com';
     @endphp
 
@@ -406,10 +402,11 @@
         <p class="company-line">{{ $companyDisplayName }}</p>
         <p class="client-line"><strong>Cliente:</strong> {{ $proposal->client_name }}</p>
 
-        <hr class="section-divider">
-
-        <h2>Público Atendido</h2>
-        <p class="section-text">Serão contemplados {{ number_format((int) $proposal->employee_count, 0, ',', '.') }} colaboradores.</p>
+        @if($proposal->include_publico_atendido ?? true)
+            <hr class="section-divider">
+            <h2>Público Atendido</h2>
+            <p class="section-text">Serão contemplados {{ number_format((int) $proposal->employee_count, 0, ',', '.') }} colaboradores.</p>
+        @endif
 
         @if($proposal->pdf_objetivo)
             <hr class="section-divider">
@@ -498,9 +495,17 @@
             @if(filled($paymentConditions))
                 @include('reports.partials.description-text', ['text' => $paymentConditions])
             @endif
-            <p class="desc-paragraph">{{ \App\Support\CommercialProposalPdfDefaults::defaultMinimumStayCondition() }}</p>
+            @if($proposal->include_minimum_stay ?? true)
+                <p class="desc-paragraph">{{ \App\Support\CommercialProposalPdfDefaults::defaultMinimumStayCondition() }}</p>
+            @endif
             <p class="desc-paragraph">• Prazo de validade desta proposta: {{ $settings->pdf_validade_dias ?? 7 }} dias.</p>
         </div>
+
+        @if(filled($proposal->notes))
+            <hr class="section-divider">
+            <h2>Observações</h2>
+            <p class="section-text">{!! nl2br(e($proposal->notes)) !!}</p>
+        @endif
 
         @if($proposal->seller)
             <p class="commission-inline">
@@ -521,7 +526,6 @@
             {{ $footerAddress }}
             | {{ $footerEmail }}
             | {{ $footerWebsite }}
-            | {{ $footerPhone }}
         </p>
         <div class="footer-meta">
             Proposta {{ $proposal->code }} — gerada em {{ now()->format('d/m/Y H:i') }}

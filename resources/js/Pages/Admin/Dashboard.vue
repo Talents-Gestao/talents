@@ -1,6 +1,7 @@
 <script setup>
 import ApexChart from '@/Components/Charts/ApexChart.vue';
 import DailyQuoteCard from '@/Components/Dashboard/DailyQuoteCard.vue';
+import DashboardSalesFunnel from '@/Components/Dashboard/DashboardSalesFunnel.vue';
 import EmptyState from '@/Components/Dashboard/EmptyState.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
@@ -14,8 +15,8 @@ import {
     ClockIcon,
     CurrencyDollarIcon,
     FolderOpenIcon,
-    UserGroupIcon,
     UserPlusIcon,
+    ViewColumnsIcon,
 } from '@heroicons/vue/24/outline';
 import { computed } from 'vue';
 
@@ -24,9 +25,8 @@ const page = usePage();
 
 const props = defineProps({
     finance: { type: Object, required: true },
-    commercial: { type: Object, required: true },
     operationToday: { type: Array, default: () => [] },
-    alertsCount: { type: Number, default: 0 },
+    tasksToday: { type: Array, default: () => [] },
     adminTasksOpen: { type: Number, default: 0 },
     kpis: { type: Object, required: true },
     leadsBySource: { type: Array, default: () => [] },
@@ -96,24 +96,6 @@ const leadsDonutOptions = computed(() => ({
     dataLabels: { enabled: false },
     tooltip: { y: { formatter: (val) => `${val} leads` } },
 }));
-
-const funnelMax = computed(() => {
-    const counts = (props.funnel || []).map((row) => Number(row.count || 0));
-    return Math.max(1, ...counts);
-});
-
-const funnelRows = computed(() => {
-    const base = Number(props.funnel?.[0]?.count || 0) || funnelMax.value;
-    return (props.funnel || []).map((row) => {
-        const count = Number(row.count || 0);
-        return {
-            ...row,
-            count,
-            pct: base > 0 ? Math.round((100 * count) / base) : 0,
-            width: Math.max(8, Math.round((100 * count) / funnelMax.value)),
-        };
-    });
-});
 
 const goalPercent = computed(() => Math.min(100, Number(props.monthlyGoal?.percent || 0)));
 
@@ -215,12 +197,13 @@ const kpiCards = computed(() => [
             <header class="min-w-0">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div class="min-w-0">
-                        <p class="text-sm font-medium text-slate-500">
-                            {{ greeting.prefix }}, {{ greeting.first }}!
-                        </p>
-                        <h1 class="mt-1 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+                        <p class="dashboard-section-label">Operação de hoje</p>
+                        <h1 class="dashboard-section-title mt-1 text-xl sm:text-2xl">
                             Painel operacional
                         </h1>
+                        <p class="mt-1.5 text-sm font-medium text-slate-800">
+                            {{ greeting.prefix }}, {{ greeting.first }}
+                        </p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <Link
@@ -231,29 +214,21 @@ const kpiCards = computed(() => [
                             <span class="dashboard-header-cta-badge">{{ adminTasksOpen }}</span>
                             Tarefas ADM abertas
                         </Link>
-                        <Link
-                            v-if="alertsCount > 0"
-                            :href="route('admin.notices.index')"
-                            class="dashboard-header-cta group"
-                        >
-                            <span class="dashboard-header-cta-badge">{{ alertsCount }}</span>
-                            Pendências
-                        </Link>
                     </div>
                 </div>
             </header>
 
             <DailyQuoteCard v-if="dailyQuote" :quote="dailyQuote" :date-label="todayDateLabel" />
 
-            <!-- Linha principal: Financeiro | Comercial | Calendário · hoje -->
+            <!-- Linha principal: Financeiro | Tarefas · hoje | Calendário · hoje -->
             <div class="grid gap-4 xl:grid-cols-3 xl:items-stretch">
                 <section class="dashboard-panel dashboard-panel-accent-finance dashboard-reveal flex flex-col">
                     <div class="dashboard-panel-heading">
                         <div>
-                            <h3 class="dashboard-panel-title text-emerald-800/70">Financeiro</h3>
-                            <p class="mt-1 text-sm font-medium text-slate-600">Caixa e fluxo do mês</p>
+                            <h3 class="dashboard-panel-title text-emerald-800/80">Financeiro</h3>
+                            <p class="dashboard-panel-kicker">Caixa e fluxo do mês</p>
                         </div>
-                        <span class="dashboard-panel-icon dashboard-panel-icon-finance">
+                        <span class="dashboard-panel-icon dashboard-panel-icon-finance" aria-hidden="true">
                             <BanknotesIcon class="h-5 w-5" />
                         </span>
                     </div>
@@ -287,7 +262,7 @@ const kpiCards = computed(() => [
                         class="dashboard-forecast-strip relative"
                         :class="{ 'dashboard-forecast-strip-neg': !forecastPositive }"
                     >
-                        <span class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                        <span class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
                             Fluxo previsto
                         </span>
                         <span
@@ -314,68 +289,48 @@ const kpiCards = computed(() => [
                 </section>
 
                 <section
-                    class="dashboard-panel dashboard-panel-accent-commercial dashboard-reveal dashboard-reveal-delay-1 flex flex-col"
+                    class="dashboard-panel dashboard-panel-accent-tasks dashboard-reveal dashboard-reveal-delay-1 flex flex-col"
                 >
                     <div class="dashboard-panel-heading">
                         <div>
-                            <h3 class="dashboard-panel-title text-talents-800/70">Comercial</h3>
-                            <p class="mt-1 text-sm font-medium text-slate-600">Pipeline do mês</p>
+                            <h3 class="dashboard-panel-title text-talents-800/80">Tarefas · hoje</h3>
+                            <p class="dashboard-panel-kicker">Prioridades do dia</p>
                         </div>
-                        <span class="dashboard-panel-icon dashboard-panel-icon-commercial">
-                            <UserGroupIcon class="h-5 w-5" />
+                        <span class="dashboard-panel-icon dashboard-panel-icon-tasks" aria-hidden="true">
+                            <ViewColumnsIcon class="h-5 w-5" />
                         </span>
                     </div>
-                    <ul class="relative mt-5 space-y-2">
-                        <li class="dashboard-pipeline-row">
-                            <span class="text-sm text-slate-600">Leads novos</span>
-                            <span class="text-base font-bold tabular-nums tracking-tight text-slate-900">
-                                {{ commercial.leads_new }}
-                            </span>
-                        </li>
-                        <li class="dashboard-pipeline-row">
-                            <span class="text-sm text-slate-600">Propostas enviadas</span>
-                            <span class="text-base font-bold tabular-nums tracking-tight text-slate-900">
-                                {{ commercial.proposals_sent }}
-                            </span>
-                        </li>
+                    <ul v-if="tasksToday.length" class="dashboard-calendar-rail relative mt-4">
                         <li
-                            class="dashboard-pipeline-row"
-                            :class="{ 'dashboard-pipeline-row-hot': commercial.in_negotiation > 0 }"
+                            v-for="task in tasksToday"
+                            :key="task.id"
+                            class="dashboard-calendar-item"
                         >
-                            <span class="text-sm font-medium text-slate-700">Em negociação</span>
-                            <span
-                                class="text-base font-bold tabular-nums tracking-tight"
-                                :class="commercial.in_negotiation > 0 ? 'text-talents-800' : 'text-slate-900'"
-                            >
-                                {{ commercial.in_negotiation }}
-                            </span>
-                        </li>
-                        <li class="dashboard-pipeline-row">
-                            <span class="text-sm text-slate-600">Fechadas</span>
-                            <span class="text-base font-bold tabular-nums tracking-tight text-slate-900">
-                                {{ commercial.closed }}
+                            <span class="dashboard-calendar-dot" aria-hidden="true" />
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate text-sm font-semibold text-slate-900">{{ task.title }}</span>
+                                <span
+                                    v-if="task.list_name || task.board_name"
+                                    class="mt-0.5 block truncate text-xs text-slate-500"
+                                >
+                                    <template v-if="task.board_name">{{ task.board_name }}</template>
+                                    <template v-if="task.board_name && task.list_name"> · </template>
+                                    <template v-if="task.list_name">{{ task.list_name }}</template>
+                                </span>
                             </span>
                         </li>
                     </ul>
-                    <div class="relative mt-4 grid grid-cols-2 gap-2.5">
-                        <div class="dashboard-twin-tile">
-                            <p class="dashboard-instrument-label">Taxa de conversão</p>
-                            <p class="mt-2 text-xl font-bold tabular-nums tracking-tight text-talents-800">
-                                {{ commercial.conversion_rate }}%
-                            </p>
-                        </div>
-                        <div class="dashboard-twin-tile">
-                            <p class="dashboard-instrument-label">Ticket médio</p>
-                            <p class="mt-2 text-xl font-bold tabular-nums tracking-tight text-slate-900">
-                                {{ formatMoneyCompact(commercial.avg_ticket_cents) }}
-                            </p>
-                        </div>
-                    </div>
+                    <EmptyState
+                        v-else
+                        class="dashboard-empty-trust relative mt-4 flex-1 py-6"
+                        title="Sem tarefas para hoje"
+                        description="Quando houver tarefas Admin para o dia, elas aparecem aqui."
+                    />
                     <Link
-                        :href="route('admin.comercial.propostas.index')"
+                        :href="route('admin.tarefas.quadros.index')"
                         class="dashboard-panel-link group/link relative mt-auto pt-4"
                     >
-                        Ver Comercial
+                        Ver tarefas
                         <span class="dashboard-panel-link-arrow" aria-hidden="true">→</span>
                     </Link>
                 </section>
@@ -385,10 +340,10 @@ const kpiCards = computed(() => [
                 >
                     <div class="dashboard-panel-heading">
                         <div>
-                            <h3 class="dashboard-panel-title text-sky-800/70">Calendário · hoje</h3>
-                            <p class="mt-1 text-sm font-medium text-slate-600">Agenda do dia</p>
+                            <h3 class="dashboard-panel-title text-sky-800/80">Calendário · hoje</h3>
+                            <p class="dashboard-panel-kicker">Agenda do dia · {{ todayDateLabel }}</p>
                         </div>
-                        <span class="dashboard-panel-icon dashboard-panel-icon-calendar">
+                        <span class="dashboard-panel-icon dashboard-panel-icon-calendar" aria-hidden="true">
                             <CalendarDaysIcon class="h-5 w-5" />
                         </span>
                     </div>
@@ -410,9 +365,9 @@ const kpiCards = computed(() => [
                     </ul>
                     <EmptyState
                         v-else
-                        class="relative mt-4 flex-1 !rounded-2xl !border-sky-100/50 !bg-sky-50/30 py-6"
+                        class="dashboard-empty-trust relative mt-4 flex-1 py-6"
                         title="Sem agenda para hoje"
-                        description="Itens do calendário estratégico de hoje aparecem aqui."
+                        description="Quando houver itens no calendário estratégico de hoje, eles aparecem aqui."
                     />
                     <Link
                         :href="route('admin.strategic-calendar.index')"
@@ -424,69 +379,87 @@ const kpiCards = computed(() => [
                 </section>
             </div>
 
-            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Link
-                    v-for="(card, index) in kpiCards"
-                    :key="card.key"
-                    :href="card.href"
-                    class="dashboard-panel-compact group dashboard-reveal flex min-h-[7.5rem] flex-col"
-                    :class="{
-                        'dashboard-reveal-delay-1': index % 3 === 1,
-                        'dashboard-reveal-delay-2': index % 3 === 2,
-                        'dashboard-reveal-delay-3': index % 3 === 0 && index > 0,
-                    }"
-                >
-                    <div class="flex items-start justify-between gap-3">
-                        <p class="dashboard-panel-title max-w-[70%] leading-snug text-slate-500">
-                            {{ card.label }}
-                        </p>
-                        <span class="dashboard-kpi-tile">
-                            <component :is="card.icon" class="dashboard-kpi-icon" />
-                        </span>
-                    </div>
-                    <p class="dashboard-metric-value mt-auto pt-3">{{ card.value }}</p>
-                    <p class="dashboard-metric-hint">{{ card.hint }}</p>
-                </Link>
-            </div>
-
-            <div class="grid gap-4 lg:grid-cols-3">
-                <section class="dashboard-panel dashboard-reveal">
-                    <div class="dashboard-panel-heading mb-1">
-                        <h3 class="dashboard-panel-title">Leads por origem (mês)</h3>
-                    </div>
-                    <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-                        <div class="flex min-h-[200px] flex-1 justify-center">
-                            <ApexChart
-                                v-if="leadsSourceTotal > 0"
-                                type="donut"
-                                height="200"
-                                :options="leadsDonutOptions"
-                                :series="leadsSourceSeries"
-                            />
-                            <EmptyState
-                                v-else
-                                class="!rounded-2xl !border-rose-100/40 !bg-rose-50/20 py-8"
-                                title="Sem leads neste mês"
-                                description="Origens vêm dos formulários da landing e do cadastro manual."
-                            />
+            <section class="space-y-3" aria-labelledby="dashboard-kpis-heading">
+                <div>
+                    <p class="dashboard-section-label">Indicadores</p>
+                    <h2 id="dashboard-kpis-heading" class="dashboard-section-title">
+                        Visão consolidada
+                    </h2>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <Link
+                        v-for="(card, index) in kpiCards"
+                        :key="card.key"
+                        :href="card.href"
+                        class="dashboard-panel-compact group dashboard-reveal flex min-h-[7.5rem] flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-talents-600"
+                        :class="{
+                            'dashboard-reveal-delay-1': index % 3 === 1,
+                            'dashboard-reveal-delay-2': index % 3 === 2,
+                            'dashboard-reveal-delay-3': index % 3 === 0 && index > 0,
+                        }"
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <p class="dashboard-panel-title max-w-[70%] leading-snug">
+                                {{ card.label }}
+                            </p>
+                            <span class="dashboard-kpi-tile" aria-hidden="true">
+                                <component :is="card.icon" class="dashboard-kpi-icon" />
+                            </span>
                         </div>
-                        <ul v-if="leadsSourceTotal > 0" class="w-full space-y-2 text-sm sm:w-40">
-                            <li
-                                v-for="(row, idx) in leadsBySource"
-                                :key="row.key"
-                                class="dashboard-pipeline-row !py-2"
+                        <p class="dashboard-metric-value mt-auto pt-3">{{ card.value }}</p>
+                        <p class="dashboard-metric-hint">{{ card.hint }}</p>
+                    </Link>
+                </div>
+            </section>
+
+            <section class="space-y-3" aria-labelledby="dashboard-insights-heading">
+                <div>
+                    <p class="dashboard-section-label">Leitura do mês</p>
+                    <h2 id="dashboard-insights-heading" class="dashboard-section-title">
+                        Origem, funil e meta
+                    </h2>
+                </div>
+                <div class="grid gap-4 lg:grid-cols-3">
+                    <section class="dashboard-panel dashboard-reveal">
+                        <div class="dashboard-panel-heading mb-1">
+                            <h3 class="dashboard-panel-title">Leads por origem (mês)</h3>
+                        </div>
+                        <div class="mt-4 flex flex-col gap-4">
+                            <div class="flex min-h-[200px] w-full justify-center">
+                                <ApexChart
+                                    v-if="leadsSourceTotal > 0"
+                                    type="donut"
+                                    height="200"
+                                    :options="leadsDonutOptions"
+                                    :series="leadsSourceSeries"
+                                />
+                                <EmptyState
+                                    v-else
+                                    class="dashboard-empty-trust py-8"
+                                    title="Sem leads neste mês"
+                                    description="Quando houver envios da landing ou cadastros manuais, as origens aparecem aqui."
+                                />
+                            </div>
+                            <ul
+                                v-if="leadsSourceTotal > 0"
+                                class="grid w-full grid-cols-1 gap-2 text-sm sm:grid-cols-2"
                             >
-                                <span class="flex items-center gap-2 text-slate-600">
-                                    <span
-                                        class="h-2 w-2 rounded-full"
-                                        :style="{ backgroundColor: sourceColors[idx % sourceColors.length] }"
-                                    />
-                                    {{ row.label }}
-                                </span>
-                                <span class="tabular-nums font-bold text-slate-900">{{ row.count }}</span>
-                            </li>
-                        </ul>
-                    </div>
+                                <li
+                                    v-for="(row, idx) in leadsBySource"
+                                    :key="row.key"
+                                    class="flex items-center justify-between gap-3 rounded-xl border border-violet-100/50 bg-white/80 px-3 py-2"
+                                >
+                                    <span class="flex min-w-0 items-center gap-2 text-slate-700">
+                                        <span
+                                            class="h-2.5 w-2.5 shrink-0 rounded-full"
+                                            :style="{ backgroundColor: sourceColors[idx % sourceColors.length] }"
+                                        />
+                                        <span class="whitespace-nowrap">{{ row.label }}</span>
+                                    </span>
+                                    <span class="shrink-0 tabular-nums font-bold text-slate-900">{{ row.count }}</span>
+                                </li>
+                            </ul>
+                        </div>
                     <Link
                         :href="route('admin.landing-interest.index')"
                         class="dashboard-panel-link group/link mt-4"
@@ -500,20 +473,9 @@ const kpiCards = computed(() => [
                     <div class="dashboard-panel-heading mb-1">
                         <h3 class="dashboard-panel-title">Funil comercial</h3>
                     </div>
-                    <ul class="mt-5 space-y-3.5">
-                        <li v-for="row in funnelRows" :key="row.key">
-                            <div class="mb-1.5 flex items-center justify-between gap-2 text-sm">
-                                <span class="font-semibold text-slate-700">{{ row.label }}</span>
-                                <span class="tabular-nums text-slate-500">{{ row.count }} · {{ row.pct }}%</span>
-                            </div>
-                            <div class="h-2.5 overflow-hidden rounded-full bg-violet-100/60">
-                                <div
-                                    class="h-full rounded-full bg-gradient-to-r from-talents-700 to-violet-400 transition-all"
-                                    :style="{ width: `${row.width}%` }"
-                                />
-                            </div>
-                        </li>
-                    </ul>
+                    <div class="mt-4">
+                        <DashboardSalesFunnel :funnel="funnel" />
+                    </div>
                 </section>
 
                 <section class="dashboard-panel dashboard-reveal dashboard-reveal-delay-2">
@@ -532,12 +494,13 @@ const kpiCards = computed(() => [
                         <p class="text-xl font-bold tabular-nums tracking-tight text-slate-900">
                             {{ formatMoney(monthlyGoal.current_cents) }}
                         </p>
-                        <p class="mt-1 text-xs text-slate-500">
+                        <p class="mt-1 text-xs text-slate-600">
                             de {{ formatMoney(monthlyGoal.goal_cents) }} (vendas do mês)
                         </p>
                     </div>
                 </section>
-            </div>
+                </div>
+            </section>
         </div>
     </AdminLayout>
 </template>

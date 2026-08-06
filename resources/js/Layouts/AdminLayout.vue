@@ -184,7 +184,7 @@ const isComercialSettingsTab = (tab) => {
     >
         <template #logo="{ collapsed }">
             <SidebarBrandMark
-                :href="route('admin.dashboard')"
+                :href="route('landing.home')"
                 :collapsed="collapsed"
                 isolated-icon
                 icon-src="/images/logo-icon.png"

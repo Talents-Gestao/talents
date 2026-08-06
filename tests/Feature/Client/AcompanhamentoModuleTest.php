@@ -74,6 +74,53 @@ class AcompanhamentoModuleTest extends TestCase
         ]);
     }
 
+    public function test_candidates_and_comments_persist_and_update_across_stages_for_client(): void
+    {
+        $company = Company::query()->create([
+            'name' => 'Empresa Campos',
+            'acompanhamento_access' => true,
+        ]);
+        $this->subscribeCompanyToNr1($company);
+        $admin = User::factory()->companyAdmin($company->id)->create();
+
+        $this->actingAs($admin)
+            ->post(route('client.acompanhamento.store'), [
+                'title' => 'Vaga Cliente',
+                'current_stage' => HiringProcessStage::AnaliseCurriculo->value,
+                'notes' => 'Comentário cliente',
+                'candidates_count' => 3,
+            ])
+            ->assertRedirect();
+
+        $process = HiringProcess::query()->where('title', 'Vaga Cliente')->firstOrFail();
+        $this->assertSame(3, $process->candidates_count);
+        $this->assertNotNull($process->candidates_count_at);
+        $this->assertNotNull($process->notes_at);
+
+        $this->actingAs($admin)
+            ->post(route('client.acompanhamento.advance', $process))
+            ->assertRedirect();
+
+        $process->refresh();
+        $this->assertSame(3, $process->candidates_count);
+        $this->assertSame('Comentário cliente', $process->notes);
+
+        $this->travel(1)->seconds();
+
+        $this->actingAs($admin)
+            ->patch(route('client.acompanhamento.update', $process), [
+                'candidates_count' => 7,
+                'notes' => 'Comentário após avanço',
+            ])
+            ->assertRedirect();
+
+        $process->refresh();
+        $this->assertSame(7, $process->candidates_count);
+        $this->assertSame('Comentário após avanço', $process->notes);
+        $this->assertNotNull($process->candidates_count_at);
+        $this->assertNotNull($process->notes_at);
+    }
+
     public function test_company_user_cannot_create_process_but_can_manage(): void
     {
         $company = Company::query()->create([
