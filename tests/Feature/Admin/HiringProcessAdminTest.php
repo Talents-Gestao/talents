@@ -92,6 +92,69 @@ class HiringProcessAdminTest extends TestCase
 
         $process = HiringProcess::query()->where('title', 'Analista com candidatos')->first();
         $this->assertNotNull($process?->notes_at);
+        $this->assertNotNull($process?->candidates_count_at);
+    }
+
+    public function test_candidates_and_comments_persist_across_stages_and_remain_editable(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = Company::query()->create(['name' => 'Empresa Persist', 'is_active' => true]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.acompanhamento.store'), [
+                'company_id' => $company->id,
+                'title' => 'Vaga Persistente',
+                'current_stage' => HiringProcessStage::AnaliseCurriculo->value,
+                'notes' => 'Comentário inicial',
+                'candidates_count' => 5,
+            ])
+            ->assertRedirect();
+
+        $process = HiringProcess::query()->where('title', 'Vaga Persistente')->firstOrFail();
+        $notesAt = $process->notes_at;
+        $candidatesAt = $process->candidates_count_at;
+        $this->assertNotNull($notesAt);
+        $this->assertNotNull($candidatesAt);
+
+        $this->actingAs($admin)
+            ->post(route('admin.acompanhamento.advance', $process))
+            ->assertRedirect();
+
+        $process->refresh();
+        $this->assertSame(HiringProcessStage::AnaliseComportamental, $process->current_stage);
+        $this->assertSame(5, $process->candidates_count);
+        $this->assertSame('Comentário inicial', $process->notes);
+        $this->assertTrue($process->notes_at?->equalTo($notesAt));
+        $this->assertTrue($process->candidates_count_at?->equalTo($candidatesAt));
+
+        $this->travel(1)->seconds();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.acompanhamento.update', $process), [
+                'candidates_count' => 9,
+                'notes' => 'Comentário atualizado na nova fase',
+            ])
+            ->assertRedirect();
+
+        $process->refresh();
+        $this->assertSame(9, $process->candidates_count);
+        $this->assertSame('Comentário atualizado na nova fase', $process->notes);
+        $this->assertTrue($process->notes_at?->greaterThan($notesAt));
+        $this->assertTrue($process->candidates_count_at?->greaterThan($candidatesAt));
+
+        $this->withoutVite();
+
+        $this->actingAs($admin)
+            ->get(route('admin.acompanhamento.index', [
+                'stage' => HiringProcessStage::AnaliseComportamental->value,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('processes', 1)
+                ->where('processes.0.candidates_count', 9)
+                ->where('processes.0.notes', 'Comentário atualizado na nova fase')
+                ->where('processes.0.candidates_count_at', fn ($v) => is_string($v) && $v !== '')
+                ->where('processes.0.notes_at', fn ($v) => is_string($v) && $v !== ''));
     }
 
     public function test_admin_can_create_and_advance_process(): void

@@ -1,9 +1,10 @@
 <script setup>
 import {
-    AcademicCapIcon,
     BuildingOffice2Icon,
     ChartBarIcon,
+    CheckBadgeIcon,
     ClipboardDocumentCheckIcon,
+    ClockIcon,
     CursorArrowRaysIcon,
     HeartIcon,
     MagnifyingGlassIcon,
@@ -24,15 +25,15 @@ defineProps({
     canRegister: Boolean,
 });
 
-const title = 'Talents — Consultoria Estratégica em Gestão de Pessoas';
+const title = 'Talents — Contratação de Talentos e Consultoria em Gestão de Pessoas';
 const description =
-    'A Talents é uma consultoria estratégica em gestão de pessoas. Transformamos pessoas em estratégias de crescimento através de comportamento, liderança e desenvolvimento humano.';
+    'Contratação de talentos com método: recrutamento e seleção estratégica, análise comportamental e acompanhamento pós-contratação. Consultoria em gestão de pessoas em Várzea Paulista/SP.';
 
 const methodologyPillars = [
     {
         title: 'Metamorfose Comportamental',
         items: ['Mapeamento', 'Análise', 'Imersão', 'Direcionamento'],
-        objective: 'Compreender o potencial humano.',
+        objective: 'Depois da contratação: compreender perfis para desenvolver o potencial de quem entrou no time.',
         icon: SparklesIcon,
         accent: 'from-violet-500/15 via-white to-white',
         iconWrap: 'bg-violet-100 text-violet-700 ring-violet-200/70',
@@ -42,13 +43,16 @@ const methodologyPillars = [
     },
     {
         title: 'Contratação de Talentos',
+        featured: true,
         items: [
             'Análise Salarial',
             'Engenharia de Cargos',
             'Recrutamento e Seleção',
             'Mapeamento Comportamental',
+            'Acompanhamento pós-contratação',
         ],
-        objective: 'Contratar com método e aderência.',
+        objective:
+            'Contratar com método, aderência cultural e acompanhamento pós-admissão — o ponto de partida da metamorfose empresarial.',
         icon: CursorArrowRaysIcon,
         accent: 'from-fuchsia-500/15 via-white to-white',
         iconWrap: 'bg-fuchsia-100 text-fuchsia-700 ring-fuchsia-200/70',
@@ -65,7 +69,7 @@ const methodologyPillars = [
             'Estruturação de RH',
             'Cultura Organizacional',
         ],
-        objective: 'Desenvolver pessoas e negócios.',
+        objective: 'Desenvolver líderes e cultura para reter e evoluir quem você contratou.',
         icon: ChartBarIcon,
         accent: 'from-talents-500/15 via-white to-white',
         iconWrap: 'bg-talents-100 text-talents-800 ring-talents-200/70',
@@ -81,7 +85,7 @@ const methodologyPillars = [
             'Treinamentos de Líderes e Time',
             'Monitoramento Contínuo',
         ],
-        objective: 'Promover ambientes saudáveis e seguros.',
+        objective: 'Proteger o clima e a saúde do time que você montou.',
         icon: ShieldCheckIcon,
         accent: 'from-indigo-500/15 via-white to-white',
         iconWrap: 'bg-indigo-100 text-indigo-700 ring-indigo-200/70',
@@ -95,37 +99,46 @@ const recruitmentPhases = (() => {
     const phases = [
         {
             title: 'Preparar',
-            description: 'Base salarial, cargos e atração de candidatos.',
+            description: 'Definir o cargo certo antes de abrir a vaga.',
+            proof: 'Base clara antes de publicar',
             icon: ClipboardDocumentCheckIcon,
             steps: [
-                'Análise salarial',
+                'Análise salarial do mercado e da vaga',
                 'Engenharia de cargos',
-                'Divulgação de vagas',
+                'Alinhamento cultural do perfil',
+                'Divulgação com critérios definidos',
             ],
         },
         {
             title: 'Selecionar',
-            description: 'Triagem, entrevistas e análise técnica e comportamental.',
+            description: 'Escolher com evidência — não só por currículo.',
+            proof: 'Comportamental + técnico + entrevistas',
             icon: MagnifyingGlassIcon,
             steps: [
                 'Triagem de candidatos',
                 'Análise comportamental',
-                'Agendamento de entrevistas presenciais e online',
                 'Entrevistas presenciais e online',
-                'Análise técnica',
-                'Segunda fase de entrevistas com o responsável do cargo, se desejarem',
+                'Análise técnica e alinhamento com o gestor',
             ],
         },
         {
-            title: 'Contratar e acompanhar',
-            description: 'Admissão, relatórios e acompanhamento pós-contratação.',
+            title: 'Contratar',
+            description: 'Admitir com evidência e clareza na integração inicial.',
+            proof: 'Admissão com Profiler + Matcher',
             icon: UserPlusIcon,
             steps: [
-                'Visita do pré-candidato à empresa (opcional)',
                 'Envio do candidato para admissão',
-                'Relatórios (Profiler + Matcher)',
-                'Acompanhamento pós-contratação (3 meses) com direito a 1 recontratação',
-                'Análise comportamental semestral para acompanhar o desenvolvimento (mediante a empresa)',
+                'Relatórios Profiler + Matcher',
+            ],
+        },
+        {
+            title: 'Acompanhar',
+            description: 'Pós-contratação com continuidade e garantia real.',
+            proof: '90 dias + 1 recontratação',
+            icon: ClockIcon,
+            steps: [
+                'Acompanhamento pós-contratação por 3 meses, com direito a 1 recontratação',
+                'Análise comportamental semestral (mediante a empresa)',
             ],
         },
     ];
@@ -144,42 +157,42 @@ const recruitmentPhases = (() => {
 const pillars = [
     {
         title: 'Comportamento',
-        description: 'Compreensão de perfis, comunicação e tomada de decisão.',
+        description: 'Lê perfis para contratar com aderência e desenvolver quem já entrou.',
         icon: SparklesIcon,
     },
     {
         title: 'Liderança',
-        description: 'Fortalecimento de líderes e desenvolvimento de equipes.',
+        description: 'Líderes que integram, acompanham e desenvolvem o novo talento.',
         icon: UserGroupIcon,
     },
     {
         title: 'Cultura Organizacional',
-        description: 'Estruturação de ambientes mais conscientes e estratégicos.',
+        description: 'Ambiente claro para o contratado se encaixar e render.',
         icon: BuildingOffice2Icon,
     },
     {
         title: 'Desenvolvimento Humano',
-        description: 'Clareza, direcionamento e evolução profissional.',
+        description: 'Direcionamento para o profissional evoluir após a contratação.',
         icon: HeartIcon,
     },
     {
         title: 'Gestão Estratégica de Pessoas',
-        description: 'Pessoas alinhadas ao crescimento da empresa.',
+        description: 'Pessoas alinhadas ao crescimento — do hire ao resultado.',
         icon: ChartBarIcon,
     },
     {
         title: 'NR-1 e Riscos Psicossociais',
-        description: 'Apoio estratégico na saúde organizacional e conformidade.',
+        description: 'Protege o clima do time que você montou e a conformidade.',
         icon: ShieldCheckIcon,
     },
 ];
 
-const heroTypewriterPhrases = [
+const visionPoints = [
+    'Contratação com método: preparar, selecionar, contratar e acompanhar.',
+    'Pós-contratação de 90 dias, com direito a 1 recontratação.',
+    'Ciência comportamental a serviço da aderência ao cargo.',
+    'Os outros pilares sustentam retenção, liderança e saúde do time.',
     'Fortalecemos empresas através das pessoas.',
-    'Transformamos pessoas em estratégias de crescimento.',
-    'Mais clareza. Mais consciência. Mais resultado.',
-    'Toda transformação começa pelo autoconhecimento.',
-    'Comportamento também é estratégia.',
 ];
 
 const organizationJsonLd = computed(() =>
@@ -192,10 +205,13 @@ const organizationJsonLd = computed(() =>
         logo: typeof window !== 'undefined' ? `${window.location.origin}/images/logo.png` : '/images/logo.png',
         areaServed: 'BR',
         serviceType: [
+            'Contratação de talentos',
+            'Recrutamento e seleção estratégica',
             'Consultoria estratégica em gestão de pessoas',
             'Desenvolvimento humano',
             'Liderança',
             'Cultura organizacional',
+            'Gestão de riscos psicossociais NR-1',
         ],
         email: 'contato@talentsgestao.com',
         address: {
@@ -251,14 +267,15 @@ const organizationJsonLd = computed(() =>
                         Metodologia Talents
                     </p>
                     <h2 class="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">
-                        Pilares da metodologia
+                        Metodologia em 4 pilares — com a contratação no centro
                     </h2>
                     <p class="mt-3 text-base font-medium text-talents-800 md:text-lg">
-                        A metamorfose empresarial começa com bons talentos no time!
+                        Contratar certo é o ponto de partida. Os outros pilares sustentam retenção, cultura e saúde do
+                        time.
                     </p>
                     <p class="mt-3 text-sm leading-relaxed text-slate-600 md:text-base">
-                        Quatro pilares para transformar pessoas, fortalecer empresas e gerar resultados sustentáveis —
-                        com clareza de método em cada etapa.
+                        A metamorfose empresarial começa com bons talentos no time — e continua com comportamento,
+                        direcionamento e proteção psicossocial.
                     </p>
                 </div>
 
@@ -270,85 +287,103 @@ const organizationJsonLd = computed(() =>
 
         <section
             id="recrutamento-estrategico"
-            class="scroll-mt-24 border-t border-white/20 py-12 md:py-16"
+            class="scroll-mt-24 border-t border-white/20 py-14 md:py-20"
         >
             <div class="mx-auto max-w-6xl px-4">
-                <div class="max-w-3xl">
+                <div class="max-w-2xl">
                     <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">
                         Contratação de talentos
                     </p>
-                    <h2 class="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">
+                    <h2 class="mt-3 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
                         Recrutamento estratégico
                     </h2>
-                    <p class="mt-3 text-base leading-relaxed text-slate-600 md:text-lg">
-                        Processo completo — do diagnóstico da vaga ao acompanhamento pós-contratação —
-                        para contratar com método, aderência e menor risco de turnover.
+                    <p class="mt-4 text-base leading-relaxed text-slate-600 md:text-lg">
+                        Contratar errado custa tempo, clima e resultado. Em quatro fases — preparar, selecionar,
+                        contratar e acompanhar — unimos análise comportamental, critério técnico e pós-contratação para
+                        mais aderência e menos risco de turnover.
                     </p>
                 </div>
 
-                <div class="mt-10 grid gap-5 lg:grid-cols-3">
-                    <article
+                <div class="mt-12 grid gap-8 sm:grid-cols-2 lg:gap-6">
+                    <div
                         v-for="(phase, phaseIndex) in recruitmentPhases"
                         :key="phase.title"
-                        class="flex h-full flex-col rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-sm md:p-6"
+                        class="flex h-full flex-col gap-3"
                     >
-                        <div class="flex items-start justify-between gap-3">
-                            <div
-                                class="inline-flex rounded-2xl bg-talents-100 p-2.5 text-talents-800 ring-1 ring-talents-200/70"
-                            >
-                                <component :is="phase.icon" class="h-5 w-5" aria-hidden="true" />
-                            </div>
-                            <span class="text-xs font-bold tabular-nums text-slate-300">
-                                {{ String(phaseIndex + 1).padStart(2, '0') }}
-                            </span>
-                        </div>
-                        <h3 class="mt-4 text-lg font-bold text-slate-900">{{ phase.title }}</h3>
-                        <p class="mt-1.5 text-sm leading-relaxed text-slate-500">
-                            {{ phase.description }}
-                        </p>
-                        <ol class="mt-5 flex-1 space-y-3">
-                            <li
-                                v-for="step in phase.steps"
-                                :key="step.number"
-                                class="flex items-start gap-3 text-sm leading-snug text-slate-700"
-                            >
-                                <span
-                                    class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-talents-50 text-[0.7rem] font-bold tabular-nums text-talents-700 ring-1 ring-talents-100"
+                        <article
+                            class="group flex flex-1 flex-col rounded-3xl border border-slate-200/70 bg-white p-5 shadow-[0_8px_28px_-14px_rgba(88,28,135,0.14),0_2px_6px_rgba(15,23,42,0.04)] ring-1 ring-transparent transition-[border-color,box-shadow,transform] duration-300 motion-safe:hover:-translate-y-1 motion-safe:hover:border-talents-200/80 motion-safe:hover:shadow-[0_18px_40px_-16px_rgba(88,28,135,0.22),0_4px_10px_rgba(15,23,42,0.05)] motion-safe:hover:ring-talents-100/80 motion-reduce:transition-none md:p-6"
+                        >
+                            <div class="flex items-start justify-between gap-3">
+                                <div
+                                    class="inline-flex rounded-2xl bg-gradient-to-br from-talents-50 to-violet-100/70 p-3 text-talents-800 ring-1 ring-talents-200/80 transition duration-300 motion-safe:group-hover:from-talents-100 motion-safe:group-hover:to-violet-100"
                                 >
-                                    {{ step.number }}
+                                    <component :is="phase.icon" class="h-5 w-5" aria-hidden="true" />
+                                </div>
+                                <span
+                                    class="select-none text-2xl font-light tabular-nums leading-none tracking-tight text-slate-200 md:text-3xl"
+                                    aria-hidden="true"
+                                >
+                                    {{ String(phaseIndex + 1).padStart(2, '0') }}
                                 </span>
-                                <span>{{ step.label }}</span>
-                            </li>
-                        </ol>
-                    </article>
+                            </div>
+
+                            <h3 class="mt-5 text-xl font-bold tracking-tight text-slate-900">
+                                {{ phase.title }}
+                            </h3>
+                            <p class="mt-2 text-sm font-medium leading-relaxed text-talents-800/80">
+                                {{ phase.description }}
+                            </p>
+
+                            <ol class="mt-6 flex-1 space-y-3.5 border-t border-slate-100 pt-5">
+                                <li
+                                    v-for="step in phase.steps"
+                                    :key="step.number"
+                                    class="flex items-start gap-3 text-sm leading-snug text-slate-700"
+                                >
+                                    <span
+                                        class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-talents-50 text-[0.7rem] font-bold tabular-nums text-talents-700 ring-1 ring-talents-100"
+                                    >
+                                        {{ step.number }}
+                                    </span>
+                                    <span class="pt-0.5">{{ step.label }}</span>
+                                </li>
+                            </ol>
+                        </article>
+
+                        <p class="flex items-center gap-2 px-1 text-sm font-semibold text-slate-700">
+                            <CheckBadgeIcon
+                                class="h-5 w-5 shrink-0 text-talents-600"
+                                aria-hidden="true"
+                            />
+                            <span>{{ phase.proof }}</span>
+                        </p>
+                    </div>
                 </div>
 
-                <div class="mt-8 flex flex-wrap items-center gap-3">
-                    <Link :href="route('landing.contato')" class="btn-secondary">
-                        Falar com especialista
+                <div class="mt-10 flex flex-wrap items-center gap-3">
+                    <Link :href="route('landing.contato')" class="btn-primary">
+                        Quero contratar com a Talents
                     </Link>
                 </div>
             </div>
         </section>
 
-        <section class="py-16">
+        <section class="border-t border-white/20 py-12 md:py-14">
             <div class="mx-auto max-w-6xl px-4">
                 <div class="max-w-3xl">
-                    <h2 class="text-2xl font-bold text-slate-900 md:text-3xl">
-                        Desenvolvimento estratégico para pessoas e empresas que buscam transformação.
-                    </h2>
-                    <p class="mt-4 text-slate-600 leading-relaxed">
-                        A Talents é uma consultoria estratégica em gestão de pessoas que ajuda pessoas e empresas a
-                        compreender comportamentos, fortalecer lideranças e transformar relações através do
-                        desenvolvimento e direcionamento estratégico.
+                    <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">
+                        Amplitude da consultoria
                     </p>
-                    <p class="mt-4 text-slate-600 leading-relaxed">
-                        Acreditamos que as empresas se fortalecem quando compreendem melhor as pessoas que fazem parte
-                        delas.
+                    <h2 class="mt-3 text-xl font-bold text-slate-900 md:text-2xl">
+                        Além de contratar: o que sustenta o talento no time
+                    </h2>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600 md:text-base">
+                        Contratar é o centro. As demais frentes da Talents existem para que o hire não fique órfão —
+                        com liderança, cultura, desenvolvimento e proteção psicossocial.
                     </p>
                 </div>
 
-                <div class="mt-12">
+                <div class="mt-10">
                     <LandingCardGrid :items="pillars" columns="md:grid-cols-2 lg:grid-cols-3" />
                 </div>
             </div>
@@ -363,21 +398,21 @@ const organizationJsonLd = computed(() =>
                                 Nossa visão
                             </p>
                             <h2 class="mt-3 text-2xl font-bold md:text-3xl">
-                                Comportamento, liderança e estratégia a serviço da transformação.
+                                Contratar certo. Desenvolver de verdade. Proteger o time.
                             </h2>
                             <p class="mt-4 text-talents-100/90 leading-relaxed">
-                                Não somos RH operacional, recrutamento isolado ou treinamentos genéricos. Somos
-                                consultoria estratégica em gestão de pessoas — com foco em cultura organizacional,
-                                desenvolvimento humano e transformação consciente.
+                                Não somos RH operacional nem treinamentos genéricos. Também não fazemos recrutamento
+                                isolado: contratamos com método, acompanhamos a integração e usamos a mesma ciência de
+                                comportamento para sustentar liderança, cultura e NR-1.
                             </p>
                         </div>
                         <div class="space-y-3">
                             <p
-                                v-for="phrase in heroTypewriterPhrases"
-                                :key="phrase"
+                                v-for="point in visionPoints"
+                                :key="point"
                                 class="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-medium text-talents-50"
                             >
-                                {{ phrase }}
+                                {{ point }}
                             </p>
                         </div>
                     </div>
@@ -385,55 +420,16 @@ const organizationJsonLd = computed(() =>
             </div>
         </section>
 
-        <section class="py-16">
-            <div class="mx-auto max-w-6xl px-4">
-                <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Como ajudamos</h2>
-                <p class="mx-auto mt-3 max-w-2xl text-center text-slate-600">
-                    Metodologias próprias para empresas e profissionais em diferentes fases de transformação.
-                </p>
-                <div class="mt-10 grid gap-6 md:grid-cols-2">
-                    <article class="surface-card-soft p-8">
-                        <AcademicCapIcon class="h-8 w-8 text-talents-600" />
-                        <h3 class="mt-4 text-xl font-semibold text-slate-900">Metamorfose Empresarial™</h3>
-                        <p class="mt-3 text-sm leading-relaxed text-slate-600">
-                            Transformação de empresas através das pessoas — comportamento, liderança, cultura e
-                            desenvolvimento humano de forma consciente e estratégica.
-                        </p>
-                        <Link
-                            :href="route('landing.empresas')"
-                            class="mt-4 inline-block text-sm font-semibold text-talents-700 hover:underline"
-                        >
-                            Conhecer para empresas →
-                        </Link>
-                    </article>
-                    <article class="surface-card-soft p-8">
-                        <SparklesIcon class="h-8 w-8 text-talents-600" />
-                        <h3 class="mt-4 text-xl font-semibold text-slate-900">Metamorfose Pessoal™</h3>
-                        <p class="mt-3 text-sm leading-relaxed text-slate-600">
-                            Autoconhecimento, clareza e direcionamento para diferentes fases da vida pessoal e
-                            profissional através do comportamento humano.
-                        </p>
-                        <Link
-                            :href="route('landing.pessoas')"
-                            class="mt-4 inline-block text-sm font-semibold text-talents-700 hover:underline"
-                        >
-                            Conhecer para pessoas →
-                        </Link>
-                    </article>
-                </div>
-            </div>
-        </section>
-
         <section class="border-t border-white/30 bg-white/30 py-16 backdrop-blur-sm">
             <div class="mx-auto max-w-3xl px-4 text-center">
                 <h2 class="text-2xl font-bold text-slate-900 md:text-3xl">
-                    Vamos fortalecer sua empresa através das pessoas?
+                    Pronto para contratar com mais método e menos risco?
                 </h2>
                 <p class="mx-auto mt-3 max-w-xl text-slate-600">
-                    Converse com um especialista Talents e descubra como nossa consultoria pode apoiar sua
-                    transformação.
+                    Converse com um especialista Talents sobre o processo de Contratação de Talentos — e, se fizer
+                    sentido, sobre os pilares que sustentam o time depois do hire.
                 </p>
-                <Link :href="route('landing.contato')" class="btn-primary mt-8"> Falar com Especialista </Link>
+                <Link :href="route('landing.contato')" class="btn-primary mt-8"> Falar sobre contratação </Link>
             </div>
         </section>
     </LandingLayout>

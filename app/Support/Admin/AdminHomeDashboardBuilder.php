@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Support\Admin;
 
-use App\Enums\CompanyNoticeAudience;
 use App\Enums\FinancePayableStatus;
 use App\Enums\HiringProcessStage;
 use App\Enums\LandingInterestSource;
@@ -14,7 +13,6 @@ use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
 use App\Models\Company;
 use App\Models\CompanyMethodology;
-use App\Models\CompanyNotice;
 use App\Models\FinancePayable;
 use App\Models\HiringProcess;
 use App\Models\LandingInterestSubmission;
@@ -31,9 +29,8 @@ final class AdminHomeDashboardBuilder
     /**
      * @return array{
      *     finance: array<string, mixed>,
-     *     commercial: array<string, mixed>,
      *     operation_today: list<array<string, mixed>>,
-     *     alerts_count: int,
+     *     tasks_today: list<array<string, mixed>>,
      *     admin_tasks_open: int,
      *     kpis: array<string, mixed>,
      *     leads_by_source: list<array{key: string, label: string, count: int}>,
@@ -71,10 +68,6 @@ final class AdminHomeDashboardBuilder
             ->where('created_at', '>=', $monthStart)
             ->count();
 
-        $proposalsSentThisMonth = CommercialProposal::query()
-            ->where('created_at', '>=', $monthStart)
-            ->count();
-
         $proposalsInNegotiation = CommercialProposal::query()
             ->where('is_closed', false)
             ->count();
@@ -83,24 +76,6 @@ final class AdminHomeDashboardBuilder
             ->where('is_closed', true)
             ->where('updated_at', '>=', $monthStart)
             ->count();
-
-        $conversionRate = $leadsThisMonth > 0
-            ? round(100 * $proposalsClosedThisMonth / $leadsThisMonth, 0)
-            : ($proposalsSentThisMonth > 0
-                ? round(100 * $proposalsClosedThisMonth / $proposalsSentThisMonth, 0)
-                : 0.0);
-
-        $avgTicketCents = (int) round((float) CommercialSale::query()
-            ->where('status', '!=', CommercialSale::STATUS_CANCELADA)
-            ->where('sold_at', '>=', $monthStart)
-            ->avg('total_cents'));
-
-        if ($avgTicketCents === 0) {
-            $avgTicketCents = (int) round((float) CommercialProposal::query()
-                ->where('is_closed', true)
-                ->where('updated_at', '>=', $monthStart)
-                ->avg('total_final_cents'));
-        }
 
         $dayEnd = $today->copy()->endOfDay();
         $todayMasters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
@@ -130,8 +105,8 @@ final class AdminHomeDashboardBuilder
             ];
         })->all();
 
-        $alertsCount = $this->alertsCount($today, $monthStart);
         $adminTasksOpen = $this->adminOpenTasksCount();
+        $tasksToday = $this->adminTasksToday($today);
 
         $activeCompanies = Company::query()->where('is_active', true)->count();
         $newCompaniesMonth = Company::query()
@@ -183,16 +158,8 @@ final class AdminHomeDashboardBuilder
                 'payables_cents' => $payablesPendingCents,
                 'forecast_cents' => $forecastCents,
             ],
-            'commercial' => [
-                'leads_new' => $leadsThisMonth,
-                'proposals_sent' => $proposalsSentThisMonth,
-                'in_negotiation' => $proposalsInNegotiation,
-                'closed' => $proposalsClosedThisMonth,
-                'conversion_rate' => $conversionRate,
-                'avg_ticket_cents' => $avgTicketCents,
-            ],
             'operation_today' => $operationToday,
-            'alerts_count' => $alertsCount,
+            'tasks_today' => $tasksToday,
             'admin_tasks_open' => $adminTasksOpen,
             'kpis' => [
                 'active_clients' => $activeCompanies,
@@ -217,101 +184,6 @@ final class AdminHomeDashboardBuilder
         ];
     }
 
-    private function alertsCount(Carbon $today, Carbon $monthStart): int
-    {
-        return count($this->buildAlerts($today, $monthStart));
-    }
-
-    /**
-     * @return list<array{id: string, label: string, tone: string}>
-     */
-    private function buildAlerts(Carbon $today, Carbon $monthStart): array
-    {
-        $alerts = [];
-
-        $overdueInstallments = CommercialSaleInstallment::query()
-            ->where('status', CommercialSaleInstallment::STATUS_PENDENTE)
-            ->whereDate('due_date', '<', $today->toDateString())
-            ->count();
-        if ($overdueInstallments > 0) {
-            $alerts[] = [
-                'id' => 'overdue-installments',
-                'label' => $overdueInstallments === 1
-                    ? '1 parcela em atraso'
-                    : "{$overdueInstallments} parcelas em atraso",
-                'tone' => 'red',
-            ];
-        }
-
-        $dueToday = CommercialProposal::query()
-            ->where('is_closed', false)
-            ->whereDate('updated_at', $today->toDateString())
-            ->count();
-        if ($dueToday > 0) {
-            $alerts[] = [
-                'id' => 'proposals-today',
-                'label' => $dueToday === 1
-                    ? '1 proposta movimentada hoje'
-                    : "{$dueToday} propostas movimentadas hoje",
-                'tone' => 'orange',
-            ];
-        }
-
-        $payablesDueSoon = FinancePayable::query()
-            ->where('status', FinancePayableStatus::Pending)
-            ->whereBetween('due_date', [$today->toDateString(), $today->copy()->addDays(7)->toDateString()])
-            ->count();
-        if ($payablesDueSoon > 0) {
-            $alerts[] = [
-                'id' => 'payables-week',
-                'label' => $payablesDueSoon === 1
-                    ? '1 conta a pagar nos próximos 7 dias'
-                    : "{$payablesDueSoon} contas a pagar nos próximos 7 dias",
-                'tone' => 'yellow',
-            ];
-        }
-
-        $openHiring = HiringProcess::query()
-            ->where('current_stage', '!=', HiringProcessStage::Contratacao->value)
-            ->count();
-        if ($openHiring > 0) {
-            $alerts[] = [
-                'id' => 'hiring-open',
-                'label' => $openHiring === 1
-                    ? '1 contratação aberta'
-                    : "{$openHiring} contratações abertas",
-                'tone' => 'purple',
-            ];
-        }
-
-        $newLeads = LandingInterestSubmission::query()
-            ->where('created_at', '>=', $today->copy()->subDays(3))
-            ->count();
-        if ($newLeads > 0) {
-            $alerts[] = [
-                'id' => 'leads-recent',
-                'label' => $newLeads === 1
-                    ? '1 lead novo nos últimos 3 dias'
-                    : "{$newLeads} leads novos nos últimos 3 dias",
-                'tone' => 'green',
-            ];
-        }
-
-        $unreadNotices = CompanyNotice::query()
-            ->where('audience', CompanyNoticeAudience::Talents->value)
-            ->where('created_at', '>=', $monthStart)
-            ->count();
-        if ($unreadNotices > 0 && count($alerts) < 6) {
-            $alerts[] = [
-                'id' => 'notices',
-                'label' => 'Solicitações e avisos recentes no feed',
-                'tone' => 'yellow',
-            ];
-        }
-
-        return array_slice($alerts, 0, 6);
-    }
-
     private function adminOpenTasksCount(): int
     {
         $boardIds = TaskBoard::query()->whereNull('company_id')->pluck('id');
@@ -324,6 +196,45 @@ final class AdminHomeDashboardBuilder
             ->where('is_archived', false)
             ->whereNull('completed_at')
             ->count();
+    }
+
+    /**
+     * Tarefas Admin (boards sem company_id) relevantes para o dia:
+     * due_date <= hoje, abertas (não arquivadas / não concluídas). Limite 6.
+     * Sem due_date não entram. O payload é só indicativo (sem status de atraso).
+     *
+     * @return list<array{id: int, title: string, list_name: string|null, board_name: string|null, due_date: string}>
+     */
+    private function adminTasksToday(Carbon $today): array
+    {
+        $boardIds = TaskBoard::query()->whereNull('company_id')->pluck('id');
+        if ($boardIds->isEmpty()) {
+            return [];
+        }
+
+        $todayStr = $today->toDateString();
+
+        return TaskCard::query()
+            ->with(['list:id,board_id,name', 'list.board:id,name'])
+            ->whereHas('list', fn ($q) => $q->whereIn('board_id', $boardIds))
+            ->where('is_archived', false)
+            ->whereNull('completed_at')
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '<=', $todayStr)
+            ->orderBy('due_date')
+            ->orderBy('id')
+            ->limit(6)
+            ->get()
+            ->map(static function (TaskCard $card) use ($todayStr): array {
+                return [
+                    'id' => (int) $card->id,
+                    'title' => (string) $card->title,
+                    'list_name' => $card->list?->name,
+                    'board_name' => $card->list?->board?->name,
+                    'due_date' => $card->due_date?->toDateString() ?? $todayStr,
+                ];
+            })
+            ->all();
     }
 
     private function averageHiringDays(): ?int
@@ -388,7 +299,7 @@ final class AdminHomeDashboardBuilder
         return [
             ['key' => 'leads', 'label' => 'Leads', 'count' => $leads],
             ['key' => 'contact', 'label' => 'Contato', 'count' => $contact],
-            ['key' => 'meeting', 'label' => 'Agenda', 'count' => $meetings],
+            ['key' => 'meeting', 'label' => 'Reunião', 'count' => $meetings],
             ['key' => 'proposal', 'label' => 'Proposta', 'count' => $openProposals],
             ['key' => 'closed', 'label' => 'Fechou', 'count' => $closed],
         ];

@@ -65,10 +65,12 @@ const formInitial = props.proposal
           client_representative_role: props.proposal.client_representative_role ?? '',
           indication: props.proposal.indication ?? '',
           employee_count: props.proposal.employee_count ?? 0,
+          include_publico_atendido: props.proposal.include_publico_atendido ?? true,
           seller_id: props.proposal.seller_id ?? '',
           is_closed: !!props.proposal.is_closed,
           notes: props.proposal.notes ?? '',
           payment_method: props.proposal.payment_method ?? '',
+          include_minimum_stay: props.proposal.include_minimum_stay ?? true,
           palestra_topic: props.proposal.palestra_topic ?? '',
           palestra_event_date: props.proposal.palestra_event_date ?? '',
           palestra_start_time: props.proposal.palestra_start_time ?? '',
@@ -92,10 +94,12 @@ const formInitial = props.proposal
           client_representative_role: '',
           indication: '',
           employee_count: 0,
+          include_publico_atendido: true,
           seller_id: '',
           is_closed: false,
           notes: '',
           payment_method: '',
+          include_minimum_stay: true,
           palestra_topic: '',
           palestra_event_date: '',
           palestra_start_time: '',
@@ -511,6 +515,21 @@ const services = computed(() => {
                                     class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                                 />
                             </div>
+                            <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 sm:col-span-2">
+                                <input
+                                    v-model="form.include_publico_atendido"
+                                    type="checkbox"
+                                    class="mt-0.5 rounded border-slate-300 text-talents-700 focus:ring-talents-500"
+                                />
+                                <span>
+                                    <span class="block text-sm font-medium text-slate-900">
+                                        Incluir “Público Atendido” no PDF
+                                    </span>
+                                    <span class="mt-0.5 block text-xs text-slate-500">
+                                        Quando marcado, o PDF mostra a secção com o número de colaboradores acima.
+                                    </span>
+                                </span>
+                            </label>
                         </div>
                     </div>
                 </section>
@@ -933,6 +952,22 @@ const services = computed(() => {
                                 {{ form.errors.payment_method }}
                             </p>
                         </div>
+                        <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 sm:col-span-2">
+                            <input
+                                v-model="form.include_minimum_stay"
+                                type="checkbox"
+                                class="mt-0.5 rounded border-slate-300 text-talents-700 focus:ring-talents-500"
+                            />
+                            <span>
+                                <span class="block text-sm font-medium text-slate-900">
+                                    Incluir permanência mínima no PDF
+                                </span>
+                                <span class="mt-0.5 block text-xs text-slate-500">
+                                    Quando marcado, inclui a condição de permanência mínima de 90 dias (3 meses) para
+                                    cancelamento do plano.
+                                </span>
+                            </span>
+                        </label>
                         <div class="sm:col-span-2">
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
                             <textarea

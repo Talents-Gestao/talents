@@ -17,9 +17,8 @@ class DashboardController extends Controller
 
         return Inertia::render('Admin/Dashboard', [
             'finance' => $home['finance'],
-            'commercial' => $home['commercial'],
             'operationToday' => $home['operation_today'],
-            'alertsCount' => $home['alerts_count'],
+            'tasksToday' => $home['tasks_today'],
             'adminTasksOpen' => $home['admin_tasks_open'],
             'kpis' => $home['kpis'],
             'leadsBySource' => $home['leads_by_source'],

@@ -113,7 +113,7 @@ watch(
     },
 );
 
-const formatNotesAt = (iso) => {
+const formatDateTime = (iso) => {
     if (!iso) {
         return '';
     }
@@ -126,6 +126,32 @@ const formatNotesAt = (iso) => {
         return '';
     }
 };
+
+const fieldDrafts = ref({});
+
+const syncFieldDrafts = (list) => {
+    const next = { ...fieldDrafts.value };
+    for (const p of list ?? []) {
+        next[p.id] = {
+            candidates_count:
+                p.candidates_count === null || p.candidates_count === undefined
+                    ? ''
+                    : String(p.candidates_count),
+            notes: p.notes ?? '',
+            saving: false,
+            error: null,
+        };
+    }
+    fieldDrafts.value = next;
+};
+
+watch(
+    () => props.processes,
+    (list) => {
+        syncFieldDrafts(list);
+    },
+    { deep: true, immediate: true },
+);
 
 const submitCreate = () => {
     createForm
@@ -155,6 +181,43 @@ const submitCreate = () => {
                 createForm.transform((data) => data);
             },
         });
+};
+
+const saveProcessFields = (processId) => {
+    if (!props.can_manage) {
+        return;
+    }
+    const draft = fieldDrafts.value[processId];
+    if (!draft) {
+        return;
+    }
+
+    draft.saving = true;
+    draft.error = null;
+
+    const candidatesRaw = draft.candidates_count;
+    const candidatesCount =
+        candidatesRaw === '' || candidatesRaw === null || candidatesRaw === undefined
+            ? null
+            : Number(candidatesRaw);
+
+    router.patch(
+        route(props.routes.update, processId),
+        {
+            candidates_count: Number.isFinite(candidatesCount) ? candidatesCount : null,
+            notes: draft.notes?.trim() ? draft.notes : null,
+        },
+        {
+            preserveScroll: true,
+            onError: (errors) => {
+                draft.error =
+                    errors?.candidates_count || errors?.notes || 'Não foi possível guardar.';
+            },
+            onFinish: () => {
+                draft.saving = false;
+            },
+        },
+    );
 };
 
 const moveStage = (processId, stage) => {
@@ -329,7 +392,7 @@ const commentsStoreUrl = (processId) => route(props.routes.comments_store, proce
                             </select>
                         </div>
                         <div>
-                            <InputLabel for="create_candidates" value="Nº de candidatos" />
+                            <InputLabel for="create_candidates" value="Candidatos" />
                             <TextInput
                                 id="create_candidates"
                                 v-model="createForm.candidates_count"
@@ -342,16 +405,16 @@ const commentsStoreUrl = (processId) => route(props.routes.comments_store, proce
                             <InputError class="mt-1" :message="createForm.errors.candidates_count" />
                         </div>
                         <div class="sm:col-span-2">
-                            <InputLabel for="create_notes" value="Notas (opcional)" />
+                            <InputLabel for="create_notes" value="Comentários (opcional)" />
                             <textarea
                                 id="create_notes"
                                 v-model="createForm.notes"
                                 rows="2"
                                 :class="fieldClass"
-                                placeholder="Observações sobre a vaga…"
+                                placeholder="Comentário do processo…"
                             />
                             <p class="mt-1 text-xs text-slate-500">
-                                A data e hora da nota são registradas automaticamente.
+                                A data e hora do comentário são registradas automaticamente.
                             </p>
                             <InputError class="mt-1" :message="createForm.errors.notes" />
                         </div>
@@ -404,22 +467,108 @@ const commentsStoreUrl = (processId) => route(props.routes.comments_store, proce
                                         </span>
                                         <span v-if="show_company_on_card && p.updated_by_name" class="text-slate-400">·</span>
                                         <span v-if="p.updated_by_name">atualizado por {{ p.updated_by_name }}</span>
-                                        <span
-                                            v-if="p.candidates_count !== null && p.candidates_count !== undefined"
-                                            class="inline-flex items-center rounded-full bg-talents-50 px-2 py-0.5 text-xs font-semibold text-talents-800"
-                                        >
-                                            {{ p.candidates_count }}
-                                            {{ Number(p.candidates_count) === 1 ? 'candidato' : 'candidatos' }}
-                                        </span>
                                     </p>
+
                                     <div
-                                        v-if="p.notes"
-                                        class="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600"
+                                        v-if="can_manage && fieldDrafts[p.id]"
+                                        class="mt-3 space-y-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3"
                                     >
-                                        <p class="whitespace-pre-wrap">{{ p.notes }}</p>
-                                        <p v-if="p.notes_at" class="mt-1 text-xs font-medium text-slate-500">
-                                            {{ formatNotesAt(p.notes_at) }}
+                                        <div class="grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-end">
+                                            <div>
+                                                <label
+                                                    :for="'candidates-' + p.id"
+                                                    class="text-xs font-semibold uppercase tracking-wide text-slate-500"
+                                                >
+                                                    Candidatos
+                                                </label>
+                                                <input
+                                                    :id="'candidates-' + p.id"
+                                                    v-model="fieldDrafts[p.id].candidates_count"
+                                                    type="number"
+                                                    min="0"
+                                                    step="1"
+                                                    class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
+                                                />
+                                            </div>
+                                            <p
+                                                v-if="p.candidates_count_at"
+                                                class="text-xs font-medium text-slate-500 sm:pb-2"
+                                            >
+                                                Atualizado em {{ formatDateTime(p.candidates_count_at) }}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label
+                                                :for="'notes-' + p.id"
+                                                class="text-xs font-semibold uppercase tracking-wide text-slate-500"
+                                            >
+                                                Comentário do processo
+                                            </label>
+                                            <textarea
+                                                :id="'notes-' + p.id"
+                                                v-model="fieldDrafts[p.id].notes"
+                                                rows="2"
+                                                class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
+                                                placeholder="Comentário atualizável em qualquer fase…"
+                                            />
+                                            <p
+                                                v-if="p.notes_at"
+                                                class="mt-1 text-xs font-medium text-slate-500"
+                                            >
+                                                Atualizado em {{ formatDateTime(p.notes_at) }}
+                                            </p>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <button
+                                                type="button"
+                                                class="inline-flex items-center rounded-xl bg-talents-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-talents-700 disabled:opacity-50"
+                                                :disabled="fieldDrafts[p.id].saving"
+                                                @click="saveProcessFields(p.id)"
+                                            >
+                                                {{ fieldDrafts[p.id].saving ? 'A guardar…' : 'Guardar campos' }}
+                                            </button>
+                                            <p
+                                                v-if="fieldDrafts[p.id].error"
+                                                class="text-xs font-medium text-red-600"
+                                            >
+                                                {{ fieldDrafts[p.id].error }}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div v-else class="mt-3 space-y-2">
+                                        <p
+                                            v-if="p.candidates_count !== null && p.candidates_count !== undefined"
+                                            class="inline-flex flex-wrap items-center gap-x-2 gap-y-1"
+                                        >
+                                            <span
+                                                class="inline-flex items-center rounded-full bg-talents-50 px-2 py-0.5 text-xs font-semibold text-talents-800"
+                                            >
+                                                {{ p.candidates_count }}
+                                                {{ Number(p.candidates_count) === 1 ? 'candidato' : 'candidatos' }}
+                                            </span>
+                                            <span
+                                                v-if="p.candidates_count_at"
+                                                class="text-xs font-medium text-slate-500"
+                                            >
+                                                Atualizado em {{ formatDateTime(p.candidates_count_at) }}
+                                            </span>
                                         </p>
+                                        <div
+                                            v-if="p.notes"
+                                            class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600"
+                                        >
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                Comentário do processo
+                                            </p>
+                                            <p class="mt-1 whitespace-pre-wrap">{{ p.notes }}</p>
+                                            <p
+                                                v-if="p.notes_at"
+                                                class="mt-1 text-xs font-medium text-slate-500"
+                                            >
+                                                Atualizado em {{ formatDateTime(p.notes_at) }}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -18,6 +18,7 @@ class HiringProcess extends Model
         'notes',
         'notes_at',
         'candidates_count',
+        'candidates_count_at',
         'sort_order',
         'updated_by',
     ];
@@ -28,6 +29,7 @@ class HiringProcess extends Model
             'current_stage' => HiringProcessStage::class,
             'notes_at' => 'datetime',
             'candidates_count' => 'integer',
+            'candidates_count_at' => 'datetime',
         ];
     }
 

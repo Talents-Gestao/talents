@@ -44,10 +44,13 @@ class AdminDashboardLeadsTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Admin/Dashboard')
-                ->where('commercial.leads_new', 1)
                 ->has('leadsBySource')
                 ->where('leadsBySource', fn ($rows) => collect($rows)->contains(
                     fn ($row) => ($row['key'] ?? null) === 'site' && (int) ($row['count'] ?? 0) === 1
-                )));
+                ))
+                ->has('funnel')
+                ->where('funnel.0.count', 1)
+                ->missing('commercial')
+                ->missing('alertsCount'));
     }
 }

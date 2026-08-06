@@ -60,6 +60,7 @@ class AcompanhamentoController extends Controller
                 'notes' => $p->notes,
                 'notes_at' => $p->notes_at?->toIso8601String(),
                 'candidates_count' => $p->candidates_count,
+                'candidates_count_at' => $p->candidates_count_at?->toIso8601String(),
                 'current_stage' => $p->current_stage->value,
                 'current_stage_label' => $p->current_stage->label(),
                 'company' => $p->company ? [
@@ -115,15 +116,18 @@ class AcompanhamentoController extends Controller
             ? $data['notes']
             : null;
 
+        $candidatesCount = array_key_exists('candidates_count', $data) && $data['candidates_count'] !== null
+            ? (int) $data['candidates_count']
+            : null;
+
         HiringProcess::query()->create([
             'company_id' => $company->id,
             'title' => $data['title'],
             'current_stage' => $stage,
             'notes' => $notes,
             'notes_at' => $notes !== null ? now() : null,
-            'candidates_count' => array_key_exists('candidates_count', $data) && $data['candidates_count'] !== null
-                ? (int) $data['candidates_count']
-                : null,
+            'candidates_count' => $candidatesCount,
+            'candidates_count_at' => $candidatesCount !== null ? now() : null,
             'sort_order' => $nextOrder + 1,
             'updated_by' => $user->id,
         ]);
@@ -152,12 +156,14 @@ class AcompanhamentoController extends Controller
                 ? $data['notes']
                 : null;
             $hiringProcess->notes = $notes;
-            $hiringProcess->notes_at = $notes !== null ? now() : null;
+            $hiringProcess->notes_at = now();
         }
         if (array_key_exists('candidates_count', $data)) {
-            $hiringProcess->candidates_count = $data['candidates_count'] !== null
+            $count = $data['candidates_count'] !== null
                 ? (int) $data['candidates_count']
                 : null;
+            $hiringProcess->candidates_count = $count;
+            $hiringProcess->candidates_count_at = now();
         }
         if (array_key_exists('current_stage', $data)) {
             $hiringProcess->current_stage = $data['current_stage'] instanceof HiringProcessStage
@@ -275,7 +281,7 @@ class AcompanhamentoController extends Controller
             'body' => trim($data['body']),
         ]);
 
-        return back()->with('success', 'Observação publicada.');
+        return back()->with('success', 'Mensagem adicionada ao histórico.');
     }
 
     private function requireCompany(?User $user): Company

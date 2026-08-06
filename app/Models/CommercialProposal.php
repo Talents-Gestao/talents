@@ -12,10 +12,21 @@ class CommercialProposal extends Model
 {
     protected $guarded = ['id'];
 
+    /**
+     * Compatível com propostas antigas: secção e permanência no PDF por defeito.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'include_publico_atendido' => true,
+        'include_minimum_stay' => true,
+    ];
+
     protected function casts(): array
     {
         return [
             'employee_count' => 'integer',
+            'include_publico_atendido' => 'boolean',
             'svc_pesquisas' => 'boolean',
             'svc_profiler' => 'boolean',
             'svc_nr1' => 'boolean',
@@ -46,6 +57,7 @@ class CommercialProposal extends Model
             'palestra_audience_estimate' => 'integer',
 
             'payment_method' => CommercialProposalPaymentMethod::class,
+            'include_minimum_stay' => 'boolean',
 
             'service_descriptions' => 'array',
             'pdf_optional_sections' => 'array',

@@ -1,10 +1,15 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const props = defineProps({
     pillars: {
         type: Array,
         required: true,
+    },
+    /** Abre o painel neste índice em desktop (lg+), sem empurrar o layout no mobile. */
+    initialIndex: {
+        type: Number,
+        default: null,
     },
 });
 
@@ -27,6 +32,20 @@ function toggleWing(index) {
 function closePanel() {
     selectedIndex.value = null;
 }
+
+onMounted(() => {
+    if (props.initialIndex === null || props.initialIndex === undefined) {
+        return;
+    }
+
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+        selectedIndex.value = props.initialIndex;
+    }
+});
 </script>
 
 <template>
@@ -107,9 +126,17 @@ function closePanel() {
                     </button>
                 </div>
 
-                <h3 class="mt-4 text-base font-bold leading-snug text-slate-900 md:text-lg">
-                    {{ selectedPillar.title }}
-                </h3>
+                <div class="mt-4 flex flex-wrap items-center gap-2">
+                    <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">
+                        {{ selectedPillar.title }}
+                    </h3>
+                    <span
+                        v-if="selectedPillar.featured"
+                        class="inline-flex rounded-full bg-talents-600 px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-white"
+                    >
+                        Pilar central
+                    </span>
+                </div>
 
                 <ul class="mt-4 flex-1 space-y-2.5 text-sm leading-snug text-slate-600">
                     <li

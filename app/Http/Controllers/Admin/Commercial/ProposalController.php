@@ -435,6 +435,7 @@ class ProposalController extends Controller
             'client_representative_role' => ['nullable', 'string', 'max:255'],
             'indication' => ['nullable', 'string', 'max:255'],
             'employee_count' => ['required', 'integer', 'min:0', 'max:100000'],
+            'include_publico_atendido' => ['boolean'],
 
             'seller_id' => ['nullable', Rule::exists('users', 'id')->where(fn ($q) => $q->where('is_commercial', true))],
 
@@ -449,6 +450,7 @@ class ProposalController extends Controller
             'is_closed' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'payment_method' => ['required', Rule::in(CommercialProposalPaymentMethod::values())],
+            'include_minimum_stay' => ['boolean'],
 
             'pdf_subtitle' => ['nullable', 'string', 'max:500'],
             'pdf_objetivo' => ['nullable', 'string', 'max:5000'],
@@ -474,6 +476,9 @@ class ProposalController extends Controller
         ]);
 
         $data['commission_percent'] = (float) (CommercialSetting::current()->default_commission_percent ?? 0);
+
+        $data['include_publico_atendido'] = (bool) ($data['include_publico_atendido'] ?? true);
+        $data['include_minimum_stay'] = (bool) ($data['include_minimum_stay'] ?? true);
 
         $data['service_descriptions'] = $this->normalizeServiceDescriptions(
             $data['service_descriptions'] ?? null
