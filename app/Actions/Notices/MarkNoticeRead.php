@@ -6,6 +6,8 @@ use App\Enums\CompanyNoticeAudience;
 use App\Models\CompanyNotice;
 use App\Models\CompanyNoticeRead;
 use App\Models\User;
+use App\Support\Notices\UnreadNoticeCounter;
+use Illuminate\Support\Collection;
 
 class MarkNoticeRead
 {
@@ -25,6 +27,24 @@ class MarkNoticeRead
         return $this->markAllForContext($user, CompanyNoticeAudience::Company, $companyId);
     }
 
+    /**
+     * Marca como lidos todos os avisos visíveis no contexto ativo do utilizador
+     * (admin Talents = todos; cliente = só a empresa).
+     */
+    public function markAllVisibleForUser(User $user, UnreadNoticeCounter $unreadNoticeCounter): int
+    {
+        $query = $unreadNoticeCounter->visibleNoticesQuery($user);
+        if ($query === null) {
+            return 0;
+        }
+
+        $noticeIds = $query
+            ->whereDoesntHave('reads', fn ($q) => $q->where('user_id', $user->id))
+            ->pluck('id');
+
+        return $this->markIdsAsRead($user, $noticeIds);
+    }
+
     public function markAllForContext(User $user, CompanyNoticeAudience $audience, ?int $companyId): int
     {
         $noticeIds = CompanyNotice::query()
@@ -38,6 +58,14 @@ class MarkNoticeRead
             ->whereDoesntHave('reads', fn ($query) => $query->where('user_id', $user->id))
             ->pluck('id');
 
+        return $this->markIdsAsRead($user, $noticeIds);
+    }
+
+    /**
+     * @param  Collection<int, int|string>  $noticeIds
+     */
+    private function markIdsAsRead(User $user, Collection $noticeIds): int
+    {
         $now = now();
         foreach ($noticeIds as $noticeId) {
             CompanyNoticeRead::query()->updateOrCreate(

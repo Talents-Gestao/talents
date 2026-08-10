@@ -27,7 +27,7 @@ Contexto de sessão via workspaces (Talents | Company). Módulos do cliente depe
 ## Painel Admin Talents (principais módulos)
 - **Home / Painel operacional**: 3 cards (Financeiro, Comercial, Calendário · hoje) + KPIs em grelha de 3 + gráficos (leads/funil/meta); frase do dia; CTAs de tarefas ADM e pendências no header. Dados via `AdminHomeDashboardBuilder` (BD + heurísticas; meta mensal por config/env).
 - Comercial: tabela de valores, **Assinaturas** (CRUD de planos SaaS — UI sem preço nem máx. colaboradores; rotas `plans` mantidas), propostas comerciais (PDF), templates de contrato (timbrado oficial), geração/envio de contratos (ZapSign)
-- Clientes: leads da landing (com origem/`source`), empresas (CNPJ/ReceitaWS), diagnóstico empresarial; “Contratos fechados” em breve
+- Clientes: leads da landing (com origem/`source`), empresas (CNPJ/ReceitaWS), diagnóstico empresarial; contratos fechados (histórico de propostas `is_closed`, badges contrato/ZapSign/venda)
 - **Detalhe da empresa** (abas atuais): Empresa, Gestão de ponto (se permissão RHID), Colaboradores, Regulamento interno (rich text + anexo PDF/DOC/DOCX). Abas removidas do detalhe: Portfólio RHID, Destaques do mês, Férias, Uniformes/Controle da empresa (módulos podem existir noutros hubs — ver abaixo).
 - Contratação: banco de talentos (Sólides), acompanhamento de contratação (kanban), entrevistas IA (áudio → Whisper → relatório), roteiros; Profiler em breve
 - Reuniões: gravação, transcrição e ata com IA

@@ -32,6 +32,7 @@ use App\Http\Controllers\Admin\MonthlyHighlightController;
 use App\Http\Controllers\Admin\CompanyEmployeeController;
 use App\Http\Controllers\Admin\CompanyUserController;
 use App\Http\Controllers\Admin\ComingSoonController;
+use App\Http\Controllers\Admin\ClosedContractsController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\BusinessDiagnosticController;
 use App\Http\Controllers\Admin\LandingInterestSubmissionController;
@@ -145,6 +146,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
         Route::resource('diagnostico-empresarial', BusinessDiagnosticController::class)
             ->parameters(['diagnostico-empresarial' => 'diagnostico_empresarial']);
+
+        Route::get('contratos-fechados', [ClosedContractsController::class, 'index'])
+            ->name('contratos-fechados.index');
 
         Route::get('companies/{company}/rhid-metrics', [RhidPortfolioController::class, 'companyMetrics'])
             ->name('companies.rhid-metrics');

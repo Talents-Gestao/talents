@@ -5,7 +5,12 @@ import CatalogProductObservationField from '@/Components/Commercial/CatalogProdu
 import CommercialModuleNav from '@/Components/Commercial/CommercialModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
-import { enabledFlexibleRates, FLEXIBLE_RATE_CUSTOM, FLEXIBLE_RATE_DEFS } from '@/composables/useCatalogProductPricing';
+import {
+    catalogReferenceDisplay,
+    enabledFlexibleRates,
+    FLEXIBLE_RATE_CUSTOM,
+    FLEXIBLE_RATE_DEFS,
+} from '@/composables/useCatalogProductPricing';
 import { formatCnpj } from '@/utils/formatCnpj';
 import axios from 'axios';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
@@ -272,6 +277,61 @@ const formatRateUnitPrice = (product, mode) => {
     return formatBRL(cents);
 };
 
+/**
+ * Exibição à direita da linha: referência no idle; total calculado quando selecionado e calculável.
+ */
+const catalogPricePresentation = (product) => {
+    const ref = catalogReferenceDisplay(product);
+    const marked = isProductMarked(product);
+    const lineCents = catalogLineCents(product.id);
+    const subtotal = catalogLineSubtotal(product.id);
+    const employees = Number(form.employee_count ?? 0);
+    const sel = catalogSelection(product.id);
+
+    const needsEmployees = ['per_employee', 'tiered_per_employee', 'salary_times_employees'].includes(
+        product.pricing_type,
+    ) && employees <= 0;
+
+    const needsSalary = product.pricing_type === 'salary_times_employees'
+        && marked
+        && Number(sel.salary_cents ?? 0) <= 0;
+
+    const needsFlexibleInput = product.pricing_type === 'flexible_rates'
+        && marked
+        && !isProductSelected(product);
+
+    const showCalculated = marked
+        && !needsEmployees
+        && !needsSalary
+        && !needsFlexibleInput
+        && (lineCents > 0 || subtotal > 0 || product.pricing_type === 'fixed');
+
+    if (showCalculated) {
+        return {
+            primary: formatBRL(lineCents),
+            hint: null,
+            isReference: false,
+            noPrice: false,
+        };
+    }
+
+    let hint = null;
+    if (marked && needsEmployees) {
+        hint = 'Informe o Nº de funcionários';
+    } else if (marked && needsSalary) {
+        hint = 'Informe o salário base';
+    } else if (marked && needsFlexibleInput) {
+        hint = 'Selecione a taxa e a quantidade';
+    }
+
+    return {
+        primary: ref.label,
+        hint,
+        isReference: true,
+        noPrice: !ref.has_catalog_price && product.pricing_type !== 'salary_times_employees',
+    };
+};
+
 const palestrasProductSelected = computed(() =>
     props.catalogProducts.some((p) => p.slug === 'palestras' && isProductSelected(p)),
 );
@@ -514,6 +574,9 @@ const services = computed(() => {
                                     required
                                     class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                                 />
+                                <p class="mt-1 text-[11px] text-slate-500">
+                                    Necessário para calcular produtos por funcionário.
+                                </p>
                             </div>
                             <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 sm:col-span-2">
                                 <input
@@ -557,8 +620,23 @@ const services = computed(() => {
                                     <div class="flex-1">
                                         <div class="font-medium text-slate-900">{{ product.name }}</div>
                                     </div>
-                                    <div class="text-right text-sm tabular-nums text-slate-700">
-                                        {{ formatBRL(catalogLineCents(product.id)) }}
+                                    <div
+                                        class="max-w-[11rem] text-right text-sm tabular-nums"
+                                        :class="catalogPricePresentation(product).isReference ? 'text-slate-500' : 'text-slate-700'"
+                                    >
+                                        <div>{{ catalogPricePresentation(product).primary }}</div>
+                                        <div
+                                            v-if="catalogPricePresentation(product).noPrice"
+                                            class="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+                                        >
+                                            sem preço no catálogo
+                                        </div>
+                                        <div
+                                            v-if="catalogPricePresentation(product).hint"
+                                            class="mt-0.5 text-[11px] font-normal normal-case tracking-normal text-amber-700"
+                                        >
+                                            {{ catalogPricePresentation(product).hint }}
+                                        </div>
                                     </div>
                                 </label>
                                 <CommercialAdjustmentFields
@@ -592,8 +670,23 @@ const services = computed(() => {
                                         {{ mod.label }} ({{ formatBRL(mod.cents) }})
                                     </option>
                                 </select>
-                                <div class="mt-2 text-right text-sm tabular-nums text-slate-700">
-                                    {{ formatBRL(catalogLineCents(product.id)) }}
+                                <div
+                                    class="mt-2 text-right text-sm tabular-nums"
+                                    :class="catalogPricePresentation(product).isReference ? 'text-slate-500' : 'text-slate-700'"
+                                >
+                                    <div>{{ catalogPricePresentation(product).primary }}</div>
+                                    <div
+                                        v-if="catalogPricePresentation(product).noPrice"
+                                        class="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+                                    >
+                                        sem preço no catálogo
+                                    </div>
+                                    <div
+                                        v-if="catalogPricePresentation(product).hint"
+                                        class="mt-0.5 text-[11px] font-normal text-amber-700"
+                                    >
+                                        {{ catalogPricePresentation(product).hint }}
+                                    </div>
                                 </div>
                                 <CommercialAdjustmentFields
                                     v-if="showCommercialAdjustment(product)"
@@ -620,8 +713,23 @@ const services = computed(() => {
                                     <div class="flex-1">
                                         <div class="font-medium text-slate-900">{{ product.name }}</div>
                                     </div>
-                                    <div class="text-right text-sm tabular-nums text-slate-700">
-                                        {{ formatBRL(catalogLineCents(product.id)) }}
+                                    <div
+                                        class="max-w-[11rem] text-right text-sm tabular-nums"
+                                        :class="catalogPricePresentation(product).isReference ? 'text-slate-500' : 'text-slate-700'"
+                                    >
+                                        <div>{{ catalogPricePresentation(product).primary }}</div>
+                                        <div
+                                            v-if="catalogPricePresentation(product).noPrice"
+                                            class="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+                                        >
+                                            sem preço no catálogo
+                                        </div>
+                                        <div
+                                            v-if="catalogPricePresentation(product).hint"
+                                            class="mt-0.5 text-[11px] font-normal normal-case tracking-normal text-amber-700"
+                                        >
+                                            {{ catalogPricePresentation(product).hint }}
+                                        </div>
                                     </div>
                                 </label>
 
@@ -700,8 +808,23 @@ const services = computed(() => {
                                         <div class="font-medium text-slate-900">{{ product.name }}</div>
                                         <p class="text-xs text-slate-500">Salário base × nº de funcionários.</p>
                                     </div>
-                                    <div class="text-right text-sm tabular-nums text-slate-700">
-                                        {{ formatBRL(catalogLineCents(product.id)) }}
+                                    <div
+                                        class="max-w-[11rem] text-right text-sm tabular-nums"
+                                        :class="catalogPricePresentation(product).isReference ? 'text-slate-500' : 'text-slate-700'"
+                                    >
+                                        <div>{{ catalogPricePresentation(product).primary }}</div>
+                                        <div
+                                            v-if="catalogPricePresentation(product).noPrice"
+                                            class="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+                                        >
+                                            sem preço no catálogo
+                                        </div>
+                                        <div
+                                            v-if="catalogPricePresentation(product).hint"
+                                            class="mt-0.5 text-[11px] font-normal normal-case tracking-normal text-amber-700"
+                                        >
+                                            {{ catalogPricePresentation(product).hint }}
+                                        </div>
                                     </div>
                                 </label>
                                 <div v-if="catalogSelection(product.id).enabled" class="mt-3">

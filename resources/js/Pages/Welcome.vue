@@ -2,7 +2,6 @@
 import {
     BuildingOffice2Icon,
     ChartBarIcon,
-    CheckBadgeIcon,
     ClipboardDocumentCheckIcon,
     ClockIcon,
     CursorArrowRaysIcon,
@@ -19,6 +18,7 @@ import LandingButterflyPillars from '@/Components/Landing/LandingButterflyPillar
 import LandingCardGrid from '@/Components/Landing/LandingCardGrid.vue';
 import LandingHeroTypewriter from '@/Components/Landing/LandingHeroTypewriter.vue';
 import LandingLayout from '@/Components/Landing/LandingLayout.vue';
+import LandingRecruitmentPhaseCard from '@/Components/Landing/LandingRecruitmentPhaseCard.vue';
 
 defineProps({
     canLogin: Boolean,
@@ -304,60 +304,13 @@ const organizationJsonLd = computed(() =>
                     </p>
                 </div>
 
-                <div class="mt-12 grid gap-8 sm:grid-cols-2 lg:gap-6">
-                    <div
+                <div class="mx-auto mt-12 grid max-w-3xl grid-cols-1 gap-6 overflow-visible">
+                    <LandingRecruitmentPhaseCard
                         v-for="(phase, phaseIndex) in recruitmentPhases"
                         :key="phase.title"
-                        class="flex h-full flex-col gap-3"
-                    >
-                        <article
-                            class="group flex flex-1 flex-col rounded-3xl border border-slate-200/70 bg-white p-5 shadow-[0_8px_28px_-14px_rgba(88,28,135,0.14),0_2px_6px_rgba(15,23,42,0.04)] ring-1 ring-transparent transition-[border-color,box-shadow,transform] duration-300 motion-safe:hover:-translate-y-1 motion-safe:hover:border-talents-200/80 motion-safe:hover:shadow-[0_18px_40px_-16px_rgba(88,28,135,0.22),0_4px_10px_rgba(15,23,42,0.05)] motion-safe:hover:ring-talents-100/80 motion-reduce:transition-none md:p-6"
-                        >
-                            <div class="flex items-start justify-between gap-3">
-                                <div
-                                    class="inline-flex rounded-2xl bg-gradient-to-br from-talents-50 to-violet-100/70 p-3 text-talents-800 ring-1 ring-talents-200/80 transition duration-300 motion-safe:group-hover:from-talents-100 motion-safe:group-hover:to-violet-100"
-                                >
-                                    <component :is="phase.icon" class="h-5 w-5" aria-hidden="true" />
-                                </div>
-                                <span
-                                    class="select-none text-2xl font-light tabular-nums leading-none tracking-tight text-slate-200 md:text-3xl"
-                                    aria-hidden="true"
-                                >
-                                    {{ String(phaseIndex + 1).padStart(2, '0') }}
-                                </span>
-                            </div>
-
-                            <h3 class="mt-5 text-xl font-bold tracking-tight text-slate-900">
-                                {{ phase.title }}
-                            </h3>
-                            <p class="mt-2 text-sm font-medium leading-relaxed text-talents-800/80">
-                                {{ phase.description }}
-                            </p>
-
-                            <ol class="mt-6 flex-1 space-y-3.5 border-t border-slate-100 pt-5">
-                                <li
-                                    v-for="step in phase.steps"
-                                    :key="step.number"
-                                    class="flex items-start gap-3 text-sm leading-snug text-slate-700"
-                                >
-                                    <span
-                                        class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-talents-50 text-[0.7rem] font-bold tabular-nums text-talents-700 ring-1 ring-talents-100"
-                                    >
-                                        {{ step.number }}
-                                    </span>
-                                    <span class="pt-0.5">{{ step.label }}</span>
-                                </li>
-                            </ol>
-                        </article>
-
-                        <p class="flex items-center gap-2 px-1 text-sm font-semibold text-slate-700">
-                            <CheckBadgeIcon
-                                class="h-5 w-5 shrink-0 text-talents-600"
-                                aria-hidden="true"
-                            />
-                            <span>{{ phase.proof }}</span>
-                        </p>
-                    </div>
+                        :phase="phase"
+                        :phase-index="phaseIndex"
+                    />
                 </div>
 
                 <div class="mt-10 flex flex-wrap items-center gap-3">
@@ -384,7 +337,7 @@ const organizationJsonLd = computed(() =>
                 </div>
 
                 <div class="mt-10">
-                    <LandingCardGrid :items="pillars" columns="md:grid-cols-2 lg:grid-cols-3" />
+                    <LandingCardGrid :items="pillars" columns="md:grid-cols-2 lg:grid-cols-3" variant="rich" />
                 </div>
             </div>
         </section>

@@ -12,6 +12,8 @@ use App\Models\CommercialSetting;
 use App\Models\User;
 use App\Services\CommercialPricingService;
 use App\Services\CommercialProposalPdfService;
+use App\Models\CommercialSaleInstallment;
+use App\Support\Commercial\ProposalListStatus;
 use App\Support\CommercialProposalPdfDefaults;
 use App\Support\CommercialProposalPdfOptionalSections;
 use Illuminate\Http\RedirectResponse;
@@ -36,7 +38,17 @@ class ProposalController extends Controller
         }
 
         $q = CommercialProposal::query()
-            ->with(['seller:id,name', 'sale:id,proposal_id,code,status']);
+            ->with([
+                'seller:id,name',
+                'sale' => function ($saleQuery): void {
+                    $saleQuery->select('id', 'proposal_id', 'code', 'status', 'installments_count')
+                        ->withCount([
+                            'installments as paid_installments_count' => fn ($iq) => $iq
+                                ->where('status', CommercialSaleInstallment::STATUS_PAGO),
+                            'installments as total_installments_count',
+                        ]);
+                },
+            ]);
 
         if ($ordenacao === 'fila') {
             $q->orderBy('created_at')->orderBy('id');
@@ -58,11 +70,7 @@ class ProposalController extends Controller
         }
 
         if ($request->filled('status')) {
-            if ($request->string('status')->toString() === 'fechadas') {
-                $q->where('is_closed', true);
-            } elseif ($request->string('status')->toString() === 'abertas') {
-                $q->where('is_closed', false);
-            }
+            ProposalListStatus::applyFilter($q, $request->string('status')->toString());
         }
 
         $proposals = $q->paginate(15)->withQueryString();
@@ -71,7 +79,13 @@ class ProposalController extends Controller
         $queueTotal = count($queuePositions);
 
         $proposals->getCollection()->transform(function (CommercialProposal $proposal) use ($queuePositions) {
+            $listStatus = ProposalListStatus::for($proposal);
             $arr = $proposal->toArray();
+            $arr['list_status'] = $listStatus;
+            $arr['list_status_label'] = ProposalListStatus::label($listStatus);
+            $arr['paid_installments'] = $proposal->sale?->paid_installments_count;
+            $arr['total_installments'] = $proposal->sale?->total_installments_count
+                ?? $proposal->sale?->installments_count;
             $arr['queue_position'] = $proposal->is_closed
                 ? null
                 : ($queuePositions[$proposal->id] ?? null);

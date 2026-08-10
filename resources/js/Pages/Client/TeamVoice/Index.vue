@@ -1,9 +1,9 @@
 <script setup>
+import ComplaintsPublicLinkPanel from '@/Components/Complaints/ComplaintsPublicLinkPanel.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import {
     ClipboardDocumentListIcon,
-    LinkIcon,
     MegaphoneIcon,
     ShieldExclamationIcon,
 } from '@heroicons/vue/24/outline';
@@ -76,28 +76,11 @@ defineProps({
             </Link>
         </div>
 
-        <div
+        <ComplaintsPublicLinkPanel
             v-if="canComplaints && complaintsPublicUrl"
-            class="surface-card mt-6 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"
-        >
-            <div class="flex items-start gap-3">
-                <div class="rounded-xl bg-violet-50 p-2.5 text-violet-700 ring-1 ring-violet-100">
-                    <LinkIcon class="h-5 w-5" aria-hidden="true" />
-                </div>
-                <div>
-                    <p class="font-medium text-slate-900">Link público do canal</p>
-                    <p class="mt-0.5 break-all text-sm text-slate-500">{{ complaintsPublicUrl }}</p>
-                </div>
-            </div>
-            <a
-                :href="complaintsPublicUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="btn-ghost shrink-0 !px-4 text-sm"
-            >
-                Abrir formulário
-            </a>
-        </div>
+            :url="complaintsPublicUrl"
+            variant="card"
+        />
 
         <div
             v-if="!canSurveys && !canComplaints"

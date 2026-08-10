@@ -48,6 +48,43 @@
         @apply rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur-sm;
     }
 
+    /**
+     * Cards landing «rich» (Welcome — Amplitude da consultoria).
+     * Borda idle visível + hover (borda/sombra/lift/ícone); sem translate se reduced-motion.
+     */
+    .landing-card-rich {
+        @apply relative overflow-hidden rounded-3xl border border-talents-200/70 bg-[#fffcfe] p-6 shadow-shell transition-[border-color,box-shadow,transform] duration-300;
+    }
+
+    .landing-card-rich::before {
+        content: '';
+        @apply pointer-events-none absolute inset-x-0 top-0 z-10 h-[3px] bg-gradient-to-r from-talents-700 via-talents-500 to-talents-300/60;
+    }
+
+    .landing-card-rich:hover {
+        @apply -translate-y-1 border-talents-400/80 shadow-shell-inner;
+    }
+
+    .landing-card-rich__icon {
+        @apply mb-4 inline-flex rounded-2xl bg-gradient-to-br from-talents-50 to-talents-100 p-3 text-talents-700 ring-1 ring-talents-200/70 transition duration-300;
+    }
+
+    .landing-card-rich:hover .landing-card-rich__icon {
+        @apply from-talents-600 to-talents-700 text-white shadow-md ring-talents-500/40;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .landing-card-rich,
+        .landing-card-rich:hover {
+            @apply translate-y-0;
+        }
+
+        .landing-card-rich,
+        .landing-card-rich__icon {
+            transition-property: border-color, box-shadow, color, background-color;
+        }
+    }
+
     /** Destaque escuro (hero / blocos de contraste) — alinhado à paleta talents do logo */
     .surface-card-dark {
         @apply rounded-3xl border border-talents-700/40 bg-gradient-to-br from-talents-700 via-talents-800 to-talents-900 text-talents-50 shadow-lg;
@@ -433,5 +470,108 @@
 
     .scrollbar-none::-webkit-scrollbar {
         display: none;
+    }
+
+    /**
+     * Welcome — cards de recrutamento (accordion reveal).
+     * Moldura Uiverse clipada no .recruitment-phase-shell (componente).
+     */
+    .recruitment-phase-reveal {
+        grid-template-rows: 0fr;
+    }
+
+    .recruitment-phase-shell.is-open .recruitment-phase-reveal,
+    .recruitment-phase-shell:focus-within .recruitment-phase-reveal {
+        grid-template-rows: 1fr;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .recruitment-phase-shell:hover .recruitment-phase-reveal {
+            grid-template-rows: 1fr;
+        }
+
+        .recruitment-phase-hint-hover {
+            display: inline;
+        }
+
+        .recruitment-phase-hint-touch {
+            display: none;
+        }
+    }
+
+    .recruitment-phase-hint {
+        max-height: 1.5rem;
+        overflow: hidden;
+        opacity: 1;
+        transition:
+            opacity 280ms ease-out,
+            max-height 280ms ease-out,
+            margin 280ms ease-out;
+    }
+
+    .recruitment-phase-shell.is-open .recruitment-phase-hint,
+    .recruitment-phase-shell:focus-within .recruitment-phase-hint {
+        max-height: 0;
+        margin-top: 0;
+        opacity: 0;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .recruitment-phase-shell:hover .recruitment-phase-hint {
+            max-height: 0;
+            margin-top: 0;
+            opacity: 0;
+        }
+    }
+
+    .recruitment-phase-desc,
+    .recruitment-phase-step {
+        opacity: 0;
+        transform: translateY(0.4rem);
+        transition:
+            opacity 320ms ease-out,
+            transform 320ms ease-out;
+    }
+
+    .recruitment-phase-desc {
+        transition-delay: 40ms;
+    }
+
+    .recruitment-phase-step {
+        transition-delay: calc(var(--step-i, 0) * 45ms + 90ms);
+    }
+
+    .recruitment-phase-shell.is-open .recruitment-phase-desc,
+    .recruitment-phase-shell.is-open .recruitment-phase-step,
+    .recruitment-phase-shell:focus-within .recruitment-phase-desc,
+    .recruitment-phase-shell:focus-within .recruitment-phase-step {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .recruitment-phase-shell:hover .recruitment-phase-desc,
+        .recruitment-phase-shell:hover .recruitment-phase-step {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .recruitment-phase-reveal {
+            grid-template-rows: 1fr !important;
+            transition: none !important;
+        }
+
+        .recruitment-phase-hint {
+            display: none !important;
+        }
+
+        .recruitment-phase-desc,
+        .recruitment-phase-step {
+            opacity: 1 !important;
+            transform: none !important;
+            transition: none !important;
+        }
     }
 }

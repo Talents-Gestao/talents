@@ -1,5 +1,6 @@
 <script setup>
 import CompanyShowAccordion from '@/Components/Admin/Companies/CompanyShowAccordion.vue';
+import ComplaintsPublicLinkPanel from '@/Components/Complaints/ComplaintsPublicLinkPanel.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import BackLink from '@/Components/BackLink.vue';
 import DangerButton from '@/Components/DangerButton.vue';
@@ -391,15 +392,11 @@ const removeRegulation = (id) => {
                             <dd class="mt-1 text-slate-800">{{ company.tax_regime || '—' }}</dd>
                         </div>
                     </dl>
-                    <div
+                    <ComplaintsPublicLinkPanel
                         v-if="complaintsPublicUrl"
-                        class="mt-5 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3"
-                    >
-                        <p class="text-xs font-medium uppercase tracking-wide text-slate-400">
-                            Canal de denúncias (público)
-                        </p>
-                        <p class="mt-1.5 break-all font-mono text-xs text-slate-700">{{ complaintsPublicUrl }}</p>
-                    </div>
+                        :url="complaintsPublicUrl"
+                        variant="compact"
+                    />
                 </CompanyShowAccordion>
 
                 <CompanyShowAccordion title="Assinaturas" description="Planos vinculados a esta empresa">
