@@ -229,6 +229,12 @@ onUnmounted(() => {
                                         aria-hidden="true"
                                     />
                                     <span class="min-w-0 flex-1">
+                                        <span
+                                            v-if="notice.company_name"
+                                            class="mb-0.5 block text-[11px] font-medium text-slate-500"
+                                        >
+                                            {{ notice.company_name }}
+                                        </span>
                                         <span class="block text-sm font-medium text-slate-900">
                                             {{ notice.title }}
                                         </span>

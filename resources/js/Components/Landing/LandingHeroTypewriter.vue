@@ -163,13 +163,10 @@ onBeforeUnmount(() => {
                 :aria-live="prefersReducedMotion ? undefined : 'polite'"
             >
                 <template v-if="prefersReducedMotion">{{ TITLE }}</template>
-                <template v-else>
-                    {{ displayed }}
-                    <span
-                        class="landing-hero-typewriter__cursor"
-                        :class="{ 'landing-hero-typewriter__cursor--on': showCursor }"
-                    >|</span>
-                </template>
+                <template v-else>{{ displayed }}<span
+                    class="landing-hero-typewriter__cursor"
+                    :class="{ 'landing-hero-typewriter__cursor--on': showCursor }"
+                >|</span></template>
             </span>
         </h1>
 
@@ -181,7 +178,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .landing-hero-typewriter__cursor {
-    margin-left: 0.08em;
+    margin-left: 0;
     font-weight: 400;
     color: currentColor;
     opacity: 0;

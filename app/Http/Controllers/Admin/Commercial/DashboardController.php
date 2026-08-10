@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CommercialProposal;
 use App\Models\CommercialProposalProductLine;
 use App\Models\User;
+use App\Support\Commercial\ProposalListStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -51,10 +52,19 @@ class DashboardController extends Controller
         $recent = CommercialProposal::query()
             ->when($start, fn (Builder $q) => $q->where('created_at', '>=', $start))
             ->when($end, fn (Builder $q) => $q->where('created_at', '<=', $end))
-            ->with('seller:id,name')
+            ->with(['seller:id,name', 'sale:id,proposal_id,code,status'])
             ->latest()
             ->limit(10)
-            ->get(['id', 'code', 'client_name', 'seller_id', 'employee_count', 'total_final_cents', 'is_closed', 'created_at']);
+            ->get(['id', 'code', 'client_name', 'seller_id', 'employee_count', 'total_final_cents', 'is_closed', 'created_at'])
+            ->map(function (CommercialProposal $proposal): array {
+                $listStatus = ProposalListStatus::for($proposal);
+                $arr = $proposal->toArray();
+                $arr['list_status'] = $listStatus;
+                $arr['list_status_label'] = ProposalListStatus::label($listStatus);
+
+                return $arr;
+            })
+            ->all();
 
         return Inertia::render('Admin/Commercial/Dashboard', [
             'period' => $period,

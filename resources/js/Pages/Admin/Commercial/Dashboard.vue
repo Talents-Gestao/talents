@@ -43,6 +43,23 @@ const formatDate = (iso) => {
     return new Date(iso).toLocaleDateString('pt-BR');
 };
 
+const listStatusBadgeClass = (status) => {
+    if (status === 'in_progress') {
+        return 'bg-indigo-100 text-indigo-800';
+    }
+    if (status === 'closed') {
+        return 'bg-emerald-100 text-emerald-800';
+    }
+    return 'bg-talents-100 text-talents-800';
+};
+
+const listStatusLabel = (proposal) => proposal.list_status_label
+    ?? (proposal.list_status === 'in_progress'
+        ? 'Em andamento'
+        : proposal.list_status === 'closed' || proposal.is_closed
+            ? 'Fechada'
+            : 'Em aberto');
+
 const conversionDeltaText = computed(() => {
     const d = props.deltas?.conversion_rate;
     if (d === null || d === undefined) return '';
@@ -387,9 +404,9 @@ const barChartSeries = computed(() => [
                             <td class="px-3 py-2">
                                 <span
                                     class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
-                                    :class="p.is_closed ? 'bg-emerald-100 text-emerald-800' : 'bg-talents-100 text-talents-800'"
+                                    :class="listStatusBadgeClass(p.list_status ?? (p.is_closed ? 'closed' : 'open'))"
                                 >
-                                    {{ p.is_closed ? 'Fechada' : 'Em aberto' }}
+                                    {{ listStatusLabel(p) }}
                                 </span>
                             </td>
                             <td class="px-3 py-2 text-right text-xs text-slate-500">{{ formatDate(p.created_at) }}</td>

@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Support\Notices;
 
 use App\Enums\CompanyNoticeAudience;
 use App\Models\CompanyNotice;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 
 class UnreadNoticeCounter
 {
@@ -14,23 +17,44 @@ class UnreadNoticeCounter
             return 0;
         }
 
+        $query = $this->visibleNoticesQuery($user);
+        if ($query === null) {
+            return 0;
+        }
+
+        return $query
+            ->whereDoesntHave('reads', fn ($q) => $q->where('user_id', $user->id))
+            ->count();
+    }
+
+    /**
+     * Avisos visíveis no contexto ativo (sino / contador / marcar todos).
+     *
+     * Workspace Talents (super_admin): todas as CompanyNotice.
+     * Workspace empresa: só audience=company da empresa ativa.
+     *
+     * @return Builder<CompanyNotice>|null
+     */
+    public function visibleNoticesQuery(User $user): ?Builder
+    {
         $context = $this->contextFor($user);
         if ($context === null) {
-            return 0;
+            return null;
         }
 
         [$audience, $companyId] = $context;
 
-        return CompanyNotice::query()
+        $query = CompanyNotice::query()
+            ->where('published_at', '<=', now());
+
+        // Admin Talents: talents + company de qualquer empresa.
+        if ($audience === CompanyNoticeAudience::Talents) {
+            return $query;
+        }
+
+        return $query
             ->where('audience', $audience->value)
-            ->when(
-                $companyId !== null,
-                fn ($query) => $query->where('company_id', $companyId),
-                fn ($query) => $query->whereNull('company_id'),
-            )
-            ->where('published_at', '<=', now())
-            ->whereDoesntHave('reads', fn ($query) => $query->where('user_id', $user->id))
-            ->count();
+            ->where('company_id', $companyId);
     }
 
     /**

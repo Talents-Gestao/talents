@@ -40,11 +40,6 @@ class ComingSoonController extends Controller
             'description' => 'Cadastro estruturado de colaboradores (dados em alinhamento com a operação) será liberado em breve.',
             'permission' => AdminPermissionModule::Companies,
         ],
-        'contratos-fechados' => [
-            'title' => 'Contratos fechados',
-            'description' => 'Histórico de contratos fechados por cliente estará disponível em breve.',
-            'permission' => AdminPermissionModule::Companies,
-        ],
         'controle-uniformes' => [
             'title' => 'Controle de uniformes',
             'description' => 'Controle de uniformes por empresa será disponibilizado em breve.',
@@ -78,6 +73,10 @@ class ComingSoonController extends Controller
 
         if ($module === 'diagnostico-empresarial') {
             return redirect()->route('admin.diagnostico-empresarial.index');
+        }
+
+        if ($module === 'contratos-fechados') {
+            return redirect()->route('admin.contratos-fechados.index');
         }
 
         if ($module === 'contas-a-pagar') {

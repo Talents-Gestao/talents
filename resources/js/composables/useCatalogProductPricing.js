@@ -23,6 +23,12 @@ export const FLEXIBLE_RATE_CUSTOM = {
     unitsLabel: 'Valor personalizado (R$)',
 };
 
+const formatCentsBRL = (cents) =>
+    (Math.max(0, Number(cents) || 0) / 100).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    });
+
 const applyDiscount = (subtotal, selection) => {
     const discountType = String(selection.discount_type ?? 'percent');
 
@@ -154,6 +160,113 @@ const shouldIncludeLine = (selection, result) => {
     }
     return selection.adjustment === 'bonus' && (result.subtotal_cents ?? 0) > 0;
 };
+
+/**
+ * Preço de referência do catálogo (idle) — sem exigir seleção/enabled.
+ * Não altera o cálculo de linha/PDF; só para exibição na lista.
+ *
+ * @param {object} product
+ * @returns {{ label: string, reference_cents: number|null, has_catalog_price: boolean }}
+ */
+export function catalogReferenceDisplay(product) {
+    const config = product?.pricing_config || {};
+
+    switch (product?.pricing_type) {
+        case 'fixed': {
+            const cents = Math.max(0, Number(config.amount_cents ?? 0));
+            return {
+                label: formatCentsBRL(cents),
+                reference_cents: cents,
+                has_catalog_price: cents > 0,
+            };
+        }
+        case 'per_employee': {
+            const cents = Math.max(0, Number(config.cents_per_employee ?? 0));
+            return {
+                label: `${formatCentsBRL(cents)} / func.`,
+                reference_cents: cents,
+                has_catalog_price: cents > 0,
+            };
+        }
+        case 'tiered_per_employee': {
+            const cents = Math.max(0, Number(config.tier1_cents ?? 0));
+            return {
+                label: cents > 0 ? `a partir de ${formatCentsBRL(cents)} / func.` : formatCentsBRL(0),
+                reference_cents: cents,
+                has_catalog_price: cents > 0,
+            };
+        }
+        case 'threshold_multiplier': {
+            const cents = Math.max(0, Number(config.base_cents ?? 0));
+            return {
+                label: cents > 0 ? `a partir de ${formatCentsBRL(cents)}` : formatCentsBRL(0),
+                reference_cents: cents,
+                has_catalog_price: cents > 0,
+            };
+        }
+        case 'fixed_modality': {
+            const modalities = Array.isArray(config.modalities) ? config.modalities : [];
+            const centsList = modalities
+                .map((m) => Math.max(0, Number(m?.cents ?? 0)))
+                .filter((c) => c > 0);
+            if (!centsList.length) {
+                return {
+                    label: formatCentsBRL(0),
+                    reference_cents: 0,
+                    has_catalog_price: false,
+                };
+            }
+            const min = Math.min(...centsList);
+            return {
+                label: `a partir de ${formatCentsBRL(min)}`,
+                reference_cents: min,
+                has_catalog_price: true,
+            };
+        }
+        case 'flexible_rates': {
+            const rates = config.rates || {};
+            const enabledCents = FLEXIBLE_RATE_DEFS
+                .filter((def) => rates[def.key]?.enabled)
+                .map((def) => Math.max(0, Number(rates[def.key]?.cents_per_unit ?? 0)))
+                .filter((c) => c > 0);
+            if (!enabledCents.length) {
+                return {
+                    label: 'conforme taxa',
+                    reference_cents: null,
+                    has_catalog_price: false,
+                };
+            }
+            const min = Math.min(...enabledCents);
+            return {
+                label: `a partir de ${formatCentsBRL(min)} / un.`,
+                reference_cents: min,
+                has_catalog_price: true,
+            };
+        }
+        case 'salary_times_employees':
+            return {
+                label: 'salário × funcionários',
+                reference_cents: null,
+                has_catalog_price: true,
+            };
+        default:
+            return {
+                label: formatCentsBRL(0),
+                reference_cents: 0,
+                has_catalog_price: false,
+            };
+    }
+}
+
+/**
+ * Centavos de referência (quando aplicável) — útil para inventário / testes.
+ *
+ * @param {object} product
+ * @returns {number|null}
+ */
+export function catalogReferenceCents(product) {
+    return catalogReferenceDisplay(product).reference_cents;
+}
 
 /**
  * @param {object} product

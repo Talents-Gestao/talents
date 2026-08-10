@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use App\Enums\CommercialProposalPaymentMethod;
+use App\Support\Commercial\ProposalListStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class CommercialProposal extends Model
 {
@@ -84,7 +86,7 @@ class CommercialProposal extends Model
         return $this->hasMany(CommercialProposalProductLine::class, 'commercial_proposal_id');
     }
 
-    public function sale(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function sale(): HasOne
     {
         return $this->hasOne(CommercialSale::class, 'proposal_id');
     }
@@ -92,6 +94,19 @@ class CommercialProposal extends Model
     public function isWon(): bool
     {
         return (bool) $this->is_closed;
+    }
+
+    /**
+     * Status visual da lista: open|in_progress|closed (não persiste).
+     */
+    public function listStatus(): string
+    {
+        return ProposalListStatus::for($this);
+    }
+
+    public function listStatusLabel(): string
+    {
+        return ProposalListStatus::labelFor($this);
     }
 
     public function hasLegacyServices(): bool

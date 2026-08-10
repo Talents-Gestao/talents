@@ -44,6 +44,32 @@ const filterState = reactive({
 
 const isFilaView = computed(() => filterState.ordenacao === 'fila');
 
+const listStatusBadgeClass = (status) => {
+    if (status === 'in_progress') {
+        return 'bg-indigo-100 text-indigo-800';
+    }
+    if (status === 'closed') {
+        return 'bg-emerald-100 text-emerald-800';
+    }
+    return 'bg-amber-100 text-amber-800';
+};
+
+const listStatusLabel = (proposal) => proposal.list_status_label
+    ?? (proposal.list_status === 'in_progress'
+        ? 'Em andamento'
+        : proposal.list_status === 'closed' || proposal.is_closed
+            ? 'Fechada'
+            : 'Em aberto');
+
+const installmentsProgressLabel = (proposal) => {
+    const paid = proposal.paid_installments;
+    const total = proposal.total_installments;
+    if (paid == null || total == null || Number(total) < 1) {
+        return null;
+    }
+    return `${paid}/${total} pagas`;
+};
+
 const queueTotal = computed(() => props.queue_total || 0);
 
 const waitingLabel = (days) => {
@@ -372,6 +398,7 @@ const submitConvert = () => {
                     >
                         <option value="">Todos</option>
                         <option value="abertas">Em aberto</option>
+                        <option value="em_andamento">Em andamento</option>
                         <option value="fechadas">Fechadas</option>
                     </select>
                 </div>
@@ -446,10 +473,16 @@ const submitConvert = () => {
                             <td class="px-4 py-3">
                                 <span
                                     class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
-                                    :class="p.is_closed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                                    :class="listStatusBadgeClass(p.list_status ?? (p.is_closed ? 'closed' : 'open'))"
                                 >
-                                    {{ p.is_closed ? 'Fechada' : 'Em aberto' }}
+                                    {{ listStatusLabel(p) }}
                                 </span>
+                                <div
+                                    v-if="installmentsProgressLabel(p)"
+                                    class="mt-0.5 text-[11px] tabular-nums text-slate-500"
+                                >
+                                    {{ installmentsProgressLabel(p) }}
+                                </div>
                                 <Link
                                     v-if="p.sale"
                                     :href="route('admin.financeiro.vendas.show', p.sale.id)"

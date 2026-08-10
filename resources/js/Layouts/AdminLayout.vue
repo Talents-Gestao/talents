@@ -88,7 +88,7 @@ const clientesActive = computed(
         route().current('admin.companies.*') ||
         route().current('admin.landing-interest.*') ||
         route().current('admin.diagnostico-empresarial.*') ||
-        isComingSoon('contratos-fechados'),
+        route().current('admin.contratos-fechados.*'),
 );
 
 const showContratacao = computed(() => canAdmin('solides') || canAdmin('entrevistas'));
@@ -287,13 +287,12 @@ const isComercialSettingsTab = (tab) => {
                 />
                 <SidebarNavItem
                     v-if="canAdmin('companies')"
-                    :href="comingSoonHref('contratos-fechados')"
-                    :active="isComingSoon('contratos-fechados')"
+                    :href="route('admin.contratos-fechados.index')"
+                    :active="route().current('admin.contratos-fechados.*')"
                     label="Contratos fechados"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
-                    badge="Em breve"
                 />
             </SidebarNavGroup>
 

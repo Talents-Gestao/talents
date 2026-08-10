@@ -4,28 +4,18 @@ import HealthBadge from '@/Components/Dashboard/HealthBadge.vue';
 import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
 import SectionHeader from '@/Components/Dashboard/SectionHeader.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
+import ComplaintsPublicLinkPanel from '@/Components/Complaints/ComplaintsPublicLinkPanel.vue';
 import StrategicCalendarWidget from '@/Components/StrategicCalendarWidget.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
 import { usePermissions } from '@/composables/usePermissions';
 import { formatDateNumeric, formatRelativeDate } from '@/utils/dateOnly';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 const page = usePage();
 const { can } = usePermissions();
 const greeting = useDashboardGreeting();
-
-const copied = ref(false);
-
-const copyDenuncia = async (url) => {
-    if (!url || !navigator.clipboard) return;
-    await navigator.clipboard.writeText(url);
-    copied.value = true;
-    setTimeout(() => {
-        copied.value = false;
-    }, 2000);
-};
 
 const props = defineProps({
     activeSurveys: Number,
@@ -427,17 +417,10 @@ const attentionHref = computed(() => {
             </ul>
         </div>
 
-        <!-- Denúncias link -->
+        <!-- Denúncias — link público para colaboradores -->
         <div v-if="complaintsPublicUrl && can('denuncias', 'view')" class="dashboard-panel-compact mt-8">
-            <SectionHeader title="Canal de denúncias" subtitle="Lei 14.457/2022 — link público para colaboradores" />
-            <p class="mt-2 break-all rounded-lg bg-slate-50 p-2 font-mono text-xs text-slate-800">{{ complaintsPublicUrl }}</p>
-            <button
-                type="button"
-                class="mt-3 rounded-lg border border-talents-200 bg-white px-3 py-1.5 text-sm font-medium text-talents-800 hover:bg-talents-50"
-                @click="copyDenuncia(complaintsPublicUrl)"
-            >
-                {{ copied ? 'Copiado!' : 'Copiar link' }}
-            </button>
+            <SectionHeader title="Canal de denúncias" subtitle="Partilhe o link com o time — formulário sem login" />
+            <ComplaintsPublicLinkPanel :url="complaintsPublicUrl" variant="panel" />
         </div>
 
         <div v-if="dashboardCalendar && can('calendario_estrategico', 'view')" class="mt-10">

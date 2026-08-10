@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\Notices\MarkNoticeRead;
 use App\Actions\Notices\PublishCompanyNotice;
-use App\Enums\CompanyNoticeAudience;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\CompanyNotice;
@@ -75,9 +74,14 @@ class CompanyNoticeController extends Controller
     public function recent(Request $request, UnreadNoticeCounter $unreadNoticeCounter): JsonResponse
     {
         $user = $request->user();
+        $query = $unreadNoticeCounter->visibleNoticesQuery($user);
+        abort_unless($query !== null, 403);
 
-        $notices = $this->talentsQuery()
-            ->with(['reads' => fn ($query) => $query->where('user_id', $user->id)])
+        $notices = $query
+            ->with([
+                'company:id,name',
+                'reads' => fn ($q) => $q->where('user_id', $user->id),
+            ])
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->limit(self::RECENT_LIMIT)
@@ -96,9 +100,13 @@ class CompanyNoticeController extends Controller
         MarkNoticeRead $markNoticeRead,
         UnreadNoticeCounter $unreadNoticeCounter,
     ): RedirectResponse|JsonResponse {
-        abort_unless($notice->audience === CompanyNoticeAudience::Talents, 404);
-
         $user = $request->user();
+        $visible = $unreadNoticeCounter->visibleNoticesQuery($user);
+        abort_unless(
+            $visible !== null && (clone $visible)->whereKey($notice->id)->exists(),
+            404,
+        );
+
         $markNoticeRead->handle($notice, $user);
 
         if ($request->wantsJson()) {
@@ -117,7 +125,7 @@ class CompanyNoticeController extends Controller
         UnreadNoticeCounter $unreadNoticeCounter,
     ): RedirectResponse|JsonResponse {
         $user = $request->user();
-        $count = $markNoticeRead->markAllForContext($user, CompanyNoticeAudience::Talents, null);
+        $count = $markNoticeRead->markAllVisibleForUser($user, $unreadNoticeCounter);
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -132,14 +140,6 @@ class CompanyNoticeController extends Controller
             : 'Não há avisos novos.');
     }
 
-    private function talentsQuery()
-    {
-        return CompanyNotice::query()
-            ->where('audience', CompanyNoticeAudience::Talents->value)
-            ->whereNull('company_id')
-            ->where('published_at', '<=', now());
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -151,6 +151,9 @@ class CompanyNoticeController extends Controller
             'body' => $notice->body,
             'published_at' => $notice->published_at?->toIso8601String(),
             'event_kind' => $notice->event_kind?->value,
+            'audience' => $notice->audience?->value,
+            'company_id' => $notice->company_id,
+            'company_name' => $notice->company?->name,
             'read' => $notice->reads->isNotEmpty(),
         ];
     }
