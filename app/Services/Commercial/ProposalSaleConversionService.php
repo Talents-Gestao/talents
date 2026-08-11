@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Commercial;
 
 use App\Models\CommercialCommission;
@@ -11,8 +13,16 @@ use Illuminate\Validation\ValidationException;
 
 class ProposalSaleConversionService
 {
+    private const SINGLE_METHODS = ['pix', 'boleto', 'cartao'];
+
     /**
-     * @param  array{payment_method: string, installments_count: int, first_due_date: string, notes?: string|null}  $data
+     * @param  array{
+     *     payment_method: string,
+     *     installments_count?: int|null,
+     *     first_due_date: string,
+     *     notes?: string|null,
+     *     mix_parts?: list<array{method: string, percent: float|int|string}>|null
+     * }  $data
      */
     public function convert(CommercialProposal $proposal, array $data, ?int $createdBy = null): CommercialSale
     {
@@ -28,12 +38,22 @@ class ProposalSaleConversionService
             ]);
         }
 
-        $installmentsCount = max(1, min(60, (int) $data['installments_count']));
+        $paymentMethod = (string) $data['payment_method'];
         $totalCents = (int) $proposal->total_final_cents;
-        $baseAmount = intdiv($totalCents, $installmentsCount);
-        $remainder = $totalCents % $installmentsCount;
 
-        return DB::transaction(function () use ($proposal, $data, $createdBy, $installmentsCount, $totalCents, $baseAmount, $remainder) {
+        if ($paymentMethod === 'misto') {
+            $installmentPlan = $this->planFromMixParts($data['mix_parts'] ?? [], $totalCents);
+        } else {
+            $installmentPlan = $this->planFromEqualInstallments(
+                (int) ($data['installments_count'] ?? 1),
+                $paymentMethod,
+                $totalCents,
+            );
+        }
+
+        $installmentsCount = count($installmentPlan);
+
+        return DB::transaction(function () use ($proposal, $data, $createdBy, $paymentMethod, $installmentsCount, $totalCents, $installmentPlan) {
             $sale = CommercialSale::create([
                 'code' => CommercialSale::nextCode(),
                 'proposal_id' => $proposal->id,
@@ -45,7 +65,7 @@ class ProposalSaleConversionService
                 'total_cents' => $totalCents,
                 'commission_percent' => (float) $proposal->commission_percent,
                 'commission_cents' => (int) $proposal->commission_cents,
-                'payment_method' => $data['payment_method'],
+                'payment_method' => $paymentMethod,
                 'installments_count' => $installmentsCount,
                 'status' => CommercialSale::STATUS_ABERTA,
                 'sold_at' => now(),
@@ -55,15 +75,13 @@ class ProposalSaleConversionService
 
             $dueDate = \Carbon\Carbon::parse($data['first_due_date'])->startOfDay();
 
-            for ($i = 1; $i <= $installmentsCount; $i++) {
-                $amount = $baseAmount + ($i === 1 ? $remainder : 0);
-
+            foreach ($installmentPlan as $index => $part) {
                 CommercialSaleInstallment::create([
                     'sale_id' => $sale->id,
-                    'number' => $i,
-                    'amount_cents' => $amount,
-                    'due_date' => $dueDate->copy()->addMonths($i - 1),
-                    'method' => $data['payment_method'] === 'misto' ? 'pix' : $data['payment_method'],
+                    'number' => $index + 1,
+                    'amount_cents' => $part['amount_cents'],
+                    'due_date' => $dueDate->copy()->addMonths($index),
+                    'method' => $part['method'],
                     'status' => CommercialSaleInstallment::STATUS_PENDENTE,
                 ]);
             }
@@ -81,5 +99,96 @@ class ProposalSaleConversionService
 
             return $sale->load(['installments', 'commission', 'seller:id,name']);
         });
+    }
+
+    /**
+     * @param  list<array{method: string, percent: float|int|string}>  $mixParts
+     * @return list<array{method: string, amount_cents: int}>
+     */
+    private function planFromMixParts(array $mixParts, int $totalCents): array
+    {
+        if (count($mixParts) < 2) {
+            throw ValidationException::withMessages([
+                'mix_parts' => 'Informe pelo menos 2 partes na composição do pagamento misto.',
+            ]);
+        }
+
+        if (count($mixParts) > 60) {
+            throw ValidationException::withMessages([
+                'mix_parts' => 'A composição do pagamento pode ter no máximo 60 partes.',
+            ]);
+        }
+
+        $percents = [];
+        foreach ($mixParts as $index => $part) {
+            $method = (string) ($part['method'] ?? '');
+            if (! in_array($method, self::SINGLE_METHODS, true)) {
+                throw ValidationException::withMessages([
+                    "mix_parts.{$index}.method" => 'Selecione PIX, boleto ou cartão em cada parte.',
+                ]);
+            }
+
+            $percent = (float) ($part['percent'] ?? 0);
+            if ($percent <= 0) {
+                throw ValidationException::withMessages([
+                    "mix_parts.{$index}.percent" => 'Cada parte deve ter percentual maior que zero.',
+                ]);
+            }
+
+            $percents[] = ['method' => $method, 'percent' => $percent];
+        }
+
+        $sumPercent = array_sum(array_column($percents, 'percent'));
+        if (abs($sumPercent - 100.0) > 0.05) {
+            throw ValidationException::withMessages([
+                'mix_parts' => 'A soma dos percentuais deve ser 100%.',
+            ]);
+        }
+
+        $plan = [];
+        $allocated = 0;
+        $lastIndex = count($percents) - 1;
+
+        foreach ($percents as $index => $part) {
+            if ($index === $lastIndex) {
+                $amount = max(0, $totalCents - $allocated);
+            } else {
+                $amount = (int) round($totalCents * ($part['percent'] / 100));
+                $allocated += $amount;
+            }
+
+            $plan[] = [
+                'method' => $part['method'],
+                'amount_cents' => $amount,
+            ];
+        }
+
+        return $plan;
+    }
+
+    /**
+     * @return list<array{method: string, amount_cents: int}>
+     */
+    private function planFromEqualInstallments(int $installmentsCount, string $paymentMethod, int $totalCents): array
+    {
+        if (! in_array($paymentMethod, self::SINGLE_METHODS, true)) {
+            throw ValidationException::withMessages([
+                'payment_method' => 'Forma de pagamento inválida.',
+            ]);
+        }
+
+        $installmentsCount = max(1, min(60, $installmentsCount));
+        $baseAmount = intdiv($totalCents, $installmentsCount);
+        $remainder = $totalCents % $installmentsCount;
+
+        $plan = [];
+        for ($i = 1; $i <= $installmentsCount; $i++) {
+            $plan[] = [
+                'method' => $paymentMethod,
+                'amount_cents' => $baseAmount + ($i === 1 ? $remainder : 0),
+            ];
+        }
+
+        return $plan;
     }
 }

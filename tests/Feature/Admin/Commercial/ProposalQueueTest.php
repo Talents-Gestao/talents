@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Admin\Commercial;
 
 use App\Models\CommercialProposal;
@@ -12,7 +14,7 @@ class ProposalQueueTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_proposals_index_orders_fifo_when_ordenacao_is_fila(): void
+    public function test_ordenacao_fila_is_ignored_and_queue_payload_is_absent(): void
     {
         $this->withoutVite();
 
@@ -27,7 +29,7 @@ class ProposalQueueTest extends TestCase
             'created_at' => now()->subDays(5),
         ]);
 
-        $middle = CommercialProposal::create([
+        CommercialProposal::create([
             'code' => 'PROP-2026-0002',
             'client_name' => 'Cliente Médio',
             'employee_count' => 20,
@@ -63,19 +65,11 @@ class ProposalQueueTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Commercial/Proposals/Index')
-                ->where('queue_total', 3)
-                ->has('queue', 3)
-                ->where('queue.0.id', $oldest->id)
-                ->where('queue.0.queue_position', 1)
-                ->where('queue.1.id', $middle->id)
-                ->where('queue.1.queue_position', 2)
-                ->where('queue.2.id', $newest->id)
-                ->where('queue.2.queue_position', 3)
+                ->missing('queue')
+                ->missing('queue_total')
                 ->has('proposals.data', 3)
-                ->where('proposals.data.0.id', $oldest->id)
-                ->where('proposals.data.0.queue_position', 1)
-                ->where('proposals.data.2.id', $newest->id)
-                ->where('proposals.data.2.queue_position', 3)
+                ->where('proposals.data.0.id', $newest->id)
+                ->where('proposals.data.2.id', $oldest->id)
             );
     }
 }

@@ -8,9 +8,9 @@ use App\Enums\FinancePayableStatus;
 use App\Enums\HiringProcessStage;
 use App\Enums\LandingInterestSource;
 use App\Enums\StrategicCalendarItemKind;
+use App\Models\AdminDashboardSettings;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
-use App\Models\CommercialSaleInstallment;
 use App\Models\Company;
 use App\Models\CompanyMethodology;
 use App\Models\FinancePayable;
@@ -20,6 +20,7 @@ use App\Models\StrategicCalendarItem;
 use App\Models\Subscription;
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
+use App\Support\Finance\FinanceCashflowMetrics;
 use App\Support\StrategicCalendarLeaveEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use Carbon\Carbon;
@@ -44,19 +45,11 @@ final class AdminHomeDashboardBuilder
         $monthStart = $today->copy()->startOfMonth();
         $monthEnd = $today->copy()->endOfMonth();
 
-        $receiveThisMonthCents = (int) CommercialSaleInstallment::query()
-            ->where('status', '!=', CommercialSaleInstallment::STATUS_CANCELADO)
-            ->whereBetween('due_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
-            ->sum('amount_cents');
+        $cashflow = app(FinanceCashflowMetrics::class);
 
-        $receivedThisMonthCents = (int) CommercialSaleInstallment::query()
-            ->where('status', CommercialSaleInstallment::STATUS_PAGO)
-            ->whereBetween('paid_at', [$monthStart, $monthEnd])
-            ->sum('paid_amount_cents');
-
-        $toReceiveCents = (int) CommercialSaleInstallment::query()
-            ->where('status', CommercialSaleInstallment::STATUS_PENDENTE)
-            ->sum('amount_cents');
+        $receiveThisMonthCents = $cashflow->scheduledDueBetweenCents($monthStart, $monthEnd);
+        $receivedThisMonthCents = $cashflow->receivedBetweenCents($monthStart, $monthEnd);
+        $toReceiveCents = $cashflow->toReceiveCents();
 
         $payablesPendingCents = (int) FinancePayable::query()
             ->where('status', FinancePayableStatus::Pending)
@@ -65,6 +58,10 @@ final class AdminHomeDashboardBuilder
         $forecastCents = $receiveThisMonthCents - $payablesPendingCents;
 
         $leadsThisMonth = LandingInterestSubmission::query()
+            ->where('created_at', '>=', $monthStart)
+            ->count();
+
+        $proposalsCreatedThisMonth = CommercialProposal::query()
             ->where('created_at', '>=', $monthStart)
             ->count();
 
@@ -134,7 +131,7 @@ final class AdminHomeDashboardBuilder
             ->whereBetween('sold_at', [$monthStart, $monthEnd])
             ->sum('total_cents');
 
-        $goalCents = (int) config('talents.dashboard.monthly_revenue_goal_cents', 2_000_000);
+        $goalCents = AdminDashboardSettings::resolvedMonthlyRevenueGoalCents();
         $goalPercent = $goalCents > 0 ? round(100 * $revenueMonthCents / $goalCents, 0) : 0.0;
 
         $openHiring = HiringProcess::query()
@@ -175,7 +172,13 @@ final class AdminHomeDashboardBuilder
                 'methodology_active' => $activeMethodology,
             ],
             'leads_by_source' => $leadsBySource,
-            'funnel' => $this->funnel($leadsThisMonth, $proposalsInNegotiation, $proposalsClosedThisMonth, $monthStart),
+            'funnel' => $this->funnel(
+                $leadsThisMonth,
+                $proposalsCreatedThisMonth,
+                $proposalsInNegotiation,
+                $proposalsClosedThisMonth,
+                $monthStart,
+            ),
             'monthly_goal' => [
                 'current_cents' => $revenueMonthCents,
                 'goal_cents' => $goalCents,
@@ -276,18 +279,17 @@ final class AdminHomeDashboardBuilder
     }
 
     /**
-     * Funil a partir de leads, contatos (telefone), agenda do mês, propostas abertas e fechadas.
+     * Funil: Leads → Reunião → Proposta → Negociação → Fechou.
      *
      * @return list<array{key: string, label: string, count: int}>
      */
-    private function funnel(int $leads, int $openProposals, int $closed, Carbon $monthStart): array
-    {
-        $contact = (int) LandingInterestSubmission::query()
-            ->whereNotNull('phone')
-            ->where('phone', '!=', '')
-            ->where('created_at', '>=', $monthStart)
-            ->count();
-
+    private function funnel(
+        int $leads,
+        int $proposalsCreated,
+        int $inNegotiation,
+        int $closed,
+        Carbon $monthStart,
+    ): array {
         $meetings = (int) StrategicCalendarItem::query()
             ->where('occurs_on', '>=', $monthStart->toDateString())
             ->whereIn('kind', [
@@ -298,9 +300,9 @@ final class AdminHomeDashboardBuilder
 
         return [
             ['key' => 'leads', 'label' => 'Leads', 'count' => $leads],
-            ['key' => 'contact', 'label' => 'Contato', 'count' => $contact],
             ['key' => 'meeting', 'label' => 'Reunião', 'count' => $meetings],
-            ['key' => 'proposal', 'label' => 'Proposta', 'count' => $openProposals],
+            ['key' => 'proposal', 'label' => 'Proposta', 'count' => $proposalsCreated],
+            ['key' => 'negotiation', 'label' => 'Negociação', 'count' => $inNegotiation],
             ['key' => 'closed', 'label' => 'Fechou', 'count' => $closed],
         ];
     }

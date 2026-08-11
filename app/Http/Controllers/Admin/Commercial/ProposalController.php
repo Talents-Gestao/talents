@@ -32,11 +32,6 @@ class ProposalController extends Controller
 
     public function index(Request $request): Response
     {
-        $ordenacao = $request->string('ordenacao')->toString();
-        if (! in_array($ordenacao, ['recentes', 'fila'], true)) {
-            $ordenacao = 'recentes';
-        }
-
         $q = CommercialProposal::query()
             ->with([
                 'seller:id,name',
@@ -48,13 +43,8 @@ class ProposalController extends Controller
                             'installments as total_installments_count',
                         ]);
                 },
-            ]);
-
-        if ($ordenacao === 'fila') {
-            $q->orderBy('created_at')->orderBy('id');
-        } else {
-            $q->orderByDesc('created_at');
-        }
+            ])
+            ->orderByDesc('created_at');
 
         if ($request->filled('search')) {
             $s = (string) $request->string('search');
@@ -75,10 +65,7 @@ class ProposalController extends Controller
 
         $proposals = $q->paginate(15)->withQueryString();
 
-        $queuePositions = $this->queuePositionsFor($request);
-        $queueTotal = count($queuePositions);
-
-        $proposals->getCollection()->transform(function (CommercialProposal $proposal) use ($queuePositions) {
+        $proposals->getCollection()->transform(function (CommercialProposal $proposal) {
             $listStatus = ProposalListStatus::for($proposal);
             $arr = $proposal->toArray();
             $arr['list_status'] = $listStatus;
@@ -86,26 +73,16 @@ class ProposalController extends Controller
             $arr['paid_installments'] = $proposal->sale?->paid_installments_count;
             $arr['total_installments'] = $proposal->sale?->total_installments_count
                 ?? $proposal->sale?->installments_count;
-            $arr['queue_position'] = $proposal->is_closed
-                ? null
-                : ($queuePositions[$proposal->id] ?? null);
-            $arr['waiting_days'] = $proposal->is_closed
-                ? null
-                : (int) $proposal->created_at?->diffInDays(now());
 
             return $arr;
         });
-
-        $queue = $this->openProposalsQueue($request, $queuePositions);
 
         $commercialSettings = CommercialSetting::current();
 
         return Inertia::render('Admin/Commercial/Proposals/Index', [
             'proposals' => $proposals,
-            'queue' => $queue,
-            'queue_total' => $queueTotal,
             'sellers' => $this->sellersOptions(),
-            'filters' => $request->only(['search', 'seller_id', 'status', 'ordenacao']),
+            'filters' => $request->only(['search', 'seller_id', 'status']),
             'templates' => CommercialContractTemplate::active()
                 ->orderBy('name')
                 ->get(['id', 'name'])
@@ -156,7 +133,7 @@ class ProposalController extends Controller
         }
 
         return redirect()
-            ->route('admin.comercial.propostas.edit', $proposal)
+            ->route('admin.comercial.propostas.index')
             ->with('success', "Proposta {$proposal->code} criada.");
     }
 
@@ -199,6 +176,43 @@ class ProposalController extends Controller
             ->with('success', 'Proposta atualizada.');
     }
 
+    public function updateStatus(Request $request, CommercialProposal $proposal): RedirectResponse
+    {
+        $data = $request->validate([
+            'status' => ['required', Rule::in(['open', 'closed'])],
+        ], [
+            'status.required' => 'Selecione o status.',
+            'status.in' => 'Status inválido.',
+        ]);
+
+        $wasClosed = (bool) $proposal->is_closed;
+        $isClosed = $data['status'] === 'closed';
+
+        $proposal->update([
+            'is_closed' => $isClosed,
+            'closed_at' => match (true) {
+                $isClosed && ! $wasClosed => now(),
+                ! $isClosed => null,
+                default => $proposal->closed_at,
+            },
+        ]);
+
+        if ($isClosed && ! $wasClosed) {
+            $this->notices->proposalWon($proposal->refresh(), $request->user());
+        }
+
+        $label = $isClosed ? 'Fechada' : 'Em aberto';
+        $redirect = redirect()
+            ->route('admin.comercial.propostas.index')
+            ->with('success', "Status da proposta {$proposal->code} atualizado para «{$label}».");
+
+        if ($proposal->sale()->exists() && ! $isClosed) {
+            $redirect->with('info', 'Esta proposta já possui venda vinculada.');
+        }
+
+        return $redirect;
+    }
+
     public function destroy(CommercialProposal $proposal): RedirectResponse
     {
         $proposal->delete();
@@ -215,69 +229,6 @@ class ProposalController extends Controller
         return $pdfService
             ->generate($proposal)
             ->stream("proposta-{$proposal->code}.pdf");
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    private function queuePositionsFor(Request $request): array
-    {
-        $ids = $this->openProposalsQueueQuery($request)
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->pluck('id');
-
-        $positions = [];
-        foreach ($ids as $index => $id) {
-            $positions[(int) $id] = $index + 1;
-        }
-
-        return $positions;
-    }
-
-    /**
-     * @param  array<int, int>  $queuePositions
-     * @return list<array<string, mixed>>
-     */
-    private function openProposalsQueue(Request $request, array $queuePositions): array
-    {
-        return $this->openProposalsQueueQuery($request)
-            ->with('seller:id,name')
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->limit(20)
-            ->get(['id', 'code', 'client_name', 'seller_id', 'total_final_cents', 'created_at', 'is_closed'])
-            ->map(fn (CommercialProposal $p) => [
-                'id' => $p->id,
-                'code' => $p->code,
-                'client_name' => $p->client_name,
-                'seller' => $p->seller?->only(['id', 'name']),
-                'total_final_cents' => $p->total_final_cents,
-                'created_at' => $p->created_at?->toIso8601String(),
-                'queue_position' => $queuePositions[$p->id] ?? null,
-                'waiting_days' => (int) $p->created_at?->diffInDays(now()),
-            ])
-            ->all();
-    }
-
-    private function openProposalsQueueQuery(Request $request): \Illuminate\Database\Eloquent\Builder
-    {
-        $q = CommercialProposal::query()->where('is_closed', false);
-
-        if ($request->filled('seller_id')) {
-            $q->where('seller_id', $request->integer('seller_id'));
-        }
-
-        if ($request->filled('search')) {
-            $s = (string) $request->string('search');
-            $q->where(function ($query) use ($s) {
-                $query->where('client_name', 'like', '%'.$s.'%')
-                    ->orWhere('code', 'like', '%'.$s.'%')
-                    ->orWhere('client_cnpj', 'like', '%'.$s.'%');
-            });
-        }
-
-        return $q;
     }
 
     /**
@@ -487,6 +438,14 @@ class ProposalController extends Controller
             'catalog_products.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'catalog_products.*.discount_value_cents' => ['nullable', 'integer', 'min:0'],
             'catalog_products.*.observation' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'client_name.required' => 'Informe o nome / razão social.',
+            'employee_count.required' => 'Informe o número de funcionários.',
+            'employee_count.integer' => 'O número de funcionários deve ser um inteiro.',
+            'employee_count.min' => 'O número de funcionários não pode ser negativo.',
+            'payment_method.required' => 'Selecione a forma de pagamento.',
+            'payment_method.in' => 'Forma de pagamento inválida.',
+            'client_email.email' => 'Informe um e-mail válido.',
         ]);
 
         $data['commission_percent'] = (float) (CommercialSetting::current()->default_commission_percent ?? 0);

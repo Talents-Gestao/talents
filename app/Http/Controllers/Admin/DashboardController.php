@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminDashboardSettings;
 use App\Support\Admin\AdminHomeDashboardBuilder;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,5 +28,26 @@ class DashboardController extends Controller
             'funnel' => $home['funnel'],
             'monthlyGoal' => $home['monthly_goal'],
         ]);
+    }
+
+    public function updateMonthlyGoal(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'goal_reais' => ['required', 'numeric', 'min:0.01'],
+        ], [
+            'goal_reais.required' => 'Informe a meta mensal.',
+            'goal_reais.numeric' => 'A meta mensal deve ser um valor numérico.',
+            'goal_reais.min' => 'A meta mensal deve ser maior que zero.',
+        ]);
+
+        $settings = AdminDashboardSettings::current();
+        $settings->update([
+            'monthly_revenue_goal_cents' => (int) round(((float) $data['goal_reais']) * 100),
+            'updated_by' => $request->user()?->id,
+        ]);
+
+        return redirect()
+            ->route('admin.dashboard')
+            ->with('success', 'Meta mensal atualizada.');
     }
 }

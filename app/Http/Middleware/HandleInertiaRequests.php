@@ -86,6 +86,8 @@ class HandleInertiaRequests extends Middleware
                 'info' => fn () => $request->session()->get('info'),
                 'contract_id' => fn () => $request->session()->get('contract_id'),
                 'zapsign_sign_url' => fn () => $request->session()->get('zapsign_sign_url'),
+                'sale_id' => fn () => $request->session()->get('sale_id'),
+                'sale_code' => fn () => $request->session()->get('sale_code'),
             ],
             'sessionExpiry' => Inertia::always(fn () => $this->sessionMetaForFrontend($request)),
             'nav' => [

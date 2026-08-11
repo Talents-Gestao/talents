@@ -1,0 +1,191 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Admin\Commercial;
+
+use App\Models\CommercialProposal;
+use App\Models\CommercialSale;
+use App\Models\User;
+use App\Support\Commercial\ProposalListStatus;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
+
+class ProposalUpdateStatusTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_admin_can_close_open_proposal_from_status_endpoint(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-STATUS-001',
+            'client_name' => 'Cliente Status',
+            'employee_count' => 8,
+            'total_final_cents' => 10_000,
+            'is_closed' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.comercial.propostas.status', $proposal), [
+                'status' => 'closed',
+            ])
+            ->assertRedirect(route('admin.comercial.propostas.index'))
+            ->assertSessionHas('success');
+
+        $proposal->refresh();
+        $this->assertTrue($proposal->is_closed);
+        $this->assertNotNull($proposal->closed_at);
+        $this->assertSame(ProposalListStatus::CLOSED, ProposalListStatus::for($proposal));
+    }
+
+    public function test_admin_can_reopen_closed_proposal(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-STATUS-002',
+            'client_name' => 'Cliente Reabrir',
+            'employee_count' => 4,
+            'total_final_cents' => 5_000,
+            'is_closed' => true,
+            'closed_at' => now()->subDay(),
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.comercial.propostas.status', $proposal), [
+                'status' => 'open',
+            ])
+            ->assertRedirect(route('admin.comercial.propostas.index'))
+            ->assertSessionHas('success');
+
+        $proposal->refresh();
+        $this->assertFalse($proposal->is_closed);
+        $this->assertNull($proposal->closed_at);
+        $this->assertSame(ProposalListStatus::OPEN, ProposalListStatus::for($proposal));
+    }
+
+    public function test_reopen_with_sale_keeps_sale_and_may_flash_info(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-STATUS-003',
+            'client_name' => 'Com Venda',
+            'employee_count' => 3,
+            'total_final_cents' => 8_000,
+            'is_closed' => true,
+            'closed_at' => now(),
+        ]);
+
+        CommercialSale::query()->create([
+            'code' => 'VENDA-2026-0800',
+            'proposal_id' => $proposal->id,
+            'client_name' => 'Com Venda',
+            'total_cents' => 8_000,
+            'payment_method' => 'pix',
+            'installments_count' => 1,
+            'status' => CommercialSale::STATUS_ABERTA,
+            'sold_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.comercial.propostas.status', $proposal), [
+                'status' => 'open',
+            ])
+            ->assertRedirect(route('admin.comercial.propostas.index'))
+            ->assertSessionHas('info');
+
+        $this->assertTrue($proposal->fresh()->sale()->exists());
+        $this->assertFalse($proposal->fresh()->is_closed);
+    }
+
+    public function test_partial_sale_keeps_list_status_in_progress_after_closing_flag(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-STATUS-004',
+            'client_name' => 'Parcial',
+            'employee_count' => 2,
+            'total_final_cents' => 9_000,
+            'is_closed' => false,
+        ]);
+
+        CommercialSale::query()->create([
+            'code' => 'VENDA-2026-0801',
+            'proposal_id' => $proposal->id,
+            'client_name' => 'Parcial',
+            'total_cents' => 9_000,
+            'payment_method' => 'pix',
+            'installments_count' => 2,
+            'status' => CommercialSale::STATUS_PARCIAL,
+            'sold_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.comercial.propostas.status', $proposal), [
+                'status' => 'closed',
+            ])
+            ->assertRedirect();
+
+        $proposal->refresh()->load('sale');
+        $this->assertTrue($proposal->is_closed);
+        $this->assertSame(ProposalListStatus::IN_PROGRESS, ProposalListStatus::for($proposal));
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Commercial/Proposals/Index')
+                ->where('proposals.data.0.list_status', ProposalListStatus::IN_PROGRESS)
+            );
+    }
+
+    public function test_invalid_status_is_rejected(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-STATUS-005',
+            'client_name' => 'Inválido',
+            'employee_count' => 1,
+            'total_final_cents' => 1_000,
+            'is_closed' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.comercial.propostas.index'))
+            ->patch(route('admin.comercial.propostas.status', $proposal), [
+                'status' => 'in_progress',
+            ])
+            ->assertSessionHasErrors('status');
+
+        $this->assertFalse($proposal->fresh()->is_closed);
+    }
+
+    public function test_guest_cannot_update_status(): void
+    {
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-STATUS-006',
+            'client_name' => 'Guest',
+            'employee_count' => 1,
+            'total_final_cents' => 1_000,
+            'is_closed' => false,
+        ]);
+
+        $this->patch(route('admin.comercial.propostas.status', $proposal), [
+            'status' => 'closed',
+        ])->assertRedirect();
+
+        $this->assertFalse($proposal->fresh()->is_closed);
+    }
+}

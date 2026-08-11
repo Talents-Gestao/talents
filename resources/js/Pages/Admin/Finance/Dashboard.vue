@@ -27,8 +27,6 @@ const setPeriod = (id) => {
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
 
-const methodLabel = (m) => ({ pix: 'PIX', boleto: 'Boleto', cartao: 'Cartão' }[m] ?? m);
-
 const statusLabel = (s) =>
     ({
         aberta: 'Aberta',
@@ -51,25 +49,9 @@ const statusClass = (s) =>
 
     <AdminLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <p class="text-sm text-slate-500">Comercial / Clientes</p>
-                    <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Financeiro</h2>
-                </div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <Link
-                        :href="route('admin.financeiro.comissoes.index')"
-                        class="inline-flex items-center rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100"
-                    >
-                        Comissões
-                    </Link>
-                    <Link
-                        :href="route('admin.financeiro.vendas.index')"
-                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                    >
-                        Ver vendas
-                    </Link>
-                </div>
+            <div>
+                <p class="text-sm text-slate-500">Comercial / Clientes</p>
+                <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Financeiro</h2>
             </div>
         </template>
 
@@ -92,19 +74,36 @@ const statusClass = (s) =>
             </button>
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
             <StatCard label="A receber" :value="formatBRL(kpis.receivable_cents)" />
             <StatCard label="Recebido no período" :value="formatBRL(kpis.received_cents)" />
             <StatCard label="Vencidos" :value="formatBRL(kpis.overdue_cents)" />
             <StatCard label="Comissões a pagar" :value="formatBRL(kpis.commissions_pending_cents)" />
+            <StatCard
+                label="Saldo em contas"
+                :value="formatBRL(kpis.bank_balance_cents ?? 0)"
+                :hint="`${kpis.bank_accounts_count ?? 0} conta(s) ativa(s)`"
+            />
         </div>
 
-        <div class="mb-8">
+        <div class="mb-8 mt-4 flex flex-wrap gap-4">
             <Link
                 :href="route('admin.financeiro.comissoes.index', { status: 'a_pagar' })"
                 class="text-sm font-semibold text-talents-700 hover:underline"
             >
-                Ver todas as comissões pendentes →
+                Ver comissões pendentes →
+            </Link>
+            <Link
+                :href="route('admin.financeiro.contas-a-receber.index')"
+                class="text-sm font-semibold text-talents-700 hover:underline"
+            >
+                Ver contas a receber →
+            </Link>
+            <Link
+                :href="route('admin.financeiro.contas-bancarias.index')"
+                class="text-sm font-semibold text-talents-700 hover:underline"
+            >
+                Ver contas bancárias →
             </Link>
         </div>
 
@@ -115,40 +114,40 @@ const statusClass = (s) =>
                     <li v-for="item in upcomingInstallments" :key="item.id" class="flex items-center justify-between py-3 text-sm">
                         <div>
                             <Link
-                                :href="route('admin.financeiro.vendas.show', item.sale_id)"
+                                :href="item.href"
                                 class="font-medium text-talents-700 hover:underline"
                             >
-                                {{ item.sale?.code }} — {{ item.sale?.client_name }}
+                                {{ item.label }}
                             </Link>
                             <p class="text-xs text-slate-500">
-                                Parcela {{ item.number }} · {{ methodLabel(item.method) }} · {{ formatDate(item.due_date) }}
+                                {{ item.detail }} · {{ formatDate(item.due_date) }}
                             </p>
                         </div>
                         <span class="font-semibold tabular-nums">{{ formatBRL(item.amount_cents) }}</span>
                     </li>
                 </ul>
-                <p v-else class="mt-4 text-sm text-slate-500">Nenhuma parcela pendente.</p>
+                <p v-else class="mt-4 text-sm text-slate-500">Nenhum vencimento pendente.</p>
             </div>
 
             <div class="surface-card p-6">
-                <h3 class="text-sm font-semibold uppercase tracking-wide text-red-600">Parcelas vencidas</h3>
+                <h3 class="text-sm font-semibold uppercase tracking-wide text-red-600">Vencidos</h3>
                 <ul v-if="overdueInstallments.length" class="mt-4 divide-y divide-slate-100">
                     <li v-for="item in overdueInstallments" :key="item.id" class="flex items-center justify-between py-3 text-sm">
                         <div>
                             <Link
-                                :href="route('admin.financeiro.vendas.show', item.sale_id)"
+                                :href="item.href"
                                 class="font-medium text-talents-700 hover:underline"
                             >
-                                {{ item.sale?.code }} — {{ item.sale?.client_name }}
+                                {{ item.label }}
                             </Link>
                             <p class="text-xs text-red-600">
-                                Parcela {{ item.number }} · venceu em {{ formatDate(item.due_date) }}
+                                {{ item.detail }} · venceu em {{ formatDate(item.due_date) }}
                             </p>
                         </div>
                         <span class="font-semibold tabular-nums">{{ formatBRL(item.amount_cents) }}</span>
                     </li>
                 </ul>
-                <p v-else class="mt-4 text-sm text-slate-500">Nenhuma parcela vencida.</p>
+                <p v-else class="mt-4 text-sm text-slate-500">Nenhum item vencido.</p>
             </div>
         </div>
 

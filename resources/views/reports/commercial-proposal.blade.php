@@ -423,9 +423,6 @@
                 <hr class="section-divider">
                 <div class="service-block">
                     <h3 class="service-title">{{ $index + 1 }}. {{ $line['label'] }}</h3>
-                    @if(!empty($line['detail']))
-                        <p class="service-detail">{{ $line['detail'] }}</p>
-                    @endif
                     @if(!empty($line['observation']))
                         <p class="service-observation"><strong>Observação:</strong> {{ $line['observation'] }}</p>
                     @endif

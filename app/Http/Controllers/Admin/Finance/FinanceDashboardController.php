@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Admin\Finance;
 
+use App\Enums\FinanceReceivableStatus;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialCommission;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
+use App\Models\FinanceReceivable;
+use App\Support\Finance\FinanceCashflowMetrics;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,6 +16,10 @@ use Inertia\Response;
 
 class FinanceDashboardController extends Controller
 {
+    public function __construct(
+        private readonly FinanceCashflowMetrics $cashflow,
+    ) {}
+
     public function index(Request $request): Response
     {
         $period = $request->input('period', '90d');
@@ -22,27 +29,89 @@ class FinanceDashboardController extends Controller
 
         [$start, $end] = $this->periodBounds($period);
 
-        $installmentsQuery = CommercialSaleInstallment::query()
-            ->where('status', CommercialSaleInstallment::STATUS_PENDENTE);
-
-        $receivableCents = (int) (clone $installmentsQuery)->sum('amount_cents');
-
-        $overdueCents = (int) CommercialSaleInstallment::query()
+        $upcomingInstallments = CommercialSaleInstallment::query()
+            ->with(['sale:id,code,client_name'])
             ->where('status', CommercialSaleInstallment::STATUS_PENDENTE)
-            ->whereDate('due_date', '<', now()->toDateString())
-            ->sum('amount_cents');
+            ->orderBy('due_date')
+            ->limit(10)
+            ->get(['id', 'sale_id', 'number', 'amount_cents', 'due_date', 'method'])
+            ->map(fn (CommercialSaleInstallment $i) => [
+                'id' => 'sale-'.$i->id,
+                'source' => 'sale',
+                'sale_id' => $i->sale_id,
+                'label' => ($i->sale?->code ?? 'Venda').' — '.($i->sale?->client_name ?? ''),
+                'detail' => 'Parcela '.$i->number.' · '.($this->methodLabel($i->method)),
+                'amount_cents' => $i->amount_cents,
+                'due_date' => $i->due_date?->toDateString(),
+                'href' => route('admin.financeiro.vendas.show', $i->sale_id),
+            ]);
 
-        $receivedQuery = CommercialSaleInstallment::query()
-            ->where('status', CommercialSaleInstallment::STATUS_PAGO);
+        $upcomingManual = FinanceReceivable::query()
+            ->where('status', FinanceReceivableStatus::Pending)
+            ->orderBy('due_date')
+            ->limit(10)
+            ->get(['id', 'title', 'payer_name', 'amount_cents', 'due_date'])
+            ->map(fn (FinanceReceivable $r) => [
+                'id' => 'manual-'.$r->id,
+                'source' => 'manual',
+                'sale_id' => null,
+                'label' => $r->title,
+                'detail' => $r->payer_name ?: 'Recebimento manual',
+                'amount_cents' => $r->amount_cents,
+                'due_date' => $r->due_date?->toDateString(),
+                'href' => route('admin.financeiro.contas-a-receber.edit', $r),
+            ]);
 
-        if ($start) {
-            $receivedQuery->where('paid_at', '>=', $start);
-        }
-        if ($end) {
-            $receivedQuery->where('paid_at', '<=', $end);
-        }
+        $upcoming = $upcomingInstallments
+            ->concat($upcomingManual)
+            ->sortBy('due_date')
+            ->take(10)
+            ->values()
+            ->all();
 
-        $receivedCents = (int) $receivedQuery->sum('paid_amount_cents');
+        $today = now()->toDateString();
+
+        $overdueInstallments = CommercialSaleInstallment::query()
+            ->with(['sale:id,code,client_name'])
+            ->where('status', CommercialSaleInstallment::STATUS_PENDENTE)
+            ->whereDate('due_date', '<', $today)
+            ->orderBy('due_date')
+            ->limit(10)
+            ->get(['id', 'sale_id', 'number', 'amount_cents', 'due_date', 'method'])
+            ->map(fn (CommercialSaleInstallment $i) => [
+                'id' => 'sale-'.$i->id,
+                'source' => 'sale',
+                'sale_id' => $i->sale_id,
+                'label' => ($i->sale?->code ?? 'Venda').' — '.($i->sale?->client_name ?? ''),
+                'detail' => 'Parcela '.$i->number.' · '.($this->methodLabel($i->method)),
+                'amount_cents' => $i->amount_cents,
+                'due_date' => $i->due_date?->toDateString(),
+                'href' => route('admin.financeiro.vendas.show', $i->sale_id),
+            ]);
+
+        $overdueManual = FinanceReceivable::query()
+            ->where('status', FinanceReceivableStatus::Pending)
+            ->whereDate('due_date', '<', $today)
+            ->orderBy('due_date')
+            ->limit(10)
+            ->get(['id', 'title', 'payer_name', 'amount_cents', 'due_date'])
+            ->map(fn (FinanceReceivable $r) => [
+                'id' => 'manual-'.$r->id,
+                'source' => 'manual',
+                'sale_id' => null,
+                'label' => $r->title,
+                'detail' => $r->payer_name ?: 'Recebimento manual',
+                'amount_cents' => $r->amount_cents,
+                'due_date' => $r->due_date?->toDateString(),
+                'href' => route('admin.financeiro.contas-a-receber.edit', $r),
+            ]);
+
+        $overdue = $overdueInstallments
+            ->concat($overdueManual)
+            ->sortBy('due_date')
+            ->take(10)
+            ->values()
+            ->all();
 
         $commissionsQuery = CommercialCommission::query()
             ->where('status', CommercialCommission::STATUS_A_PAGAR);
@@ -56,21 +125,6 @@ class FinanceDashboardController extends Controller
 
         $commissionsPendingCents = (int) $commissionsQuery->sum('amount_cents');
 
-        $upcomingInstallments = CommercialSaleInstallment::query()
-            ->with(['sale:id,code,client_name'])
-            ->where('status', CommercialSaleInstallment::STATUS_PENDENTE)
-            ->orderBy('due_date')
-            ->limit(10)
-            ->get(['id', 'sale_id', 'number', 'amount_cents', 'due_date', 'method']);
-
-        $overdueInstallments = CommercialSaleInstallment::query()
-            ->with(['sale:id,code,client_name'])
-            ->where('status', CommercialSaleInstallment::STATUS_PENDENTE)
-            ->whereDate('due_date', '<', now()->toDateString())
-            ->orderBy('due_date')
-            ->limit(10)
-            ->get(['id', 'sale_id', 'number', 'amount_cents', 'due_date', 'method']);
-
         $recentSales = CommercialSale::query()
             ->with('seller:id,name')
             ->when($start, fn ($q) => $q->where('sold_at', '>=', $start))
@@ -82,15 +136,27 @@ class FinanceDashboardController extends Controller
         return Inertia::render('Admin/Finance/Dashboard', [
             'period' => $period,
             'kpis' => [
-                'receivable_cents' => $receivableCents,
-                'received_cents' => $receivedCents,
-                'overdue_cents' => $overdueCents,
+                'receivable_cents' => $this->cashflow->toReceiveCents(),
+                'received_cents' => $this->cashflow->receivedInPeriodCents($start, $end),
+                'overdue_cents' => $this->cashflow->overdueCents(),
                 'commissions_pending_cents' => $commissionsPendingCents,
+                'bank_balance_cents' => $this->cashflow->activeBankAccountsBalanceCents(),
+                'bank_accounts_count' => $this->cashflow->activeBankAccountsCount(),
             ],
-            'upcomingInstallments' => $upcomingInstallments,
-            'overdueInstallments' => $overdueInstallments,
+            'upcomingInstallments' => $upcoming,
+            'overdueInstallments' => $overdue,
             'recentSales' => $recentSales,
         ]);
+    }
+
+    private function methodLabel(?string $method): string
+    {
+        return match ($method) {
+            'pix' => 'PIX',
+            'boleto' => 'Boleto',
+            'cartao' => 'Cartão',
+            default => $method ?? '—',
+        };
     }
 
     /**

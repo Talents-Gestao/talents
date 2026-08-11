@@ -5,7 +5,9 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { formatCnpj } from '@/utils/formatCnpj';
 import {
+    ArrowPathIcon,
     BanknotesIcon,
+    CheckCircleIcon,
     DocumentArrowDownIcon,
     DocumentTextIcon,
     PencilSquareIcon,
@@ -13,14 +15,12 @@ import {
     TrashIcon,
 } from '@heroicons/vue/24/outline';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, nextTick, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 
 const inertiaPage = usePage();
 
 const props = defineProps({
     proposals: { type: Object, required: true },
-    queue: { type: Array, default: () => [] },
-    queue_total: { type: Number, default: 0 },
     sellers: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
     templates: { type: Array, default: () => [] },
@@ -39,10 +39,7 @@ const filterState = reactive({
     search: props.filters.search ?? '',
     seller_id: props.filters.seller_id ?? '',
     status: props.filters.status ?? '',
-    ordenacao: props.filters.ordenacao ?? 'recentes',
 });
-
-const isFilaView = computed(() => filterState.ordenacao === 'fila');
 
 const listStatusBadgeClass = (status) => {
     if (status === 'in_progress') {
@@ -70,16 +67,42 @@ const installmentsProgressLabel = (proposal) => {
     return `${paid}/${total} pagas`;
 };
 
-const queueTotal = computed(() => props.queue_total || 0);
+const statusModalOpen = ref(false);
+const statusProposal = ref(null);
+const statusForm = useForm({
+    status: 'open',
+});
 
-const waitingLabel = (days) => {
-    if (days === 0) {
-        return 'hoje';
+const openStatusModal = (proposal) => {
+    statusProposal.value = proposal;
+    statusForm.clearErrors();
+    statusForm.status = proposal.is_closed ? 'closed' : 'open';
+    statusModalOpen.value = true;
+};
+
+const closeStatusModal = () => {
+    if (statusForm.processing) {
+        return;
     }
-    if (days === 1) {
-        return '1 dia';
+    statusModalOpen.value = false;
+    statusProposal.value = null;
+    statusForm.reset();
+    statusForm.clearErrors();
+};
+
+const submitStatus = () => {
+    if (!statusProposal.value) {
+        return;
     }
-    return `${days} dias`;
+    statusForm.patch(route('admin.comercial.propostas.status', statusProposal.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            statusModalOpen.value = false;
+            statusProposal.value = null;
+            statusForm.reset();
+            statusForm.clearErrors();
+        },
+    });
 };
 
 const applyFilters = () => {
@@ -93,8 +116,7 @@ const applyFilters = () => {
 const clearFilters = () => {
     filterState.search = '';
     filterState.seller_id = '';
-    filterState.status = isFilaView.value ? 'abertas' : '';
-    filterState.ordenacao = isFilaView.value ? 'fila' : 'recentes';
+    filterState.status = '';
     applyFilters();
 };
 
@@ -242,43 +264,279 @@ const sendZapSign = () => {
 
 const convertModalOpen = ref(false);
 const convertProposal = ref(null);
+const convertClientErrors = ref([]);
+
+const MIX_METHOD_OPTIONS = [
+    { value: 'pix', label: 'PIX' },
+    { value: 'boleto', label: 'Boleto' },
+    { value: 'cartao', label: 'Cartão' },
+];
+
+const localTodayDate = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
+const defaultMixParts = () => [
+    { method: 'pix', percent: 50 },
+    { method: 'cartao', percent: 50 },
+];
 
 const convertForm = useForm({
     payment_method: 'pix',
     installments_count: 1,
-    first_due_date: new Date().toISOString().slice(0, 10),
+    first_due_date: localTodayDate(),
     notes: '',
+    mix_parts: [],
 });
+
+const isConvertMisto = computed(() => convertForm.payment_method === 'misto');
+
+const mixPercentSum = computed(() => (
+    (convertForm.mix_parts || []).reduce((sum, part) => sum + (Number(part.percent) || 0), 0)
+));
+
+const mixPartsWithAmounts = computed(() => {
+    const total = Number(convertProposal.value?.total_final_cents ?? 0);
+    const parts = convertForm.mix_parts || [];
+    let allocated = 0;
+
+    return parts.map((part, index) => {
+        const percent = Number(part.percent) || 0;
+        let amountCents = 0;
+        if (total > 0 && percent > 0) {
+            if (index === parts.length - 1) {
+                amountCents = Math.max(0, total - allocated);
+            } else {
+                amountCents = Math.round(total * (percent / 100));
+                allocated += amountCents;
+            }
+        }
+
+        return {
+            ...part,
+            amount_cents: amountCents,
+            label: MIX_METHOD_OPTIONS.find((o) => o.value === part.method)?.label ?? part.method,
+        };
+    });
+});
+
+const mixPreviewLabel = computed(() => {
+    const parts = mixPartsWithAmounts.value.filter((p) => p.method && Number(p.percent) > 0);
+    if (!parts.length) {
+        return '';
+    }
+    return parts.map((p) => `${p.label} ${formatBRL(p.amount_cents)}`).join(' · ');
+});
+
+watch(
+    () => convertForm.payment_method,
+    (method, previous) => {
+        if (method === 'misto' && previous !== 'misto') {
+            convertForm.mix_parts = defaultMixParts();
+            convertForm.installments_count = convertForm.mix_parts.length;
+        }
+        if (method !== 'misto' && previous === 'misto') {
+            convertForm.mix_parts = [];
+            convertForm.installments_count = 1;
+        }
+        convertClientErrors.value = [];
+        convertForm.clearErrors('mix_parts', 'installments_count');
+    },
+);
 
 const canConvert = (proposal) => proposal.is_closed && !proposal.sale;
 
+const addMixPart = () => {
+    convertForm.mix_parts.push({ method: 'pix', percent: '' });
+};
+
+const removeMixPart = (index) => {
+    if ((convertForm.mix_parts?.length ?? 0) <= 2) {
+        return;
+    }
+    convertForm.mix_parts.splice(index, 1);
+};
+
+const validateConvertForm = () => {
+    convertClientErrors.value = [];
+    convertForm.clearErrors();
+
+    if (!convertForm.payment_method) {
+        convertForm.setError('payment_method', 'Selecione a forma de pagamento.');
+    }
+
+    if (!convertForm.first_due_date) {
+        convertForm.setError('first_due_date', 'Informe o 1º vencimento.');
+    }
+
+    if (isConvertMisto.value) {
+        const parts = convertForm.mix_parts || [];
+        if (parts.length < 2) {
+            convertClientErrors.value.push('Informe pelo menos 2 partes na composição.');
+        }
+        parts.forEach((part, index) => {
+            if (!part.method) {
+                convertForm.setError(`mix_parts.${index}.method`, 'Selecione a forma.');
+            }
+            const percent = Number(part.percent);
+            if (!Number.isFinite(percent) || percent <= 0) {
+                convertForm.setError(`mix_parts.${index}.percent`, 'Informe um percentual maior que zero.');
+            }
+        });
+        if (Math.abs(mixPercentSum.value - 100) > 0.05) {
+            convertClientErrors.value.push('A soma dos percentuais deve ser 100%.');
+        }
+    } else {
+        const count = Number(convertForm.installments_count);
+        if (!Number.isInteger(count) || count < 1 || count > 60) {
+            convertForm.setError('installments_count', 'Informe o número de parcelas (1 a 60).');
+        }
+    }
+
+    return Object.keys(convertForm.errors).length === 0 && convertClientErrors.value.length === 0;
+};
+
 const openConvertModal = (proposal) => {
     convertProposal.value = proposal;
+    convertClientErrors.value = [];
+    convertForm.clearErrors();
     convertForm.reset();
     convertForm.payment_method = 'pix';
     convertForm.installments_count = 1;
-    convertForm.first_due_date = new Date().toISOString().slice(0, 10);
+    convertForm.first_due_date = localTodayDate();
     convertForm.notes = '';
+    convertForm.mix_parts = [];
     convertModalOpen.value = true;
 };
 
 const closeConvertModal = () => {
     convertModalOpen.value = false;
     convertProposal.value = null;
+    convertClientErrors.value = [];
     convertForm.reset();
+    convertForm.clearErrors();
 };
+
+const saleSuccessModalOpen = ref(false);
+const saleFeedbackPhase = ref('success'); // 'pending' | 'success'
+const createdSale = ref({ id: null, code: null });
+
+const openSaleSuccessModal = (saleId, saleCode) => {
+    if (!saleId) {
+        return;
+    }
+    createdSale.value = {
+        id: Number(saleId),
+        code: saleCode ? String(saleCode) : null,
+    };
+    saleFeedbackPhase.value = 'success';
+    saleSuccessModalOpen.value = true;
+};
+
+const openSalePendingFeedback = () => {
+    createdSale.value = { id: null, code: null };
+    saleFeedbackPhase.value = 'pending';
+    saleSuccessModalOpen.value = true;
+};
+
+const closeSaleSuccessModal = () => {
+    if (saleFeedbackPhase.value === 'pending') {
+        return;
+    }
+    saleSuccessModalOpen.value = false;
+};
+
+const goToCreatedSale = () => {
+    if (!createdSale.value.id) {
+        return;
+    }
+    router.visit(route('admin.financeiro.vendas.show', createdSale.value.id));
+};
+
+const syncSaleSuccessFromFlash = () => {
+    const flash = inertiaPage.props.flash ?? {};
+    if (flash.sale_id) {
+        openSaleSuccessModal(flash.sale_id, flash.sale_code);
+    }
+};
+
+onMounted(() => {
+    syncSaleSuccessFromFlash();
+});
+
+watch(
+    () => inertiaPage.props.flash?.sale_id,
+    (saleId) => {
+        if (saleId) {
+            openSaleSuccessModal(saleId, inertiaPage.props.flash?.sale_code);
+        }
+    },
+);
 
 const submitConvert = () => {
     if (!convertProposal.value) return;
+    if (convertForm.processing) return;
+    if (!validateConvertForm()) return;
+
+    if (isConvertMisto.value) {
+        convertForm.installments_count = convertForm.mix_parts.length;
+        convertForm.mix_parts = (convertForm.mix_parts || []).map((part) => ({
+            method: part.method,
+            percent: Number(part.percent),
+        }));
+    } else {
+        convertForm.mix_parts = [];
+    }
+
     convertForm.post(route('admin.comercial.propostas.converter', convertProposal.value.id), {
         preserveScroll: true,
-        onSuccess: () => closeConvertModal(),
+        // Sem `only`: o redirect precisa repor a lista (venda na linha) e o flash (modal de sucesso).
+        onStart: () => {
+            convertModalOpen.value = false;
+            openSalePendingFeedback();
+        },
+        onSuccess: (page) => {
+            convertProposal.value = null;
+            convertClientErrors.value = [];
+            convertForm.reset();
+            convertForm.clearErrors();
+
+            const flash = page?.props?.flash ?? inertiaPage.props.flash ?? {};
+            if (flash.sale_id) {
+                openSaleSuccessModal(flash.sale_id, flash.sale_code);
+                return;
+            }
+
+            nextTick(() => {
+                syncSaleSuccessFromFlash();
+                if (saleFeedbackPhase.value === 'pending') {
+                    // Fallback: não ficar preso em «A gerar…» se o flash falhar.
+                    saleSuccessModalOpen.value = false;
+                    saleFeedbackPhase.value = 'success';
+                }
+            });
+        },
+        onError: () => {
+            saleSuccessModalOpen.value = false;
+            saleFeedbackPhase.value = 'success';
+            convertModalOpen.value = true;
+        },
+        onFinish: () => {
+            // Se ainda estiver pendente após o pedido, tenta sync final do flash.
+            if (saleFeedbackPhase.value === 'pending') {
+                nextTick(() => syncSaleSuccessFromFlash());
+            }
+        },
     });
 };
 </script>
 
 <template>
-    <Head :title="isFilaView ? 'Comercial — Fila de propostas' : 'Comercial — Propostas'" />
+    <Head title="Comercial — Propostas" />
 
     <AdminLayout>
         <template #header>
@@ -286,20 +544,10 @@ const submitConvert = () => {
                 <div>
                     <p class="text-sm text-slate-500">Comercial</p>
                     <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-                        {{ isFilaView ? 'Fila de propostas' : 'Propostas' }}
+                        Propostas
                     </h2>
-                    <p v-if="isFilaView" class="mt-1 max-w-2xl text-sm text-slate-600">
-                        Ordem de entrada (mais antigas primeiro). Use esta fila para priorizar o atendimento comercial.
-                    </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <Link
-                        v-if="$page.props.auth?.user?.can_commercial_settings"
-                        :href="route('admin.comercial.settings.edit')"
-                        class="inline-flex items-center rounded-xl border border-talents-200 bg-talents-50 px-3 py-2 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-100"
-                    >
-                        Valores e contratos
-                    </Link>
                     <Link
                         :href="route('admin.comercial.propostas.create')"
                         class="inline-flex items-center gap-1.5 rounded-xl bg-talents-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
@@ -315,58 +563,11 @@ const submitConvert = () => {
         <CommercialModuleNav />
 
         <div
-            v-if="queue.length && !isFilaView"
-            class="surface-card mb-6 overflow-hidden border-talents-200"
+            v-if="inertiaPage.props.flash?.success && !generatedContractId && !inertiaPage.props.flash?.sale_id"
+            class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+            role="status"
         >
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-talents-50/60 px-5 py-4">
-                <div>
-                    <h3 class="text-sm font-semibold text-slate-900">Próximas na fila</h3>
-                    <p class="mt-0.5 text-xs text-slate-600">
-                        {{ queueTotal }} proposta{{ queueTotal === 1 ? '' : 's' }} em aberto
-                        <span v-if="filterState.seller_id"> para o vendedor selecionado</span>
-                    </p>
-                </div>
-                <Link
-                    :href="route('admin.comercial.propostas.index', { status: 'abertas', ordenacao: 'fila', seller_id: filterState.seller_id || undefined })"
-                    class="text-sm font-semibold text-talents-700 hover:underline"
-                >
-                    Ver fila completa
-                </Link>
-            </div>
-            <ol class="divide-y divide-slate-100">
-                <li
-                    v-for="item in queue"
-                    :key="item.id"
-                    class="flex flex-wrap items-center gap-4 px-5 py-3 transition hover:bg-slate-50"
-                >
-                    <span
-                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-talents-600 text-sm font-bold text-white tabular-nums"
-                        :title="`Posição ${item.queue_position} na fila`"
-                    >
-                        {{ item.queue_position }}
-                    </span>
-                    <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span class="font-mono text-xs text-slate-500">{{ item.code }}</span>
-                            <span class="font-medium text-slate-900">{{ item.client_name }}</span>
-                        </div>
-                        <p class="mt-0.5 text-xs text-slate-500">
-                            {{ item.seller?.name ?? 'Sem vendedor' }}
-                            · aguardando {{ waitingLabel(item.waiting_days) }}
-                            · {{ formatDate(item.created_at) }}
-                        </p>
-                    </div>
-                    <div class="text-right">
-                        <p class="font-semibold tabular-nums text-slate-900">{{ formatBRL(item.total_final_cents) }}</p>
-                        <Link
-                            :href="route('admin.comercial.propostas.edit', item.id)"
-                            class="text-xs font-medium text-talents-700 hover:underline"
-                        >
-                            Abrir
-                        </Link>
-                    </div>
-                </li>
-            </ol>
+            {{ inertiaPage.props.flash.success }}
         </div>
 
         <div class="surface-card p-6">
@@ -402,16 +603,6 @@ const submitConvert = () => {
                         <option value="fechadas">Fechadas</option>
                     </select>
                 </div>
-                <div v-if="!isFilaView" class="sm:col-span-4">
-                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Ordenação</label>
-                    <select
-                        v-model="filterState.ordenacao"
-                        class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                    >
-                        <option value="recentes">Mais recentes primeiro</option>
-                        <option value="fila">Fila — mais antigas primeiro</option>
-                    </select>
-                </div>
                 <div class="sm:col-span-4 flex justify-end gap-2">
                     <button
                         type="button"
@@ -435,7 +626,6 @@ const submitConvert = () => {
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                         <tr>
-                            <th v-if="isFilaView || filterState.status === 'abertas'" class="px-4 py-3 text-center font-medium">#</th>
                             <th class="px-4 py-3 text-left font-medium">Código</th>
                             <th class="px-4 py-3 text-left font-medium">Cliente</th>
                             <th class="px-4 py-3 text-left font-medium">Vendedor</th>
@@ -448,18 +638,6 @@ const submitConvert = () => {
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
                         <tr v-for="p in proposals.data" :key="p.id" class="hover:bg-slate-50">
-                            <td
-                                v-if="isFilaView || filterState.status === 'abertas'"
-                                class="px-4 py-3 text-center"
-                            >
-                                <span
-                                    v-if="p.queue_position"
-                                    class="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-talents-100 px-2 text-xs font-bold text-talents-800 tabular-nums"
-                                >
-                                    {{ p.queue_position }}
-                                </span>
-                                <span v-else class="text-xs text-slate-300">—</span>
-                            </td>
                             <td class="px-4 py-3 font-mono text-xs text-slate-600">{{ p.code }}</td>
                             <td class="px-4 py-3">
                                 <div class="font-medium">{{ p.client_name }}</div>
@@ -471,12 +649,16 @@ const submitConvert = () => {
                                 {{ formatBRL(p.total_final_cents) }}
                             </td>
                             <td class="px-4 py-3">
-                                <span
-                                    class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                                <button
+                                    type="button"
+                                    class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium transition hover:ring-2 hover:ring-slate-200 focus:outline-none focus:ring-2 focus:ring-talents-300"
                                     :class="listStatusBadgeClass(p.list_status ?? (p.is_closed ? 'closed' : 'open'))"
+                                    title="Alterar status"
+                                    :aria-label="`Alterar status de ${p.code}`"
+                                    @click="openStatusModal(p)"
                                 >
                                     {{ listStatusLabel(p) }}
-                                </span>
+                                </button>
                                 <div
                                     v-if="installmentsProgressLabel(p)"
                                     class="mt-0.5 text-[11px] tabular-nums text-slate-500"
@@ -492,10 +674,7 @@ const submitConvert = () => {
                                 </Link>
                             </td>
                             <td class="px-4 py-3 text-right text-xs text-slate-500">
-                                <div>{{ formatDate(p.created_at) }}</div>
-                                <div v-if="p.waiting_days != null && !p.is_closed" class="text-[11px] text-amber-700">
-                                    {{ waitingLabel(p.waiting_days) }}
-                                </div>
+                                {{ formatDate(p.created_at) }}
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="inline-flex items-center justify-end gap-0.5">
@@ -518,12 +697,20 @@ const submitConvert = () => {
                                     <button
                                         v-if="canConvert(p)"
                                         type="button"
-                                        class="rounded-lg p-1.5 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-800"
+                                        class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 hover:text-emerald-900"
                                         title="Converter em venda"
                                         @click="openConvertModal(p)"
                                     >
                                         <BanknotesIcon class="h-4 w-4" />
+                                        Venda
                                     </button>
+                                    <span
+                                        v-else-if="p.is_closed && p.sale"
+                                        class="inline-flex items-center rounded-lg p-1.5 text-slate-300"
+                                        title="Já convertida em venda"
+                                    >
+                                        <BanknotesIcon class="h-4 w-4" />
+                                    </span>
                                     <button
                                         type="button"
                                         class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
@@ -545,8 +732,8 @@ const submitConvert = () => {
                             </td>
                         </tr>
                         <tr v-if="!proposals.data.length">
-                            <td :colspan="isFilaView || filterState.status === 'abertas' ? 9 : 8" class="px-4 py-10 text-center text-slate-500">
-                                {{ isFilaView ? 'Nenhuma proposta em aberto na fila.' : 'Nenhuma proposta encontrada.' }}
+                            <td colspan="8" class="px-4 py-10 text-center text-slate-500">
+                                Nenhuma proposta encontrada.
                             </td>
                         </tr>
                     </tbody>
@@ -748,69 +935,345 @@ const submitConvert = () => {
         </FullScreenOverlay>
 
         <FullScreenOverlay :show="convertModalOpen" @close="closeConvertModal">
-            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-                <h3 class="text-lg font-semibold text-slate-900">Converter em venda</h3>
-                <p v-if="convertProposal" class="mt-1 text-sm text-slate-600">
-                    {{ convertProposal.code }} — {{ convertProposal.client_name }}
-                    · {{ formatBRL(convertProposal.total_final_cents) }}
-                </p>
+            <div
+                class="relative flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            >
+                <div class="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Converter em venda</h3>
+                    <p v-if="convertProposal" class="mt-1 text-sm text-slate-600">
+                        {{ convertProposal.code }} — {{ convertProposal.client_name }}
+                        · {{ formatBRL(convertProposal.total_final_cents) }}
+                    </p>
+                </div>
 
-                <form class="mt-4 space-y-4" @submit.prevent="submitConvert">
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Forma de pagamento</label>
-                        <select
-                            v-model="convertForm.payment_method"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                <form class="flex min-h-0 flex-1 flex-col" @submit.prevent="submitConvert">
+                    <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+                        <div
+                            v-if="convertClientErrors.length || Object.keys(convertForm.errors).length"
+                            class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+                            role="alert"
                         >
-                            <option value="pix">PIX</option>
-                            <option value="boleto">Boleto</option>
-                            <option value="cartao">Cartão</option>
-                            <option value="misto">Misto</option>
-                        </select>
+                            <p v-for="(msg, idx) in convertClientErrors" :key="`ce-${idx}`">{{ msg }}</p>
+                            <p
+                                v-for="(msg, key) in convertForm.errors"
+                                :key="`fe-${key}`"
+                            >
+                                {{ msg }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Forma de pagamento</label>
+                            <select
+                                v-model="convertForm.payment_method"
+                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            >
+                                <option value="pix">PIX</option>
+                                <option value="boleto">Boleto</option>
+                                <option value="cartao">Cartão</option>
+                                <option value="misto">Misto</option>
+                            </select>
+                            <p class="mt-1 text-xs text-slate-500">
+                                Em «Misto», informe a composição do valor (ex.: 50% PIX + 50% cartão).
+                            </p>
+                            <p v-if="convertForm.errors.payment_method" class="mt-1 text-xs text-rose-600">
+                                {{ convertForm.errors.payment_method }}
+                            </p>
+                        </div>
+
+                        <div v-if="!isConvertMisto">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Nº de parcelas</label>
+                            <input
+                                v-model.number="convertForm.installments_count"
+                                type="number"
+                                min="1"
+                                max="60"
+                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">
+                                Parcelas iguais com a forma escolhida acima.
+                            </p>
+                            <p v-if="convertForm.errors.installments_count" class="mt-1 text-xs text-rose-600">
+                                {{ convertForm.errors.installments_count }}
+                            </p>
+                        </div>
+
+                        <div
+                            v-else
+                            class="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4"
+                        >
+                            <div>
+                                <h4 class="text-sm font-semibold text-slate-900">Composição do pagamento</h4>
+                                <p class="mt-1 text-xs text-slate-600">
+                                    Informe em quantas partes o valor será pago e o meio de cada uma. A soma dos percentuais deve ser 100%.
+                                </p>
+                            </div>
+
+                            <div
+                                v-for="(part, index) in convertForm.mix_parts"
+                                :key="`mix-${index}`"
+                                class="grid grid-cols-12 items-start gap-2"
+                            >
+                                <div class="col-span-5">
+                                    <label class="text-[10px] font-medium uppercase tracking-wide text-slate-500">Forma</label>
+                                    <select
+                                        v-model="part.method"
+                                        class="mt-1 w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                    >
+                                        <option
+                                            v-for="opt in MIX_METHOD_OPTIONS"
+                                            :key="opt.value"
+                                            :value="opt.value"
+                                        >
+                                            {{ opt.label }}
+                                        </option>
+                                    </select>
+                                    <p
+                                        v-if="convertForm.errors[`mix_parts.${index}.method`]"
+                                        class="mt-1 text-xs text-rose-600"
+                                    >
+                                        {{ convertForm.errors[`mix_parts.${index}.method`] }}
+                                    </p>
+                                </div>
+                                <div class="col-span-4">
+                                    <label class="text-[10px] font-medium uppercase tracking-wide text-slate-500">%</label>
+                                    <input
+                                        v-model.number="part.percent"
+                                        type="number"
+                                        min="0.01"
+                                        max="100"
+                                        step="0.01"
+                                        class="mt-1 w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                    />
+                                    <p class="mt-1 text-[11px] tabular-nums text-slate-500">
+                                        {{ formatBRL(mixPartsWithAmounts[index]?.amount_cents ?? 0) }}
+                                    </p>
+                                    <p
+                                        v-if="convertForm.errors[`mix_parts.${index}.percent`]"
+                                        class="mt-1 text-xs text-rose-600"
+                                    >
+                                        {{ convertForm.errors[`mix_parts.${index}.percent`] }}
+                                    </p>
+                                </div>
+                                <div class="col-span-3 flex items-end justify-end pb-5">
+                                    <button
+                                        type="button"
+                                        class="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-700 disabled:opacity-30"
+                                        title="Remover parte"
+                                        :disabled="convertForm.mix_parts.length <= 2"
+                                        @click="removeMixPart(index)"
+                                    >
+                                        <TrashIcon class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                                    @click="addMixPart"
+                                >
+                                    <PlusIcon class="h-3.5 w-3.5" />
+                                    Adicionar parte
+                                </button>
+                                <p
+                                    class="text-xs font-medium tabular-nums"
+                                    :class="Math.abs(mixPercentSum - 100) <= 0.05 ? 'text-emerald-700' : 'text-amber-700'"
+                                >
+                                    Soma: {{ mixPercentSum.toFixed(2) }}%
+                                </p>
+                            </div>
+
+                            <p v-if="mixPreviewLabel" class="text-sm font-medium text-slate-800">
+                                {{ mixPreviewLabel }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">1º vencimento</label>
+                            <input
+                                v-model="convertForm.first_due_date"
+                                type="date"
+                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">
+                                As demais partes/parcelas seguem mensalmente a partir desta data.
+                            </p>
+                            <p v-if="convertForm.errors.first_due_date" class="mt-1 text-xs text-rose-600">
+                                {{ convertForm.errors.first_due_date }}
+                            </p>
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
+                            <textarea
+                                v-model="convertForm.notes"
+                                rows="2"
+                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Nº de parcelas</label>
-                        <input
-                            v-model.number="convertForm.installments_count"
-                            type="number"
-                            min="1"
-                            max="60"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        />
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">1º vencimento</label>
-                        <input
-                            v-model="convertForm.first_due_date"
-                            type="date"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        />
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
-                        <textarea
-                            v-model="convertForm.notes"
-                            rows="2"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        />
-                    </div>
-                    <div class="flex justify-end gap-2 pt-2">
+
+                    <div class="flex shrink-0 justify-end gap-2 border-t border-slate-100 bg-white px-6 py-4">
                         <button
                             type="button"
-                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                            :disabled="convertForm.processing"
                             @click="closeConvertModal"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
-                            class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                            class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                             :disabled="convertForm.processing"
                         >
                             {{ convertForm.processing ? 'Gerando…' : 'Gerar venda' }}
                         </button>
                     </div>
                 </form>
+
+                <div
+                    v-if="convertForm.processing"
+                    class="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl bg-white/80 backdrop-blur-[1px]"
+                    aria-live="polite"
+                >
+                    <ArrowPathIcon class="h-10 w-10 animate-spin text-talents-600" aria-hidden="true" />
+                    <p class="mt-3 text-sm font-semibold text-slate-800">A gerar venda…</p>
+                </div>
+            </div>
+        </FullScreenOverlay>
+
+        <FullScreenOverlay :show="statusModalOpen" @close="closeStatusModal">
+            <div
+                class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="proposal-status-title"
+            >
+                <h3 id="proposal-status-title" class="text-lg font-semibold text-slate-900">
+                    Alterar status
+                </h3>
+                <p v-if="statusProposal" class="mt-1 text-sm text-slate-600">
+                    {{ statusProposal.code }} — {{ statusProposal.client_name }}
+                </p>
+                <p
+                    v-if="statusProposal?.list_status === 'in_progress'"
+                    class="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-900"
+                >
+                    O badge «Em andamento» vem da venda com pagamento parcial. Aqui você só altera se a
+                    proposta está em aberto ou fechada.
+                </p>
+
+                <form class="mt-4 space-y-4" @submit.prevent="submitStatus">
+                    <div
+                        v-if="Object.keys(statusForm.errors).length"
+                        class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+                        role="alert"
+                    >
+                        <p v-for="(msg, key) in statusForm.errors" :key="key">{{ msg }}</p>
+                    </div>
+
+                    <div>
+                        <label
+                            for="proposal-status-select"
+                            class="text-xs font-medium uppercase tracking-wide text-slate-500"
+                        >
+                            Status
+                        </label>
+                        <select
+                            id="proposal-status-select"
+                            v-model="statusForm.status"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            required
+                        >
+                            <option value="open">Em aberto</option>
+                            <option value="closed">Fechada</option>
+                        </select>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button
+                            type="button"
+                            class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            :disabled="statusForm.processing"
+                            @click="closeStatusModal"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="inline-flex items-center gap-1.5 rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:opacity-60"
+                            :disabled="statusForm.processing"
+                        >
+                            <ArrowPathIcon
+                                v-if="statusForm.processing"
+                                class="h-4 w-4 animate-spin"
+                                aria-hidden="true"
+                            />
+                            Salvar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </FullScreenOverlay>
+
+        <FullScreenOverlay
+            :show="saleSuccessModalOpen"
+            @close="closeSaleSuccessModal"
+        >
+            <div
+                class="w-full max-w-md rounded-2xl bg-talents-600 p-8 text-center shadow-xl"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="sale-success-title"
+            >
+                <ArrowPathIcon
+                    v-if="saleFeedbackPhase === 'pending'"
+                    class="mx-auto h-20 w-20 animate-spin text-emerald-300"
+                    aria-hidden="true"
+                />
+                <CheckCircleIcon
+                    v-else
+                    class="mx-auto h-20 w-20 text-emerald-300"
+                    aria-hidden="true"
+                />
+                <h3 id="sale-success-title" class="mt-5 text-2xl font-semibold text-white">
+                    {{ saleFeedbackPhase === 'pending' ? 'A gerar venda…' : 'Venda gerada com sucesso!' }}
+                </h3>
+                <p class="mt-3 text-sm leading-relaxed text-talents-50">
+                    <template v-if="saleFeedbackPhase === 'pending'">
+                        Aguarde um momento. Estamos a registar a venda em
+                        <span class="font-semibold text-white">Financeiro → Vendas</span>.
+                    </template>
+                    <template v-else>
+                        A conversão está disponível em
+                        <span class="font-semibold text-white">Financeiro → Vendas</span>.
+                        <template v-if="createdSale.code">
+                            Código da venda:
+                            <span class="font-mono font-semibold text-white">{{ createdSale.code }}</span>.
+                        </template>
+                    </template>
+                </p>
+                <div
+                    v-if="saleFeedbackPhase === 'success'"
+                    class="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center"
+                >
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-50 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-talents-600"
+                        @click="goToCreatedSale"
+                    >
+                        Ir para a venda
+                    </button>
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-xl border border-white/40 bg-transparent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-talents-700"
+                        @click="closeSaleSuccessModal"
+                    >
+                        Fechar
+                    </button>
+                </div>
             </div>
         </FullScreenOverlay>
     </AdminLayout>

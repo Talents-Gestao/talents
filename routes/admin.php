@@ -20,11 +20,13 @@ use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
 use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
 use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
 use App\Http\Controllers\Client\ComplaintController;
+use App\Http\Controllers\Admin\Finance\BankAccountController as FinanceBankAccountController;
 use App\Http\Controllers\Admin\Finance\CommissionController as FinanceCommissionController;
 use App\Http\Controllers\Admin\Finance\FinanceDashboardController;
 use App\Http\Controllers\Admin\Finance\InstallmentController as FinanceInstallmentController;
 use App\Http\Controllers\Admin\Finance\PayableController as FinancePayableController;
 use App\Http\Controllers\Admin\Finance\PaymentMethodController as FinancePaymentMethodController;
+use App\Http\Controllers\Admin\Finance\ReceivableController as FinanceReceivableController;
 use App\Http\Controllers\Admin\Finance\SaleController as FinanceSaleController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\InternalRegulationController;
@@ -81,6 +83,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
     Route::middleware('admin.can:dashboard')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+        Route::patch('/dashboard/meta-mensal', [AdminDashboardController::class, 'updateMonthlyGoal'])
+            ->name('dashboard.monthly-goal.update');
         Route::get('rhid/portfolio-metrics', [RhidPortfolioController::class, 'portfolioMetrics'])
             ->name('rhid.portfolio-metrics');
     });
@@ -324,6 +328,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('propostas.contratos.store');
         Route::post('propostas/{proposal}/converter', [FinanceSaleController::class, 'store'])
             ->name('propostas.converter');
+        Route::patch('propostas/{proposal}/status', [CommercialProposalController::class, 'updateStatus'])
+            ->name('propostas.status');
         Route::get('contratos/{contract}/pdf', [CommercialContractController::class, 'pdf'])
             ->name('contratos.pdf');
         Route::post('contratos/{contract}/zapsign', [CommercialContractController::class, 'sendZapSign'])
@@ -357,6 +363,16 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::patch('comissoes/{commission}', [FinanceCommissionController::class, 'update'])
             ->name('comissoes.update');
 
+        Route::get('contas-bancarias', [FinanceBankAccountController::class, 'index'])->name('contas-bancarias.index');
+        Route::get('contas-bancarias/nova', [FinanceBankAccountController::class, 'create'])->name('contas-bancarias.create');
+        Route::post('contas-bancarias', [FinanceBankAccountController::class, 'store'])->name('contas-bancarias.store');
+        Route::get('contas-bancarias/{bank_account}/editar', [FinanceBankAccountController::class, 'edit'])
+            ->name('contas-bancarias.edit');
+        Route::put('contas-bancarias/{bank_account}', [FinanceBankAccountController::class, 'update'])
+            ->name('contas-bancarias.update');
+        Route::delete('contas-bancarias/{bank_account}', [FinanceBankAccountController::class, 'destroy'])
+            ->name('contas-bancarias.destroy');
+
         Route::resource('formas-pagamento', FinancePaymentMethodController::class)
             ->except(['show'])
             ->parameters(['formas-pagamento' => 'payment_method']);
@@ -369,6 +385,18 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('contas-a-pagar/{payable}', [FinancePayableController::class, 'destroy'])->name('contas-a-pagar.destroy');
         Route::patch('contas-a-pagar/{payable}/pagar', [FinancePayableController::class, 'markPaid'])
             ->name('contas-a-pagar.mark-paid');
+
+        Route::get('contas-a-receber', [FinanceReceivableController::class, 'index'])->name('contas-a-receber.index');
+        Route::get('contas-a-receber/nova', [FinanceReceivableController::class, 'create'])->name('contas-a-receber.create');
+        Route::post('contas-a-receber', [FinanceReceivableController::class, 'store'])->name('contas-a-receber.store');
+        Route::get('contas-a-receber/{receivable}/editar', [FinanceReceivableController::class, 'edit'])
+            ->name('contas-a-receber.edit');
+        Route::put('contas-a-receber/{receivable}', [FinanceReceivableController::class, 'update'])
+            ->name('contas-a-receber.update');
+        Route::delete('contas-a-receber/{receivable}', [FinanceReceivableController::class, 'destroy'])
+            ->name('contas-a-receber.destroy');
+        Route::patch('contas-a-receber/{receivable}/receber', [FinanceReceivableController::class, 'markPaid'])
+            ->name('contas-a-receber.mark-paid');
     });
 
     Route::middleware('admin.can:tarefas')->prefix('tarefas')->name('tarefas.')->group(function () {

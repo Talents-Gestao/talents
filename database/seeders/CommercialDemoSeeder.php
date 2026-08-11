@@ -14,7 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
 /**
- * Cenários de demonstração para Comercial (fila de propostas) e Financeiro (vendas, parcelas, comissões).
+ * Cenários de demonstração para Comercial (propostas) e Financeiro (vendas, parcelas, comissões).
  * Idempotente: usa códigos fixos PROP-DEMO-* e VENDA-DEMO-*.
  */
 class CommercialDemoSeeder extends Seeder
@@ -37,7 +37,7 @@ class CommercialDemoSeeder extends Seeder
 
         $this->command?->info('CommercialDemoSeeder: cenários comerciais e financeiros prontos.');
         $this->command?->line('  Login: admin@talents.local / password');
-        $this->command?->line('  Fila: /admin/comercial/propostas?status=abertas&ordenacao=fila');
+        $this->command?->line('  Propostas: /admin/comercial/propostas?status=abertas');
         $this->command?->line('  Comissões: /admin/financeiro/comissoes');
     }
 

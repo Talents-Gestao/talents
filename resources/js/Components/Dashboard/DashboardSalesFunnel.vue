@@ -3,9 +3,9 @@ import { computed } from 'vue';
 
 const FUNNEL_LABELS = {
     leads: 'Leads',
-    contact: 'Contato',
     meeting: 'Reunião',
     proposal: 'Proposta',
+    negotiation: 'Negociação',
     closed: 'Fechou',
 };
 
