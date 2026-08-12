@@ -98,7 +98,8 @@ class SaleController extends Controller
                 'min:1',
                 'max:60',
             ],
-            'first_due_date' => ['required', 'date', 'after_or_equal:today'],
+            // Permite vencimento passado (venda/parcelas retroativas).
+            'first_due_date' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'mix_parts' => [
                 Rule::excludeIf(! $isMisto),
@@ -126,7 +127,6 @@ class SaleController extends Controller
             'installments_count.max' => 'O número de parcelas não pode ser maior que 60.',
             'first_due_date.required' => 'Informe a data do primeiro vencimento.',
             'first_due_date.date' => 'Informe uma data válida para o primeiro vencimento.',
-            'first_due_date.after_or_equal' => 'A data do primeiro vencimento deve ser hoje ou uma data futura.',
             'notes.max' => 'As observações não podem ter mais de 2000 caracteres.',
             'mix_parts.required' => 'Informe a composição do pagamento misto.',
             'mix_parts.min' => 'Informe pelo menos 2 partes na composição.',
