@@ -14,7 +14,7 @@ defineEmits(['update:modelValue']);
         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observação</label>
         <textarea
             :value="modelValue"
-            rows="2"
+            rows="4"
             maxlength="2000"
             placeholder="Texto opcional exibido no PDF deste produto…"
             class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"

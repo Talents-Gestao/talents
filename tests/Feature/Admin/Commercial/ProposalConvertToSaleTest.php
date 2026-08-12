@@ -161,4 +161,45 @@ class ProposalConvertToSaleTest extends TestCase
             CommercialSale::query()->where('proposal_id', $proposal->id)->exists()
         );
     }
+
+    public function test_convert_validation_messages_are_in_portuguese(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::create([
+            'code' => 'PROP-CONV-PT',
+            'client_name' => 'Cliente Validação',
+            'employee_count' => 5,
+            'total_final_cents' => 5_000,
+            'is_closed' => true,
+            'closed_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.comercial.propostas.index'))
+            ->post(route('admin.comercial.propostas.converter', $proposal), [
+                'payment_method' => 'pix',
+                'installments_count' => 1,
+                'first_due_date' => now()->subDay()->toDateString(),
+            ])
+            ->assertSessionHasErrors([
+                'first_due_date' => 'A data do primeiro vencimento deve ser hoje ou uma data futura.',
+            ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.comercial.propostas.index'))
+            ->post(route('admin.comercial.propostas.converter', $proposal), [
+                'payment_method' => 'pix',
+                'installments_count' => 1,
+            ])
+            ->assertSessionHasErrors([
+                'first_due_date' => 'Informe a data do primeiro vencimento.',
+            ]);
+
+        $this->assertFalse(
+            CommercialSale::query()->where('proposal_id', $proposal->id)->exists()
+        );
+    }
 }

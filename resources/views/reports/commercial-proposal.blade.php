@@ -424,7 +424,7 @@
                 <div class="service-block">
                     <h3 class="service-title">{{ $index + 1 }}. {{ $line['label'] }}</h3>
                     @if(!empty($line['observation']))
-                        <p class="service-observation"><strong>Observação:</strong> {{ $line['observation'] }}</p>
+                        <p class="service-observation"><strong>Observação:</strong><br>{!! nl2br(e($line['observation'])) !!}</p>
                     @endif
                     @if(!empty($line['discount_cents']) && (int) $line['discount_cents'] > 0)
                         <p class="investment">
