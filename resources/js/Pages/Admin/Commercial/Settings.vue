@@ -5,6 +5,7 @@ import CommercialPricingShortcuts from '@/Components/Commercial/CommercialPricin
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import CommercialProductsManager from '@/Pages/Admin/Commercial/CommercialProductsManager.vue';
 import ContractTemplatesManager from '@/Pages/Admin/Commercial/ContractTemplatesManager.vue';
+import { formatCnpj } from '@/utils/formatCnpj';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 
@@ -254,7 +255,7 @@ const pdfProductLabels = computed(() =>
                         </div>
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">CNPJ</dt>
-                            <dd class="mt-1 text-slate-800">{{ settings.company_cnpj || '—' }}</dd>
+                            <dd class="mt-1 text-slate-800">{{ formatCnpj(settings.company_cnpj) || '—' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">E-mail</dt>

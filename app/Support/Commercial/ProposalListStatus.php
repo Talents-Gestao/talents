@@ -9,8 +9,8 @@ use App\Models\CommercialSale;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Status visual da lista de propostas (derivado de is_closed + venda/parcelas).
- * Não persiste na proposta — ver CommercialSale::recalculateStatus() para o financeiro.
+ * Status da lista de propostas: persistido em commercial_proposals.list_status.
+ * Fallback legado (coluna null): deriva de is_closed + status da venda.
  */
 final class ProposalListStatus
 {
@@ -20,10 +20,26 @@ final class ProposalListStatus
 
     public const CLOSED = 'closed';
 
-    /**
-     * Prioridade v1: parcial → Em andamento; quitada → Fechada; is_closed → Fechada; senão → Em aberto.
-     */
+    /** @return list<string> */
+    public static function values(): array
+    {
+        return [self::OPEN, self::IN_PROGRESS, self::CLOSED];
+    }
+
     public static function for(CommercialProposal $proposal): string
+    {
+        $stored = $proposal->list_status;
+        if (is_string($stored) && in_array($stored, self::values(), true)) {
+            return $stored;
+        }
+
+        return self::legacyFor($proposal);
+    }
+
+    /**
+     * Lógica anterior à coluna list_status (registos legados com null).
+     */
+    public static function legacyFor(CommercialProposal $proposal): string
     {
         $saleStatus = $proposal->relationLoaded('sale')
             ? $proposal->sale?->status
@@ -58,6 +74,11 @@ final class ProposalListStatus
         return self::label(self::for($proposal));
     }
 
+    public static function impliesClosed(string $status): bool
+    {
+        return $status === self::CLOSED || $status === self::IN_PROGRESS;
+    }
+
     /**
      * @param  Builder<CommercialProposal>  $query
      * @return Builder<CommercialProposal>
@@ -65,33 +86,51 @@ final class ProposalListStatus
     public static function applyFilter(Builder $query, string $filter): Builder
     {
         return match ($filter) {
-            'em_andamento' => $query->whereHas(
-                'sale',
-                fn (Builder $sale) => $sale->where('status', CommercialSale::STATUS_PARCIAL),
-            ),
-            'fechadas' => $query->where(function (Builder $q): void {
-                $q->whereHas(
-                    'sale',
-                    fn (Builder $sale) => $sale->where('status', CommercialSale::STATUS_QUITADA),
-                )->orWhere(function (Builder $closed): void {
-                    $closed->where('is_closed', true)
-                        ->whereDoesntHave(
-                            'sale',
-                            fn (Builder $sale) => $sale->where('status', CommercialSale::STATUS_PARCIAL),
-                        );
-                });
+            'em_andamento' => $query->where(function (Builder $q): void {
+                $q->where('list_status', self::IN_PROGRESS)
+                    ->orWhere(function (Builder $legacy): void {
+                        $legacy->whereNull('list_status')
+                            ->whereHas(
+                                'sale',
+                                fn (Builder $sale) => $sale->where('status', CommercialSale::STATUS_PARCIAL),
+                            );
+                    });
             }),
-            'abertas' => $query->where('is_closed', false)
-                ->where(function (Builder $q): void {
-                    $q->whereDoesntHave('sale')
-                        ->orWhereHas(
-                            'sale',
-                            fn (Builder $sale) => $sale->whereNotIn('status', [
-                                CommercialSale::STATUS_PARCIAL,
-                                CommercialSale::STATUS_QUITADA,
-                            ]),
-                        );
-                }),
+            'fechadas' => $query->where(function (Builder $q): void {
+                $q->where('list_status', self::CLOSED)
+                    ->orWhere(function (Builder $legacy): void {
+                        $legacy->whereNull('list_status')
+                            ->where(function (Builder $inner): void {
+                                $inner->whereHas(
+                                    'sale',
+                                    fn (Builder $sale) => $sale->where('status', CommercialSale::STATUS_QUITADA),
+                                )->orWhere(function (Builder $closed): void {
+                                    $closed->where('is_closed', true)
+                                        ->whereDoesntHave(
+                                            'sale',
+                                            fn (Builder $sale) => $sale->where('status', CommercialSale::STATUS_PARCIAL),
+                                        );
+                                });
+                            });
+                    });
+            }),
+            'abertas' => $query->where(function (Builder $q): void {
+                $q->where('list_status', self::OPEN)
+                    ->orWhere(function (Builder $legacy): void {
+                        $legacy->whereNull('list_status')
+                            ->where('is_closed', false)
+                            ->where(function (Builder $inner): void {
+                                $inner->whereDoesntHave('sale')
+                                    ->orWhereHas(
+                                        'sale',
+                                        fn (Builder $sale) => $sale->whereNotIn('status', [
+                                            CommercialSale::STATUS_PARCIAL,
+                                            CommercialSale::STATUS_QUITADA,
+                                        ]),
+                                    );
+                            });
+                    });
+            }),
             default => $query,
         };
     }

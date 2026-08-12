@@ -22,6 +22,7 @@ import {
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { collectiveBargainingMonthLabel } from '@/utils/collectiveBargainingMonths';
+import { formatCnpj } from '@/utils/formatCnpj';
 
 const props = defineProps({
     company: Object,
@@ -259,7 +260,7 @@ const removeRegulation = (id) => {
                         <dl class="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
                             <div v-if="company.cnpj">
                                 <dt class="sr-only">CNPJ</dt>
-                                <dd><span class="text-slate-400">CNPJ</span> {{ company.cnpj }}</dd>
+                                <dd><span class="text-slate-400">CNPJ</span> {{ formatCnpj(company.cnpj) }}</dd>
                             </div>
                             <div v-if="company.segment">
                                 <dt class="sr-only">Segmento</dt>
@@ -353,7 +354,7 @@ const removeRegulation = (id) => {
                         </div>
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">CNPJ</dt>
-                            <dd class="mt-1 text-slate-800">{{ company.cnpj || '—' }}</dd>
+                            <dd class="mt-1 text-slate-800">{{ formatCnpj(company.cnpj) || '—' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Segmento</dt>

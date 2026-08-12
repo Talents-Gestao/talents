@@ -146,6 +146,7 @@ TXT,
 
     /**
      * Seções habilitadas para render no PDF.
+     * Devolve [] quando nada está selecionado ou nenhum item tem label/texto útil.
      *
      * @return array<int, array{key: string, label: string, text: string}>
      */
@@ -162,10 +163,18 @@ TXT,
                 continue;
             }
 
+            $label = trim((string) ($labels[$key]['label'] ?? ''));
+            $text = trim((string) ($texts[$key] ?? ''));
+
+            // Sem conteúdo útil: não entra no PDF (evita título + área vazia).
+            if ($label === '' && $text === '') {
+                continue;
+            }
+
             $sections[] = [
                 'key' => $key,
-                'label' => $labels[$key]['label'] ?? $key,
-                'text' => $texts[$key] ?? '',
+                'label' => $label !== '' ? $label : $key,
+                'text' => $text,
             ];
         }
 

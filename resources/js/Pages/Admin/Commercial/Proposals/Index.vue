@@ -76,7 +76,8 @@ const statusForm = useForm({
 const openStatusModal = (proposal) => {
     statusProposal.value = proposal;
     statusForm.clearErrors();
-    statusForm.status = proposal.is_closed ? 'closed' : 'open';
+    statusForm.status = proposal.list_status
+        ?? (proposal.is_closed ? 'closed' : 'open');
     statusModalOpen.value = true;
 };
 
@@ -348,7 +349,15 @@ watch(
     },
 );
 
-const canConvert = (proposal) => proposal.is_closed && !proposal.sale;
+const canConvert = (proposal) => {
+    if (proposal.sale) {
+        return false;
+    }
+    const status = proposal.list_status
+        ?? (proposal.is_closed ? 'closed' : 'open');
+
+    return status === 'closed' || status === 'in_progress' || proposal.is_closed;
+};
 
 const addMixPart = () => {
     convertForm.mix_parts.push({ method: 'pix', percent: '' });
@@ -1157,13 +1166,6 @@ const submitConvert = () => {
                 <p v-if="statusProposal" class="mt-1 text-sm text-slate-600">
                     {{ statusProposal.code }} — {{ statusProposal.client_name }}
                 </p>
-                <p
-                    v-if="statusProposal?.list_status === 'in_progress'"
-                    class="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-900"
-                >
-                    O badge «Em andamento» vem da venda com pagamento parcial. Aqui você só altera se a
-                    proposta está em aberto ou fechada.
-                </p>
 
                 <form class="mt-4 space-y-4" @submit.prevent="submitStatus">
                     <div
@@ -1188,6 +1190,7 @@ const submitConvert = () => {
                             required
                         >
                             <option value="open">Em aberto</option>
+                            <option value="in_progress">Em andamento</option>
                             <option value="closed">Fechada</option>
                         </select>
                     </div>

@@ -7,6 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { COLLECTIVE_BARGAINING_MONTHS } from '@/utils/collectiveBargainingMonths';
+import { formatCnpj, maskCnpj } from '@/utils/formatCnpj';
 import axios from 'axios';
 import { Head, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
@@ -35,8 +36,12 @@ const form = useForm({
 const lookupLoading = ref(false);
 const lookupError = ref('');
 
-const cnpjDigitCount = computed(() => (form.cnpj.match(/\d/g) || []).length);
+const cnpjDigitCount = computed(() => (String(form.cnpj || '').match(/\d/g) || []).length);
 const canLookupCnpj = computed(() => cnpjDigitCount.value === 14);
+
+const onCnpjInput = (event) => {
+    form.cnpj = maskCnpj(event.target.value);
+};
 
 const fetchCnpjFromReceita = async () => {
     lookupError.value = '';
@@ -52,7 +57,7 @@ const fetchCnpjFromReceita = async () => {
         form.legal_name = data.legal_name ?? '';
         form.name = data.name ?? '';
         form.contact_email = data.contact_email ?? '';
-        form.cnpj = data.cnpj ?? form.cnpj;
+        form.cnpj = maskCnpj(data.cnpj ?? form.cnpj);
         form.segment = data.segment ?? '';
         form.address_street = data.address_street ?? '';
         form.address_neighborhood = data.address_neighborhood ?? '';
@@ -93,7 +98,17 @@ const submit = () => {
                         Informe o CNPJ e busque na Receita Federal para preencher razão social, nome fantasia, endereço, segmento e regime tributário.
                     </p>
                     <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-stretch">
-                        <TextInput id="cnpj" v-model="form.cnpj" class="block w-full sm:max-w-md" placeholder="00.000.000/0001-00" />
+                        <TextInput
+                            id="cnpj"
+                            v-model="form.cnpj"
+                            class="block w-full sm:max-w-md"
+                            placeholder="00.000.000/0001-00"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            maxlength="18"
+                            @input="onCnpjInput"
+                            @blur="form.cnpj = formatCnpj(form.cnpj)"
+                        />
                         <SecondaryButton
                             type="button"
                             class="shrink-0 justify-center disabled:!opacity-100 sm:self-auto sm:py-2"

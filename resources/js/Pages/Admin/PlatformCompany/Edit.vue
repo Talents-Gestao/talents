@@ -1,6 +1,8 @@
 <script setup>
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import { formatCnpj, maskCnpj } from '@/utils/formatCnpj';
+import { formatCpf, maskCpf } from '@/utils/formatCpf';
 import axios from 'axios';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
@@ -13,7 +15,7 @@ const page = usePage();
 
 const form = useForm({
     company_name: props.settings.company_name ?? '',
-    company_cnpj: props.settings.company_cnpj ?? '',
+    company_cnpj: maskCnpj(props.settings.company_cnpj ?? ''),
     company_address: props.settings.company_address ?? '',
     company_city_state: props.settings.company_city_state ?? '',
     company_phone: props.settings.company_phone ?? '',
@@ -21,7 +23,7 @@ const form = useForm({
     company_representative_line: props.settings.company_representative_line ?? '',
     company_forum_city_state: props.settings.company_forum_city_state ?? '',
     company_contract_signatory_name: props.settings.company_contract_signatory_name ?? '',
-    company_contract_signatory_cpf: props.settings.company_contract_signatory_cpf ?? '',
+    company_contract_signatory_cpf: maskCpf(props.settings.company_contract_signatory_cpf ?? ''),
     default_payment_terms: props.settings.default_payment_terms ?? '',
     default_prazo_dias: props.settings.default_prazo_dias ?? '',
 });
@@ -31,6 +33,14 @@ const cnpjLookupError = ref('');
 const cnpjLookupSuccess = ref('');
 const cnpjDigitCount = computed(() => (String(form.company_cnpj || '').match(/\d/g) || []).length);
 const canLookupCnpj = computed(() => cnpjDigitCount.value === 14);
+
+const onCompanyCnpjInput = (event) => {
+    form.company_cnpj = maskCnpj(event.target.value);
+};
+
+const onSignatoryCpfInput = (event) => {
+    form.company_contract_signatory_cpf = maskCpf(event.target.value);
+};
 
 const showContractGapWarning = computed(() => {
     const n = (v) => String(v ?? '').trim();
@@ -49,7 +59,7 @@ const fetchCnpjFromReceita = async () => {
         const { data } = await axios.get(route('admin.companies.lookup-cnpj'), {
             params: { cnpj: form.company_cnpj },
         });
-        form.company_cnpj = data.cnpj ?? form.company_cnpj;
+        form.company_cnpj = maskCnpj(data.cnpj ?? form.company_cnpj);
         const nome = data.name || data.legal_name;
         if (nome) {
             form.company_name = nome;
@@ -129,7 +139,12 @@ const submit = () => {
                                 v-model="form.company_cnpj"
                                 type="text"
                                 placeholder="00.000.000/0001-00"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                maxlength="18"
                                 class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500 sm:max-w-md"
+                                @input="onCompanyCnpjInput"
+                                @blur="form.company_cnpj = formatCnpj(form.company_cnpj)"
                             />
                             <button
                                 type="button"
@@ -223,7 +238,13 @@ const submit = () => {
                         <input
                             v-model="form.company_contract_signatory_cpf"
                             type="text"
+                            placeholder="000.000.000-00"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            maxlength="14"
                             class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            @input="onSignatoryCpfInput"
+                            @blur="form.company_contract_signatory_cpf = formatCpf(form.company_contract_signatory_cpf)"
                         />
                     </div>
                 </div>

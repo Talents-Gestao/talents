@@ -3,6 +3,7 @@ import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import { formatCnpj } from '@/utils/formatCnpj';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -85,7 +86,7 @@ const submit = () => {
                     <tbody class="divide-y divide-gray-200">
                         <tr v-for="c in companies.data" :key="c.id">
                             <td class="px-4 py-3">{{ c.name }}</td>
-                            <td class="px-4 py-3">{{ c.cnpj || '—' }}</td>
+                            <td class="px-4 py-3">{{ formatCnpj(c.cnpj) || '—' }}</td>
                             <td class="px-4 py-3">{{ c.segment || '—' }}</td>
                             <td class="px-4 py-3">{{ c.is_active ? 'Sim' : 'Não' }}</td>
                             <td class="px-4 py-3">

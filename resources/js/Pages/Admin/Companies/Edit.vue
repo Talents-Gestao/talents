@@ -5,6 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { COLLECTIVE_BARGAINING_MONTHS } from '@/utils/collectiveBargainingMonths';
+import { formatCnpj, maskCnpj } from '@/utils/formatCnpj';
 import { Head, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -66,7 +67,7 @@ const form = useForm({
     name: props.company.name,
     contact_email: props.company.contact_email ?? '',
     legal_name: props.company.legal_name ?? '',
-    cnpj: props.company.cnpj ?? '',
+    cnpj: maskCnpj(props.company.cnpj ?? ''),
     segment: props.company.segment ?? '',
     activity_branch: props.company.activity_branch ?? '',
     collective_bargaining_month: props.company.collective_bargaining_month ?? null,
@@ -87,6 +88,10 @@ const form = useForm({
     acompanhamento_access_mode: acompanhamentoAccessMode(),
     plan_id: props.activePlanId ?? null,
 });
+
+const onCnpjInput = (event) => {
+    form.cnpj = maskCnpj(event.target.value);
+};
 
 const submit = () => {
     form.put(route('admin.companies.update', props.company.id));
@@ -119,7 +124,17 @@ const submit = () => {
                 </div>
                 <div>
                     <InputLabel for="cnpj" value="CNPJ" />
-                    <TextInput id="cnpj" v-model="form.cnpj" class="mt-1 block w-full" />
+                    <TextInput
+                        id="cnpj"
+                        v-model="form.cnpj"
+                        class="mt-1 block w-full"
+                        placeholder="00.000.000/0001-00"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        maxlength="18"
+                        @input="onCnpjInput"
+                        @blur="form.cnpj = formatCnpj(form.cnpj)"
+                    />
                 </div>
             </div>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
