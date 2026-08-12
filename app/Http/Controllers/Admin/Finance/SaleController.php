@@ -118,13 +118,25 @@ class SaleController extends Controller
                 'lte:100',
             ],
         ], [
+            'payment_method.required' => 'Selecione a forma de pagamento.',
+            'payment_method.in' => 'Forma de pagamento inválida.',
+            'installments_count.required' => 'Informe o número de parcelas.',
+            'installments_count.integer' => 'O número de parcelas deve ser um inteiro.',
+            'installments_count.min' => 'O número de parcelas deve ser pelo menos 1.',
+            'installments_count.max' => 'O número de parcelas não pode ser maior que 60.',
+            'first_due_date.required' => 'Informe a data do primeiro vencimento.',
+            'first_due_date.date' => 'Informe uma data válida para o primeiro vencimento.',
+            'first_due_date.after_or_equal' => 'A data do primeiro vencimento deve ser hoje ou uma data futura.',
+            'notes.max' => 'As observações não podem ter mais de 2000 caracteres.',
             'mix_parts.required' => 'Informe a composição do pagamento misto.',
             'mix_parts.min' => 'Informe pelo menos 2 partes na composição.',
+            'mix_parts.max' => 'A composição não pode ter mais de 60 partes.',
             'mix_parts.*.method.required' => 'Selecione a forma de cada parte.',
             'mix_parts.*.method.in' => 'Cada parte deve ser PIX, boleto ou cartão.',
             'mix_parts.*.percent.required' => 'Informe o percentual de cada parte.',
+            'mix_parts.*.percent.numeric' => 'O percentual de cada parte deve ser numérico.',
             'mix_parts.*.percent.gt' => 'Cada percentual deve ser maior que zero.',
-            'installments_count.required' => 'Informe o número de parcelas.',
+            'mix_parts.*.percent.lte' => 'Cada percentual não pode ser maior que 100.',
         ]);
 
         $sale = $this->conversion->convert($proposal, $data, $request->user()?->id);

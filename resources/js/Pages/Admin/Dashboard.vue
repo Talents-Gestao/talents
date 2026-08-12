@@ -49,6 +49,18 @@ const userId = computed(() => page.props.auth?.user?.id ?? null);
 
 const { layout, resetLayout, dragAnimationMs, prefersReducedMotion } = useAdminDashboardLayout(userId);
 
+/**
+ * Auto-scroll do Sortable aponta ao `<main class="app-shell-main-scroll">`
+ * (SidebarLayout) via detecção de overflow + bubbleScroll.
+ */
+const sortableScrollProps = {
+    scroll: true,
+    bubbleScroll: true,
+    forceAutoScrollFallback: true,
+    scrollSensitivity: 64,
+    scrollSpeed: 22,
+};
+
 const sectionMeta = {
     operation: {
         label: 'Operação de hoje',
@@ -310,6 +322,14 @@ const submitGoal = () => {
                 :animation="dragAnimationMs"
                 ghost-class="opacity-40"
                 class="space-y-6"
+                direction="vertical"
+                :scroll="sortableScrollProps.scroll"
+                :bubble-scroll="sortableScrollProps.bubbleScroll"
+                :force-auto-scroll-fallback="sortableScrollProps.forceAutoScrollFallback"
+                :scroll-sensitivity="sortableScrollProps.scrollSensitivity"
+                :scroll-speed="sortableScrollProps.scrollSpeed"
+                :invert-swap="true"
+                :swap-threshold="0.65"
             >
                 <section
                     v-for="sectionId in layout.sectionOrder"
@@ -344,6 +364,11 @@ const submitGoal = () => {
                         :animation="dragAnimationMs"
                         ghost-class="opacity-40"
                         :class="sectionMeta[sectionId].gridClass"
+                        :scroll="sortableScrollProps.scroll"
+                        :bubble-scroll="sortableScrollProps.bubbleScroll"
+                        :force-auto-scroll-fallback="sortableScrollProps.forceAutoScrollFallback"
+                        :scroll-sensitivity="sortableScrollProps.scrollSensitivity"
+                        :scroll-speed="sortableScrollProps.scrollSpeed"
                     >
                         <div
                             v-for="widgetId in layout.sections[sectionId]"

@@ -51,6 +51,46 @@ class ProposalProductObservationTest extends TestCase
         $this->assertSame('Evento presencial em São Paulo.', $lines[0]['observation']);
     }
 
+    public function test_pdf_preserves_newlines_in_product_observation(): void
+    {
+        $settings = \App\Models\CommercialSetting::current();
+
+        $observation = "VAGA: Analista\nDescrição: Atuar com RH.\n\nVAGA: Assistente";
+
+        $html = view('reports.commercial-proposal', [
+            'proposal' => CommercialProposal::query()->create([
+                'code' => 'PROP-OBS-NL-1',
+                'client_name' => 'Cliente Observação',
+                'employee_count' => 10,
+                'total_final_cents' => 10000,
+                'is_closed' => false,
+            ])->load('seller'),
+            'settings' => $settings,
+            'logoBase64' => '',
+            'butterflyBase64' => '',
+            'services' => [
+                [
+                    'label' => 'Recrutamento',
+                    'observation' => $observation,
+                    'value_cents' => 10000,
+                    'description' => null,
+                    'discount_cents' => 0,
+                ],
+            ],
+            'optionalSections' => [],
+            'validityDate' => now()->addDays(7),
+        ])->render();
+
+        $this->assertStringContainsString('<strong>Observação:</strong><br>', $html);
+        $this->assertStringContainsString('VAGA: Analista<br />', $html);
+        $this->assertStringContainsString('Descrição: Atuar com RH.<br />', $html);
+        $this->assertStringContainsString('VAGA: Assistente', $html);
+        $this->assertStringNotContainsString(
+            'VAGA: Analista Descrição: Atuar com RH. VAGA: Assistente',
+            $html,
+        );
+    }
+
     public function test_admin_can_save_product_observation_on_proposal(): void
     {
         $this->withoutVite();
