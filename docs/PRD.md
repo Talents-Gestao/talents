@@ -40,7 +40,7 @@ Cadastro público desativado; acesso por login/convite.
 | Frase do dia no painel | Implementado (`dailyQuote` partilhado) |
 | CTAs no header: tarefas ADM abertas + **Pendências** (`alertsCount`) | Implementado |
 | Payload Inertia enxuto (sem listas mortas na página) | Implementado no `DashboardController` |
-| Indicadores via `AdminHomeDashboardBuilder` | BD real + heurísticas (conversão, funil, fluxo previsto, etc.) + **meta mensal** por `config/talents.php` / `TALENTS_DASHBOARD_MONTHLY_GOAL_CENTS` |
+| Indicadores via `AdminHomeDashboardBuilder` | BD real + heurísticas (conversão, funil, fluxo previsto, etc.) + **meta mensal** cadastrável em BD (`admin_dashboard_settings`) com fallback `config/talents.php` / `TALENTS_DASHBOARD_MONTHLY_GOAL_CENTS` |
 
 ### 2.3 Assinaturas (ex-“Planos”)
 
@@ -103,7 +103,8 @@ Itens já referidos no produto como “em breve” e ainda não fechados como m�
 - Contratos fechados (Clientes)  
 - Profiler (Contratação)  
 - Capacitação (Admin e Cliente)  
-- Contas bancárias / a receber (Financeiro Admin)  
+
+**Financeiro Admin (implementado):** Contas bancárias (CRUD + saldo cadastrado no Resumo) e Contas a receber (ledger unificado: parcelas de venda + recebimentos manuais), alimentando Home e Resumo via `FinanceCashflowMetrics`.
 
 Qualquer feature só descrita em prompts e **ainda não** refletida no código deve ficar nesta secção até validação.
 
@@ -115,7 +116,7 @@ Os números da Home **não** são mocks no Vue. Classificação típica:
 
 - **Real (BD):** parcelas, payables, leads, propostas, empresas, vendas, itens de calendário, etc.  
 - **Heurística:** taxa de conversão, funil simplificado, fluxo previsto, tempo médio de contratação, hora parseada da descrição do evento, “negociação” = propostas abertas.  
-- **Config:** meta de faturamento mensal (`TALENTS_DASHBOARD_MONTHLY_GOAL_CENTS`, default R$ 20.000).  
+- **BD (cadastrável) + fallback env:** meta de faturamento mensal — `admin_dashboard_settings.monthly_revenue_goal_cents`; se vazio, `TALENTS_DASHBOARD_MONTHLY_GOAL_CENTS` (default R$ 20.000). Editável no card «Meta mensal» da Home.  
 - **Catálogo:** frase do dia (`MetamorfoseDailyQuote`).  
 
 Zeros no ecrã = falta de dados / filtros / preços de plano a 0 — não placeholder de UI.
@@ -128,6 +129,7 @@ Zeros no ecrã = falta de dados / filtros / preços de plano a 0 — não placeh
 |-----------|---------|
 | Estrutura / regras do agente | `.cursor/rules/Talents-Structure.mdc` |
 | Builder da Home Admin | `app/Support/Admin/AdminHomeDashboardBuilder.php` |
+| Meta mensal (singleton) | `app/Models/AdminDashboardSettings.php` |
 | Controller Home | `app/Http/Controllers/Admin/DashboardController.php` |
 | UI Home | `resources/js/Pages/Admin/Dashboard.vue` |
 | Hero landing | `resources/js/Pages/Welcome.vue`, `resources/js/Components/Landing/LandingHeroTypewriter.vue` |

@@ -8,6 +8,7 @@ use App\Enums\CompanyNoticeAudience;
 use App\Models\CompanyNotice;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 
 class UnreadNoticeCounter
 {
@@ -17,14 +18,38 @@ class UnreadNoticeCounter
             return 0;
         }
 
-        $query = $this->visibleNoticesQuery($user);
-        if ($query === null) {
+        $context = $this->contextFor($user);
+        if ($context === null) {
             return 0;
         }
 
-        return $query
-            ->whereDoesntHave('reads', fn ($q) => $q->where('user_id', $user->id))
-            ->count();
+        [$audience, $companyId] = $context;
+        $cacheKey = sprintf(
+            'nav.unread_notices.%d.%s.%s',
+            $user->id,
+            $audience->value,
+            $companyId ?? 'all',
+        );
+
+        return (int) Cache::remember($cacheKey, now()->addSeconds(20), function () use ($user, $audience, $companyId) {
+            $query = CompanyNotice::query()
+                ->where('published_at', '<=', now());
+
+            if ($audience !== CompanyNoticeAudience::Talents) {
+                $query
+                    ->where('audience', $audience->value)
+                    ->where('company_id', $companyId);
+            }
+
+            return $query
+                ->whereNotExists(function ($sub) use ($user): void {
+                    $sub->selectRaw('1')
+                        ->from('company_notice_reads')
+                        ->whereColumn('company_notice_reads.company_notice_id', 'company_notices.id')
+                        ->where('company_notice_reads.user_id', $user->id);
+                })
+                ->count();
+        });
     }
 
     /**

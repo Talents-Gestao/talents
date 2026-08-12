@@ -127,11 +127,7 @@ const vozDoTimeActive = computed(
 
 const showFinanceiro = computed(() => canAdmin('financeiro'));
 
-const financeiroActive = computed(
-    () =>
-        route().current('admin.financeiro.*') ||
-        isComingSoon('contas-bancarias', 'contas-a-receber'),
-);
+const financeiroActive = computed(() => route().current('admin.financeiro.*'));
 const showConfiguracao = computed(
     () => canAdmin('settings') || canAdmin('equipe') || canAdmin('empresa_talents'),
 );
@@ -474,13 +470,12 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
-                    :href="comingSoonHref('contas-bancarias')"
-                    :active="isComingSoon('contas-bancarias')"
+                    :href="route('admin.financeiro.contas-bancarias.index')"
+                    :active="route().current('admin.financeiro.contas-bancarias.*')"
                     label="Contas bancárias"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
-                    badge="Em breve"
                 />
                 <SidebarNavItem
                     :href="route('admin.financeiro.contas-a-pagar.index')"
@@ -491,13 +486,12 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
-                    :href="comingSoonHref('contas-a-receber')"
-                    :active="isComingSoon('contas-a-receber')"
+                    :href="route('admin.financeiro.contas-a-receber.index')"
+                    :active="route().current('admin.financeiro.contas-a-receber.*')"
                     label="Contas a receber"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
-                    badge="Em breve"
                 />
                 <SidebarNavItem
                     :href="route('admin.financeiro.formas-pagamento.index')"

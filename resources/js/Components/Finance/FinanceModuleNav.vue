@@ -21,10 +21,22 @@ const items = [
         isActive: () => route().current('admin.financeiro.comissoes.*'),
     },
     {
+        id: 'contas-bancarias',
+        label: 'Contas bancárias',
+        href: () => route('admin.financeiro.contas-bancarias.index'),
+        isActive: () => route().current('admin.financeiro.contas-bancarias.*'),
+    },
+    {
         id: 'contas-a-pagar',
         label: 'Contas a pagar',
         href: () => route('admin.financeiro.contas-a-pagar.index'),
         isActive: () => route().current('admin.financeiro.contas-a-pagar.*'),
+    },
+    {
+        id: 'contas-a-receber',
+        label: 'Contas a receber',
+        href: () => route('admin.financeiro.contas-a-receber.index'),
+        isActive: () => route().current('admin.financeiro.contas-a-receber.*'),
     },
     {
         id: 'formas-pagamento',

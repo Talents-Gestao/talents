@@ -51,17 +51,9 @@ const statusClass = (s) =>
 
     <AdminLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <p class="text-sm text-slate-500">Financeiro</p>
-                    <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Vendas</h2>
-                </div>
-                <Link
-                    :href="route('admin.financeiro.dashboard')"
-                    class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                >
-                    Painel financeiro
-                </Link>
+            <div>
+                <p class="text-sm text-slate-500">Financeiro</p>
+                <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Vendas</h2>
             </div>
         </template>
 

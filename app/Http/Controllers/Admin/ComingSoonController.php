@@ -87,6 +87,14 @@ class ComingSoonController extends Controller
             return redirect()->route('admin.financeiro.formas-pagamento.index');
         }
 
+        if ($module === 'contas-bancarias') {
+            return redirect()->route('admin.financeiro.contas-bancarias.index');
+        }
+
+        if ($module === 'contas-a-receber') {
+            return redirect()->route('admin.financeiro.contas-a-receber.index');
+        }
+
         $config = self::MODULES[$module] ?? null;
         abort_unless($config !== null, 404);
 

@@ -3,6 +3,7 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import CommercialAdjustmentFields from '@/Components/Commercial/CommercialAdjustmentFields.vue';
 import CatalogProductObservationField from '@/Components/Commercial/CatalogProductObservationField.vue';
 import CommercialModuleNav from '@/Components/Commercial/CommercialModuleNav.vue';
+import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
 import {
@@ -14,7 +15,7 @@ import {
 import { formatCnpj } from '@/utils/formatCnpj';
 import axios from 'axios';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
 const props = defineProps({
     mode: { type: String, default: 'create' },
@@ -400,12 +401,105 @@ const fetchCnpjFromReceita = async () => {
     }
 };
 
-const submit = () => {
-    if (props.mode === 'edit') {
-        form.put(route('admin.comercial.propostas.update', props.proposal.id), { preserveScroll: true });
-    } else {
-        form.post(route('admin.comercial.propostas.store'), { preserveScroll: true });
+const scrollToFirstFormError = () => {
+    nextTick(() => {
+        const priority = ['client_name', 'employee_count', 'payment_method', 'client_email'];
+        const keys = [
+            ...priority.filter((key) => form.errors[key]),
+            ...Object.keys(form.errors).filter((key) => !priority.includes(key)),
+        ];
+        const first = keys[0];
+        if (!first) {
+            return;
+        }
+        const el = document.getElementById(`proposal-field-${first}`)
+            ?? document.querySelector(`[data-error-for="${first}"]`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+};
+
+const isEmployeeCountValid = (value) => {
+    if (value === null || value === undefined || value === '') {
+        return false;
     }
+    const n = Number(value);
+    return Number.isFinite(n) && n >= 0 && Number.isInteger(n);
+};
+
+/** Gate client-side alinhado aos obrigatórios do backend. */
+const validateRequiredFields = () => {
+    form.clearErrors('client_name', 'employee_count', 'payment_method');
+
+    let valid = true;
+
+    if (!String(form.client_name ?? '').trim()) {
+        form.setError('client_name', 'Informe o nome / razão social.');
+        valid = false;
+    }
+
+    if (!isEmployeeCountValid(form.employee_count)) {
+        form.setError('employee_count', 'Informe o número de funcionários.');
+        valid = false;
+    }
+
+    if (!String(form.payment_method ?? '').trim()) {
+        form.setError('payment_method', 'Selecione a forma de pagamento.');
+        valid = false;
+    }
+
+    if (!valid) {
+        scrollToFirstFormError();
+    }
+
+    return valid;
+};
+
+const submit = () => {
+    if (!validateRequiredFields()) {
+        return;
+    }
+
+    const options = {
+        onError: () => scrollToFirstFormError(),
+    };
+
+    if (props.mode === 'edit') {
+        form.put(route('admin.comercial.propostas.update', props.proposal.id), {
+            ...options,
+            preserveScroll: true,
+        });
+    } else {
+        form.post(route('admin.comercial.propostas.store'), options);
+    }
+};
+
+const markAsClosedModalOpen = ref(false);
+
+const openMarkAsClosedModal = () => {
+    if (form.is_closed || form.processing) {
+        return;
+    }
+    if (!validateRequiredFields()) {
+        return;
+    }
+    markAsClosedModalOpen.value = true;
+};
+
+const closeMarkAsClosedModal = () => {
+    markAsClosedModalOpen.value = false;
+};
+
+const confirmMarkAsClosed = () => {
+    if (form.is_closed || form.processing) {
+        return;
+    }
+    if (!validateRequiredFields()) {
+        markAsClosedModalOpen.value = false;
+        return;
+    }
+    form.is_closed = true;
+    markAsClosedModalOpen.value = false;
+    submit();
 };
 
 const downloadPdf = () => {
@@ -463,6 +557,14 @@ const services = computed(() => {
 
         <CommercialModuleNav />
 
+        <div
+            v-if="Object.keys(form.errors).length"
+            class="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+            role="alert"
+        >
+            Corrija os campos destacados antes de salvar a proposta.
+        </div>
+
         <form class="grid gap-8 lg:grid-cols-3" @submit.prevent="submit">
             <div class="space-y-6 lg:col-span-2">
                 <!-- Cliente -->
@@ -498,13 +600,14 @@ const services = computed(() => {
                         </div>
 
                         <div class="grid gap-4 sm:grid-cols-2">
-                            <div class="sm:col-span-2">
+                            <div id="proposal-field-client_name" class="sm:col-span-2" data-error-for="client_name">
                                 <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Nome / Razão social *</label>
                                 <input
                                     v-model="form.client_name"
                                     type="text"
                                     required
                                     class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                    :class="form.errors.client_name ? 'border-rose-400' : ''"
                                 />
                                 <p v-if="form.errors.client_name" class="mt-1 text-xs text-rose-600">{{ form.errors.client_name }}</p>
                             </div>
@@ -549,13 +652,15 @@ const services = computed(() => {
                                     class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                                 />
                             </div>
-                            <div>
+                            <div id="proposal-field-client_email" data-error-for="client_email">
                                 <label class="text-xs font-medium uppercase tracking-wide text-slate-500">E-mail</label>
                                 <input
                                     v-model="form.client_email"
                                     type="email"
                                     class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                    :class="form.errors.client_email ? 'border-rose-400' : ''"
                                 />
+                                <p v-if="form.errors.client_email" class="mt-1 text-xs text-rose-600">{{ form.errors.client_email }}</p>
                             </div>
                             <div>
                                 <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Indicação</label>
@@ -565,7 +670,7 @@ const services = computed(() => {
                                     class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                                 />
                             </div>
-                            <div>
+                            <div id="proposal-field-employee_count" data-error-for="employee_count">
                                 <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Nº de funcionários *</label>
                                 <input
                                     v-model.number="form.employee_count"
@@ -573,7 +678,11 @@ const services = computed(() => {
                                     min="0"
                                     required
                                     class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                    :class="form.errors.employee_count ? 'border-rose-400' : ''"
                                 />
+                                <p v-if="form.errors.employee_count" class="mt-1 text-xs text-rose-600">
+                                    {{ form.errors.employee_count }}
+                                </p>
                                 <p class="mt-1 text-[11px] text-slate-500">
                                     Necessário para calcular produtos por funcionário.
                                 </p>
@@ -857,36 +966,6 @@ const services = computed(() => {
                     </p>
                 </section>
 
-                <!-- Texto da proposta (PDF) -->
-                <section class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Texto da proposta (PDF)</h3>
-                    <p class="mt-1 text-xs text-slate-500">
-                        Subtítulo e objetivo geral exibidos no início do documento comercial.
-                    </p>
-                    <div class="mt-4 space-y-4">
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                Nome do programa / subtítulo
-                            </label>
-                            <input
-                                v-model="form.pdf_subtitle"
-                                type="text"
-                                placeholder="Ex.: Programa de Diagnóstico Organizacional e Desenvolvimento de Lideranças"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Objetivo geral</label>
-                            <textarea
-                                v-model="form.pdf_objetivo"
-                                rows="4"
-                                placeholder="Descreva o objetivo geral da proposta para o cliente..."
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                    </div>
-                </section>
-
                 <!-- Seções opcionais do PDF -->
                 <section v-if="pdfOptionalSectionOptions.length" class="surface-card p-6">
                     <h3 class="text-lg font-semibold text-slate-900">Seções opcionais no PDF</h3>
@@ -1050,14 +1129,15 @@ const services = computed(() => {
                                 Nenhum vendedor marcado como Comercial. Marque usuários como "Comercial" no cadastro de usuários.
                             </p>
                         </div>
-                        <div>
+                        <div id="proposal-field-payment_method" data-error-for="payment_method">
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                Forma de pagamento (PDF)
+                                Forma de pagamento (PDF) *
                             </label>
                             <select
                                 v-model="form.payment_method"
                                 required
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                :class="form.errors.payment_method ? 'border-rose-400' : ''"
                             >
                                 <option value="">— Selecionar —</option>
                                 <option
@@ -1099,11 +1179,6 @@ const services = computed(() => {
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             />
                         </div>
-                        <label class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm sm:col-span-2">
-                            <input v-model="form.is_closed" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
-                            <span class="font-medium text-slate-900">Marcar como fechada</span>
-                            <span class="text-xs text-slate-500">— a data de fechamento será registrada agora.</span>
-                        </label>
                     </div>
                 </section>
 
@@ -1174,16 +1249,45 @@ const services = computed(() => {
                             {{ isEdit ? 'Salvar alterações' : 'Salvar proposta' }}
                         </button>
                         <button
-                            v-if="isEdit"
                             type="button"
-                            class="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                            @click="downloadPdf"
+                            :disabled="form.is_closed || form.processing"
+                            class="inline-flex w-full items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            @click="openMarkAsClosedModal"
                         >
-                            Gerar PDF da proposta
+                            {{ form.is_closed ? 'Proposta fechada' : 'Marcar como fechada' }}
                         </button>
+                        <p v-if="!form.is_closed" class="text-center text-xs text-slate-500">
+                            A data de fechamento será registrada ao salvar.
+                        </p>
                     </div>
                 </div>
             </aside>
         </form>
+
+        <Modal :show="markAsClosedModalOpen" max-width="md" @close="closeMarkAsClosedModal">
+            <div class="p-6">
+                <h2 class="text-lg font-semibold text-slate-900">Marcar proposta como fechada?</h2>
+                <p class="mt-2 text-sm text-slate-600">
+                    A data de fechamento será registrada agora. Esta ação indica que a proposta foi ganha/fechada.
+                </p>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                        @click="closeMarkAsClosedModal"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        :disabled="form.processing"
+                        class="inline-flex items-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
+                        @click="confirmMarkAsClosed"
+                    >
+                        {{ form.processing ? 'Salvando…' : 'Confirmar' }}
+                    </button>
+                </div>
+            </div>
+        </Modal>
     </AdminLayout>
 </template>

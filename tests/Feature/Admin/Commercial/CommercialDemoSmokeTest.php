@@ -42,9 +42,9 @@ class CommercialDemoSmokeTest extends TestCase
         $this->assertSame(1, CommercialCommission::query()->where('status', CommercialCommission::STATUS_PAGA)->count());
     }
 
-    public function test_demo_open_proposals_form_fifo_queue(): void
+    public function test_demo_open_proposals_seed_order(): void
     {
-        $queueCodes = CommercialProposal::query()
+        $codes = CommercialProposal::query()
             ->where('code', 'like', 'PROP-DEMO-%')
             ->where('is_closed', false)
             ->orderBy('created_at')
@@ -57,7 +57,7 @@ class CommercialDemoSmokeTest extends TestCase
             'PROP-DEMO-0002',
             'PROP-DEMO-0003',
             'PROP-DEMO-0004',
-        ], $queueCodes);
+        ], $codes);
 
         $withoutSeller = CommercialProposal::query()->where('code', 'PROP-DEMO-0003')->first();
         $this->assertNotNull($withoutSeller);
@@ -134,7 +134,7 @@ class CommercialDemoSmokeTest extends TestCase
         $this->assertSame(CommercialCommission::STATUS_A_PAGAR, $quitadaComComissaoAberta?->commission?->status);
     }
 
-    public function test_demo_proposal_queue_page_matches_seeded_data(): void
+    public function test_demo_proposals_index_ignores_ordenacao_fila_and_lists_recent_first(): void
     {
         $this->withoutVite();
 
@@ -146,15 +146,11 @@ class CommercialDemoSmokeTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Commercial/Proposals/Index')
-                ->where('queue_total', 4)
-                ->has('queue', 4)
-                ->where('queue.0.code', 'PROP-DEMO-0001')
-                ->where('queue.0.queue_position', 1)
-                ->where('queue.3.code', 'PROP-DEMO-0004')
-                ->where('queue.3.queue_position', 4)
+                ->missing('queue')
+                ->missing('queue_total')
                 ->has('proposals.data', 4)
-                ->where('proposals.data.0.code', 'PROP-DEMO-0001')
-                ->where('proposals.data.3.code', 'PROP-DEMO-0004')
+                ->where('proposals.data.0.code', 'PROP-DEMO-0004')
+                ->where('proposals.data.3.code', 'PROP-DEMO-0001')
             );
     }
 

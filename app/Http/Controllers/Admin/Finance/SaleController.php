@@ -17,7 +17,6 @@ class SaleController extends Controller
 {
     public function __construct(
         private readonly ProposalSaleConversionService $conversion,
-        private readonly PublishCommercialNotice $notices,
     ) {}
 
     public function index(Request $request): Response
@@ -88,19 +87,65 @@ class SaleController extends Controller
 
     public function store(Request $request, CommercialProposal $proposal): RedirectResponse
     {
+        $isMisto = $request->input('payment_method') === 'misto';
+
         $data = $request->validate([
             'payment_method' => ['required', Rule::in(['pix', 'boleto', 'cartao', 'misto'])],
-            'installments_count' => ['required', 'integer', 'min:1', 'max:60'],
+            'installments_count' => [
+                Rule::excludeIf($isMisto),
+                Rule::requiredIf(! $isMisto),
+                'integer',
+                'min:1',
+                'max:60',
+            ],
             'first_due_date' => ['required', 'date', 'after_or_equal:today'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'mix_parts' => [
+                Rule::excludeIf(! $isMisto),
+                Rule::requiredIf($isMisto),
+                'array',
+                'min:2',
+                'max:60',
+            ],
+            'mix_parts.*.method' => [
+                Rule::requiredIf($isMisto),
+                Rule::in(['pix', 'boleto', 'cartao']),
+            ],
+            'mix_parts.*.percent' => [
+                Rule::requiredIf($isMisto),
+                'numeric',
+                'gt:0',
+                'lte:100',
+            ],
+        ], [
+            'mix_parts.required' => 'Informe a composição do pagamento misto.',
+            'mix_parts.min' => 'Informe pelo menos 2 partes na composição.',
+            'mix_parts.*.method.required' => 'Selecione a forma de cada parte.',
+            'mix_parts.*.method.in' => 'Cada parte deve ser PIX, boleto ou cartão.',
+            'mix_parts.*.percent.required' => 'Informe o percentual de cada parte.',
+            'mix_parts.*.percent.gt' => 'Cada percentual deve ser maior que zero.',
+            'installments_count.required' => 'Informe o número de parcelas.',
         ]);
 
         $sale = $this->conversion->convert($proposal, $data, $request->user()?->id);
 
-        $this->notices->saleCreated($sale, $request->user());
+        $actor = $request->user();
+        $saleId = (int) $sale->id;
+        $saleCode = (string) $sale->code;
+
+        // Não bloquear o redirect Inertia com a publicação do aviso.
+        dispatch(function () use ($saleId, $actor): void {
+            $sale = CommercialSale::query()->find($saleId);
+            if (! $sale) {
+                return;
+            }
+            app(PublishCommercialNotice::class)->saleCreated($sale, $actor);
+        })->afterResponse();
 
         return redirect()
-            ->route('admin.financeiro.vendas.show', $sale)
-            ->with('success', "Venda {$sale->code} criada a partir da proposta {$proposal->code}.");
+            ->route('admin.comercial.propostas.index')
+            ->with('success', "Venda {$saleCode} criada a partir da proposta {$proposal->code}.")
+            ->with('sale_id', $saleId)
+            ->with('sale_code', $saleCode);
     }
 }

@@ -51,7 +51,7 @@ Após `db:seed`, o **`CommercialDemoSeeder`** cria propostas, vendas, parcelas e
 
 ### URLs rápidas
 
-- Fila de propostas: `/admin/comercial/propostas?status=abertas&ordenacao=fila`
+- Propostas em aberto: `/admin/comercial/propostas?status=abertas`
 - Comissões pendentes: `/admin/financeiro/comissoes?status=a_pagar`
 - Painel financeiro: `/admin/financeiro`
 
@@ -71,7 +71,7 @@ Para validar que todos os cenários demo existem e as páginas respondem correta
 docker compose exec app php artisan test --filter=CommercialDemoSmokeTest
 ```
 
-São **9 testes** (112 asserções): fila FIFO, proposta conversível, estados das vendas/parcelas, ordem das comissões, páginas Inertia e idempotência do seeder.
+São **9 testes**: propostas demo abertas, proposta conversível, estados das vendas/parcelas, ordem das comissões, páginas Inertia e idempotência do seeder.
 
 ## Feedbacks internos (dados de teste)
 

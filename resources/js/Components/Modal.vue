@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { shouldCloseOnBackdropClick } from '@/utils/backdropCloseGesture';
 
 const props = defineProps({
     show: {
@@ -19,6 +20,7 @@ const props = defineProps({
 const emit = defineEmits(['close']);
 const dialog = ref();
 const showSlot = ref(props.show);
+const backdropPointerDown = ref(false);
 
 watch(
     () => props.show,
@@ -26,12 +28,14 @@ watch(
         if (show) {
             document.body.style.overflow = 'hidden';
             showSlot.value = true;
+            backdropPointerDown.value = false;
 
             nextTick(() => {
                 dialog.value?.showModal();
             });
         } else {
             document.body.style.overflow = '';
+            backdropPointerDown.value = false;
 
             setTimeout(() => {
                 dialog.value?.close();
@@ -45,6 +49,23 @@ watch(
 const close = () => {
     if (props.closeable) {
         emit('close');
+    }
+};
+
+const onBackdropPointerDown = () => {
+    backdropPointerDown.value = true;
+};
+
+const onPanelPointerDown = () => {
+    backdropPointerDown.value = false;
+};
+
+const onBackdropClick = () => {
+    const startedOnBackdrop = backdropPointerDown.value;
+    backdropPointerDown.value = false;
+
+    if (shouldCloseOnBackdropClick(startedOnBackdrop, true)) {
+        close();
     }
 };
 
@@ -110,7 +131,8 @@ const maxWidthClass = computed(() => {
                 <div
                     v-show="show"
                     class="fixed inset-0 transform transition-all"
-                    @click="close"
+                    @mousedown="onBackdropPointerDown"
+                    @click="onBackdropClick"
                 >
                     <div
                         class="absolute inset-0 bg-gray-500 opacity-75"
@@ -130,6 +152,7 @@ const maxWidthClass = computed(() => {
                     v-show="show"
                     class="mb-6 transform overflow-hidden rounded-lg bg-white shadow-xl transition-all sm:mx-auto sm:w-full"
                     :class="maxWidthClass"
+                    @mousedown="onPanelPointerDown"
                 >
                     <slot v-if="showSlot" />
                 </div>
