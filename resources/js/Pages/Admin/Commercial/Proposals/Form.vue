@@ -12,7 +12,7 @@ import {
     FLEXIBLE_RATE_CUSTOM,
     FLEXIBLE_RATE_DEFS,
 } from '@/composables/useCatalogProductPricing';
-import { formatCnpj } from '@/utils/formatCnpj';
+import { formatCnpj, maskCnpj } from '@/utils/formatCnpj';
 import axios from 'axios';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { computed, nextTick, ref } from 'vue';
@@ -63,7 +63,7 @@ const buildPdfOptionalSections = () => Object.fromEntries(
 const formInitial = props.proposal
     ? {
           client_name: props.proposal.client_name ?? '',
-          client_cnpj: formatCnpj(props.proposal.client_cnpj ?? ''),
+          client_cnpj: maskCnpj(props.proposal.client_cnpj ?? ''),
           client_email: props.proposal.client_email ?? '',
           client_phone: props.proposal.client_phone ?? '',
           client_address: props.proposal.client_address ?? '',
@@ -75,7 +75,7 @@ const formInitial = props.proposal
           seller_id: props.proposal.seller_id ?? '',
           is_closed: !!props.proposal.is_closed,
           notes: props.proposal.notes ?? '',
-          payment_method: props.proposal.payment_method ?? '',
+          payment_method_id: props.proposal.payment_method_id ?? '',
           include_minimum_stay: props.proposal.include_minimum_stay ?? true,
           palestra_topic: props.proposal.palestra_topic ?? '',
           palestra_event_date: props.proposal.palestra_event_date ?? '',
@@ -104,7 +104,7 @@ const formInitial = props.proposal
           seller_id: '',
           is_closed: false,
           notes: '',
-          payment_method: '',
+          payment_method_id: '',
           include_minimum_stay: true,
           palestra_topic: '',
           palestra_event_date: '',
@@ -369,6 +369,10 @@ const cnpjLookupSuccess = ref('');
 const cnpjDigitCount = computed(() => (String(form.client_cnpj || '').match(/\d/g) || []).length);
 const canLookupCnpj = computed(() => cnpjDigitCount.value === 14);
 
+const onClientCnpjInput = (event) => {
+    form.client_cnpj = maskCnpj(event.target.value);
+};
+
 const fetchCnpjFromReceita = async () => {
     cnpjLookupError.value = '';
     cnpjLookupSuccess.value = '';
@@ -381,7 +385,7 @@ const fetchCnpjFromReceita = async () => {
         const { data } = await axios.get(route('admin.companies.lookup-cnpj'), {
             params: { cnpj: form.client_cnpj },
         });
-        form.client_cnpj = data.cnpj ?? form.client_cnpj;
+        form.client_cnpj = maskCnpj(data.cnpj ?? form.client_cnpj);
         const fantasiaOuRazao = data.name || data.legal_name;
         if (fantasiaOuRazao) {
             form.client_name = fantasiaOuRazao;
@@ -403,7 +407,7 @@ const fetchCnpjFromReceita = async () => {
 
 const scrollToFirstFormError = () => {
     nextTick(() => {
-        const priority = ['client_name', 'employee_count', 'payment_method', 'client_email'];
+        const priority = ['client_name', 'employee_count', 'payment_method_id', 'client_email'];
         const keys = [
             ...priority.filter((key) => form.errors[key]),
             ...Object.keys(form.errors).filter((key) => !priority.includes(key)),
@@ -428,7 +432,7 @@ const isEmployeeCountValid = (value) => {
 
 /** Gate client-side alinhado aos obrigatórios do backend. */
 const validateRequiredFields = () => {
-    form.clearErrors('client_name', 'employee_count', 'payment_method');
+    form.clearErrors('client_name', 'employee_count', 'payment_method_id');
 
     let valid = true;
 
@@ -442,8 +446,8 @@ const validateRequiredFields = () => {
         valid = false;
     }
 
-    if (!String(form.payment_method ?? '').trim()) {
-        form.setError('payment_method', 'Selecione a forma de pagamento.');
+    if (!form.payment_method_id) {
+        form.setError('payment_method_id', 'Selecione a forma de pagamento.');
         valid = false;
     }
 
@@ -583,7 +587,11 @@ const services = computed(() => {
                                     v-model="form.client_cnpj"
                                     type="text"
                                     placeholder="00.000.000/0001-00"
+                                    inputmode="numeric"
+                                    autocomplete="off"
+                                    maxlength="18"
                                     class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500 sm:max-w-md"
+                                    @input="onClientCnpjInput"
                                     @blur="form.client_cnpj = formatCnpj(form.client_cnpj)"
                                 />
                                 <button
@@ -1129,15 +1137,15 @@ const services = computed(() => {
                                 Nenhum vendedor marcado como Comercial. Marque usuários como "Comercial" no cadastro de usuários.
                             </p>
                         </div>
-                        <div id="proposal-field-payment_method" data-error-for="payment_method">
+                        <div id="proposal-field-payment_method_id" data-error-for="payment_method_id">
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
                                 Forma de pagamento (PDF) *
                             </label>
                             <select
-                                v-model="form.payment_method"
+                                v-model="form.payment_method_id"
                                 required
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                :class="form.errors.payment_method ? 'border-rose-400' : ''"
+                                :class="form.errors.payment_method_id ? 'border-rose-400' : ''"
                             >
                                 <option value="">— Selecionar —</option>
                                 <option
@@ -1150,9 +1158,19 @@ const services = computed(() => {
                             </select>
                             <p class="mt-1 text-xs text-slate-500">
                                 Aparece na secção «Condições de Pagamento» do PDF desta proposta.
+                                Origem: Financeiro → Formas de pagamento.
                             </p>
-                            <p v-if="form.errors.payment_method" class="mt-1 text-xs text-rose-600">
-                                {{ form.errors.payment_method }}
+                            <p v-if="!paymentMethodOptions.length" class="mt-1 text-xs text-amber-700">
+                                Cadastre formas de pagamento em
+                                <Link
+                                    :href="route('admin.financeiro.formas-pagamento.index')"
+                                    class="font-semibold underline"
+                                >
+                                    Financeiro → Formas de pagamento
+                                </Link>.
+                            </p>
+                            <p v-if="form.errors.payment_method_id" class="mt-1 text-xs text-rose-600">
+                                {{ form.errors.payment_method_id }}
                             </p>
                         </div>
                         <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 sm:col-span-2">

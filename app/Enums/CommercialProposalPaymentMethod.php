@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
+/**
+ * @deprecated Preferir FinancePaymentMethod (CRUD Financeiro). Mantido para referência
+ * de textos legados e migração de slugs (credito/debito → cartao).
+ */
 enum CommercialProposalPaymentMethod: string
 {
     case Boleto = 'boleto';

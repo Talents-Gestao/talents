@@ -3,6 +3,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { formatCpf } from '@/utils/formatCpf';
 import { maskPhoneBr } from '@/utils/formatPhone';
 import { Head, Link, router } from '@inertiajs/vue3';
 
@@ -180,7 +181,7 @@ const remove = () => {
                 <dl class="grid gap-4 p-6 sm:grid-cols-2">
                     <div>
                         <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">CPF</dt>
-                        <dd class="mt-1 text-sm text-slate-900">{{ display(employee.cpf) }}</dd>
+                        <dd class="mt-1 text-sm text-slate-900">{{ display(formatCpf(employee.cpf)) }}</dd>
                     </div>
                     <div>
                         <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">RG</dt>

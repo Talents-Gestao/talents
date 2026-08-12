@@ -14,7 +14,7 @@
     @endphp
     @if($isBullet)
         @if(!$inList)
-            <ul class="desc-bullets">
+            <ul class="pdf-list desc-bullets">
             @php $inList = true; @endphp
         @endif
         <li>{{ $bulletBody }}</li>

@@ -52,7 +52,7 @@ class ProposalToSaleFlowTest extends TestCase
             'employee_count' => 25,
             'seller_id' => $seller->id,
             'is_closed' => true,
-            'payment_method' => 'pix',
+            'payment_method_id' => \App\Models\FinancePaymentMethod::query()->where('slug', 'pix')->value('id'),
             'catalog_products' => [
                 [
                     'product_id' => $product->id,
@@ -227,7 +227,7 @@ class ProposalToSaleFlowTest extends TestCase
         $this->post(route('admin.comercial.propostas.store'), [
             'client_name' => 'X',
             'employee_count' => 1,
-            'payment_method' => 'pix',
+            'payment_method_id' => \App\Models\FinancePaymentMethod::query()->where('slug', 'pix')->value('id'),
         ])->assertRedirect();
 
         $this->post(route('admin.comercial.propostas.converter', $proposal), [

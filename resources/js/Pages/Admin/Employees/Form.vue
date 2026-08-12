@@ -5,6 +5,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { formatCpf, maskCpf } from '@/utils/formatCpf';
 import { maskPhoneBr } from '@/utils/formatPhone';
 import axios from 'axios';
 import { Head, Link, useForm } from '@inertiajs/vue3';
@@ -43,7 +44,7 @@ const form = useForm({
     leader_user_id: props.employee?.leader_user_id ?? '',
     admission_date: props.employee?.admission_date ?? '',
     work_schedule: props.employee?.work_schedule ?? '',
-    cpf: props.employee?.cpf ?? '',
+    cpf: maskCpf(props.employee?.cpf ?? ''),
     rg: props.employee?.rg ?? '',
     is_active: props.employee?.is_active ?? true,
     notes: props.employee?.notes ?? '',
@@ -57,14 +58,6 @@ const cepDigits = (value) => String(value ?? '').replace(/\D/g, '').slice(0, 8);
 
 const onPhoneInput = (field) => (event) => {
     form[field] = maskPhoneBr(event.target.value);
-};
-
-const maskCpf = (value) => {
-    const digits = String(value ?? '').replace(/\D/g, '').slice(0, 11);
-    if (digits.length <= 3) return digits;
-    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
-    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
-    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 };
 
 const onCpfInput = (event) => {
@@ -329,10 +322,12 @@ const backHref =
                         <input
                             :value="form.cpf"
                             inputmode="numeric"
+                            autocomplete="off"
                             placeholder="000.000.000-00"
                             maxlength="14"
                             :class="fieldClass"
                             @input="onCpfInput"
+                            @blur="form.cpf = formatCpf(form.cpf)"
                         />
                         <InputError :message="form.errors.cpf" />
                     </div>

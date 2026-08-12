@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Admin\Commercial;
 
 use App\Actions\Notices\PublishCommercialNotice;
-use App\Enums\CommercialProposalPaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialContractTemplate;
 use App\Models\CommercialProduct;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSetting;
+use App\Models\FinancePaymentMethod;
 use App\Models\User;
 use App\Services\CommercialPricingService;
 use App\Services\CommercialProposalPdfService;
@@ -105,7 +105,7 @@ class ProposalController extends Controller
             'settings' => $this->publicSettings(),
             'catalogProducts' => $this->catalogProductsPayload(),
             'pdfOptionalSectionOptions' => CommercialProposalPdfOptionalSections::options(),
-            'paymentMethodOptions' => CommercialProposalPaymentMethod::options(),
+            'paymentMethodOptions' => $this->paymentMethodOptions(null),
         ]);
     }
 
@@ -121,6 +121,9 @@ class ProposalController extends Controller
                 'code' => CommercialProposal::nextCode(),
                 'created_by' => $request->user()?->id,
                 'closed_at' => ($data['is_closed'] ?? false) ? now() : null,
+                'list_status' => ($data['is_closed'] ?? false)
+                    ? ProposalListStatus::CLOSED
+                    : ProposalListStatus::OPEN,
             ],
         ));
 
@@ -146,7 +149,7 @@ class ProposalController extends Controller
             'settings' => $this->publicSettings(),
             'catalogProducts' => $this->catalogProductsPayload(),
             'pdfOptionalSectionOptions' => CommercialProposalPdfOptionalSections::options(),
-            'paymentMethodOptions' => CommercialProposalPaymentMethod::options(),
+            'paymentMethodOptions' => $this->paymentMethodOptions($proposal),
         ]);
     }
 
@@ -163,6 +166,11 @@ class ProposalController extends Controller
                 ! $isClosed => null,
                 default => $proposal->closed_at,
             },
+            'list_status' => $isClosed
+                ? ($proposal->list_status === ProposalListStatus::IN_PROGRESS
+                    ? ProposalListStatus::IN_PROGRESS
+                    : ProposalListStatus::CLOSED)
+                : ProposalListStatus::OPEN,
         ]));
 
         $this->syncCatalogLines($proposal, $catalogLines);
@@ -179,19 +187,21 @@ class ProposalController extends Controller
     public function updateStatus(Request $request, CommercialProposal $proposal): RedirectResponse
     {
         $data = $request->validate([
-            'status' => ['required', Rule::in(['open', 'closed'])],
+            'status' => ['required', Rule::in(ProposalListStatus::values())],
         ], [
             'status.required' => 'Selecione o status.',
             'status.in' => 'Status inválido.',
         ]);
 
+        $listStatus = $data['status'];
         $wasClosed = (bool) $proposal->is_closed;
-        $isClosed = $data['status'] === 'closed';
+        $isClosed = ProposalListStatus::impliesClosed($listStatus);
 
         $proposal->update([
+            'list_status' => $listStatus,
             'is_closed' => $isClosed,
             'closed_at' => match (true) {
-                $isClosed && ! $wasClosed => now(),
+                $isClosed && $proposal->closed_at === null => now(),
                 ! $isClosed => null,
                 default => $proposal->closed_at,
             },
@@ -201,7 +211,7 @@ class ProposalController extends Controller
             $this->notices->proposalWon($proposal->refresh(), $request->user());
         }
 
-        $label = $isClosed ? 'Fechada' : 'Em aberto';
+        $label = ProposalListStatus::label($listStatus);
         $redirect = redirect()
             ->route('admin.comercial.propostas.index')
             ->with('success', "Status da proposta {$proposal->code} atualizado para «{$label}».");
@@ -269,7 +279,8 @@ class ProposalController extends Controller
      */
     private function validatedWithTotals(Request $request, ?CommercialProposal $existing = null): array
     {
-        $data = $this->validateProposal($request);
+        $data = $this->validateProposal($request, $existing);
+        $data = $this->applyPaymentMethodSnapshot($data);
         $catalogProducts = $data['catalog_products'] ?? [];
         unset($data['catalog_products']);
 
@@ -388,8 +399,61 @@ class ProposalController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validateProposal(Request $request): array
+    /**
+     * @return array<int, array{value: int, label: string, slug: string}>
+     */
+    private function paymentMethodOptions(?CommercialProposal $proposal): array
     {
+        $currentId = $proposal?->payment_method_id;
+
+        return FinancePaymentMethod::query()
+            ->where(function ($q) use ($currentId): void {
+                $q->where('is_active', true);
+                if ($currentId) {
+                    $q->orWhere('id', $currentId);
+                }
+            })
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (FinancePaymentMethod $m) => [
+                'value' => $m->id,
+                'label' => $m->name,
+                'slug' => $m->slug,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function applyPaymentMethodSnapshot(array $data): array
+    {
+        $methodId = isset($data['payment_method_id']) ? (int) $data['payment_method_id'] : null;
+        unset($data['payment_method']);
+
+        if (! $methodId) {
+            $data['payment_method_id'] = null;
+            $data['payment_method'] = null;
+            $data['payment_method_label'] = null;
+
+            return $data;
+        }
+
+        $method = FinancePaymentMethod::query()->findOrFail($methodId);
+        $data['payment_method_id'] = $method->id;
+        $data['payment_method'] = $method->slug;
+        $data['payment_method_label'] = $method->name;
+
+        return $data;
+    }
+
+    private function validateProposal(Request $request, ?CommercialProposal $existing = null): array
+    {
+        $currentPaymentMethodId = $existing?->payment_method_id;
+
         $data = $request->validate([
             'client_name' => ['required', 'string', 'max:255'],
             'client_cnpj' => ['nullable', 'string', 'max:18'],
@@ -414,7 +478,18 @@ class ProposalController extends Controller
 
             'is_closed' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
-            'payment_method' => ['required', Rule::in(CommercialProposalPaymentMethod::values())],
+            'payment_method_id' => [
+                'required',
+                'integer',
+                Rule::exists('finance_payment_methods', 'id')->where(function ($query) use ($currentPaymentMethodId): void {
+                    $query->where(function ($inner) use ($currentPaymentMethodId): void {
+                        $inner->where('is_active', true);
+                        if ($currentPaymentMethodId) {
+                            $inner->orWhere('id', $currentPaymentMethodId);
+                        }
+                    });
+                }),
+            ],
             'include_minimum_stay' => ['boolean'],
 
             'pdf_subtitle' => ['nullable', 'string', 'max:500'],
@@ -443,8 +518,8 @@ class ProposalController extends Controller
             'employee_count.required' => 'Informe o número de funcionários.',
             'employee_count.integer' => 'O número de funcionários deve ser um inteiro.',
             'employee_count.min' => 'O número de funcionários não pode ser negativo.',
-            'payment_method.required' => 'Selecione a forma de pagamento.',
-            'payment_method.in' => 'Forma de pagamento inválida.',
+            'payment_method_id.required' => 'Selecione a forma de pagamento.',
+            'payment_method_id.exists' => 'Forma de pagamento inválida ou inativa.',
             'client_email.email' => 'Informe um e-mail válido.',
         ]);
 

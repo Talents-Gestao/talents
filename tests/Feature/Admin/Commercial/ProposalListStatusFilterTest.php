@@ -46,6 +46,7 @@ class ProposalListStatusFilterTest extends TestCase
             'total_final_cents' => 3000,
             'is_closed' => true,
             'closed_at' => now(),
+            'list_status' => ProposalListStatus::IN_PROGRESS,
         ]);
 
         CommercialSale::create([
@@ -63,7 +64,9 @@ class ProposalListStatusFilterTest extends TestCase
             'client_name' => 'Quitada',
             'employee_count' => 5,
             'total_final_cents' => 4000,
-            'is_closed' => false,
+            'is_closed' => true,
+            'closed_at' => now(),
+            'list_status' => ProposalListStatus::CLOSED,
         ]);
 
         CommercialSale::create([

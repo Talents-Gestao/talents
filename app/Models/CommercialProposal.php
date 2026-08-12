@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\CommercialProposalPaymentMethod;
 use App\Support\Commercial\ProposalListStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +22,17 @@ class CommercialProposal extends Model
         'include_publico_atendido' => true,
         'include_minimum_stay' => true,
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (CommercialProposal $proposal): void {
+            if (! filled($proposal->list_status)) {
+                $proposal->list_status = $proposal->is_closed
+                    ? ProposalListStatus::CLOSED
+                    : ProposalListStatus::OPEN;
+            }
+        });
+    }
 
     protected function casts(): array
     {
@@ -53,12 +63,15 @@ class CommercialProposal extends Model
             'commission_cents' => 'integer',
 
             'is_closed' => 'boolean',
+            'list_status' => 'string',
             'closed_at' => 'datetime',
 
             'palestra_event_date' => 'date',
             'palestra_audience_estimate' => 'integer',
 
-            'payment_method' => CommercialProposalPaymentMethod::class,
+            // Snapshot slug (legado); preferir paymentMethod() + payment_method_label.
+            'payment_method' => 'string',
+            'payment_method_id' => 'integer',
             'include_minimum_stay' => 'boolean',
 
             'service_descriptions' => 'array',
@@ -74,6 +87,11 @@ class CommercialProposal extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(FinancePaymentMethod::class, 'payment_method_id');
     }
 
     public function contracts(): HasMany
@@ -97,7 +115,37 @@ class CommercialProposal extends Model
     }
 
     /**
-     * Status visual da lista: open|in_progress|closed (não persiste).
+     * Nome exibido no PDF/contrato (snapshot; não muda se o método for renomeado depois).
+     */
+    public function paymentMethodDisplayName(): ?string
+    {
+        if (filled($this->payment_method_label)) {
+            return (string) $this->payment_method_label;
+        }
+
+        $related = $this->relationLoaded('paymentMethod')
+            ? $this->paymentMethod
+            : $this->paymentMethod()->first();
+
+        return $related?->name;
+    }
+
+    public function paymentMethodPdfBullet(): ?string
+    {
+        $name = $this->paymentMethodDisplayName();
+
+        return $name !== null && $name !== '' ? '• Pagamento via '.$name.';' : null;
+    }
+
+    public function paymentMethodContractText(): ?string
+    {
+        $name = $this->paymentMethodDisplayName();
+
+        return $name !== null && $name !== '' ? 'Pagamento via '.$name.'.' : null;
+    }
+
+    /**
+     * Status da lista: open|in_progress|closed (persistido em list_status).
      */
     public function listStatus(): string
     {

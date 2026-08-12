@@ -4,17 +4,37 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin\Commercial;
 
-use App\Enums\CommercialProposalPaymentMethod;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSetting;
+use App\Models\FinancePaymentMethod;
 use App\Models\User;
 use App\Services\CommercialProposalPdfService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ProposalPaymentMethodPdfTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function methodBySlug(string $slug): FinancePaymentMethod
+    {
+        return FinancePaymentMethod::query()->where('slug', $slug)->firstOrFail();
+    }
+
+    /**
+     * @return array{payment_method_id: int, payment_method: string, payment_method_label: string}
+     */
+    private function paymentAttrs(string $slug): array
+    {
+        $method = $this->methodBySlug($slug);
+
+        return [
+            'payment_method_id' => $method->id,
+            'payment_method' => $method->slug,
+            'payment_method_label' => $method->name,
+        ];
+    }
 
     public function test_admin_must_choose_payment_method_when_creating_proposal(): void
     {
@@ -28,7 +48,89 @@ class ProposalPaymentMethodPdfTest extends TestCase
                 'employee_count' => 10,
                 'is_closed' => false,
             ])
-            ->assertSessionHasErrors('payment_method');
+            ->assertSessionHasErrors('payment_method_id');
+    }
+
+    public function test_create_options_come_from_finance_payment_methods(): void
+    {
+        $this->withoutVite();
+
+        FinancePaymentMethod::query()->create([
+            'name' => 'Cheque',
+            'slug' => 'cheque',
+            'is_active' => true,
+            'sort_order' => 99,
+        ]);
+
+        FinancePaymentMethod::query()->create([
+            'name' => 'Inativo',
+            'slug' => 'inativo-teste',
+            'is_active' => false,
+            'sort_order' => 100,
+        ]);
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Commercial/Proposals/Form')
+                ->has('paymentMethodOptions')
+                ->where(
+                    'paymentMethodOptions',
+                    fn ($opts) => collect($opts)->contains(fn ($o) => ($o['label'] ?? null) === 'Cheque')
+                        && collect($opts)->every(fn ($o) => ($o['label'] ?? null) !== 'Inativo'),
+                )
+            );
+    }
+
+    public function test_inactive_method_rejected_on_create_but_allowed_on_edit_of_existing(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $inactive = FinancePaymentMethod::query()->create([
+            'name' => 'Método Inativo',
+            'slug' => 'metodo-inativo',
+            'is_active' => false,
+            'sort_order' => 50,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.comercial.propostas.store'), [
+                'client_name' => 'Com Inativo',
+                'employee_count' => 3,
+                'is_closed' => false,
+                'payment_method_id' => $inactive->id,
+            ])
+            ->assertSessionHasErrors('payment_method_id');
+
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-PAY-INACTIVE',
+            'client_name' => 'Já tinha inativo',
+            'employee_count' => 3,
+            'total_final_cents' => 1000,
+            'is_closed' => false,
+            ...$this->paymentAttrs('pix'),
+        ]);
+
+        $proposal->forceFill([
+            'payment_method_id' => $inactive->id,
+            'payment_method' => $inactive->slug,
+            'payment_method_label' => $inactive->name,
+        ])->save();
+
+        $this->actingAs($admin)
+            ->put(route('admin.comercial.propostas.update', $proposal), [
+                'client_name' => 'Já tinha inativo',
+                'employee_count' => 3,
+                'is_closed' => false,
+                'payment_method_id' => $inactive->id,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame($inactive->id, $proposal->fresh()->payment_method_id);
     }
 
     public function test_pdf_uses_payment_method_from_proposal_not_hardcoded_default(): void
@@ -43,7 +145,7 @@ class ProposalPaymentMethodPdfTest extends TestCase
             'employee_count' => 8,
             'total_final_cents' => 10000,
             'is_closed' => false,
-            'payment_method' => CommercialProposalPaymentMethod::Pix,
+            ...$this->paymentAttrs('pix'),
         ]);
 
         $html = view('reports.commercial-proposal', [
@@ -74,6 +176,8 @@ class ProposalPaymentMethodPdfTest extends TestCase
             'total_final_cents' => 5000,
             'is_closed' => false,
             'payment_method' => null,
+            'payment_method_id' => null,
+            'payment_method_label' => null,
         ]);
 
         $html = view('reports.commercial-proposal', [
@@ -102,7 +206,7 @@ class ProposalPaymentMethodPdfTest extends TestCase
             'include_minimum_stay' => true,
             'total_final_cents' => 1000,
             'is_closed' => false,
-            'payment_method' => CommercialProposalPaymentMethod::Pix,
+            ...$this->paymentAttrs('pix'),
         ]);
 
         $html = view('reports.commercial-proposal', [
@@ -129,7 +233,7 @@ class ProposalPaymentMethodPdfTest extends TestCase
             'include_minimum_stay' => false,
             'total_final_cents' => 1000,
             'is_closed' => false,
-            'payment_method' => CommercialProposalPaymentMethod::Pix,
+            ...$this->paymentAttrs('pix'),
         ]);
 
         $html = view('reports.commercial-proposal', [
@@ -157,7 +261,7 @@ class ProposalPaymentMethodPdfTest extends TestCase
             'include_minimum_stay' => false,
             'total_final_cents' => 2000,
             'is_closed' => false,
-            'payment_method' => CommercialProposalPaymentMethod::Boleto,
+            ...$this->paymentAttrs('boleto'),
         ]);
 
         $html = view('reports.commercial-proposal', [
@@ -180,13 +284,14 @@ class ProposalPaymentMethodPdfTest extends TestCase
         $this->withoutVite();
 
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $boleto = $this->methodBySlug('boleto');
 
         $this->actingAs($admin)
             ->post(route('admin.comercial.propostas.store'), [
                 'client_name' => 'Empresa Flags PDF',
                 'employee_count' => 12,
                 'is_closed' => false,
-                'payment_method' => 'boleto',
+                'payment_method_id' => $boleto->id,
                 'include_publico_atendido' => false,
                 'include_minimum_stay' => false,
             ])
@@ -196,6 +301,9 @@ class ProposalPaymentMethodPdfTest extends TestCase
             'client_name' => 'Empresa Flags PDF',
             'include_publico_atendido' => false,
             'include_minimum_stay' => false,
+            'payment_method_id' => $boleto->id,
+            'payment_method' => 'boleto',
+            'payment_method_label' => 'Boleto',
         ]);
     }
 
@@ -207,7 +315,7 @@ class ProposalPaymentMethodPdfTest extends TestCase
             'employee_count' => 4,
             'total_final_cents' => 1000,
             'is_closed' => false,
-            'payment_method' => CommercialProposalPaymentMethod::Pix,
+            ...$this->paymentAttrs('pix'),
         ]);
 
         $html = view('reports.commercial-proposal', [
@@ -241,7 +349,7 @@ class ProposalPaymentMethodPdfTest extends TestCase
             'employee_count' => 6,
             'total_final_cents' => 2500,
             'is_closed' => false,
-            'payment_method' => CommercialProposalPaymentMethod::Boleto,
+            ...$this->paymentAttrs('boleto'),
             'notes' => $notes,
         ]);
 
@@ -255,7 +363,7 @@ class ProposalPaymentMethodPdfTest extends TestCase
             'validityDate' => now()->addDays(7),
         ])->render();
 
-        $this->assertStringContainsString('<h2>Observações</h2>', $html);
+        $this->assertStringContainsString('Observações</h2>', $html);
         $this->assertStringContainsString('Prazo de implantação a combinar.', $html);
         $this->assertStringContainsString('Visita técnica inclusa.', $html);
     }
@@ -268,7 +376,7 @@ class ProposalPaymentMethodPdfTest extends TestCase
             'employee_count' => 2,
             'total_final_cents' => 800,
             'is_closed' => false,
-            'payment_method' => CommercialProposalPaymentMethod::Pix,
+            ...$this->paymentAttrs('pix'),
             'notes' => null,
         ]);
 
@@ -294,15 +402,15 @@ class ProposalPaymentMethodPdfTest extends TestCase
         $this->assertStringContainsString('Observação só do serviço', $html);
     }
 
-    public function test_credit_payment_condition_does_not_list_installment_unit_amounts(): void
+    public function test_card_payment_uses_finance_method_name_without_installment_unit_amounts(): void
     {
         $proposal = CommercialProposal::query()->create([
             'code' => 'PROP-PAY-0004',
-            'client_name' => 'Cliente Crédito',
+            'client_name' => 'Cliente Cartão',
             'employee_count' => 10,
             'total_final_cents' => 315400,
             'is_closed' => false,
-            'payment_method' => CommercialProposalPaymentMethod::Credito,
+            ...$this->paymentAttrs('cartao'),
         ]);
 
         $html = view('reports.commercial-proposal', [
@@ -323,13 +431,10 @@ class ProposalPaymentMethodPdfTest extends TestCase
             'validityDate' => now()->addDays(7),
         ])->render();
 
-        $this->assertStringContainsString('Pagamento no cartão de crédito, com possibilidade de parcelamento', $html);
+        $this->assertStringContainsString('Pagamento via Cartão', $html);
         $this->assertStringContainsString('R$ 3.154,00', $html);
         $this->assertDoesNotMatchRegularExpression('/\d+x\s*R\$/i', $html);
-        $this->assertSame(
-            'Pagamento no cartão de crédito, com possibilidade de parcelamento. Os valores deste instrumento referem-se ao montante total contratado.',
-            CommercialProposalPaymentMethod::Credito->contractText(),
-        );
+        $this->assertSame('Pagamento via Cartão.', $proposal->paymentMethodContractText());
     }
 
     public function test_saved_payment_method_is_persisted(): void
@@ -337,19 +442,22 @@ class ProposalPaymentMethodPdfTest extends TestCase
         $this->withoutVite();
 
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $boleto = $this->methodBySlug('boleto');
 
         $this->actingAs($admin)
             ->post(route('admin.comercial.propostas.store'), [
                 'client_name' => 'Empresa Boleto',
                 'employee_count' => 12,
                 'is_closed' => false,
-                'payment_method' => 'boleto',
+                'payment_method_id' => $boleto->id,
             ])
             ->assertRedirect();
 
         $this->assertDatabaseHas('commercial_proposals', [
             'client_name' => 'Empresa Boleto',
             'payment_method' => 'boleto',
+            'payment_method_id' => $boleto->id,
+            'payment_method_label' => 'Boleto',
         ]);
     }
 
@@ -357,11 +465,11 @@ class ProposalPaymentMethodPdfTest extends TestCase
     {
         $proposal = CommercialProposal::query()->create([
             'code' => 'PROP-PAY-0003',
-            'client_name' => 'Cliente Débito',
+            'client_name' => 'Cliente Cartão PDF',
             'employee_count' => 4,
             'total_final_cents' => 8000,
             'is_closed' => false,
-            'payment_method' => CommercialProposalPaymentMethod::Debito,
+            ...$this->paymentAttrs('cartao'),
         ]);
 
         $pdf = app(CommercialProposalPdfService::class)->generate($proposal);
