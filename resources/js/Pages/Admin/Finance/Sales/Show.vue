@@ -14,9 +14,17 @@ const props = defineProps({
 const paymentModalOpen = ref(false);
 const selectedInstallment = ref(null);
 
+const localTodayDate = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
 const paymentForm = useForm({
     status: 'pago',
-    paid_at: new Date().toISOString().slice(0, 10),
+    paid_at: localTodayDate(),
     paid_amount_cents: 0,
     notes: '',
     receipt: null,
@@ -27,8 +35,8 @@ const paidAmountReais = ref(0);
 const commissionForm = useForm({
     status: props.sale.commission?.status ?? 'a_pagar',
     paid_at: props.sale.commission?.paid_at
-        ? new Date(props.sale.commission.paid_at).toISOString().slice(0, 10)
-        : new Date().toISOString().slice(0, 10),
+        ? String(props.sale.commission.paid_at).slice(0, 10)
+        : localTodayDate(),
     notes: props.sale.commission?.notes ?? '',
 });
 
@@ -79,7 +87,7 @@ const openPaymentModal = (installment) => {
     selectedInstallment.value = installment;
     paymentForm.reset();
     paymentForm.status = installment.status === 'pago' ? 'pago' : 'pago';
-    paymentForm.paid_at = new Date().toISOString().slice(0, 10);
+    paymentForm.paid_at = localTodayDate();
     paymentForm.paid_amount_cents = installment.amount_cents;
     paidAmountReais.value = installment.amount_cents / 100;
     paymentForm.notes = installment.notes ?? '';
@@ -98,11 +106,17 @@ const submitPayment = () => {
     if (paymentForm.status === 'pago') {
         paymentForm.paid_amount_cents = Math.round(Number(paidAmountReais.value || 0) * 100);
     }
-    paymentForm.patch(route('admin.financeiro.parcelas.pagamento', selectedInstallment.value.id), {
-        preserveScroll: true,
-        forceFormData: true,
-        onSuccess: () => closePaymentModal(),
-    });
+    // PHP não interpreta multipart em PATCH; spoof via POST (padrão do projeto).
+    paymentForm
+        .transform((data) => ({
+            ...data,
+            _method: 'patch',
+        }))
+        .post(route('admin.financeiro.parcelas.pagamento', selectedInstallment.value.id), {
+            preserveScroll: true,
+            forceFormData: true,
+            onSuccess: () => closePaymentModal(),
+        });
 };
 
 const submitCommission = () => {
@@ -295,6 +309,12 @@ const onReceiptChange = (event) => {
                 </p>
 
                 <form class="mt-4 space-y-4" @submit.prevent="submitPayment">
+                    <div
+                        v-if="paymentForm.hasErrors"
+                        class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                    >
+                        Não foi possível salvar. Verifique os campos e tente novamente.
+                    </div>
                     <div>
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
                         <select
@@ -305,6 +325,9 @@ const onReceiptChange = (event) => {
                             <option value="pago">Pago</option>
                             <option value="cancelado">Cancelado</option>
                         </select>
+                        <p v-if="paymentForm.errors.status" class="mt-1 text-xs text-rose-600">
+                            {{ paymentForm.errors.status }}
+                        </p>
                     </div>
                     <div v-if="paymentForm.status === 'pago'">
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Data do pagamento</label>
@@ -313,6 +336,9 @@ const onReceiptChange = (event) => {
                             type="date"
                             class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         />
+                        <p v-if="paymentForm.errors.paid_at" class="mt-1 text-xs text-rose-600">
+                            {{ paymentForm.errors.paid_at }}
+                        </p>
                         <label class="mt-3 block text-xs font-medium uppercase tracking-wide text-slate-500">
                             Valor pago (R$)
                         </label>
@@ -323,6 +349,9 @@ const onReceiptChange = (event) => {
                             step="0.01"
                             class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         />
+                        <p v-if="paymentForm.errors.paid_amount_cents" class="mt-1 text-xs text-rose-600">
+                            {{ paymentForm.errors.paid_amount_cents }}
+                        </p>
                     </div>
                     <div>
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Comprovante</label>
@@ -332,6 +361,9 @@ const onReceiptChange = (event) => {
                             class="mt-1 w-full text-sm"
                             @change="onReceiptChange"
                         />
+                        <p v-if="paymentForm.errors.receipt" class="mt-1 text-xs text-rose-600">
+                            {{ paymentForm.errors.receipt }}
+                        </p>
                     </div>
                     <div>
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
@@ -340,6 +372,9 @@ const onReceiptChange = (event) => {
                             rows="2"
                             class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         />
+                        <p v-if="paymentForm.errors.notes" class="mt-1 text-xs text-rose-600">
+                            {{ paymentForm.errors.notes }}
+                        </p>
                     </div>
                     <div class="flex justify-end gap-2 pt-2">
                         <button
