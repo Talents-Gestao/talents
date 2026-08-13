@@ -18,6 +18,7 @@ use App\Support\CommercialProposalPdfDefaults;
 use App\Support\CommercialProposalPdfOptionalSections;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -32,6 +33,45 @@ class ProposalController extends Controller
 
     public function index(Request $request): Response
     {
+        $request->merge([
+            'search' => $request->filled('search') ? $request->input('search') : null,
+            'seller_id' => $request->filled('seller_id') ? $request->input('seller_id') : null,
+            'status' => $request->filled('status') ? $request->input('status') : null,
+            'sale_situation' => $request->filled('sale_situation') ? $request->input('sale_situation') : null,
+            'created_from' => $request->filled('created_from') ? $request->input('created_from') : null,
+            'created_to' => $request->filled('created_to') ? $request->input('created_to') : null,
+        ]);
+
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'seller_id' => ['nullable', 'integer'],
+            'status' => ['nullable', 'string', Rule::in(['abertas', 'em_andamento', 'fechadas'])],
+            'sale_situation' => ['nullable', 'string', Rule::in(['without_sale', 'with_sale'])],
+            'created_from' => ['nullable', 'date'],
+            'created_to' => ['nullable', 'date', 'after_or_equal:created_from'],
+        ], [
+            'created_to.after_or_equal' => 'A data final deve ser igual ou posterior à data inicial.',
+        ]);
+
+        $filters = [
+            'search' => $validated['search'] ?? '',
+            'seller_id' => isset($validated['seller_id']) ? (string) $validated['seller_id'] : '',
+            'status' => $validated['status'] ?? '',
+            'sale_situation' => $validated['sale_situation'] ?? '',
+            'created_from' => $validated['created_from'] ?? '',
+            'created_to' => $validated['created_to'] ?? '',
+        ];
+
+        $baseQuery = CommercialProposal::query();
+        $this->applyProposalIndexFilters($baseQuery, $filters, includeStatus: false);
+
+        $statusCounts = [
+            'all' => (clone $baseQuery)->count(),
+            'abertas' => ProposalListStatus::applyFilter((clone $baseQuery), 'abertas')->count(),
+            'em_andamento' => ProposalListStatus::applyFilter((clone $baseQuery), 'em_andamento')->count(),
+            'fechadas' => ProposalListStatus::applyFilter((clone $baseQuery), 'fechadas')->count(),
+        ];
+
         $q = CommercialProposal::query()
             ->with([
                 'seller:id,name',
@@ -46,22 +86,7 @@ class ProposalController extends Controller
             ])
             ->orderByDesc('created_at');
 
-        if ($request->filled('search')) {
-            $s = (string) $request->string('search');
-            $q->where(function ($query) use ($s) {
-                $query->where('client_name', 'like', '%'.$s.'%')
-                    ->orWhere('code', 'like', '%'.$s.'%')
-                    ->orWhere('client_cnpj', 'like', '%'.$s.'%');
-            });
-        }
-
-        if ($request->filled('seller_id')) {
-            $q->where('seller_id', $request->integer('seller_id'));
-        }
-
-        if ($request->filled('status')) {
-            ProposalListStatus::applyFilter($q, $request->string('status')->toString());
-        }
+        $this->applyProposalIndexFilters($q, $filters, includeStatus: true);
 
         $proposals = $q->paginate(15)->withQueryString();
 
@@ -82,7 +107,8 @@ class ProposalController extends Controller
         return Inertia::render('Admin/Commercial/Proposals/Index', [
             'proposals' => $proposals,
             'sellers' => $this->sellersOptions(),
-            'filters' => $request->only(['search', 'seller_id', 'status']),
+            'filters' => $filters,
+            'statusCounts' => $statusCounts,
             'templates' => CommercialContractTemplate::active()
                 ->orderBy('name')
                 ->get(['id', 'name'])
@@ -239,6 +265,53 @@ class ProposalController extends Controller
         return $pdfService
             ->generate($proposal)
             ->stream("proposta-{$proposal->code}.pdf");
+    }
+
+    /**
+     * Filtros partilhados da lista (contagens de status excluem o filtro de status).
+     *
+     * @param  Builder<CommercialProposal>  $query
+     * @param  array{
+     *     search: string,
+     *     seller_id: string,
+     *     status: string,
+     *     sale_situation: string,
+     *     created_from: string,
+     *     created_to: string
+     * }  $filters
+     */
+    private function applyProposalIndexFilters(Builder $query, array $filters, bool $includeStatus): void
+    {
+        if (filled($filters['search'])) {
+            $s = (string) $filters['search'];
+            $query->where(function ($inner) use ($s): void {
+                $inner->where('client_name', 'like', '%'.$s.'%')
+                    ->orWhere('code', 'like', '%'.$s.'%')
+                    ->orWhere('client_cnpj', 'like', '%'.$s.'%');
+            });
+        }
+
+        if (filled($filters['seller_id'])) {
+            $query->where('seller_id', (int) $filters['seller_id']);
+        }
+
+        if (($filters['sale_situation'] ?? '') === 'without_sale') {
+            $query->whereDoesntHave('sale');
+        } elseif (($filters['sale_situation'] ?? '') === 'with_sale') {
+            $query->whereHas('sale');
+        }
+
+        if (filled($filters['created_from'])) {
+            $query->whereDate('created_at', '>=', $filters['created_from']);
+        }
+
+        if (filled($filters['created_to'])) {
+            $query->whereDate('created_at', '<=', $filters['created_to']);
+        }
+
+        if ($includeStatus && filled($filters['status'])) {
+            ProposalListStatus::applyFilter($query, (string) $filters['status']);
+        }
     }
 
     /**

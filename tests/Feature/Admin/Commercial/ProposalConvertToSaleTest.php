@@ -162,6 +162,71 @@ class ProposalConvertToSaleTest extends TestCase
         );
     }
 
+    public function test_convert_allows_first_due_date_on_2026_08_07(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::create([
+            'code' => 'PROP-CONV-0708',
+            'client_name' => 'Cliente 07/08/2026',
+            'employee_count' => 5,
+            'total_final_cents' => 450_000,
+            'is_closed' => true,
+            'closed_at' => now(),
+        ]);
+
+        $dueDate = '2026-08-07';
+
+        $this->actingAs($admin)
+            ->from(route('admin.comercial.propostas.index'))
+            ->post(route('admin.comercial.propostas.converter', $proposal), [
+                'payment_method' => 'pix',
+                'installments_count' => 1,
+                'first_due_date' => $dueDate,
+            ])
+            ->assertSessionDoesntHaveErrors()
+            ->assertRedirect(route('admin.comercial.propostas.index'))
+            ->assertSessionHas('sale_id');
+
+        $sale = CommercialSale::query()->where('proposal_id', $proposal->id)->first();
+        $this->assertNotNull($sale);
+        $this->assertSame($dueDate, $sale->installments->first()?->due_date?->toDateString());
+    }
+
+    public function test_convert_allows_past_first_due_date(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::create([
+            'code' => 'PROP-CONV-PAST',
+            'client_name' => 'Cliente Retroativo',
+            'employee_count' => 5,
+            'total_final_cents' => 5_000,
+            'is_closed' => true,
+            'closed_at' => now(),
+        ]);
+
+        $pastDue = now()->subDays(5)->toDateString();
+
+        $this->actingAs($admin)
+            ->from(route('admin.comercial.propostas.index'))
+            ->post(route('admin.comercial.propostas.converter', $proposal), [
+                'payment_method' => 'pix',
+                'installments_count' => 1,
+                'first_due_date' => $pastDue,
+            ])
+            ->assertRedirect(route('admin.comercial.propostas.index'))
+            ->assertSessionHas('sale_id');
+
+        $sale = CommercialSale::query()->where('proposal_id', $proposal->id)->first();
+        $this->assertNotNull($sale);
+        $this->assertSame($pastDue, $sale->installments->first()?->due_date?->toDateString());
+    }
+
     public function test_convert_validation_messages_are_in_portuguese(): void
     {
         $this->withoutVite();
@@ -176,17 +241,6 @@ class ProposalConvertToSaleTest extends TestCase
             'is_closed' => true,
             'closed_at' => now(),
         ]);
-
-        $this->actingAs($admin)
-            ->from(route('admin.comercial.propostas.index'))
-            ->post(route('admin.comercial.propostas.converter', $proposal), [
-                'payment_method' => 'pix',
-                'installments_count' => 1,
-                'first_due_date' => now()->subDay()->toDateString(),
-            ])
-            ->assertSessionHasErrors([
-                'first_due_date' => 'A data do primeiro vencimento deve ser hoje ou uma data futura.',
-            ]);
 
         $this->actingAs($admin)
             ->from(route('admin.comercial.propostas.index'))

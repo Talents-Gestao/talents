@@ -13,6 +13,7 @@ import {
     PencilSquareIcon,
     PlusIcon,
     TrashIcon,
+    XMarkIcon,
 } from '@heroicons/vue/24/outline';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
@@ -23,6 +24,15 @@ const props = defineProps({
     proposals: { type: Object, required: true },
     sellers: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
+    statusCounts: {
+        type: Object,
+        default: () => ({
+            all: 0,
+            abertas: 0,
+            em_andamento: 0,
+            fechadas: 0,
+        }),
+    },
     templates: { type: Array, default: () => [] },
     zapsign_configured: { type: Boolean, default: false },
     zapsignParties: {
@@ -39,6 +49,116 @@ const filterState = reactive({
     search: props.filters.search ?? '',
     seller_id: props.filters.seller_id ?? '',
     status: props.filters.status ?? '',
+    sale_situation: props.filters.sale_situation ?? '',
+    created_from: props.filters.created_from ?? '',
+    created_to: props.filters.created_to ?? '',
+});
+
+watch(
+    () => props.filters,
+    (filters) => {
+        filterState.search = filters.search ?? '';
+        filterState.seller_id = filters.seller_id ?? '';
+        filterState.status = filters.status ?? '';
+        filterState.sale_situation = filters.sale_situation ?? '';
+        filterState.created_from = filters.created_from ?? '';
+        filterState.created_to = filters.created_to ?? '';
+    },
+    { deep: true },
+);
+
+const statusChipOptions = computed(() => [
+    { value: '', label: 'Todas', count: props.statusCounts.all ?? 0 },
+    { value: 'abertas', label: 'Em aberto', count: props.statusCounts.abertas ?? 0 },
+    { value: 'em_andamento', label: 'Em andamento', count: props.statusCounts.em_andamento ?? 0 },
+    { value: 'fechadas', label: 'Fechadas', count: props.statusCounts.fechadas ?? 0 },
+]);
+
+const statusFilterLabel = (value) => {
+    if (value === 'abertas') return 'Em aberto';
+    if (value === 'em_andamento') return 'Em andamento';
+    if (value === 'fechadas') return 'Fechadas';
+    return 'Todos';
+};
+
+const saleSituationLabel = (value) => {
+    if (value === 'without_sale') return 'Sem venda';
+    if (value === 'with_sale') return 'Com venda';
+    return 'Todas';
+};
+
+const formatFilterDate = (ymd) => {
+    const raw = String(ymd ?? '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        return raw;
+    }
+    const [y, m, d] = raw.split('-');
+    return `${d}/${m}/${y}`;
+};
+
+const sellerNameById = (id) => {
+    const found = props.sellers.find((s) => String(s.id) === String(id));
+    return found?.name ?? String(id);
+};
+
+const filterQuery = () => {
+    const params = {};
+    if (String(filterState.search ?? '').trim() !== '') {
+        params.search = String(filterState.search).trim();
+    }
+    if (String(filterState.seller_id ?? '') !== '') {
+        params.seller_id = filterState.seller_id;
+    }
+    if (String(filterState.status ?? '') !== '') {
+        params.status = filterState.status;
+    }
+    if (String(filterState.sale_situation ?? '') !== '') {
+        params.sale_situation = filterState.sale_situation;
+    }
+    if (String(filterState.created_from ?? '') !== '') {
+        params.created_from = filterState.created_from;
+    }
+    if (String(filterState.created_to ?? '') !== '') {
+        params.created_to = filterState.created_to;
+    }
+    return params;
+};
+
+const activeFilterChips = computed(() => {
+    const chips = [];
+    if (String(filterState.search ?? '').trim() !== '') {
+        chips.push({
+            key: 'search',
+            label: `Busca: ${String(filterState.search).trim()}`,
+        });
+    }
+    if (String(filterState.seller_id ?? '') !== '') {
+        chips.push({
+            key: 'seller_id',
+            label: `Vendedor: ${sellerNameById(filterState.seller_id)}`,
+        });
+    }
+    if (String(filterState.status ?? '') !== '') {
+        chips.push({
+            key: 'status',
+            label: `Status: ${statusFilterLabel(filterState.status)}`,
+        });
+    }
+    if (String(filterState.sale_situation ?? '') !== '') {
+        chips.push({
+            key: 'sale_situation',
+            label: saleSituationLabel(filterState.sale_situation),
+        });
+    }
+    if (filterState.created_from || filterState.created_to) {
+        const from = filterState.created_from ? formatFilterDate(filterState.created_from) : '…';
+        const to = filterState.created_to ? formatFilterDate(filterState.created_to) : '…';
+        chips.push({
+            key: 'created',
+            label: `Criada: ${from} – ${to}`,
+        });
+    }
+    return chips;
 });
 
 const listStatusBadgeClass = (status) => {
@@ -107,17 +227,41 @@ const submitStatus = () => {
 };
 
 const applyFilters = () => {
-    router.get(route('admin.comercial.propostas.index'), filterState, {
+    router.get(route('admin.comercial.propostas.index'), filterQuery(), {
         preserveScroll: true,
         preserveState: true,
         replace: true,
     });
 };
 
+const applyStatusChip = (status) => {
+    filterState.status = status;
+    applyFilters();
+};
+
 const clearFilters = () => {
     filterState.search = '';
     filterState.seller_id = '';
     filterState.status = '';
+    filterState.sale_situation = '';
+    filterState.created_from = '';
+    filterState.created_to = '';
+    applyFilters();
+};
+
+const clearActiveFilter = (key) => {
+    if (key === 'search') {
+        filterState.search = '';
+    } else if (key === 'seller_id') {
+        filterState.seller_id = '';
+    } else if (key === 'status') {
+        filterState.status = '';
+    } else if (key === 'sale_situation') {
+        filterState.sale_situation = '';
+    } else if (key === 'created') {
+        filterState.created_from = '';
+        filterState.created_to = '';
+    }
     applyFilters();
 };
 
@@ -413,12 +557,15 @@ const openConvertModal = (proposal) => {
     convertProposal.value = proposal;
     convertClientErrors.value = [];
     convertForm.clearErrors();
+    const today = localTodayDate();
+    convertForm.defaults({
+        payment_method: 'pix',
+        installments_count: 1,
+        first_due_date: today,
+        notes: '',
+        mix_parts: [],
+    });
     convertForm.reset();
-    convertForm.payment_method = 'pix';
-    convertForm.installments_count = 1;
-    convertForm.first_due_date = localTodayDate();
-    convertForm.notes = '';
-    convertForm.mix_parts = [];
     convertModalOpen.value = true;
 };
 
@@ -580,8 +727,35 @@ const submitConvert = () => {
         </div>
 
         <div class="surface-card p-6">
-            <form class="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4" @submit.prevent="applyFilters">
-                <div class="sm:col-span-2">
+            <div class="flex flex-wrap items-center gap-2">
+                <button
+                    v-for="chip in statusChipOptions"
+                    :key="chip.value || 'all'"
+                    type="button"
+                    class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition"
+                    :class="
+                        (filterState.status || '') === chip.value
+                            ? 'bg-talents-700 text-white shadow-sm'
+                            : 'border border-slate-200 bg-white text-slate-700 hover:border-talents-200 hover:bg-talents-50 hover:text-talents-800'
+                    "
+                    @click="applyStatusChip(chip.value)"
+                >
+                    <span>{{ chip.label }}</span>
+                    <span
+                        class="rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums"
+                        :class="
+                            (filterState.status || '') === chip.value
+                                ? 'bg-white/20 text-white'
+                                : 'bg-slate-100 text-slate-600'
+                        "
+                    >
+                        {{ chip.count }}
+                    </span>
+                </button>
+            </div>
+
+            <form class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6" @submit.prevent="applyFilters">
+                <div class="xl:col-span-2">
                     <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Buscar</label>
                     <input
                         v-model="filterState.search"
@@ -601,18 +775,39 @@ const submitConvert = () => {
                     </select>
                 </div>
                 <div>
-                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
+                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Situação da venda</label>
                     <select
-                        v-model="filterState.status"
+                        v-model="filterState.sale_situation"
                         class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                     >
-                        <option value="">Todos</option>
-                        <option value="abertas">Em aberto</option>
-                        <option value="em_andamento">Em andamento</option>
-                        <option value="fechadas">Fechadas</option>
+                        <option value="">Todas</option>
+                        <option value="without_sale">Sem venda</option>
+                        <option value="with_sale">Com venda</option>
                     </select>
                 </div>
-                <div class="sm:col-span-4 flex justify-end gap-2">
+                <div>
+                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Criada de</label>
+                    <input
+                        v-model="filterState.created_from"
+                        type="date"
+                        class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    />
+                    <p v-if="inertiaPage.props.errors?.created_from" class="mt-1 text-xs text-rose-600">
+                        {{ inertiaPage.props.errors.created_from }}
+                    </p>
+                </div>
+                <div>
+                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500">até</label>
+                    <input
+                        v-model="filterState.created_to"
+                        type="date"
+                        class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    />
+                    <p v-if="inertiaPage.props.errors?.created_to" class="mt-1 text-xs text-rose-600">
+                        {{ inertiaPage.props.errors.created_to }}
+                    </p>
+                </div>
+                <div class="flex items-end justify-end gap-2 md:col-span-2 xl:col-span-6">
                     <button
                         type="button"
                         class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
@@ -628,6 +823,30 @@ const submitConvert = () => {
                     </button>
                 </div>
             </form>
+
+            <div
+                v-if="activeFilterChips.length"
+                class="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4"
+            >
+                <button
+                    v-for="chip in activeFilterChips"
+                    :key="chip.key"
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded-full border border-talents-200 bg-talents-50 px-2.5 py-1 text-xs font-medium text-talents-800 transition hover:bg-talents-100"
+                    :title="`Remover filtro ${chip.label}`"
+                    @click="clearActiveFilter(chip.key)"
+                >
+                    <span>{{ chip.label }}</span>
+                    <XMarkIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                <button
+                    type="button"
+                    class="text-xs font-semibold text-slate-500 underline-offset-2 transition hover:text-talents-700 hover:underline"
+                    @click="clearFilters"
+                >
+                    Limpar tudo
+                </button>
+            </div>
         </div>
 
         <div class="mt-6 surface-card overflow-hidden">
@@ -706,12 +925,12 @@ const submitConvert = () => {
                                     <button
                                         v-if="canConvert(p)"
                                         type="button"
-                                        class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 hover:text-emerald-900"
+                                        class="rounded-lg bg-emerald-50 p-1.5 text-emerald-700 transition hover:bg-emerald-100 hover:text-emerald-900"
                                         title="Converter em venda"
+                                        aria-label="Converter em venda"
                                         @click="openConvertModal(p)"
                                     >
                                         <BanknotesIcon class="h-4 w-4" />
-                                        Venda
                                     </button>
                                     <span
                                         v-else-if="p.is_closed && p.sale"
