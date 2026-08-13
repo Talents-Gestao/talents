@@ -162,6 +162,38 @@ class ProposalConvertToSaleTest extends TestCase
         );
     }
 
+    public function test_convert_rejects_negotiation_and_ended_proposals(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        foreach ([
+            ['code' => 'PROP-CONV-NEG', 'list_status' => 'negotiation'],
+            ['code' => 'PROP-CONV-END', 'list_status' => 'ended'],
+        ] as $row) {
+            $proposal = CommercialProposal::create([
+                'code' => $row['code'],
+                'client_name' => 'Sem conversão',
+                'employee_count' => 3,
+                'total_final_cents' => 3_000,
+                'is_closed' => false,
+                'list_status' => $row['list_status'],
+            ]);
+
+            $this->actingAs($admin)
+                ->from(route('admin.comercial.propostas.index'))
+                ->post(route('admin.comercial.propostas.converter', $proposal), [
+                    'payment_method' => 'pix',
+                    'installments_count' => 1,
+                    'first_due_date' => now()->toDateString(),
+                ])
+                ->assertSessionHasErrors('proposal');
+
+            $this->assertFalse(
+                CommercialSale::query()->where('proposal_id', $proposal->id)->exists()
+            );
+        }
+    }
+
     public function test_convert_allows_first_due_date_on_2026_08_07(): void
     {
         $this->withoutVite();

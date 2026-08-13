@@ -16,7 +16,7 @@ class ProposalListStatusFilterTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_index_exposes_list_status_and_filters_em_andamento(): void
+    public function test_index_exposes_list_status_and_filters_by_four_statuses(): void
     {
         $this->withoutVite();
 
@@ -28,35 +28,35 @@ class ProposalListStatusFilterTest extends TestCase
             'employee_count' => 5,
             'total_final_cents' => 1000,
             'is_closed' => false,
+            'list_status' => ProposalListStatus::OPEN,
         ]);
 
-        $closedOnly = CommercialProposal::create([
+        $approvedOnly = CommercialProposal::create([
             'code' => 'PROP-2026-0102',
-            'client_name' => 'Fechada sem venda',
+            'client_name' => 'Aprovada sem venda',
             'employee_count' => 5,
             'total_final_cents' => 2000,
             'is_closed' => true,
             'closed_at' => now(),
+            'list_status' => ProposalListStatus::APPROVED,
         ]);
 
-        $partial = CommercialProposal::create([
+        $negotiation = CommercialProposal::create([
             'code' => 'PROP-2026-0103',
-            'client_name' => 'Parcial',
+            'client_name' => 'Negociação',
             'employee_count' => 5,
             'total_final_cents' => 3000,
-            'is_closed' => true,
-            'closed_at' => now(),
-            'list_status' => ProposalListStatus::IN_PROGRESS,
+            'is_closed' => false,
+            'list_status' => ProposalListStatus::NEGOTIATION,
         ]);
 
-        CommercialSale::create([
-            'proposal_id' => $partial->id,
-            'code' => 'VENDA-2026-0103',
-            'client_name' => $partial->client_name,
-            'total_cents' => $partial->total_final_cents,
-            'status' => CommercialSale::STATUS_PARCIAL,
-            'installments_count' => 2,
-            'sold_at' => now(),
+        $ended = CommercialProposal::create([
+            'code' => 'PROP-2026-0105',
+            'client_name' => 'Encerrada',
+            'employee_count' => 5,
+            'total_final_cents' => 3500,
+            'is_closed' => false,
+            'list_status' => ProposalListStatus::ENDED,
         ]);
 
         $quitada = CommercialProposal::create([
@@ -66,7 +66,7 @@ class ProposalListStatusFilterTest extends TestCase
             'total_final_cents' => 4000,
             'is_closed' => true,
             'closed_at' => now(),
-            'list_status' => ProposalListStatus::CLOSED,
+            'list_status' => ProposalListStatus::APPROVED,
         ]);
 
         CommercialSale::create([
@@ -80,14 +80,14 @@ class ProposalListStatusFilterTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['status' => 'em_andamento']))
+            ->get(route('admin.comercial.propostas.index', ['status' => 'em_negociacao']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Commercial/Proposals/Index')
                 ->has('proposals.data', 1)
-                ->where('proposals.data.0.id', $partial->id)
-                ->where('proposals.data.0.list_status', ProposalListStatus::IN_PROGRESS)
-                ->where('proposals.data.0.list_status_label', 'Em andamento')
+                ->where('proposals.data.0.id', $negotiation->id)
+                ->where('proposals.data.0.list_status', ProposalListStatus::NEGOTIATION)
+                ->where('proposals.data.0.list_status_label', 'Em negociação')
             );
 
         $this->actingAs($admin)
@@ -99,19 +99,28 @@ class ProposalListStatusFilterTest extends TestCase
                 ->where('proposals.data.0.list_status', ProposalListStatus::OPEN)
             );
 
-        $expectedClosedIds = collect([$closedOnly->id, $quitada->id])->sort()->values()->all();
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index', ['status' => 'encerradas']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('proposals.data', 1)
+                ->where('proposals.data.0.id', $ended->id)
+                ->where('proposals.data.0.list_status', ProposalListStatus::ENDED)
+            );
+
+        $expectedApprovedIds = collect([$approvedOnly->id, $quitada->id])->sort()->values()->all();
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['status' => 'fechadas']))
+            ->get(route('admin.comercial.propostas.index', ['status' => 'aprovadas']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('proposals.data', 2)
                 ->where(
                     'proposals.data',
-                    fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all() === $expectedClosedIds,
+                    fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all() === $expectedApprovedIds,
                 )
                 ->where('proposals.data', fn ($rows) => collect($rows)->every(
-                    fn ($row) => ($row['list_status'] ?? null) === ProposalListStatus::CLOSED,
+                    fn ($row) => ($row['list_status'] ?? null) === ProposalListStatus::APPROVED,
                 ))
             );
     }
@@ -135,13 +144,13 @@ class ProposalListStatusFilterTest extends TestCase
 
         CommercialProposal::create([
             'code' => 'PROP-CNT-0002',
-            'client_name' => 'Fechada Seller',
+            'client_name' => 'Aprovada Seller',
             'employee_count' => 5,
             'total_final_cents' => 2000,
             'is_closed' => true,
             'closed_at' => now(),
             'seller_id' => $seller->id,
-            'list_status' => ProposalListStatus::CLOSED,
+            'list_status' => ProposalListStatus::APPROVED,
         ]);
 
         CommercialProposal::create([
@@ -163,8 +172,9 @@ class ProposalListStatusFilterTest extends TestCase
                 ->has('proposals.data', 1)
                 ->where('statusCounts.all', 2)
                 ->where('statusCounts.abertas', 1)
-                ->where('statusCounts.fechadas', 1)
-                ->where('statusCounts.em_andamento', 0)
+                ->where('statusCounts.aprovadas', 1)
+                ->where('statusCounts.em_negociacao', 0)
+                ->where('statusCounts.encerradas', 0)
             );
     }
 
@@ -181,7 +191,7 @@ class ProposalListStatusFilterTest extends TestCase
             'total_final_cents' => 1000,
             'is_closed' => true,
             'closed_at' => now(),
-            'list_status' => ProposalListStatus::CLOSED,
+            'list_status' => ProposalListStatus::APPROVED,
         ]);
 
         $with = CommercialProposal::create([
@@ -191,7 +201,7 @@ class ProposalListStatusFilterTest extends TestCase
             'total_final_cents' => 2000,
             'is_closed' => true,
             'closed_at' => now(),
-            'list_status' => ProposalListStatus::CLOSED,
+            'list_status' => ProposalListStatus::APPROVED,
         ]);
 
         CommercialSale::create([

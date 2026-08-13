@@ -99,6 +99,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('landing-interest.index');
         Route::post('/interessados-landing', [LandingInterestSubmissionController::class, 'store'])
             ->name('landing-interest.store');
+        Route::patch('/interessados-landing/{submission}', [LandingInterestSubmissionController::class, 'update'])
+            ->name('landing-interest.update');
+        Route::delete('/interessados-landing/{submission}', [LandingInterestSubmissionController::class, 'destroy'])
+            ->name('landing-interest.destroy');
     });
 
     Route::middleware('admin.can:strategic_calendar')->group(function () {
@@ -354,9 +358,13 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::middleware('admin.can:financeiro')->prefix('financeiro')->name('financeiro.')->group(function () {
         Route::get('/', [FinanceDashboardController::class, 'index'])->name('dashboard');
         Route::get('vendas', [FinanceSaleController::class, 'index'])->name('vendas.index');
+        Route::get('vendas/nova', [FinanceSaleController::class, 'create'])->name('vendas.create');
+        Route::post('vendas', [FinanceSaleController::class, 'storeManual'])->name('vendas.store');
         Route::get('vendas/{sale}', [FinanceSaleController::class, 'show'])->name('vendas.show');
         Route::patch('parcelas/{installment}/pagamento', [FinanceInstallmentController::class, 'registerPayment'])
             ->name('parcelas.pagamento');
+        Route::patch('parcelas/{installment}', [FinanceInstallmentController::class, 'update'])
+            ->name('parcelas.update');
         Route::get('parcelas/{installment}/comprovante', [FinanceInstallmentController::class, 'receipt'])
             ->name('parcelas.comprovante');
         Route::get('comissoes', [FinanceCommissionController::class, 'index'])->name('comissoes.index');

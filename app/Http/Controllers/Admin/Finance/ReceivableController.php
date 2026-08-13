@@ -38,6 +38,17 @@ class ReceivableController extends Controller
                 ['value' => 'sale', 'label' => 'Vendas (parcelas)'],
                 ['value' => 'manual', 'label' => 'Manuais'],
             ],
+            ...$this->formOptions(),
+            'installmentMethodOptions' => [
+                ['value' => 'pix', 'label' => 'PIX'],
+                ['value' => 'boleto', 'label' => 'Boleto'],
+                ['value' => 'cartao', 'label' => 'Cartão'],
+            ],
+            'installmentStatusOptions' => [
+                ['value' => 'pendente', 'label' => 'Pendente'],
+                ['value' => 'pago', 'label' => 'Pago'],
+                ['value' => 'cancelado', 'label' => 'Cancelado'],
+            ],
         ]);
     }
 

@@ -22,7 +22,7 @@ return new class extends Migration
 
         DB::table('commercial_proposals')
             ->where('is_closed', true)
-            ->update(['list_status' => ProposalListStatus::CLOSED]);
+            ->update(['list_status' => 'closed']);
 
         $partialProposalIds = DB::table('commercial_sales')
             ->where('status', CommercialSale::STATUS_PARCIAL)
@@ -31,7 +31,7 @@ return new class extends Migration
         if ($partialProposalIds->isNotEmpty()) {
             DB::table('commercial_proposals')
                 ->whereIn('id', $partialProposalIds)
-                ->update(['list_status' => ProposalListStatus::IN_PROGRESS]);
+                ->update(['list_status' => 'in_progress']);
         }
     }
 

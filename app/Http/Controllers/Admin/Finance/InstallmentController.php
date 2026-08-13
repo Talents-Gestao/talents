@@ -72,6 +72,56 @@ class InstallmentController extends Controller
             ->with('success', 'Parcela atualizada.');
     }
 
+    public function update(Request $request, CommercialSaleInstallment $installment): RedirectResponse
+    {
+        $data = $request->validate([
+            'due_date' => ['required', 'date'],
+            'amount_reais' => ['required', 'numeric', 'min:0.01'],
+            'method' => ['required', Rule::in(['pix', 'boleto', 'cartao'])],
+            'status' => ['required', Rule::in([
+                CommercialSaleInstallment::STATUS_PENDENTE,
+                CommercialSaleInstallment::STATUS_PAGO,
+                CommercialSaleInstallment::STATUS_CANCELADO,
+            ])],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'due_date.required' => 'Informe o vencimento.',
+            'amount_reais.required' => 'Informe o valor.',
+            'method.required' => 'Selecione o método.',
+            'status.required' => 'Selecione o status.',
+        ]);
+
+        $amountCents = (int) round(((float) $data['amount_reais']) * 100);
+        $wasPaid = $installment->status === CommercialSaleInstallment::STATUS_PAGO;
+
+        $update = [
+            'due_date' => $data['due_date'],
+            'amount_cents' => $amountCents,
+            'method' => $data['method'],
+            'status' => $data['status'],
+            'notes' => $data['notes'] ?? null,
+        ];
+
+        if ($data['status'] === CommercialSaleInstallment::STATUS_PAGO) {
+            $update['paid_at'] = $installment->paid_at ?? now();
+            $update['paid_amount_cents'] = $installment->paid_amount_cents ?? $amountCents;
+        } else {
+            $update['paid_at'] = null;
+            $update['paid_amount_cents'] = null;
+        }
+
+        $installment->update($update);
+        $installment->sale->recalculateStatus();
+
+        if ($data['status'] === CommercialSaleInstallment::STATUS_PAGO && ! $wasPaid) {
+            $this->notices->installmentPaid($installment->fresh('sale'), $request->user());
+        }
+
+        return redirect()
+            ->route('admin.financeiro.contas-a-receber.index')
+            ->with('success', 'Parcela atualizada.');
+    }
+
     public function receipt(CommercialSaleInstallment $installment): StreamedResponse
     {
         if (! $installment->receipt_path || ! Storage::disk('local')->exists($installment->receipt_path)) {

@@ -267,6 +267,107 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
             );
     }
 
+    public function test_admin_can_update_sale_installment_from_receivables(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-EDIT-INST',
+            'client_name' => 'Cliente Parcela',
+            'employee_count' => 3,
+            'total_final_cents' => 20_000,
+            'is_closed' => true,
+            'closed_at' => now(),
+        ]);
+
+        $sale = CommercialSale::query()->create([
+            'code' => 'VENDA-2026-0200',
+            'proposal_id' => $proposal->id,
+            'client_name' => 'Cliente Parcela',
+            'total_cents' => 20_000,
+            'payment_method' => 'pix',
+            'installments_count' => 1,
+            'status' => CommercialSale::STATUS_ABERTA,
+            'sold_at' => now(),
+        ]);
+
+        $installment = CommercialSaleInstallment::query()->create([
+            'sale_id' => $sale->id,
+            'number' => 1,
+            'amount_cents' => 20_000,
+            'due_date' => now()->addDays(10)->toDateString(),
+            'method' => 'pix',
+            'status' => CommercialSaleInstallment::STATUS_PENDENTE,
+            'notes' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.financeiro.parcelas.update', $installment), [
+                'due_date' => '2026-09-01',
+                'amount_reais' => 250.5,
+                'method' => 'boleto',
+                'status' => CommercialSaleInstallment::STATUS_PENDENTE,
+                'notes' => 'Cobrança ajustada',
+            ])
+            ->assertRedirect(route('admin.financeiro.contas-a-receber.index'));
+
+        $installment->refresh();
+        $this->assertSame('2026-09-01', $installment->due_date?->toDateString());
+        $this->assertSame(25050, $installment->amount_cents);
+        $this->assertSame('boleto', $installment->method);
+        $this->assertSame('Cobrança ajustada', $installment->notes);
+    }
+
+    public function test_admin_can_create_manual_sale_without_proposal(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.vendas.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Finance/Sales/Form')
+            );
+
+        $response = $this->actingAs($admin)->post(route('admin.financeiro.vendas.store'), [
+            'client_name' => 'Cliente Avulso LTDA',
+            'client_cnpj' => '12.345.678/0001-99',
+            'total_reais' => 1000,
+            'commission_percent' => 0,
+            'payment_method' => 'pix',
+            'installments_count' => 2,
+            'first_due_date' => '2026-08-20',
+            'notes' => 'Venda manual',
+        ]);
+
+        $sale = CommercialSale::query()->whereNull('proposal_id')->where('client_name', 'Cliente Avulso LTDA')->first();
+        $this->assertNotNull($sale);
+        $this->assertSame(100_000, $sale->total_cents);
+        $this->assertSame(2, $sale->installments_count);
+        $this->assertCount(2, $sale->installments);
+        $this->assertSame('Venda manual', $sale->notes);
+
+        $response->assertRedirect(route('admin.financeiro.vendas.show', $sale));
+    }
+
+    public function test_receivables_index_exposes_edit_options_for_modal(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.contas-a-receber.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Finance/Receivables/Index')
+                ->has('paymentMethods')
+                ->has('bankAccounts')
+                ->has('installmentMethodOptions')
+                ->has('installmentStatusOptions')
+            );
+    }
+
     public function test_coming_soon_redirects_to_new_finance_modules(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);

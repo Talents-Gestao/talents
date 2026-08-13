@@ -14,6 +14,7 @@ class LandingInterestSubmission extends Model
         'phone',
         'company',
         'message',
+        'admin_notes',
         'source',
         'created_by',
         'mail_sent_at',

@@ -1,6 +1,7 @@
 <script setup>
 import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { reactive } from 'vue';
@@ -51,9 +52,17 @@ const statusClass = (s) =>
 
     <AdminLayout>
         <template #header>
-            <div>
-                <p class="text-sm text-slate-500">Financeiro</p>
-                <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Vendas</h2>
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <p class="text-sm text-slate-500">Financeiro</p>
+                    <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Vendas</h2>
+                    <p class="mt-1 text-sm text-slate-600">
+                        Vendas convertidas de propostas ou criadas manualmente.
+                    </p>
+                </div>
+                <Link :href="route('admin.financeiro.vendas.create')">
+                    <PrimaryButton type="button">Nova venda</PrimaryButton>
+                </Link>
             </div>
         </template>
 

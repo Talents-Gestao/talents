@@ -45,7 +45,15 @@ class ProposalController extends Controller
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'seller_id' => ['nullable', 'integer'],
-            'status' => ['nullable', 'string', Rule::in(['abertas', 'em_andamento', 'fechadas'])],
+            'status' => ['nullable', 'string', Rule::in([
+                'abertas',
+                'em_negociacao',
+                'aprovadas',
+                'encerradas',
+                // Filtros legados (redirect/compat).
+                'em_andamento',
+                'fechadas',
+            ])],
             'sale_situation' => ['nullable', 'string', Rule::in(['without_sale', 'with_sale'])],
             'created_from' => ['nullable', 'date'],
             'created_to' => ['nullable', 'date', 'after_or_equal:created_from'],
@@ -68,8 +76,9 @@ class ProposalController extends Controller
         $statusCounts = [
             'all' => (clone $baseQuery)->count(),
             'abertas' => ProposalListStatus::applyFilter((clone $baseQuery), 'abertas')->count(),
-            'em_andamento' => ProposalListStatus::applyFilter((clone $baseQuery), 'em_andamento')->count(),
-            'fechadas' => ProposalListStatus::applyFilter((clone $baseQuery), 'fechadas')->count(),
+            'em_negociacao' => ProposalListStatus::applyFilter((clone $baseQuery), 'em_negociacao')->count(),
+            'aprovadas' => ProposalListStatus::applyFilter((clone $baseQuery), 'aprovadas')->count(),
+            'encerradas' => ProposalListStatus::applyFilter((clone $baseQuery), 'encerradas')->count(),
         ];
 
         $q = CommercialProposal::query()
@@ -148,7 +157,7 @@ class ProposalController extends Controller
                 'created_by' => $request->user()?->id,
                 'closed_at' => ($data['is_closed'] ?? false) ? now() : null,
                 'list_status' => ($data['is_closed'] ?? false)
-                    ? ProposalListStatus::CLOSED
+                    ? ProposalListStatus::APPROVED
                     : ProposalListStatus::OPEN,
             ],
         ));
@@ -192,11 +201,17 @@ class ProposalController extends Controller
                 ! $isClosed => null,
                 default => $proposal->closed_at,
             },
-            'list_status' => $isClosed
-                ? ($proposal->list_status === ProposalListStatus::IN_PROGRESS
-                    ? ProposalListStatus::IN_PROGRESS
-                    : ProposalListStatus::CLOSED)
-                : ProposalListStatus::OPEN,
+            'list_status' => match (true) {
+                $isClosed => ProposalListStatus::APPROVED,
+                $wasClosed => ProposalListStatus::OPEN,
+                default => in_array(
+                    ProposalListStatus::normalize((string) ($proposal->list_status ?? '')),
+                    [ProposalListStatus::OPEN, ProposalListStatus::NEGOTIATION, ProposalListStatus::ENDED],
+                    true,
+                )
+                    ? ProposalListStatus::normalize((string) $proposal->list_status)
+                    : ProposalListStatus::OPEN,
+            },
         ]));
 
         $this->syncCatalogLines($proposal, $catalogLines);
@@ -213,13 +228,17 @@ class ProposalController extends Controller
     public function updateStatus(Request $request, CommercialProposal $proposal): RedirectResponse
     {
         $data = $request->validate([
-            'status' => ['required', Rule::in(ProposalListStatus::values())],
+            'status' => ['required', Rule::in([
+                ...ProposalListStatus::values(),
+                'in_progress',
+                'closed',
+            ])],
         ], [
             'status.required' => 'Selecione o status.',
             'status.in' => 'Status inválido.',
         ]);
 
-        $listStatus = $data['status'];
+        $listStatus = ProposalListStatus::normalize($data['status']);
         $wasClosed = (bool) $proposal->is_closed;
         $isClosed = ProposalListStatus::impliesClosed($listStatus);
 
@@ -233,7 +252,7 @@ class ProposalController extends Controller
             },
         ]);
 
-        if ($isClosed && ! $wasClosed) {
+        if ($listStatus === ProposalListStatus::APPROVED && ! $wasClosed) {
             $this->notices->proposalWon($proposal->refresh(), $request->user());
         }
 

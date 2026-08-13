@@ -29,8 +29,9 @@ const props = defineProps({
         default: () => ({
             all: 0,
             abertas: 0,
-            em_andamento: 0,
-            fechadas: 0,
+            em_negociacao: 0,
+            aprovadas: 0,
+            encerradas: 0,
         }),
     },
     templates: { type: Array, default: () => [] },
@@ -70,14 +71,16 @@ watch(
 const statusChipOptions = computed(() => [
     { value: '', label: 'Todas', count: props.statusCounts.all ?? 0 },
     { value: 'abertas', label: 'Em aberto', count: props.statusCounts.abertas ?? 0 },
-    { value: 'em_andamento', label: 'Em andamento', count: props.statusCounts.em_andamento ?? 0 },
-    { value: 'fechadas', label: 'Fechadas', count: props.statusCounts.fechadas ?? 0 },
+    { value: 'em_negociacao', label: 'Em negociação', count: props.statusCounts.em_negociacao ?? 0 },
+    { value: 'aprovadas', label: 'Aprovadas', count: props.statusCounts.aprovadas ?? 0 },
+    { value: 'encerradas', label: 'Encerradas', count: props.statusCounts.encerradas ?? 0 },
 ]);
 
 const statusFilterLabel = (value) => {
     if (value === 'abertas') return 'Em aberto';
-    if (value === 'em_andamento') return 'Em andamento';
-    if (value === 'fechadas') return 'Fechadas';
+    if (value === 'em_negociacao' || value === 'em_andamento') return 'Em negociação';
+    if (value === 'aprovadas' || value === 'fechadas') return 'Aprovada';
+    if (value === 'encerradas') return 'Encerrada';
     return 'Todos';
 };
 
@@ -162,21 +165,26 @@ const activeFilterChips = computed(() => {
 });
 
 const listStatusBadgeClass = (status) => {
-    if (status === 'in_progress') {
+    if (status === 'negotiation' || status === 'in_progress') {
         return 'bg-indigo-100 text-indigo-800';
     }
-    if (status === 'closed') {
+    if (status === 'approved' || status === 'closed') {
         return 'bg-emerald-100 text-emerald-800';
+    }
+    if (status === 'ended') {
+        return 'bg-slate-100 text-slate-600';
     }
     return 'bg-amber-100 text-amber-800';
 };
 
 const listStatusLabel = (proposal) => proposal.list_status_label
-    ?? (proposal.list_status === 'in_progress'
-        ? 'Em andamento'
-        : proposal.list_status === 'closed' || proposal.is_closed
-            ? 'Fechada'
-            : 'Em aberto');
+    ?? (proposal.list_status === 'negotiation' || proposal.list_status === 'in_progress'
+        ? 'Em negociação'
+        : proposal.list_status === 'approved' || proposal.list_status === 'closed' || proposal.is_closed
+            ? 'Aprovada'
+            : proposal.list_status === 'ended'
+                ? 'Encerrada'
+                : 'Em aberto');
 
 const installmentsProgressLabel = (proposal) => {
     const paid = proposal.paid_installments;
@@ -197,7 +205,13 @@ const openStatusModal = (proposal) => {
     statusProposal.value = proposal;
     statusForm.clearErrors();
     statusForm.status = proposal.list_status
-        ?? (proposal.is_closed ? 'closed' : 'open');
+        ?? (proposal.is_closed ? 'approved' : 'open');
+    if (statusForm.status === 'in_progress') {
+        statusForm.status = 'negotiation';
+    }
+    if (statusForm.status === 'closed') {
+        statusForm.status = 'approved';
+    }
     statusModalOpen.value = true;
 };
 
@@ -498,9 +512,9 @@ const canConvert = (proposal) => {
         return false;
     }
     const status = proposal.list_status
-        ?? (proposal.is_closed ? 'closed' : 'open');
+        ?? (proposal.is_closed ? 'approved' : 'open');
 
-    return status === 'closed' || status === 'in_progress' || proposal.is_closed;
+    return status === 'approved' || status === 'closed' || proposal.is_closed;
 };
 
 const addMixPart = () => {
@@ -880,7 +894,7 @@ const submitConvert = () => {
                                 <button
                                     type="button"
                                     class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium transition hover:ring-2 hover:ring-slate-200 focus:outline-none focus:ring-2 focus:ring-talents-300"
-                                    :class="listStatusBadgeClass(p.list_status ?? (p.is_closed ? 'closed' : 'open'))"
+                                    :class="listStatusBadgeClass(p.list_status ?? (p.is_closed ? 'approved' : 'open'))"
                                     title="Alterar status"
                                     :aria-label="`Alterar status de ${p.code}`"
                                     @click="openStatusModal(p)"
@@ -1409,8 +1423,9 @@ const submitConvert = () => {
                             required
                         >
                             <option value="open">Em aberto</option>
-                            <option value="in_progress">Em andamento</option>
-                            <option value="closed">Fechada</option>
+                            <option value="negotiation">Em negociação</option>
+                            <option value="approved">Aprovada</option>
+                            <option value="ended">Encerrada</option>
                         </select>
                     </div>
 
