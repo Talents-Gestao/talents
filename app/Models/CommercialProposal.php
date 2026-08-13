@@ -28,7 +28,7 @@ class CommercialProposal extends Model
         static::creating(function (CommercialProposal $proposal): void {
             if (! filled($proposal->list_status)) {
                 $proposal->list_status = $proposal->is_closed
-                    ? ProposalListStatus::CLOSED
+                    ? ProposalListStatus::APPROVED
                     : ProposalListStatus::OPEN;
             }
         });
@@ -145,7 +145,7 @@ class CommercialProposal extends Model
     }
 
     /**
-     * Status da lista: open|in_progress|closed (persistido em list_status).
+     * Status da lista: open|negotiation|approved|ended (persistido em list_status).
      */
     public function listStatus(): string
     {

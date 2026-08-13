@@ -17,6 +17,7 @@ class LandingInterestSubmissionController extends Controller
     public function index(): Response
     {
         $paginator = LandingInterestSubmission::query()
+            ->with('creator:id,name')
             ->orderByDesc('id')
             ->paginate(30)
             ->through(fn (LandingInterestSubmission $s) => self::submissionRow($s));
@@ -45,6 +46,33 @@ class LandingInterestSubmissionController extends Controller
             ->with('success', 'Lead cadastrado com sucesso.');
     }
 
+    public function update(Request $request, LandingInterestSubmission $submission): RedirectResponse
+    {
+        $data = $request->validate([
+            'admin_notes' => ['nullable', 'string', 'max:10000'],
+        ], [
+            'admin_notes.max' => 'As anotações não podem ter mais de 10000 caracteres.',
+        ]);
+
+        $submission->update([
+            'admin_notes' => $data['admin_notes'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('admin.landing-interest.index')
+            ->with('success', 'Anotações do lead atualizadas.');
+    }
+
+    public function destroy(LandingInterestSubmission $submission): RedirectResponse
+    {
+        $name = $submission->name;
+        $submission->delete();
+
+        return redirect()
+            ->route('admin.landing-interest.index')
+            ->with('success', "Lead «{$name}» excluído.");
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -59,11 +87,15 @@ class LandingInterestSubmissionController extends Controller
             'phone' => self::asUtf8String($s->phone),
             'company' => self::asUtf8String($s->company),
             'message' => self::asUtf8String($s->message),
+            'admin_notes' => self::asUtf8String($s->admin_notes),
             'source' => $source->value,
             'source_label' => $source->label(),
+            'created_by' => $s->created_by,
+            'created_by_name' => self::asUtf8String($s->creator?->name),
             'mail_sent_at' => $s->mail_sent_at?->toIso8601String(),
             'mail_error' => self::humanizeStoredMailError(self::asUtf8String($s->mail_error)),
             'created_at' => $s->created_at?->toIso8601String(),
+            'updated_at' => $s->updated_at?->toIso8601String(),
         ];
     }
 

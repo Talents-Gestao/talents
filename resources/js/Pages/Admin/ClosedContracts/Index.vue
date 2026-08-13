@@ -161,7 +161,7 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '
                                     <span
                                         class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
                                     >
-                                        Fechada
+                                        Aprovada
                                     </span>
                                     <span
                                         v-if="row.badges.has_contract"

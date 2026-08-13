@@ -15,7 +15,7 @@ Infra: `PublishCompanyNotice` (+ dedupe opcional) → publishers por domínio �
 | Módulo | Ação | Tem aviso? | Audience | Publisher / `event_kind` | Notas |
 |--------|------|------------|----------|--------------------------|-------|
 | Comercial | Proposta criada | Sim | Talents | `PublishCommercialNotice::proposalCreated` / `proposal_created` | Em `store` |
-| Comercial | Proposta fechada (won) | Sim | Talents | `proposalWon` / `proposal_won` | Em `store`/`update`/`updateStatus` quando passa a fechada (`is_closed` / impliesClosed). **Não** dispara só por `in_progress` |
+| Comercial | Proposta aprovada (won) | Sim | Talents | `proposalWon` / `proposal_won` | Em `store`/`update`/`updateStatus` quando passa a **Aprovada** (`is_closed` / impliesClosed). **Não** dispara por Em negociação nem Encerrada |
 | Financeiro | Venda criada | Sim | Talents | `saleCreated` / `sale_created` | Conversão proposta→venda |
 | Financeiro | Parcela paga | Sim | Talents | `installmentPaid` / `installment_paid` | |
 | Financeiro | Parcela vencida | Sim | Talents | `installmentOverdue` / `installment_overdue` | Job/comando; dedupe permanente por parcela |
@@ -34,7 +34,7 @@ Infra: `PublishCompanyNotice` (+ dedupe opcional) → publishers por domínio �
 
 | Módulo | Ação | Tem aviso hoje? | Audience sugerida | Prioridade | Notas |
 |--------|------|-----------------|-------------------|------------|-------|
-| Comercial | Status → **Em andamento** | Não | Talents | **P0** | Hoje só `proposal_won` quando fecha; `in_progress` é silencioso |
+| Comercial | Status → **Em negociação** | Não | Talents | **P0** | Hoje só `proposal_won` quando aprova; `negotiation` é silencioso |
 | Comercial | Contrato gerado (DOCX/PDF) | Não | Talents | **P0** | `ContractController::store` |
 | Comercial | Contrato enviado ZapSign | Não | Talents | **P0** | `ContractController::sendZapSign` |
 | Financeiro | Conta a receber criada (manual) | Não | Talents | P1 | Opcional; risco de barulho |
@@ -58,7 +58,7 @@ Sugestão enxuta (6 eventos), alinhada ao prompt e ao princípio anti-spam:
 
 | # | Evento | Audience | Publisher sugerido | Dedupe | Gatilho |
 |---|--------|----------|--------------------|--------|---------|
-| 1 | Proposta → **Em andamento** | Talents | `PublishCommercialNotice` + `proposal_in_progress` | 5 min / proposta | `updateStatus` quando novo status = `in_progress` **e** anterior ≠ `in_progress` (não misturar com `proposal_won`) |
+| 1 | Proposta → **Em negociação** | Talents | `PublishCommercialNotice` + `proposal_in_progress` | 5 min / proposta | `updateStatus` quando novo status = `negotiation` **e** anterior ≠ `negotiation` (não misturar com `proposal_won`) |
 | 2 | **Contrato gerado** | Talents | idem + `contract_generated` | 5 min / contrato | `ContractController::store` |
 | 3 | **ZapSign enviado** | Talents | idem + `contract_zapsign_sent` | 1× por contrato (ou janela longa) | `sendZapSign` após sucesso |
 | 4 | Processo de contratação → estágio **Contratação** (Contrato) | Talents | novo `PublishHiringNotice` (ou commercial genérico) + `hiring_stage_contratacao` | 5 min / processo | advance/update quando entra em estágio final relevante |

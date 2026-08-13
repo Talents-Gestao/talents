@@ -44,21 +44,26 @@ const formatDate = (iso) => {
 };
 
 const listStatusBadgeClass = (status) => {
-    if (status === 'in_progress') {
+    if (status === 'negotiation' || status === 'in_progress') {
         return 'bg-indigo-100 text-indigo-800';
     }
-    if (status === 'closed') {
+    if (status === 'approved' || status === 'closed') {
         return 'bg-emerald-100 text-emerald-800';
     }
-    return 'bg-talents-100 text-talents-800';
+    if (status === 'ended') {
+        return 'bg-slate-100 text-slate-600';
+    }
+    return 'bg-amber-100 text-amber-800';
 };
 
 const listStatusLabel = (proposal) => proposal.list_status_label
-    ?? (proposal.list_status === 'in_progress'
-        ? 'Em andamento'
-        : proposal.list_status === 'closed' || proposal.is_closed
-            ? 'Fechada'
-            : 'Em aberto');
+    ?? (proposal.list_status === 'negotiation' || proposal.list_status === 'in_progress'
+        ? 'Em negociação'
+        : proposal.list_status === 'approved' || proposal.list_status === 'closed' || proposal.is_closed
+            ? 'Aprovada'
+            : proposal.list_status === 'ended'
+                ? 'Encerrada'
+                : 'Em aberto');
 
 const conversionDeltaText = computed(() => {
     const d = props.deltas?.conversion_rate;
@@ -404,7 +409,7 @@ const barChartSeries = computed(() => [
                             <td class="px-3 py-2">
                                 <span
                                     class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
-                                    :class="listStatusBadgeClass(p.list_status ?? (p.is_closed ? 'closed' : 'open'))"
+                                    :class="listStatusBadgeClass(p.list_status ?? (p.is_closed ? 'approved' : 'open'))"
                                 >
                                     {{ listStatusLabel(p) }}
                                 </span>

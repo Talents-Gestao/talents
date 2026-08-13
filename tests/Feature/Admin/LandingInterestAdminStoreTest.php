@@ -93,6 +93,89 @@ class LandingInterestAdminStoreTest extends TestCase
                 ->has('submissions.data', 1)
                 ->where('submissions.data.0.source', 'event')
                 ->where('submissions.data.0.source_label', 'Evento')
+                ->where('submissions.data.0.admin_notes', null)
                 ->has('sourceOptions'));
+    }
+
+    public function test_super_admin_can_update_admin_notes(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $lead = LandingInterestSubmission::query()->create([
+            'name' => 'Bruno',
+            'email' => 'bruno@example.com',
+            'source' => LandingInterestSource::Site,
+            'message' => 'Quero proposta',
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.landing-interest.update', $lead), [
+                'admin_notes' => 'Retornar na sexta com valores de NR-1.',
+            ])
+            ->assertRedirect(route('admin.landing-interest.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSame(
+            'Retornar na sexta com valores de NR-1.',
+            $lead->fresh()->admin_notes,
+        );
+
+        $this->actingAs($admin)
+            ->get(route('admin.landing-interest.index'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('submissions.data.0.admin_notes', 'Retornar na sexta com valores de NR-1.')
+            );
+    }
+
+    public function test_super_admin_can_destroy_lead(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $lead = LandingInterestSubmission::query()->create([
+            'name' => 'Carla',
+            'email' => 'carla@example.com',
+            'source' => LandingInterestSource::Phone,
+        ]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.landing-interest.destroy', $lead))
+            ->assertRedirect(route('admin.landing-interest.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('landing_interest_submissions', [
+            'id' => $lead->id,
+        ]);
+    }
+
+    public function test_company_admin_cannot_update_or_destroy_lead(): void
+    {
+        $company = Company::query()->create([
+            'name' => 'Empresa cliente',
+            'cnpj' => '66.666.666/0001-66',
+            'is_active' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+        ]);
+
+        $lead = LandingInterestSubmission::query()->create([
+            'name' => 'Diego',
+            'email' => 'diego@example.com',
+            'source' => LandingInterestSource::Site,
+        ]);
+
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $this->actingAs($user)
+            ->patch(route('admin.landing-interest.update', $lead), [
+                'admin_notes' => 'Hack',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->delete(route('admin.landing-interest.destroy', $lead))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('landing_interest_submissions', [
+            'id' => $lead->id,
+            'email' => 'diego@example.com',
+        ]);
     }
 }

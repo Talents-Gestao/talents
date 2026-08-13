@@ -2,8 +2,9 @@
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import LandingInterestSourceField from '@/Components/Landing/LandingInterestSourceField.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { TrashIcon } from '@heroicons/vue/24/outline';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 defineProps({
     submissions: Object,
@@ -15,6 +16,8 @@ defineProps({
 
 const page = usePage();
 const showCreateModal = ref(false);
+const showDetailModal = ref(false);
+const selectedLead = ref(null);
 
 const form = useForm({
     name: '',
@@ -23,6 +26,10 @@ const form = useForm({
     company: '',
     message: '',
     source: '',
+});
+
+const notesForm = useForm({
+    admin_notes: '',
 });
 
 const flashSuccess = computed(() => page.props.flash?.success ?? null);
@@ -38,6 +45,16 @@ function mailErrorText(value) {
     return typeof value === 'string' ? value : String(value);
 }
 
+function formatDateTime(iso) {
+    if (!iso) {
+        return '—';
+    }
+    return new Date(iso).toLocaleString('pt-BR', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+    });
+}
+
 function openCreateModal() {
     form.clearErrors();
     form.reset();
@@ -48,6 +65,37 @@ function openCreateModal() {
 function closeCreateModal() {
     showCreateModal.value = false;
 }
+
+function openDetailModal(lead) {
+    selectedLead.value = lead;
+    notesForm.clearErrors();
+    notesForm.admin_notes = lead.admin_notes ?? '';
+    showDetailModal.value = true;
+}
+
+function closeDetailModal() {
+    showDetailModal.value = false;
+    selectedLead.value = null;
+    notesForm.reset();
+    notesForm.clearErrors();
+}
+
+watch(
+    () => page.props.submissions,
+    (submissions) => {
+        if (!showDetailModal.value || !selectedLead.value) {
+            return;
+        }
+        const fresh = (submissions?.data ?? []).find((row) => row.id === selectedLead.value.id);
+        if (fresh) {
+            selectedLead.value = fresh;
+            if (!notesForm.isDirty) {
+                notesForm.admin_notes = fresh.admin_notes ?? '';
+            }
+        }
+    },
+    { deep: true },
+);
 
 function submitLead() {
     form.post(route('admin.landing-interest.store'), {
@@ -60,8 +108,37 @@ function submitLead() {
     });
 }
 
+function saveNotes() {
+    if (!selectedLead.value) {
+        return;
+    }
+    notesForm.patch(route('admin.landing-interest.update', selectedLead.value.id), {
+        preserveScroll: true,
+    });
+}
+
+function destroyLead(lead, event) {
+    event?.stopPropagation?.();
+    if (!window.confirm(`Excluir o lead «${lead.name}»? Esta ação não pode ser desfeita.`)) {
+        return;
+    }
+    if (selectedLead.value?.id === lead.id) {
+        closeDetailModal();
+    }
+    router.delete(route('admin.landing-interest.destroy', lead.id), {
+        preserveScroll: true,
+    });
+}
+
 function onKeydown(e) {
-    if (e.key === 'Escape' && showCreateModal.value) {
+    if (e.key !== 'Escape') {
+        return;
+    }
+    if (showDetailModal.value) {
+        closeDetailModal();
+        return;
+    }
+    if (showCreateModal.value) {
         closeCreateModal();
     }
 }
@@ -109,25 +186,28 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Origem</th>
                             <th class="min-w-[12rem] px-4 py-3 text-left font-medium text-gray-700">Mensagem</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">E-mail aviso</th>
+                            <th class="whitespace-nowrap px-4 py-3 text-right font-medium text-gray-700">Ações</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
-                        <tr v-for="s in submissions.data" :key="s.id">
+                        <tr
+                            v-for="s in submissions.data"
+                            :key="s.id"
+                            class="cursor-pointer transition hover:bg-talents-50/60"
+                            @click="openDetailModal(s)"
+                        >
                             <td class="whitespace-nowrap px-4 py-3 text-gray-600">
-                                {{
-                                    s.created_at
-                                        ? new Date(s.created_at).toLocaleString('pt-BR', {
-                                              dateStyle: 'short',
-                                              timeStyle: 'short',
-                                          })
-                                        : '—'
-                                }}
+                                {{ formatDateTime(s.created_at) }}
                             </td>
-                            <td class="px-4 py-3">{{ s.name }}</td>
+                            <td class="px-4 py-3 font-medium text-talents-800">{{ s.name }}</td>
                             <td class="px-4 py-3">
-                                <a :href="'mailto:' + s.email" class="font-medium text-talents-700 hover:underline">{{
-                                    s.email
-                                }}</a>
+                                <a
+                                    :href="'mailto:' + s.email"
+                                    class="font-medium text-talents-700 hover:underline"
+                                    @click.stop
+                                >
+                                    {{ s.email }}
+                                </a>
                             </td>
                             <td class="whitespace-nowrap px-4 py-3 text-gray-700">{{ s.phone || '—' }}</td>
                             <td class="max-w-xs truncate px-4 py-3">{{ s.company || '—' }}</td>
@@ -161,6 +241,24 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                     <span class="line-clamp-2 text-xs text-gray-500">{{ mailErrorText(s.mail_error) }}</span>
                                 </span>
                                 <span v-else class="text-gray-400">—</span>
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-3 text-right">
+                                <button
+                                    type="button"
+                                    class="mr-2 font-medium text-talents-700 hover:underline"
+                                    @click.stop="openDetailModal(s)"
+                                >
+                                    Ver
+                                </button>
+                                <button
+                                    type="button"
+                                    class="inline-flex rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-700"
+                                    title="Excluir lead"
+                                    aria-label="Excluir lead"
+                                    @click="destroyLead(s, $event)"
+                                >
+                                    <TrashIcon class="h-4 w-4" />
+                                </button>
                             </td>
                         </tr>
                     </tbody>
@@ -236,6 +334,122 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         <button type="button" class="btn-secondary" @click="closeCreateModal">Cancelar</button>
                         <button type="submit" class="btn-primary" :disabled="form.processing">
                             {{ form.processing ? 'Salvando…' : 'Salvar lead' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </FullScreenOverlay>
+
+        <FullScreenOverlay :show="showDetailModal" @close="closeDetailModal">
+            <div
+                v-if="selectedLead"
+                class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="lead-detail-title"
+            >
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h3 id="lead-detail-title" class="text-lg font-semibold text-gray-900">
+                            {{ selectedLead.name }}
+                        </h3>
+                        <p class="mt-1 text-sm text-gray-600">Detalhe do lead</p>
+                    </div>
+                    <button
+                        type="button"
+                        class="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-700"
+                        title="Excluir lead"
+                        aria-label="Excluir lead"
+                        @click="destroyLead(selectedLead, $event)"
+                    >
+                        <TrashIcon class="h-5 w-5" />
+                    </button>
+                </div>
+
+                <dl class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Data</dt>
+                        <dd class="mt-1 text-sm text-slate-900">{{ formatDateTime(selectedLead.created_at) }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Origem</dt>
+                        <dd class="mt-1">
+                            <span
+                                class="inline-flex rounded-full bg-talents-50 px-2 py-0.5 text-xs font-medium text-talents-800 ring-1 ring-talents-100"
+                            >
+                                {{ selectedLead.source_label || '—' }}
+                            </span>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">E-mail</dt>
+                        <dd class="mt-1 text-sm">
+                            <a :href="'mailto:' + selectedLead.email" class="font-medium text-talents-700 hover:underline">
+                                {{ selectedLead.email }}
+                            </a>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Telefone / WhatsApp</dt>
+                        <dd class="mt-1 text-sm text-slate-900">{{ selectedLead.phone || '—' }}</dd>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Empresa</dt>
+                        <dd class="mt-1 text-sm text-slate-900">{{ selectedLead.company || '—' }}</dd>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Mensagem</dt>
+                        <dd class="mt-1 whitespace-pre-wrap text-sm text-slate-900">
+                            {{ selectedLead.message || '—' }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Cadastrado por</dt>
+                        <dd class="mt-1 text-sm text-slate-900">
+                            {{ selectedLead.created_by_name || 'Site / formulário público' }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">E-mail aviso</dt>
+                        <dd class="mt-1 text-sm">
+                            <span
+                                v-if="selectedLead.mail_sent_at"
+                                class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
+                            >
+                                Enviado em {{ formatDateTime(selectedLead.mail_sent_at) }}
+                            </span>
+                            <span
+                                v-else-if="mailErrorPresent(selectedLead.mail_error)"
+                                class="text-amber-800"
+                            >
+                                Falha SMTP — {{ mailErrorText(selectedLead.mail_error) }}
+                            </span>
+                            <span v-else class="text-slate-500">—</span>
+                        </dd>
+                    </div>
+                </dl>
+
+                <form class="mt-6 border-t border-slate-100 pt-5" @submit.prevent="saveNotes">
+                    <label class="block text-sm font-medium text-gray-700" for="lead-admin-notes">
+                        Anotações internas
+                    </label>
+                    <p class="mt-0.5 text-xs text-slate-500">
+                        Use este campo para registar follow-ups, combinações e observações da equipa.
+                    </p>
+                    <textarea
+                        id="lead-admin-notes"
+                        v-model="notesForm.admin_notes"
+                        rows="5"
+                        class="field-input mt-2"
+                        placeholder="Ex.: Ligar na sexta; pediu proposta de NR-1…"
+                    />
+                    <p v-if="notesForm.errors.admin_notes" class="mt-1 text-sm text-red-600">
+                        {{ notesForm.errors.admin_notes }}
+                    </p>
+                    <div class="mt-4 flex justify-end gap-2">
+                        <button type="button" class="btn-secondary" @click="closeDetailModal">Fechar</button>
+                        <button type="submit" class="btn-primary" :disabled="notesForm.processing">
+                            {{ notesForm.processing ? 'Salvando…' : 'Salvar anotações' }}
                         </button>
                     </div>
                 </form>

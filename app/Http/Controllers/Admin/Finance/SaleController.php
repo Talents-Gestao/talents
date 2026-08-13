@@ -85,6 +85,98 @@ class SaleController extends Controller
         ]);
     }
 
+    public function create(): Response
+    {
+        return Inertia::render('Admin/Finance/Sales/Form', [
+            'sellers' => \App\Models\User::query()
+                ->where('is_commercial', true)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->all(),
+            'paymentMethodOptions' => [
+                ['value' => 'pix', 'label' => 'PIX'],
+                ['value' => 'boleto', 'label' => 'Boleto'],
+                ['value' => 'cartao', 'label' => 'Cartão'],
+                ['value' => 'misto', 'label' => 'Misto'],
+            ],
+        ]);
+    }
+
+    public function storeManual(Request $request): RedirectResponse
+    {
+        $isMisto = $request->input('payment_method') === 'misto';
+
+        $data = $request->validate([
+            'client_name' => ['required', 'string', 'max:255'],
+            'client_cnpj' => ['nullable', 'string', 'max:18'],
+            'client_email' => ['nullable', 'email', 'max:255'],
+            'client_phone' => ['nullable', 'string', 'max:32'],
+            'seller_id' => ['nullable', 'integer', 'exists:users,id'],
+            'total_reais' => ['required', 'numeric', 'min:0.01'],
+            'commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'payment_method' => ['required', Rule::in(['pix', 'boleto', 'cartao', 'misto'])],
+            'installments_count' => [
+                Rule::excludeIf($isMisto),
+                Rule::requiredIf(! $isMisto),
+                'integer',
+                'min:1',
+                'max:60',
+            ],
+            'first_due_date' => ['required', 'date'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'mix_parts' => [
+                Rule::excludeIf(! $isMisto),
+                Rule::requiredIf($isMisto),
+                'array',
+                'min:2',
+                'max:60',
+            ],
+            'mix_parts.*.method' => [
+                Rule::requiredIf($isMisto),
+                Rule::in(['pix', 'boleto', 'cartao']),
+            ],
+            'mix_parts.*.percent' => [
+                Rule::requiredIf($isMisto),
+                'numeric',
+                'gt:0',
+                'lte:100',
+            ],
+        ], [
+            'client_name.required' => 'Informe o nome do cliente.',
+            'total_reais.required' => 'Informe o valor total.',
+            'payment_method.required' => 'Selecione a forma de pagamento.',
+            'first_due_date.required' => 'Informe a data do primeiro vencimento.',
+            'installments_count.required' => 'Informe o número de parcelas.',
+        ]);
+
+        $payload = [
+            ...$data,
+            'total_cents' => (int) round(((float) $data['total_reais']) * 100),
+            'commission_percent' => (float) ($data['commission_percent'] ?? 0),
+            'seller_id' => filled($data['seller_id'] ?? null) ? (int) $data['seller_id'] : null,
+        ];
+        unset($payload['total_reais']);
+
+        $sale = $this->conversion->createManual($payload, $request->user()?->id);
+
+        $actor = $request->user();
+        $saleId = (int) $sale->id;
+        $saleCode = (string) $sale->code;
+
+        dispatch(function () use ($saleId, $actor): void {
+            $sale = CommercialSale::query()->find($saleId);
+            if (! $sale) {
+                return;
+            }
+            app(PublishCommercialNotice::class)->saleCreated($sale, $actor);
+        })->afterResponse();
+
+        return redirect()
+            ->route('admin.financeiro.vendas.show', $sale)
+            ->with('success', "Venda {$saleCode} criada manualmente.");
+    }
+
     public function store(Request $request, CommercialProposal $proposal): RedirectResponse
     {
         $isMisto = $request->input('payment_method') === 'misto';
