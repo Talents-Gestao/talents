@@ -453,6 +453,9 @@ const convertForm = useForm({
 });
 
 const isConvertMisto = computed(() => convertForm.payment_method === 'misto');
+const isConvertRecurring = computed(() => !!convertProposal.value?.is_recurring
+    && Number(convertProposal.value?.recurring_months) > 0
+    && Number(convertProposal.value?.recurring_monthly_cents) > 0);
 
 const mixPercentSum = computed(() => (
     (convertForm.mix_parts || []).reduce((sum, part) => sum + (Number(part.percent) || 0), 0)
@@ -494,6 +497,9 @@ const mixPreviewLabel = computed(() => {
 watch(
     () => convertForm.payment_method,
     (method, previous) => {
+        if (isConvertRecurring.value) {
+            return;
+        }
         if (method === 'misto' && previous !== 'misto') {
             convertForm.mix_parts = defaultMixParts();
             convertForm.installments_count = convertForm.mix_parts.length;
@@ -540,6 +546,14 @@ const validateConvertForm = () => {
         convertForm.setError('first_due_date', 'Informe o 1º vencimento.');
     }
 
+    if (isConvertRecurring.value) {
+        if (convertForm.payment_method === 'misto') {
+            convertForm.setError('payment_method', 'Propostas recorrentes aceitam apenas PIX, boleto ou cartão.');
+        }
+
+        return Object.keys(convertForm.errors).length === 0 && convertClientErrors.value.length === 0;
+    }
+
     if (isConvertMisto.value) {
         const parts = convertForm.mix_parts || [];
         if (parts.length < 2) {
@@ -572,9 +586,12 @@ const openConvertModal = (proposal) => {
     convertClientErrors.value = [];
     convertForm.clearErrors();
     const today = localTodayDate();
+    const recurringMonths = Number(proposal?.recurring_months) > 0
+        ? Number(proposal.recurring_months)
+        : 1;
     convertForm.defaults({
         payment_method: 'pix',
-        installments_count: 1,
+        installments_count: proposal?.is_recurring ? recurringMonths : 1,
         first_due_date: today,
         notes: '',
         mix_parts: [],
@@ -652,7 +669,10 @@ const submitConvert = () => {
     if (convertForm.processing) return;
     if (!validateConvertForm()) return;
 
-    if (isConvertMisto.value) {
+    if (isConvertRecurring.value) {
+        convertForm.mix_parts = [];
+        convertForm.installments_count = Number(convertProposal.value.recurring_months) || 1;
+    } else if (isConvertMisto.value) {
         convertForm.installments_count = convertForm.mix_parts.length;
         convertForm.mix_parts = (convertForm.mix_parts || []).map((part) => ({
             method: part.method,
@@ -889,6 +909,13 @@ const submitConvert = () => {
                             <td class="px-4 py-3 text-right tabular-nums">{{ p.employee_count }}</td>
                             <td class="px-4 py-3 text-right tabular-nums font-semibold">
                                 {{ formatBRL(p.total_final_cents) }}
+                                <div
+                                    v-if="p.is_recurring"
+                                    class="mt-0.5 text-[11px] font-medium text-talents-700"
+                                >
+                                    Recorrente
+                                    <span v-if="p.recurring_months">· {{ p.recurring_months }} meses</span>
+                                </div>
                             </td>
                             <td class="px-4 py-3">
                                 <button
@@ -1204,6 +1231,20 @@ const submitConvert = () => {
                             </p>
                         </div>
 
+                        <div
+                            v-if="isConvertRecurring"
+                            class="rounded-xl border border-talents-200 bg-talents-50/70 px-3 py-2 text-sm text-talents-900"
+                        >
+                            Serviço recorrente:
+                            <strong>{{ convertProposal.recurring_months }} meses</strong>
+                            de
+                            <strong>{{ formatBRL(convertProposal.recurring_monthly_cents) }}</strong>
+                            /mês.
+                            Serão geradas
+                            {{ convertProposal.recurring_months }}
+                            cobranças mensais em Contas a receber.
+                        </div>
+
                         <div>
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Forma de pagamento</label>
                             <select
@@ -1213,9 +1254,9 @@ const submitConvert = () => {
                                 <option value="pix">PIX</option>
                                 <option value="boleto">Boleto</option>
                                 <option value="cartao">Cartão</option>
-                                <option value="misto">Misto</option>
+                                <option v-if="!isConvertRecurring" value="misto">Misto</option>
                             </select>
-                            <p class="mt-1 text-xs text-slate-500">
+                            <p v-if="!isConvertRecurring" class="mt-1 text-xs text-slate-500">
                                 Em «Misto», informe a composição do valor (ex.: 50% PIX + 50% cartão).
                             </p>
                             <p v-if="convertForm.errors.payment_method" class="mt-1 text-xs text-rose-600">
@@ -1223,7 +1264,7 @@ const submitConvert = () => {
                             </p>
                         </div>
 
-                        <div v-if="!isConvertMisto">
+                        <div v-if="!isConvertRecurring && !isConvertMisto">
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Nº de parcelas</label>
                             <input
                                 v-model.number="convertForm.installments_count"
@@ -1241,7 +1282,7 @@ const submitConvert = () => {
                         </div>
 
                         <div
-                            v-else
+                            v-else-if="!isConvertRecurring"
                             class="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4"
                         >
                             <div>

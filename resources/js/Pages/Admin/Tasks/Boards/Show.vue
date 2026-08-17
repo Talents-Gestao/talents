@@ -21,13 +21,6 @@ const modalOpen = ref(false);
 const selectedCard = ref(null);
 const viewMode = ref('kanban');
 
-const boardKanbanKey = computed(() =>
-    (props.boardPayload?.lists || [])
-        .flatMap((list) => list.cards || [])
-        .map((card) => `${card.id}:${card.checklist_total ?? 0}:${card.checklist_done ?? 0}`)
-        .join('|'),
-);
-
 function openCard(card) {
     selectedCard.value = card;
     modalOpen.value = true;
@@ -45,8 +38,18 @@ function syncSelectedCard(cardId) {
 
 function refreshBoard() {
     const params = props.boardPayload?.show_archived ? { ver_arquivados: 1 } : {};
+    const main = document.querySelector('.app-shell-main-scroll');
+    const mainTop = main?.scrollTop ?? 0;
     router.get(route('admin.tarefas.quadros.show', props.boardPayload.id), params, {
         preserveScroll: true,
+        onFinish: () => {
+            requestAnimationFrame(() => {
+                const el = document.querySelector('.app-shell-main-scroll');
+                if (el) {
+                    el.scrollTop = mainTop;
+                }
+            });
+        },
     });
 }
 
@@ -153,7 +156,6 @@ function formatDateTitle(value) {
 
             <KanbanBoard
                 v-if="viewMode === 'kanban'"
-                :key="boardKanbanKey"
                 :board-payload="boardPayload"
                 :is-admin="true"
                 :companies="companies || []"

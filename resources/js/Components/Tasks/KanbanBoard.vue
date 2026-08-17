@@ -42,12 +42,86 @@ const LIST_COLOR_PRESETS = [
 
 const localLists = ref(cloneLists(props.boardPayload.lists));
 
+const MAIN_SCROLL_SELECTOR = '.app-shell-main-scroll';
+const BOARD_SCROLL_ATTR = 'data-kanban-board-scroll';
+const CARDS_SCROLL_ATTR = 'data-kanban-cards-scroll';
+
+let dragScrollSnapshot = null;
+
+function captureKanbanScroll() {
+    const main = document.querySelector(MAIN_SCROLL_SELECTOR);
+    const board = document.querySelector(`[${BOARD_SCROLL_ATTR}]`);
+    const columns = {};
+    document.querySelectorAll(`[${CARDS_SCROLL_ATTR}]`).forEach((el) => {
+        const id = el.closest('[data-list-id]')?.dataset?.listId;
+        if (id) {
+            columns[id] = el.scrollTop;
+        }
+    });
+
+    return {
+        main: main?.scrollTop ?? 0,
+        boardX: board?.scrollLeft ?? 0,
+        columns,
+    };
+}
+
+function restoreKanbanScroll(snapshot) {
+    if (!snapshot) {
+        return;
+    }
+
+    const apply = () => {
+        const main = document.querySelector(MAIN_SCROLL_SELECTOR);
+        if (main) {
+            main.scrollTop = snapshot.main;
+        }
+        const board = document.querySelector(`[${BOARD_SCROLL_ATTR}]`);
+        if (board) {
+            board.scrollLeft = snapshot.boardX;
+        }
+        document.querySelectorAll(`[${CARDS_SCROLL_ATTR}]`).forEach((el) => {
+            const id = el.closest('[data-list-id]')?.dataset?.listId;
+            if (id != null && snapshot.columns[id] != null) {
+                el.scrollTop = snapshot.columns[id];
+            }
+        });
+    };
+
+    apply();
+    nextTick(() => {
+        apply();
+        requestAnimationFrame(apply);
+    });
+}
+
+function onDragScrollCapture() {
+    if (dragScrollSnapshot) {
+        dragScrollSnapshot = captureKanbanScroll();
+    }
+}
+
+function beginCardDragScrollGuard() {
+    dragScrollSnapshot = captureKanbanScroll();
+    document.addEventListener('scroll', onDragScrollCapture, true);
+}
+
+function endCardDragScrollGuard() {
+    document.removeEventListener('scroll', onDragScrollCapture, true);
+    const snapshot = dragScrollSnapshot;
+    dragScrollSnapshot = null;
+    restoreKanbanScroll(snapshot);
+}
+
 watch(
     () => props.boardPayload,
     (payload) => {
-        if (payload?.lists) {
-            localLists.value = cloneLists(payload.lists);
+        if (!payload?.lists) {
+            return;
         }
+        const snapshot = captureKanbanScroll();
+        localLists.value = cloneLists(payload.lists);
+        restoreKanbanScroll(snapshot);
     },
     { deep: true },
 );
@@ -373,6 +447,8 @@ onUnmounted(() => {
     document.removeEventListener('click', closeListMenu);
     window.removeEventListener('scroll', onListMenuViewportChange, true);
     window.removeEventListener('resize', onListMenuViewportChange);
+    document.removeEventListener('scroll', onDragScrollCapture, true);
+    dragScrollSnapshot = null;
 });
 
 function toggleCardComplete(card, event) {
@@ -436,6 +512,8 @@ function positionBetween(list, newIndex) {
 }
 
 function onCardDragEnd(_fromListId, evt) {
+    endCardDragScrollGuard();
+
     if (!props.isAdmin) return;
     const cardEl = evt.item;
     const cardId = Number(cardEl?.dataset?.cardId);
@@ -453,13 +531,17 @@ function onCardDragEnd(_fromListId, evt) {
     const newIndex = Array.from(evt.to.children).indexOf(cardEl);
     const idx = newIndex >= 0 ? newIndex : targetList.cards.length - 1;
     const position = positionBetween(targetList, idx);
+    const moved = targetList.cards[idx];
+    if (moved && Number(moved.id) === cardId) {
+        moved.position = position;
+    }
 
     router.post(
         moveCardRoute(cardId),
         { list_id: toId, position },
         {
             preserveScroll: true,
-            onSuccess: () => reload(),
+            onError: () => reload(),
         },
     );
 }
@@ -551,7 +633,7 @@ function expandList(list) {
 
 <template>
     <div class="space-y-3">
-        <div class="flex items-start gap-3 overflow-x-auto pb-3">
+        <div class="flex items-start gap-3 overflow-x-auto pb-3" data-kanban-board-scroll>
             <VueDraggable
                 v-model="localLists"
                 item-key="id"
@@ -648,6 +730,7 @@ function expandList(list) {
                     group="kanban-cards"
                     item-key="id"
                     :disabled="!isAdmin || list.is_archived"
+                    data-kanban-cards-scroll
                     class="flex flex-col gap-2 px-0.5"
                     :class="
                         listNeedsCardScroll(list)
@@ -655,6 +738,7 @@ function expandList(list) {
                             : 'min-h-[8px]'
                     "
                     :style="listCardsScrollStyle(list)"
+                    @start="beginCardDragScrollGuard"
                     @end="(e) => onCardDragEnd(list.id, e)"
                 >
                     <div

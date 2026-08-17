@@ -373,6 +373,7 @@ class ProposalController extends Controller
     {
         $data = $this->validateProposal($request, $existing);
         $data = $this->applyPaymentMethodSnapshot($data);
+        $data = $this->normalizeRecurringFields($data);
         $catalogProducts = $data['catalog_products'] ?? [];
         unset($data['catalog_products']);
 
@@ -386,6 +387,14 @@ class ProposalController extends Controller
 
         $catalogLines = $totals['catalog_lines'] ?? [];
         unset($totals['catalog_lines']);
+
+        if (! empty($data['is_recurring'])) {
+            $periodTotal = (int) $data['recurring_months'] * (int) $data['recurring_monthly_cents'];
+            $commissionPercent = (float) ($data['commission_percent'] ?? $totals['commission_percent'] ?? 0);
+            $totals['total_final_cents'] = $periodTotal;
+            $totals['commission_percent'] = $commissionPercent;
+            $totals['commission_cents'] = (int) round($periodTotal * $commissionPercent / 100);
+        }
 
         return [$data, $totals, $catalogLines];
     }
@@ -440,6 +449,9 @@ class ProposalController extends Controller
         $payload['pdf_optional_sections'] = CommercialProposalPdfOptionalSections::normalizeSelection(
             $proposal->pdf_optional_sections
         );
+        $payload['recurring_monthly_reais'] = $proposal->recurring_monthly_cents !== null
+            ? number_format(((int) $proposal->recurring_monthly_cents) / 100, 2, '.', '')
+            : '';
 
         return $payload;
     }
@@ -570,6 +582,21 @@ class ProposalController extends Controller
 
             'is_closed' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'is_recurring' => ['boolean'],
+            'recurring_months' => [
+                Rule::requiredIf(fn () => $request->boolean('is_recurring')),
+                'nullable',
+                'integer',
+                'min:1',
+                'max:60',
+            ],
+            'recurring_monthly_reais' => [
+                Rule::requiredIf(fn () => $request->boolean('is_recurring')),
+                'nullable',
+                'numeric',
+                'min:0.01',
+            ],
+            'recurring_notes' => ['nullable', 'string', 'max:2000'],
             'payment_method_id' => [
                 'required',
                 'integer',
@@ -613,12 +640,18 @@ class ProposalController extends Controller
             'payment_method_id.required' => 'Selecione a forma de pagamento.',
             'payment_method_id.exists' => 'Forma de pagamento inválida ou inativa.',
             'client_email.email' => 'Informe um e-mail válido.',
+            'recurring_months.required' => 'Informe a duração em meses do serviço recorrente.',
+            'recurring_months.min' => 'A duração deve ser de pelo menos 1 mês.',
+            'recurring_months.max' => 'A duração não pode ser maior que 60 meses.',
+            'recurring_monthly_reais.required' => 'Informe o valor mensal.',
+            'recurring_monthly_reais.min' => 'O valor mensal deve ser maior que zero.',
         ]);
 
         $data['commission_percent'] = (float) (CommercialSetting::current()->default_commission_percent ?? 0);
 
         $data['include_publico_atendido'] = (bool) ($data['include_publico_atendido'] ?? true);
         $data['include_minimum_stay'] = (bool) ($data['include_minimum_stay'] ?? true);
+        $data['is_recurring'] = (bool) ($data['is_recurring'] ?? false);
 
         $data['service_descriptions'] = $this->normalizeServiceDescriptions(
             $data['service_descriptions'] ?? null
@@ -627,6 +660,33 @@ class ProposalController extends Controller
         $data['pdf_optional_sections'] = $this->normalizePdfOptionalSections(
             $data['pdf_optional_sections'] ?? null
         );
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function normalizeRecurringFields(array $data): array
+    {
+        if (empty($data['is_recurring'])) {
+            $data['is_recurring'] = false;
+            $data['recurring_months'] = null;
+            $data['recurring_monthly_cents'] = null;
+            $data['recurring_notes'] = null;
+            unset($data['recurring_monthly_reais']);
+
+            return $data;
+        }
+
+        $data['is_recurring'] = true;
+        $data['recurring_months'] = (int) $data['recurring_months'];
+        $data['recurring_monthly_cents'] = (int) round(((float) $data['recurring_monthly_reais']) * 100);
+        $data['recurring_notes'] = filled($data['recurring_notes'] ?? null)
+            ? trim((string) $data['recurring_notes'])
+            : null;
+        unset($data['recurring_monthly_reais']);
 
         return $data;
     }

@@ -13,6 +13,7 @@ import {
     FLEXIBLE_RATE_DEFS,
 } from '@/composables/useCatalogProductPricing';
 import { formatCnpj, maskCnpj } from '@/utils/formatCnpj';
+import { CheckIcon } from '@heroicons/vue/24/solid';
 import axios from 'axios';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { computed, nextTick, ref } from 'vue';
@@ -77,6 +78,10 @@ const formInitial = props.proposal
           notes: props.proposal.notes ?? '',
           payment_method_id: props.proposal.payment_method_id ?? '',
           include_minimum_stay: props.proposal.include_minimum_stay ?? true,
+          is_recurring: !!props.proposal.is_recurring,
+          recurring_months: props.proposal.recurring_months ?? '',
+          recurring_monthly_reais: props.proposal.recurring_monthly_reais ?? '',
+          recurring_notes: props.proposal.recurring_notes ?? '',
           palestra_topic: props.proposal.palestra_topic ?? '',
           palestra_event_date: props.proposal.palestra_event_date ?? '',
           palestra_start_time: props.proposal.palestra_start_time ?? '',
@@ -106,6 +111,10 @@ const formInitial = props.proposal
           notes: '',
           payment_method_id: '',
           include_minimum_stay: true,
+          is_recurring: false,
+          recurring_months: '',
+          recurring_monthly_reais: '',
+          recurring_notes: '',
           palestra_topic: '',
           palestra_event_date: '',
           palestra_start_time: '',
@@ -161,6 +170,40 @@ const { totalFinalCents, catalogLines, legacySummary } = useCommercialPricing(
     catalogProductsRef,
     proposalRef,
 );
+
+const recurringMonthlyCents = computed(() => {
+    const reais = Number(form.recurring_monthly_reais);
+    if (!Number.isFinite(reais) || reais <= 0) {
+        return 0;
+    }
+    return Math.round(reais * 100);
+});
+
+const recurringMonthsCount = computed(() => {
+    const months = Number(form.recurring_months);
+    if (!Number.isInteger(months) || months < 1) {
+        return 0;
+    }
+    return months;
+});
+
+const honorarioFinalCents = computed(() => {
+    if (form.is_recurring && recurringMonthsCount.value > 0 && recurringMonthlyCents.value > 0) {
+        return recurringMonthsCount.value * recurringMonthlyCents.value;
+    }
+    return totalFinalCents.value;
+});
+
+const setServiceType = (type) => {
+    const recurring = type === 'recorrente';
+    form.is_recurring = recurring;
+    if (!recurring) {
+        form.recurring_months = '';
+        form.recurring_monthly_reais = '';
+        form.recurring_notes = '';
+        form.clearErrors('recurring_months', 'recurring_monthly_reais', 'recurring_notes');
+    }
+};
 
 const catalogSelection = (productId) => {
     let sel = form.catalog_products.find((s) => s.product_id === productId);
@@ -432,9 +475,28 @@ const isEmployeeCountValid = (value) => {
 
 /** Gate client-side alinhado aos obrigatórios do backend. */
 const validateRequiredFields = () => {
-    form.clearErrors('client_name', 'employee_count', 'payment_method_id');
+    form.clearErrors(
+        'client_name',
+        'employee_count',
+        'payment_method_id',
+        'recurring_months',
+        'recurring_monthly_reais',
+    );
 
     let valid = true;
+
+    if (form.is_recurring) {
+        const months = Number(form.recurring_months);
+        if (!Number.isInteger(months) || months < 1 || months > 60) {
+            form.setError('recurring_months', 'Informe a duração em meses (1 a 60).');
+            valid = false;
+        }
+        const monthly = Number(form.recurring_monthly_reais);
+        if (!Number.isFinite(monthly) || monthly <= 0) {
+            form.setError('recurring_monthly_reais', 'Informe o valor mensal.');
+            valid = false;
+        }
+    }
 
     if (!String(form.client_name ?? '').trim()) {
         form.setError('client_name', 'Informe o nome / razão social.');
@@ -452,6 +514,7 @@ const validateRequiredFields = () => {
     }
 
     if (!valid) {
+        goToStepForErrors();
         scrollToFirstFormError();
     }
 
@@ -464,7 +527,10 @@ const submit = () => {
     }
 
     const options = {
-        onError: () => scrollToFirstFormError(),
+        onError: () => {
+            goToStepForErrors();
+            scrollToFirstFormError();
+        },
     };
 
     if (props.mode === 'edit') {
@@ -535,6 +601,200 @@ const services = computed(() => {
     }));
     return [...legacy, ...catalog];
 });
+
+const wizardSteps = [
+    { id: 'tipo', label: 'Tipo', title: 'Tipo de serviço' },
+    { id: 'cliente', label: 'Cliente', title: 'Dados do cliente' },
+    { id: 'produtos', label: 'Produtos', title: 'Produtos' },
+    { id: 'pdf', label: 'PDF', title: 'Conteúdo do PDF' },
+    { id: 'comercial', label: 'Comercial', title: 'Informações comerciais' },
+];
+
+const currentStepIndex = ref(0);
+const currentStepId = computed(() => wizardSteps[currentStepIndex.value]?.id ?? 'tipo');
+const isFirstStep = computed(() => currentStepIndex.value === 0);
+const isLastStep = computed(() => currentStepIndex.value === wizardSteps.length - 1);
+const currentStepMeta = computed(() => wizardSteps[currentStepIndex.value] ?? wizardSteps[0]);
+
+const stepIndexById = (id) => wizardSteps.findIndex((step) => step.id === id);
+
+const goToStep = (index) => {
+    if (index < 0 || index >= wizardSteps.length) {
+        return;
+    }
+    currentStepIndex.value = index;
+    nextTick(() => {
+        document.getElementById('proposal-wizard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+};
+
+const errorKeyToStepId = (key) => {
+    if (key.startsWith('recurring_') || key === 'is_recurring') {
+        return 'tipo';
+    }
+    if (
+        key.startsWith('client_')
+        || key === 'indication'
+        || key === 'employee_count'
+        || key === 'include_publico_atendido'
+    ) {
+        return 'cliente';
+    }
+    if (key.startsWith('catalog_products') || key.startsWith('svc_')) {
+        return 'produtos';
+    }
+    if (
+        key.startsWith('pdf_')
+        || key.startsWith('service_descriptions')
+        || key.startsWith('palestra_')
+    ) {
+        return 'pdf';
+    }
+    if (
+        key === 'seller_id'
+        || key === 'payment_method_id'
+        || key === 'include_minimum_stay'
+        || key === 'notes'
+        || key === 'is_closed'
+    ) {
+        return 'comercial';
+    }
+
+    return null;
+};
+
+const goToStepForErrors = () => {
+    const priority = [
+        'recurring_months',
+        'recurring_monthly_reais',
+        'client_name',
+        'employee_count',
+        'payment_method_id',
+        'client_email',
+    ];
+    const keys = [
+        ...priority.filter((key) => form.errors[key]),
+        ...Object.keys(form.errors).filter((key) => !priority.includes(key)),
+    ];
+    for (const key of keys) {
+        const stepId = errorKeyToStepId(key);
+        const index = stepId ? stepIndexById(stepId) : -1;
+        if (index >= 0) {
+            goToStep(index);
+            return;
+        }
+    }
+};
+
+const validateCurrentStep = () => {
+    const stepId = currentStepId.value;
+
+    if (stepId === 'tipo') {
+        form.clearErrors('recurring_months', 'recurring_monthly_reais');
+        if (!form.is_recurring) {
+            return true;
+        }
+        let valid = true;
+        const months = Number(form.recurring_months);
+        if (!Number.isInteger(months) || months < 1 || months > 60) {
+            form.setError('recurring_months', 'Informe a duração em meses (1 a 60).');
+            valid = false;
+        }
+        const monthly = Number(form.recurring_monthly_reais);
+        if (!Number.isFinite(monthly) || monthly <= 0) {
+            form.setError('recurring_monthly_reais', 'Informe o valor mensal.');
+            valid = false;
+        }
+        return valid;
+    }
+
+    if (stepId === 'cliente') {
+        form.clearErrors('client_name', 'employee_count');
+        let valid = true;
+        if (!String(form.client_name ?? '').trim()) {
+            form.setError('client_name', 'Informe o nome / razão social.');
+            valid = false;
+        }
+        if (!isEmployeeCountValid(form.employee_count)) {
+            form.setError('employee_count', 'Informe o número de funcionários.');
+            valid = false;
+        }
+        return valid;
+    }
+
+    if (stepId === 'comercial') {
+        form.clearErrors('payment_method_id');
+        if (!form.payment_method_id) {
+            form.setError('payment_method_id', 'Selecione a forma de pagamento.');
+            return false;
+        }
+        return true;
+    }
+
+    return true;
+};
+
+const goNextStep = () => {
+    if (!validateCurrentStep()) {
+        scrollToFirstFormError();
+        return;
+    }
+    if (!isLastStep.value) {
+        goToStep(currentStepIndex.value + 1);
+    }
+};
+
+const goPrevStep = () => {
+    if (!isFirstStep.value) {
+        goToStep(currentStepIndex.value - 1);
+    }
+};
+
+const stepHasErrors = (index) => {
+    const stepId = wizardSteps[index]?.id;
+    if (!stepId) {
+        return false;
+    }
+    return Object.keys(form.errors).some((key) => errorKeyToStepId(key) === stepId);
+};
+
+/** completed | active | invalid | default | disabled */
+const stepStatus = (index) => {
+    if (stepHasErrors(index)) {
+        return 'invalid';
+    }
+    if (index < currentStepIndex.value) {
+        return 'completed';
+    }
+    if (index === currentStepIndex.value) {
+        return 'active';
+    }
+    if (index === currentStepIndex.value + 1) {
+        return 'default';
+    }
+    return 'disabled';
+};
+
+const connectorClass = (index) => {
+    const status = stepStatus(index);
+    if (status === 'completed' || status === 'active') {
+        return 'bg-talents-600';
+    }
+    if (status === 'invalid') {
+        return 'bg-rose-500';
+    }
+    return 'bg-slate-200';
+};
+
+const canNavigateToStep = (index) => index <= currentStepIndex.value;
+
+const onStepClick = (index) => {
+    // Só volta para passos já alcançados; avanço só via Continuar (com validação).
+    if (index > currentStepIndex.value) {
+        return;
+    }
+    goToStep(index);
+};
 </script>
 
 <template>
@@ -569,10 +829,181 @@ const services = computed(() => {
             Corrija os campos destacados antes de salvar a proposta.
         </div>
 
-        <form class="grid gap-8 lg:grid-cols-3" @submit.prevent="submit">
+        <div id="proposal-wizard" class="mb-8 rounded-xl border border-slate-200 bg-white px-4 py-6 shadow-sm sm:px-8">
+            <nav aria-label="Progresso da proposta">
+                <ol class="flex w-full items-start">
+                    <li
+                        v-for="(step, index) in wizardSteps"
+                        :key="step.id"
+                        class="relative flex flex-1 flex-col items-center"
+                    >
+                        <!-- Linha à esquerda (exceto o 1º) -->
+                        <div
+                            v-if="index > 0"
+                            class="absolute left-0 right-1/2 top-[1.125rem] h-0.5 -translate-y-1/2"
+                            :class="connectorClass(index - 1)"
+                            aria-hidden="true"
+                        />
+                        <!-- Linha à direita (exceto o último) -->
+                        <div
+                            v-if="index < wizardSteps.length - 1"
+                            class="absolute left-1/2 right-0 top-[1.125rem] h-0.5 -translate-y-1/2"
+                            :class="connectorClass(index)"
+                            aria-hidden="true"
+                        />
+
+                        <button
+                            type="button"
+                            class="relative z-10 flex flex-col items-center text-center disabled:cursor-not-allowed"
+                            :disabled="!canNavigateToStep(index)"
+                            :aria-current="stepStatus(index) === 'active' ? 'step' : undefined"
+                            :aria-label="step.title"
+                            @click="onStepClick(index)"
+                        >
+                            <span
+                                class="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-base font-semibold"
+                                :class="{
+                                    'bg-emerald-500 text-white': stepStatus(index) === 'completed',
+                                    'bg-talents-600 text-white': stepStatus(index) === 'active',
+                                    'bg-rose-500 text-white': stepStatus(index) === 'invalid',
+                                    'border-2 border-slate-400 bg-white text-slate-600': stepStatus(index) === 'default',
+                                    'border-2 border-slate-200 bg-white text-slate-300': stepStatus(index) === 'disabled',
+                                }"
+                            >
+                                <CheckIcon v-if="stepStatus(index) === 'completed'" class="h-4 w-4" aria-hidden="true" />
+                                <template v-else>{{ index + 1 }}</template>
+                                <span
+                                    v-if="stepStatus(index) === 'active'"
+                                    class="absolute -bottom-2 left-1/2 h-0 w-0 -translate-x-1/2 border-x-[5px] border-b-[6px] border-x-transparent border-b-talents-400"
+                                    aria-hidden="true"
+                                />
+                            </span>
+
+                            <span
+                                class="mt-3 max-w-[6rem] text-xs font-semibold leading-tight sm:max-w-none sm:text-sm"
+                                :class="{
+                                    'text-emerald-600': stepStatus(index) === 'completed',
+                                    'text-talents-700': stepStatus(index) === 'active',
+                                    'text-rose-600': stepStatus(index) === 'invalid',
+                                    'text-slate-600': stepStatus(index) === 'default',
+                                    'text-slate-300': stepStatus(index) === 'disabled',
+                                }"
+                            >
+                                {{ step.label }}
+                            </span>
+                        </button>
+                    </li>
+                </ol>
+            </nav>
+            <p class="mt-5 text-center text-base font-semibold text-talents-800">{{ currentStepMeta.title }}</p>
+        </div>
+
+        <form class="grid gap-8 lg:grid-cols-3" novalidate @submit.prevent="submit">
             <div class="space-y-6 lg:col-span-2">
+                <!-- Tipo de serviço (primeira impressão) -->
+                <section v-show="currentStepId === 'tipo'" class="surface-card p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Tipo de serviço</h3>
+                    <p class="mt-1 text-sm text-slate-600">
+                        Defina se a proposta é pontual ou um acompanhamento recorrente ao longo dos meses.
+                    </p>
+
+                    <div
+                        class="mt-4 inline-flex w-full max-w-md rounded-xl border border-slate-200 bg-slate-50 p-1"
+                        role="tablist"
+                        aria-label="Tipo de serviço"
+                    >
+                        <button
+                            type="button"
+                            role="tab"
+                            class="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition"
+                            :class="
+                                !form.is_recurring
+                                    ? 'bg-white text-talents-800 shadow-sm ring-1 ring-slate-200'
+                                    : 'text-slate-600 hover:text-slate-900'
+                            "
+                            :aria-selected="!form.is_recurring"
+                            @click="setServiceType('esporadico')"
+                        >
+                            Esporádico
+                        </button>
+                        <button
+                            type="button"
+                            role="tab"
+                            class="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition"
+                            :class="
+                                form.is_recurring
+                                    ? 'bg-white text-talents-800 shadow-sm ring-1 ring-slate-200'
+                                    : 'text-slate-600 hover:text-slate-900'
+                            "
+                            :aria-selected="form.is_recurring"
+                            @click="setServiceType('recorrente')"
+                        >
+                            Recorrente
+                        </button>
+                    </div>
+
+                    <p v-if="!form.is_recurring" class="mt-3 text-sm text-slate-600">
+                        Entrega pontual: o honorário final segue o cálculo dos produtos selecionados.
+                    </p>
+
+                    <div v-else class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                Duração (meses) *
+                            </label>
+                            <input
+                                v-model.number="form.recurring_months"
+                                type="number"
+                                min="1"
+                                max="60"
+                                required
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                :class="form.errors.recurring_months ? 'border-rose-400' : ''"
+                            />
+                            <p v-if="form.errors.recurring_months" class="mt-1 text-xs text-rose-600">
+                                {{ form.errors.recurring_months }}
+                            </p>
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                Valor mensal (R$) *
+                            </label>
+                            <input
+                                v-model="form.recurring_monthly_reais"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                required
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                :class="form.errors.recurring_monthly_reais ? 'border-rose-400' : ''"
+                            />
+                            <p v-if="form.errors.recurring_monthly_reais" class="mt-1 text-xs text-rose-600">
+                                {{ form.errors.recurring_monthly_reais }}
+                            </p>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                Cronograma / descrição da recorrência
+                            </label>
+                            <textarea
+                                v-model="form.recurring_notes"
+                                rows="3"
+                                placeholder="Ex.: Acompanhamento mensal de Direcionamento Estratégico ao longo de 6 meses."
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">
+                                O total do período será valor mensal × duração. Na conversão em venda, gera uma
+                                cobrança por mês em Contas a receber.
+                            </p>
+                            <p v-if="form.errors.recurring_notes" class="mt-1 text-xs text-rose-600">
+                                {{ form.errors.recurring_notes }}
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Cliente -->
-                <section class="surface-card p-6">
+                <section v-show="currentStepId === 'cliente'" class="surface-card p-6">
                     <h3 class="text-lg font-semibold text-slate-900">Dados do cliente</h3>
                     <p class="mt-1 text-xs text-slate-500">Lead / prospect — não vinculado a empresas cadastradas.</p>
 
@@ -715,7 +1146,7 @@ const services = computed(() => {
                 </section>
 
                 <!-- Produtos -->
-                <section class="surface-card p-6">
+                <section v-show="currentStepId === 'produtos'" class="surface-card p-6">
                     <h3 class="text-lg font-semibold text-slate-900">Produtos</h3>
                     <p class="mt-1 text-xs text-slate-500">
                         Selecione os produtos; o cálculo aparece no resumo ao lado.
@@ -975,7 +1406,11 @@ const services = computed(() => {
                 </section>
 
                 <!-- Seções opcionais do PDF -->
-                <section v-if="pdfOptionalSectionOptions.length" class="surface-card p-6">
+                <section
+                    v-show="currentStepId === 'pdf'"
+                    v-if="pdfOptionalSectionOptions.length"
+                    class="surface-card p-6"
+                >
                     <h3 class="text-lg font-semibold text-slate-900">Seções opcionais no PDF</h3>
                     <p class="mt-1 text-xs text-slate-500">
                         Marque os blocos informativos que devem aparecer no PDF, além dos serviços orçados.
@@ -1001,7 +1436,7 @@ const services = computed(() => {
                 </section>
 
                 <!-- Descrições dos serviços no PDF -->
-                <section class="surface-card p-6">
+                <section v-show="currentStepId === 'pdf'" class="surface-card p-6">
                     <h3 class="text-lg font-semibold text-slate-900">Descrições no PDF</h3>
                     <p class="mt-1 text-xs text-slate-500">
                         Textos exibidos em cada serviço da proposta. Preenchidos automaticamente; clique para editar.
@@ -1045,7 +1480,11 @@ const services = computed(() => {
                 </section>
 
                 <!-- Palestra — evento (contrato) -->
-                <section v-if="palestrasProductSelected" class="surface-card p-6">
+                <section
+                    v-show="currentStepId === 'pdf'"
+                    v-if="palestrasProductSelected"
+                    class="surface-card p-6"
+                >
                     <h3 class="text-lg font-semibold text-slate-900">Palestra — dados do evento (contrato)</h3>
                     <p class="mt-1 text-xs text-slate-500">
                         Alimentam os placeholders do modelo &quot;Palestra — Padrão Talents&quot; (tema, data, local, formato, etc.).
@@ -1120,7 +1559,7 @@ const services = computed(() => {
                 </section>
 
                 <!-- Comercial -->
-                <section class="surface-card p-6">
+                <section v-show="currentStepId === 'comercial'" class="surface-card p-6">
                     <h3 class="text-lg font-semibold text-slate-900">Informações comerciais</h3>
 
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
@@ -1200,7 +1639,11 @@ const services = computed(() => {
                     </div>
                 </section>
 
-                <section v-if="isEdit" class="surface-card p-6">
+                <section
+                    v-show="currentStepId === 'comercial'"
+                    v-if="isEdit"
+                    class="surface-card p-6"
+                >
                     <h3 class="text-lg font-semibold text-slate-900">Contratos gerados</h3>
                     <p class="mt-1 text-xs text-slate-500">Histórico de contratos PDF gerados a partir desta proposta.</p>
                     <ul
@@ -1227,6 +1670,35 @@ const services = computed(() => {
                     </ul>
                     <p v-else class="mt-4 text-sm text-slate-500">Nenhum contrato gerado ainda. Use a listagem de propostas para gerar.</p>
                 </section>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        :disabled="isFirstStep"
+                        @click="goPrevStep"
+                    >
+                        Voltar
+                    </button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button
+                            v-if="!isLastStep"
+                            type="button"
+                            class="inline-flex items-center rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
+                            @click="goNextStep"
+                        >
+                            Continuar
+                        </button>
+                        <button
+                            v-else
+                            type="submit"
+                            :disabled="form.processing"
+                            class="inline-flex items-center rounded-xl bg-talents-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:opacity-60"
+                        >
+                            {{ isEdit ? 'Salvar alterações' : 'Salvar proposta' }}
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Resumo lateral sticky -->
@@ -1252,20 +1724,26 @@ const services = computed(() => {
                     </ul>
 
                     <div class="mt-4 border-t border-slate-200 pt-4">
-                        <div class="flex items-center justify-between text-base font-semibold text-talents-700">
-                            <span>Honorário Final</span>
-                            <span class="tabular-nums">{{ formatBRL(totalFinalCents) }}</span>
+                        <template v-if="form.is_recurring">
+                            <div class="flex items-center justify-between text-sm text-slate-600">
+                                <span>Valor mensal</span>
+                                <span class="tabular-nums">{{ formatBRL(recurringMonthlyCents) }}</span>
+                            </div>
+                            <div class="mt-1 flex items-center justify-between text-sm text-slate-600">
+                                <span>Duração</span>
+                                <span class="tabular-nums">
+                                    {{ recurringMonthsCount || '—' }}
+                                    {{ recurringMonthsCount === 1 ? 'mês' : 'meses' }}
+                                </span>
+                            </div>
+                        </template>
+                        <div class="mt-2 flex items-center justify-between text-base font-semibold text-talents-700">
+                            <span>{{ form.is_recurring ? 'Total do período' : 'Honorário Final' }}</span>
+                            <span class="tabular-nums">{{ formatBRL(honorarioFinalCents) }}</span>
                         </div>
                     </div>
 
                     <div class="mt-6 space-y-2">
-                        <button
-                            type="submit"
-                            :disabled="form.processing"
-                            class="inline-flex w-full items-center justify-center rounded-xl bg-talents-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:opacity-60"
-                        >
-                            {{ isEdit ? 'Salvar alterações' : 'Salvar proposta' }}
-                        </button>
                         <button
                             type="button"
                             :disabled="form.is_closed || form.processing"

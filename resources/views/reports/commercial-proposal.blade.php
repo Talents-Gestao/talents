@@ -580,6 +580,30 @@
             </div>
         @endif
 
+        @if($proposal->isRecurringService())
+            <div class="pdf-card">
+                <h2 class="pdf-section-title">Condições do serviço (recorrente)</h2>
+                <ul class="pdf-list">
+                    <li>
+                        Serviço recorrente ao longo de
+                        {{ (int) $proposal->recurring_months }}
+                        {{ (int) $proposal->recurring_months === 1 ? 'mês' : 'meses' }}.
+                    </li>
+                    <li>Valor mensal: {{ $brl((int) $proposal->recurring_monthly_cents) }}.</li>
+                    <li>Valor total do período: {{ $brl((int) $proposal->total_final_cents) }}.</li>
+                    <li>
+                        O pagamento é mensal durante a vigência. Não se trata de entrega única —
+                        o acompanhamento ocorre ao longo do período contratado.
+                    </li>
+                </ul>
+                @if(filled($proposal->recurring_notes))
+                    <p class="section-text" style="margin-top: 10px;">
+                        {!! nl2br(e($proposal->recurring_notes)) !!}
+                    </p>
+                @endif
+            </div>
+        @endif
+
         @php
             $visibleOptionalSections = array_values(array_filter(
                 $optionalSections ?? [],
