@@ -26,8 +26,17 @@ class CommercialSale extends Model
             'commission_percent' => 'float',
             'commission_cents' => 'integer',
             'installments_count' => 'integer',
+            'is_recurring' => 'boolean',
+            'recurring_months' => 'integer',
+            'recurring_monthly_cents' => 'integer',
             'sold_at' => 'datetime',
         ];
+    }
+
+    public function isRecurringBilling(): bool
+    {
+        return (bool) $this->is_recurring
+            && (int) $this->recurring_months > 0;
     }
 
     public function proposal(): BelongsTo

@@ -40,8 +40,20 @@ class ProposalSaleConversionService
 
         $paymentMethod = (string) $data['payment_method'];
         $totalCents = (int) $proposal->total_final_cents;
+        $isRecurring = $proposal->isRecurringService();
 
-        if ($paymentMethod === 'misto') {
+        if ($isRecurring) {
+            if ($paymentMethod === 'misto') {
+                throw ValidationException::withMessages([
+                    'payment_method' => 'Propostas recorrentes não aceitam pagamento misto. Escolha PIX, boleto ou cartão.',
+                ]);
+            }
+
+            $monthlyCents = (int) $proposal->recurring_monthly_cents;
+            $months = (int) $proposal->recurring_months;
+            $totalCents = $months * $monthlyCents;
+            $installmentPlan = $this->planFromRecurringMonths($months, $paymentMethod, $monthlyCents);
+        } elseif ($paymentMethod === 'misto') {
             $installmentPlan = $this->planFromMixParts($data['mix_parts'] ?? [], $totalCents);
         } else {
             $installmentPlan = $this->planFromEqualInstallments(
@@ -53,7 +65,7 @@ class ProposalSaleConversionService
 
         $installmentsCount = count($installmentPlan);
 
-        return DB::transaction(function () use ($proposal, $data, $createdBy, $paymentMethod, $installmentsCount, $totalCents, $installmentPlan) {
+        return DB::transaction(function () use ($proposal, $data, $createdBy, $paymentMethod, $installmentsCount, $totalCents, $installmentPlan, $isRecurring) {
             $sale = CommercialSale::create([
                 'code' => CommercialSale::nextCode(),
                 'proposal_id' => $proposal->id,
@@ -64,9 +76,14 @@ class ProposalSaleConversionService
                 'seller_id' => $proposal->seller_id,
                 'total_cents' => $totalCents,
                 'commission_percent' => (float) $proposal->commission_percent,
-                'commission_cents' => (int) $proposal->commission_cents,
+                'commission_cents' => $isRecurring
+                    ? (int) round($totalCents * ((float) $proposal->commission_percent) / 100)
+                    : (int) $proposal->commission_cents,
                 'payment_method' => $paymentMethod,
                 'installments_count' => $installmentsCount,
+                'is_recurring' => $isRecurring,
+                'recurring_months' => $isRecurring ? (int) $proposal->recurring_months : null,
+                'recurring_monthly_cents' => $isRecurring ? (int) $proposal->recurring_monthly_cents : null,
                 'status' => CommercialSale::STATUS_ABERTA,
                 'sold_at' => now(),
                 'created_by' => $createdBy,
@@ -86,13 +103,14 @@ class ProposalSaleConversionService
                 ]);
             }
 
-            if ((int) $proposal->commission_cents > 0) {
+            $commissionCents = (int) $sale->commission_cents;
+            if ($commissionCents > 0) {
                 CommercialCommission::create([
                     'sale_id' => $sale->id,
                     'seller_id' => $proposal->seller_id,
                     'base_cents' => $totalCents,
                     'percent' => (float) $proposal->commission_percent,
-                    'amount_cents' => (int) $proposal->commission_cents,
+                    'amount_cents' => $commissionCents,
                     'status' => CommercialCommission::STATUS_A_PAGAR,
                 ]);
             }
@@ -253,6 +271,40 @@ class ProposalSaleConversionService
             $plan[] = [
                 'method' => $part['method'],
                 'amount_cents' => $amount,
+            ];
+        }
+
+        return $plan;
+    }
+
+    /**
+     * @return list<array{method: string, amount_cents: int}>
+     */
+    private function planFromRecurringMonths(int $months, string $paymentMethod, int $monthlyCents): array
+    {
+        if (! in_array($paymentMethod, self::SINGLE_METHODS, true)) {
+            throw ValidationException::withMessages([
+                'payment_method' => 'Forma de pagamento inválida.',
+            ]);
+        }
+
+        if ($months < 1 || $months > 60) {
+            throw ValidationException::withMessages([
+                'installments_count' => 'A duração recorrente deve ter entre 1 e 60 meses.',
+            ]);
+        }
+
+        if ($monthlyCents < 1) {
+            throw ValidationException::withMessages([
+                'proposal' => 'Informe um valor mensal válido na proposta recorrente.',
+            ]);
+        }
+
+        $plan = [];
+        for ($i = 0; $i < $months; $i++) {
+            $plan[] = [
+                'method' => $paymentMethod,
+                'amount_cents' => $monthlyCents,
             ];
         }
 

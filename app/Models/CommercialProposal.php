@@ -74,9 +74,29 @@ class CommercialProposal extends Model
             'payment_method_id' => 'integer',
             'include_minimum_stay' => 'boolean',
 
+            'is_recurring' => 'boolean',
+            'recurring_months' => 'integer',
+            'recurring_monthly_cents' => 'integer',
+
             'service_descriptions' => 'array',
             'pdf_optional_sections' => 'array',
         ];
+    }
+
+    public function isRecurringService(): bool
+    {
+        return (bool) $this->is_recurring
+            && (int) $this->recurring_months > 0
+            && (int) $this->recurring_monthly_cents > 0;
+    }
+
+    public function recurringPeriodTotalCents(): int
+    {
+        if (! $this->isRecurringService()) {
+            return 0;
+        }
+
+        return (int) $this->recurring_months * (int) $this->recurring_monthly_cents;
     }
 
     public function seller(): BelongsTo

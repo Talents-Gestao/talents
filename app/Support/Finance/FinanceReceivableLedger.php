@@ -92,6 +92,8 @@ class FinanceReceivableLedger
             'status_label' => $r->status->label(),
             'method' => null,
             'notes' => $r->notes,
+            'is_recurring' => false,
+            'recurring_label' => null,
             'payment_method' => $r->paymentMethod?->only(['id', 'name']),
             'payment_method_id' => $r->payment_method_id,
             'bank_account_id' => $r->bank_account_id,
@@ -115,8 +117,8 @@ class FinanceReceivableLedger
             'cancelled' => CommercialSaleInstallment::STATUS_CANCELADO,
         ];
 
-        $query = CommercialSaleInstallment::query()
-            ->with(['sale:id,code,client_name'])
+            $query = CommercialSaleInstallment::query()
+            ->with(['sale:id,code,client_name,is_recurring,recurring_months,recurring_monthly_cents,installments_count'])
             ->orderByDesc('due_date');
 
         if (($filters['status'] ?? '') !== '' && isset($statusMap[$filters['status']])) {
@@ -139,6 +141,8 @@ class FinanceReceivableLedger
             };
 
             $methodLabels = ['pix' => 'PIX', 'boleto' => 'Boleto', 'cartao' => 'Cartão'];
+            $isRecurring = (bool) ($i->sale?->is_recurring);
+            $recurringMonths = (int) ($i->sale?->recurring_months ?? $i->sale?->installments_count ?? 0);
 
             return [
                 'id' => 'sale-'.$i->id,
@@ -156,6 +160,10 @@ class FinanceReceivableLedger
                 'method' => $i->method,
                 'notes' => $i->notes,
                 'installment_status' => $i->status,
+                'is_recurring' => $isRecurring,
+                'recurring_label' => $isRecurring && $recurringMonths > 0
+                    ? 'Recorrente · Mês '.$i->number.'/'.$recurringMonths
+                    : null,
                 'payment_method' => [
                     'id' => null,
                     'name' => $methodLabels[$i->method] ?? $i->method,

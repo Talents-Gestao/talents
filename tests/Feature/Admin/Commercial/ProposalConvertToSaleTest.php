@@ -136,6 +136,86 @@ class ProposalConvertToSaleTest extends TestCase
         );
     }
 
+    public function test_convert_recurring_proposal_creates_monthly_installments(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::create([
+            'code' => 'PROP-CONV-REC',
+            'client_name' => 'Cliente Recorrente',
+            'employee_count' => 10,
+            'total_final_cents' => 18_000_00,
+            'is_closed' => true,
+            'closed_at' => now(),
+            'list_status' => 'approved',
+            'is_recurring' => true,
+            'recurring_months' => 6,
+            'recurring_monthly_cents' => 3_000_00,
+            'recurring_notes' => 'Acompanhamento mensal',
+        ]);
+
+        $response = $this->actingAs($admin)->post(
+            route('admin.comercial.propostas.converter', $proposal),
+            [
+                'payment_method' => 'pix',
+                'first_due_date' => '2026-09-01',
+                'notes' => 'Conversão recorrente',
+            ],
+        );
+
+        $sale = CommercialSale::query()->where('proposal_id', $proposal->id)->first();
+        $this->assertNotNull($sale);
+        $this->assertTrue($sale->is_recurring);
+        $this->assertSame(6, $sale->recurring_months);
+        $this->assertSame(3_000_00, $sale->recurring_monthly_cents);
+        $this->assertSame(18_000_00, $sale->total_cents);
+        $this->assertSame(6, $sale->installments_count);
+        $this->assertCount(6, $sale->installments);
+        $this->assertTrue($sale->installments->every(fn ($i) => (int) $i->amount_cents === 3_000_00));
+        $this->assertSame('2026-09-01', $sale->installments[0]->due_date?->toDateString());
+        $this->assertSame('2026-10-01', $sale->installments[1]->due_date?->toDateString());
+
+        $response
+            ->assertRedirect(route('admin.comercial.propostas.index'))
+            ->assertSessionHas('sale_id', $sale->id);
+    }
+
+    public function test_convert_recurring_rejects_misto(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::create([
+            'code' => 'PROP-CONV-REC-MIX',
+            'client_name' => 'Cliente Recorrente Misto',
+            'employee_count' => 4,
+            'total_final_cents' => 6_000_00,
+            'is_closed' => true,
+            'closed_at' => now(),
+            'list_status' => 'approved',
+            'is_recurring' => true,
+            'recurring_months' => 3,
+            'recurring_monthly_cents' => 2_000_00,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.comercial.propostas.index'))
+            ->post(route('admin.comercial.propostas.converter', $proposal), [
+                'payment_method' => 'misto',
+                'first_due_date' => now()->toDateString(),
+                'mix_parts' => [
+                    ['method' => 'pix', 'percent' => 50],
+                    ['method' => 'cartao', 'percent' => 50],
+                ],
+            ])
+            ->assertSessionHasErrors('payment_method');
+
+        $this->assertFalse(
+            CommercialSale::query()->where('proposal_id', $proposal->id)->exists()
+        );
+    }
+
     public function test_convert_rejects_open_proposal(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);

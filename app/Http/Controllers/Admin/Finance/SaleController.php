@@ -179,13 +179,17 @@ class SaleController extends Controller
 
     public function store(Request $request, CommercialProposal $proposal): RedirectResponse
     {
-        $isMisto = $request->input('payment_method') === 'misto';
+        $isRecurring = $proposal->isRecurringService();
+        $isMisto = ! $isRecurring && $request->input('payment_method') === 'misto';
 
         $data = $request->validate([
-            'payment_method' => ['required', Rule::in(['pix', 'boleto', 'cartao', 'misto'])],
+            'payment_method' => [
+                'required',
+                Rule::in($isRecurring ? ['pix', 'boleto', 'cartao'] : ['pix', 'boleto', 'cartao', 'misto']),
+            ],
             'installments_count' => [
-                Rule::excludeIf($isMisto),
-                Rule::requiredIf(! $isMisto),
+                Rule::excludeIf($isRecurring || $isMisto),
+                Rule::requiredIf(! $isRecurring && ! $isMisto),
                 'integer',
                 'min:1',
                 'max:60',
@@ -194,7 +198,7 @@ class SaleController extends Controller
             'first_due_date' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'mix_parts' => [
-                Rule::excludeIf(! $isMisto),
+                Rule::excludeIf($isRecurring || ! $isMisto),
                 Rule::requiredIf($isMisto),
                 'array',
                 'min:2',
@@ -212,7 +216,9 @@ class SaleController extends Controller
             ],
         ], [
             'payment_method.required' => 'Selecione a forma de pagamento.',
-            'payment_method.in' => 'Forma de pagamento inválida.',
+            'payment_method.in' => $isRecurring
+                ? 'Propostas recorrentes aceitam apenas PIX, boleto ou cartão.'
+                : 'Forma de pagamento inválida.',
             'installments_count.required' => 'Informe o número de parcelas.',
             'installments_count.integer' => 'O número de parcelas deve ser um inteiro.',
             'installments_count.min' => 'O número de parcelas deve ser pelo menos 1.',
