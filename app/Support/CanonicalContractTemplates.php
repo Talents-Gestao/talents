@@ -33,7 +33,8 @@ final class CanonicalContractTemplates
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">O presente contrato tem como objeto a prestação de serviços de consultoria de gestão de pessoas, nos termos da <strong>Proposta Comercial nº {{proposta_codigo}}</strong> (emitida em {{proposta_emitida_em}}, com referência de validade conforme parametrização comercial), restritos exclusivamente aos serviços efetivamente contratados na proposta, conforme discriminação e valores abaixo:</p>
 {{servicos_detalhada_html}}
 <p style="font-size:11px;line-height:1.55;color:#0f172a;margin-top:10px;"><strong>Honorário total:</strong> {{total_reais}} (<em>{{total_extenso}}</em>). Colaboradores considerados na proposta (quando aplicável): <strong>{{numero_funcionarios}}</strong>.</p>
-<p style="font-size:11px;line-height:1.45;color:#64748b;">Lista resumida dos serviços contratados: {{servicos_rotulos}}.</p>
+<p style="font-size:11px;line-height:1.45;color:#64748b;margin:8px 0 0;">Lista resumida dos serviços contratados:</p>
+{{servicos_lista_html}}
 
 <h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula segunda – Prazo</h2>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">Este contrato tem início na data de assinatura e permanecerá vigente até a conclusão dos serviços contratados. Referência de prazo operacional (dias), quando aplicável à condição comercial: <strong>{{prazo_dias}}</strong>.</p>
@@ -64,8 +65,10 @@ final class CanonicalContractTemplates
 <h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula nona – Foro</h2>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">Para dirimir quaisquer dúvidas oriundas deste contrato, as partes elegem o foro da comarca de {{foro_comarca}}, com exclusão de qualquer outro, por mais privilegiado que seja.</p>
 
-<p style="font-size:11px;line-height:1.55;color:#0f172a;margin-top:28px;text-align:center;">________________________________________<br /><strong>CONTRATANTE</strong></p>
-<p style="font-size:11px;line-height:1.55;color:#0f172a;margin-top:28px;text-align:center;">________________________________________<br /><strong>CONTRATADA — {{empresa_nome}}</strong></p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;margin:36px 0 6px;text-align:center;">________________________________________</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;margin:0 0 22px;text-align:center;"><strong>CONTRATANTE</strong></p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;margin:28px 0 6px;text-align:center;">________________________________________</p>
+<p style="font-size:11px;line-height:1.55;color:#0f172a;margin:0 0 22px;text-align:center;"><strong>CONTRATADA — {{empresa_nome}}</strong></p>
 <p style="font-size:11px;line-height:1.45;color:#0f172a;margin-top:16px;">{{cidade_estado}}, {{data_hoje}}.</p>
 HTML;
     }

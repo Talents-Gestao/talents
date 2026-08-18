@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin\Commercial;
 
+use App\Enums\CommercialProductPricingType;
+use App\Models\CommercialProduct;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSetting;
 use App\Models\FinancePaymentMethod;
@@ -16,6 +18,30 @@ use Tests\TestCase;
 class ProposalPaymentMethodPdfTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * @return array{catalog_products: array<int, array<string, mixed>>}
+     */
+    private function pricedCatalogPayload(): array
+    {
+        $product = CommercialProduct::query()->create([
+            'name' => 'Produto teste pagamento',
+            'slug' => 'produto-pag-'.uniqid(),
+            'pricing_type' => CommercialProductPricingType::Fixed,
+            'pricing_config' => ['amount_cents' => 10_000],
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        return [
+            'catalog_products' => [
+                [
+                    'product_id' => $product->id,
+                    'enabled' => true,
+                ],
+            ],
+        ];
+    }
 
     private function methodBySlug(string $slug): FinancePaymentMethod
     {
@@ -127,6 +153,7 @@ class ProposalPaymentMethodPdfTest extends TestCase
                 'employee_count' => 3,
                 'is_closed' => false,
                 'payment_method_id' => $inactive->id,
+                ...$this->pricedCatalogPayload(),
             ])
             ->assertRedirect();
 
@@ -294,6 +321,7 @@ class ProposalPaymentMethodPdfTest extends TestCase
                 'payment_method_id' => $boleto->id,
                 'include_publico_atendido' => false,
                 'include_minimum_stay' => false,
+                ...$this->pricedCatalogPayload(),
             ])
             ->assertRedirect();
 
@@ -450,6 +478,7 @@ class ProposalPaymentMethodPdfTest extends TestCase
                 'employee_count' => 12,
                 'is_closed' => false,
                 'payment_method_id' => $boleto->id,
+                ...$this->pricedCatalogPayload(),
             ])
             ->assertRedirect();
 

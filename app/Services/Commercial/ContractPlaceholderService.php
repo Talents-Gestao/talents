@@ -21,6 +21,9 @@ class ContractPlaceholderService
         $settings = CommercialSetting::current();
 
         $totalCents = (int) $proposal->total_final_cents;
+        if ($totalCents <= 0 && $proposal->isRecurringService()) {
+            $totalCents = $proposal->recurringPeriodTotalCents();
+        }
         $totalReais = 'R$ '.number_format($totalCents / 100, 2, ',', '.');
 
         $lines = CommercialProposalServiceLines::forProposal($proposal);
@@ -224,7 +227,7 @@ class ContractPlaceholderService
     private function buildServicosApenasRotulos(array $lines): string
     {
         if ($lines === []) {
-            return '—';
+            return 'nenhum serviço selecionado na proposta';
         }
 
         return implode(', ', array_map(fn ($l) => $l['label'], $lines));

@@ -376,6 +376,25 @@ const catalogPricePresentation = (product) => {
     };
 };
 
+const hasPricedCatalogProduct = computed(() =>
+    (catalogLines.value ?? []).some((line) => {
+        if (Number(line?.value_cents ?? 0) > 0) {
+            return true;
+        }
+        return line?.options?.adjustment === 'bonus' && Number(line?.subtotal_cents ?? 0) > 0;
+    }),
+);
+
+const hasContractableServices = computed(() => {
+    if (form.is_recurring) {
+        return true;
+    }
+    if (props.proposal?.has_legacy_services) {
+        return true;
+    }
+    return hasPricedCatalogProduct.value;
+});
+
 const palestrasProductSelected = computed(() =>
     props.catalogProducts.some((p) => p.slug === 'palestras' && isProductSelected(p)),
 );
@@ -450,7 +469,7 @@ const fetchCnpjFromReceita = async () => {
 
 const scrollToFirstFormError = () => {
     nextTick(() => {
-        const priority = ['client_name', 'employee_count', 'payment_method_id', 'client_email'];
+        const priority = ['client_name', 'employee_count', 'catalog_products', 'payment_method_id', 'client_email'];
         const keys = [
             ...priority.filter((key) => form.errors[key]),
             ...Object.keys(form.errors).filter((key) => !priority.includes(key)),
@@ -481,6 +500,7 @@ const validateRequiredFields = () => {
         'payment_method_id',
         'recurring_months',
         'recurring_monthly_reais',
+        'catalog_products',
     );
 
     let valid = true;
@@ -510,6 +530,11 @@ const validateRequiredFields = () => {
 
     if (!form.payment_method_id) {
         form.setError('payment_method_id', 'Selecione a forma de pagamento.');
+        valid = false;
+    }
+
+    if (!hasContractableServices.value) {
+        form.setError('catalog_products', 'Selecione pelo menos um produto com valor.');
         valid = false;
     }
 
@@ -671,6 +696,7 @@ const goToStepForErrors = () => {
         'employee_count',
         'payment_method_id',
         'client_email',
+        'catalog_products',
     ];
     const keys = [
         ...priority.filter((key) => form.errors[key]),
@@ -720,6 +746,18 @@ const validateCurrentStep = () => {
             valid = false;
         }
         return valid;
+    }
+
+    if (stepId === 'produtos') {
+        form.clearErrors('catalog_products');
+        if (form.is_recurring || props.proposal?.has_legacy_services) {
+            return true;
+        }
+        if (!hasPricedCatalogProduct.value) {
+            form.setError('catalog_products', 'Selecione pelo menos um produto com valor.');
+            return false;
+        }
+        return true;
     }
 
     if (stepId === 'comercial') {
@@ -1146,11 +1184,19 @@ const onStepClick = (index) => {
                 </section>
 
                 <!-- Produtos -->
-                <section v-show="currentStepId === 'produtos'" class="surface-card p-6">
+                <section
+                    id="proposal-field-catalog_products"
+                    v-show="currentStepId === 'produtos'"
+                    class="surface-card p-6"
+                    data-error-for="catalog_products"
+                >
                     <h3 class="text-lg font-semibold text-slate-900">Produtos</h3>
                     <p class="mt-1 text-xs text-slate-500">
                         Selecione os produtos; o cálculo aparece no resumo ao lado.
                         Cadastre novos em Comercial → Valores e contratos → aba Produtos.
+                    </p>
+                    <p v-if="form.errors.catalog_products" class="mt-2 text-sm text-rose-600">
+                        {{ form.errors.catalog_products }}
                     </p>
 
                     <div v-if="catalogProducts.length" class="mt-4 space-y-4">

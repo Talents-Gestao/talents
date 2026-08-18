@@ -87,6 +87,19 @@ class AdminHomeDashboardMetricsTest extends TestCase
             'due_date' => now()->toDateString(),
             'is_archived' => false,
         ]);
+        $mine = TaskCard::query()->where('title', 'Revisar proposta')->firstOrFail();
+        $mine->members()->attach($admin->id);
+
+        $other = User::factory()->superAdmin()->create();
+        $theirs = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'Tarefa de outro admin',
+            'position' => 1500,
+            'due_date' => now()->toDateString(),
+            'is_archived' => false,
+        ]);
+        $theirs->members()->attach($other->id);
+
         TaskCard::query()->create([
             'list_id' => $list->id,
             'title' => 'Sem vencimento',
@@ -103,7 +116,7 @@ class AdminHomeDashboardMetricsTest extends TestCase
                 ->where('kpis.active_clients', 2)
                 ->where('finance.payables_cents', 2100000)
                 ->where('kpis.hiring_open', 1)
-                ->where('adminTasksOpen', 2)
+                ->where('adminTasksOpen', 3)
                 ->has('tasksToday', 1)
                 ->where('tasksToday.0.title', 'Revisar proposta')
                 ->has('leadsBySource')

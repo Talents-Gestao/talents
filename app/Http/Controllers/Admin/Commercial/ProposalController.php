@@ -20,6 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -388,6 +389,8 @@ class ProposalController extends Controller
         $catalogLines = $totals['catalog_lines'] ?? [];
         unset($totals['catalog_lines']);
 
+        $this->assertProposalHasPricedServices($data, $catalogLines, $existing);
+
         if (! empty($data['is_recurring'])) {
             $periodTotal = (int) $data['recurring_months'] * (int) $data['recurring_monthly_cents'];
             $commissionPercent = (float) ($data['commission_percent'] ?? $totals['commission_percent'] ?? 0);
@@ -415,6 +418,41 @@ class ProposalController extends Controller
                 'total_cents' => (int) $line['value_cents'],
             ]);
         }
+    }
+
+    /**
+     * Proposta pontual precisa de pelo menos um serviço com valor — senão o contrato sai com lista vazia.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<int, array<string, mixed>>  $catalogLines
+     */
+    private function assertProposalHasPricedServices(
+        array $data,
+        array $catalogLines,
+        ?CommercialProposal $existing,
+    ): void {
+        if (! empty($data['is_recurring'])) {
+            return;
+        }
+
+        if ($existing?->hasLegacyServices()) {
+            return;
+        }
+
+        foreach ($catalogLines as $line) {
+            if ((int) ($line['value_cents'] ?? 0) > 0) {
+                return;
+            }
+
+            $options = is_array($line['options'] ?? null) ? $line['options'] : [];
+            if (($options['adjustment'] ?? '') === 'bonus' && (int) ($options['subtotal_cents'] ?? 0) > 0) {
+                return;
+            }
+        }
+
+        throw ValidationException::withMessages([
+            'catalog_products' => 'Selecione pelo menos um produto com valor. Sem produtos, o contrato fica sem a lista de serviços.',
+        ]);
     }
 
     /**

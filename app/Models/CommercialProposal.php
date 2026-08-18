@@ -183,9 +183,30 @@ class CommercialProposal extends Model
             || (bool) $this->svc_profiler
             || filled($this->svc_devolutiva)
             || (bool) $this->svc_nr1
+            || filled($this->svc_nr1_implantacao_modo)
             || (bool) $this->svc_contratacao
             || (bool) $this->svc_direcionamento
             || (bool) $this->svc_palestras;
+    }
+
+    public function hasContractableServices(): bool
+    {
+        if ($this->isRecurringService() || $this->hasLegacyServices()) {
+            return true;
+        }
+
+        $this->loadMissing('catalogLines');
+
+        return $this->catalogLines->contains(function ($line): bool {
+            if ((int) $line->total_cents > 0) {
+                return true;
+            }
+
+            $options = is_array($line->options) ? $line->options : [];
+
+            return ($options['adjustment'] ?? '') === 'bonus'
+                && (int) ($options['subtotal_cents'] ?? 0) > 0;
+        });
     }
 
     public function legacyTotalsCents(): int

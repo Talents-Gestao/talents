@@ -40,6 +40,22 @@ export const ADMIN_DASHBOARD_DEFAULT_SECTIONS = Object.freeze({
 /** @deprecated Use ADMIN_DASHBOARD_DEFAULT_SECTIONS — alias para testes/migração. */
 export const ADMIN_DASHBOARD_DEFAULT_LAYOUT = ADMIN_DASHBOARD_DEFAULT_SECTIONS;
 
+/** @type {ReadonlyArray<string>} */
+export const ADMIN_DASHBOARD_ALL_WIDGET_IDS = Object.freeze([
+    ...ADMIN_DASHBOARD_DEFAULT_SECTIONS.operation,
+    ...ADMIN_DASHBOARD_DEFAULT_SECTIONS.kpis,
+    ...ADMIN_DASHBOARD_DEFAULT_SECTIONS.insights,
+]);
+
+/** Secção de origem de cada widget (para recolocar ids em falta). */
+export const ADMIN_DASHBOARD_WIDGET_HOME = Object.freeze(
+    Object.fromEntries(
+        Object.entries(ADMIN_DASHBOARD_DEFAULT_SECTIONS).flatMap(([sectionId, ids]) =>
+            ids.map((id) => [id, sectionId]),
+        ),
+    ),
+);
+
 /** Mapeamento de ids de widgets da v1 → v2. */
 const V1_WIDGET_ID_MAP = Object.freeze({
     kpi_clients: 'active_clients',
@@ -61,20 +77,57 @@ function normalizeWidgetId(id) {
 
 /**
  * @param {unknown} storedWidgets
- * @param {readonly string[]} defaults
  * @returns {string[]}
  */
-function mergeSectionWidgets(storedWidgets, defaults) {
-    const defaultList = [...defaults];
-    const fromStore = Array.isArray(storedWidgets)
-        ? storedWidgets
-              .filter((id) => typeof id === 'string')
-              .map(normalizeWidgetId)
-              .filter((id, index, arr) => defaultList.includes(id) && arr.indexOf(id) === index)
-        : [];
-    const missing = defaultList.filter((id) => !fromStore.includes(id));
+function parseStoredWidgetIds(storedWidgets) {
+    if (!Array.isArray(storedWidgets)) {
+        return [];
+    }
 
-    return [...fromStore, ...missing];
+    return storedWidgets
+        .filter((id) => typeof id === 'string')
+        .map(normalizeWidgetId)
+        .filter(
+            (id, index, arr) =>
+                ADMIN_DASHBOARD_ALL_WIDGET_IDS.includes(id) && arr.indexOf(id) === index,
+        );
+}
+
+/**
+ * Aceita widgets em qualquer secção (arrastar entre blocos).
+ * Ids em falta voltam à secção de origem; duplicados ficam só na primeira ocorrência.
+ *
+ * @param {Partial<Record<DashboardSectionId, unknown>>} storedSections
+ * @returns {Record<DashboardSectionId, string[]>}
+ */
+function mergeSectionsAllowingCrossMove(storedSections) {
+    /** @type {Record<DashboardSectionId, string[]>} */
+    const sections = {
+        operation: [],
+        kpis: [],
+        insights: [],
+    };
+    const used = new Set();
+
+    for (const sectionId of /** @type {DashboardSectionId[]} */ (['operation', 'kpis', 'insights'])) {
+        for (const id of parseStoredWidgetIds(storedSections[sectionId])) {
+            if (used.has(id)) {
+                continue;
+            }
+            used.add(id);
+            sections[sectionId].push(id);
+        }
+    }
+
+    for (const id of ADMIN_DASHBOARD_ALL_WIDGET_IDS) {
+        if (used.has(id)) {
+            continue;
+        }
+        const home = /** @type {DashboardSectionId} */ (ADMIN_DASHBOARD_WIDGET_HOME[id]);
+        sections[home].push(id);
+    }
+
+    return sections;
 }
 
 /**
@@ -154,11 +207,7 @@ export function mergeAdminDashboardLayout(stored) {
         sectionOrder: sectionOrder.length
             ? [...sectionOrder, ...missingSections]
             : [...ADMIN_DASHBOARD_DEFAULT_SECTION_ORDER],
-        sections: {
-            operation: mergeSectionWidgets(storedSections.operation, ADMIN_DASHBOARD_DEFAULT_SECTIONS.operation),
-            kpis: mergeSectionWidgets(storedSections.kpis, ADMIN_DASHBOARD_DEFAULT_SECTIONS.kpis),
-            insights: mergeSectionWidgets(storedSections.insights, ADMIN_DASHBOARD_DEFAULT_SECTIONS.insights),
-        },
+        sections: mergeSectionsAllowingCrossMove(storedSections),
     };
 }
 

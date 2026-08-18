@@ -72,6 +72,7 @@ class CommercialProductPricingService
         $total = 0;
 
         foreach ($selections as $selection) {
+            $selection['enabled'] = filter_var($selection['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $productId = (int) ($selection['product_id'] ?? 0);
             /** @var CommercialProduct|null $product */
             $product = $byId->get($productId);
