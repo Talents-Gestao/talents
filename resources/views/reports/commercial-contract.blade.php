@@ -6,14 +6,14 @@
     <style>
         /* Margem inferior maior reserva espaço para o rodapé do timbrado (DomPDF) */
         /* Direita maior: reserva faixa para a borboleta do timbrado (não sobrepor o texto) */
-        @page { margin: 12mm 16mm 28mm 16mm; }
+        @page { margin: 12mm 16mm 38mm 16mm; }
         body {
             font-family: DejaVu Sans, sans-serif;
             font-size: 12px;
             color: #0f172a;
             line-height: 1.45;
             margin: 0;
-            padding: 0 0 8mm;
+            padding: 0 0 10mm;
             box-sizing: border-box;
         }
         .doc-main {
@@ -44,14 +44,14 @@
             font-weight: bold;
         }
         .meta-val { font-size: 12px; color: #0f172a; font-weight: bold; }
-        .contract-body { margin-top: 4px; }
+        .contract-body { margin-top: 4px; padding-bottom: 8mm; }
         .contract-body table { border-collapse: collapse; }
 
         /* Canto inferior direito, atrás do conteúdo — só decoração do timbrado */
         .butterfly-decor {
             position: fixed;
             right: 2mm;
-            bottom: 30mm;
+            bottom: 42mm;
             width: 20mm;
             z-index: 1;
             opacity: 0.4;
@@ -72,7 +72,7 @@
             right: 0;
             width: 100%;
             margin: 0;
-            padding: 0;
+            padding: 8px 0 0;
             page-break-inside: avoid;
             z-index: 10;
         }
@@ -81,31 +81,33 @@
             font-size: 10px;
             font-weight: 700;
             color: #510E62;
-            margin: 0 0 3px;
+            margin: 0 0 10px;
+            line-height: 1.5;
         }
         .footer-contacts {
             text-align: center;
             font-size: 7px;
             color: #510E62;
-            margin: 0 0 3px;
-            line-height: 1.4;
+            margin: 0 0 10px;
+            line-height: 1.7;
             font-weight: 700;
         }
         .footer-meta {
             text-align: center;
             font-size: 7px;
             color: #94a3b8;
-            padding: 2px 0 3px;
+            padding: 0 0 10px;
+            line-height: 1.5;
         }
         .footer-band {
             width: 100%;
             background: #4a2070;
             color: #fff;
             font-size: 9px;
-            padding: 6px 0;
+            padding: 8px 0;
         }
         .footer-band table { width: 100%; border-collapse: collapse; }
-        .footer-band td { vertical-align: middle; padding: 3px 16px; color: #fff; font-weight: bold; }
+        .footer-band td { vertical-align: middle; padding: 6px 16px; color: #fff; font-weight: bold; }
         .footer-band .col-left { text-align: left; }
         .footer-band .col-right { text-align: right; }
     </style>
@@ -123,10 +125,6 @@
         $footerEmail = filled($settings->company_email ?? null)
             ? trim((string) $settings->company_email)
             : 'contato@talentsgestao.com';
-
-        $footerPhone = filled($settings->company_phone ?? null)
-            ? trim((string) $settings->company_phone)
-            : '(11) 97570-3032';
 
         $footerWebsite = 'www.talentsgestao.com';
         $footerWhatsapp = '(11) 97570-3032';
@@ -172,9 +170,7 @@
         <p class="footer-tagline">Conectando Talentos e Transformando Negócios.</p>
         <p class="footer-contacts">
             {{ $footerAddress }}
-            | {{ $footerEmail }}
             | {{ $footerWebsite }}
-            | {{ $footerPhone }}
         </p>
         <div class="footer-meta">
             Contrato {{ $code }} — gerado em {{ now()->format('d/m/Y H:i') }}

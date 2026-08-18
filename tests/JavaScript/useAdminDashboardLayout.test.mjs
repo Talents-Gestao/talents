@@ -85,6 +85,29 @@ describe('mergeAdminDashboardLayout (v2/v3)', () => {
         assert.deepEqual(layout.sections.kpis, [...ADMIN_DASHBOARD_DEFAULT_SECTIONS.kpis]);
         assert.deepEqual(layout.sections.insights, ['leads_source', 'funnel', 'monthly_goal']);
     });
+
+    it('mantém widget movido para outra secção e não o duplica na origem', () => {
+        const layout = mergeAdminDashboardLayout({
+            version: 3,
+            sectionOrder: ['insights', 'operation', 'kpis'],
+            sections: {
+                operation: ['tasks_today', 'calendar_today'],
+                kpis: ['mrr', 'active_clients'],
+                insights: ['finance', 'funnel', 'leads_source', 'monthly_goal'],
+            },
+        });
+
+        assert.ok(layout.sections.insights.includes('finance'));
+        assert.ok(!layout.sections.operation.includes('finance'));
+        assert.deepEqual(layout.sections.operation, ['tasks_today', 'calendar_today']);
+        assert.ok(layout.sections.kpis.includes('methodology'));
+        const all = [
+            ...layout.sections.operation,
+            ...layout.sections.kpis,
+            ...layout.sections.insights,
+        ];
+        assert.equal(all.filter((id) => id === 'finance').length, 1);
+    });
 });
 
 describe('adminDashboardLayoutStorageKey', () => {

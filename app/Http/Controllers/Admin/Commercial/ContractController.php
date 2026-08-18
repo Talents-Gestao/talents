@@ -7,6 +7,7 @@ use App\Models\CommercialContract;
 use App\Models\CommercialContractTemplate;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSetting;
+use App\Services\Commercial\CommercialProposalServiceLines;
 use App\Services\Commercial\ContractGenerationService;
 use App\Services\Commercial\ZapSignService;
 use App\Support\BrazilMobilePhone;
@@ -38,6 +39,13 @@ class ContractController extends Controller
             ->whereKey($request->integer('template_id'))
             ->where('is_active', true)
             ->firstOrFail();
+
+        $proposal->loadMissing('catalogLines');
+        if (CommercialProposalServiceLines::forProposal($proposal) === []) {
+            return redirect()
+                ->back()
+                ->with('error', 'Não é possível gerar o contrato: a proposta não tem serviços contratados. Edite a proposta, selecione os produtos (ou preencha o valor recorrente) e gere novamente.');
+        }
 
         $contract = $this->generation->generate($template, $proposal, $request->user());
 

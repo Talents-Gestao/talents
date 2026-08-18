@@ -20,6 +20,7 @@ use App\Models\StrategicCalendarItem;
 use App\Models\Subscription;
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
+use App\Models\User;
 use App\Support\Finance\FinanceCashflowMetrics;
 use App\Support\StrategicCalendarLeaveEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
@@ -39,7 +40,7 @@ final class AdminHomeDashboardBuilder
      *     monthly_goal: array{current_cents: int, goal_cents: int, percent: float}
      * }
      */
-    public function build(): array
+    public function build(?User $viewer = null): array
     {
         $today = Carbon::today()->startOfDay();
         $monthStart = $today->copy()->startOfMonth();
@@ -103,7 +104,7 @@ final class AdminHomeDashboardBuilder
         })->all();
 
         $adminTasksOpen = $this->adminOpenTasksCount();
-        $tasksToday = $this->adminTasksToday($today);
+        $tasksToday = $this->adminTasksToday($today, $viewer);
 
         $activeCompanies = Company::query()->where('is_active', true)->count();
         $newCompaniesMonth = Company::query()
@@ -202,14 +203,19 @@ final class AdminHomeDashboardBuilder
     }
 
     /**
-     * Tarefas Admin (boards sem company_id) relevantes para o dia:
-     * due_date <= hoje, abertas (não arquivadas / não concluídas). Limite 6.
-     * Sem due_date não entram. O payload é só indicativo (sem status de atraso).
+     * Tarefas Admin (boards sem company_id) atribuídas ao utilizador, relevantes para o dia:
+     * membro do cartão, due_date <= hoje, abertas (não arquivadas / não concluídas). Limite 6.
+     * Sem due_date ou sem atribuição não entram.
      *
      * @return list<array{id: int, title: string, list_name: string|null, board_name: string|null, due_date: string}>
      */
-    private function adminTasksToday(Carbon $today): array
+    private function adminTasksToday(Carbon $today, ?User $viewer): array
     {
+        $userId = $viewer?->id;
+        if (! $userId) {
+            return [];
+        }
+
         $boardIds = TaskBoard::query()->whereNull('company_id')->pluck('id');
         if ($boardIds->isEmpty()) {
             return [];
@@ -220,6 +226,7 @@ final class AdminHomeDashboardBuilder
         return TaskCard::query()
             ->with(['list:id,board_id,name', 'list.board:id,name'])
             ->whereHas('list', fn ($q) => $q->whereIn('board_id', $boardIds))
+            ->whereHas('members', fn ($q) => $q->where('users.id', $userId))
             ->where('is_archived', false)
             ->whereNull('completed_at')
             ->whereNotNull('due_date')

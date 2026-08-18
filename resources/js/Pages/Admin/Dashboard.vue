@@ -360,10 +360,16 @@ const submitGoal = () => {
 
                     <VueDraggable
                         v-model="layout.sections[sectionId]"
+                        group="dashboard-widgets"
                         handle=".dashboard-widget-drag-handle"
                         :animation="dragAnimationMs"
                         ghost-class="opacity-40"
-                        :class="sectionMeta[sectionId].gridClass"
+                        :class="[
+                            sectionMeta[sectionId].gridClass,
+                            layout.sections[sectionId].length === 0
+                                ? 'min-h-[6.5rem] rounded-2xl border border-dashed border-slate-200 bg-slate-50/70'
+                                : '',
+                        ]"
                         :scroll="sortableScrollProps.scroll"
                         :bubble-scroll="sortableScrollProps.bubbleScroll"
                         :force-auto-scroll-fallback="sortableScrollProps.forceAutoScrollFallback"
@@ -374,28 +380,26 @@ const submitGoal = () => {
                             v-for="widgetId in layout.sections[sectionId]"
                             :key="widgetId"
                             class="relative"
-                            :class="sectionId === 'operation' ? 'flex h-full min-h-0 flex-col' : ''"
+                            :class="kpiById[widgetId] ? '' : 'flex h-full min-h-0 flex-col'"
                         >
                             <button
                                 type="button"
                                 class="dashboard-widget-drag-handle absolute z-20 cursor-grab rounded-lg border border-slate-200/80 bg-white/90 p-1 text-slate-400 shadow-sm transition hover:border-slate-300 hover:text-slate-600 active:cursor-grabbing"
-                                :class="sectionId === 'kpis' ? 'right-2 top-2' : 'right-3 top-3'"
-                                title="Arrastar para reordenar"
-                                :aria-label="sectionId === 'kpis' ? 'Arrastar indicador' : 'Arrastar card'"
+                                :class="kpiById[widgetId] ? 'right-2 top-2' : 'right-3 top-3'"
+                                title="Arrastar para outra secção ou reordenar"
+                                :aria-label="kpiById[widgetId] ? 'Arrastar indicador' : 'Arrastar card'"
                                 @click.stop
                             >
                                 <Bars3Icon
-                                    :class="sectionId === 'kpis' ? 'h-3.5 w-3.5' : 'h-4 w-4'"
+                                    :class="kpiById[widgetId] ? 'h-3.5 w-3.5' : 'h-4 w-4'"
                                     aria-hidden="true"
                                 />
                             </button>
 
-                            <!-- Operação -->
-                            <template v-if="sectionId === 'operation'">
-                                <section
-                                    v-if="widgetId === 'finance'"
-                                    class="dashboard-panel dashboard-panel-accent-finance dashboard-reveal flex h-full flex-col"
-                                >
+                            <section
+                                v-if="widgetId === 'finance'"
+                                class="dashboard-panel dashboard-panel-accent-finance dashboard-reveal flex h-full flex-col"
+                            >
                                     <div class="dashboard-panel-heading pr-10">
                                         <div>
                                             <h3 class="dashboard-panel-title text-emerald-800/80">Financeiro</h3>
@@ -497,8 +501,8 @@ const submitGoal = () => {
                                     <EmptyState
                                         v-else
                                         class="dashboard-empty-trust relative mt-4 flex-1 py-6"
-                                        title="Sem tarefas para hoje"
-                                        description="Quando houver tarefas Admin para o dia, elas aparecem aqui."
+                                        title="Sem tarefas atribuídas a si para hoje"
+                                        description="Quando houver tarefas Admin com vencimento hoje (ou atrasadas) e o seu nome no cartão, elas aparecem aqui."
                                     />
                                     <Link
                                         :href="route('admin.tarefas.quadros.index')"
@@ -552,11 +556,9 @@ const submitGoal = () => {
                                         <span class="dashboard-panel-link-arrow" aria-hidden="true">→</span>
                                     </Link>
                                 </section>
-                            </template>
 
-                            <!-- Indicadores (KPIs) -->
                             <Link
-                                v-else-if="sectionId === 'kpis' && kpiById[widgetId]"
+                                v-else-if="kpiById[widgetId]"
                                 :href="kpiById[widgetId].href"
                                 class="dashboard-panel-compact group dashboard-reveal flex min-h-[7.5rem] flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-talents-600"
                             >
@@ -572,12 +574,10 @@ const submitGoal = () => {
                                 <p class="dashboard-metric-hint">{{ kpiById[widgetId].hint }}</p>
                             </Link>
 
-                            <!-- Leitura do mês -->
-                            <template v-else-if="sectionId === 'insights'">
-                                <section
-                                    v-if="widgetId === 'leads_source'"
-                                    class="dashboard-panel dashboard-reveal h-full"
-                                >
+                            <section
+                                v-else-if="widgetId === 'leads_source'"
+                                class="dashboard-panel dashboard-reveal h-full"
+                            >
                                     <div class="dashboard-panel-heading mb-1 pr-10">
                                         <h3 class="dashboard-panel-title">Leads por origem (mês)</h3>
                                     </div>
@@ -669,7 +669,6 @@ const submitGoal = () => {
                                         </p>
                                     </div>
                                 </section>
-                            </template>
                         </div>
                     </VueDraggable>
                 </section>

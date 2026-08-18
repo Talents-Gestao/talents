@@ -14,9 +14,9 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(AdminHomeDashboardBuilder $builder): Response
+    public function index(Request $request, AdminHomeDashboardBuilder $builder): Response
     {
-        $home = $builder->build();
+        $home = $builder->build($request->user());
 
         return Inertia::render('Admin/Dashboard', [
             'finance' => $home['finance'],
