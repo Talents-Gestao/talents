@@ -10,6 +10,7 @@ use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 abstract class TestCase extends BaseTestCase
@@ -48,6 +49,10 @@ abstract class TestCase extends BaseTestCase
 
         $this->withoutMiddleware(ValidateCsrfToken::class);
         \Illuminate\Support\Facades\Cache::flush();
+
+        // Impede chamadas HTTP reais em todos os testes — qualquer Http::get/post não
+        // interceptado com Http::fake() lança RequestException imediatamente.
+        Http::preventStrayRequests();
     }
 
     protected function subscribeCompanyToNr1(Company $company, bool $withRhid = true, bool $withDenuncias = true): void

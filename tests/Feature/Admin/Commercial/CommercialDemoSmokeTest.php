@@ -7,6 +7,7 @@ use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
 use App\Models\User;
+use Carbon\Carbon;
 use Database\Seeders\CommercialDemoSeeder;
 use Database\Seeders\CommercialSellersSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,11 +18,16 @@ class CommercialDemoSmokeTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Ponto fixo para todas as datas relativas do CommercialDemoSeeder.
+    private const FROZEN_DATE = '2025-08-01 12:00:00';
+
     private User $admin;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        Carbon::setTestNow(self::FROZEN_DATE);
 
         $this->seed(CommercialSellersSeeder::class);
 
@@ -31,6 +37,12 @@ class CommercialDemoSmokeTest extends TestCase
         ]);
 
         $this->seed(CommercialDemoSeeder::class);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     public function test_demo_seeder_creates_all_proposals_and_sales(): void

@@ -125,8 +125,17 @@ class RhidApiController extends Controller
     public function storeJustification(Request $request, RhidComplianceService $compliance): JsonResponse|Response
     {
         $company = $this->company($request);
+
         /** @var array<string, mixed> $payload */
-        $payload = $request->all();
+        $payload = $request->validate([
+            'idPerson'            => ['required', 'integer', 'min:1'],
+            'idJustificationType' => ['required', 'integer', 'min:1'],
+            'justificativa'       => ['required', 'string', 'max:2000'],
+            'inicio'              => ['required', 'string', 'regex:/^\d{8}(\d{4})?$/'],
+            'fim'                 => ['required', 'string', 'regex:/^\d{8}(\d{4})?$/'],
+            'minutesDiurno'       => ['nullable', 'integer', 'min:0'],
+            'minutesNoturno'      => ['nullable', 'integer', 'min:0'],
+        ]);
 
         return $this->jsonOrError(fn () => $compliance->createJustification($company, $request->user(), $payload));
     }
@@ -350,6 +359,10 @@ class RhidApiController extends Controller
         $body = $this->unwrapRhidSaveFilePayload((string) $r->body());
         $wantInlineHtml = $request->boolean('inline') && strtoupper($data['format']) === 'HTML';
 
+        // SEGURANÇA (C-02): o HTML retornado pelo RHID é renderizado em um <iframe> no
+        // frontend. O iframe DEVE ter o atributo sandbox="allow-same-origin allow-scripts"
+        // para conter scripts externos. Não sanitizamos o HTML aqui pois o layout depende
+        // dos estilos/scripts embutidos pelo Control iD; a mitigação é no nível do iframe.
         if ($wantInlineHtml) {
             if (trim($body) === '') {
                 return response()->json([
@@ -580,8 +593,17 @@ class RhidApiController extends Controller
     public function storeDevice(Request $request, RhidDeviceService $devices): JsonResponse|Response
     {
         $company = $this->company($request);
+
         /** @var array<string, mixed> $payload */
-        $payload = $request->all();
+        $payload = $request->validate([
+            'name'          => ['required', 'string', 'max:255'],
+            'deviceType'    => ['nullable', 'string', 'max:100'],
+            'ipAddress'     => ['nullable', 'string', 'max:45'],
+            'port'          => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'serialNumber'  => ['nullable', 'string', 'max:100'],
+            'active'        => ['nullable', 'boolean'],
+            'idTimezone'    => ['nullable', 'integer'],
+        ]);
 
         return $this->jsonOrError(fn () => $devices->create($company, $request->user(), $payload));
     }
@@ -589,8 +611,18 @@ class RhidApiController extends Controller
     public function updateDevice(Request $request, RhidDeviceService $devices): JsonResponse|Response
     {
         $company = $this->company($request);
+
         /** @var array<string, mixed> $payload */
-        $payload = $request->all();
+        $payload = $request->validate([
+            'id'            => ['required', 'integer', 'min:1'],
+            'name'          => ['required', 'string', 'max:255'],
+            'deviceType'    => ['nullable', 'string', 'max:100'],
+            'ipAddress'     => ['nullable', 'string', 'max:45'],
+            'port'          => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'serialNumber'  => ['nullable', 'string', 'max:100'],
+            'active'        => ['nullable', 'boolean'],
+            'idTimezone'    => ['nullable', 'integer'],
+        ]);
 
         return $this->jsonOrError(fn () => $devices->update($company, $request->user(), $payload));
     }

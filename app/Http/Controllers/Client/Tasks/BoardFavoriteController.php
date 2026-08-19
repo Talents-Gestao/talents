@@ -13,6 +13,8 @@ class BoardFavoriteController extends Controller
 {
     public function store(Request $request, TaskBoard $board): RedirectResponse
     {
+        $this->authorize('view', $board);
+
         if (! Schema::hasTable('task_board_user_favorites')) {
             return back()->with('error', 'Recurso de favoritos indisponível: execute as migrations.');
         }
@@ -27,6 +29,8 @@ class BoardFavoriteController extends Controller
 
     public function destroy(Request $request, TaskBoard $board): RedirectResponse
     {
+        $this->authorize('view', $board);
+
         if (! Schema::hasTable('task_board_user_favorites')) {
             return back();
         }
