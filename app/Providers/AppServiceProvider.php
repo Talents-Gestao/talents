@@ -118,5 +118,12 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(max(1, $max))->by($request->ip());
         });
+
+        // Limita GETs de páginas públicas por token para dificultar enumeração de tokens.
+        RateLimiter::for('public-token-page', function (Request $request) {
+            $max = (int) config('public_rate_limits.token_page_per_minute', 60);
+
+            return Limit::perMinute(max(1, $max))->by($request->ip());
+        });
     }
 }

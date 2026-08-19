@@ -3,6 +3,7 @@
 namespace App\Services\Commercial;
 
 use App\Models\CommercialSetting;
+use App\Support\SafeExternalUrl;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -27,7 +28,12 @@ class ZapSignService
             throw new RuntimeException('Token da API ZapSign não configurado.');
         }
 
-        $baseUrl = rtrim((string) ($settings->zapsign_api_base_url ?: 'https://api.zapsign.com.br/api/v1'), '/');
+        $rawBase = (string) ($settings->zapsign_api_base_url ?: 'https://api.zapsign.com.br/api/v1');
+        try {
+            $baseUrl = SafeExternalUrl::validate($rawBase);
+        } catch (\InvalidArgumentException $e) {
+            throw new RuntimeException('URL da API ZapSign inválida: '.$e->getMessage());
+        }
         $url = $baseUrl.'/docs/';
         $autoEmail = (bool) ($settings->zapsign_send_automatic_email ?? true);
 

@@ -13,6 +13,7 @@ import {
     ArrowRightIcon,
     Bars3Icon,
     BuildingOffice2Icon,
+    ChevronDownIcon,
     MagnifyingGlassIcon,
     PlusIcon,
     TrashIcon,
@@ -276,6 +277,29 @@ const destroyProcess = (processId) => {
 };
 
 const commentsStoreUrl = (processId) => route(props.routes.comments_store, processId);
+
+// Controla quais cards estão expandidos. Por padrão todos fechados.
+const expandedIds = ref(new Set());
+
+const isExpanded = (processId) => expandedIds.value.has(processId);
+
+const toggleExpanded = (processId) => {
+    const next = new Set(expandedIds.value);
+    if (next.has(processId)) {
+        next.delete(processId);
+    } else {
+        next.add(processId);
+    }
+    expandedIds.value = next;
+};
+
+// Quando a lista de processos muda (ex.: troca de fase), fecha tudo.
+watch(
+    () => props.processes,
+    () => {
+        expandedIds.value = new Set();
+    },
+);
 </script>
 
 <template>
@@ -445,10 +469,17 @@ const commentsStoreUrl = (processId) => route(props.routes.comments_store, proce
                     <div
                         v-for="p in localProcesses"
                         :key="p.id"
-                        class="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm transition hover:border-talents-200 hover:shadow-md sm:p-5"
+                        class="overflow-hidden rounded-2xl border bg-white shadow-sm transition"
+                        :class="isExpanded(p.id)
+                            ? 'border-talents-300 shadow-md'
+                            : 'border-slate-200/90 hover:border-talents-200 hover:shadow-md'"
                     >
-                        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                            <div class="flex min-w-0 flex-1 gap-3">
+                        <!-- ── Cabeçalho sempre visível ── -->
+                        <div
+                            class="flex flex-col gap-3 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between"
+                        >
+                            <!-- Drag + título + meta -->
+                            <div class="flex min-w-0 flex-1 items-start gap-3">
                                 <button
                                     v-if="can_manage"
                                     type="button"
@@ -458,122 +489,48 @@ const commentsStoreUrl = (processId) => route(props.routes.comments_store, proce
                                 >
                                     <Bars3Icon class="h-5 w-5" />
                                 </button>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-base font-semibold text-slate-900">{{ p.title }}</p>
-                                    <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
+
+                                <!-- Botão accordion (título + meta) -->
+                                <button
+                                    type="button"
+                                    class="min-w-0 flex-1 text-left"
+                                    @click="toggleExpanded(p.id)"
+                                >
+                                    <div class="flex min-w-0 items-center gap-2">
+                                        <p class="truncate text-base font-semibold text-slate-900">{{ p.title }}</p>
+                                        <ChevronDownIcon
+                                            class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200"
+                                            :class="isExpanded(p.id) ? 'rotate-180' : ''"
+                                        />
+                                    </div>
+                                    <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
                                         <span v-if="show_company_on_card" class="inline-flex items-center gap-1">
-                                            <BuildingOffice2Icon class="h-3.5 w-3.5 text-talents-600" />
+                                            <BuildingOffice2Icon class="h-3.5 w-3.5 text-talents-500" />
                                             {{ p.company?.name ?? '—' }}
                                         </span>
-                                        <span v-if="show_company_on_card && p.updated_by_name" class="text-slate-400">·</span>
-                                        <span v-if="p.updated_by_name">atualizado por {{ p.updated_by_name }}</span>
-                                    </p>
-
-                                    <div
-                                        v-if="can_manage && fieldDrafts[p.id]"
-                                        class="mt-3 space-y-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3"
-                                    >
-                                        <div class="grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-end">
-                                            <div>
-                                                <label
-                                                    :for="'candidates-' + p.id"
-                                                    class="text-xs font-semibold uppercase tracking-wide text-slate-500"
-                                                >
-                                                    Candidatos
-                                                </label>
-                                                <input
-                                                    :id="'candidates-' + p.id"
-                                                    v-model="fieldDrafts[p.id].candidates_count"
-                                                    type="number"
-                                                    min="0"
-                                                    step="1"
-                                                    class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
-                                                />
-                                            </div>
-                                            <p
-                                                v-if="p.candidates_count_at"
-                                                class="text-xs font-medium text-slate-500 sm:pb-2"
-                                            >
-                                                Atualizado em {{ formatDateTime(p.candidates_count_at) }}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <label
-                                                :for="'notes-' + p.id"
-                                                class="text-xs font-semibold uppercase tracking-wide text-slate-500"
-                                            >
-                                                Comentário do processo
-                                            </label>
-                                            <textarea
-                                                :id="'notes-' + p.id"
-                                                v-model="fieldDrafts[p.id].notes"
-                                                rows="2"
-                                                class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
-                                                placeholder="Comentário atualizável em qualquer fase…"
-                                            />
-                                            <p
-                                                v-if="p.notes_at"
-                                                class="mt-1 text-xs font-medium text-slate-500"
-                                            >
-                                                Atualizado em {{ formatDateTime(p.notes_at) }}
-                                            </p>
-                                        </div>
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center rounded-xl bg-talents-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-talents-700 disabled:opacity-50"
-                                                :disabled="fieldDrafts[p.id].saving"
-                                                @click="saveProcessFields(p.id)"
-                                            >
-                                                {{ fieldDrafts[p.id].saving ? 'A guardar…' : 'Guardar campos' }}
-                                            </button>
-                                            <p
-                                                v-if="fieldDrafts[p.id].error"
-                                                class="text-xs font-medium text-red-600"
-                                            >
-                                                {{ fieldDrafts[p.id].error }}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div v-else class="mt-3 space-y-2">
-                                        <p
-                                            v-if="p.candidates_count !== null && p.candidates_count !== undefined"
-                                            class="inline-flex flex-wrap items-center gap-x-2 gap-y-1"
-                                        >
+                                        <span v-if="show_company_on_card && p.updated_by_name" class="text-slate-300">·</span>
+                                        <span v-if="p.updated_by_name" class="text-slate-400">atualizado por {{ p.updated_by_name }}</span>
+                                        <!-- Resumo rápido visível mesmo fechado -->
+                                        <template v-if="!isExpanded(p.id)">
+                                            <span v-if="p.candidates_count !== null && p.candidates_count !== undefined" class="text-slate-300">·</span>
                                             <span
-                                                class="inline-flex items-center rounded-full bg-talents-50 px-2 py-0.5 text-xs font-semibold text-talents-800"
+                                                v-if="p.candidates_count !== null && p.candidates_count !== undefined"
+                                                class="inline-flex items-center rounded-full bg-talents-50 px-2 py-0.5 text-xs font-semibold text-talents-700"
                                             >
                                                 {{ p.candidates_count }}
                                                 {{ Number(p.candidates_count) === 1 ? 'candidato' : 'candidatos' }}
                                             </span>
-                                            <span
-                                                v-if="p.candidates_count_at"
-                                                class="text-xs font-medium text-slate-500"
-                                            >
-                                                Atualizado em {{ formatDateTime(p.candidates_count_at) }}
+                                            <span v-if="p.notes" class="text-slate-300">·</span>
+                                            <span v-if="p.notes" class="max-w-[18rem] truncate text-xs italic text-slate-400">
+                                                {{ p.notes }}
                                             </span>
-                                        </p>
-                                        <div
-                                            v-if="p.notes"
-                                            class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600"
-                                        >
-                                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                Comentário do processo
-                                            </p>
-                                            <p class="mt-1 whitespace-pre-wrap">{{ p.notes }}</p>
-                                            <p
-                                                v-if="p.notes_at"
-                                                class="mt-1 text-xs font-medium text-slate-500"
-                                            >
-                                                Atualizado em {{ formatDateTime(p.notes_at) }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
+                                        </template>
+                                    </p>
+                                </button>
                             </div>
 
-                            <div v-if="can_manage || can_delete" class="flex flex-wrap items-center gap-2 lg:justify-end">
+                            <!-- Ações de fase (sempre visíveis) -->
+                            <div v-if="can_manage || can_delete" class="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">
                                 <select
                                     v-if="can_manage"
                                     class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
@@ -614,11 +571,108 @@ const commentsStoreUrl = (processId) => route(props.routes.comments_store, proce
                             </div>
                         </div>
 
-                        <HiringProcessObservations
-                            :process-id="p.id"
-                            :comments="p.comments ?? []"
-                            :store-url="commentsStoreUrl(p.id)"
-                        />
+                        <!-- ── Corpo em accordion ── -->
+                        <Transition
+                            enter-active-class="transition-all duration-200 ease-out"
+                            enter-from-class="opacity-0 -translate-y-1"
+                            enter-to-class="opacity-100 translate-y-0"
+                            leave-active-class="transition-all duration-150 ease-in"
+                            leave-from-class="opacity-100 translate-y-0"
+                            leave-to-class="opacity-0 -translate-y-1"
+                        >
+                            <div v-if="isExpanded(p.id)" class="border-t border-slate-100 px-4 pb-4 pt-4 sm:px-5">
+                                <!-- Campos editáveis -->
+                                <div
+                                    v-if="can_manage && fieldDrafts[p.id]"
+                                    class="space-y-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3"
+                                >
+                                    <div class="grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-end">
+                                        <div>
+                                            <label
+                                                :for="'candidates-' + p.id"
+                                                class="text-xs font-semibold uppercase tracking-wide text-slate-500"
+                                            >
+                                                Candidatos
+                                            </label>
+                                            <input
+                                                :id="'candidates-' + p.id"
+                                                v-model="fieldDrafts[p.id].candidates_count"
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                                class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
+                                            />
+                                        </div>
+                                        <p v-if="p.candidates_count_at" class="text-xs font-medium text-slate-500 sm:pb-2">
+                                            Atualizado em {{ formatDateTime(p.candidates_count_at) }}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label
+                                            :for="'notes-' + p.id"
+                                            class="text-xs font-semibold uppercase tracking-wide text-slate-500"
+                                        >
+                                            Comentário do processo
+                                        </label>
+                                        <textarea
+                                            :id="'notes-' + p.id"
+                                            v-model="fieldDrafts[p.id].notes"
+                                            rows="2"
+                                            class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
+                                            placeholder="Comentário atualizável em qualquer fase…"
+                                        />
+                                        <p v-if="p.notes_at" class="mt-1 text-xs font-medium text-slate-500">
+                                            Atualizado em {{ formatDateTime(p.notes_at) }}
+                                        </p>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center rounded-xl bg-talents-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-talents-700 disabled:opacity-50"
+                                            :disabled="fieldDrafts[p.id].saving"
+                                            @click="saveProcessFields(p.id)"
+                                        >
+                                            {{ fieldDrafts[p.id].saving ? 'A guardar…' : 'Guardar campos' }}
+                                        </button>
+                                        <p v-if="fieldDrafts[p.id].error" class="text-xs font-medium text-red-600">
+                                            {{ fieldDrafts[p.id].error }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Visualização somente-leitura -->
+                                <div v-else class="space-y-2">
+                                    <p
+                                        v-if="p.candidates_count !== null && p.candidates_count !== undefined"
+                                        class="inline-flex flex-wrap items-center gap-x-2 gap-y-1"
+                                    >
+                                        <span class="inline-flex items-center rounded-full bg-talents-50 px-2 py-0.5 text-xs font-semibold text-talents-800">
+                                            {{ p.candidates_count }}
+                                            {{ Number(p.candidates_count) === 1 ? 'candidato' : 'candidatos' }}
+                                        </span>
+                                        <span v-if="p.candidates_count_at" class="text-xs font-medium text-slate-500">
+                                            Atualizado em {{ formatDateTime(p.candidates_count_at) }}
+                                        </span>
+                                    </p>
+                                    <div v-if="p.notes" class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Comentário do processo</p>
+                                        <p class="mt-1 whitespace-pre-wrap">{{ p.notes }}</p>
+                                        <p v-if="p.notes_at" class="mt-1 text-xs font-medium text-slate-500">
+                                            Atualizado em {{ formatDateTime(p.notes_at) }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Observações / histórico -->
+                                <div class="mt-4">
+                                    <HiringProcessObservations
+                                        :process-id="p.id"
+                                        :comments="p.comments ?? []"
+                                        :store-url="commentsStoreUrl(p.id)"
+                                    />
+                                </div>
+                            </div>
+                        </Transition>
                     </div>
                 </VueDraggable>
 

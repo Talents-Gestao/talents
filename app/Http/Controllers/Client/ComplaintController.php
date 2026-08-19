@@ -96,11 +96,12 @@ class ComplaintController extends Controller
                     'created_at' => $m->created_at?->toIso8601String(),
                     'user' => $m->user ? ['name' => $m->user->name] : null,
                 ]),
+                // ip_address é omitido intencionalmente: ações do denunciante público
+                // não registram IP (LGPD, Art. 6º III); ações do admin são internas.
                 'audit_logs' => $complaint->auditLogs()->with('user')->orderByDesc('id')->limit(50)->get()->map(fn ($log) => [
                     'id' => $log->id,
                     'action' => $log->action,
                     'meta' => $log->meta,
-                    'ip_address' => $log->ip_address,
                     'user' => $log->user ? ['name' => $log->user->name] : null,
                     'created_at' => $log->created_at?->toIso8601String(),
                 ]),

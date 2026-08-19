@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\SafelyDecryptsAttributes;
+use App\Support\SafeExternalUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -49,9 +50,10 @@ class SolidesSetting extends Model
 
     public function effectiveBaseUrl(): string
     {
-        $base = rtrim((string) ($this->base_url ?: config('solides.base_url')), '/');
+        $rawBase = (string) ($this->base_url ?: config('solides.base_url'));
+        $validBase = SafeExternalUrl::validate($rawBase);
         $locale = $this->locale ?: config('solides.locale', 'pt-BR');
 
-        return $base.'/'.trim((string) $locale, '/').'/api/v1';
+        return $validBase.'/'.trim((string) $locale, '/').'/api/v1';
     }
 }

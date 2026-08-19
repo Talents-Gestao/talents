@@ -84,7 +84,7 @@ class PublicComplaintController extends Controller
         ComplaintAuditService::log($complaint, 'created', $request, null, [
             'category' => $data['category'],
             'is_anonymous' => $data['is_anonymous'],
-        ]);
+        ], recordIp: false);
 
         ComplaintMessage::create([
             'complaint_id' => $complaint->id,
@@ -155,7 +155,7 @@ class PublicComplaintController extends Controller
             ])
             ->firstOrFail();
 
-        ComplaintAuditService::log($complaint, 'viewed_by_reporter', $request, null);
+        ComplaintAuditService::log($complaint, 'viewed_by_reporter', $request, null, recordIp: false);
 
         return Inertia::render('Complaint/ReporterView', [
             'token' => $token,
@@ -196,7 +196,7 @@ class PublicComplaintController extends Controller
             'content' => $data['content'],
         ]);
 
-        ComplaintAuditService::log($complaint, 'message_added_by_reporter', $request, null);
+        ComplaintAuditService::log($complaint, 'message_added_by_reporter', $request, null, recordIp: false);
 
         return back()->with('success', 'Mensagem enviada.');
     }

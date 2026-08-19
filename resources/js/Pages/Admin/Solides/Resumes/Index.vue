@@ -1,5 +1,6 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import DateRangePicker from '@/Components/DateRangePicker.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -20,21 +21,21 @@ const props = defineProps({
 });
 
 const filterForm = useForm({
-    data_inicial: props.filters.data_inicial ?? '',
-    data_final: props.filters.data_final ?? '',
+    dateRange: {
+        start: props.filters.data_inicial ?? '',
+        end: props.filters.data_final ?? '',
+    },
     origem_contains: props.filters.origem_contains ?? '',
     grupo_contains: props.filters.grupo_contains ?? '',
 });
 
 const queryForView = (view) => {
     const q = { view };
-    if (filterForm.data_inicial) q.data_inicial = filterForm.data_inicial;
-    if (filterForm.data_final) q.data_final = filterForm.data_final;
+    if (filterForm.dateRange.start) q.data_inicial = filterForm.dateRange.start;
+    if (filterForm.dateRange.end) q.data_final = filterForm.dateRange.end;
     if (filterForm.origem_contains) q.origem_contains = filterForm.origem_contains;
     if (filterForm.grupo_contains) q.grupo_contains = filterForm.grupo_contains;
-    if (view === 'list') {
-        q.page = 1;
-    }
+    if (view === 'list') q.page = 1;
     return q;
 };
 
@@ -47,8 +48,8 @@ const applyFilters = () => {
             const out = {
                 view: props.view_mode,
                 page: props.view_mode === 'list' ? 1 : undefined,
-                data_inicial: data.data_inicial || undefined,
-                data_final: data.data_final || undefined,
+                data_inicial: data.dateRange.start || undefined,
+                data_final: data.dateRange.end || undefined,
                 origem_contains: data.origem_contains || undefined,
                 grupo_contains: data.grupo_contains || undefined,
             };
@@ -68,18 +69,11 @@ const applyFilters = () => {
         <template #header>
             <div>
                 <h2 class="text-xl font-semibold leading-tight text-gray-900">Sólides — Currículos e candidatos</h2>
-                <p class="mt-1 text-sm text-gray-600">
-                    <span v-if="view_mode === 'list'">
-                        Lista paginada via
-                        <code class="rounded bg-gray-100 px-1 text-xs">GET /curriculos</code>
-                        .
-                    </span>
-                    <span v-else>
-                        Visão agregada por
-                        <strong>vaga inferida</strong>
-                        (origem ou senioridade no currículo; perfil no passaporte). Não há endpoint de vagas abertas na
-                        API Gestão — trata-se de heurística operacional.
-                    </span>
+                <p v-if="view_mode === 'grouped'" class="mt-1 text-sm text-gray-600">
+                    Visão agregada por
+                    <strong>vaga inferida</strong>
+                    (origem ou senioridade no currículo; perfil no passaporte). Não há endpoint de vagas abertas na
+                    API Gestão — trata-se de heurística operacional.
                 </p>
             </div>
         </template>
@@ -138,56 +132,39 @@ const applyFilters = () => {
                 @submit.prevent="applyFilters"
             >
                 <h3 class="text-sm font-semibold text-gray-900">Filtros</h3>
-                <p class="text-xs text-gray-600">
-                    Período opcional no formato <strong>dd/mm/aaaa</strong> (
-                    <code class="rounded bg-gray-100 px-1">data_inicial</code> /
-                    <code class="rounded bg-gray-100 px-1">data_final</code>
-                    na API de currículos).
-                </p>
+
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <div>
-                        <InputLabel for="data_inicial" value="Data inicial" />
-                        <TextInput
-                            id="data_inicial"
-                            v-model="filterForm.data_inicial"
-                            class="mt-1 block w-full"
-                            placeholder="ex.: 01/01/2024"
-                            autocomplete="off"
+                    <div class="sm:col-span-2 lg:col-span-1">
+                        <DateRangePicker
+                            id="solides-period"
+                            v-model="filterForm.dateRange"
+                            label="Período de cadastro"
                         />
                     </div>
-                    <div>
-                        <InputLabel for="data_final" value="Data final" />
-                        <TextInput
-                            id="data_final"
-                            v-model="filterForm.data_final"
-                            class="mt-1 block w-full"
-                            placeholder="ex.: 31/12/2024"
-                            autocomplete="off"
-                        />
+                    <div class="sm:col-span-2 lg:col-span-1 lg:grid lg:grid-cols-2 lg:gap-4">
+                        <div>
+                            <InputLabel for="origem_contains" value="Origem / perfil (contém)" />
+                            <TextInput
+                                id="origem_contains"
+                                v-model="filterForm.origem_contains"
+                                class="mt-1 block w-full"
+                                placeholder="ex.: Jobs"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="mt-4 lg:mt-0">
+                            <InputLabel for="grupo_contains" value="Chave do grupo (contém)" />
+                            <TextInput
+                                id="grupo_contains"
+                                v-model="filterForm.grupo_contains"
+                                class="mt-1 block w-full"
+                                placeholder="Visão agregada"
+                                autocomplete="off"
+                            />
+                        </div>
                     </div>
                 </div>
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <div>
-                        <InputLabel for="origem_contains" value="Texto em origem / perfil (contém)" />
-                        <TextInput
-                            id="origem_contains"
-                            v-model="filterForm.origem_contains"
-                            class="mt-1 block w-full"
-                            placeholder="ex.: Jobs"
-                            autocomplete="off"
-                        />
-                    </div>
-                    <div>
-                        <InputLabel for="grupo_contains" value="Chave do grupo (contém)" />
-                        <TextInput
-                            id="grupo_contains"
-                            v-model="filterForm.grupo_contains"
-                            class="mt-1 block w-full"
-                            placeholder="Filtra grupos na visão agregada"
-                            autocomplete="off"
-                        />
-                    </div>
-                </div>
+
                 <PrimaryButton type="submit" :disabled="filterForm.processing">Aplicar filtros</PrimaryButton>
             </form>
 

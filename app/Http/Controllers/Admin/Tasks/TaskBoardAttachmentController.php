@@ -15,7 +15,24 @@ class TaskBoardAttachmentController extends Controller
     {
         $maxKb = (int) config('tasks.max_attachment_kb', 10240);
         $request->validate([
-            'file' => ['required', 'file', 'max:'.max(1, $maxKb)],
+            'file' => [
+                'required',
+                'file',
+                'max:'.max(1, $maxKb),
+                'mimetypes:application/pdf,'
+                    .'application/msword,'
+                    .'application/vnd.openxmlformats-officedocument.wordprocessingml.document,'
+                    .'application/vnd.ms-excel,'
+                    .'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,'
+                    .'application/vnd.ms-powerpoint,'
+                    .'application/vnd.openxmlformats-officedocument.presentationml.presentation,'
+                    .'text/plain,'
+                    .'text/csv,'
+                    .'image/jpeg,image/png,image/gif,image/webp,image/svg+xml,'
+                    .'audio/mpeg,audio/ogg,audio/wav,'
+                    .'video/mp4,video/webm,'
+                    .'application/zip,application/x-zip-compressed',
+            ],
         ]);
 
         $file = $request->file('file');

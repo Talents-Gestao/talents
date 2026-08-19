@@ -5,6 +5,7 @@ namespace App\Services\Rhid;
 use App\Exceptions\RhidApiException;
 use App\Exceptions\RhidDomainChoiceRequiredException;
 use App\Models\Company;
+use App\Support\SafeExternalUrl;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -13,9 +14,13 @@ class RhidAuthService
 {
     public function baseUrl(Company $company): string
     {
-        $url = $company->rhid_base_url ?: config('rhid.base_url');
+        $url = (string) ($company->rhid_base_url ?: config('rhid.base_url'));
 
-        return rtrim((string) $url, '/');
+        try {
+            return SafeExternalUrl::validate($url);
+        } catch (\InvalidArgumentException $e) {
+            throw new RhidApiException('URL de integração RHID inválida: '.$e->getMessage());
+        }
     }
 
     public function cacheKey(Company $company): string

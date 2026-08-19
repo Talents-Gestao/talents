@@ -27,10 +27,20 @@
         <env name="DB_DATABASE" value=":memory:" force="true"/>
         <env name="DB_URL" value="" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
+        <!-- sync facilita testes de controllers, mas exige Queue::fake() em testes que
+             disparam jobs de IA (TranscribeAudioJob, etc.) para evitar chamadas reais. -->
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- Chaves de IA com valores falsos: impede que jobs síncronos eventuais
+             consumam créditos reais em caso de Queue::fake() esquecido. -->
+        <env name="OPENAI_API_KEY" value="test-fake-key" force="true"/>
+        <env name="ANTHROPIC_API_KEY" value="test-fake-key" force="true"/>
+        <!-- Credenciais de integrações externas: forçar vazio para que SolidesClient,
+             RhidAuthService e ZapSignService falhem rápido sem rede. -->
+        <env name="SOLIDES_API_TOKEN" value="" force="true"/>
+        <env name="ZAPSIGN_API_TOKEN" value="" force="true"/>
     </php>
 </phpunit>

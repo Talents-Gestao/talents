@@ -3,6 +3,7 @@
 namespace App\Services\Commercial;
 
 use App\Models\CommercialSetting;
+use App\Support\HtmlSanitizer;
 use App\Support\TalentsButterflyDataUri;
 use App\Support\TalentsLogoDataUri;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -19,7 +20,7 @@ class ContractPdfService
         $chroot = realpath(base_path()) ?: base_path();
 
         $pdf = Pdf::loadView('reports.commercial-contract', [
-            'content_html' => $contentHtml,
+            'content_html' => HtmlSanitizer::sanitizeContractHtml($contentHtml),
             'code' => $code,
             'generatedAt' => $generatedAt ?? now(),
             'settings' => CommercialSetting::current(),
