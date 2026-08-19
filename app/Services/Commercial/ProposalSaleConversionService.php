@@ -26,64 +26,81 @@ class ProposalSaleConversionService
      */
     public function convert(CommercialProposal $proposal, array $data, ?int $createdBy = null): CommercialSale
     {
-        if (! $proposal->is_closed) {
-            throw ValidationException::withMessages([
-                'proposal' => 'A proposta precisa estar aprovada antes de converter em venda.',
-            ]);
-        }
+        return DB::transaction(function () use ($proposal, $data, $createdBy) {
+            $locked = CommercialProposal::query()
+                ->whereKey($proposal->id)
+                ->lockForUpdate()
+                ->first();
 
-        if ($proposal->sale()->exists()) {
-            throw ValidationException::withMessages([
-                'proposal' => 'Esta proposta já possui uma venda vinculada.',
-            ]);
-        }
-
-        $paymentMethod = (string) $data['payment_method'];
-        $totalCents = (int) $proposal->total_final_cents;
-        $isRecurring = $proposal->isRecurringService();
-
-        if ($isRecurring) {
-            if ($paymentMethod === 'misto') {
+            if (! $locked) {
                 throw ValidationException::withMessages([
-                    'payment_method' => 'Propostas recorrentes não aceitam pagamento misto. Escolha PIX, boleto ou cartão.',
+                    'proposal' => 'Proposta não encontrada.',
                 ]);
             }
 
-            $monthlyCents = (int) $proposal->recurring_monthly_cents;
-            $months = (int) $proposal->recurring_months;
-            $totalCents = $months * $monthlyCents;
-            $installmentPlan = $this->planFromRecurringMonths($months, $paymentMethod, $monthlyCents);
-        } elseif ($paymentMethod === 'misto') {
-            $installmentPlan = $this->planFromMixParts($data['mix_parts'] ?? [], $totalCents);
-        } else {
-            $installmentPlan = $this->planFromEqualInstallments(
-                (int) ($data['installments_count'] ?? 1),
-                $paymentMethod,
-                $totalCents,
-            );
-        }
+            if (! $locked->is_closed) {
+                throw ValidationException::withMessages([
+                    'proposal' => 'A proposta precisa estar aprovada antes de converter em venda.',
+                ]);
+            }
 
-        $installmentsCount = count($installmentPlan);
+            if ($locked->sale()->exists()) {
+                throw ValidationException::withMessages([
+                    'proposal' => 'Esta proposta já possui uma venda vinculada.',
+                ]);
+            }
 
-        return DB::transaction(function () use ($proposal, $data, $createdBy, $paymentMethod, $installmentsCount, $totalCents, $installmentPlan, $isRecurring) {
+            $paymentMethod = (string) $data['payment_method'];
+            $totalCents = (int) $locked->total_final_cents;
+            $isRecurring = $locked->isRecurringService();
+
+            if ($isRecurring) {
+                if ($paymentMethod === 'misto') {
+                    throw ValidationException::withMessages([
+                        'payment_method' => 'Propostas recorrentes não aceitam pagamento misto. Escolha PIX, boleto ou cartão.',
+                    ]);
+                }
+
+                $monthlyCents = (int) $locked->recurring_monthly_cents;
+                $months = (int) $locked->recurring_months;
+                $totalCents = $months * $monthlyCents;
+                $installmentPlan = $this->planFromRecurringMonths($months, $paymentMethod, $monthlyCents);
+            } elseif ($paymentMethod === 'misto') {
+                $installmentPlan = $this->planFromMixParts($data['mix_parts'] ?? [], $totalCents);
+            } else {
+                $installmentPlan = $this->planFromEqualInstallments(
+                    (int) ($data['installments_count'] ?? 1),
+                    $paymentMethod,
+                    $totalCents,
+                );
+            }
+
+            if ($totalCents < 1) {
+                throw ValidationException::withMessages([
+                    'proposal' => 'Não é possível converter uma proposta sem valor em venda.',
+                ]);
+            }
+
+            $installmentsCount = count($installmentPlan);
+
             $sale = CommercialSale::create([
                 'code' => CommercialSale::nextCode(),
-                'proposal_id' => $proposal->id,
-                'client_name' => $proposal->client_name,
-                'client_cnpj' => $proposal->client_cnpj,
-                'client_email' => $proposal->client_email,
-                'client_phone' => $proposal->client_phone,
-                'seller_id' => $proposal->seller_id,
+                'proposal_id' => $locked->id,
+                'client_name' => $locked->client_name,
+                'client_cnpj' => $locked->client_cnpj,
+                'client_email' => $locked->client_email,
+                'client_phone' => $locked->client_phone,
+                'seller_id' => $locked->seller_id,
                 'total_cents' => $totalCents,
-                'commission_percent' => (float) $proposal->commission_percent,
+                'commission_percent' => (float) $locked->commission_percent,
                 'commission_cents' => $isRecurring
-                    ? (int) round($totalCents * ((float) $proposal->commission_percent) / 100)
-                    : (int) $proposal->commission_cents,
+                    ? (int) round($totalCents * ((float) $locked->commission_percent) / 100)
+                    : (int) $locked->commission_cents,
                 'payment_method' => $paymentMethod,
                 'installments_count' => $installmentsCount,
                 'is_recurring' => $isRecurring,
-                'recurring_months' => $isRecurring ? (int) $proposal->recurring_months : null,
-                'recurring_monthly_cents' => $isRecurring ? (int) $proposal->recurring_monthly_cents : null,
+                'recurring_months' => $isRecurring ? (int) $locked->recurring_months : null,
+                'recurring_monthly_cents' => $isRecurring ? (int) $locked->recurring_monthly_cents : null,
                 'status' => CommercialSale::STATUS_ABERTA,
                 'sold_at' => now(),
                 'created_by' => $createdBy,
@@ -107,9 +124,9 @@ class ProposalSaleConversionService
             if ($commissionCents > 0) {
                 CommercialCommission::create([
                     'sale_id' => $sale->id,
-                    'seller_id' => $proposal->seller_id,
+                    'seller_id' => $locked->seller_id,
                     'base_cents' => $totalCents,
-                    'percent' => (float) $proposal->commission_percent,
+                    'percent' => (float) $locked->commission_percent,
                     'amount_cents' => $commissionCents,
                     'status' => CommercialCommission::STATUS_A_PAGAR,
                 ]);

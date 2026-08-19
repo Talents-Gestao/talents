@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin\Finance;
 use App\Models\CommercialCommission;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
+use App\Models\CommercialSaleInstallment;
 use App\Models\User;
 use App\Services\Commercial\ProposalSaleConversionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,6 +54,7 @@ class CommissionIndexTest extends TestCase
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $seller = User::factory()->create(['is_commercial' => true]);
         $sale = $this->createSaleWithCommission($seller, 8000, 800);
+        $this->settleSale($sale);
         $commission = $sale->commission;
 
         $this->actingAs($admin)
@@ -68,6 +70,40 @@ class CommissionIndexTest extends TestCase
         $commission->refresh();
         $this->assertSame(CommercialCommission::STATUS_PAGA, $commission->status);
         $this->assertSame('Repasse PIX', $commission->notes);
+    }
+
+    public function test_commission_cannot_be_marked_paid_before_sale_is_settled(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $seller = User::factory()->create(['is_commercial' => true]);
+        $sale = $this->createSaleWithCommission($seller, 8000, 800);
+        $commission = $sale->commission;
+
+        $this->actingAs($admin)
+            ->from(route('admin.financeiro.comissoes.index'))
+            ->patch(route('admin.financeiro.comissoes.update', $commission), [
+                'status' => CommercialCommission::STATUS_PAGA,
+                'paid_at' => now()->toDateString(),
+            ])
+            ->assertRedirect(route('admin.financeiro.comissoes.index'))
+            ->assertSessionHasErrors('status');
+
+        $this->assertSame(CommercialCommission::STATUS_A_PAGAR, $commission->fresh()->status);
+    }
+
+    private function settleSale(CommercialSale $sale): void
+    {
+        foreach ($sale->installments as $installment) {
+            $installment->update([
+                'status' => CommercialSaleInstallment::STATUS_PAGO,
+                'paid_at' => now(),
+                'paid_amount_cents' => $installment->amount_cents,
+            ]);
+        }
+
+        $sale->recalculateStatus();
     }
 
     private function createSaleWithCommission(User $seller, int $totalCents, int $commissionCents): CommercialSale

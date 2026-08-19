@@ -181,7 +181,7 @@ class ProposalUpdateStatusTest extends TestCase
         $this->assertSame(ProposalListStatus::OPEN, $proposal->list_status);
     }
 
-    public function test_reopen_with_sale_keeps_sale_and_may_flash_info(): void
+    public function test_reopen_with_sale_is_rejected(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
@@ -207,15 +207,16 @@ class ProposalUpdateStatusTest extends TestCase
         ]);
 
         $this->actingAs($admin)
+            ->from(route('admin.comercial.propostas.index'))
             ->patch(route('admin.comercial.propostas.status', $proposal), [
                 'status' => 'open',
             ])
             ->assertRedirect(route('admin.comercial.propostas.index'))
-            ->assertSessionHas('info');
+            ->assertSessionHasErrors('status');
 
         $this->assertTrue($proposal->fresh()->sale()->exists());
-        $this->assertFalse($proposal->fresh()->is_closed);
-        $this->assertSame(ProposalListStatus::OPEN, $proposal->fresh()->list_status);
+        $this->assertTrue($proposal->fresh()->is_closed);
+        $this->assertSame(ProposalListStatus::APPROVED, $proposal->fresh()->list_status);
     }
 
     public function test_setting_approved_persists_even_with_parcial_sale(): void

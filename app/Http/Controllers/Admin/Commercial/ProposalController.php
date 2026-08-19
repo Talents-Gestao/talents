@@ -191,6 +191,11 @@ class ProposalController extends Controller
 
     public function update(Request $request, CommercialProposal $proposal): RedirectResponse
     {
+        $this->assertProposalNotConverted(
+            $proposal,
+            'Esta proposta já foi convertida em venda e não pode ser editada.',
+        );
+
         [$data, $totals, $catalogLines] = $this->validatedWithTotals($request, $proposal);
 
         $wasClosed = $proposal->is_closed;
@@ -243,6 +248,12 @@ class ProposalController extends Controller
         $wasClosed = (bool) $proposal->is_closed;
         $isClosed = ProposalListStatus::impliesClosed($listStatus);
 
+        if ($proposal->hasSale() && ! $isClosed) {
+            throw ValidationException::withMessages([
+                'status' => 'Não é possível reabrir uma proposta que já possui venda vinculada.',
+            ]);
+        }
+
         $proposal->update([
             'list_status' => $listStatus,
             'is_closed' => $isClosed,
@@ -258,19 +269,19 @@ class ProposalController extends Controller
         }
 
         $label = ProposalListStatus::label($listStatus);
-        $redirect = redirect()
+
+        return redirect()
             ->route('admin.comercial.propostas.index')
             ->with('success', "Status da proposta {$proposal->code} atualizado para «{$label}».");
-
-        if ($proposal->sale()->exists() && ! $isClosed) {
-            $redirect->with('info', 'Esta proposta já possui venda vinculada.');
-        }
-
-        return $redirect;
     }
 
     public function destroy(CommercialProposal $proposal): RedirectResponse
     {
+        $this->assertProposalNotConverted(
+            $proposal,
+            'Não é possível excluir uma proposta que já foi convertida em venda.',
+        );
+
         $proposal->delete();
 
         return redirect()
@@ -392,6 +403,7 @@ class ProposalController extends Controller
         $this->assertProposalHasPricedServices($data, $catalogLines, $existing);
 
         if (! empty($data['is_recurring'])) {
+            $catalogLines = [];
             $periodTotal = (int) $data['recurring_months'] * (int) $data['recurring_monthly_cents'];
             $commissionPercent = (float) ($data['commission_percent'] ?? $totals['commission_percent'] ?? 0);
             $totals['total_final_cents'] = $periodTotal;
@@ -455,6 +467,15 @@ class ProposalController extends Controller
         ]);
     }
 
+    private function assertProposalNotConverted(CommercialProposal $proposal, string $message): void
+    {
+        if ($proposal->hasSale()) {
+            throw ValidationException::withMessages([
+                'proposal' => $message,
+            ]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -482,6 +503,7 @@ class ProposalController extends Controller
             'discount_value_cents' => (int) ($line->options['discount_value_cents'] ?? 0),
             'observation' => (string) ($line->options['observation'] ?? ''),
         ])->values()->all();
+        $payload['has_sale'] = $proposal->hasSale();
         $payload['has_legacy_services'] = $proposal->hasLegacyServices();
         $payload['legacy_summary'] = $this->legacySummaryLines($proposal);
         $payload['pdf_optional_sections'] = CommercialProposalPdfOptionalSections::normalizeSelection(

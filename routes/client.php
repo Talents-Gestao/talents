@@ -42,8 +42,11 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
 
     Route::get('avisos', [ClientCompanyNoticeController::class, 'index'])->name('notices.index');
     Route::get('avisos/recentes', [ClientCompanyNoticeController::class, 'recent'])->name('notices.recent');
+    Route::get('avisos/{notice}/abrir', [ClientCompanyNoticeController::class, 'open'])->name('notices.open');
     Route::post('avisos/{notice}/lido', [ClientCompanyNoticeController::class, 'markRead'])->name('notices.mark-read');
     Route::post('avisos/marcar-todos-lidos', [ClientCompanyNoticeController::class, 'markAllRead'])->name('notices.mark-all-read');
+    Route::delete('avisos/{notice}', [ClientCompanyNoticeController::class, 'destroy'])->name('notices.destroy');
+    Route::post('avisos/excluir-todos', [ClientCompanyNoticeController::class, 'destroyAll'])->name('notices.destroy-all');
 
     Route::get('noticias', NewsFeedController::class)->name('news.feed');
 

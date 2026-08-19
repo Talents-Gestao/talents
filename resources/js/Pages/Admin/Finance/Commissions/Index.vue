@@ -78,6 +78,10 @@ const submitEdit = () => {
         onSuccess: () => closeEditModal(),
     });
 };
+
+const canMarkSelectedCommissionPaid = () =>
+    selectedCommission.value?.sale?.status === 'quitada'
+    || selectedCommission.value?.status === 'paga';
 </script>
 
 <template>
@@ -110,7 +114,7 @@ const submitEdit = () => {
             </div>
             <div class="surface-card flex items-center p-5">
                 <p class="text-sm text-slate-600">
-                    Marque como <strong>paga</strong> ao efetuar o repasse ao vendedor. O histórico fica vinculado à venda.
+                    Marque como <strong>paga</strong> ao efetuar o repasse ao vendedor, depois que a venda estiver quitada.
                 </p>
             </div>
         </div>
@@ -258,8 +262,17 @@ const submitEdit = () => {
                             class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         >
                             <option value="a_pagar">A pagar</option>
-                            <option value="paga">Paga</option>
+                            <option value="paga" :disabled="!canMarkSelectedCommissionPaid()">Paga</option>
                         </select>
+                        <p
+                            v-if="selectedCommission.sale?.status !== 'quitada' && selectedCommission.status !== 'paga'"
+                            class="mt-1 text-xs text-amber-700"
+                        >
+                            A venda precisa estar quitada antes de marcar a comissão como paga.
+                        </p>
+                        <p v-if="editForm.errors.status" class="mt-1 text-xs text-rose-600">
+                            {{ editForm.errors.status }}
+                        </p>
                     </div>
                     <div v-if="editForm.status === 'paga'">
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Paga em</label>

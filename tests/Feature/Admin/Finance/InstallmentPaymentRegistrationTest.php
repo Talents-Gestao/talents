@@ -154,4 +154,68 @@ class InstallmentPaymentRegistrationTest extends TestCase
 
         $this->assertSame('pendente', $installment->fresh()->status);
     }
+
+    public function test_register_payment_rejects_zero_amount(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $installment = $this->convertedInstallment($admin, 'PROP-INST-ZERO');
+
+        $this->actingAs($admin)
+            ->from(route('admin.financeiro.vendas.show', $installment->sale_id))
+            ->patch(route('admin.financeiro.parcelas.pagamento', $installment), [
+                'status' => 'pago',
+                'paid_at' => '2026-08-12',
+                'paid_amount_cents' => 0,
+            ])
+            ->assertRedirect(route('admin.financeiro.vendas.show', $installment->sale_id))
+            ->assertSessionHasErrors('paid_amount_cents');
+
+        $this->assertSame('pendente', $installment->fresh()->status);
+    }
+
+    public function test_register_payment_rejects_amount_above_installment(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $installment = $this->convertedInstallment($admin, 'PROP-INST-OVER');
+
+        $this->actingAs($admin)
+            ->from(route('admin.financeiro.vendas.show', $installment->sale_id))
+            ->patch(route('admin.financeiro.parcelas.pagamento', $installment), [
+                'status' => 'pago',
+                'paid_at' => '2026-08-12',
+                'paid_amount_cents' => 300_000,
+            ])
+            ->assertRedirect(route('admin.financeiro.vendas.show', $installment->sale_id))
+            ->assertSessionHasErrors('paid_amount_cents');
+
+        $this->assertSame('pendente', $installment->fresh()->status);
+    }
+
+    private function convertedInstallment(User $admin, string $code): CommercialSaleInstallment
+    {
+        $proposal = CommercialProposal::query()->create([
+            'code' => $code,
+            'client_name' => 'Cliente Parcela',
+            'employee_count' => 5,
+            'total_final_cents' => 225_000,
+            'is_closed' => true,
+            'closed_at' => now(),
+        ]);
+
+        $this->actingAs($admin)->post(route('admin.comercial.propostas.converter', $proposal), [
+            'payment_method' => 'pix',
+            'installments_count' => 1,
+            'first_due_date' => '2026-08-07',
+        ])->assertRedirect();
+
+        return CommercialSale::query()
+            ->where('proposal_id', $proposal->id)
+            ->firstOrFail()
+            ->installments()
+            ->firstOrFail();
+    }
 }

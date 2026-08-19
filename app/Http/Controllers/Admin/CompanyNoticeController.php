@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Notices\DeleteCompanyNotice;
 use App\Actions\Notices\MarkNoticeRead;
 use App\Actions\Notices\PublishCompanyNotice;
+use App\Enums\CompanyNoticeEventKind;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\CompanyNotice;
+use App\Support\Complaints\ComplaintCompanyContext;
+use App\Support\Feedback\FeedbackCompanyContext;
+use App\Support\Notices\NoticeDestinationUrl;
 use App\Support\Notices\UnreadNoticeCounter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -16,7 +21,7 @@ use Inertia\Response;
 
 class CompanyNoticeController extends Controller
 {
-    private const RECENT_LIMIT = 8;
+    private const BELL_PAGE_SIZE = 50;
 
     public function index(Request $request): Response
     {
@@ -74,23 +79,17 @@ class CompanyNoticeController extends Controller
     public function recent(Request $request, UnreadNoticeCounter $unreadNoticeCounter): JsonResponse
     {
         $user = $request->user();
-        $query = $unreadNoticeCounter->visibleNoticesQuery($user);
-        abort_unless($query !== null, 403);
-
-        $notices = $query
-            ->with([
-                'company:id,name',
-                'reads' => fn ($q) => $q->where('user_id', $user->id),
-            ])
-            ->orderByDesc('published_at')
-            ->orderByDesc('id')
-            ->limit(self::RECENT_LIMIT)
-            ->get()
-            ->map(fn (CompanyNotice $notice) => $this->serializeNotice($notice));
+        $page = max(1, $request->integer('page', 1));
+        $result = $unreadNoticeCounter->paginateForBell($user, $page, self::BELL_PAGE_SIZE);
+        abort_unless($result !== null, 403);
 
         return response()->json([
-            'notices' => $notices,
+            'notices' => $result['notices']
+                ->map(fn (CompanyNotice $notice) => $this->serializeNotice($notice))
+                ->values(),
             'unread_count' => $unreadNoticeCounter->forUser($user),
+            'page' => $result['page'],
+            'has_more' => $result['has_more'],
         ]);
     }
 
@@ -140,6 +139,74 @@ class CompanyNoticeController extends Controller
             : 'Não há avisos novos.');
     }
 
+    public function destroy(
+        Request $request,
+        CompanyNotice $notice,
+        DeleteCompanyNotice $deleteCompanyNotice,
+        UnreadNoticeCounter $unreadNoticeCounter,
+    ): RedirectResponse|JsonResponse {
+        $user = $request->user();
+        $visible = $unreadNoticeCounter->visibleNoticesQuery($user);
+        abort_unless(
+            $visible !== null && (clone $visible)->whereKey($notice->id)->exists(),
+            404,
+        );
+
+        $deleteCompanyNotice->handle($notice, $user);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'ok' => true,
+                'unread_count' => $unreadNoticeCounter->forUser($user),
+            ]);
+        }
+
+        return back()->with('success', 'Aviso excluído.');
+    }
+
+    public function destroyAll(
+        Request $request,
+        DeleteCompanyNotice $deleteCompanyNotice,
+        UnreadNoticeCounter $unreadNoticeCounter,
+    ): RedirectResponse|JsonResponse {
+        $user = $request->user();
+        $count = $deleteCompanyNotice->deleteAllVisibleForUser($user);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'ok' => true,
+                'deleted' => $count,
+                'unread_count' => $unreadNoticeCounter->forUser($user),
+            ]);
+        }
+
+        return back()->with('success', $count > 0
+            ? 'Todos os avisos foram excluídos.'
+            : 'Não há avisos para excluir.');
+    }
+
+    public function open(
+        Request $request,
+        CompanyNotice $notice,
+        MarkNoticeRead $markNoticeRead,
+        UnreadNoticeCounter $unreadNoticeCounter,
+        NoticeDestinationUrl $destination,
+    ): RedirectResponse {
+        $user = $request->user();
+        $visible = $unreadNoticeCounter->visibleNoticesQuery($user);
+        abort_unless(
+            $visible !== null && (clone $visible)->whereKey($notice->id)->exists(),
+            404,
+        );
+
+        $markNoticeRead->handle($notice, $user);
+        $this->prepareAdminModuleContext($notice, $request);
+
+        $url = $destination->url($notice, admin: true);
+
+        return redirect()->to($url ?? url()->previous(route('admin.dashboard')));
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -155,6 +222,30 @@ class CompanyNoticeController extends Controller
             'company_id' => $notice->company_id,
             'company_name' => $notice->company?->name,
             'read' => $notice->reads->isNotEmpty(),
+            'url' => app(NoticeDestinationUrl::class)->url($notice, admin: true),
         ];
+    }
+
+    private function prepareAdminModuleContext(CompanyNotice $notice, Request $request): void
+    {
+        $companyId = $notice->company_id;
+        if (! $companyId) {
+            return;
+        }
+
+        $kind = $notice->event_kind;
+        if (in_array($kind, [
+            CompanyNoticeEventKind::FeedbackAwaitingSignature,
+            CompanyNoticeEventKind::FeedbackCompleted,
+        ], true)) {
+            $request->session()->put(FeedbackCompanyContext::SESSION_KEY, (int) $companyId);
+        }
+
+        if (in_array($kind, [
+            CompanyNoticeEventKind::ComplaintCreated,
+            CompanyNoticeEventKind::ComplaintUpdated,
+        ], true)) {
+            $request->session()->put(ComplaintCompanyContext::SESSION_KEY, (int) $companyId);
+        }
     }
 }

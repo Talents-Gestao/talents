@@ -83,6 +83,11 @@ const paidTotalCents = computed(() =>
         .reduce((acc, i) => acc + (i.paid_amount_cents ?? i.amount_cents ?? 0), 0),
 );
 
+const saleIsQuitada = computed(() => props.sale.status === 'quitada');
+const canMarkCommissionPaid = computed(
+    () => saleIsQuitada.value || props.sale.commission?.status === 'paga',
+);
+
 const openPaymentModal = (installment) => {
     selectedInstallment.value = installment;
     paymentForm.reset();
@@ -207,8 +212,14 @@ const onReceiptChange = (event) => {
                             class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         >
                             <option value="a_pagar">A pagar</option>
-                            <option value="paga">Paga</option>
+                            <option value="paga" :disabled="!canMarkCommissionPaid">Paga</option>
                         </select>
+                        <p v-if="!saleIsQuitada" class="mt-1 text-xs text-amber-700">
+                            A venda precisa estar quitada antes de marcar a comissão como paga.
+                        </p>
+                        <p v-if="commissionForm.errors.status" class="mt-1 text-xs text-rose-600">
+                            {{ commissionForm.errors.status }}
+                        </p>
                     </div>
                     <div v-if="commissionForm.status === 'paga'">
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Paga em</label>
@@ -345,10 +356,13 @@ const onReceiptChange = (event) => {
                         <input
                             v-model.number="paidAmountReais"
                             type="number"
-                            min="0"
+                            :min="selectedInstallment ? selectedInstallment.amount_cents / 100 : 0.01"
+                            :max="selectedInstallment ? selectedInstallment.amount_cents / 100 : undefined"
                             step="0.01"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            readonly
+                            class="mt-1 w-full rounded-xl border-slate-300 bg-slate-50 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         />
+                        <p class="mt-1 text-xs text-slate-500">O valor pago precisa ser igual ao da parcela.</p>
                         <p v-if="paymentForm.errors.paid_amount_cents" class="mt-1 text-xs text-rose-600">
                             {{ paymentForm.errors.paid_amount_cents }}
                         </p>

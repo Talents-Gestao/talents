@@ -314,6 +314,7 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
         $installment->refresh();
         $this->assertSame('2026-09-01', $installment->due_date?->toDateString());
         $this->assertSame(25050, $installment->amount_cents);
+        $this->assertSame(25050, (int) $sale->fresh()->total_cents);
         $this->assertSame('boleto', $installment->method);
         $this->assertSame('Cobrança ajustada', $installment->notes);
     }

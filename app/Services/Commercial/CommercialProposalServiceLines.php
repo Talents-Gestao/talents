@@ -50,6 +50,28 @@ class CommercialProposalServiceLines
             $settings->pdf_descricoes_servicos
         );
 
+        if ($p->isRecurringService()) {
+            $months = (int) $p->recurring_months;
+            $monthly = (int) $p->recurring_monthly_cents;
+            $periodTotal = $p->recurringPeriodTotalCents();
+
+            return [[
+                'key' => 'recorrente',
+                'label' => 'Acompanhamento recorrente',
+                'detail' => sprintf(
+                    '%d %s × R$ %s/mês',
+                    $months,
+                    $months === 1 ? 'mês' : 'meses',
+                    number_format($monthly / 100, 2, ',', '.'),
+                ),
+                'observation' => trim((string) ($p->recurring_notes ?? '')),
+                'description' => '',
+                'value_cents' => $periodTotal,
+                'subtotal_cents' => $periodTotal,
+                'discount_cents' => 0,
+            ]];
+        }
+
         $lines = [];
 
         if ($p->svc_pesquisas) {
@@ -180,28 +202,6 @@ class CommercialProposalServiceLines
             ];
         }
 
-        if ($p->isRecurringService() && $lines === []) {
-            $months = (int) $p->recurring_months;
-            $monthly = (int) $p->recurring_monthly_cents;
-            $periodTotal = $p->recurringPeriodTotalCents();
-
-            $lines[] = [
-                'key' => 'recorrente',
-                'label' => 'Acompanhamento recorrente',
-                'detail' => sprintf(
-                    '%d %s × R$ %s/mês',
-                    $months,
-                    $months === 1 ? 'mês' : 'meses',
-                    number_format($monthly / 100, 2, ',', '.'),
-                ),
-                'observation' => trim((string) ($p->recurring_notes ?? '')),
-                'description' => '',
-                'value_cents' => $periodTotal,
-                'subtotal_cents' => $periodTotal,
-                'discount_cents' => 0,
-            ];
-        }
-
         return $lines;
     }
 
@@ -256,13 +256,16 @@ class CommercialProposalServiceLines
     public static function allServiceKeysForProposal(CommercialProposal $p): array
     {
         $keys = self::SERVICE_KEYS;
-        $p->loadMissing('catalogLines.product');
-        foreach ($p->catalogLines as $line) {
-            $keys[] = $line->product?->slug ?? ('produto-'.$line->commercial_product_id);
-        }
 
         if ($p->isRecurringService()) {
             $keys[] = 'recorrente';
+
+            return array_values(array_unique($keys));
+        }
+
+        $p->loadMissing('catalogLines.product');
+        foreach ($p->catalogLines as $line) {
+            $keys[] = $line->product?->slug ?? ('produto-'.$line->commercial_product_id);
         }
 
         return array_values(array_unique($keys));
