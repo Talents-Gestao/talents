@@ -280,6 +280,9 @@ const clearActiveFilter = (key) => {
 };
 
 const destroy = (proposal) => {
+    if (proposal.sale) {
+        return;
+    }
     if (confirm(`Excluir a proposta ${proposal.code}? Essa ação não pode ser desfeita.`)) {
         router.delete(route('admin.comercial.propostas.destroy', proposal.id), { preserveScroll: true });
     }
@@ -993,6 +996,7 @@ const submitConvert = () => {
                                         <DocumentTextIcon class="h-4 w-4" />
                                     </button>
                                     <button
+                                        v-if="!p.sale"
                                         type="button"
                                         class="rounded-lg p-1.5 text-slate-500 transition hover:bg-rose-50 hover:text-rose-700"
                                         title="Excluir"
@@ -1106,12 +1110,6 @@ const submitConvert = () => {
                     <div v-if="!templates.length" class="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
                         Nenhum modelo ativo. Cadastre em Comercial → Configurações → aba Contratos.
                     </div>
-                    <div
-                        v-else-if="Number(contractProposal?.total_final_cents ?? 0) <= 0 && !contractProposal?.is_recurring"
-                        class="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-950"
-                    >
-                        Esta proposta não tem serviços com valor. Edite a proposta, selecione os produtos e gere o contrato de novo.
-                    </div>
                     <div v-else class="mt-4">
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Modelo</label>
                         <select
@@ -1132,7 +1130,7 @@ const submitConvert = () => {
                         <button
                             type="button"
                             class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
-                            :disabled="!templates.length || !contractTemplateId || contractGenerating || (Number(contractProposal?.total_final_cents ?? 0) <= 0 && !contractProposal?.is_recurring)"
+                            :disabled="!templates.length || !contractTemplateId || contractGenerating"
                             @click="submitContract"
                         >
                             {{ contractGenerating ? 'Gerando…' : 'Gerar contrato' }}

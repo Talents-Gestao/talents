@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InstallmentController extends Controller
@@ -37,10 +38,14 @@ class InstallmentController extends Controller
         ];
 
         if ($data['status'] === CommercialSaleInstallment::STATUS_PAGO) {
+            $paidAmountCents = $this->assertPaidAmountMatchesInstallment(
+                $installment,
+                isset($data['paid_amount_cents']) ? (int) $data['paid_amount_cents'] : null,
+            );
             $update['paid_at'] = isset($data['paid_at'])
                 ? \Carbon\Carbon::parse($data['paid_at'])
                 : now();
-            $update['paid_amount_cents'] = (int) ($data['paid_amount_cents'] ?? $installment->amount_cents);
+            $update['paid_amount_cents'] = $paidAmountCents;
         } else {
             $update['paid_at'] = null;
             $update['paid_amount_cents'] = null;
@@ -94,6 +99,16 @@ class InstallmentController extends Controller
         $amountCents = (int) round(((float) $data['amount_reais']) * 100);
         $wasPaid = $installment->status === CommercialSaleInstallment::STATUS_PAGO;
 
+        if ($wasPaid) {
+            $amountCents = (int) $installment->amount_cents;
+        }
+
+        if ($amountCents < 1) {
+            throw ValidationException::withMessages([
+                'amount_reais' => 'Informe um valor maior que zero.',
+            ]);
+        }
+
         $update = [
             'due_date' => $data['due_date'],
             'amount_cents' => $amountCents,
@@ -104,13 +119,14 @@ class InstallmentController extends Controller
 
         if ($data['status'] === CommercialSaleInstallment::STATUS_PAGO) {
             $update['paid_at'] = $installment->paid_at ?? now();
-            $update['paid_amount_cents'] = $installment->paid_amount_cents ?? $amountCents;
+            $update['paid_amount_cents'] = $amountCents;
         } else {
             $update['paid_at'] = null;
             $update['paid_amount_cents'] = null;
         }
 
         $installment->update($update);
+        $this->syncSaleTotalFromInstallments($installment);
         $installment->sale->recalculateStatus();
 
         if ($data['status'] === CommercialSaleInstallment::STATUS_PAGO && ! $wasPaid) {
@@ -129,5 +145,46 @@ class InstallmentController extends Controller
         }
 
         return Storage::disk('local')->download($installment->receipt_path);
+    }
+
+    private function assertPaidAmountMatchesInstallment(
+        CommercialSaleInstallment $installment,
+        ?int $paidAmountCents,
+    ): int {
+        $amountCents = (int) $installment->amount_cents;
+        if ($amountCents < 1) {
+            throw ValidationException::withMessages([
+                'paid_amount_cents' => 'Não é possível quitar uma parcela sem valor.',
+            ]);
+        }
+
+        $paid = $paidAmountCents ?? $amountCents;
+        if ($paid < 1) {
+            throw ValidationException::withMessages([
+                'paid_amount_cents' => 'Informe um valor pago maior que zero.',
+            ]);
+        }
+
+        if ($paid > $amountCents) {
+            throw ValidationException::withMessages([
+                'paid_amount_cents' => 'O valor pago não pode ser maior que o valor da parcela.',
+            ]);
+        }
+
+        if ($paid !== $amountCents) {
+            throw ValidationException::withMessages([
+                'paid_amount_cents' => 'O valor pago deve ser igual ao valor da parcela.',
+            ]);
+        }
+
+        return $paid;
+    }
+
+    private function syncSaleTotalFromInstallments(CommercialSaleInstallment $installment): void
+    {
+        $sale = $installment->sale;
+        $sale->update([
+            'total_cents' => (int) $sale->installments()->sum('amount_cents'),
+        ]);
     }
 }

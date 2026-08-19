@@ -133,8 +133,11 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
     // Sino de avisos internos da Talents — acessível a qualquer administrador.
     Route::get('avisos/recentes', [AdminCompanyNoticeController::class, 'recent'])->name('notices.recent');
+    Route::get('avisos/{notice}/abrir', [AdminCompanyNoticeController::class, 'open'])->name('notices.open');
     Route::post('avisos/{notice}/lido', [AdminCompanyNoticeController::class, 'markRead'])->name('notices.mark-read');
     Route::post('avisos/marcar-todos-lidos', [AdminCompanyNoticeController::class, 'markAllRead'])->name('notices.mark-all-read');
+    Route::delete('avisos/{notice}', [AdminCompanyNoticeController::class, 'destroy'])->name('notices.destroy');
+    Route::post('avisos/excluir-todos', [AdminCompanyNoticeController::class, 'destroyAll'])->name('notices.destroy-all');
 
     Route::get('noticias', NewsFeedController::class)->name('news.feed');
 

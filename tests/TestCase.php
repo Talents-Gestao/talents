@@ -47,6 +47,7 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         $this->withoutMiddleware(ValidateCsrfToken::class);
+        \Illuminate\Support\Facades\Cache::flush();
     }
 
     protected function subscribeCompanyToNr1(Company $company, bool $withRhid = true, bool $withDenuncias = true): void

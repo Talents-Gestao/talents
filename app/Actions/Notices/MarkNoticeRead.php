@@ -11,6 +11,10 @@ use Illuminate\Support\Collection;
 
 class MarkNoticeRead
 {
+    public function __construct(
+        private readonly UnreadNoticeCounter $unreadNoticeCounter,
+    ) {}
+
     public function handle(CompanyNotice $notice, User $user): void
     {
         CompanyNoticeRead::query()->updateOrCreate(
@@ -20,6 +24,8 @@ class MarkNoticeRead
             ],
             ['read_at' => now()],
         );
+
+        $this->unreadNoticeCounter->forget($user);
     }
 
     public function markAllForUser(User $user, int $companyId): int
@@ -76,6 +82,8 @@ class MarkNoticeRead
                 ['read_at' => $now],
             );
         }
+
+        $this->unreadNoticeCounter->forget($user);
 
         return $noticeIds->count();
     }

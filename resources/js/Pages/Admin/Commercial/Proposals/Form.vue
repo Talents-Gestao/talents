@@ -547,6 +547,10 @@ const validateRequiredFields = () => {
 };
 
 const submit = () => {
+    if (hasLinkedSale.value) {
+        return;
+    }
+
     if (!validateRequiredFields()) {
         return;
     }
@@ -571,7 +575,7 @@ const submit = () => {
 const markAsClosedModalOpen = ref(false);
 
 const openMarkAsClosedModal = () => {
-    if (form.is_closed || form.processing) {
+    if (hasLinkedSale.value || form.is_closed || form.processing) {
         return;
     }
     if (!validateRequiredFields()) {
@@ -609,6 +613,7 @@ const openContractPdf = (contractId) => {
 const formatContractDate = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR') : '—');
 
 const isEdit = computed(() => props.mode === 'edit');
+const hasLinkedSale = computed(() => Boolean(props.proposal?.has_sale));
 const titleText = computed(() => (isEdit.value ? `Proposta ${props.proposal?.code}` : 'Nova proposta'));
 
 const services = computed(() => {
@@ -860,11 +865,19 @@ const onStepClick = (index) => {
         <CommercialModuleNav />
 
         <div
+            v-if="hasLinkedSale"
+            class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            role="status"
+        >
+            Esta proposta já foi convertida em venda. Os valores comerciais não podem ser alterados.
+        </div>
+
+        <div
             v-if="Object.keys(form.errors).length"
             class="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
             role="alert"
         >
-            Corrija os campos destacados antes de salvar a proposta.
+            {{ form.errors.proposal || 'Corrija os campos destacados antes de salvar a proposta.' }}
         </div>
 
         <div id="proposal-wizard" class="mb-8 rounded-xl border border-slate-200 bg-white px-4 py-6 shadow-sm sm:px-8">
@@ -1738,7 +1751,7 @@ const onStepClick = (index) => {
                         <button
                             v-else
                             type="submit"
-                            :disabled="form.processing"
+                            :disabled="form.processing || hasLinkedSale"
                             class="inline-flex items-center rounded-xl bg-talents-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:opacity-60"
                         >
                             {{ isEdit ? 'Salvar alterações' : 'Salvar proposta' }}
@@ -1792,7 +1805,7 @@ const onStepClick = (index) => {
                     <div class="mt-6 space-y-2">
                         <button
                             type="button"
-                            :disabled="form.is_closed || form.processing"
+                            :disabled="form.is_closed || form.processing || hasLinkedSale"
                             class="inline-flex w-full items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
                             @click="openMarkAsClosedModal"
                         >

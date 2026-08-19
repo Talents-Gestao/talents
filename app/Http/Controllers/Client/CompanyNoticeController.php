@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Client;
 
+use App\Actions\Notices\DeleteCompanyNotice;
 use App\Actions\Notices\MarkNoticeRead;
 use App\Http\Controllers\Controller;
 use App\Models\CompanyNotice;
+use App\Support\Notices\NoticeDestinationUrl;
 use App\Support\Notices\UnreadNoticeCounter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -14,7 +16,7 @@ use Inertia\Response;
 
 class CompanyNoticeController extends Controller
 {
-    private const RECENT_LIMIT = 8;
+    private const BELL_PAGE_SIZE = 50;
 
     public function index(Request $request): Response
     {
@@ -39,21 +41,17 @@ class CompanyNoticeController extends Controller
     public function recent(Request $request, UnreadNoticeCounter $unreadNoticeCounter): JsonResponse
     {
         $user = $request->user();
-        $companyId = (int) $user->company_id;
-
-        $notices = CompanyNotice::query()
-            ->where('company_id', $companyId)
-            ->where('published_at', '<=', now())
-            ->with(['reads' => fn ($query) => $query->where('user_id', $user->id)])
-            ->orderByDesc('published_at')
-            ->orderByDesc('id')
-            ->limit(self::RECENT_LIMIT)
-            ->get()
-            ->map(fn (CompanyNotice $notice) => $this->serializeNotice($notice));
+        $page = max(1, $request->integer('page', 1));
+        $result = $unreadNoticeCounter->paginateForBell($user, $page, self::BELL_PAGE_SIZE);
+        abort_unless($result !== null, 403);
 
         return response()->json([
-            'notices' => $notices,
+            'notices' => $result['notices']
+                ->map(fn (CompanyNotice $notice) => $this->serializeNotice($notice))
+                ->values(),
             'unread_count' => $unreadNoticeCounter->forUser($user),
+            'page' => $result['page'],
+            'has_more' => $result['has_more'],
         ]);
     }
 
@@ -99,6 +97,65 @@ class CompanyNoticeController extends Controller
             : 'Não há avisos novos.');
     }
 
+    public function destroy(
+        Request $request,
+        CompanyNotice $notice,
+        DeleteCompanyNotice $deleteCompanyNotice,
+        UnreadNoticeCounter $unreadNoticeCounter,
+    ): RedirectResponse|JsonResponse {
+        $user = $request->user();
+        abort_unless((int) $notice->company_id === (int) $user->company_id, 404);
+
+        $deleteCompanyNotice->handle($notice, $user);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'ok' => true,
+                'unread_count' => $unreadNoticeCounter->forUser($user),
+            ]);
+        }
+
+        return back()->with('success', 'Aviso excluído.');
+    }
+
+    public function destroyAll(
+        Request $request,
+        DeleteCompanyNotice $deleteCompanyNotice,
+        UnreadNoticeCounter $unreadNoticeCounter,
+    ): RedirectResponse|JsonResponse {
+        $user = $request->user();
+        $count = $deleteCompanyNotice->deleteAllVisibleForUser($user);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'ok' => true,
+                'deleted' => $count,
+                'unread_count' => $unreadNoticeCounter->forUser($user),
+            ]);
+        }
+
+        return back()->with('success', $count > 0
+            ? 'Todos os avisos foram excluídos.'
+            : 'Não há avisos para excluir.');
+    }
+
+    public function open(
+        Request $request,
+        CompanyNotice $notice,
+        MarkNoticeRead $markNoticeRead,
+        UnreadNoticeCounter $unreadNoticeCounter,
+        NoticeDestinationUrl $destination,
+    ): RedirectResponse {
+        $user = $request->user();
+        abort_unless((int) $notice->company_id === (int) $user->company_id, 404);
+
+        $markNoticeRead->handle($notice, $user);
+
+        $url = $destination->url($notice, admin: false);
+
+        return redirect()->to($url ?? url()->previous(route('client.notices.index')));
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -111,6 +168,7 @@ class CompanyNoticeController extends Controller
             'published_at' => $notice->published_at?->toIso8601String(),
             'event_kind' => $notice->event_kind?->value,
             'read' => $notice->reads->isNotEmpty(),
+            'url' => app(NoticeDestinationUrl::class)->url($notice, admin: false),
         ];
     }
 }

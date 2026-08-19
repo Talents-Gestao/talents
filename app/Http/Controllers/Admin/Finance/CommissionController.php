@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Admin\Finance;
 use App\Actions\Notices\PublishCommercialNotice;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialCommission;
+use App\Models\CommercialSale;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,7 +25,7 @@ class CommissionController extends Controller
         $q = CommercialCommission::query()
             ->with([
                 'seller:id,name',
-                'sale:id,code,client_name,client_cnpj,sold_at',
+                'sale:id,code,client_name,client_cnpj,sold_at,status',
             ]);
 
         if ($request->filled('search')) {
@@ -96,6 +98,15 @@ class CommissionController extends Controller
             'paid_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        if ($data['status'] === CommercialCommission::STATUS_PAGA) {
+            $sale = $commission->sale;
+            if (! $sale || $sale->status !== CommercialSale::STATUS_QUITADA) {
+                throw ValidationException::withMessages([
+                    'status' => 'A comissão só pode ser marcada como paga depois que a venda estiver quitada.',
+                ]);
+            }
+        }
 
         $update = [
             'status' => $data['status'],

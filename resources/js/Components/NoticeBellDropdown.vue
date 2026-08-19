@@ -1,7 +1,7 @@
 <script setup>
-import { BellIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { BellIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { formatRelativeDate } from '@/utils/dateOnly';
-import { usePage } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
@@ -13,6 +13,11 @@ const open = ref(false);
 const loading = ref(false);
 const notices = ref([]);
 const unreadCount = ref(Number(page.props.nav?.unread_notices_count ?? 0));
+const pageNumber = ref(1);
+const hasMore = ref(false);
+const loadingMore = ref(false);
+const deletingId = ref(null);
+const deletingAll = ref(false);
 
 let pollTimer = null;
 
@@ -25,8 +30,10 @@ const routes = computed(() => {
     const prefix = isTalentsContext.value ? 'admin.notices' : 'client.notices';
     return {
         recent: () => route(`${prefix}.recent`),
-        markRead: (id) => route(`${prefix}.mark-read`, id),
         markAllRead: () => route(`${prefix}.mark-all-read`),
+        open: (id) => route(`${prefix}.open`, id),
+        destroy: (id) => route(`${prefix}.destroy`, id),
+        destroyAll: () => route(`${prefix}.destroy-all`),
     };
 });
 
@@ -47,16 +54,34 @@ function formatPublished(iso) {
     return formatRelativeDate(iso.slice(0, 10));
 }
 
-async function fetchNotices() {
-    loading.value = true;
+async function fetchNotices({ append = false } = {}) {
+    if (append) {
+        if (!hasMore.value || loadingMore.value || loading.value) {
+            return;
+        }
+        loadingMore.value = true;
+    } else {
+        loading.value = true;
+    }
+
+    const nextPage = append ? pageNumber.value + 1 : 1;
+
     try {
-        const { data } = await axios.get(routes.value.recent());
-        notices.value = data.notices ?? [];
+        const { data } = await axios.get(routes.value.recent(), {
+            params: { page: nextPage },
+        });
+        const incoming = data.notices ?? [];
+        notices.value = append ? [...notices.value, ...incoming] : incoming;
         unreadCount.value = Number(data.unread_count ?? 0);
+        pageNumber.value = nextPage;
+        hasMore.value = Boolean(data.has_more);
     } catch {
-        notices.value = [];
+        if (!append) {
+            notices.value = [];
+        }
     } finally {
         loading.value = false;
+        loadingMore.value = false;
     }
 }
 
@@ -64,22 +89,10 @@ async function refreshUnreadCount() {
     if (!showNotices.value || open.value) return;
 
     try {
-        const { data } = await axios.get(routes.value.recent());
+        const { data } = await axios.get(routes.value.recent(), { params: { page: 1 } });
         unreadCount.value = Number(data.unread_count ?? unreadCount.value);
     } catch {
         // silencioso — o badge continua com o último valor conhecido
-    }
-}
-
-async function markRead(notice) {
-    if (notice.read) return;
-
-    try {
-        const { data } = await axios.post(routes.value.markRead(notice.id));
-        notice.read = true;
-        unreadCount.value = Number(data.unread_count ?? unreadCount.value);
-    } catch {
-        // silencioso
     }
 }
 
@@ -92,6 +105,51 @@ async function markAllRead() {
         unreadCount.value = Number(data.unread_count ?? 0);
     } catch {
         // silencioso
+    }
+}
+
+async function destroyNotice(notice) {
+    if (deletingId.value || deletingAll.value) {
+        return;
+    }
+    if (!confirm('Excluir este aviso? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+
+    deletingId.value = notice.id;
+    try {
+        const { data } = await axios.delete(routes.value.destroy(notice.id));
+        notices.value = notices.value.filter((item) => item.id !== notice.id);
+        unreadCount.value = Number(data.unread_count ?? unreadCount.value);
+        if (!notices.value.length && hasMore.value) {
+            await fetchNotices();
+        }
+    } catch {
+        // silencioso
+    } finally {
+        deletingId.value = null;
+    }
+}
+
+async function destroyAll() {
+    if (!notices.value.length || deletingAll.value) {
+        return;
+    }
+    if (!confirm('Excluir todos os avisos? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+
+    deletingAll.value = true;
+    try {
+        const { data } = await axios.post(routes.value.destroyAll());
+        notices.value = [];
+        hasMore.value = false;
+        pageNumber.value = 1;
+        unreadCount.value = Number(data.unread_count ?? 0);
+    } catch {
+        // silencioso
+    } finally {
+        deletingAll.value = false;
     }
 }
 
@@ -114,6 +172,17 @@ watch(open, (isOpen) => {
         fetchNotices();
     }
 });
+
+function onListScroll(event) {
+    const el = event.target;
+    if (!(el instanceof HTMLElement)) {
+        return;
+    }
+    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (remaining < 96) {
+        fetchNotices({ append: true });
+    }
+}
 
 function startPolling() {
     if (pollTimer || !showNotices.value) return;
@@ -210,18 +279,18 @@ onUnmounted(() => {
                         </button>
                     </header>
 
-                    <div class="flex-1 overflow-y-auto">
+                    <div class="flex-1 overflow-y-auto" @scroll.passive="onListScroll">
                         <div v-if="loading" class="px-5 py-12 text-center text-sm text-slate-500">
                             A carregar…
                         </div>
 
                         <ul v-else-if="notices.length" class="divide-y divide-slate-100">
-                            <li v-for="notice in notices" :key="notice.id">
-                                <button
-                                    type="button"
-                                    class="flex w-full gap-3 px-5 py-4 text-left transition hover:bg-slate-50"
+                            <li v-for="notice in notices" :key="notice.id" class="flex items-stretch">
+                                <Link
+                                    :href="routes.open(notice.id)"
+                                    class="flex min-w-0 flex-1 gap-3 px-5 py-4 text-left transition hover:bg-slate-50"
                                     :class="notice.read ? 'opacity-80' : 'bg-rose-50/40'"
-                                    @click="markRead(notice)"
+                                    @click="close"
                                 >
                                     <span
                                         class="mt-1.5 h-2 w-2 shrink-0 rounded-full"
@@ -248,11 +317,31 @@ onUnmounted(() => {
                                             {{ formatPublished(notice.published_at) }}
                                         </time>
                                     </span>
+                                </Link>
+                                <button
+                                    type="button"
+                                    class="shrink-0 px-3 text-slate-400 transition hover:bg-rose-50 hover:text-rose-700 disabled:opacity-40"
+                                    :disabled="deletingId === notice.id || deletingAll"
+                                    title="Excluir aviso"
+                                    aria-label="Excluir aviso"
+                                    @click.stop="destroyNotice(notice)"
+                                >
+                                    <TrashIcon class="h-4 w-4" />
                                 </button>
                             </li>
                         </ul>
 
-                        <div v-else class="flex flex-col items-center justify-center px-5 py-16 text-center">
+                        <p
+                            v-if="!loading && notices.length && (loadingMore || hasMore)"
+                            class="px-5 py-3 text-center text-xs text-slate-400"
+                        >
+                            {{ loadingMore ? 'A carregar mais…' : 'Role para ver mais avisos' }}
+                        </p>
+
+                        <div
+                            v-if="!loading && !notices.length"
+                            class="flex flex-col items-center justify-center px-5 py-16 text-center"
+                        >
                             <span class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                                 <BellIcon class="h-6 w-6" />
                             </span>
@@ -261,15 +350,24 @@ onUnmounted(() => {
                     </div>
 
                     <footer
-                        v-if="unreadCount > 0"
-                        class="shrink-0 border-t border-slate-100 bg-slate-50/80 px-5 py-3"
+                        v-if="notices.length || unreadCount > 0"
+                        class="shrink-0 space-y-2 border-t border-slate-100 bg-slate-50/80 px-5 py-3"
                     >
                         <button
+                            v-if="unreadCount > 0"
                             type="button"
                             class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-talents-700 shadow-sm transition hover:border-talents-200 hover:bg-talents-50 hover:text-talents-900"
                             @click="markAllRead"
                         >
                             Marcar todos como lidos
+                        </button>
+                        <button
+                            type="button"
+                            class="w-full rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 shadow-sm transition hover:border-rose-300 hover:bg-rose-50 disabled:opacity-50"
+                            :disabled="deletingAll || !notices.length"
+                            @click="destroyAll"
+                        >
+                            {{ deletingAll ? 'A excluir…' : 'Excluir todos' }}
                         </button>
                     </footer>
                 </aside>

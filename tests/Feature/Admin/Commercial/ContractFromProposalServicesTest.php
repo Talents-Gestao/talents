@@ -85,6 +85,37 @@ class ContractFromProposalServicesTest extends TestCase
         $this->assertStringContainsString('Acompanhamento recorrente', $map['servicos_lista_html']);
     }
 
+    public function test_placeholders_ignore_leftover_catalog_when_proposal_is_recurring(): void
+    {
+        $product = $this->fixedProduct('Produto leftover', 'produto-leftover');
+
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-CTR-REC-CAT',
+            'client_name' => 'Cliente Recorrente Catálogo',
+            'employee_count' => 8,
+            'is_recurring' => true,
+            'recurring_months' => 12,
+            'recurring_monthly_cents' => 150_000,
+            'total_final_cents' => 1_800_000,
+            'is_closed' => false,
+        ]);
+
+        CommercialProposalProductLine::query()->create([
+            'commercial_proposal_id' => $proposal->id,
+            'commercial_product_id' => $product->id,
+            'options' => [],
+            'label_snapshot' => $product->name,
+            'detail_snapshot' => 'Valor fixo',
+            'total_cents' => 157_700,
+        ]);
+
+        $map = app(ContractPlaceholderService::class)->placeholders($proposal->fresh('catalogLines.product'));
+
+        $this->assertSame('Acompanhamento recorrente', $map['servicos_rotulos']);
+        $this->assertStringContainsString('Acompanhamento recorrente', $map['servicos_lista_html']);
+        $this->assertStringNotContainsString('Produto leftover', $map['servicos_lista_html']);
+    }
+
     public function test_cannot_generate_contract_when_proposal_has_no_services(): void
     {
         $this->withoutVite();

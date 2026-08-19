@@ -368,4 +368,70 @@ class ProposalConvertToSaleTest extends TestCase
             CommercialSale::query()->where('proposal_id', $proposal->id)->exists()
         );
     }
+
+    public function test_convert_twice_is_rejected(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::create([
+            'code' => 'PROP-CONV-DUP',
+            'client_name' => 'Cliente Duplicado',
+            'employee_count' => 5,
+            'total_final_cents' => 5_000,
+            'is_closed' => true,
+            'closed_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.comercial.propostas.converter', $proposal), [
+                'payment_method' => 'pix',
+                'installments_count' => 1,
+                'first_due_date' => now()->toDateString(),
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($admin)
+            ->from(route('admin.comercial.propostas.index'))
+            ->post(route('admin.comercial.propostas.converter', $proposal), [
+                'payment_method' => 'pix',
+                'installments_count' => 1,
+                'first_due_date' => now()->toDateString(),
+            ])
+            ->assertRedirect(route('admin.comercial.propostas.index'))
+            ->assertSessionHasErrors('proposal');
+
+        $this->assertSame(1, CommercialSale::query()->where('proposal_id', $proposal->id)->count());
+    }
+
+    public function test_convert_rejects_proposal_without_value(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::create([
+            'code' => 'PROP-CONV-ZERO',
+            'client_name' => 'Cliente Zero',
+            'employee_count' => 5,
+            'total_final_cents' => 0,
+            'is_closed' => true,
+            'closed_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.comercial.propostas.index'))
+            ->post(route('admin.comercial.propostas.converter', $proposal), [
+                'payment_method' => 'pix',
+                'installments_count' => 1,
+                'first_due_date' => now()->toDateString(),
+            ])
+            ->assertRedirect(route('admin.comercial.propostas.index'))
+            ->assertSessionHasErrors('proposal');
+
+        $this->assertFalse(
+            CommercialSale::query()->where('proposal_id', $proposal->id)->exists()
+        );
+    }
 }

@@ -1,23 +1,29 @@
 <script setup>
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { formatRelativeDate } from '@/utils/dateOnly';
+import { TrashIcon } from '@heroicons/vue/24/outline';
 import { Head, Link, router } from '@inertiajs/vue3';
 
 defineProps({
     notices: Object,
 });
 
-function markRead(notice) {
-    if (notice.read) return;
-
-    router.post(route('client.notices.mark-read', notice.id), {}, {
-        preserveScroll: true,
-        preserveState: false,
-    });
-}
-
 function markAllRead() {
     router.post(route('client.notices.mark-all-read'), {}, { preserveScroll: true });
+}
+
+function destroyNotice(notice) {
+    if (!confirm('Excluir este aviso? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+    router.delete(route('client.notices.destroy', notice.id), { preserveScroll: true });
+}
+
+function destroyAll() {
+    if (!confirm('Excluir todos os avisos? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+    router.post(route('client.notices.destroy-all'), {}, { preserveScroll: true });
 }
 
 function formatPublished(iso) {
@@ -39,13 +45,22 @@ function formatPublished(iso) {
                         Atualizações do calendário estratégico e comunicados da Talents.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                    @click="markAllRead"
-                >
-                    Marcar todos como lidos
-                </button>
+                <div v-if="notices.data?.length" class="flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        @click="markAllRead"
+                    >
+                        Marcar todos como lidos
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-lg border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+                        @click="destroyAll"
+                    >
+                        Excluir todos
+                    </button>
+                </div>
             </div>
         </template>
 
@@ -53,12 +68,14 @@ function formatPublished(iso) {
             <article
                 v-for="notice in notices.data"
                 :key="notice.id"
-                class="surface-card cursor-pointer overflow-hidden p-5 transition hover:shadow-md"
+                class="surface-card overflow-hidden p-5 transition hover:shadow-md"
                 :class="notice.read ? 'opacity-90' : 'ring-1 ring-rose-200/80'"
-                @click="markRead(notice)"
             >
                 <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
+                    <Link
+                        :href="route('client.notices.open', notice.id)"
+                        class="min-w-0 flex-1"
+                    >
                         <div class="flex flex-wrap items-center gap-2">
                             <h3 class="font-semibold text-slate-900">{{ notice.title }}</h3>
                             <span
@@ -71,10 +88,21 @@ function formatPublished(iso) {
                         <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
                             {{ notice.body }}
                         </p>
+                    </Link>
+                    <div class="flex shrink-0 items-start gap-2">
+                        <time class="text-xs text-slate-500" :datetime="notice.published_at">
+                            {{ formatPublished(notice.published_at) }}
+                        </time>
+                        <button
+                            type="button"
+                            class="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-700"
+                            title="Excluir aviso"
+                            aria-label="Excluir aviso"
+                            @click="destroyNotice(notice)"
+                        >
+                            <TrashIcon class="h-4 w-4" />
+                        </button>
                     </div>
-                    <time class="shrink-0 text-xs text-slate-500" :datetime="notice.published_at">
-                        {{ formatPublished(notice.published_at) }}
-                    </time>
                 </div>
             </article>
 
