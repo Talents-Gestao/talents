@@ -8,6 +8,7 @@ use App\Models\CommercialCommission;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
+use App\Support\Commercial\OptionalCommission;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -21,8 +22,14 @@ class ProposalSaleConversionService
      *     installments_count?: int|null,
      *     first_due_date: string,
      *     notes?: string|null,
-     *     mix_parts?: list<array{method: string, percent: float|int|string}>|null
+     *     mix_parts?: list<array{method: string, percent: float|int|string}>|null,
+     *     pay_commission?: bool|null,
+     *     commission_percent?: float|int|null
      * }  $data
+     *
+     * Sem comissão: commission_percent/cents = 0 na venda e nenhum registo em
+     * commercial_commissions (não há valor a pagar). Propostas antigas sem override
+     * no pedido continuam a usar o percentual já gravado.
      */
     public function convert(CommercialProposal $proposal, array $data, ?int $createdBy = null): CommercialSale
     {
@@ -82,6 +89,13 @@ class ProposalSaleConversionService
             }
 
             $installmentsCount = count($installmentPlan);
+            $commission = OptionalCommission::forConversion(
+                $data,
+                (float) $locked->commission_percent,
+                (int) $locked->commission_cents,
+                $totalCents,
+                $isRecurring,
+            );
 
             $sale = CommercialSale::create([
                 'code' => CommercialSale::nextCode(),
@@ -92,10 +106,8 @@ class ProposalSaleConversionService
                 'client_phone' => $locked->client_phone,
                 'seller_id' => $locked->seller_id,
                 'total_cents' => $totalCents,
-                'commission_percent' => (float) $locked->commission_percent,
-                'commission_cents' => $isRecurring
-                    ? (int) round($totalCents * ((float) $locked->commission_percent) / 100)
-                    : (int) $locked->commission_cents,
+                'commission_percent' => $commission['percent'],
+                'commission_cents' => $commission['cents'],
                 'payment_method' => $paymentMethod,
                 'installments_count' => $installmentsCount,
                 'is_recurring' => $isRecurring,
@@ -126,7 +138,7 @@ class ProposalSaleConversionService
                     'sale_id' => $sale->id,
                     'seller_id' => $locked->seller_id,
                     'base_cents' => $totalCents,
-                    'percent' => (float) $locked->commission_percent,
+                    'percent' => (float) $sale->commission_percent,
                     'amount_cents' => $commissionCents,
                     'status' => CommercialCommission::STATUS_A_PAGAR,
                 ]);
@@ -146,6 +158,7 @@ class ProposalSaleConversionService
      *     client_phone?: string|null,
      *     seller_id?: int|null,
      *     total_cents: int,
+     *     pay_commission?: bool|null,
      *     commission_percent?: float|int,
      *     payment_method: string,
      *     installments_count?: int|null,
@@ -175,11 +188,9 @@ class ProposalSaleConversionService
         }
 
         $installmentsCount = count($installmentPlan);
-        $commissionPercent = (float) ($data['commission_percent'] ?? 0);
-        $commissionCents = $commissionPercent > 0
-            ? (int) round($totalCents * ($commissionPercent / 100))
-            : 0;
         $sellerId = isset($data['seller_id']) ? (int) $data['seller_id'] : null;
+        $commissionPercent = OptionalCommission::resolveFromRequest($data, 0.0, null, null);
+        $commissionCents = OptionalCommission::centsFromPercent($totalCents, $commissionPercent);
 
         return DB::transaction(function () use ($data, $createdBy, $paymentMethod, $installmentsCount, $totalCents, $installmentPlan, $commissionPercent, $commissionCents, $sellerId) {
             $sale = CommercialSale::create([

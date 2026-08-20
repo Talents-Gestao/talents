@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
+use App\Models\User;
 use App\Services\Commercial\ProposalSaleConversionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -90,6 +91,59 @@ class ProposalSaleConversionServiceTest extends TestCase
         $this->assertSame(5001, $sale->installments[0]->amount_cents);
         $this->assertSame(5000, $sale->installments[1]->amount_cents);
         $this->assertSame(10001, $sale->installments->sum('amount_cents'));
+    }
+
+    public function test_convert_with_pay_commission_false_omits_payable_commission(): void
+    {
+        $proposal = CommercialProposal::create([
+            'code' => 'PROP-2026-NOCOM',
+            'client_name' => 'Cliente Sem Comissão',
+            'employee_count' => 10,
+            'total_final_cents' => 10000,
+            'commission_percent' => 10,
+            'commission_cents' => 1000,
+            'is_closed' => true,
+            'closed_at' => now(),
+        ]);
+
+        $sale = app(ProposalSaleConversionService::class)->convert($proposal, [
+            'payment_method' => 'pix',
+            'installments_count' => 1,
+            'first_due_date' => now()->addDay()->toDateString(),
+            'pay_commission' => false,
+        ]);
+
+        $this->assertSame(0.0, (float) $sale->commission_percent);
+        $this->assertSame(0, (int) $sale->commission_cents);
+        $this->assertNull($sale->commission);
+    }
+
+    public function test_convert_with_pay_commission_true_uses_override_percent(): void
+    {
+        $proposal = CommercialProposal::create([
+            'code' => 'PROP-2026-COM',
+            'client_name' => 'Cliente Com Comissão',
+            'employee_count' => 10,
+            'seller_id' => User::factory()->create(['is_commercial' => true])->id,
+            'total_final_cents' => 10000,
+            'commission_percent' => 0,
+            'commission_cents' => 0,
+            'is_closed' => true,
+            'closed_at' => now(),
+        ]);
+
+        $sale = app(ProposalSaleConversionService::class)->convert($proposal, [
+            'payment_method' => 'pix',
+            'installments_count' => 1,
+            'first_due_date' => now()->addDay()->toDateString(),
+            'pay_commission' => true,
+            'commission_percent' => 8,
+        ]);
+
+        $this->assertSame(8.0, (float) $sale->commission_percent);
+        $this->assertSame(800, (int) $sale->commission_cents);
+        $this->assertNotNull($sale->commission);
+        $this->assertSame(800, (int) $sale->commission->amount_cents);
     }
 
     public function test_rejects_misto_when_percent_sum_is_not_100(): void

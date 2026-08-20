@@ -122,4 +122,79 @@ class MonthlyGoalTest extends TestCase
 
         $this->assertDatabaseCount('admin_dashboard_settings', 0);
     }
+
+    public function test_monthly_goal_current_excludes_sales_from_other_months(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $this->createSale($admin, 'PROP-META-CUR', 'VENDA-META-CUR', 800_000, now());
+        $this->createSale($admin, 'PROP-META-OLD', 'VENDA-META-OLD', 9_000_000, now()->subMonth());
+        $this->createSale($admin, 'PROP-META-FUT', 'VENDA-META-FUT', 7_000_000, now()->addMonth());
+
+        $home = app(AdminHomeDashboardBuilder::class)->build();
+
+        $this->assertSame(800_000, $home['monthly_goal']['current_cents']);
+    }
+
+    public function test_monthly_goal_recurring_sale_counts_only_monthly_parcel(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-META-REC',
+            'client_name' => 'Cliente Recorrente',
+            'is_closed' => true,
+            'total_final_cents' => 1_200_000,
+            'is_recurring' => true,
+            'recurring_months' => 12,
+            'recurring_monthly_cents' => 100_000,
+        ]);
+
+        CommercialSale::query()->create([
+            'code' => 'VENDA-META-REC',
+            'proposal_id' => $proposal->id,
+            'client_name' => 'Cliente Recorrente',
+            'status' => CommercialSale::STATUS_ABERTA,
+            'total_cents' => 1_200_000,
+            'is_recurring' => true,
+            'recurring_months' => 12,
+            'recurring_monthly_cents' => 100_000,
+            'sold_at' => now(),
+            'created_by' => $admin->id,
+            'seller_id' => $admin->id,
+        ]);
+
+        $this->createSale($admin, 'PROP-META-PONT', 'VENDA-META-PONT', 250_000, now());
+
+        $home = app(AdminHomeDashboardBuilder::class)->build();
+
+        // Recorrente 12× R$1.000 → conta R$1.000; pontual R$2.500 → total R$3.500.
+        $this->assertSame(350_000, $home['monthly_goal']['current_cents']);
+    }
+
+    private function createSale(
+        User $admin,
+        string $proposalCode,
+        string $saleCode,
+        int $totalCents,
+        mixed $soldAt,
+    ): void {
+        $proposal = CommercialProposal::query()->create([
+            'code' => $proposalCode,
+            'client_name' => 'Cliente '.$proposalCode,
+            'is_closed' => true,
+            'total_final_cents' => $totalCents,
+        ]);
+
+        CommercialSale::query()->create([
+            'code' => $saleCode,
+            'proposal_id' => $proposal->id,
+            'client_name' => 'Cliente '.$proposalCode,
+            'status' => CommercialSale::STATUS_ABERTA,
+            'total_cents' => $totalCents,
+            'sold_at' => $soldAt,
+            'created_by' => $admin->id,
+            'seller_id' => $admin->id,
+        ]);
+    }
 }

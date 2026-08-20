@@ -7,6 +7,8 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import { computed, watch } from 'vue';
+import { formatBRL } from '@/composables/useCommercialPricing';
 
 const props = defineProps({
     mode: { type: String, required: true },
@@ -26,14 +28,37 @@ const form = useForm({
     status: props.payable?.status ?? 'pending',
     payment_method_id: props.payable?.payment_method_id ?? '',
     notes: props.payable?.notes ?? '',
+    is_recurring: false,
+    recurring_months: '',
 });
+
+const isCreate = computed(() => props.mode !== 'edit');
+const recurringMonthsCount = computed(() => {
+    const months = Number(form.recurring_months);
+    return Number.isInteger(months) && months > 0 ? months : 0;
+});
+const monthlyCents = computed(() => {
+    const reais = Number(form.amount_reais);
+    return Number.isFinite(reais) && reais > 0 ? Math.round(reais * 100) : 0;
+});
+const periodTotalCents = computed(() => recurringMonthsCount.value * monthlyCents.value);
+
+watch(
+    () => form.is_recurring,
+    (recurring) => {
+        if (!recurring) {
+            form.recurring_months = '';
+            form.clearErrors('recurring_months');
+        }
+    },
+);
 
 const submit = () => {
     if (props.mode === 'edit') {
         form.put(route('admin.financeiro.contas-a-pagar.update', props.payable.id));
-    } else {
-        form.post(route('admin.financeiro.contas-a-pagar.store'));
+        return;
     }
+    form.post(route('admin.financeiro.contas-a-pagar.store'));
 };
 </script>
 
@@ -65,7 +90,10 @@ const submit = () => {
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <InputLabel for="amount_reais" value="Valor (R$)" />
+                    <InputLabel
+                        for="amount_reais"
+                        :value="isCreate && form.is_recurring ? 'Valor mensal (R$)' : 'Valor (R$)'"
+                    />
                     <TextInput
                         id="amount_reais"
                         v-model="form.amount_reais"
@@ -75,12 +103,60 @@ const submit = () => {
                         class="mt-1 block w-full"
                         required
                     />
+                    <p v-if="isCreate && form.is_recurring" class="mt-1 text-xs text-slate-500">
+                        Valor de cada mês — não o total do período.
+                    </p>
                     <InputError class="mt-1" :message="form.errors.amount_reais" />
                 </div>
                 <div>
-                    <InputLabel for="due_date" value="Vencimento" />
+                    <InputLabel for="due_date" :value="isCreate && form.is_recurring ? 'Primeiro vencimento' : 'Vencimento'" />
                     <input id="due_date" v-model="form.due_date" type="date" required :class="fieldClass" />
+                    <p v-if="isCreate && form.is_recurring" class="mt-1 text-xs text-slate-500">
+                        Os meses seguintes usam o mesmo dia, sem transbordar o fim do mês.
+                    </p>
                     <InputError class="mt-1" :message="form.errors.due_date" />
+                </div>
+            </div>
+            <div
+                v-if="props.payable?.is_recurring"
+                class="rounded-lg border border-talents-100 bg-talents-50 px-3 py-2 text-sm text-talents-900"
+            >
+                {{ props.payable.recurring_label || 'Recorrente' }}.
+                A edição altera só este lançamento — os demais da série não são regenerados.
+            </div>
+            <div v-if="isCreate" class="space-y-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+                    <input
+                        v-model="form.is_recurring"
+                        type="checkbox"
+                        class="rounded border-slate-300 text-talents-700 focus:ring-talents-500"
+                    />
+                    Recorrente
+                </label>
+                <p class="text-xs text-slate-500">
+                    Gera um lançamento por mês, com o mesmo valor, fornecedor e forma de pagamento.
+                </p>
+                <div v-if="form.is_recurring">
+                    <InputLabel for="recurring_months" value="Duração (meses)" />
+                    <TextInput
+                        id="recurring_months"
+                        v-model="form.recurring_months"
+                        type="number"
+                        min="2"
+                        max="60"
+                        step="1"
+                        class="mt-1 block w-full"
+                        required
+                    />
+                    <InputError class="mt-1" :message="form.errors.recurring_months" />
+                    <p
+                        v-if="recurringMonthsCount >= 2 && monthlyCents > 0"
+                        class="mt-2 text-xs text-slate-600"
+                    >
+                        {{ recurringMonthsCount }} lançamentos mensais de
+                        {{ formatBRL(monthlyCents) }} — total do período
+                        {{ formatBRL(periodTotalCents) }}.
+                    </p>
                 </div>
             </div>
             <div class="grid gap-4 sm:grid-cols-2">

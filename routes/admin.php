@@ -337,6 +337,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('propostas.converter');
         Route::patch('propostas/{proposal}/status', [CommercialProposalController::class, 'updateStatus'])
             ->name('propostas.status');
+        Route::post('propostas/{proposal}/reabrir', [CommercialProposalController::class, 'reopen'])
+            ->name('propostas.reopen');
         Route::get('contratos/{contract}/pdf', [CommercialContractController::class, 'pdf'])
             ->name('contratos.pdf');
         Route::post('contratos/{contract}/zapsign', [CommercialContractController::class, 'sendZapSign'])
@@ -363,6 +365,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('vendas', [FinanceSaleController::class, 'index'])->name('vendas.index');
         Route::get('vendas/nova', [FinanceSaleController::class, 'create'])->name('vendas.create');
         Route::post('vendas', [FinanceSaleController::class, 'storeManual'])->name('vendas.store');
+        Route::get('vendas/{sale}/editar', [FinanceSaleController::class, 'edit'])->name('vendas.edit');
+        Route::put('vendas/{sale}', [FinanceSaleController::class, 'update'])->name('vendas.update');
         Route::get('vendas/{sale}', [FinanceSaleController::class, 'show'])->name('vendas.show');
         Route::patch('parcelas/{installment}/pagamento', [FinanceInstallmentController::class, 'registerPayment'])
             ->name('parcelas.pagamento');

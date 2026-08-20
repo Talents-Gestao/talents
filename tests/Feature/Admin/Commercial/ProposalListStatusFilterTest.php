@@ -285,4 +285,133 @@ class ProposalListStatusFilterTest extends TestCase
             ->assertRedirect(route('admin.comercial.propostas.index'))
             ->assertSessionHasErrors(['created_to']);
     }
+
+    public function test_index_hides_ended_proposals_by_default(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $open = CommercialProposal::create([
+            'code' => 'PROP-HIDE-0001',
+            'client_name' => 'Aberta',
+            'employee_count' => 5,
+            'total_final_cents' => 1000,
+            'is_closed' => false,
+            'list_status' => ProposalListStatus::OPEN,
+        ]);
+
+        $ended = CommercialProposal::create([
+            'code' => 'PROP-HIDE-0002',
+            'client_name' => 'Encerrada',
+            'employee_count' => 5,
+            'total_final_cents' => 2000,
+            'is_closed' => false,
+            'list_status' => ProposalListStatus::ENDED,
+        ]);
+
+        $approved = CommercialProposal::create([
+            'code' => 'PROP-HIDE-0003',
+            'client_name' => 'Aprovada',
+            'employee_count' => 5,
+            'total_final_cents' => 3000,
+            'is_closed' => true,
+            'closed_at' => now(),
+            'list_status' => ProposalListStatus::APPROVED,
+        ]);
+
+        $hiddenAssertion = fn (Assert $page) => $page
+            ->component('Admin/Commercial/Proposals/Index')
+            ->has('proposals.data', 2)
+            ->where('filters.hide_ended', true)
+            ->where(
+                'proposals.data',
+                fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all()
+                    === collect([$open->id, $approved->id])->sort()->values()->all(),
+            )
+            ->where(
+                'proposals.data',
+                fn ($rows) => collect($rows)->every(
+                    fn ($row) => ($row['list_status'] ?? null) !== ProposalListStatus::ENDED,
+                ),
+            )
+            ->where('statusCounts.all', 3)
+            ->where('statusCounts.encerradas', 1)
+            ->where('statusCounts.abertas', 1)
+            ->where('statusCounts.aprovadas', 1);
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index'))
+            ->assertOk()
+            ->assertInertia($hiddenAssertion);
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index', ['hide_ended' => 1]))
+            ->assertOk()
+            ->assertInertia($hiddenAssertion);
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index', ['hide_ended' => 0]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('proposals.data', 3)
+                ->where('filters.hide_ended', false)
+                ->where(
+                    'proposals.data',
+                    fn ($rows) => collect($rows)->contains(
+                        fn ($row) => (int) $row['id'] === $ended->id,
+                    ),
+                )
+            );
+    }
+
+    public function test_index_ignores_hide_ended_when_status_is_encerradas(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $ended = CommercialProposal::create([
+            'code' => 'PROP-HIDE-0010',
+            'client_name' => 'Encerrada visível',
+            'employee_count' => 5,
+            'total_final_cents' => 1500,
+            'is_closed' => false,
+            'list_status' => ProposalListStatus::ENDED,
+        ]);
+
+        CommercialProposal::create([
+            'code' => 'PROP-HIDE-0011',
+            'client_name' => 'Aberta',
+            'employee_count' => 5,
+            'total_final_cents' => 1000,
+            'is_closed' => false,
+            'list_status' => ProposalListStatus::OPEN,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index', ['status' => 'encerradas']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('proposals.data', 1)
+                ->where('proposals.data.0.id', $ended->id)
+                ->where('filters.status', 'encerradas')
+                ->where('filters.hide_ended', false)
+            );
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index', [
+                'status' => 'encerradas',
+                'hide_ended' => 1,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('proposals.data', 1)
+                ->where('proposals.data.0.id', $ended->id)
+                ->where('proposals.data.0.list_status', ProposalListStatus::ENDED)
+                ->where('filters.status', 'encerradas')
+                ->where('filters.hide_ended', false)
+                ->where('statusCounts.encerradas', 1)
+            );
+    }
 }

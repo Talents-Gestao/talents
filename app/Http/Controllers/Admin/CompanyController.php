@@ -107,6 +107,7 @@ class CompanyController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'contact_email' => ['required', 'string', 'max:255', 'email', 'unique:users,email'],
+            'instagram' => ['nullable', 'string', 'max:255'],
             'legal_name' => ['nullable', 'string', 'max:255'],
             'cnpj' => ['nullable', 'string', 'max:18'],
             'segment' => ['nullable', 'string', 'max:120'],
@@ -137,6 +138,7 @@ class CompanyController extends Controller
             $company = Company::create([
                 'name' => $data['name'],
                 'contact_email' => $data['contact_email'],
+                'instagram' => $data['instagram'] ?? null,
                 'legal_name' => $data['legal_name'] ?? null,
                 'cnpj' => $data['cnpj'] ?? null,
                 'segment' => $data['segment'] ?? null,
@@ -297,6 +299,7 @@ class CompanyController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'contact_email' => ['nullable', 'string', 'max:255', 'email'],
+            'instagram' => ['nullable', 'string', 'max:255'],
             'legal_name' => ['nullable', 'string', 'max:255'],
             'cnpj' => ['nullable', 'string', 'max:18'],
             'segment' => ['nullable', 'string', 'max:120'],

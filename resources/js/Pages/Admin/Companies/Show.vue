@@ -315,7 +315,7 @@ const removeRegulation = (id) => {
             <div class="border-b border-slate-200">
                 <nav class="-mb-px flex gap-1 overflow-x-auto" aria-label="Secções da empresa">
                     <button
-                        v-for="item in tabs"
+                        v-for="item in tabs" 
                         :key="item.id"
                         type="button"
                         class="inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-semibold transition"
@@ -324,8 +324,7 @@ const removeRegulation = (id) => {
                                 ? 'border-talents-600 text-talents-800'
                                 : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800'
                         "
-                        @click="selectTab(item.id)"
-                    >
+                        @click="selectTab(item.id)">
                         {{ item.label }}
                         <span
                             v-if="item.badge"
@@ -347,6 +346,10 @@ const removeRegulation = (id) => {
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">E-mail</dt>
                             <dd class="mt-1 text-slate-800">{{ company.contact_email || '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Instagram</dt>
+                            <dd class="mt-1 text-slate-800">{{ company.instagram || '—' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Razão social</dt>

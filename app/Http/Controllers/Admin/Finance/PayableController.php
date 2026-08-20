@@ -8,8 +8,11 @@ use App\Enums\FinancePayableStatus;
 use App\Http\Controllers\Controller;
 use App\Models\FinancePayable;
 use App\Models\FinancePaymentMethod;
+use App\Support\Finance\MonthlyRecurrenceDates;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -45,6 +48,8 @@ class PayableController extends Controller
             'status_label' => $p->status->label(),
             'paid_at' => $p->paid_at?->toIso8601String(),
             'payment_method' => $p->paymentMethod?->only(['id', 'name']),
+            'is_recurring' => (bool) $p->is_recurring,
+            'recurring_label' => $p->recurringLabel(),
         ]);
 
         return Inertia::render('Admin/Finance/Payables/Index', [
@@ -68,16 +73,46 @@ class PayableController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $this->validated($request);
+        $data = $this->validated($request, allowRecurrence: true);
+        $isRecurring = (bool) $data['is_recurring'];
+        $months = (int) ($data['recurring_months'] ?? 0);
+        unset($data['is_recurring'], $data['recurring_months']);
 
-        FinancePayable::query()->create([
-            ...$data,
-            'created_by' => $request->user()?->id,
-        ]);
+        $data['created_by'] = $request->user()?->id;
+
+        if (! $isRecurring) {
+            FinancePayable::query()->create([
+                ...$data,
+                'is_recurring' => false,
+                'recurring_months' => null,
+                'recurring_index' => null,
+                'recurring_group_id' => null,
+            ]);
+
+            return redirect()
+                ->route('admin.financeiro.contas-a-pagar.index')
+                ->with('success', 'Conta a pagar cadastrada.');
+        }
+
+        $groupId = (string) Str::uuid();
+        $dates = MonthlyRecurrenceDates::dueDates($data['due_date'], $months);
+
+        DB::transaction(function () use ($data, $dates, $months, $groupId): void {
+            foreach ($dates as $index => $due) {
+                FinancePayable::query()->create([
+                    ...$data,
+                    'due_date' => $due->toDateString(),
+                    'is_recurring' => true,
+                    'recurring_months' => $months,
+                    'recurring_index' => $index + 1,
+                    'recurring_group_id' => $groupId,
+                ]);
+            }
+        });
 
         return redirect()
             ->route('admin.financeiro.contas-a-pagar.index')
-            ->with('success', 'Conta a pagar cadastrada.');
+            ->with('success', "Série recorrente cadastrada: {$months} lançamentos mensais.");
     }
 
     public function edit(FinancePayable $payable): Response
@@ -93,6 +128,10 @@ class PayableController extends Controller
                 'status' => $payable->status->value,
                 'payment_method_id' => $payable->payment_method_id,
                 'notes' => $payable->notes,
+                'is_recurring' => (bool) $payable->is_recurring,
+                'recurring_months' => $payable->recurring_months,
+                'recurring_index' => $payable->recurring_index,
+                'recurring_label' => $payable->recurringLabel(),
             ],
             ...$this->formOptions(),
         ]);
@@ -100,7 +139,7 @@ class PayableController extends Controller
 
     public function update(Request $request, FinancePayable $payable): RedirectResponse
     {
-        $data = $this->validated($request);
+        $data = $this->validated($request, allowRecurrence: false);
 
         if ($data['status'] === FinancePayableStatus::Paid && $payable->paid_at === null) {
             $data['paid_at'] = now();
@@ -176,6 +215,8 @@ class PayableController extends Controller
     }
 
     /**
+     * Recorrência só na criação: editar um item da série não regenera os demais.
+     *
      * @return array{
      *   title: string,
      *   supplier_name: ?string,
@@ -183,12 +224,18 @@ class PayableController extends Controller
      *   due_date: string,
      *   status: FinancePayableStatus,
      *   payment_method_id: ?int,
-     *   notes: ?string
+     *   notes: ?string,
+     *   is_recurring?: bool,
+     *   recurring_months?: int|null
      * }
      */
-    private function validated(Request $request): array
+    private function validated(Request $request, bool $allowRecurrence): array
     {
-        $data = $request->validate([
+        if ($allowRecurrence && ! $request->boolean('is_recurring')) {
+            $request->merge(['recurring_months' => null]);
+        }
+
+        $rules = [
             'title' => ['required', 'string', 'max:255'],
             'supplier_name' => ['nullable', 'string', 'max:255'],
             'amount_reais' => ['required', 'numeric', 'min:0.01'],
@@ -196,9 +243,26 @@ class PayableController extends Controller
             'status' => ['required', Rule::enum(FinancePayableStatus::class)],
             'payment_method_id' => ['nullable', 'exists:finance_payment_methods,id'],
             'notes' => ['nullable', 'string', 'max:5000'],
+        ];
+
+        if ($allowRecurrence) {
+            $rules['is_recurring'] = ['sometimes', 'boolean'];
+            $rules['recurring_months'] = [
+                Rule::requiredIf(fn () => $request->boolean('is_recurring')),
+                'nullable',
+                'integer',
+                'min:2',
+                'max:60',
+            ];
+        }
+
+        $data = $request->validate($rules, [
+            'recurring_months.required' => 'Informe a duração em meses da recorrência.',
+            'recurring_months.min' => 'A duração deve ser de pelo menos 2 meses.',
+            'recurring_months.max' => 'A duração não pode ser maior que 60 meses.',
         ]);
 
-        return [
+        $payload = [
             'title' => trim($data['title']),
             'supplier_name' => isset($data['supplier_name']) && trim((string) $data['supplier_name']) !== ''
                 ? trim((string) $data['supplier_name'])
@@ -209,5 +273,14 @@ class PayableController extends Controller
             'payment_method_id' => $data['payment_method_id'] ?? null,
             'notes' => $data['notes'] ?? null,
         ];
+
+        if ($allowRecurrence) {
+            $payload['is_recurring'] = $request->boolean('is_recurring');
+            $payload['recurring_months'] = $payload['is_recurring']
+                ? (int) $data['recurring_months']
+                : null;
+        }
+
+        return $payload;
     }
 }

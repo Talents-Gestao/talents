@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\CommercialPricingService;
 use App\Services\CommercialProposalPdfService;
 use App\Models\CommercialSaleInstallment;
+use App\Support\Commercial\OptionalCommission;
 use App\Support\Commercial\ProposalListStatus;
 use App\Support\CommercialProposalPdfDefaults;
 use App\Support\CommercialProposalPdfOptionalSections;
@@ -41,6 +42,7 @@ class ProposalController extends Controller
             'sale_situation' => $request->filled('sale_situation') ? $request->input('sale_situation') : null,
             'created_from' => $request->filled('created_from') ? $request->input('created_from') : null,
             'created_to' => $request->filled('created_to') ? $request->input('created_to') : null,
+            'hide_ended' => $request->has('hide_ended') ? $request->input('hide_ended') : null,
         ]);
 
         $validated = $request->validate([
@@ -58,17 +60,27 @@ class ProposalController extends Controller
             'sale_situation' => ['nullable', 'string', Rule::in(['without_sale', 'with_sale'])],
             'created_from' => ['nullable', 'date'],
             'created_to' => ['nullable', 'date', 'after_or_equal:created_from'],
+            'hide_ended' => ['nullable', 'boolean'],
         ], [
             'created_to.after_or_equal' => 'A data final deve ser igual ou posterior à data inicial.',
         ]);
 
+        $statusFilter = $validated['status'] ?? '';
+        // Padrão: não exibir encerradas. Ausência de hide_ended = true; hide_ended=0 mostra.
+        // Chip «Encerradas» tem prioridade: não esconde o que o chip pede para ver.
+        $hideEndedRequested = array_key_exists('hide_ended', $validated) && $validated['hide_ended'] !== null
+            ? (bool) $validated['hide_ended']
+            : true;
+        $hideEnded = $hideEndedRequested && $statusFilter !== 'encerradas';
+
         $filters = [
             'search' => $validated['search'] ?? '',
             'seller_id' => isset($validated['seller_id']) ? (string) $validated['seller_id'] : '',
-            'status' => $validated['status'] ?? '',
+            'status' => $statusFilter,
             'sale_situation' => $validated['sale_situation'] ?? '',
             'created_from' => $validated['created_from'] ?? '',
             'created_to' => $validated['created_to'] ?? '',
+            'hide_ended' => $hideEnded,
         ];
 
         $baseQuery = CommercialProposal::query();
@@ -108,6 +120,7 @@ class ProposalController extends Controller
             $arr['paid_installments'] = $proposal->sale?->paid_installments_count;
             $arr['total_installments'] = $proposal->sale?->total_installments_count
                 ?? $proposal->sale?->installments_count;
+            $arr['can_reopen'] = $proposal->canReopen();
 
             return $arr;
         });
@@ -129,6 +142,7 @@ class ProposalController extends Controller
                 'contratada_telefone' => $commercialSettings->company_phone,
                 'contratada_email' => $commercialSettings->company_email,
             ],
+            'default_commission_percent' => (float) ($commercialSettings->default_commission_percent ?? 0),
         ]);
     }
 
@@ -178,6 +192,8 @@ class ProposalController extends Controller
 
     public function edit(CommercialProposal $proposal): Response
     {
+        $commercialSettings = CommercialSetting::current();
+
         return Inertia::render('Admin/Commercial/Proposals/Form', [
             'mode' => 'edit',
             'proposal' => $this->proposalFormPayload($proposal),
@@ -186,6 +202,16 @@ class ProposalController extends Controller
             'catalogProducts' => $this->catalogProductsPayload(),
             'pdfOptionalSectionOptions' => CommercialProposalPdfOptionalSections::options(),
             'paymentMethodOptions' => $this->paymentMethodOptions($proposal),
+            'templates' => CommercialContractTemplate::active()
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->all(),
+            'zapsign_configured' => filled(trim((string) ($commercialSettings->zapsign_api_token ?? ''))),
+            'zapsignParties' => [
+                'contratada_signatario' => trim((string) ($commercialSettings->company_contract_signatory_name ?? '')),
+                'contratada_telefone' => $commercialSettings->company_phone,
+                'contratada_email' => $commercialSettings->company_email,
+            ],
         ]);
     }
 
@@ -226,9 +252,56 @@ class ProposalController extends Controller
             $this->notices->proposalWon($proposal->refresh(), $request->user());
         }
 
+        $proposal->refresh()->load('contracts');
+
+        $redirect = redirect()->route('admin.comercial.propostas.edit', $proposal);
+
+        if ($proposal->hasSignedContract()) {
+            return $redirect
+                ->with('success', 'Proposta atualizada. Há contrato assinado: gere um novo atualizado para enviar ao cliente com a alteração.')
+                ->with('suggest_updated_contract', true);
+        }
+
+        if ($proposal->hasZapSignSentContract()) {
+            return $redirect
+                ->with('success', 'Proposta atualizada. Há contrato enviado ao ZapSign: se a alteração for relevante, gere um novo PDF e envie novamente (o anterior permanece no histórico).')
+                ->with('suggest_updated_contract', true);
+        }
+
+        return $redirect->with('success', 'Proposta atualizada.');
+    }
+
+    /**
+     * Reabre proposta aprovada/encerrada para alteração de última hora (sem venda).
+     */
+    public function reopen(Request $request, CommercialProposal $proposal): RedirectResponse
+    {
+        if ($proposal->hasSale()) {
+            throw ValidationException::withMessages([
+                'proposal' => 'Não é possível reabrir uma proposta que já possui venda vinculada.',
+            ]);
+        }
+
+        if (! $proposal->canReopen()) {
+            return redirect()
+                ->back()
+                ->with('success', 'A proposta já está em aberto para edição.');
+        }
+
+        $proposal->update([
+            'is_closed' => false,
+            'closed_at' => null,
+            'list_status' => ProposalListStatus::NEGOTIATION,
+        ]);
+
+        $message = 'Proposta reaberta. Pode editar os dados.';
+        if ($proposal->fresh()->hasSignedContract()) {
+            $message .= ' Como há contrato assinado, após salvar gere um contrato novo e envie ao cliente.';
+        }
+
         return redirect()
-            ->route('admin.comercial.propostas.edit', $proposal)
-            ->with('success', 'Proposta atualizada.');
+            ->back()
+            ->with('success', $message);
     }
 
     public function updateStatus(Request $request, CommercialProposal $proposal): RedirectResponse
@@ -308,7 +381,8 @@ class ProposalController extends Controller
      *     status: string,
      *     sale_situation: string,
      *     created_from: string,
-     *     created_to: string
+     *     created_to: string,
+     *     hide_ended: bool
      * }  $filters
      */
     private function applyProposalIndexFilters(Builder $query, array $filters, bool $includeStatus): void
@@ -343,10 +417,15 @@ class ProposalController extends Controller
         if ($includeStatus && filled($filters['status'])) {
             ProposalListStatus::applyFilter($query, (string) $filters['status']);
         }
+
+        // hide_ended só na listagem (includeStatus), não nas contagens dos chips.
+        if ($includeStatus && ($filters['hide_ended'] ?? false)) {
+            ProposalListStatus::excludeEnded($query);
+        }
     }
 
     /**
-     * @return array<int, array{id:int,name:string}>
+     * @return array<int, array{id:int,name:string,is_owner:bool}>
      */
     private function sellersOptions(): array
     {
@@ -354,8 +433,12 @@ class ProposalController extends Controller
             ->where('is_commercial', true)
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name])
+            ->get(['id', 'name', 'is_owner'])
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'is_owner' => (bool) $u->is_owner,
+            ])
             ->all();
     }
 
@@ -484,7 +567,16 @@ class ProposalController extends Controller
         $proposal->load([
             'seller:id,name',
             'contracts' => fn ($q) => $q->orderByDesc('generated_at')
-                ->select(['id', 'proposal_id', 'code', 'template_name_snapshot', 'generated_at']),
+                ->select([
+                    'id',
+                    'proposal_id',
+                    'code',
+                    'template_name_snapshot',
+                    'generated_at',
+                    'zapsign_status',
+                    'zapsign_sent_at',
+                    'zapsign_document_token',
+                ]),
             'catalogLines.product:id,slug,name,pricing_type,pricing_config',
         ]);
 
@@ -503,7 +595,21 @@ class ProposalController extends Controller
             'discount_value_cents' => (int) ($line->options['discount_value_cents'] ?? 0),
             'observation' => (string) ($line->options['observation'] ?? ''),
         ])->values()->all();
+        $payload['contracts'] = $proposal->contracts->map(fn ($c) => [
+            'id' => $c->id,
+            'code' => $c->code,
+            'template_name_snapshot' => $c->template_name_snapshot,
+            'generated_at' => $c->generated_at?->toIso8601String(),
+            'zapsign_status' => $c->zapsign_status,
+            'zapsign_sent_at' => $c->zapsign_sent_at?->toIso8601String(),
+            'zapsign_sent' => $c->wasSentToZapSign(),
+            'zapsign_signed' => $c->isZapSignSigned(),
+            'zapsign_status_label' => $c->zapSignStatusLabel(),
+        ])->values()->all();
         $payload['has_sale'] = $proposal->hasSale();
+        $payload['can_reopen'] = $proposal->canReopen();
+        $payload['has_signed_contract'] = $proposal->hasSignedContract();
+        $payload['has_zapsign_sent_contract'] = $proposal->hasZapSignSentContract();
         $payload['has_legacy_services'] = $proposal->hasLegacyServices();
         $payload['legacy_summary'] = $this->legacySummaryLines($proposal);
         $payload['pdf_optional_sections'] = CommercialProposalPdfOptionalSections::normalizeSelection(
@@ -671,6 +777,9 @@ class ProposalController extends Controller
             ],
             'include_minimum_stay' => ['boolean'],
 
+            'pay_commission' => ['nullable', 'boolean'],
+            'commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+
             'pdf_subtitle' => ['nullable', 'string', 'max:500'],
             'pdf_objetivo' => ['nullable', 'string', 'max:5000'],
             'service_descriptions' => ['nullable', 'array'],
@@ -705,9 +814,21 @@ class ProposalController extends Controller
             'recurring_months.max' => 'A duração não pode ser maior que 60 meses.',
             'recurring_monthly_reais.required' => 'Informe o valor mensal.',
             'recurring_monthly_reais.min' => 'O valor mensal deve ser maior que zero.',
+            'commission_percent.numeric' => 'O percentual de comissão deve ser numérico.',
+            'commission_percent.min' => 'O percentual de comissão não pode ser negativo.',
+            'commission_percent.max' => 'O percentual de comissão não pode ser maior que 100.',
         ]);
 
-        $data['commission_percent'] = (float) (CommercialSetting::current()->default_commission_percent ?? 0);
+        $seller = filled($data['seller_id'] ?? null)
+            ? User::query()->find((int) $data['seller_id'])
+            : null;
+        $data['commission_percent'] = OptionalCommission::resolveFromRequest(
+            $data,
+            (float) (CommercialSetting::current()->default_commission_percent ?? 0),
+            $seller,
+            $request->user(),
+        );
+        unset($data['pay_commission']);
 
         $data['include_publico_atendido'] = (bool) ($data['include_publico_atendido'] ?? true);
         $data['include_minimum_stay'] = (bool) ($data['include_minimum_stay'] ?? true);

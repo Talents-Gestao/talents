@@ -39,6 +39,28 @@ class CommercialSale extends Model
             && (int) $this->recurring_months > 0;
     }
 
+    /**
+     * Contribuição da venda para a Meta mensal no mês de sold_at.
+     *
+     * Regra: vendas pontuais entram com o total; vendas recorrentes entram só com
+     * a parcela mensal (não o total do período/ano), para o realizado refletir o mês.
+     */
+    public function monthlyGoalContributionCents(): int
+    {
+        if ($this->isRecurringBilling()) {
+            $monthly = (int) $this->recurring_monthly_cents;
+            if ($monthly > 0) {
+                return $monthly;
+            }
+
+            $months = max(1, (int) $this->recurring_months);
+
+            return (int) intdiv((int) $this->total_cents, $months);
+        }
+
+        return (int) $this->total_cents;
+    }
+
     public function proposal(): BelongsTo
     {
         return $this->belongsTo(CommercialProposal::class, 'proposal_id');

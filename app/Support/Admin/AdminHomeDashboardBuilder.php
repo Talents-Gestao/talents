@@ -127,10 +127,9 @@ final class AdminHomeDashboardBuilder
             ->join('plans', 'plans.id', '=', 'subscriptions.plan_id')
             ->sum('plans.price_monthly_cents');
 
-        $revenueMonthCents = (int) CommercialSale::query()
-            ->where('status', '!=', CommercialSale::STATUS_CANCELADA)
-            ->whereBetween('sold_at', [$monthStart, $monthEnd])
-            ->sum('total_cents');
+        // Meta mensal — realizado: só vendas com sold_at no mês corrente.
+        // Pontuais: total_cents. Recorrentes: apenas a parcela mensal (não o total do período).
+        $revenueMonthCents = $this->monthlyGoalRevenueCents($monthStart, $monthEnd);
 
         $goalCents = AdminDashboardSettings::resolvedMonthlyRevenueGoalCents();
         $goalPercent = $goalCents > 0 ? round(100 * $revenueMonthCents / $goalCents, 0) : 0.0;
@@ -200,6 +199,27 @@ final class AdminHomeDashboardBuilder
             ->where('is_archived', false)
             ->whereNull('completed_at')
             ->count();
+    }
+
+    /**
+     * Realizado da Meta mensal no intervalo [monthStart, monthEnd] (inclusive).
+     * Usa sold_at; vendas canceladas ficam de fora; recorrentes contam só a parcela mensal.
+     */
+    private function monthlyGoalRevenueCents(Carbon $monthStart, Carbon $monthEnd): int
+    {
+        $sales = CommercialSale::query()
+            ->where('status', '!=', CommercialSale::STATUS_CANCELADA)
+            ->whereBetween('sold_at', [$monthStart, $monthEnd])
+            ->get([
+                'total_cents',
+                'is_recurring',
+                'recurring_months',
+                'recurring_monthly_cents',
+            ]);
+
+        return (int) $sales->sum(
+            static fn (CommercialSale $sale): int => $sale->monthlyGoalContributionCents(),
+        );
     }
 
     /**

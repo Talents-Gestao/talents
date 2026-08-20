@@ -212,6 +212,7 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('items.data', 1)
                 ->where('items.data.0.source', 'sale')
+                ->where('items.data.0.can_mark_paid', true)
             );
     }
 

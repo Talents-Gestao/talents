@@ -21,6 +21,10 @@ class FinancePayable extends Model
         'paid_amount_cents',
         'notes',
         'created_by',
+        'is_recurring',
+        'recurring_months',
+        'recurring_index',
+        'recurring_group_id',
     ];
 
     protected function casts(): array
@@ -31,7 +35,26 @@ class FinancePayable extends Model
             'due_date' => 'date',
             'paid_at' => 'datetime',
             'status' => FinancePayableStatus::class,
+            'is_recurring' => 'boolean',
+            'recurring_months' => 'integer',
+            'recurring_index' => 'integer',
         ];
+    }
+
+    public function recurringLabel(): ?string
+    {
+        if (! $this->is_recurring) {
+            return null;
+        }
+
+        $months = (int) ($this->recurring_months ?? 0);
+        $index = (int) ($this->recurring_index ?? 0);
+
+        if ($months > 0 && $index > 0) {
+            return 'Recorrente · Mês '.$index.'/'.$months;
+        }
+
+        return 'Recorrente';
     }
 
     public function paymentMethod(): BelongsTo
