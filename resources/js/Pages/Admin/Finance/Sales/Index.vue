@@ -3,6 +3,7 @@ import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
+import { PencilSquareIcon } from '@heroicons/vue/24/outline';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { reactive } from 'vue';
 
@@ -130,6 +131,7 @@ const statusClass = (s) =>
                             <th class="px-4 py-3 text-left font-medium">Status</th>
                             <th class="px-4 py-3 text-right font-medium">Pendentes</th>
                             <th class="px-4 py-3 text-right font-medium">Vendida em</th>
+                            <th class="px-4 py-3 text-right font-medium">Ações</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
@@ -143,7 +145,14 @@ const statusClass = (s) =>
                                 </Link>
                             </td>
                             <td class="px-4 py-3 font-mono text-xs text-slate-500">{{ sale.proposal?.code ?? '—' }}</td>
-                            <td class="px-4 py-3 font-medium">{{ sale.client_name }}</td>
+                            <td class="px-4 py-3 font-medium">
+                                <Link
+                                    :href="route('admin.financeiro.vendas.show', sale.id)"
+                                    class="text-slate-900 hover:text-talents-700 hover:underline"
+                                >
+                                    {{ sale.client_name }}
+                                </Link>
+                            </td>
                             <td class="px-4 py-3 text-slate-600">{{ sale.seller?.name ?? '—' }}</td>
                             <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ formatBRL(sale.total_cents) }}</td>
                             <td class="px-4 py-3">
@@ -153,9 +162,19 @@ const statusClass = (s) =>
                             </td>
                             <td class="px-4 py-3 text-right tabular-nums">{{ sale.pending_installments_count ?? 0 }}</td>
                             <td class="px-4 py-3 text-right text-xs text-slate-500">{{ formatDate(sale.sold_at) }}</td>
+                            <td class="px-4 py-3 text-right">
+                                <Link
+                                    :href="route('admin.financeiro.vendas.edit', sale.id)"
+                                    class="inline-flex rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                                    title="Editar venda"
+                                    aria-label="Editar venda"
+                                >
+                                    <PencilSquareIcon class="h-4 w-4" />
+                                </Link>
+                            </td>
                         </tr>
                         <tr v-if="!sales.data?.length">
-                            <td colspan="8" class="px-4 py-8 text-center text-sm text-slate-500">Nenhuma venda encontrada.</td>
+                            <td colspan="9" class="px-4 py-8 text-center text-sm text-slate-500">Nenhuma venda encontrada.</td>
                         </tr>
                     </tbody>
                 </table>

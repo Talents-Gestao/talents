@@ -1,5 +1,6 @@
 <script setup>
 import CommercialModuleNav from '@/Components/Commercial/CommercialModuleNav.vue';
+import OptionalCommissionFields from '@/Components/Commercial/OptionalCommissionFields.vue';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
@@ -44,6 +45,7 @@ const props = defineProps({
             contratada_email: '',
         }),
     },
+    default_commission_percent: { type: Number, default: 0 },
 });
 
 const filterState = reactive({
@@ -53,6 +55,7 @@ const filterState = reactive({
     sale_situation: props.filters.sale_situation ?? '',
     created_from: props.filters.created_from ?? '',
     created_to: props.filters.created_to ?? '',
+    hide_ended: props.filters.hide_ended !== false,
 });
 
 watch(
@@ -64,9 +67,12 @@ watch(
         filterState.sale_situation = filters.sale_situation ?? '';
         filterState.created_from = filters.created_from ?? '';
         filterState.created_to = filters.created_to ?? '';
+        filterState.hide_ended = filters.hide_ended !== false;
     },
     { deep: true },
 );
+
+const showHideEndedCheckbox = computed(() => filterState.status !== 'encerradas');
 
 const statusChipOptions = computed(() => [
     { value: '', label: 'Todas', count: props.statusCounts.all ?? 0 },
@@ -123,6 +129,9 @@ const filterQuery = () => {
     }
     if (String(filterState.created_to ?? '') !== '') {
         params.created_to = filterState.created_to;
+    }
+    if (filterState.status !== 'encerradas' && !filterState.hide_ended) {
+        params.hide_ended = 0;
     }
     return params;
 };
@@ -240,6 +249,48 @@ const submitStatus = () => {
     });
 };
 
+const reopeningId = ref(null);
+const reopenModalOpen = ref(false);
+const reopenProposalTarget = ref(null);
+
+const openReopenModal = (proposal) => {
+    if (!proposal?.id || !proposal.can_reopen || reopeningId.value) {
+        return;
+    }
+    reopenProposalTarget.value = proposal;
+    reopenModalOpen.value = true;
+};
+
+const closeReopenModal = () => {
+    if (reopeningId.value) {
+        return;
+    }
+    reopenModalOpen.value = false;
+    reopenProposalTarget.value = null;
+};
+
+const confirmReopenProposal = () => {
+    const proposal = reopenProposalTarget.value;
+    if (!proposal?.id || !proposal.can_reopen || reopeningId.value) {
+        return;
+    }
+    reopeningId.value = proposal.id;
+    router.post(
+        route('admin.comercial.propostas.reopen', proposal.id),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                reopeningId.value = null;
+            },
+            onSuccess: () => {
+                reopenModalOpen.value = false;
+                reopenProposalTarget.value = null;
+            },
+        },
+    );
+};
+
 const applyFilters = () => {
     router.get(route('admin.comercial.propostas.index'), filterQuery(), {
         preserveScroll: true,
@@ -249,6 +300,11 @@ const applyFilters = () => {
 };
 
 const applyStatusChip = (status) => {
+    if (status === 'encerradas') {
+        filterState.hide_ended = false;
+    } else if (filterState.status === 'encerradas') {
+        filterState.hide_ended = true;
+    }
     filterState.status = status;
     applyFilters();
 };
@@ -260,6 +316,7 @@ const clearFilters = () => {
     filterState.sale_situation = '';
     filterState.created_from = '';
     filterState.created_to = '';
+    filterState.hide_ended = true;
     applyFilters();
 };
 
@@ -269,6 +326,9 @@ const clearActiveFilter = (key) => {
     } else if (key === 'seller_id') {
         filterState.seller_id = '';
     } else if (key === 'status') {
+        if (filterState.status === 'encerradas') {
+            filterState.hide_ended = true;
+        }
         filterState.status = '';
     } else if (key === 'sale_situation') {
         filterState.sale_situation = '';
@@ -456,12 +516,36 @@ const convertForm = useForm({
     first_due_date: localTodayDate(),
     notes: '',
     mix_parts: [],
+    pay_commission: false,
+    commission_percent: 0,
 });
 
 const isConvertMisto = computed(() => convertForm.payment_method === 'misto');
 const isConvertRecurring = computed(() => !!convertProposal.value?.is_recurring
     && Number(convertProposal.value?.recurring_months) > 0
     && Number(convertProposal.value?.recurring_monthly_cents) > 0);
+
+const convertBaseCents = computed(() => {
+    const proposal = convertProposal.value;
+    if (!proposal) {
+        return 0;
+    }
+    if (isConvertRecurring.value) {
+        return Number(proposal.recurring_months) * Number(proposal.recurring_monthly_cents);
+    }
+    return Number(proposal.total_final_cents) || 0;
+});
+
+const convertEstimatedCommissionCents = computed(() => {
+    if (!convertForm.pay_commission) {
+        return 0;
+    }
+    const percent = Number(convertForm.commission_percent) || 0;
+    if (percent <= 0) {
+        return 0;
+    }
+    return Math.round(convertBaseCents.value * percent / 100);
+});
 
 const mixPercentSum = computed(() => (
     (convertForm.mix_parts || []).reduce((sum, part) => sum + (Number(part.percent) || 0), 0)
@@ -595,12 +679,16 @@ const openConvertModal = (proposal) => {
     const recurringMonths = Number(proposal?.recurring_months) > 0
         ? Number(proposal.recurring_months)
         : 1;
+    const storedPercent = Number(proposal?.commission_percent) || 0;
+    const payCommission = storedPercent > 0;
     convertForm.defaults({
         payment_method: 'pix',
         installments_count: proposal?.is_recurring ? recurringMonths : 1,
         first_due_date: today,
         notes: '',
         mix_parts: [],
+        pay_commission: payCommission,
+        commission_percent: payCommission ? storedPercent : Number(props.default_commission_percent) || 0,
     });
     convertForm.reset();
     convertModalOpen.value = true;
@@ -688,7 +776,11 @@ const submitConvert = () => {
         convertForm.mix_parts = [];
     }
 
-    convertForm.post(route('admin.comercial.propostas.converter', convertProposal.value.id), {
+    convertForm.transform((data) => ({
+        ...data,
+        pay_commission: !!data.pay_commission,
+        commission_percent: data.pay_commission ? Number(data.commission_percent) || 0 : 0,
+    })).post(route('admin.comercial.propostas.converter', convertProposal.value.id), {
         preserveScroll: true,
         // Sem `only`: o redirect precisa repor a lista (venda na linha) e o flash (modal de sucesso).
         onStart: () => {
@@ -767,31 +859,45 @@ const submitConvert = () => {
         </div>
 
         <div class="surface-card p-6">
-            <div class="flex flex-wrap items-center gap-2">
-                <button
-                    v-for="chip in statusChipOptions"
-                    :key="chip.value || 'all'"
-                    type="button"
-                    class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition"
-                    :class="
-                        (filterState.status || '') === chip.value
-                            ? 'bg-talents-700 text-white shadow-sm'
-                            : 'border border-slate-200 bg-white text-slate-700 hover:border-talents-200 hover:bg-talents-50 hover:text-talents-800'
-                    "
-                    @click="applyStatusChip(chip.value)"
-                >
-                    <span>{{ chip.label }}</span>
-                    <span
-                        class="rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums"
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        v-for="chip in statusChipOptions"
+                        :key="chip.value || 'all'"
+                        type="button"
+                        class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition"
                         :class="
                             (filterState.status || '') === chip.value
-                                ? 'bg-white/20 text-white'
-                                : 'bg-slate-100 text-slate-600'
+                                ? 'bg-talents-700 text-white shadow-sm'
+                                : 'border border-slate-200 bg-white text-slate-700 hover:border-talents-200 hover:bg-talents-50 hover:text-talents-800'
                         "
+                        @click="applyStatusChip(chip.value)"
                     >
-                        {{ chip.count }}
-                    </span>
-                </button>
+                        <span>{{ chip.label }}</span>
+                        <span
+                            class="rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums"
+                            :class="
+                                (filterState.status || '') === chip.value
+                                    ? 'bg-white/20 text-white'
+                                    : 'bg-slate-100 text-slate-600'
+                            "
+                        >
+                            {{ chip.count }}
+                        </span>
+                    </button>
+                </div>
+                <label
+                    v-if="showHideEndedCheckbox"
+                    class="inline-flex items-center gap-2 text-sm text-slate-700"
+                >
+                    <input
+                        v-model="filterState.hide_ended"
+                        type="checkbox"
+                        class="rounded border-slate-300 text-talents-700 focus:ring-talents-500"
+                        @change="applyFilters"
+                    />
+                    Não exibir encerradas
+                </label>
             </div>
 
             <form class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6" @submit.prevent="applyFilters">
@@ -953,6 +1059,21 @@ const submitConvert = () => {
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="inline-flex items-center justify-end gap-0.5">
+                                    <button
+                                        v-if="p.can_reopen"
+                                        type="button"
+                                        class="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800 transition hover:bg-sky-100 hover:text-sky-950 disabled:opacity-50"
+                                        title="Reabrir proposta"
+                                        aria-label="Reabrir proposta"
+                                        :disabled="reopeningId === p.id"
+                                        @click="openReopenModal(p)"
+                                    >
+                                        <ArrowPathIcon
+                                            class="h-4 w-4 shrink-0"
+                                            :class="reopeningId === p.id ? 'animate-spin' : ''"
+                                        />
+                                        <span>Reabrir</span>
+                                    </button>
                                     <Link
                                         :href="route('admin.comercial.propostas.edit', p.id)"
                                         class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
@@ -1402,6 +1523,15 @@ const submitConvert = () => {
                                 class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             />
                         </div>
+
+                        <OptionalCommissionFields
+                            v-model:pay-commission="convertForm.pay_commission"
+                            v-model:commission-percent="convertForm.commission_percent"
+                            :default-percent="Number(default_commission_percent) || 0"
+                            :estimated-cents="convertEstimatedCommissionCents"
+                            :errors="convertForm.errors"
+                            :disabled="convertForm.processing"
+                        />
                     </div>
 
                     <div class="flex shrink-0 justify-end gap-2 border-t border-slate-100 bg-white px-6 py-4">
@@ -1434,6 +1564,44 @@ const submitConvert = () => {
             </div>
         </FullScreenOverlay>
 
+        <FullScreenOverlay :show="reopenModalOpen" @close="closeReopenModal">
+            <div
+                class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="proposal-reopen-title"
+            >
+                <h3 id="proposal-reopen-title" class="text-lg font-semibold text-slate-900">
+                    Reabrir proposta?
+                </h3>
+                <p v-if="reopenProposalTarget" class="mt-1 text-sm text-slate-600">
+                    {{ reopenProposalTarget.code }} — {{ reopenProposalTarget.client_name }}
+                </p>
+                <p class="mt-3 text-sm text-slate-600">
+                    A proposta voltará para <strong>Em negociação</strong> e poderá ser editada novamente.
+                    Se houver contrato assinado, depois das alterações gere um contrato novo para o cliente.
+                </p>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                        :disabled="!!reopeningId"
+                        @click="closeReopenModal"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50"
+                        :disabled="!!reopeningId"
+                        @click="confirmReopenProposal"
+                    >
+                        {{ reopeningId ? 'Reabrindo…' : 'Confirmar reabertura' }}
+                    </button>
+                </div>
+            </div>
+        </FullScreenOverlay>
+
         <FullScreenOverlay :show="statusModalOpen" @close="closeStatusModal">
             <div
                 class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
@@ -1446,6 +1614,18 @@ const submitConvert = () => {
                 </h3>
                 <p v-if="statusProposal" class="mt-1 text-sm text-slate-600">
                     {{ statusProposal.code }} — {{ statusProposal.client_name }}
+                </p>
+                <p
+                    v-if="statusProposal?.sale"
+                    class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+                >
+                    Esta proposta já tem venda vinculada. Não é possível reabrir (voltar a Em aberto / Em negociação).
+                </p>
+                <p
+                    v-else-if="statusProposal?.can_reopen"
+                    class="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900"
+                >
+                    Para alteração de última hora, escolha Em aberto ou Em negociação — ou use o botão Reabrir na linha.
                 </p>
 
                 <form class="mt-4 space-y-4" @submit.prevent="submitStatus">

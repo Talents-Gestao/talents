@@ -285,8 +285,9 @@ const pdfProductLabels = computed(() =>
                 <section class="surface-card p-6">
                     <h3 class="text-lg font-semibold text-slate-900">Comissão de vendedores</h3>
                     <p class="mt-1 text-xs text-slate-500">
-                        Percentual aplicado automaticamente em todas as propostas. Uso interno — não aparece no formulário
-                        nem no PDF enviado ao cliente.
+                        Percentual sugerido quando a comissão está ligada. A dona da Talents (owner)
+                        inicia as propostas sem comissão; o valor pode ser alterado em cada proposta
+                        ou na conversão em venda. Não aparece no PDF enviado ao cliente.
                     </p>
                     <div class="mt-4 max-w-xs">
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">

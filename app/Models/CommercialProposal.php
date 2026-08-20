@@ -230,6 +230,47 @@ class CommercialProposal extends Model
         return $this->sale()->exists();
     }
 
+    /**
+     * Pode voltar a negociar (aprovada/encerrada/fechada), desde que não haja venda.
+     */
+    public function canReopen(): bool
+    {
+        if ($this->hasSale()) {
+            return false;
+        }
+
+        $status = ProposalListStatus::for($this);
+
+        return (bool) $this->is_closed
+            || $status === ProposalListStatus::APPROVED
+            || $status === ProposalListStatus::ENDED;
+    }
+
+    public function hasSignedContract(): bool
+    {
+        if ($this->relationLoaded('contracts')) {
+            return $this->contracts->contains(fn (CommercialContract $c) => $c->isZapSignSigned());
+        }
+
+        return $this->contracts()
+            ->get(['id', 'zapsign_status', 'zapsign_document_token', 'zapsign_sent_at'])
+            ->contains(fn (CommercialContract $c) => $c->isZapSignSigned());
+    }
+
+    public function hasZapSignSentContract(): bool
+    {
+        if ($this->relationLoaded('contracts')) {
+            return $this->contracts->contains(fn (CommercialContract $c) => $c->wasSentToZapSign());
+        }
+
+        return $this->contracts()
+            ->where(function ($q): void {
+                $q->whereNotNull('zapsign_document_token')
+                    ->orWhereNotNull('zapsign_sent_at');
+            })
+            ->exists();
+    }
+
     public function scopeClosed(Builder $query): Builder
     {
         return $query->where('is_closed', true);

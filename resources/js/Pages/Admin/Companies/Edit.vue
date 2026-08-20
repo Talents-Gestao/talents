@@ -66,6 +66,7 @@ const acompanhamentoAccessMode = () => {
 const form = useForm({
     name: props.company.name,
     contact_email: props.company.contact_email ?? '',
+    instagram: props.company.instagram ?? '',
     legal_name: props.company.legal_name ?? '',
     cnpj: maskCnpj(props.company.cnpj ?? ''),
     segment: props.company.segment ?? '',
@@ -115,6 +116,18 @@ const submit = () => {
                 <div>
                     <InputLabel for="contact_email" value="E-mail de contato / administrador" />
                     <TextInput id="contact_email" v-model="form.contact_email" type="email" class="mt-1 block w-full" autocomplete="email" />
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+                <div>
+                    <InputLabel for="instagram" value="Instagram" />
+                    <TextInput
+                        id="instagram"
+                        v-model="form.instagram"
+                        class="mt-1 block w-full"
+                        placeholder="@empresa ou link"
+                        autocomplete="off"
+                    />
                 </div>
             </div>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">

@@ -110,6 +110,22 @@ class ProposalListStatusTest extends TestCase
         $this->assertFalse(ProposalListStatus::canConvert(ProposalListStatus::ENDED));
     }
 
+    public function test_exclude_ended_keeps_null_and_other_statuses(): void
+    {
+        $open = $this->makeProposal(isClosed: false, listStatus: ProposalListStatus::OPEN);
+        $ended = $this->makeProposal(isClosed: false, listStatus: ProposalListStatus::ENDED);
+        $legacy = $this->makeProposal(isClosed: false);
+        $legacy->forceFill(['list_status' => null])->saveQuietly();
+
+        $ids = ProposalListStatus::excludeEnded(CommercialProposal::query())
+            ->pluck('id')
+            ->all();
+
+        $this->assertContains($open->id, $ids);
+        $this->assertContains($legacy->id, $ids);
+        $this->assertNotContains($ended->id, $ids);
+    }
+
     private function makeProposal(bool $isClosed, ?string $listStatus = null): CommercialProposal
     {
         $payload = [

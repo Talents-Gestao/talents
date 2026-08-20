@@ -41,15 +41,17 @@ class InstallmentPaymentRegistrationTest extends TestCase
         $sale = CommercialSale::query()->where('proposal_id', $proposal->id)->firstOrFail();
         $installment = $sale->installments()->firstOrFail();
 
-        $response = $this->actingAs($admin)->patch(
-            route('admin.financeiro.parcelas.pagamento', $installment),
-            [
-                'status' => 'pago',
-                'paid_at' => '2026-08-12',
-                'paid_amount_cents' => 225_000,
-                'notes' => '',
-            ],
-        );
+        $response = $this->actingAs($admin)
+            ->from(route('admin.financeiro.vendas.show', $sale->id))
+            ->patch(
+                route('admin.financeiro.parcelas.pagamento', $installment),
+                [
+                    'status' => 'pago',
+                    'paid_at' => '2026-08-12',
+                    'paid_amount_cents' => 225_000,
+                    'notes' => '',
+                ],
+            );
 
         $response
             ->assertRedirect(route('admin.financeiro.vendas.show', $sale->id))
@@ -88,20 +90,22 @@ class InstallmentPaymentRegistrationTest extends TestCase
         $installment = $sale->installments()->firstOrFail();
 
         // Simula o browser: POST multipart + _method=PATCH (PHP não parseia multipart em PATCH).
-        $response = $this->actingAs($admin)->post(
-            route('admin.financeiro.parcelas.pagamento', $installment),
-            [
-                '_method' => 'patch',
-                'status' => 'pago',
-                'paid_at' => '2026-08-12',
-                'paid_amount_cents' => '225000',
-                'notes' => '',
-                'receipt' => UploadedFile::fake()->image('comprovante.jpg'),
-            ],
-        );
+        $response = $this->actingAs($admin)
+            ->from(route('admin.financeiro.contas-a-receber.index'))
+            ->post(
+                route('admin.financeiro.parcelas.pagamento', $installment),
+                [
+                    '_method' => 'patch',
+                    'status' => 'pago',
+                    'paid_at' => '2026-08-12',
+                    'paid_amount_cents' => '225000',
+                    'notes' => '',
+                    'receipt' => UploadedFile::fake()->image('comprovante.jpg'),
+                ],
+            );
 
         $response
-            ->assertRedirect(route('admin.financeiro.vendas.show', $sale->id))
+            ->assertRedirect(route('admin.financeiro.contas-a-receber.index'))
             ->assertSessionDoesntHaveErrors();
 
         $this->assertSame('pago', $installment->fresh()->status);
@@ -193,6 +197,68 @@ class InstallmentPaymentRegistrationTest extends TestCase
             ->assertSessionHasErrors('paid_amount_cents');
 
         $this->assertSame('pendente', $installment->fresh()->status);
+    }
+
+    public function test_register_payment_from_receivables_marks_sale_installment_paid(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $installment = $this->convertedInstallment($admin, 'PROP-INST-CR');
+
+        $this->actingAs($admin)
+            ->from(route('admin.financeiro.contas-a-receber.index'))
+            ->patch(route('admin.financeiro.parcelas.pagamento', $installment), [
+                'status' => 'pago',
+                'paid_at' => '2026-08-12',
+                'paid_amount_cents' => 225_000,
+            ])
+            ->assertRedirect(route('admin.financeiro.contas-a-receber.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSame('pago', $installment->fresh()->status);
+    }
+
+    public function test_admin_can_update_sale_commercial_fields(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $seller = User::factory()->create([
+            'is_commercial' => true,
+            'is_active' => true,
+            'name' => 'Vendedor Edit',
+        ]);
+        $installment = $this->convertedInstallment($admin, 'PROP-SALE-EDIT');
+        $sale = $installment->sale;
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.vendas.edit', $sale))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Finance/Sales/Form')
+                ->where('mode', 'edit')
+                ->where('sale.code', $sale->code));
+
+        $this->actingAs($admin)
+            ->put(route('admin.financeiro.vendas.update', $sale), [
+                'client_name' => 'Cliente Atualizado',
+                'client_cnpj' => '12.345.678/0001-90',
+                'client_email' => 'novo@cliente.test',
+                'client_phone' => '11999990000',
+                'seller_id' => $seller->id,
+                'sold_at' => '2026-08-15',
+                'notes' => 'Nota editada',
+            ])
+            ->assertRedirect(route('admin.financeiro.vendas.show', $sale))
+            ->assertSessionHas('success');
+
+        $sale->refresh();
+        $this->assertSame('Cliente Atualizado', $sale->client_name);
+        $this->assertSame($seller->id, (int) $sale->seller_id);
+        $this->assertSame('2026-08-15', $sale->sold_at?->toDateString());
+        $this->assertSame('Nota editada', $sale->notes);
+        $this->assertSame(225_000, (int) $sale->total_cents);
     }
 
     private function convertedInstallment(User $admin, string $code): CommercialSaleInstallment

@@ -1,18 +1,14 @@
 <script setup>
 import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
-import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const props = defineProps({
     sale: { type: Object, required: true },
     paymentMethods: { type: Object, default: () => ({}) },
 });
-
-const paymentModalOpen = ref(false);
-const selectedInstallment = ref(null);
 
 const localTodayDate = () => {
     const d = new Date();
@@ -21,16 +17,6 @@ const localTodayDate = () => {
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
 };
-
-const paymentForm = useForm({
-    status: 'pago',
-    paid_at: localTodayDate(),
-    paid_amount_cents: 0,
-    notes: '',
-    receipt: null,
-});
-
-const paidAmountReais = ref(0);
 
 const commissionForm = useForm({
     status: props.sale.commission?.status ?? 'a_pagar',
@@ -88,51 +74,11 @@ const canMarkCommissionPaid = computed(
     () => saleIsQuitada.value || props.sale.commission?.status === 'paga',
 );
 
-const openPaymentModal = (installment) => {
-    selectedInstallment.value = installment;
-    paymentForm.reset();
-    paymentForm.status = installment.status === 'pago' ? 'pago' : 'pago';
-    paymentForm.paid_at = localTodayDate();
-    paymentForm.paid_amount_cents = installment.amount_cents;
-    paidAmountReais.value = installment.amount_cents / 100;
-    paymentForm.notes = installment.notes ?? '';
-    paymentForm.receipt = null;
-    paymentModalOpen.value = true;
-};
-
-const closePaymentModal = () => {
-    paymentModalOpen.value = false;
-    selectedInstallment.value = null;
-    paymentForm.reset();
-};
-
-const submitPayment = () => {
-    if (!selectedInstallment.value) return;
-    if (paymentForm.status === 'pago') {
-        paymentForm.paid_amount_cents = Math.round(Number(paidAmountReais.value || 0) * 100);
-    }
-    // PHP não interpreta multipart em PATCH; spoof via POST (padrão do projeto).
-    paymentForm
-        .transform((data) => ({
-            ...data,
-            _method: 'patch',
-        }))
-        .post(route('admin.financeiro.parcelas.pagamento', selectedInstallment.value.id), {
-            preserveScroll: true,
-            forceFormData: true,
-            onSuccess: () => closePaymentModal(),
-        });
-};
-
 const submitCommission = () => {
     if (!props.sale.commission) return;
     commissionForm.patch(route('admin.financeiro.comissoes.update', props.sale.commission.id), {
         preserveScroll: true,
     });
-};
-
-const onReceiptChange = (event) => {
-    paymentForm.receipt = event.target.files?.[0] ?? null;
 };
 </script>
 
@@ -153,6 +99,12 @@ const onReceiptChange = (event) => {
                         class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                     >
                         Voltar
+                    </Link>
+                    <Link
+                        :href="route('admin.financeiro.vendas.edit', sale.id)"
+                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    >
+                        Editar
                     </Link>
                     <Link
                         v-if="sale.proposal"
@@ -246,11 +198,21 @@ const onReceiptChange = (event) => {
                     </button>
                 </form>
             </div>
+            <div v-else class="surface-card p-6">
+                <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Comissão</h3>
+                <p class="mt-2 text-base font-semibold text-slate-800">Sem comissão</p>
+                <p class="mt-1 text-sm text-slate-600">
+                    Esta venda não gera valor a pagar no Financeiro.
+                </p>
+            </div>
         </div>
 
         <div class="mt-6 surface-card overflow-hidden">
             <div class="border-b border-slate-100 px-6 py-4">
                 <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Parcelas / cobranças</h3>
+                <p class="mt-1 text-xs text-slate-500">
+                    Para registrar pagamento, use Contas a receber.
+                </p>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -262,7 +224,7 @@ const onReceiptChange = (event) => {
                             <th class="px-4 py-3 text-right font-medium">Valor</th>
                             <th class="px-4 py-3 text-left font-medium">Status</th>
                             <th class="px-4 py-3 text-right font-medium">Pago em</th>
-                            <th class="px-4 py-3 text-right font-medium">Ações</th>
+                            <th class="px-4 py-3 text-right font-medium">Comprovante</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
@@ -281,133 +243,21 @@ const onReceiptChange = (event) => {
                             </td>
                             <td class="px-4 py-3 text-right text-xs text-slate-500">{{ formatDate(inst.paid_at) }}</td>
                             <td class="px-4 py-3 text-right">
-                                <div class="inline-flex items-center gap-2">
-                                    <a
-                                        v-if="inst.receipt_path"
-                                        :href="route('admin.financeiro.parcelas.comprovante', inst.id)"
-                                        class="text-xs font-semibold text-talents-700 hover:underline"
-                                        target="_blank"
-                                        rel="noopener"
-                                    >
-                                        Comprovante
-                                    </a>
-                                    <button
-                                        type="button"
-                                        class="rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-slate-800"
-                                        @click="openPaymentModal(inst)"
-                                    >
-                                        Receber
-                                    </button>
-                                </div>
+                                <a
+                                    v-if="inst.receipt_path"
+                                    :href="route('admin.financeiro.parcelas.comprovante', inst.id)"
+                                    class="text-xs font-semibold text-talents-700 hover:underline"
+                                    target="_blank"
+                                    rel="noopener"
+                                >
+                                    Comprovante
+                                </a>
+                                <span v-else class="text-xs text-slate-400">—</span>
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
-
-        <FullScreenOverlay
-            :show="paymentModalOpen"
-            overlay-class="bg-slate-900/50 p-4"
-            @close="closePaymentModal"
-        >
-            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-                <h3 class="text-lg font-semibold text-slate-900">
-                    Parcela {{ selectedInstallment?.number }}
-                </h3>
-                <p class="mt-1 text-sm text-slate-600">
-                    Valor: {{ formatBRL(selectedInstallment?.amount_cents ?? 0) }}
-                </p>
-
-                <form class="mt-4 space-y-4" @submit.prevent="submitPayment">
-                    <div
-                        v-if="paymentForm.hasErrors"
-                        class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
-                    >
-                        Não foi possível salvar. Verifique os campos e tente novamente.
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
-                        <select
-                            v-model="paymentForm.status"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        >
-                            <option value="pendente">Pendente</option>
-                            <option value="pago">Pago</option>
-                            <option value="cancelado">Cancelado</option>
-                        </select>
-                        <p v-if="paymentForm.errors.status" class="mt-1 text-xs text-rose-600">
-                            {{ paymentForm.errors.status }}
-                        </p>
-                    </div>
-                    <div v-if="paymentForm.status === 'pago'">
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Data do pagamento</label>
-                        <input
-                            v-model="paymentForm.paid_at"
-                            type="date"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        />
-                        <p v-if="paymentForm.errors.paid_at" class="mt-1 text-xs text-rose-600">
-                            {{ paymentForm.errors.paid_at }}
-                        </p>
-                        <label class="mt-3 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                            Valor pago (R$)
-                        </label>
-                        <input
-                            v-model.number="paidAmountReais"
-                            type="number"
-                            :min="selectedInstallment ? selectedInstallment.amount_cents / 100 : 0.01"
-                            :max="selectedInstallment ? selectedInstallment.amount_cents / 100 : undefined"
-                            step="0.01"
-                            readonly
-                            class="mt-1 w-full rounded-xl border-slate-300 bg-slate-50 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        />
-                        <p class="mt-1 text-xs text-slate-500">O valor pago precisa ser igual ao da parcela.</p>
-                        <p v-if="paymentForm.errors.paid_amount_cents" class="mt-1 text-xs text-rose-600">
-                            {{ paymentForm.errors.paid_amount_cents }}
-                        </p>
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Comprovante</label>
-                        <input
-                            type="file"
-                            accept=".pdf,.jpg,.jpeg,.png,.webp"
-                            class="mt-1 w-full text-sm"
-                            @change="onReceiptChange"
-                        />
-                        <p v-if="paymentForm.errors.receipt" class="mt-1 text-xs text-rose-600">
-                            {{ paymentForm.errors.receipt }}
-                        </p>
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
-                        <textarea
-                            v-model="paymentForm.notes"
-                            rows="2"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        />
-                        <p v-if="paymentForm.errors.notes" class="mt-1 text-xs text-rose-600">
-                            {{ paymentForm.errors.notes }}
-                        </p>
-                    </div>
-                    <div class="flex justify-end gap-2 pt-2">
-                        <button
-                            type="button"
-                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                            @click="closePaymentModal"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
-                            :disabled="paymentForm.processing"
-                        >
-                            Salvar
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </FullScreenOverlay>
     </AdminLayout>
 </template>

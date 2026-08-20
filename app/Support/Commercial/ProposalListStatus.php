@@ -167,4 +167,19 @@ final class ProposalListStatus
             default => $query,
         };
     }
+
+    /**
+     * Exclui propostas encerradas (list_status = ended).
+     * Inclui list_status nulo (legado) — em SQL, NULL != 'ended' não as traria.
+     *
+     * @param  Builder<CommercialProposal>  $query
+     * @return Builder<CommercialProposal>
+     */
+    public static function excludeEnded(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q): void {
+            $q->whereNull('list_status')
+                ->orWhere('list_status', '!=', self::ENDED);
+        });
+    }
 }

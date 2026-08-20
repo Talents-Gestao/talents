@@ -4,6 +4,7 @@ import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
+import { BanknotesIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref, watch } from 'vue';
 
@@ -54,6 +55,14 @@ const formatDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateStrin
 
 const centsToReais = (cents) => (Number(cents || 0) / 100).toFixed(2);
 
+const localTodayDate = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
 const statusClass = (status) =>
     ({
         pending: 'bg-amber-50 text-amber-800',
@@ -61,7 +70,10 @@ const statusClass = (status) =>
         cancelled: 'bg-slate-100 text-slate-600',
     }[status] ?? 'bg-slate-100 text-slate-600');
 
-const markPaid = (receivableId) => {
+const iconBtnClass =
+    'rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900';
+
+const markPaidManual = (receivableId) => {
     if (!confirm('Marcar esta conta como recebida?')) {
         return;
     }
@@ -78,6 +90,66 @@ const remove = (receivableId) => {
 const editModalOpen = ref(false);
 const selectedItem = ref(null);
 const isSaleEdit = computed(() => selectedItem.value?.source === 'sale');
+
+const paymentModalOpen = ref(false);
+const paymentItem = ref(null);
+const paidAmountReais = ref(0);
+
+const paymentForm = useForm({
+    status: 'pago',
+    paid_at: localTodayDate(),
+    paid_amount_cents: 0,
+    notes: '',
+    receipt: null,
+});
+
+const openReceive = (item) => {
+    if (item.source === 'sale') {
+        paymentItem.value = item;
+        paymentForm.reset();
+        paymentForm.clearErrors();
+        paymentForm.status = 'pago';
+        paymentForm.paid_at = localTodayDate();
+        paymentForm.paid_amount_cents = item.amount_cents;
+        paidAmountReais.value = Number(item.amount_cents || 0) / 100;
+        paymentForm.notes = item.notes ?? '';
+        paymentForm.receipt = null;
+        paymentModalOpen.value = true;
+        return;
+    }
+
+    markPaidManual(item.receivable_id);
+};
+
+const closePaymentModal = () => {
+    paymentModalOpen.value = false;
+    paymentItem.value = null;
+    paymentForm.reset();
+    paymentForm.clearErrors();
+};
+
+const onReceiptChange = (event) => {
+    paymentForm.receipt = event.target.files?.[0] ?? null;
+};
+
+const submitPayment = () => {
+    if (!paymentItem.value?.installment_id) {
+        return;
+    }
+    if (paymentForm.status === 'pago') {
+        paymentForm.paid_amount_cents = Math.round(Number(paidAmountReais.value || 0) * 100);
+    }
+    paymentForm
+        .transform((data) => ({
+            ...data,
+            _method: 'patch',
+        }))
+        .post(route('admin.financeiro.parcelas.pagamento', paymentItem.value.installment_id), {
+            preserveScroll: true,
+            forceFormData: true,
+            onSuccess: () => closePaymentModal(),
+        });
+};
 
 const editForm = useForm({
     title: '',
@@ -256,43 +328,155 @@ const submitEdit = () => {
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <button
-                                    v-if="item.can_mark_paid"
-                                    type="button"
-                                    class="font-medium text-emerald-700 hover:underline"
-                                    @click="markPaid(item.receivable_id)"
-                                >
-                                    Receber
-                                </button>
-                                <button
-                                    v-if="item.can_edit"
-                                    type="button"
-                                    class="ml-3 font-medium text-talents-700 hover:underline"
-                                    @click="openEditModal(item)"
-                                >
-                                    Editar
-                                </button>
-                                <Link
-                                    v-if="item.source === 'sale' && item.href"
-                                    :href="item.href"
-                                    class="ml-3 font-medium text-slate-600 hover:underline"
-                                >
-                                    Ver venda
-                                </Link>
-                                <button
-                                    v-if="item.can_delete"
-                                    type="button"
-                                    class="ml-3 font-medium text-red-600 hover:underline"
-                                    @click="remove(item.receivable_id)"
-                                >
-                                    Excluir
-                                </button>
+                                <div class="inline-flex items-center justify-end gap-0.5">
+                                    <button
+                                        v-if="item.can_mark_paid"
+                                        type="button"
+                                        :class="iconBtnClass"
+                                        class="text-emerald-700 hover:text-emerald-900"
+                                        title="Receber"
+                                        aria-label="Receber"
+                                        @click="openReceive(item)"
+                                    >
+                                        <BanknotesIcon class="h-4 w-4" />
+                                    </button>
+                                    <button
+                                        v-if="item.can_edit"
+                                        type="button"
+                                        :class="iconBtnClass"
+                                        title="Editar"
+                                        aria-label="Editar"
+                                        @click="openEditModal(item)"
+                                    >
+                                        <PencilSquareIcon class="h-4 w-4" />
+                                    </button>
+                                    <Link
+                                        v-if="item.source === 'sale' && item.href"
+                                        :href="item.href"
+                                        class="ml-1 text-xs font-medium text-slate-600 hover:underline"
+                                    >
+                                        Ver venda
+                                    </Link>
+                                    <button
+                                        v-if="item.can_delete"
+                                        type="button"
+                                        :class="iconBtnClass"
+                                        class="text-red-600 hover:text-red-800"
+                                        title="Excluir"
+                                        aria-label="Excluir"
+                                        @click="remove(item.receivable_id)"
+                                    >
+                                        <TrashIcon class="h-4 w-4" />
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
+
+        <FullScreenOverlay :show="paymentModalOpen && !!paymentItem" @close="closePaymentModal">
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-900">Receber parcela</h3>
+                <p class="mt-1 text-sm text-slate-600">
+                    {{ paymentItem?.title }}
+                    <span v-if="paymentItem?.counterparty"> — {{ paymentItem.counterparty }}</span>
+                </p>
+                <p class="mt-1 text-sm text-slate-600">
+                    Valor: {{ formatBRL(paymentItem?.amount_cents ?? 0) }}
+                </p>
+
+                <form class="mt-4 space-y-4" @submit.prevent="submitPayment">
+                    <div
+                        v-if="paymentForm.hasErrors"
+                        class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                    >
+                        Não foi possível salvar. Verifique os campos e tente novamente.
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
+                        <select
+                            v-model="paymentForm.status"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        >
+                            <option value="pendente">Pendente</option>
+                            <option value="pago">Pago</option>
+                            <option value="cancelado">Cancelado</option>
+                        </select>
+                        <p v-if="paymentForm.errors.status" class="mt-1 text-xs text-rose-600">
+                            {{ paymentForm.errors.status }}
+                        </p>
+                    </div>
+                    <div v-if="paymentForm.status === 'pago'">
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Data do pagamento</label>
+                        <input
+                            v-model="paymentForm.paid_at"
+                            type="date"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
+                        <p v-if="paymentForm.errors.paid_at" class="mt-1 text-xs text-rose-600">
+                            {{ paymentForm.errors.paid_at }}
+                        </p>
+                        <label class="mt-3 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Valor pago (R$)
+                        </label>
+                        <input
+                            v-model.number="paidAmountReais"
+                            type="number"
+                            :min="paymentItem ? paymentItem.amount_cents / 100 : 0.01"
+                            :max="paymentItem ? paymentItem.amount_cents / 100 : undefined"
+                            step="0.01"
+                            readonly
+                            class="mt-1 w-full rounded-xl border-slate-300 bg-slate-50 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
+                        <p class="mt-1 text-xs text-slate-500">O valor pago precisa ser igual ao da parcela.</p>
+                        <p v-if="paymentForm.errors.paid_amount_cents" class="mt-1 text-xs text-rose-600">
+                            {{ paymentForm.errors.paid_amount_cents }}
+                        </p>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Comprovante</label>
+                        <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png,.webp"
+                            class="mt-1 w-full text-sm"
+                            @change="onReceiptChange"
+                        />
+                        <p v-if="paymentForm.errors.receipt" class="mt-1 text-xs text-rose-600">
+                            {{ paymentForm.errors.receipt }}
+                        </p>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
+                        <textarea
+                            v-model="paymentForm.notes"
+                            rows="2"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
+                        <p v-if="paymentForm.errors.notes" class="mt-1 text-xs text-rose-600">
+                            {{ paymentForm.errors.notes }}
+                        </p>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button
+                            type="button"
+                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            @click="closePaymentModal"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
+                            :disabled="paymentForm.processing"
+                        >
+                            {{ paymentForm.processing ? 'Salvando…' : 'Salvar' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </FullScreenOverlay>
 
         <FullScreenOverlay :show="editModalOpen && !!selectedItem" @close="closeEditModal">
             <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">

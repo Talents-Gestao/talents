@@ -174,7 +174,7 @@ class FinanceReceivableLedger
                 'href' => $i->sale_id
                     ? route('admin.financeiro.vendas.show', $i->sale_id)
                     : null,
-                'can_mark_paid' => false,
+                'can_mark_paid' => $i->status === CommercialSaleInstallment::STATUS_PENDENTE,
                 'can_edit' => true,
                 'can_delete' => false,
             ];

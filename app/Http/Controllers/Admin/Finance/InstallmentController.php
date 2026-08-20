@@ -73,7 +73,7 @@ class InstallmentController extends Controller
         }
 
         return redirect()
-            ->route('admin.financeiro.vendas.show', $installment->sale_id)
+            ->back()
             ->with('success', 'Parcela atualizada.');
     }
 

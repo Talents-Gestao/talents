@@ -21,6 +21,7 @@ class Company extends Model
     protected $fillable = [
         'name',
         'contact_email',
+        'instagram',
         'legal_name',
         'cnpj',
         'segment',

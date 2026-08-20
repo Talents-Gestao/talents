@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Welcome — alternativas de copy | Talents</title>
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #e2e8f0;
+      --brand: #6d28d9;
+      --bg: #f8fafc;
+      --card: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.55;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 16px;
+    }
+    .topbar-inner {
+      max-width: 880px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--brand);
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    a.btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+    }
+    a.btn-primary {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+    }
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 24px 16px 64px;
+    }
+    #content {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 28px 24px;
+    }
+    #content h1 { font-size: 1.75rem; margin-top: 0; }
+    #content h2 {
+      font-size: 1.25rem;
+      margin-top: 2.2rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--line);
+    }
+    #content h3 { font-size: 1.05rem; color: var(--brand); }
+    #content p, #content li { color: var(--ink); }
+    #content table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      margin: 12px 0 20px;
+    }
+    #content th, #content td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    #content th { background: #f1f5f9; }
+    #content ol { padding-left: 1.25rem; }
+    #content li { margin: 0.35rem 0; }
+    #content hr { border: 0; border-top: 1px solid var(--line); margin: 2rem 0; }
+    #content em { color: var(--muted); }
+    .error {
+      color: #b91c1c;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      padding: 12px 14px;
+      border-radius: 10px;
+    }
+    @media print {
+      .topbar { display: none; }
+      body { background: #fff; }
+      #content { border: 0; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">Talents · Copy Welcome (marketing)</div>
+      <div class="actions">
+        <a class="btn btn-primary" href="/downloads/welcome-copy-alternativas.md" download="welcome-copy-alternativas-talents.md">
+          Baixar Markdown (.md)
+        </a>
+        <a class="btn" href="#" onclick="window.print(); return false;">Imprimir / Salvar PDF</a>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <div id="content">
+      <p>Carregando documento…</p>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    (async () => {
+      const el = document.getElementById('content');
+      try {
+        const res = await fetch('/downloads/welcome-copy-alternativas.md', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Não foi possível carregar o Markdown.');
+        const md = await res.text();
+        el.innerHTML = marked.parse(md);
+      } catch (err) {
+        el.innerHTML = '<p class="error">Erro ao carregar o documento. Use o botão <strong>Baixar Markdown</strong>.</p>';
+        console.error(err);
+      }
+    })();
+  </script>
+</body>
+</html>

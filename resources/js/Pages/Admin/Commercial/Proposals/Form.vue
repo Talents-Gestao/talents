@@ -3,6 +3,7 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import CommercialAdjustmentFields from '@/Components/Commercial/CommercialAdjustmentFields.vue';
 import CatalogProductObservationField from '@/Components/Commercial/CatalogProductObservationField.vue';
 import CommercialModuleNav from '@/Components/Commercial/CommercialModuleNav.vue';
+import OptionalCommissionFields from '@/Components/Commercial/OptionalCommissionFields.vue';
 import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
@@ -15,8 +16,8 @@ import {
 import { formatCnpj, maskCnpj } from '@/utils/formatCnpj';
 import { CheckIcon } from '@heroicons/vue/24/solid';
 import axios from 'axios';
-import { Head, Link, useForm, router } from '@inertiajs/vue3';
-import { computed, nextTick, ref } from 'vue';
+import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
+import { computed, nextTick, ref, watch } from 'vue';
 
 const props = defineProps({
     mode: { type: String, default: 'create' },
@@ -26,7 +27,37 @@ const props = defineProps({
     catalogProducts: { type: Array, default: () => [] },
     pdfOptionalSectionOptions: { type: Array, default: () => [] },
     paymentMethodOptions: { type: Array, default: () => [] },
+    templates: { type: Array, default: () => [] },
+    zapsign_configured: { type: Boolean, default: false },
+    zapsignParties: { type: Object, default: () => ({}) },
 });
+
+const inertiaPage = usePage();
+
+const isCurrentUserOwner = computed(() => inertiaPage.props.auth?.user?.is_owner === true);
+const defaultCommissionPercent = computed(() => Number(props.settings?.default_commission_percent ?? 0));
+
+const sellerIsOwner = (sellerId) => {
+    const id = Number(sellerId);
+    if (!Number.isFinite(id) || id < 1) {
+        return false;
+    }
+    return props.sellers.some((s) => Number(s.id) === id && s.is_owner === true);
+};
+
+const defaultPayCommissionFor = (sellerId) => {
+    if (!sellerId) {
+        return !isCurrentUserOwner.value;
+    }
+    return !sellerIsOwner(sellerId);
+};
+
+const initialPayCommission = props.proposal
+    ? Number(props.proposal.commission_percent) > 0
+    : defaultPayCommissionFor('');
+const initialCommissionPercent = props.proposal
+    ? Number(props.proposal.commission_percent ?? 0)
+    : (initialPayCommission ? defaultCommissionPercent.value : 0);
 
 const settingsRef = ref({ ...props.settings });
 const catalogProductsRef = computed(() => props.catalogProducts);
@@ -74,6 +105,8 @@ const formInitial = props.proposal
           employee_count: props.proposal.employee_count ?? 0,
           include_publico_atendido: props.proposal.include_publico_atendido ?? true,
           seller_id: props.proposal.seller_id ?? '',
+          pay_commission: initialPayCommission,
+          commission_percent: initialCommissionPercent,
           is_closed: !!props.proposal.is_closed,
           notes: props.proposal.notes ?? '',
           payment_method_id: props.proposal.payment_method_id ?? '',
@@ -107,6 +140,8 @@ const formInitial = props.proposal
           employee_count: 0,
           include_publico_atendido: true,
           seller_id: '',
+          pay_commission: initialPayCommission,
+          commission_percent: initialCommissionPercent,
           is_closed: false,
           notes: '',
           payment_method_id: '',
@@ -193,6 +228,29 @@ const honorarioFinalCents = computed(() => {
     }
     return totalFinalCents.value;
 });
+
+const estimatedCommissionCents = computed(() => {
+    if (!form.pay_commission) {
+        return 0;
+    }
+    const percent = Number(form.commission_percent) || 0;
+    if (percent <= 0) {
+        return 0;
+    }
+    return Math.round(honorarioFinalCents.value * percent / 100);
+});
+
+watch(
+    () => form.seller_id,
+    (sellerId) => {
+        if (props.mode === 'edit' || props.proposal) {
+            return;
+        }
+        const pay = defaultPayCommissionFor(sellerId);
+        form.pay_commission = pay;
+        form.commission_percent = pay ? defaultCommissionPercent.value : 0;
+    },
+);
 
 const setServiceType = (type) => {
     const recurring = type === 'recorrente';
@@ -614,7 +672,124 @@ const formatContractDate = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR')
 
 const isEdit = computed(() => props.mode === 'edit');
 const hasLinkedSale = computed(() => Boolean(props.proposal?.has_sale));
+const canReopen = computed(() => Boolean(props.proposal?.can_reopen) && !hasLinkedSale.value);
+const hasSignedContract = computed(() => Boolean(props.proposal?.has_signed_contract));
+const hasZapSignSentContract = computed(() => Boolean(props.proposal?.has_zapsign_sent_contract));
+const suggestUpdatedContract = computed(() => Boolean(inertiaPage.props.flash?.suggest_updated_contract));
 const titleText = computed(() => (isEdit.value ? `Proposta ${props.proposal?.code}` : 'Nova proposta'));
+
+const reopening = ref(false);
+const reopenModalOpen = ref(false);
+const contractModalOpen = ref(false);
+const contractTemplateId = ref('');
+const contractGenerating = ref(false);
+const generatedContractId = ref(null);
+const zapsignSending = ref(false);
+const zapsignSent = ref(false);
+const zapsignSignUrl = ref('');
+
+const openReopenModal = () => {
+    if (!props.proposal?.id || reopening.value || !canReopen.value) {
+        return;
+    }
+    reopenModalOpen.value = true;
+};
+
+const closeReopenModal = () => {
+    if (reopening.value) {
+        return;
+    }
+    reopenModalOpen.value = false;
+};
+
+const confirmReopenProposal = () => {
+    if (!props.proposal?.id || reopening.value || !canReopen.value) {
+        return;
+    }
+    reopening.value = true;
+    router.post(
+        route('admin.comercial.propostas.reopen', props.proposal.id),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                reopening.value = false;
+            },
+            onSuccess: () => {
+                reopenModalOpen.value = false;
+                form.is_closed = false;
+            },
+        },
+    );
+};
+
+const openUpdatedContractModal = () => {
+    contractTemplateId.value = props.templates[0]?.id ? String(props.templates[0].id) : '';
+    generatedContractId.value = null;
+    zapsignSent.value = false;
+    zapsignSignUrl.value = '';
+    contractModalOpen.value = true;
+};
+
+const closeUpdatedContractModal = () => {
+    contractModalOpen.value = false;
+    generatedContractId.value = null;
+    zapsignSent.value = false;
+    zapsignSignUrl.value = '';
+};
+
+const submitUpdatedContract = () => {
+    if (!props.proposal?.id || !contractTemplateId.value || contractGenerating.value) {
+        return;
+    }
+    contractGenerating.value = true;
+    zapsignSent.value = false;
+    zapsignSignUrl.value = '';
+    router.post(
+        route('admin.comercial.propostas.contratos.store', props.proposal.id),
+        { template_id: Number(contractTemplateId.value) },
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                contractGenerating.value = false;
+            },
+            onSuccess: (page) => {
+                nextTick(() => {
+                    const id = page.props.flash?.contract_id;
+                    if (id) {
+                        generatedContractId.value = id;
+                    }
+                });
+            },
+        },
+    );
+};
+
+const sendUpdatedContractZapSign = () => {
+    if (!generatedContractId.value || zapsignSending.value || zapsignSent.value) {
+        return;
+    }
+    zapsignSending.value = true;
+    router.post(
+        route('admin.comercial.contratos.zapsign', generatedContractId.value),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                zapsignSending.value = false;
+            },
+            onSuccess: (page) => {
+                const url = page.props.flash?.zapsign_sign_url;
+                if (url) {
+                    zapsignSignUrl.value = url;
+                }
+                if (page.props.flash?.success && !page.props.flash?.error) {
+                    zapsignSent.value = true;
+                }
+            },
+        },
+    );
+};
 
 const services = computed(() => {
     const legacy = (legacySummary.value || []).map((line) => ({
@@ -633,15 +808,15 @@ const services = computed(() => {
 });
 
 const wizardSteps = [
-    { id: 'tipo', label: 'Tipo', title: 'Tipo de serviço' },
     { id: 'cliente', label: 'Cliente', title: 'Dados do cliente' },
     { id: 'produtos', label: 'Produtos', title: 'Produtos' },
+    { id: 'tipo', label: 'Tipo', title: 'Tipo de serviço' },
     { id: 'pdf', label: 'PDF', title: 'Conteúdo do PDF' },
     { id: 'comercial', label: 'Comercial', title: 'Informações comerciais' },
 ];
 
 const currentStepIndex = ref(0);
-const currentStepId = computed(() => wizardSteps[currentStepIndex.value]?.id ?? 'tipo');
+const currentStepId = computed(() => wizardSteps[currentStepIndex.value]?.id ?? 'cliente');
 const isFirstStep = computed(() => currentStepIndex.value === 0);
 const isLastStep = computed(() => currentStepIndex.value === wizardSteps.length - 1);
 const currentStepMeta = computed(() => wizardSteps[currentStepIndex.value] ?? wizardSteps[0]);
@@ -657,6 +832,15 @@ const goToStep = (index) => {
         document.getElementById('proposal-wizard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 };
+
+watch(suggestUpdatedContract, (on) => {
+    if (on && isEdit.value && (hasSignedContract.value || hasZapSignSentContract.value)) {
+        const idx = wizardSteps.findIndex((s) => s.id === 'comercial');
+        if (idx >= 0) {
+            goToStep(idx);
+        }
+    }
+}, { immediate: true });
 
 const errorKeyToStepId = (key) => {
     if (key.startsWith('recurring_') || key === 'is_recurring') {
@@ -682,6 +866,8 @@ const errorKeyToStepId = (key) => {
     }
     if (
         key === 'seller_id'
+        || key === 'pay_commission'
+        || key === 'commission_percent'
         || key === 'payment_method_id'
         || key === 'include_minimum_stay'
         || key === 'notes'
@@ -695,13 +881,13 @@ const errorKeyToStepId = (key) => {
 
 const goToStepForErrors = () => {
     const priority = [
-        'recurring_months',
-        'recurring_monthly_reais',
         'client_name',
         'employee_count',
+        'catalog_products',
+        'recurring_months',
+        'recurring_monthly_reais',
         'payment_method_id',
         'client_email',
-        'catalog_products',
     ];
     const keys = [
         ...priority.filter((key) => form.errors[key]),
@@ -865,11 +1051,82 @@ const onStepClick = (index) => {
         <CommercialModuleNav />
 
         <div
+            v-if="inertiaPage.props.flash?.success"
+            class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+            role="status"
+        >
+            {{ inertiaPage.props.flash.success }}
+        </div>
+
+        <div
             v-if="hasLinkedSale"
             class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
             role="status"
         >
             Esta proposta já foi convertida em venda. Os valores comerciais não podem ser alterados.
+        </div>
+
+        <div
+            v-else-if="canReopen"
+            class="mb-6 flex flex-col gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950 sm:flex-row sm:items-center sm:justify-between"
+            role="status"
+        >
+            <div>
+                <p class="font-semibold">Proposta fechada ou encerrada</p>
+                <p class="mt-0.5 text-sky-900/80">
+                    Reabra para alterações de última hora. Se já houver contrato assinado, depois salve e gere um contrato novo para o cliente.
+                </p>
+            </div>
+            <button
+                type="button"
+                class="inline-flex shrink-0 items-center justify-center rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 disabled:opacity-60"
+                :disabled="reopening"
+                @click="openReopenModal"
+            >
+                {{ reopening ? 'Reabrindo…' : 'Reabrir proposta' }}
+            </button>
+        </div>
+
+        <div
+            v-if="hasSignedContract && !hasLinkedSale"
+            class="mb-6 flex flex-col gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-950 sm:flex-row sm:items-center sm:justify-between"
+            role="status"
+        >
+            <div>
+                <p class="font-semibold">Contrato já assinado</p>
+                <p class="mt-0.5 text-violet-900/80">
+                    Após alterar a proposta, gere um contrato atualizado e envie novamente ao cliente. O documento anterior permanece no histórico.
+                </p>
+            </div>
+            <button
+                type="button"
+                class="inline-flex shrink-0 items-center justify-center rounded-xl bg-violet-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-800 disabled:opacity-60"
+                :disabled="!templates.length"
+                @click="openUpdatedContractModal"
+            >
+                Gerar contrato atualizado
+            </button>
+        </div>
+
+        <div
+            v-else-if="hasZapSignSentContract && !hasLinkedSale"
+            class="mb-6 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between"
+            role="status"
+        >
+            <div>
+                <p class="font-semibold">Contrato enviado ao ZapSign</p>
+                <p class="mt-0.5 text-amber-900/80">
+                    Ainda sem confirmação de assinatura no sistema. Se mudar a proposta, gere um novo PDF e envie de novo (o anterior fica no histórico).
+                </p>
+            </div>
+            <button
+                type="button"
+                class="inline-flex shrink-0 items-center justify-center rounded-xl bg-amber-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-800 disabled:opacity-60"
+                :disabled="!templates.length"
+                @click="openUpdatedContractModal"
+            >
+                Gerar contrato atualizado
+            </button>
         </div>
 
         <div
@@ -951,7 +1208,7 @@ const onStepClick = (index) => {
 
         <form class="grid gap-8 lg:grid-cols-3" novalidate @submit.prevent="submit">
             <div class="space-y-6 lg:col-span-2">
-                <!-- Tipo de serviço (primeira impressão) -->
+                <!-- Tipo de serviço (após cliente e produtos) -->
                 <section v-show="currentStepId === 'tipo'" class="surface-card p-6">
                     <h3 class="text-lg font-semibold text-slate-900">Tipo de serviço</h3>
                     <p class="mt-1 text-sm text-slate-600">
@@ -996,8 +1253,12 @@ const onStepClick = (index) => {
                     <p v-if="!form.is_recurring" class="mt-3 text-sm text-slate-600">
                         Entrega pontual: o honorário final segue o cálculo dos produtos selecionados.
                     </p>
+                    <template v-else>
+                        <p class="mt-3 text-sm text-slate-600">
+                            Em proposta recorrente o honorário usa o valor mensal e a duração abaixo — não o catálogo de produtos.
+                        </p>
 
-                    <div v-else class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div class="mt-4 grid gap-4 sm:grid-cols-2">
                         <div>
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
                                 Duração (meses) *
@@ -1051,6 +1312,7 @@ const onStepClick = (index) => {
                             </p>
                         </div>
                     </div>
+                    </template>
                 </section>
 
                 <!-- Cliente -->
@@ -1635,6 +1897,16 @@ const onStepClick = (index) => {
                                 Nenhum vendedor marcado como Comercial. Marque usuários como "Comercial" no cadastro de usuários.
                             </p>
                         </div>
+                        <div class="sm:col-span-2">
+                            <OptionalCommissionFields
+                                v-model:pay-commission="form.pay_commission"
+                                v-model:commission-percent="form.commission_percent"
+                                :default-percent="defaultCommissionPercent"
+                                :estimated-cents="estimatedCommissionCents"
+                                :errors="form.errors"
+                                :disabled="hasLinkedSale"
+                            />
+                        </div>
                         <div id="proposal-field-payment_method_id" data-error-for="payment_method_id">
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
                                 Forma de pagamento (PDF) *
@@ -1703,8 +1975,22 @@ const onStepClick = (index) => {
                     v-if="isEdit"
                     class="surface-card p-6"
                 >
-                    <h3 class="text-lg font-semibold text-slate-900">Contratos gerados</h3>
-                    <p class="mt-1 text-xs text-slate-500">Histórico de contratos PDF gerados a partir desta proposta.</p>
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-900">Contratos gerados</h3>
+                            <p class="mt-1 text-xs text-slate-500">
+                                Histórico de contratos PDF. Documentos assinados não são sobrescritos — gere um novo após alterações.
+                            </p>
+                        </div>
+                        <button
+                            v-if="!hasLinkedSale && templates.length"
+                            type="button"
+                            class="inline-flex items-center rounded-xl border border-talents-200 bg-talents-50 px-3 py-1.5 text-xs font-semibold text-talents-800 transition hover:bg-talents-100"
+                            @click="openUpdatedContractModal"
+                        >
+                            {{ hasSignedContract || hasZapSignSentContract ? 'Gerar contrato atualizado' : 'Gerar contrato' }}
+                        </button>
+                    </div>
                     <ul
                         v-if="proposal?.contracts?.length"
                         class="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-200"
@@ -1716,7 +2002,19 @@ const onStepClick = (index) => {
                         >
                             <div>
                                 <div class="font-mono text-xs font-semibold text-slate-800">{{ c.code }}</div>
-                                <div class="text-xs text-slate-500">{{ c.template_name_snapshot }} · {{ formatContractDate(c.generated_at) }}</div>
+                                <div class="text-xs text-slate-500">
+                                    {{ c.template_name_snapshot }} · {{ formatContractDate(c.generated_at) }}
+                                </div>
+                                <div
+                                    class="mt-1 text-[11px] font-medium"
+                                    :class="c.zapsign_signed
+                                        ? 'text-emerald-700'
+                                        : c.zapsign_sent
+                                            ? 'text-amber-700'
+                                            : 'text-slate-500'"
+                                >
+                                    {{ c.zapsign_status_label || 'PDF gerado' }}
+                                </div>
                             </div>
                             <button
                                 type="button"
@@ -1727,7 +2025,7 @@ const onStepClick = (index) => {
                             </button>
                         </li>
                     </ul>
-                    <p v-else class="mt-4 text-sm text-slate-500">Nenhum contrato gerado ainda. Use a listagem de propostas para gerar.</p>
+                    <p v-else class="mt-4 text-sm text-slate-500">Nenhum contrato gerado ainda.</p>
                 </section>
 
                 <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -1800,9 +2098,22 @@ const onStepClick = (index) => {
                             <span>{{ form.is_recurring ? 'Total do período' : 'Honorário Final' }}</span>
                             <span class="tabular-nums">{{ formatBRL(honorarioFinalCents) }}</span>
                         </div>
+                        <div class="mt-2 flex items-center justify-between text-sm text-slate-600">
+                            <span>{{ form.pay_commission ? 'Comissão opcional' : 'Sem comissão' }}</span>
+                            <span class="tabular-nums">{{ formatBRL(estimatedCommissionCents) }}</span>
+                        </div>
                     </div>
 
                     <div class="mt-6 space-y-2">
+                        <button
+                            v-if="canReopen"
+                            type="button"
+                            :disabled="reopening || form.processing"
+                            class="inline-flex w-full items-center justify-center rounded-xl border border-sky-300 bg-white px-4 py-2.5 text-sm font-semibold text-sky-800 shadow-sm transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            @click="openReopenModal"
+                        >
+                            {{ reopening ? 'Reabrindo…' : 'Reabrir proposta' }}
+                        </button>
                         <button
                             type="button"
                             :disabled="form.is_closed || form.processing || hasLinkedSale"
@@ -1818,6 +2129,36 @@ const onStepClick = (index) => {
                 </div>
             </aside>
         </form>
+
+        <Modal :show="reopenModalOpen" max-width="md" @close="closeReopenModal">
+            <div class="p-6">
+                <h2 class="text-lg font-semibold text-slate-900">Reabrir proposta?</h2>
+                <p class="mt-2 text-sm text-slate-600">
+                    A proposta
+                    <span v-if="proposal?.code" class="font-medium text-slate-800">{{ proposal.code }}</span>
+                    voltará para <strong>Em negociação</strong> e poderá ser editada novamente.
+                    Se houver contrato assinado, depois das alterações gere um contrato novo para o cliente.
+                </p>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+                        :disabled="reopening"
+                        @click="closeReopenModal"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        :disabled="reopening || form.processing"
+                        class="inline-flex items-center rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 disabled:opacity-60"
+                        @click="confirmReopenProposal"
+                    >
+                        {{ reopening ? 'Reabrindo…' : 'Confirmar reabertura' }}
+                    </button>
+                </div>
+            </div>
+        </Modal>
 
         <Modal :show="markAsClosedModalOpen" max-width="md" @close="closeMarkAsClosedModal">
             <div class="p-6">
@@ -1840,6 +2181,92 @@ const onStepClick = (index) => {
                         @click="confirmMarkAsClosed"
                     >
                         {{ form.processing ? 'Salvando…' : 'Confirmar' }}
+                    </button>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="contractModalOpen" max-width="lg" @close="closeUpdatedContractModal">
+            <div class="p-6">
+                <h2 class="text-lg font-semibold text-slate-900">
+                    {{ hasSignedContract ? 'Gerar contrato atualizado' : 'Gerar contrato' }}
+                </h2>
+                <p class="mt-2 text-sm text-slate-600">
+                    Cria um novo PDF a partir da proposta atual. Contratos anteriores permanecem no histórico.
+                </p>
+
+                <div
+                    v-if="inertiaPage.props.flash?.error"
+                    class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+                    role="alert"
+                >
+                    {{ inertiaPage.props.flash.error }}
+                </div>
+
+                <div v-if="!generatedContractId" class="mt-4">
+                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500" for="updated-contract-template">
+                        Modelo
+                    </label>
+                    <select
+                        id="updated-contract-template"
+                        v-model="contractTemplateId"
+                        class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    >
+                        <option
+                            v-for="t in templates"
+                            :key="t.id"
+                            :value="String(t.id)"
+                        >
+                            {{ t.name }}
+                        </option>
+                    </select>
+                </div>
+
+                <div v-else class="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p class="text-sm text-slate-700">
+                        Contrato gerado. Pode pré-visualizar o PDF e enviar ao ZapSign.
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-talents-700 hover:bg-talents-50"
+                            @click="openContractPdf(generatedContractId)"
+                        >
+                            Abrir PDF
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-xl bg-talents-600 px-3 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-60"
+                            :disabled="!zapsign_configured || zapsignSending || zapsignSent"
+                            @click="sendUpdatedContractZapSign"
+                        >
+                            {{ zapsignSent ? 'Enviado ao ZapSign' : (zapsignSending ? 'Enviando…' : 'Enviar ZapSign') }}
+                        </button>
+                    </div>
+                    <p v-if="zapsignSignUrl" class="break-all text-xs text-slate-500">
+                        Link: {{ zapsignSignUrl }}
+                    </p>
+                    <p v-if="!zapsign_configured" class="text-xs text-amber-700">
+                        Configure o token ZapSign em Comercial → Configurações → PDF.
+                    </p>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                        @click="closeUpdatedContractModal"
+                    >
+                        Fechar
+                    </button>
+                    <button
+                        v-if="!generatedContractId"
+                        type="button"
+                        class="inline-flex items-center rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:opacity-60"
+                        :disabled="contractGenerating || !contractTemplateId"
+                        @click="submitUpdatedContract"
+                    >
+                        {{ contractGenerating ? 'Gerando…' : 'Gerar contrato' }}
                     </button>
                 </div>
             </div>

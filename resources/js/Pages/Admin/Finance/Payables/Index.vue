@@ -138,6 +138,12 @@ const remove = (id) => {
                             <td class="px-4 py-3">
                                 <p class="font-medium text-slate-900">{{ item.title }}</p>
                                 <p class="text-xs text-slate-500">{{ item.supplier_name || '—' }}</p>
+                                <span
+                                    v-if="item.recurring_label"
+                                    class="mt-1 inline-flex rounded-full bg-talents-50 px-2 py-0.5 text-[11px] font-medium text-talents-800 ring-1 ring-talents-100"
+                                >
+                                    {{ item.recurring_label }}
+                                </span>
                             </td>
                             <td class="px-4 py-3 text-slate-700">{{ formatDate(item.due_date) }}</td>
                             <td class="px-4 py-3 font-medium text-slate-900">{{ formatBRL(item.amount_cents) }}</td>

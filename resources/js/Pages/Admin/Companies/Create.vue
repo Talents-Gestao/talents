@@ -17,6 +17,7 @@ defineProps({ plans: Array });
 const form = useForm({
     name: '',
     contact_email: '',
+    instagram: '',
     legal_name: '',
     cnpj: '',
     segment: '',
@@ -139,6 +140,20 @@ const submit = () => {
                         Será criado um usuário com este e-mail (administrador da empresa). Ele receberá um link para definir a senha e acessar o portal em /client.
                     </p>
                     <InputError class="mt-2" :message="form.errors.contact_email" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+                <div>
+                    <InputLabel for="instagram" value="Instagram" />
+                    <TextInput
+                        id="instagram"
+                        v-model="form.instagram"
+                        class="mt-1 block w-full"
+                        placeholder="@empresa ou link"
+                        autocomplete="off"
+                    />
+                    <InputError class="mt-2" :message="form.errors.instagram" />
                 </div>
             </div>
 
