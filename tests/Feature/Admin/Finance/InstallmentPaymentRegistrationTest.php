@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin\Finance;
 
+use App\Enums\FinanceBankAccountType;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
+use App\Models\FinanceBankAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -40,6 +42,7 @@ class InstallmentPaymentRegistrationTest extends TestCase
 
         $sale = CommercialSale::query()->where('proposal_id', $proposal->id)->firstOrFail();
         $installment = $sale->installments()->firstOrFail();
+        $account = $this->bankAccount($admin);
 
         $response = $this->actingAs($admin)
             ->from(route('admin.financeiro.vendas.show', $sale->id))
@@ -49,6 +52,7 @@ class InstallmentPaymentRegistrationTest extends TestCase
                     'status' => 'pago',
                     'paid_at' => '2026-08-12',
                     'paid_amount_cents' => 225_000,
+                    'bank_account_id' => $account->id,
                     'notes' => '',
                 ],
             );
@@ -88,6 +92,7 @@ class InstallmentPaymentRegistrationTest extends TestCase
 
         $sale = CommercialSale::query()->where('proposal_id', $proposal->id)->firstOrFail();
         $installment = $sale->installments()->firstOrFail();
+        $account = $this->bankAccount($admin);
 
         // Simula o browser: POST multipart + _method=PATCH (PHP não parseia multipart em PATCH).
         $response = $this->actingAs($admin)
@@ -99,6 +104,7 @@ class InstallmentPaymentRegistrationTest extends TestCase
                     'status' => 'pago',
                     'paid_at' => '2026-08-12',
                     'paid_amount_cents' => '225000',
+                    'bank_account_id' => $account->id,
                     'notes' => '',
                     'receipt' => UploadedFile::fake()->image('comprovante.jpg'),
                 ],
@@ -165,6 +171,7 @@ class InstallmentPaymentRegistrationTest extends TestCase
 
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $installment = $this->convertedInstallment($admin, 'PROP-INST-ZERO');
+        $account = $this->bankAccount($admin);
 
         $this->actingAs($admin)
             ->from(route('admin.financeiro.vendas.show', $installment->sale_id))
@@ -172,6 +179,7 @@ class InstallmentPaymentRegistrationTest extends TestCase
                 'status' => 'pago',
                 'paid_at' => '2026-08-12',
                 'paid_amount_cents' => 0,
+                'bank_account_id' => $account->id,
             ])
             ->assertRedirect(route('admin.financeiro.vendas.show', $installment->sale_id))
             ->assertSessionHasErrors('paid_amount_cents');
@@ -185,6 +193,7 @@ class InstallmentPaymentRegistrationTest extends TestCase
 
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $installment = $this->convertedInstallment($admin, 'PROP-INST-OVER');
+        $account = $this->bankAccount($admin);
 
         $this->actingAs($admin)
             ->from(route('admin.financeiro.vendas.show', $installment->sale_id))
@@ -192,6 +201,7 @@ class InstallmentPaymentRegistrationTest extends TestCase
                 'status' => 'pago',
                 'paid_at' => '2026-08-12',
                 'paid_amount_cents' => 300_000,
+                'bank_account_id' => $account->id,
             ])
             ->assertRedirect(route('admin.financeiro.vendas.show', $installment->sale_id))
             ->assertSessionHasErrors('paid_amount_cents');
@@ -205,6 +215,7 @@ class InstallmentPaymentRegistrationTest extends TestCase
 
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $installment = $this->convertedInstallment($admin, 'PROP-INST-CR');
+        $account = $this->bankAccount($admin);
 
         $this->actingAs($admin)
             ->from(route('admin.financeiro.contas-a-receber.index'))
@@ -212,6 +223,7 @@ class InstallmentPaymentRegistrationTest extends TestCase
                 'status' => 'pago',
                 'paid_at' => '2026-08-12',
                 'paid_amount_cents' => 225_000,
+                'bank_account_id' => $account->id,
             ])
             ->assertRedirect(route('admin.financeiro.contas-a-receber.index'))
             ->assertSessionHas('success');
@@ -283,5 +295,16 @@ class InstallmentPaymentRegistrationTest extends TestCase
             ->firstOrFail()
             ->installments()
             ->firstOrFail();
+    }
+
+    private function bankAccount(User $admin): FinanceBankAccount
+    {
+        return FinanceBankAccount::query()->create([
+            'name' => 'Conta Teste',
+            'type' => FinanceBankAccountType::Checking,
+            'initial_balance_cents' => 0,
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
     }
 }

@@ -12,6 +12,7 @@ enum CompanyNoticeEventKind: string
     // Comercial / Financeiro (audiência Talents)
     case ProposalCreated = 'proposal_created';
     case ProposalWon = 'proposal_won';
+    case HiringFollowUpFromProposal = 'hiring_follow_up_from_proposal';
     case SaleCreated = 'sale_created';
     case InstallmentPaid = 'installment_paid';
     case InstallmentOverdue = 'installment_overdue';
@@ -33,6 +34,7 @@ enum CompanyNoticeEventKind: string
             self::DateChanged => 'data alterada',
             self::ProposalCreated => 'nova proposta',
             self::ProposalWon => 'proposta fechada',
+            self::HiringFollowUpFromProposal => 'acompanhamento criado',
             self::SaleCreated => 'nova venda',
             self::InstallmentPaid => 'parcela paga',
             self::InstallmentOverdue => 'parcela vencida',

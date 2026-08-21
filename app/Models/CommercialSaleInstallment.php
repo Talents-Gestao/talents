@@ -34,6 +34,11 @@ class CommercialSaleInstallment extends Model
         return $this->belongsTo(CommercialSale::class, 'sale_id');
     }
 
+    public function bankAccount(): BelongsTo
+    {
+        return $this->belongsTo(FinanceBankAccount::class, 'bank_account_id');
+    }
+
     protected function isOverdue(): Attribute
     {
         return Attribute::get(function (): bool {

@@ -20,6 +20,7 @@ use App\Support\WorkspaceManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -122,7 +123,14 @@ class CompanyController extends Controller
             'employee_count_estimate' => ['nullable', 'integer', 'min:0'],
             'plan_id' => ['nullable', 'exists:plans,id'],
             'is_active' => ['boolean'],
+            'logo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ], [
+            'logo.mimes' => 'O logo deve ser JPG, PNG ou WebP.',
+            'logo.max' => 'O logo deve ter no máximo 2 MB.',
         ]);
+
+        $logo = $request->file('logo');
+        unset($data['logo']);
 
         $state = $data['address_state'] ?? null;
         if (is_string($state) && $state !== '') {
@@ -180,6 +188,10 @@ class CompanyController extends Controller
                 UserRole::CompanyAdmin,
             );
         });
+
+        if ($logo instanceof UploadedFile && $company !== null) {
+            $company->storeLogo($logo);
+        }
 
         $mailMessage = ' Empresa criada. O primeiro administrador da empresa receberá um e-mail com o link para definir a senha e acessar o portal.';
 
@@ -321,7 +333,16 @@ class CompanyController extends Controller
             'desligamento_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'acompanhamento_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'plan_id' => ['nullable', 'exists:plans,id'],
+            'logo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'remove_logo' => ['sometimes', 'boolean'],
+        ], [
+            'logo.mimes' => 'O logo deve ser JPG, PNG ou WebP.',
+            'logo.max' => 'O logo deve ter no máximo 2 MB.',
         ]);
+
+        $logo = $request->file('logo');
+        $removeLogo = $request->boolean('remove_logo');
+        unset($data['logo'], $data['remove_logo']);
 
         $planId = $data['plan_id'] ?? null;
         unset($data['plan_id']);
@@ -388,6 +409,12 @@ class CompanyController extends Controller
 
         $company->update($data);
 
+        if ($logo instanceof UploadedFile) {
+            $company->storeLogo($logo);
+        } elseif ($removeLogo) {
+            $company->deleteLogo();
+        }
+
         DB::transaction(function () use ($company, $planId) {
             if (empty($planId)) {
                 $company->subscriptions()->where('status', 'active')->update(['status' => 'cancelled']);
@@ -419,6 +446,7 @@ class CompanyController extends Controller
     {
         DB::transaction(function () use ($company) {
             User::query()->where('company_id', $company->id)->delete();
+            $company->deleteLogo();
             $company->delete();
         });
 

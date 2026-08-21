@@ -15,6 +15,7 @@ const props = defineProps({
     payable: { type: Object, default: null },
     statusOptions: { type: Array, default: () => [] },
     paymentMethods: { type: Array, default: () => [] },
+    bankAccounts: { type: Array, default: () => [] },
 });
 
 const fieldClass =
@@ -27,6 +28,7 @@ const form = useForm({
     due_date: props.payable?.due_date ?? '',
     status: props.payable?.status ?? 'pending',
     payment_method_id: props.payable?.payment_method_id ?? '',
+    bank_account_id: props.payable?.bank_account_id ?? '',
     notes: props.payable?.notes ?? '',
     is_recurring: false,
     recurring_months: '',
@@ -177,6 +179,22 @@ const submit = () => {
                     </select>
                     <InputError class="mt-1" :message="form.errors.payment_method_id" />
                 </div>
+            </div>
+            <div>
+                <InputLabel for="bank_account_id" value="Conta de origem" />
+                <select
+                    id="bank_account_id"
+                    v-model="form.bank_account_id"
+                    :required="form.status === 'paid'"
+                    :class="fieldClass"
+                >
+                    <option value="">{{ form.status === 'paid' ? 'Selecione a conta' : 'Opcional (pendente)' }}</option>
+                    <option v-for="a in bankAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                </select>
+                <p class="mt-1 text-xs text-slate-500">
+                    Obrigatória ao marcar como paga — é de onde sai o pagamento.
+                </p>
+                <InputError class="mt-1" :message="form.errors.bank_account_id" />
             </div>
             <div>
                 <InputLabel for="notes" value="Observações" />

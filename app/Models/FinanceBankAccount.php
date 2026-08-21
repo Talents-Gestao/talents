@@ -45,4 +45,14 @@ class FinanceBankAccount extends Model
     {
         return $this->hasMany(FinanceReceivable::class, 'bank_account_id');
     }
+
+    public function payables(): HasMany
+    {
+        return $this->hasMany(FinancePayable::class, 'bank_account_id');
+    }
+
+    public function saleInstallments(): HasMany
+    {
+        return $this->hasMany(CommercialSaleInstallment::class, 'bank_account_id');
+    }
 }

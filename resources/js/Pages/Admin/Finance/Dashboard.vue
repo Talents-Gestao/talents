@@ -159,7 +159,6 @@ const statusClass = (s) =>
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium">Código</th>
                             <th class="px-4 py-3 text-left font-medium">Cliente</th>
                             <th class="px-4 py-3 text-left font-medium">Vendedor</th>
                             <th class="px-4 py-3 text-right font-medium">Total</th>
@@ -169,15 +168,14 @@ const statusClass = (s) =>
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
                         <tr v-for="sale in recentSales" :key="sale.id" class="hover:bg-slate-50">
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 font-medium">
                                 <Link
                                     :href="route('admin.financeiro.vendas.show', sale.id)"
-                                    class="font-mono text-xs text-talents-700 hover:underline"
+                                    class="text-talents-700 hover:underline"
                                 >
-                                    {{ sale.code }}
+                                    {{ sale.client_name }}
                                 </Link>
                             </td>
-                            <td class="px-4 py-3 font-medium">{{ sale.client_name }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ sale.seller?.name ?? '—' }}</td>
                             <td class="px-4 py-3 text-right tabular-nums font-semibold">
                                 {{ formatBRL(sale.total_cents) }}
@@ -190,7 +188,7 @@ const statusClass = (s) =>
                             <td class="px-4 py-3 text-right text-xs text-slate-500">{{ formatDate(sale.sold_at) }}</td>
                         </tr>
                         <tr v-if="!recentSales.length">
-                            <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">Nenhuma venda no período.</td>
+                            <td colspan="5" class="px-4 py-8 text-center text-sm text-slate-500">Nenhuma venda no período.</td>
                         </tr>
                     </tbody>
                 </table>

@@ -25,6 +25,7 @@ class DashboardController extends Controller
             'adminTasksOpen' => $home['admin_tasks_open'],
             'kpis' => $home['kpis'],
             'leadsBySource' => $home['leads_by_source'],
+            'leadsThisMonth' => $home['leads_this_month'],
             'funnel' => $home['funnel'],
             'monthlyGoal' => $home['monthly_goal'],
         ]);

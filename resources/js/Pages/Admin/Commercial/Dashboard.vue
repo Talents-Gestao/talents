@@ -386,8 +386,7 @@ const barChartSeries = computed(() => [
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="text-xs uppercase tracking-wider text-slate-500">
                         <tr>
-                            <th class="py-2 pr-3 text-left font-medium">Código</th>
-                            <th class="px-3 py-2 text-left font-medium">Cliente</th>
+                            <th class="py-2 pr-3 text-left font-medium">Cliente</th>
                             <th class="px-3 py-2 text-left font-medium">Vendedor</th>
                             <th class="px-3 py-2 text-right font-medium">Func.</th>
                             <th class="px-3 py-2 text-right font-medium">Total</th>
@@ -397,12 +396,11 @@ const barChartSeries = computed(() => [
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         <tr v-for="p in recent" :key="p.id" class="transition hover:bg-talents-50/50">
-                            <td class="py-2 pr-3 font-mono text-xs text-slate-600">
+                            <td class="py-2 pr-3 font-medium">
                                 <Link :href="route('admin.comercial.propostas.edit', p.id)" class="hover:underline">
-                                    {{ p.code }}
+                                    {{ p.client_name }}
                                 </Link>
                             </td>
-                            <td class="px-3 py-2 font-medium">{{ p.client_name }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ p.seller?.name ?? '—' }}</td>
                             <td class="px-3 py-2 text-right tabular-nums">{{ p.employee_count }}</td>
                             <td class="px-3 py-2 text-right tabular-nums font-semibold">{{ formatBRL(p.total_final_cents) }}</td>
@@ -417,7 +415,7 @@ const barChartSeries = computed(() => [
                             <td class="px-3 py-2 text-right text-xs text-slate-500">{{ formatDate(p.created_at) }}</td>
                         </tr>
                         <tr v-if="!recent.length">
-                            <td colspan="7" class="py-8 text-center text-slate-500">Nenhuma proposta no período.</td>
+                            <td colspan="6" class="py-8 text-center text-slate-500">Nenhuma proposta no período.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -427,8 +425,7 @@ const barChartSeries = computed(() => [
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="text-xs uppercase tracking-wider text-slate-500">
                         <tr>
-                            <th class="py-2 pr-3 text-left font-medium">Código</th>
-                            <th class="px-3 py-2 text-left font-medium">Cliente</th>
+                            <th class="py-2 pr-3 text-left font-medium">Cliente</th>
                             <th class="px-3 py-2 text-left font-medium">Vendedor</th>
                             <th class="px-3 py-2 text-right font-medium">Total</th>
                             <th class="px-3 py-2 text-right font-medium">Criada</th>
@@ -436,18 +433,17 @@ const barChartSeries = computed(() => [
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         <tr v-for="p in pendingProposals" :key="p.id" class="transition hover:bg-talents-50/50">
-                            <td class="py-2 pr-3 font-mono text-xs text-slate-600">
+                            <td class="py-2 pr-3 font-medium">
                                 <Link :href="route('admin.comercial.propostas.edit', p.id)" class="hover:underline">
-                                    {{ p.code }}
+                                    {{ p.client_name }}
                                 </Link>
                             </td>
-                            <td class="px-3 py-2 font-medium">{{ p.client_name }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ p.seller?.name ?? '—' }}</td>
                             <td class="px-3 py-2 text-right tabular-nums font-semibold">{{ formatBRL(p.total_final_cents) }}</td>
                             <td class="px-3 py-2 text-right text-xs text-slate-500">{{ formatDate(p.created_at) }}</td>
                         </tr>
                         <tr v-if="!pendingProposals.length">
-                            <td colspan="5" class="py-8 text-center text-slate-500">Nenhuma proposta aberta há mais de 30 dias.</td>
+                            <td colspan="4" class="py-8 text-center text-slate-500">Nenhuma proposta aberta há mais de 30 dias.</td>
                         </tr>
                     </tbody>
                 </table>

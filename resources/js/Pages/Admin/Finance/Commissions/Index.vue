@@ -173,7 +173,6 @@ const canMarkSelectedCommissionPaid = () =>
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium">Venda</th>
                             <th class="px-4 py-3 text-left font-medium">Cliente</th>
                             <th class="px-4 py-3 text-left font-medium">Vendedor</th>
                             <th class="px-4 py-3 text-right font-medium">Base</th>
@@ -187,17 +186,16 @@ const canMarkSelectedCommissionPaid = () =>
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
                         <tr v-for="c in commissions.data" :key="c.id" class="hover:bg-slate-50">
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 font-medium">
                                 <Link
                                     v-if="c.sale"
                                     :href="route('admin.financeiro.vendas.show', c.sale.id)"
-                                    class="font-mono text-xs text-talents-700 hover:underline"
+                                    class="text-talents-700 hover:underline"
                                 >
-                                    {{ c.sale.code }}
+                                    {{ c.sale.client_name ?? 'Ver venda' }}
                                 </Link>
-                                <span v-else class="text-slate-400">—</span>
+                                <span v-else>{{ c.sale?.client_name ?? '—' }}</span>
                             </td>
-                            <td class="px-4 py-3 font-medium">{{ c.sale?.client_name ?? '—' }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ c.seller?.name ?? '—' }}</td>
                             <td class="px-4 py-3 text-right tabular-nums text-slate-600">{{ formatBRL(c.base_cents) }}</td>
                             <td class="px-4 py-3 text-right tabular-nums text-slate-600">{{ c.percent }}%</td>
@@ -221,7 +219,7 @@ const canMarkSelectedCommissionPaid = () =>
                             </td>
                         </tr>
                         <tr v-if="!commissions.data?.length">
-                            <td colspan="10" class="px-4 py-10 text-center text-slate-500">Nenhuma comissão encontrada.</td>
+                            <td colspan="9" class="px-4 py-10 text-center text-slate-500">Nenhuma comissão encontrada.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -251,7 +249,7 @@ const canMarkSelectedCommissionPaid = () =>
             <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
                 <h3 class="text-lg font-semibold text-slate-900">Atualizar comissão</h3>
                 <p class="mt-1 text-sm text-slate-600">
-                    {{ selectedCommission.sale?.code }} — {{ formatBRL(selectedCommission.amount_cents) }}
+                    {{ selectedCommission.sale?.client_name ?? 'Comissão' }} — {{ formatBRL(selectedCommission.amount_cents) }}
                 </p>
 
                 <form class="mt-4 space-y-4" @submit.prevent="submitEdit">

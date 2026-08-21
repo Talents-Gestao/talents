@@ -133,7 +133,6 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium">Código</th>
                             <th class="px-4 py-3 text-left font-medium">Cliente</th>
                             <th class="px-4 py-3 text-left font-medium">Fechamento</th>
                             <th class="px-4 py-3 text-right font-medium">Valor</th>
@@ -144,7 +143,6 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
                         <tr v-for="row in proposals.data" :key="row.id" class="hover:bg-slate-50">
-                            <td class="px-4 py-3 font-mono text-xs text-talents-700">{{ row.code }}</td>
                             <td class="px-4 py-3">
                                 <p class="font-medium text-slate-900">{{ row.client_name }}</p>
                                 <p v-if="row.client_cnpj" class="mt-0.5 text-xs text-slate-500">
@@ -211,7 +209,7 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '
                             </td>
                         </tr>
                         <tr v-if="!proposals.data?.length">
-                            <td colspan="7" class="px-4 py-8 text-center text-sm text-slate-500">
+                            <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">
                                 Nenhuma proposta fechada encontrada.
                             </td>
                         </tr>

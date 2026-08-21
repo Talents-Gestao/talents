@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Commercial;
 
+use App\Actions\Hiring\CreateHiringProcessFromClosedProposal;
 use App\Actions\Notices\PublishCommercialNotice;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialContractTemplate;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Services\CommercialPricingService;
 use App\Services\CommercialProposalPdfService;
 use App\Models\CommercialSaleInstallment;
+use App\Support\Commercial\CommercialCodeSearch;
 use App\Support\Commercial\OptionalCommission;
 use App\Support\Commercial\ProposalListStatus;
 use App\Support\CommercialProposalPdfDefaults;
@@ -31,6 +33,7 @@ class ProposalController extends Controller
     public function __construct(
         private readonly CommercialPricingService $pricing,
         private readonly PublishCommercialNotice $notices,
+        private readonly CreateHiringProcessFromClosedProposal $createHiringFromClosedProposal,
     ) {}
 
     public function index(Request $request): Response
@@ -179,15 +182,21 @@ class ProposalController extends Controller
 
         $this->syncCatalogLines($proposal, $catalogLines);
 
+        $hiringFlash = null;
         if ($proposal->is_closed) {
             $this->notices->proposalWon($proposal, $request->user());
+            $hiringFlash = $this->createHiringFromClosedProposal->handle($proposal, $request->user())['flash'] ?? null;
         } else {
             $this->notices->proposalCreated($proposal, $request->user());
         }
 
-        return redirect()
+        $redirect = redirect()
             ->route('admin.comercial.propostas.index')
             ->with('success', "Proposta {$proposal->code} criada.");
+
+        return $hiringFlash !== null
+            ? $redirect->with('info', $hiringFlash)
+            : $redirect;
     }
 
     public function edit(CommercialProposal $proposal): Response
@@ -248,8 +257,10 @@ class ProposalController extends Controller
 
         $this->syncCatalogLines($proposal, $catalogLines);
 
+        $hiringFlash = null;
         if ($isClosed && ! $wasClosed) {
             $this->notices->proposalWon($proposal->refresh(), $request->user());
+            $hiringFlash = $this->createHiringFromClosedProposal->handle($proposal, $request->user())['flash'] ?? null;
         }
 
         $proposal->refresh()->load('contracts');
@@ -257,18 +268,20 @@ class ProposalController extends Controller
         $redirect = redirect()->route('admin.comercial.propostas.edit', $proposal);
 
         if ($proposal->hasSignedContract()) {
-            return $redirect
+            $redirect = $redirect
                 ->with('success', 'Proposta atualizada. Há contrato assinado: gere um novo atualizado para enviar ao cliente com a alteração.')
                 ->with('suggest_updated_contract', true);
-        }
-
-        if ($proposal->hasZapSignSentContract()) {
-            return $redirect
+        } elseif ($proposal->hasZapSignSentContract()) {
+            $redirect = $redirect
                 ->with('success', 'Proposta atualizada. Há contrato enviado ao ZapSign: se a alteração for relevante, gere um novo PDF e envie novamente (o anterior permanece no histórico).')
                 ->with('suggest_updated_contract', true);
+        } else {
+            $redirect = $redirect->with('success', 'Proposta atualizada.');
         }
 
-        return $redirect->with('success', 'Proposta atualizada.');
+        return $hiringFlash !== null
+            ? $redirect->with('info', $hiringFlash)
+            : $redirect;
     }
 
     /**
@@ -339,13 +352,20 @@ class ProposalController extends Controller
 
         if ($listStatus === ProposalListStatus::APPROVED && ! $wasClosed) {
             $this->notices->proposalWon($proposal->refresh(), $request->user());
+            $hiringFlash = $this->createHiringFromClosedProposal->handle($proposal, $request->user())['flash'] ?? null;
+        } else {
+            $hiringFlash = null;
         }
 
         $label = ProposalListStatus::label($listStatus);
 
-        return redirect()
+        $redirect = redirect()
             ->route('admin.comercial.propostas.index')
             ->with('success', "Status da proposta {$proposal->code} atualizado para «{$label}».");
+
+        return $hiringFlash !== null
+            ? $redirect->with('info', $hiringFlash)
+            : $redirect;
     }
 
     public function destroy(CommercialProposal $proposal): RedirectResponse
@@ -388,7 +408,7 @@ class ProposalController extends Controller
     private function applyProposalIndexFilters(Builder $query, array $filters, bool $includeStatus): void
     {
         if (filled($filters['search'])) {
-            $s = (string) $filters['search'];
+            $s = CommercialCodeSearch::normalizeTerm((string) $filters['search']);
             $query->where(function ($inner) use ($s): void {
                 $inner->where('client_name', 'like', '%'.$s.'%')
                     ->orWhere('code', 'like', '%'.$s.'%')

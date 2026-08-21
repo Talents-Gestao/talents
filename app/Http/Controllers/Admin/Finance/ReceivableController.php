@@ -128,7 +128,9 @@ class ReceivableController extends Controller
     {
         $data = $request->validate([
             'payment_method_id' => ['nullable', 'exists:finance_payment_methods,id'],
-            'bank_account_id' => ['nullable', 'exists:finance_bank_accounts,id'],
+            'bank_account_id' => ['required', 'exists:finance_bank_accounts,id'],
+        ], [
+            'bank_account_id.required' => 'Selecione a conta de destino/recebimento.',
         ]);
 
         if ($receivable->status === FinanceReceivableStatus::Cancelled) {
@@ -138,7 +140,7 @@ class ReceivableController extends Controller
         $receivable->markPaid(
             paidAmountCents: $receivable->amount_cents,
             paymentMethodId: isset($data['payment_method_id']) ? (int) $data['payment_method_id'] : null,
-            bankAccountId: isset($data['bank_account_id']) ? (int) $data['bank_account_id'] : null,
+            bankAccountId: (int) $data['bank_account_id'],
         );
 
         return back()->with('success', 'Conta marcada como recebida.');
@@ -190,6 +192,9 @@ class ReceivableController extends Controller
      */
     private function validated(Request $request): array
     {
+        $status = FinanceReceivableStatus::tryFrom((string) $request->input('status'));
+        $requiresBank = $status === FinanceReceivableStatus::Paid;
+
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'payer_name' => ['nullable', 'string', 'max:255'],
@@ -197,8 +202,13 @@ class ReceivableController extends Controller
             'due_date' => ['required', 'date'],
             'status' => ['required', Rule::enum(FinanceReceivableStatus::class)],
             'payment_method_id' => ['nullable', 'exists:finance_payment_methods,id'],
-            'bank_account_id' => ['nullable', 'exists:finance_bank_accounts,id'],
+            'bank_account_id' => [
+                $requiresBank ? 'required' : 'nullable',
+                'exists:finance_bank_accounts,id',
+            ],
             'notes' => ['nullable', 'string', 'max:5000'],
+        ], [
+            'bank_account_id.required' => 'Selecione a conta de destino/recebimento.',
         ]);
 
         return [
@@ -208,7 +218,7 @@ class ReceivableController extends Controller
             'due_date' => $data['due_date'],
             'status' => FinanceReceivableStatus::from($data['status']),
             'payment_method_id' => $data['payment_method_id'] ?? null,
-            'bank_account_id' => $data['bank_account_id'] ?? null,
+            'bank_account_id' => isset($data['bank_account_id']) ? (int) $data['bank_account_id'] : null,
             'notes' => $data['notes'] ?? null,
         ];
     }

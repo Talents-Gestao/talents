@@ -106,11 +106,19 @@ const submit = () => {
             </div>
 
             <div>
-                <InputLabel for="bank_account_id" value="Conta bancária de destino" />
-                <select id="bank_account_id" v-model="form.bank_account_id" :class="fieldClass">
-                    <option value="">Não informado</option>
+                <InputLabel for="bank_account_id" value="Conta de destino/recebimento" />
+                <select
+                    id="bank_account_id"
+                    v-model="form.bank_account_id"
+                    :required="form.status === 'paid'"
+                    :class="fieldClass"
+                >
+                    <option value="">{{ form.status === 'paid' ? 'Selecione a conta' : 'Opcional (pendente)' }}</option>
                     <option v-for="a in bankAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
                 </select>
+                <p class="mt-1 text-xs text-slate-500">
+                    Obrigatória ao marcar como recebida — é onde o valor foi creditado.
+                </p>
                 <InputError class="mt-1" :message="form.errors.bank_account_id" />
             </div>
 

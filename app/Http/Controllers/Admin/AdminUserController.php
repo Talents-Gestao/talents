@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\ResendUserInvitation;
+use App\Actions\SyncAdminUserPermissions;
+use App\Enums\AdminPermissionModule;
+use App\Enums\PermissionAction;
 use App\Enums\UserRole;
 use App\Enums\WorkspaceType;
 use App\Http\Controllers\Controller;
@@ -16,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,6 +29,7 @@ class AdminUserController extends Controller
     public function __construct(
         private ResendUserInvitation $resendUserInvitation,
         private WorkspaceManager $workspaceManager,
+        private SyncAdminUserPermissions $syncAdminUserPermissions,
     ) {}
 
     public function index(): Response
@@ -59,6 +64,9 @@ class AdminUserController extends Controller
         return Inertia::render('Admin/Users/Form', [
             'mode' => 'create',
             'user' => null,
+            'permissionModules' => $this->permissionModulesPayload(),
+            'permissionActions' => $this->permissionActionsPayload(),
+            'defaultPermissions' => SyncAdminUserPermissions::defaultNewCollaboratorGrants(),
         ]);
     }
 
@@ -80,7 +88,7 @@ class AdminUserController extends Controller
                 'is_commercial' => $validated['is_commercial'] ?? $existingUser->is_commercial,
             ]);
 
-            $this->workspaceManager->createTalentsWorkspace(
+            $workspace = $this->workspaceManager->createTalentsWorkspace(
                 $existingUser,
                 isOwner: false,
                 isActive: $validated['is_active'] ?? true,
@@ -101,7 +109,7 @@ class AdminUserController extends Controller
                 'is_owner' => false,
             ]);
 
-            $this->workspaceManager->createTalentsWorkspace(
+            $workspace = $this->workspaceManager->createTalentsWorkspace(
                 $user,
                 isOwner: false,
                 isActive: $validated['is_active'] ?? true,
@@ -109,6 +117,11 @@ class AdminUserController extends Controller
 
             $mailMessage = 'Utilizador criado.';
         }
+
+        $this->syncAdminUserPermissions->execute(
+            $workspace,
+            $validated['permissions'] ?? SyncAdminUserPermissions::defaultNewCollaboratorGrants(),
+        );
 
         if (! $user->hasCompletedRegistration()) {
             try {
@@ -131,6 +144,18 @@ class AdminUserController extends Controller
     {
         $workspace = $this->assertTalentsWorkspace($user);
         $user->setActiveWorkspace($workspace);
+        $workspace->load('adminPermissions');
+
+        $permissions = $workspace->isOwner()
+            ? []
+            : $workspace->adminPermissions->map(fn ($p) => [
+                'module' => $p->module instanceof AdminPermissionModule
+                    ? $p->module->value
+                    : (string) $p->module,
+                'action' => $p->action instanceof PermissionAction
+                    ? $p->action->value
+                    : (string) $p->action,
+            ])->values()->all();
 
         return Inertia::render('Admin/Users/Form', [
             'mode' => 'edit',
@@ -141,7 +166,11 @@ class AdminUserController extends Controller
                 'is_owner' => $workspace->isOwner(),
                 'is_active' => (bool) $workspace->is_active,
                 'is_commercial' => (bool) $user->is_commercial,
+                'permissions' => $permissions,
             ],
+            'permissionModules' => $this->permissionModulesPayload(),
+            'permissionActions' => $this->permissionActionsPayload(),
+            'defaultPermissions' => SyncAdminUserPermissions::defaultNewCollaboratorGrants(),
         ]);
     }
 
@@ -167,6 +196,7 @@ class AdminUserController extends Controller
             ]);
 
             $workspace->update(['is_active' => true]);
+            $this->syncAdminUserPermissions->execute($workspace, []);
         } else {
             $this->assertKeepsAtLeastOneActiveSuperAdmin($workspace, $validated);
 
@@ -180,6 +210,11 @@ class AdminUserController extends Controller
             $workspace->update([
                 'is_active' => $validated['is_active'] ?? $workspace->is_active,
             ]);
+
+            $this->syncAdminUserPermissions->execute(
+                $workspace,
+                $validated['permissions'] ?? [],
+            );
         }
 
         $this->workspaceManager->syncLegacyUserColumns($user);
@@ -249,6 +284,15 @@ class AdminUserController extends Controller
      */
     private function validatedPayload(Request $request, ?User $existing): array
     {
+        $moduleValues = array_map(
+            static fn (AdminPermissionModule $m) => $m->value,
+            AdminPermissionModule::all(),
+        );
+        $actionValues = array_map(
+            static fn (PermissionAction $a) => $a->value,
+            PermissionAction::all(),
+        );
+
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => [
@@ -274,7 +318,38 @@ class AdminUserController extends Controller
             ],
             'is_active' => ['boolean'],
             'is_commercial' => ['boolean'],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*.module' => ['required_with:permissions', 'string', Rule::in($moduleValues)],
+            'permissions.*.action' => ['required_with:permissions', 'string', Rule::in($actionValues)],
         ]);
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    private function permissionModulesPayload(): array
+    {
+        return array_map(
+            static fn (AdminPermissionModule $m) => [
+                'value' => $m->value,
+                'label' => $m->label(),
+            ],
+            AdminPermissionModule::all(),
+        );
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    private function permissionActionsPayload(): array
+    {
+        return array_map(
+            static fn (PermissionAction $a) => [
+                'value' => $a->value,
+                'label' => $a->label(),
+            ],
+            PermissionAction::all(),
+        );
     }
 
     /**

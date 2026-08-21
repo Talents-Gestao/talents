@@ -7,7 +7,6 @@ namespace App\Support\Admin;
 use App\Enums\FinancePayableStatus;
 use App\Enums\HiringProcessStage;
 use App\Enums\LandingInterestSource;
-use App\Enums\StrategicCalendarItemKind;
 use App\Models\AdminDashboardSettings;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
@@ -21,6 +20,7 @@ use App\Models\Subscription;
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
 use App\Models\User;
+use App\Support\Commercial\ProposalListStatus;
 use App\Support\Finance\FinanceCashflowMetrics;
 use App\Support\StrategicCalendarLeaveEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
@@ -36,6 +36,7 @@ final class AdminHomeDashboardBuilder
      *     admin_tasks_open: int,
      *     kpis: array<string, mixed>,
      *     leads_by_source: list<array{key: string, label: string, count: int}>,
+     *     leads_this_month: int,
      *     funnel: list<array{key: string, label: string, count: int}>,
      *     monthly_goal: array{current_cents: int, goal_cents: int, percent: float}
      * }
@@ -57,23 +58,6 @@ final class AdminHomeDashboardBuilder
             ->sum('amount_cents');
 
         $forecastCents = $receiveThisMonthCents - $payablesPendingCents;
-
-        $leadsThisMonth = LandingInterestSubmission::query()
-            ->where('created_at', '>=', $monthStart)
-            ->count();
-
-        $proposalsCreatedThisMonth = CommercialProposal::query()
-            ->where('created_at', '>=', $monthStart)
-            ->count();
-
-        $proposalsInNegotiation = CommercialProposal::query()
-            ->where('is_closed', false)
-            ->count();
-
-        $proposalsClosedThisMonth = CommercialProposal::query()
-            ->where('is_closed', true)
-            ->where('updated_at', '>=', $monthStart)
-            ->count();
 
         $dayEnd = $today->copy()->endOfDay();
         $todayMasters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
@@ -146,6 +130,7 @@ final class AdminHomeDashboardBuilder
         $activeMethodology = CompanyMethodology::query()->where('is_active', true)->count();
 
         $leadsBySource = $this->leadsBySource($monthStart);
+        $leadsThisMonth = (int) collect($leadsBySource)->sum('count');
 
         return [
             'finance' => [
@@ -172,13 +157,9 @@ final class AdminHomeDashboardBuilder
                 'methodology_active' => $activeMethodology,
             ],
             'leads_by_source' => $leadsBySource,
-            'funnel' => $this->funnel(
-                $leadsThisMonth,
-                $proposalsCreatedThisMonth,
-                $proposalsInNegotiation,
-                $proposalsClosedThisMonth,
-                $monthStart,
-            ),
+            // Contexto do mês: não entra nas % do funil (unidade ≠ proposta).
+            'leads_this_month' => $leadsThisMonth,
+            'funnel' => $this->proposalFunnelForMonth($monthStart, $monthEnd),
             'monthly_goal' => [
                 'current_cents' => $revenueMonthCents,
                 'goal_cents' => $goalCents,
@@ -306,31 +287,63 @@ final class AdminHomeDashboardBuilder
     }
 
     /**
-     * Funil: Leads → Reunião → Proposta → Negociação → Fechou.
+     * Funil comercial (cohort do mês): propostas criadas no mês corrente.
+     *
+     * Unidade = CommercialProposal com created_at no intervalo do mês.
+     * % de cada etapa = count / tamanho do cohort (etapa «Proposta» = 100%).
+     * Leads e reuniões de calendário NÃO entram neste funil (leads ficam no widget de origem).
+     *
+     * Etapas (não são necessariamente exclusivas — uma proposta aprovada com venda conta em ambas):
+     * - Proposta: todas do cohort
+     * - Negociação: ProposalListStatus::NEGOTIATION
+     * - Aprovada: ProposalListStatus::APPROVED (ou is_closed legado)
+     * - Venda: tem CommercialSale vinculada
+     * - Encerrada: ProposalListStatus::ENDED (perda / fora do pipeline)
+     *
+     * Nota sobre closed_at: a data de negócio do fechamento é closed_at. Neste funil (cohort por
+     * created_at), «Aprovada» usa o status atual da proposta do cohort — tipicamente criada e
+     * aprovada no mesmo mês. Uma métrica separada «fechou no mês» (propostas de qualquer cohort
+     * com closed_at no mês) pode usar closed_at; não misturar com este funil.
      *
      * @return list<array{key: string, label: string, count: int}>
      */
-    private function funnel(
-        int $leads,
-        int $proposalsCreated,
-        int $inNegotiation,
-        int $closed,
-        Carbon $monthStart,
-    ): array {
-        $meetings = (int) StrategicCalendarItem::query()
-            ->where('occurs_on', '>=', $monthStart->toDateString())
-            ->whereIn('kind', [
-                StrategicCalendarItemKind::Event->value,
-                StrategicCalendarItemKind::Ritual->value,
-            ])
-            ->count();
+    private function proposalFunnelForMonth(Carbon $monthStart, Carbon $monthEnd): array
+    {
+        $cohort = CommercialProposal::query()
+            ->with(['sale:id,proposal_id,status'])
+            ->whereBetween('created_at', [$monthStart, $monthEnd])
+            ->get(['id', 'is_closed', 'list_status', 'closed_at']);
+
+        $cohortSize = $cohort->count();
+
+        $negotiation = 0;
+        $approved = 0;
+        $withSale = 0;
+        $ended = 0;
+
+        foreach ($cohort as $proposal) {
+            $status = ProposalListStatus::for($proposal);
+
+            if ($status === ProposalListStatus::NEGOTIATION) {
+                $negotiation++;
+            }
+            if ($status === ProposalListStatus::APPROVED || $proposal->is_closed) {
+                $approved++;
+            }
+            if ($proposal->sale !== null) {
+                $withSale++;
+            }
+            if ($status === ProposalListStatus::ENDED) {
+                $ended++;
+            }
+        }
 
         return [
-            ['key' => 'leads', 'label' => 'Leads', 'count' => $leads],
-            ['key' => 'meeting', 'label' => 'Reunião', 'count' => $meetings],
-            ['key' => 'proposal', 'label' => 'Proposta', 'count' => $proposalsCreated],
-            ['key' => 'negotiation', 'label' => 'Negociação', 'count' => $inNegotiation],
-            ['key' => 'closed', 'label' => 'Fechou', 'count' => $closed],
+            ['key' => 'proposal', 'label' => 'Proposta', 'count' => $cohortSize],
+            ['key' => 'negotiation', 'label' => 'Negociação', 'count' => $negotiation],
+            ['key' => 'approved', 'label' => 'Aprovada', 'count' => $approved],
+            ['key' => 'sale', 'label' => 'Venda', 'count' => $withSale],
+            ['key' => 'ended', 'label' => 'Encerrada', 'count' => $ended],
         ];
     }
 

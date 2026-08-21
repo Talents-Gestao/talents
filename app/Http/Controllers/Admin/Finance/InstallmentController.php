@@ -28,8 +28,15 @@ class InstallmentController extends Controller
             ])],
             'paid_at' => ['nullable', 'date'],
             'paid_amount_cents' => ['nullable', 'integer', 'min:0'],
+            'bank_account_id' => [
+                Rule::requiredIf(fn () => $request->input('status') === CommercialSaleInstallment::STATUS_PAGO),
+                'nullable',
+                'exists:finance_bank_accounts,id',
+            ],
             'notes' => ['nullable', 'string', 'max:2000'],
             'receipt' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+        ], [
+            'bank_account_id.required' => 'Selecione a conta de destino/recebimento.',
         ]);
 
         $update = [
@@ -46,9 +53,11 @@ class InstallmentController extends Controller
                 ? \Carbon\Carbon::parse($data['paid_at'])
                 : now();
             $update['paid_amount_cents'] = $paidAmountCents;
+            $update['bank_account_id'] = (int) $data['bank_account_id'];
         } else {
             $update['paid_at'] = null;
             $update['paid_amount_cents'] = null;
+            $update['bank_account_id'] = null;
         }
 
         if ($request->hasFile('receipt')) {
@@ -88,12 +97,18 @@ class InstallmentController extends Controller
                 CommercialSaleInstallment::STATUS_PAGO,
                 CommercialSaleInstallment::STATUS_CANCELADO,
             ])],
+            'bank_account_id' => [
+                Rule::requiredIf(fn () => $request->input('status') === CommercialSaleInstallment::STATUS_PAGO),
+                'nullable',
+                'exists:finance_bank_accounts,id',
+            ],
             'notes' => ['nullable', 'string', 'max:2000'],
         ], [
             'due_date.required' => 'Informe o vencimento.',
             'amount_reais.required' => 'Informe o valor.',
             'method.required' => 'Selecione o método.',
             'status.required' => 'Selecione o status.',
+            'bank_account_id.required' => 'Selecione a conta de destino/recebimento.',
         ]);
 
         $amountCents = (int) round(((float) $data['amount_reais']) * 100);
@@ -120,9 +135,11 @@ class InstallmentController extends Controller
         if ($data['status'] === CommercialSaleInstallment::STATUS_PAGO) {
             $update['paid_at'] = $installment->paid_at ?? now();
             $update['paid_amount_cents'] = $amountCents;
+            $update['bank_account_id'] = (int) $data['bank_account_id'];
         } else {
             $update['paid_at'] = null;
             $update['paid_amount_cents'] = null;
+            $update['bank_account_id'] = null;
         }
 
         $installment->update($update);
@@ -134,7 +151,7 @@ class InstallmentController extends Controller
         }
 
         return redirect()
-            ->route('admin.financeiro.contas-a-receber.index')
+            ->back()
             ->with('success', 'Parcela atualizada.');
     }
 

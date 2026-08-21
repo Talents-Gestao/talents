@@ -13,6 +13,7 @@ class HiringProcess extends Model
 {
     protected $fillable = [
         'company_id',
+        'commercial_proposal_id',
         'title',
         'current_stage',
         'notes',
@@ -38,6 +39,11 @@ class HiringProcess extends Model
         return $this->belongsTo(Company::class);
     }
 
+    public function commercialProposal(): BelongsTo
+    {
+        return $this->belongsTo(CommercialProposal::class, 'commercial_proposal_id');
+    }
+
     public function updatedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
@@ -46,5 +52,10 @@ class HiringProcess extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(HiringProcessComment::class)->orderBy('created_at');
+    }
+
+    public function stageEntries(): HasMany
+    {
+        return $this->hasMany(HiringProcessStageEntry::class);
     }
 }
