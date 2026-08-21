@@ -118,7 +118,10 @@ class FinanceReceivableLedger
         ];
 
             $query = CommercialSaleInstallment::query()
-            ->with(['sale:id,code,client_name,is_recurring,recurring_months,recurring_monthly_cents,installments_count'])
+            ->with([
+                'sale:id,code,client_name,is_recurring,recurring_months,recurring_monthly_cents,installments_count',
+                'bankAccount:id,name',
+            ])
             ->orderByDesc('due_date');
 
         if (($filters['status'] ?? '') !== '' && isset($statusMap[$filters['status']])) {
@@ -151,7 +154,8 @@ class FinanceReceivableLedger
                 'receivable_id' => null,
                 'installment_id' => $i->id,
                 'sale_id' => $i->sale_id,
-                'title' => ($i->sale?->code ?? 'Venda').' · Parcela '.$i->number,
+                'installment_number' => $i->number,
+                'title' => 'Parcela '.$i->number,
                 'counterparty' => $i->sale?->client_name,
                 'amount_cents' => $i->amount_cents,
                 'due_date' => $i->due_date?->toDateString(),
@@ -169,8 +173,8 @@ class FinanceReceivableLedger
                     'name' => $methodLabels[$i->method] ?? $i->method,
                 ],
                 'payment_method_id' => null,
-                'bank_account_id' => null,
-                'bank_account' => null,
+                'bank_account_id' => $i->bank_account_id,
+                'bank_account' => $i->bankAccount?->only(['id', 'name']),
                 'href' => $i->sale_id
                     ? route('admin.financeiro.vendas.show', $i->sale_id)
                     : null,

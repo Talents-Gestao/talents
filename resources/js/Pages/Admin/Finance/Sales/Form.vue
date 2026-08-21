@@ -271,7 +271,11 @@ const submit = () => {
         .post(route('admin.financeiro.vendas.store'));
 };
 
-const pageTitle = computed(() => (isEdit.value ? `Editar venda ${props.sale.code}` : 'Nova venda manual'));
+const pageTitle = computed(() =>
+    isEdit.value
+        ? `Editar venda${props.sale?.client_name ? ` — ${props.sale.client_name}` : ''}`
+        : 'Nova venda manual',
+);
 const pageSubtitle = computed(() =>
     isEdit.value
         ? 'Atualize os dados comerciais da venda. Parcelas e valor total não são alterados aqui.'
@@ -290,7 +294,7 @@ const pageSubtitle = computed(() =>
                         ? route('admin.financeiro.vendas.show', sale.id)
                         : route('admin.financeiro.vendas.index')
                 "
-                :back-label="isEdit ? sale.code : 'Vendas'"
+                :back-label="isEdit ? 'Detalhe' : 'Vendas'"
                 :title="pageTitle"
                 :subtitle="pageSubtitle"
             />
@@ -317,7 +321,7 @@ const pageSubtitle = computed(() =>
                     :href="route('admin.comercial.propostas.edit', sale.proposal_id)"
                     class="font-medium text-talents-700 hover:underline"
                 >
-                    {{ sale.proposal_code }}
+                    Ver proposta
                 </Link>
                 <span class="text-slate-500"> (somente leitura)</span>
             </div>

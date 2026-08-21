@@ -129,6 +129,11 @@ class CommercialProposal extends Model
         return $this->hasOne(CommercialSale::class, 'proposal_id');
     }
 
+    public function hiringProcess(): HasOne
+    {
+        return $this->hasOne(HiringProcess::class, 'commercial_proposal_id');
+    }
+
     public function isWon(): bool
     {
         return (bool) $this->is_closed;

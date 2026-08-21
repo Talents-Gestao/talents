@@ -1,13 +1,17 @@
 <script setup>
 import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
+import SaleInstallmentEditModal from '@/Components/Finance/SaleInstallmentEditModal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
+import { PencilSquareIcon } from '@heroicons/vue/24/outline';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     sale: { type: Object, required: true },
     paymentMethods: { type: Object, default: () => ({}) },
+    installmentMethodOptions: { type: Array, default: () => [] },
+    installmentStatusOptions: { type: Array, default: () => [] },
 });
 
 const localTodayDate = () => {
@@ -25,6 +29,27 @@ const commissionForm = useForm({
         : localTodayDate(),
     notes: props.sale.commission?.notes ?? '',
 });
+
+const editModalOpen = ref(false);
+const selectedInstallment = ref(null);
+
+const openEditInstallment = (inst) => {
+    selectedInstallment.value = {
+        id: inst.id,
+        number: inst.number,
+        amount_cents: inst.amount_cents,
+        due_date: inst.due_date,
+        method: inst.method,
+        status: inst.status,
+        notes: inst.notes ?? '',
+    };
+    editModalOpen.value = true;
+};
+
+const closeEditInstallment = () => {
+    editModalOpen.value = false;
+    selectedInstallment.value = null;
+};
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
 
@@ -83,15 +108,15 @@ const submitCommission = () => {
 </script>
 
 <template>
-    <Head :title="`Venda ${sale.code}`" />
+    <Head :title="sale.client_name ? `Venda — ${sale.client_name}` : 'Venda'" />
 
     <AdminLayout>
         <template #header>
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <p class="text-sm text-slate-500">Financeiro / Vendas</p>
-                    <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{{ sale.code }}</h2>
-                    <p class="mt-1 text-sm text-slate-600">{{ sale.client_name }}</p>
+                    <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{{ sale.client_name }}</h2>
+                    <p class="mt-1 text-sm text-slate-600">Detalhe da venda</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <Link
@@ -111,7 +136,7 @@ const submitCommission = () => {
                         :href="route('admin.comercial.propostas.edit', sale.proposal.id)"
                         class="inline-flex items-center rounded-xl border border-talents-200 bg-talents-50 px-3 py-2 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-100"
                     >
-                        Proposta {{ sale.proposal.code }}
+                        Ver proposta
                     </Link>
                 </div>
             </div>
@@ -150,7 +175,7 @@ const submitCommission = () => {
                 </p>
                 <p class="mt-1 text-sm text-slate-600">Vendedora: {{ sale.commission.seller?.name ?? '—' }}</p>
                 <Link
-                    :href="route('admin.financeiro.comissoes.index', { search: sale.code })"
+                    :href="route('admin.financeiro.comissoes.index', { search: sale.client_name })"
                     class="mt-2 inline-block text-xs font-medium text-talents-700 hover:underline"
                 >
                     Ver no índice de comissões
@@ -211,7 +236,7 @@ const submitCommission = () => {
             <div class="border-b border-slate-100 px-6 py-4">
                 <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Parcelas / cobranças</h3>
                 <p class="mt-1 text-xs text-slate-500">
-                    Para registrar pagamento, use Contas a receber.
+                    Para registrar pagamento com comprovante, use Contas a receber.
                 </p>
             </div>
             <div class="overflow-x-auto">
@@ -225,6 +250,7 @@ const submitCommission = () => {
                             <th class="px-4 py-3 text-left font-medium">Status</th>
                             <th class="px-4 py-3 text-right font-medium">Pago em</th>
                             <th class="px-4 py-3 text-right font-medium">Comprovante</th>
+                            <th class="px-4 py-3 text-right font-medium">Ações</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
@@ -254,10 +280,30 @@ const submitCommission = () => {
                                 </a>
                                 <span v-else class="text-xs text-slate-400">—</span>
                             </td>
+                            <td class="px-4 py-3 text-right">
+                                <button
+                                    type="button"
+                                    class="inline-flex rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                                    title="Editar parcela"
+                                    aria-label="Editar parcela"
+                                    @click="openEditInstallment(inst)"
+                                >
+                                    <PencilSquareIcon class="h-4 w-4" />
+                                </button>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
+
+        <SaleInstallmentEditModal
+            :show="editModalOpen"
+            :installment="selectedInstallment"
+            :subtitle="sale.client_name"
+            :method-options="installmentMethodOptions"
+            :status-options="installmentStatusOptions"
+            @close="closeEditInstallment"
+        />
     </AdminLayout>
 </template>

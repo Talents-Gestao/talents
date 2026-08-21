@@ -49,7 +49,9 @@ class AdminDashboardLeadsTest extends TestCase
                     fn ($row) => ($row['key'] ?? null) === 'site' && (int) ($row['count'] ?? 0) === 1
                 ))
                 ->has('funnel')
-                ->where('funnel.0.count', 1)
+                ->where('funnel.0.key', 'proposal')
+                ->where('funnel.0.count', 0)
+                ->where('leadsThisMonth', 1)
                 ->missing('commercial')
                 ->missing('alertsCount'));
     }

@@ -122,13 +122,12 @@ class FinanceCashflowMetrics
     }
 
     /**
-     * Soma dos saldos iniciais das contas bancárias ativas (proxy de caixa cadastrado).
+     * Soma dos saldos atuais das contas bancárias ativas
+     * (saldo inicial ± movimentos pagos/recebidos vinculados).
      */
     public function activeBankAccountsBalanceCents(): int
     {
-        return (int) FinanceBankAccount::query()
-            ->where('is_active', true)
-            ->sum('initial_balance_cents');
+        return app(FinanceBankAccountBalance::class)->activeAccountsTotalCents();
     }
 
     public function activeBankAccountsCount(): int

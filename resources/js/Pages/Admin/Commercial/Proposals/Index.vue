@@ -343,7 +343,7 @@ const destroy = (proposal) => {
     if (proposal.sale) {
         return;
     }
-    if (confirm(`Excluir a proposta ${proposal.code}? Essa ação não pode ser desfeita.`)) {
+    if (confirm(`Excluir a proposta de «${proposal.client_name}»? Essa ação não pode ser desfeita.`)) {
         router.delete(route('admin.comercial.propostas.destroy', proposal.id), { preserveScroll: true });
     }
 };
@@ -858,6 +858,14 @@ const submitConvert = () => {
             {{ inertiaPage.props.flash.success }}
         </div>
 
+        <div
+            v-if="inertiaPage.props.flash?.info"
+            class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            role="status"
+        >
+            {{ inertiaPage.props.flash.info }}
+        </div>
+
         <div class="surface-card p-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex flex-wrap items-center gap-2">
@@ -1000,7 +1008,6 @@ const submitConvert = () => {
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium">Código</th>
                             <th class="px-4 py-3 text-left font-medium">Cliente</th>
                             <th class="px-4 py-3 text-left font-medium">Vendedor</th>
                             <th class="px-4 py-3 text-right font-medium">Funcionários</th>
@@ -1012,7 +1019,6 @@ const submitConvert = () => {
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
                         <tr v-for="p in proposals.data" :key="p.id" class="hover:bg-slate-50">
-                            <td class="px-4 py-3 font-mono text-xs text-slate-600">{{ p.code }}</td>
                             <td class="px-4 py-3">
                                 <div class="font-medium">{{ p.client_name }}</div>
                                 <div v-if="p.client_cnpj" class="text-xs text-slate-500">{{ formatCnpj(p.client_cnpj) }}</div>
@@ -1035,7 +1041,7 @@ const submitConvert = () => {
                                     class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium transition hover:ring-2 hover:ring-slate-200 focus:outline-none focus:ring-2 focus:ring-talents-300"
                                     :class="listStatusBadgeClass(p.list_status ?? (p.is_closed ? 'approved' : 'open'))"
                                     title="Alterar status"
-                                    :aria-label="`Alterar status de ${p.code}`"
+                                    :aria-label="`Alterar status de ${p.client_name}`"
                                     @click="openStatusModal(p)"
                                 >
                                     {{ listStatusLabel(p) }}
@@ -1051,7 +1057,7 @@ const submitConvert = () => {
                                     :href="route('admin.financeiro.vendas.show', p.sale.id)"
                                     class="mt-1 block text-xs font-medium text-talents-700 hover:underline"
                                 >
-                                    Venda {{ p.sale.code }}
+                                    Ver venda
                                 </Link>
                             </td>
                             <td class="px-4 py-3 text-right text-xs text-slate-500">
@@ -1129,7 +1135,7 @@ const submitConvert = () => {
                             </td>
                         </tr>
                         <tr v-if="!proposals.data.length">
-                            <td colspan="8" class="px-4 py-10 text-center text-slate-500">
+                            <td colspan="7" class="px-4 py-10 text-center text-slate-500">
                                 Nenhuma proposta encontrada.
                             </td>
                         </tr>
@@ -1162,7 +1168,7 @@ const submitConvert = () => {
             >
                 <h3 class="text-lg font-semibold text-slate-900">Gerar contrato</h3>
                 <p class="mt-1 text-sm text-slate-600">
-                    Proposta <span class="font-mono text-xs">{{ contractProposal?.code }}</span>
+                    {{ contractProposal?.client_name }}
                 </p>
 
                 <div
@@ -1338,7 +1344,7 @@ const submitConvert = () => {
                 <div class="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6">
                     <h3 class="text-lg font-semibold text-slate-900">Converter em venda</h3>
                     <p v-if="convertProposal" class="mt-1 text-sm text-slate-600">
-                        {{ convertProposal.code }} — {{ convertProposal.client_name }}
+                        {{ convertProposal.client_name }}
                         · {{ formatBRL(convertProposal.total_final_cents) }}
                     </p>
                 </div>
@@ -1575,7 +1581,7 @@ const submitConvert = () => {
                     Reabrir proposta?
                 </h3>
                 <p v-if="reopenProposalTarget" class="mt-1 text-sm text-slate-600">
-                    {{ reopenProposalTarget.code }} — {{ reopenProposalTarget.client_name }}
+                    {{ reopenProposalTarget.client_name }}
                 </p>
                 <p class="mt-3 text-sm text-slate-600">
                     A proposta voltará para <strong>Em negociação</strong> e poderá ser editada novamente.
@@ -1613,7 +1619,7 @@ const submitConvert = () => {
                     Alterar status
                 </h3>
                 <p v-if="statusProposal" class="mt-1 text-sm text-slate-600">
-                    {{ statusProposal.code }} — {{ statusProposal.client_name }}
+                    {{ statusProposal.client_name }}
                 </p>
                 <p
                     v-if="statusProposal?.sale"
@@ -1714,10 +1720,6 @@ const submitConvert = () => {
                     <template v-else>
                         A conversão está disponível em
                         <span class="font-semibold text-white">Financeiro → Vendas</span>.
-                        <template v-if="createdSale.code">
-                            Código da venda:
-                            <span class="font-mono font-semibold text-white">{{ createdSale.code }}</span>.
-                        </template>
                     </template>
                 </p>
                 <div

@@ -138,7 +138,9 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
         $this->assertSame($account->id, $receivable->bank_account_id);
 
         $this->actingAs($admin)
-            ->patch(route('admin.financeiro.contas-a-receber.mark-paid', $receivable))
+            ->patch(route('admin.financeiro.contas-a-receber.mark-paid', $receivable), [
+                'bank_account_id' => $account->id,
+            ])
             ->assertRedirect();
 
         $receivable->refresh();
@@ -303,6 +305,7 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
         ]);
 
         $this->actingAs($admin)
+            ->from(route('admin.financeiro.contas-a-receber.index'))
             ->patch(route('admin.financeiro.parcelas.update', $installment), [
                 'due_date' => '2026-09-01',
                 'amount_reais' => 250.5,
@@ -318,6 +321,100 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
         $this->assertSame(25050, (int) $sale->fresh()->total_cents);
         $this->assertSame('boleto', $installment->method);
         $this->assertSame('Cobrança ajustada', $installment->notes);
+    }
+
+    public function test_admin_can_update_sale_installment_from_sale_show(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $sale = CommercialSale::query()->create([
+            'code' => 'VENDA-2026-0201',
+            'client_name' => 'Cliente Show',
+            'total_cents' => 10_000,
+            'payment_method' => 'pix',
+            'installments_count' => 1,
+            'status' => CommercialSale::STATUS_ABERTA,
+            'sold_at' => now(),
+        ]);
+
+        $installment = CommercialSaleInstallment::query()->create([
+            'sale_id' => $sale->id,
+            'number' => 1,
+            'amount_cents' => 10_000,
+            'due_date' => now()->addDays(5)->toDateString(),
+            'method' => 'pix',
+            'status' => CommercialSaleInstallment::STATUS_PENDENTE,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.financeiro.vendas.show', $sale))
+            ->patch(route('admin.financeiro.parcelas.update', $installment), [
+                'due_date' => '2026-10-15',
+                'amount_reais' => 120,
+                'method' => 'cartao',
+                'status' => CommercialSaleInstallment::STATUS_PENDENTE,
+                'notes' => 'Ajuste no detalhe',
+            ])
+            ->assertRedirect(route('admin.financeiro.vendas.show', $sale));
+
+        $installment->refresh();
+        $this->assertSame('2026-10-15', $installment->due_date?->toDateString());
+        $this->assertSame(12_000, $installment->amount_cents);
+        $this->assertSame('cartao', $installment->method);
+        $this->assertSame(12_000, (int) $sale->fresh()->total_cents);
+    }
+
+    public function test_paid_installment_amount_cannot_change_on_update(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $sale = CommercialSale::query()->create([
+            'code' => 'VENDA-2026-0202',
+            'client_name' => 'Cliente Pago',
+            'total_cents' => 15_000,
+            'payment_method' => 'pix',
+            'installments_count' => 1,
+            'status' => CommercialSale::STATUS_QUITADA,
+            'sold_at' => now(),
+        ]);
+
+        $account = FinanceBankAccount::query()->create([
+            'name' => 'Conta Pago',
+            'type' => FinanceBankAccountType::Checking,
+            'initial_balance_cents' => 0,
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+
+        $installment = CommercialSaleInstallment::query()->create([
+            'sale_id' => $sale->id,
+            'number' => 1,
+            'amount_cents' => 15_000,
+            'due_date' => now()->toDateString(),
+            'method' => 'pix',
+            'status' => CommercialSaleInstallment::STATUS_PAGO,
+            'paid_at' => now(),
+            'paid_amount_cents' => 15_000,
+            'bank_account_id' => $account->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.financeiro.vendas.show', $sale))
+            ->patch(route('admin.financeiro.parcelas.update', $installment), [
+                'due_date' => now()->addDay()->toDateString(),
+                'amount_reais' => 999,
+                'method' => 'boleto',
+                'status' => CommercialSaleInstallment::STATUS_PAGO,
+                'bank_account_id' => $account->id,
+                'notes' => null,
+            ])
+            ->assertRedirect(route('admin.financeiro.vendas.show', $sale));
+
+        $installment->refresh();
+        $this->assertSame(15_000, $installment->amount_cents);
+        $this->assertSame('boleto', $installment->method);
     }
 
     public function test_admin_can_create_manual_sale_without_proposal(): void

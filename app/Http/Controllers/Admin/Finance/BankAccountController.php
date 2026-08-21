@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin\Finance;
 use App\Enums\FinanceBankAccountType;
 use App\Http\Controllers\Controller;
 use App\Models\FinanceBankAccount;
+use App\Support\Finance\FinanceBankAccountBalance;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,6 +16,10 @@ use Inertia\Response;
 
 class BankAccountController extends Controller
 {
+    public function __construct(
+        private readonly FinanceBankAccountBalance $balances,
+    ) {}
+
     public function index(Request $request): Response
     {
         $query = FinanceBankAccount::query()
@@ -44,6 +49,7 @@ class BankAccountController extends Controller
             'type' => $a->type->value,
             'type_label' => $a->type->label(),
             'initial_balance_cents' => $a->initial_balance_cents,
+            'current_balance_cents' => $this->balances->currentBalanceCents($a),
             'initial_balance_at' => $a->initial_balance_at?->toDateString(),
             'is_active' => $a->is_active,
             'sort_order' => $a->sort_order,
@@ -58,9 +64,7 @@ class BankAccountController extends Controller
             ],
             'summary' => [
                 'active_count' => FinanceBankAccount::query()->where('is_active', true)->count(),
-                'active_balance_cents' => (int) FinanceBankAccount::query()
-                    ->where('is_active', true)
-                    ->sum('initial_balance_cents'),
+                'active_balance_cents' => $this->balances->activeAccountsTotalCents(),
             ],
         ]);
     }
@@ -120,10 +124,12 @@ class BankAccountController extends Controller
 
     public function destroy(FinanceBankAccount $bank_account): RedirectResponse
     {
-        if ($bank_account->receivables()->exists()) {
+        if ($bank_account->receivables()->exists()
+            || $bank_account->payables()->exists()
+            || $bank_account->saleInstallments()->exists()) {
             return back()->with(
                 'error',
-                'Não é possível excluir: existem contas a receber vinculadas. Desative a conta em vez de excluir.',
+                'Não é possível excluir: existem lançamentos vinculados. Desative a conta em vez de excluir.',
             );
         }
 

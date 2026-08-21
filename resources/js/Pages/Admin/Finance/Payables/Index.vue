@@ -1,15 +1,18 @@
 <script setup>
 import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
+import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed, reactive, watch } from 'vue';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
     payables: { type: Object, required: true },
     filters: { type: Object, default: () => ({}) },
     statusOptions: { type: Array, default: () => [] },
+    paymentMethods: { type: Array, default: () => [] },
+    bankAccounts: { type: Array, default: () => [] },
 });
 
 const page = usePage();
@@ -50,11 +53,36 @@ const statusClass = (status) =>
         cancelled: 'bg-slate-100 text-slate-600',
     }[status] ?? 'bg-slate-100 text-slate-600');
 
-const markPaid = (id) => {
-    if (!confirm('Marcar esta conta como paga?')) {
+const payModalOpen = ref(false);
+const payItem = ref(null);
+const payForm = useForm({
+    bank_account_id: '',
+    payment_method_id: '',
+});
+
+const openPayModal = (item) => {
+    payItem.value = item;
+    payForm.clearErrors();
+    payForm.bank_account_id = item.bank_account_id ?? '';
+    payForm.payment_method_id = item.payment_method_id ?? '';
+    payModalOpen.value = true;
+};
+
+const closePayModal = () => {
+    payModalOpen.value = false;
+    payItem.value = null;
+    payForm.reset();
+    payForm.clearErrors();
+};
+
+const submitPay = () => {
+    if (!payItem.value?.id) {
         return;
     }
-    router.patch(route('admin.financeiro.contas-a-pagar.mark-paid', id), {}, { preserveScroll: true });
+    payForm.patch(route('admin.financeiro.contas-a-pagar.mark-paid', payItem.value.id), {
+        preserveScroll: true,
+        onSuccess: () => closePayModal(),
+    });
 };
 
 const remove = (id) => {
@@ -128,7 +156,7 @@ const remove = (id) => {
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Título</th>
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Vencimento</th>
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Valor</th>
-                            <th class="px-4 py-3 text-left font-medium text-slate-700">Forma</th>
+                            <th class="px-4 py-3 text-left font-medium text-slate-700">Conta de origem</th>
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Status</th>
                             <th class="px-4 py-3 text-right font-medium text-slate-700">Ações</th>
                         </tr>
@@ -147,7 +175,9 @@ const remove = (id) => {
                             </td>
                             <td class="px-4 py-3 text-slate-700">{{ formatDate(item.due_date) }}</td>
                             <td class="px-4 py-3 font-medium text-slate-900">{{ formatBRL(item.amount_cents) }}</td>
-                            <td class="px-4 py-3 text-slate-700">{{ item.payment_method?.name || '—' }}</td>
+                            <td class="px-4 py-3 text-slate-700">
+                                {{ item.bank_account?.name || item.payment_method?.name || '—' }}
+                            </td>
                             <td class="px-4 py-3">
                                 <span
                                     class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
@@ -158,10 +188,10 @@ const remove = (id) => {
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <button
-                                    v-if="item.status === 'pending'"
+                                    v-if="item.can_mark_paid"
                                     type="button"
                                     class="font-medium text-emerald-700 hover:underline"
-                                    @click="markPaid(item.id)"
+                                    @click="openPayModal(item)"
                                 >
                                     Pagar
                                 </button>
@@ -184,5 +214,60 @@ const remove = (id) => {
                 </table>
             </div>
         </div>
+
+        <FullScreenOverlay :show="payModalOpen && !!payItem" @close="closePayModal">
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-900">Registrar pagamento</h3>
+                <p class="mt-1 text-sm text-slate-600">{{ payItem?.title }}</p>
+                <p class="mt-1 text-sm text-slate-600">Valor: {{ formatBRL(payItem?.amount_cents ?? 0) }}</p>
+
+                <form class="mt-4 space-y-4" @submit.prevent="submitPay">
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Conta de origem
+                        </label>
+                        <select
+                            v-model="payForm.bank_account_id"
+                            required
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        >
+                            <option value="" disabled>Selecione a conta</option>
+                            <option v-for="a in bankAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        </select>
+                        <p v-if="payForm.errors.bank_account_id" class="mt-1 text-xs text-rose-600">
+                            {{ payForm.errors.bank_account_id }}
+                        </p>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Forma de pagamento
+                        </label>
+                        <select
+                            v-model="payForm.payment_method_id"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        >
+                            <option value="">Não informado</option>
+                            <option v-for="m in paymentMethods" :key="m.id" :value="m.id">{{ m.name }}</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button
+                            type="button"
+                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            @click="closePayModal"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
+                            :disabled="payForm.processing"
+                        >
+                            {{ payForm.processing ? 'A pagar…' : 'Confirmar pagamento' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </FullScreenOverlay>
     </AdminLayout>
 </template>

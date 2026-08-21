@@ -1,4 +1,5 @@
 <script setup>
+import CompanyLogoField from '@/Components/Admin/Companies/CompanyLogoField.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -88,14 +89,33 @@ const form = useForm({
     desligamento_access_mode: desligamentoAccessMode(),
     acompanhamento_access_mode: acompanhamentoAccessMode(),
     plan_id: props.activePlanId ?? null,
+    logo: null,
+    remove_logo: false,
 });
 
 const onCnpjInput = (event) => {
     form.cnpj = maskCnpj(event.target.value);
 };
 
+const onLogoChange = (file) => {
+    form.logo = file;
+    form.remove_logo = false;
+};
+
+const onLogoRemove = () => {
+    form.logo = null;
+    form.remove_logo = true;
+};
+
 const submit = () => {
-    form.put(route('admin.companies.update', props.company.id));
+    form
+        .transform((data) => ({
+            ...data,
+            _method: 'put',
+        }))
+        .post(route('admin.companies.update', props.company.id), {
+            forceFormData: true,
+        });
 };
 </script>
 
@@ -129,6 +149,13 @@ const submit = () => {
                         autocomplete="off"
                     />
                 </div>
+                <CompanyLogoField
+                    :existing-url="company.logo_url"
+                    :error="form.errors.logo"
+                    :disabled="form.processing"
+                    @change="onLogoChange"
+                    @remove="onLogoRemove"
+                />
             </div>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
                 <div>

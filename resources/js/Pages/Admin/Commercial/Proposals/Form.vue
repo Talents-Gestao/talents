@@ -676,7 +676,11 @@ const canReopen = computed(() => Boolean(props.proposal?.can_reopen) && !hasLink
 const hasSignedContract = computed(() => Boolean(props.proposal?.has_signed_contract));
 const hasZapSignSentContract = computed(() => Boolean(props.proposal?.has_zapsign_sent_contract));
 const suggestUpdatedContract = computed(() => Boolean(inertiaPage.props.flash?.suggest_updated_contract));
-const titleText = computed(() => (isEdit.value ? `Proposta ${props.proposal?.code}` : 'Nova proposta'));
+const titleText = computed(() =>
+    isEdit.value
+        ? `Proposta${props.proposal?.client_name ? ` — ${props.proposal.client_name}` : ''}`
+        : 'Nova proposta',
+);
 
 const reopening = ref(false);
 const reopenModalOpen = ref(false);
@@ -1056,6 +1060,14 @@ const onStepClick = (index) => {
             role="status"
         >
             {{ inertiaPage.props.flash.success }}
+        </div>
+
+        <div
+            v-if="inertiaPage.props.flash?.info"
+            class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            role="status"
+        >
+            {{ inertiaPage.props.flash.info }}
         </div>
 
         <div
@@ -2001,7 +2013,9 @@ const onStepClick = (index) => {
                             class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
                         >
                             <div>
-                                <div class="font-mono text-xs font-semibold text-slate-800">{{ c.code }}</div>
+                                <div class="text-sm font-semibold text-slate-800">
+                                    {{ c.template_name_snapshot || 'Contrato' }}
+                                </div>
                                 <div class="text-xs text-slate-500">
                                     {{ c.template_name_snapshot }} · {{ formatContractDate(c.generated_at) }}
                                 </div>
@@ -2134,9 +2148,7 @@ const onStepClick = (index) => {
             <div class="p-6">
                 <h2 class="text-lg font-semibold text-slate-900">Reabrir proposta?</h2>
                 <p class="mt-2 text-sm text-slate-600">
-                    A proposta
-                    <span v-if="proposal?.code" class="font-medium text-slate-800">{{ proposal.code }}</span>
-                    voltará para <strong>Em negociação</strong> e poderá ser editada novamente.
+                    A proposta voltará para <strong>Em negociação</strong> e poderá ser editada novamente.
                     Se houver contrato assinado, depois das alterações gere um contrato novo para o cliente.
                 </p>
                 <div class="mt-6 flex justify-end gap-2">
