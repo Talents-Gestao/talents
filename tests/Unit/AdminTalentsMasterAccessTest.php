@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Actions\SyncAdminUserPermissions;
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Models\User;
@@ -15,19 +16,36 @@ class AdminTalentsMasterAccessTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_non_owner_super_admin_has_full_admin_access_without_grants(): void
+    public function test_non_owner_super_admin_without_grants_cannot_access_financeiro(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => false]);
 
-        $this->assertTrue($admin->canAccessAdmin(AdminPermissionModule::Entrevistas, PermissionAction::View));
-        $this->assertTrue($admin->canAccessAdmin(AdminPermissionModule::Financeiro, PermissionAction::View));
-        $this->assertTrue($admin->canAccessAdmin(AdminPermissionModule::Solides, PermissionAction::Create));
-        $this->assertTrue($admin->hasAllAdminPermissions());
-        $this->assertSame(['*' => true], $admin->adminPermissionMatrixForFrontend());
+        $this->assertFalse($admin->canAccessAdmin(AdminPermissionModule::Financeiro, PermissionAction::View));
+        $this->assertFalse($admin->hasAllAdminPermissions());
+        $this->assertSame([], $admin->adminPermissionMatrixForFrontend());
         $this->assertSame('admin.dashboard', app(AdminHomeResolver::class)->routeNameFor($admin));
     }
 
-    public function test_owner_super_admin_has_same_master_access(): void
+    public function test_non_owner_with_financeiro_grant_can_access(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => false]);
+        $workspace = $admin->talentsWorkspace();
+        $this->assertNotNull($workspace);
+
+        app(SyncAdminUserPermissions::class)->execute($workspace, [
+            ['module' => AdminPermissionModule::Financeiro->value, 'action' => PermissionAction::View->value],
+            ['module' => AdminPermissionModule::Dashboard->value, 'action' => PermissionAction::View->value],
+        ]);
+
+        $admin->unsetRelation('workspaces');
+        $admin->setActiveWorkspace($workspace->fresh(['adminPermissions']));
+
+        $this->assertTrue($admin->canAccessAdmin(AdminPermissionModule::Financeiro, PermissionAction::View));
+        $this->assertFalse($admin->canAccessAdmin(AdminPermissionModule::Financeiro, PermissionAction::Create));
+        $this->assertFalse($admin->canAccessAdmin(AdminPermissionModule::Comercial, PermissionAction::View));
+    }
+
+    public function test_owner_super_admin_has_master_access(): void
     {
         $owner = User::factory()->superAdmin()->create(['is_owner' => true]);
 
@@ -47,5 +65,22 @@ class AdminTalentsMasterAccessTest extends TestCase
         $this->assertFalse($admin->canAccessAdmin(AdminPermissionModule::Dashboard, PermissionAction::View));
         $this->assertFalse($admin->hasAllAdminPermissions());
         $this->assertSame([], $admin->adminPermissionMatrixForFrontend());
+    }
+
+    public function test_full_grants_report_has_all_admin_permissions(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => false]);
+        $workspace = $admin->talentsWorkspace();
+        $this->assertNotNull($workspace);
+
+        app(SyncAdminUserPermissions::class)->execute(
+            $workspace,
+            SyncAdminUserPermissions::allGrants(),
+        );
+
+        $admin->setActiveWorkspace($workspace->fresh(['adminPermissions']));
+
+        $this->assertTrue($admin->hasAllAdminPermissions());
+        $this->assertTrue($admin->canAccessAdmin(AdminPermissionModule::Solides, PermissionAction::Create));
     }
 }
