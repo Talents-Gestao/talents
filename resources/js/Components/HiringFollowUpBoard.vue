@@ -184,6 +184,23 @@ const submitCreate = () => {
         });
 };
 
+const draftFieldPayload = (processId) => {
+    const draft = fieldDrafts.value[processId];
+    if (!draft) {
+        return {};
+    }
+    const candidatesRaw = draft.candidates_count;
+    const candidatesCount =
+        candidatesRaw === '' || candidatesRaw === null || candidatesRaw === undefined
+            ? null
+            : Number(candidatesRaw);
+
+    return {
+        candidates_count: Number.isFinite(candidatesCount) ? candidatesCount : null,
+        notes: draft.notes?.trim() ? draft.notes : null,
+    };
+};
+
 const saveProcessFields = (processId) => {
     if (!props.can_manage) {
         return;
@@ -196,29 +213,16 @@ const saveProcessFields = (processId) => {
     draft.saving = true;
     draft.error = null;
 
-    const candidatesRaw = draft.candidates_count;
-    const candidatesCount =
-        candidatesRaw === '' || candidatesRaw === null || candidatesRaw === undefined
-            ? null
-            : Number(candidatesRaw);
-
-    router.patch(
-        route(props.routes.update, processId),
-        {
-            candidates_count: Number.isFinite(candidatesCount) ? candidatesCount : null,
-            notes: draft.notes?.trim() ? draft.notes : null,
+    router.patch(route(props.routes.update, processId), draftFieldPayload(processId), {
+        preserveScroll: true,
+        onError: (errors) => {
+            draft.error =
+                errors?.candidates_count || errors?.notes || 'Não foi possível guardar.';
         },
-        {
-            preserveScroll: true,
-            onError: (errors) => {
-                draft.error =
-                    errors?.candidates_count || errors?.notes || 'Não foi possível guardar.';
-            },
-            onFinish: () => {
-                draft.saving = false;
-            },
+        onFinish: () => {
+            draft.saving = false;
         },
-    );
+    });
 };
 
 const moveStage = (processId, stage) => {
@@ -227,7 +231,10 @@ const moveStage = (processId, stage) => {
     }
     router.patch(
         route(props.routes.update, processId),
-        { current_stage: stage },
+        {
+            current_stage: stage,
+            ...draftFieldPayload(processId),
+        },
         { preserveScroll: true },
     );
 };
@@ -256,7 +263,9 @@ const advance = (processId) => {
     if (!props.can_manage) {
         return;
     }
-    router.post(route(props.routes.advance, processId), {}, { preserveScroll: true });
+    router.post(route(props.routes.advance, processId), draftFieldPayload(processId), {
+        preserveScroll: true,
+    });
 };
 
 const retreat = (processId) => {
@@ -277,6 +286,9 @@ const destroyProcess = (processId) => {
 };
 
 const commentsStoreUrl = (processId) => route(props.routes.comments_store, processId);
+
+const pastStageEntries = (process) =>
+    (process.stage_entries ?? []).filter((e) => e.stage !== process.current_stage);
 
 // Controla quais cards estão expandidos. Por padrão todos fechados.
 const expandedIds = ref(new Set());
@@ -581,11 +593,14 @@ watch(
                             leave-to-class="opacity-0 -translate-y-1"
                         >
                             <div v-if="isExpanded(p.id)" class="border-t border-slate-100 px-4 pb-4 pt-4 sm:px-5">
-                                <!-- Campos editáveis -->
+                                <!-- Ficha da etapa atual -->
                                 <div
                                     v-if="can_manage && fieldDrafts[p.id]"
                                     class="space-y-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3"
                                 >
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-talents-700">
+                                        Ficha desta etapa · {{ p.current_stage_label }}
+                                    </p>
                                     <div class="grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-end">
                                         <div>
                                             <label
@@ -612,14 +627,14 @@ watch(
                                             :for="'notes-' + p.id"
                                             class="text-xs font-semibold uppercase tracking-wide text-slate-500"
                                         >
-                                            Comentário do processo
+                                            Comentário desta etapa
                                         </label>
                                         <textarea
                                             :id="'notes-' + p.id"
                                             v-model="fieldDrafts[p.id].notes"
                                             rows="2"
                                             class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
-                                            placeholder="Comentário atualizável em qualquer fase…"
+                                            placeholder="Informações desta fase do funil…"
                                         />
                                         <p v-if="p.notes_at" class="mt-1 text-xs font-medium text-slate-500">
                                             Atualizado em {{ formatDateTime(p.notes_at) }}
@@ -640,8 +655,11 @@ watch(
                                     </div>
                                 </div>
 
-                                <!-- Visualização somente-leitura -->
+                                <!-- Visualização somente-leitura da etapa atual -->
                                 <div v-else class="space-y-2">
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-talents-700">
+                                        Ficha desta etapa · {{ p.current_stage_label }}
+                                    </p>
                                     <p
                                         v-if="p.candidates_count !== null && p.candidates_count !== undefined"
                                         class="inline-flex flex-wrap items-center gap-x-2 gap-y-1"
@@ -655,15 +673,67 @@ watch(
                                         </span>
                                     </p>
                                     <div v-if="p.notes" class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Comentário do processo</p>
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                            Comentário desta etapa
+                                        </p>
                                         <p class="mt-1 whitespace-pre-wrap">{{ p.notes }}</p>
                                         <p v-if="p.notes_at" class="mt-1 text-xs font-medium text-slate-500">
                                             Atualizado em {{ formatDateTime(p.notes_at) }}
                                         </p>
                                     </div>
+                                    <p
+                                        v-if="!p.notes && (p.candidates_count === null || p.candidates_count === undefined)"
+                                        class="text-sm text-slate-500"
+                                    >
+                                        Ainda não há dados nesta etapa.
+                                    </p>
                                 </div>
 
-                                <!-- Observações / histórico -->
+                                <!-- Histórico das etapas anteriores -->
+                                <div
+                                    v-if="pastStageEntries(p).length"
+                                    class="mt-4 space-y-2 rounded-xl border border-slate-100 bg-white p-3"
+                                >
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Histórico das etapas
+                                    </p>
+                                    <ul class="space-y-2">
+                                        <li
+                                            v-for="entry in pastStageEntries(p)"
+                                            :key="entry.id"
+                                            class="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5"
+                                        >
+                                            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+                                                <span class="font-semibold text-slate-800">{{ entry.stage_label }}</span>
+                                                <span v-if="entry.created_by_name">· {{ entry.created_by_name }}</span>
+                                                <span v-if="entry.updated_at">
+                                                    · {{ formatDateTime(entry.updated_at) }}
+                                                </span>
+                                            </div>
+                                            <p
+                                                v-if="entry.candidates_count !== null && entry.candidates_count !== undefined"
+                                                class="mt-1.5 inline-flex items-center rounded-full bg-talents-50 px-2 py-0.5 text-xs font-semibold text-talents-800"
+                                            >
+                                                {{ entry.candidates_count }}
+                                                {{ Number(entry.candidates_count) === 1 ? 'candidato' : 'candidatos' }}
+                                            </p>
+                                            <p
+                                                v-if="entry.notes"
+                                                class="mt-1.5 whitespace-pre-wrap text-sm text-slate-700"
+                                            >
+                                                {{ entry.notes }}
+                                            </p>
+                                            <p
+                                                v-if="!entry.notes && (entry.candidates_count === null || entry.candidates_count === undefined)"
+                                                class="mt-1 text-sm text-slate-500"
+                                            >
+                                                Sem informações registadas.
+                                            </p>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <!-- Observações / mensagens append-only -->
                                 <div class="mt-4">
                                     <HiringProcessObservations
                                         :process-id="p.id"

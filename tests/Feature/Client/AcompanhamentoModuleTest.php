@@ -96,14 +96,24 @@ class AcompanhamentoModuleTest extends TestCase
         $this->assertSame(3, $process->candidates_count);
         $this->assertNotNull($process->candidates_count_at);
         $this->assertNotNull($process->notes_at);
+        $this->assertDatabaseHas('hiring_process_stage_entries', [
+            'hiring_process_id' => $process->id,
+            'stage' => HiringProcessStage::AnaliseCurriculo->value,
+            'notes' => 'Comentário cliente',
+            'candidates_count' => 3,
+        ]);
 
         $this->actingAs($admin)
-            ->post(route('client.acompanhamento.advance', $process))
+            ->post(route('client.acompanhamento.advance', $process), [
+                'notes' => 'Comentário cliente',
+                'candidates_count' => 3,
+            ])
             ->assertRedirect();
 
         $process->refresh();
-        $this->assertSame(3, $process->candidates_count);
-        $this->assertSame('Comentário cliente', $process->notes);
+        $this->assertSame(HiringProcessStage::AnaliseComportamental, $process->current_stage);
+        $this->assertNull($process->candidates_count);
+        $this->assertNull($process->notes);
 
         $this->travel(1)->seconds();
 
@@ -119,6 +129,19 @@ class AcompanhamentoModuleTest extends TestCase
         $this->assertSame('Comentário após avanço', $process->notes);
         $this->assertNotNull($process->candidates_count_at);
         $this->assertNotNull($process->notes_at);
+
+        $this->assertDatabaseHas('hiring_process_stage_entries', [
+            'hiring_process_id' => $process->id,
+            'stage' => HiringProcessStage::AnaliseCurriculo->value,
+            'notes' => 'Comentário cliente',
+            'candidates_count' => 3,
+        ]);
+        $this->assertDatabaseHas('hiring_process_stage_entries', [
+            'hiring_process_id' => $process->id,
+            'stage' => HiringProcessStage::AnaliseComportamental->value,
+            'notes' => 'Comentário após avanço',
+            'candidates_count' => 7,
+        ]);
     }
 
     public function test_company_user_cannot_create_process_but_can_manage(): void

@@ -11,7 +11,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\HiringProcess;
 use App\Models\HiringProcessComment;
+use App\Models\HiringProcessStageEntry;
 use App\Models\User;
+use App\Support\Hiring\HiringProcessStageRecorder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,6 +22,10 @@ use Inertia\Response;
 
 class AcompanhamentoController extends Controller
 {
+    public function __construct(
+        private readonly HiringProcessStageRecorder $stageRecorder,
+    ) {}
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -49,30 +55,13 @@ class AcompanhamentoController extends Controller
                 'company:id,name',
                 'updatedByUser:id,name',
                 'comments.user:id,name,role',
+                'stageEntries.createdByUser:id,name',
             ])
             ->where('current_stage', $activeStage->value)
             ->orderBy('sort_order')
             ->orderByDesc('updated_at')
             ->get()
-            ->map(fn (HiringProcess $p) => [
-                'id' => $p->id,
-                'title' => $p->title,
-                'notes' => $p->notes,
-                'notes_at' => $p->notes_at?->toIso8601String(),
-                'candidates_count' => $p->candidates_count,
-                'candidates_count_at' => $p->candidates_count_at?->toIso8601String(),
-                'current_stage' => $p->current_stage->value,
-                'current_stage_label' => $p->current_stage->label(),
-                'company' => $p->company ? [
-                    'id' => $p->company->id,
-                    'name' => $p->company->name,
-                ] : null,
-                'updated_by_name' => $p->updatedByUser?->name,
-                'updated_at' => $p->updated_at?->toIso8601String(),
-                'can_advance' => $p->current_stage->next() !== null,
-                'can_retreat' => $p->current_stage->previous() !== null,
-                'comments' => $p->comments->map(fn (HiringProcessComment $c) => $c->toFrontend())->values()->all(),
-            ]);
+            ->map(fn (HiringProcess $p) => $this->processToFrontend($p));
 
         return Inertia::render('Client/HiringFollowUp/Index', [
             'stages' => HiringProcessStage::options(),
@@ -112,15 +101,12 @@ class AcompanhamentoController extends Controller
             ->where('current_stage', $stage->value)
             ->max('sort_order');
 
-        $notes = isset($data['notes']) && trim((string) $data['notes']) !== ''
-            ? $data['notes']
+        $notes = $this->stageRecorder->normalizeNotes($data['notes'] ?? null);
+        $candidatesCount = array_key_exists('candidates_count', $data)
+            ? $this->stageRecorder->normalizeCandidatesCount($data['candidates_count'])
             : null;
 
-        $candidatesCount = array_key_exists('candidates_count', $data) && $data['candidates_count'] !== null
-            ? (int) $data['candidates_count']
-            : null;
-
-        HiringProcess::query()->create([
+        $process = HiringProcess::query()->create([
             'company_id' => $company->id,
             'title' => $data['title'],
             'current_stage' => $stage,
@@ -131,6 +117,16 @@ class AcompanhamentoController extends Controller
             'sort_order' => $nextOrder + 1,
             'updated_by' => $user->id,
         ]);
+
+        if ($notes !== null || $candidatesCount !== null) {
+            $this->stageRecorder->upsertEntry(
+                $process,
+                $stage,
+                $notes,
+                $candidatesCount,
+                $user->id,
+            );
+        }
 
         return redirect()
             ->route('client.acompanhamento.index', ['stage' => $stage->value])
@@ -148,35 +144,41 @@ class AcompanhamentoController extends Controller
             'current_stage' => ['sometimes', 'required', Rule::enum(HiringProcessStage::class)],
         ]);
 
+        $userId = $request->user()?->id;
+
         if (array_key_exists('title', $data)) {
             $hiringProcess->title = $data['title'];
         }
-        if (array_key_exists('notes', $data)) {
-            $notes = $data['notes'] !== null && trim((string) $data['notes']) !== ''
-                ? $data['notes']
-                : null;
-            $hiringProcess->notes = $notes;
-            $hiringProcess->notes_at = now();
-        }
-        if (array_key_exists('candidates_count', $data)) {
-            $count = $data['candidates_count'] !== null
-                ? (int) $data['candidates_count']
-                : null;
-            $hiringProcess->candidates_count = $count;
-            $hiringProcess->candidates_count_at = now();
-        }
-        if (array_key_exists('current_stage', $data)) {
-            $hiringProcess->current_stage = $data['current_stage'] instanceof HiringProcessStage
+
+        $hasStageChange = array_key_exists('current_stage', $data);
+        $hasFields = array_key_exists('notes', $data) || array_key_exists('candidates_count', $data);
+        $fieldPayload = $hasFields ? [
+            'notes' => $data['notes'] ?? null,
+            'candidates_count' => $data['candidates_count'] ?? null,
+        ] : null;
+
+        if ($hasStageChange) {
+            $target = $data['current_stage'] instanceof HiringProcessStage
                 ? $data['current_stage']
                 : HiringProcessStage::from((string) $data['current_stage']);
-        }
 
-        $hiringProcess->updated_by = $request->user()?->id;
-        $hiringProcess->save();
+            $this->stageRecorder->changeStage($hiringProcess, $target, $fieldPayload, $userId);
+            if ($hiringProcess->isDirty(['title'])) {
+                $hiringProcess->updated_by = $userId;
+                $hiringProcess->save();
+            }
+        } elseif ($hasFields) {
+            $this->stageRecorder->upsertCurrentStage($hiringProcess, $fieldPayload, $userId, onlyIfFilled: false);
+            $hiringProcess->updated_by = $userId;
+            $hiringProcess->save();
+        } else {
+            $hiringProcess->updated_by = $userId;
+            $hiringProcess->save();
+        }
 
         return redirect()
             ->route('client.acompanhamento.index', [
-                'stage' => $hiringProcess->current_stage->value,
+                'stage' => $hiringProcess->fresh()->current_stage->value,
             ])
             ->with('success', 'Processo atualizado.');
     }
@@ -224,14 +226,24 @@ class AcompanhamentoController extends Controller
     {
         $this->authorizeCompanyProcess($request, $hiringProcess);
 
+        $data = $request->validate([
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'candidates_count' => ['nullable', 'integer', 'min:0', 'max:100000'],
+        ]);
+
         $next = $hiringProcess->current_stage->next();
         if ($next === null) {
             return back()->with('error', 'Este processo já está na última fase.');
         }
 
-        $hiringProcess->current_stage = $next;
-        $hiringProcess->updated_by = $request->user()?->id;
-        $hiringProcess->save();
+        $payload = $request->exists('notes') || $request->exists('candidates_count')
+            ? [
+                'notes' => $data['notes'] ?? null,
+                'candidates_count' => $data['candidates_count'] ?? null,
+            ]
+            : null;
+
+        $next = $this->stageRecorder->advance($hiringProcess, $payload, $request->user()?->id);
 
         return redirect()
             ->route('client.acompanhamento.index', ['stage' => $next->value])
@@ -247,9 +259,7 @@ class AcompanhamentoController extends Controller
             return back()->with('error', 'Este processo já está na primeira fase.');
         }
 
-        $hiringProcess->current_stage = $previous;
-        $hiringProcess->updated_by = $request->user()?->id;
-        $hiringProcess->save();
+        $previous = $this->stageRecorder->retreat($hiringProcess, $request->user()?->id);
 
         return redirect()
             ->route('client.acompanhamento.index', ['stage' => $previous->value])
@@ -282,6 +292,39 @@ class AcompanhamentoController extends Controller
         ]);
 
         return back()->with('success', 'Mensagem adicionada ao histórico.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function processToFrontend(HiringProcess $p): array
+    {
+        $stageEntries = $p->stageEntries
+            ->sortBy(fn (HiringProcessStageEntry $e) => $e->stage->order())
+            ->values()
+            ->map(fn (HiringProcessStageEntry $e) => $e->toFrontend())
+            ->all();
+
+        return [
+            'id' => $p->id,
+            'title' => $p->title,
+            'notes' => $p->notes,
+            'notes_at' => $p->notes_at?->toIso8601String(),
+            'candidates_count' => $p->candidates_count,
+            'candidates_count_at' => $p->candidates_count_at?->toIso8601String(),
+            'current_stage' => $p->current_stage->value,
+            'current_stage_label' => $p->current_stage->label(),
+            'company' => $p->company ? [
+                'id' => $p->company->id,
+                'name' => $p->company->name,
+            ] : null,
+            'updated_by_name' => $p->updatedByUser?->name,
+            'updated_at' => $p->updated_at?->toIso8601String(),
+            'can_advance' => $p->current_stage->next() !== null,
+            'can_retreat' => $p->current_stage->previous() !== null,
+            'stage_entries' => $stageEntries,
+            'comments' => $p->comments->map(fn (HiringProcessComment $c) => $c->toFrontend())->values()->all(),
+        ];
     }
 
     private function requireCompany(?User $user): Company

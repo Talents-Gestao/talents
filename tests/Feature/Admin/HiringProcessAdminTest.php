@@ -95,7 +95,7 @@ class HiringProcessAdminTest extends TestCase
         $this->assertNotNull($process?->candidates_count_at);
     }
 
-    public function test_candidates_and_comments_persist_across_stages_and_remain_editable(): void
+    public function test_update_upserts_stage_entry_and_advance_archives_then_clears_draft(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $company = Company::query()->create(['name' => 'Empresa Persist', 'is_active' => true]);
@@ -111,36 +111,72 @@ class HiringProcessAdminTest extends TestCase
             ->assertRedirect();
 
         $process = HiringProcess::query()->where('title', 'Vaga Persistente')->firstOrFail();
-        $notesAt = $process->notes_at;
-        $candidatesAt = $process->candidates_count_at;
-        $this->assertNotNull($notesAt);
-        $this->assertNotNull($candidatesAt);
+        $this->assertDatabaseHas('hiring_process_stage_entries', [
+            'hiring_process_id' => $process->id,
+            'stage' => HiringProcessStage::AnaliseCurriculo->value,
+            'notes' => 'Comentário inicial',
+            'candidates_count' => 5,
+        ]);
+
+        $this->travel(1)->seconds();
 
         $this->actingAs($admin)
-            ->post(route('admin.acompanhamento.advance', $process))
+            ->patch(route('admin.acompanhamento.update', $process), [
+                'candidates_count' => 6,
+                'notes' => 'Comentário guardado na etapa A',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('hiring_process_stage_entries', [
+            'hiring_process_id' => $process->id,
+            'stage' => HiringProcessStage::AnaliseCurriculo->value,
+            'notes' => 'Comentário guardado na etapa A',
+            'candidates_count' => 6,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.acompanhamento.advance', $process), [
+                'notes' => 'Comentário final da etapa A',
+                'candidates_count' => 7,
+            ])
             ->assertRedirect();
 
         $process->refresh();
         $this->assertSame(HiringProcessStage::AnaliseComportamental, $process->current_stage);
-        $this->assertSame(5, $process->candidates_count);
-        $this->assertSame('Comentário inicial', $process->notes);
-        $this->assertTrue($process->notes_at?->equalTo($notesAt));
-        $this->assertTrue($process->candidates_count_at?->equalTo($candidatesAt));
+        $this->assertNull($process->notes);
+        $this->assertNull($process->candidates_count);
+
+        $this->assertDatabaseHas('hiring_process_stage_entries', [
+            'hiring_process_id' => $process->id,
+            'stage' => HiringProcessStage::AnaliseCurriculo->value,
+            'notes' => 'Comentário final da etapa A',
+            'candidates_count' => 7,
+        ]);
+
+        $this->assertDatabaseMissing('hiring_process_stage_entries', [
+            'hiring_process_id' => $process->id,
+            'stage' => HiringProcessStage::AnaliseComportamental->value,
+        ]);
 
         $this->travel(1)->seconds();
 
         $this->actingAs($admin)
             ->patch(route('admin.acompanhamento.update', $process), [
                 'candidates_count' => 9,
-                'notes' => 'Comentário atualizado na nova fase',
+                'notes' => 'Comentário da etapa B',
             ])
             ->assertRedirect();
 
         $process->refresh();
         $this->assertSame(9, $process->candidates_count);
-        $this->assertSame('Comentário atualizado na nova fase', $process->notes);
-        $this->assertTrue($process->notes_at?->greaterThan($notesAt));
-        $this->assertTrue($process->candidates_count_at?->greaterThan($candidatesAt));
+        $this->assertSame('Comentário da etapa B', $process->notes);
+
+        $this->assertDatabaseHas('hiring_process_stage_entries', [
+            'hiring_process_id' => $process->id,
+            'stage' => HiringProcessStage::AnaliseComportamental->value,
+            'notes' => 'Comentário da etapa B',
+            'candidates_count' => 9,
+        ]);
 
         $this->withoutVite();
 
@@ -152,9 +188,57 @@ class HiringProcessAdminTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('processes', 1)
                 ->where('processes.0.candidates_count', 9)
-                ->where('processes.0.notes', 'Comentário atualizado na nova fase')
-                ->where('processes.0.candidates_count_at', fn ($v) => is_string($v) && $v !== '')
-                ->where('processes.0.notes_at', fn ($v) => is_string($v) && $v !== ''));
+                ->where('processes.0.notes', 'Comentário da etapa B')
+                ->where('processes.0.stage_entries.0.stage', HiringProcessStage::AnaliseCurriculo->value)
+                ->where('processes.0.stage_entries.0.notes', 'Comentário final da etapa A')
+                ->where('processes.0.stage_entries.1.stage', HiringProcessStage::AnaliseComportamental->value)
+                ->where('processes.0.stage_entries.1.notes', 'Comentário da etapa B'));
+    }
+
+    public function test_retreat_restores_previous_stage_draft_without_deleting_history(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = Company::query()->create(['name' => 'Empresa Retreat', 'is_active' => true]);
+        $process = HiringProcess::query()->create([
+            'company_id' => $company->id,
+            'title' => 'Vaga Retreat',
+            'current_stage' => HiringProcessStage::AnaliseCurriculo,
+            'notes' => 'Etapa A',
+            'candidates_count' => 2,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.acompanhamento.advance', $process), [
+                'notes' => 'Etapa A',
+                'candidates_count' => 2,
+            ])
+            ->assertRedirect();
+
+        $process->refresh();
+        $this->assertSame(HiringProcessStage::AnaliseComportamental, $process->current_stage);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.acompanhamento.update', $process), [
+                'notes' => 'Etapa B',
+                'candidates_count' => 4,
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($admin)
+            ->post(route('admin.acompanhamento.retreat', $process))
+            ->assertRedirect();
+
+        $process->refresh();
+        $this->assertSame(HiringProcessStage::AnaliseCurriculo, $process->current_stage);
+        $this->assertSame('Etapa A', $process->notes);
+        $this->assertSame(2, $process->candidates_count);
+
+        $this->assertDatabaseHas('hiring_process_stage_entries', [
+            'hiring_process_id' => $process->id,
+            'stage' => HiringProcessStage::AnaliseComportamental->value,
+            'notes' => 'Etapa B',
+            'candidates_count' => 4,
+        ]);
     }
 
     public function test_admin_can_create_and_advance_process(): void

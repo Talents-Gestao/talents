@@ -123,9 +123,8 @@ const statusClass = (s) =>
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium">Código</th>
-                            <th class="px-4 py-3 text-left font-medium">Proposta</th>
                             <th class="px-4 py-3 text-left font-medium">Cliente</th>
+                            <th class="px-4 py-3 text-left font-medium">Proposta</th>
                             <th class="px-4 py-3 text-left font-medium">Vendedor</th>
                             <th class="px-4 py-3 text-right font-medium">Total</th>
                             <th class="px-4 py-3 text-left font-medium">Status</th>
@@ -136,15 +135,6 @@ const statusClass = (s) =>
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
                         <tr v-for="sale in sales.data" :key="sale.id" class="hover:bg-slate-50">
-                            <td class="px-4 py-3">
-                                <Link
-                                    :href="route('admin.financeiro.vendas.show', sale.id)"
-                                    class="font-mono text-xs text-talents-700 hover:underline"
-                                >
-                                    {{ sale.code }}
-                                </Link>
-                            </td>
-                            <td class="px-4 py-3 font-mono text-xs text-slate-500">{{ sale.proposal?.code ?? '—' }}</td>
                             <td class="px-4 py-3 font-medium">
                                 <Link
                                     :href="route('admin.financeiro.vendas.show', sale.id)"
@@ -152,6 +142,16 @@ const statusClass = (s) =>
                                 >
                                     {{ sale.client_name }}
                                 </Link>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-slate-600">
+                                <Link
+                                    v-if="sale.proposal?.id"
+                                    :href="route('admin.comercial.propostas.edit', sale.proposal.id)"
+                                    class="font-medium text-talents-700 hover:underline"
+                                >
+                                    Ver proposta
+                                </Link>
+                                <span v-else>—</span>
                             </td>
                             <td class="px-4 py-3 text-slate-600">{{ sale.seller?.name ?? '—' }}</td>
                             <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ formatBRL(sale.total_cents) }}</td>
@@ -174,7 +174,7 @@ const statusClass = (s) =>
                             </td>
                         </tr>
                         <tr v-if="!sales.data?.length">
-                            <td colspan="9" class="px-4 py-8 text-center text-sm text-slate-500">Nenhuma venda encontrada.</td>
+                            <td colspan="8" class="px-4 py-8 text-center text-sm text-slate-500">Nenhuma venda encontrada.</td>
                         </tr>
                     </tbody>
                 </table>

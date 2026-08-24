@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\FinanceBankAccountType;
 use App\Enums\FinancePayableStatus;
+use App\Models\FinanceBankAccount;
 use App\Models\FinancePayable;
 use App\Models\FinancePaymentMethod;
 use App\Models\User;
@@ -50,6 +52,13 @@ class FinancePayablesModuleTest extends TestCase
             'is_active' => true,
             'sort_order' => 1,
         ]);
+        $account = FinanceBankAccount::query()->create([
+            'name' => 'Conta Origem',
+            'type' => FinanceBankAccountType::Checking,
+            'initial_balance_cents' => 0,
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
 
         $this->withoutVite();
 
@@ -71,13 +80,17 @@ class FinancePayablesModuleTest extends TestCase
         $this->assertSame(FinancePayableStatus::Pending, $payable->status);
 
         $this->actingAs($admin)
-            ->patch(route('admin.financeiro.contas-a-pagar.mark-paid', $payable))
+            ->patch(route('admin.financeiro.contas-a-pagar.mark-paid', $payable), [
+                'bank_account_id' => $account->id,
+                'payment_method_id' => $method->id,
+            ])
             ->assertRedirect();
 
         $payable->refresh();
         $this->assertSame(FinancePayableStatus::Paid, $payable->status);
         $this->assertNotNull($payable->paid_at);
         $this->assertSame(150050, $payable->paid_amount_cents);
+        $this->assertSame($account->id, $payable->bank_account_id);
 
         $this->actingAs($admin)
             ->delete(route('admin.financeiro.contas-a-pagar.destroy', $payable))

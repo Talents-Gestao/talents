@@ -71,7 +71,7 @@ const submit = () => {
 
         <div class="space-y-3 border-t border-slate-100 px-3.5 py-3">
             <p class="text-xs text-slate-500">
-                Mensagens append-only do processo (não substitui o comentário editável acima).
+                Mensagens append-only do processo (não substitui a ficha por etapa acima).
             </p>
             <ul v-if="comments.length" class="max-h-56 space-y-2 overflow-y-auto pr-1">
                 <li

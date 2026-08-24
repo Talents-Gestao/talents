@@ -1,4 +1,5 @@
 <script setup>
+import CompanyLogoField from '@/Components/Admin/Companies/CompanyLogoField.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
@@ -32,6 +33,7 @@ const form = useForm({
     employee_count_estimate: null,
     plan_id: null,
     is_active: true,
+    logo: null,
 });
 
 const lookupLoading = ref(false);
@@ -79,7 +81,15 @@ const fetchCnpjFromReceita = async () => {
 };
 
 const submit = () => {
-    form.post(route('admin.companies.store'));
+    form.post(route('admin.companies.store'), { forceFormData: true });
+};
+
+const onLogoChange = (file) => {
+    form.logo = file;
+};
+
+const onLogoRemove = () => {
+    form.logo = null;
 };
 </script>
 
@@ -155,6 +165,12 @@ const submit = () => {
                     />
                     <InputError class="mt-2" :message="form.errors.instagram" />
                 </div>
+                <CompanyLogoField
+                    :error="form.errors.logo"
+                    :disabled="form.processing"
+                    @change="onLogoChange"
+                    @remove="onLogoRemove"
+                />
             </div>
 
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">

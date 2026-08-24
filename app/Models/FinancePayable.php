@@ -17,6 +17,7 @@ class FinancePayable extends Model
         'due_date',
         'status',
         'payment_method_id',
+        'bank_account_id',
         'paid_at',
         'paid_amount_cents',
         'notes',
@@ -62,18 +63,27 @@ class FinancePayable extends Model
         return $this->belongsTo(FinancePaymentMethod::class, 'payment_method_id');
     }
 
+    public function bankAccount(): BelongsTo
+    {
+        return $this->belongsTo(FinanceBankAccount::class, 'bank_account_id');
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function markPaid(?int $paidAmountCents = null, ?int $paymentMethodId = null): void
-    {
+    public function markPaid(
+        ?int $paidAmountCents = null,
+        ?int $paymentMethodId = null,
+        ?int $bankAccountId = null,
+    ): void {
         $this->update([
             'status' => FinancePayableStatus::Paid,
             'paid_at' => now(),
             'paid_amount_cents' => $paidAmountCents ?? $this->amount_cents,
             'payment_method_id' => $paymentMethodId ?? $this->payment_method_id,
+            'bank_account_id' => $bankAccountId ?? $this->bank_account_id,
         ]);
     }
 }

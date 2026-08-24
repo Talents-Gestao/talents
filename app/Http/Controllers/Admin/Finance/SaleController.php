@@ -8,6 +8,7 @@ use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
 use App\Models\User;
 use App\Services\Commercial\ProposalSaleConversionService;
+use App\Support\Commercial\CommercialCodeSearch;
 use App\Support\Commercial\OptionalCommission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,7 +33,7 @@ class SaleController extends Controller
             ->orderByDesc('sold_at');
 
         if ($request->filled('search')) {
-            $s = (string) $request->string('search');
+            $s = CommercialCodeSearch::normalizeTerm((string) $request->string('search'));
             $q->where(function ($query) use ($s) {
                 $query->where('client_name', 'like', '%'.$s.'%')
                     ->orWhere('code', 'like', '%'.$s.'%')
@@ -83,6 +84,16 @@ class SaleController extends Controller
                 'pix' => 'PIX',
                 'boleto' => 'Boleto',
                 'cartao' => 'Cartão',
+            ],
+            'installmentMethodOptions' => [
+                ['value' => 'pix', 'label' => 'PIX'],
+                ['value' => 'boleto', 'label' => 'Boleto'],
+                ['value' => 'cartao', 'label' => 'Cartão'],
+            ],
+            'installmentStatusOptions' => [
+                ['value' => 'pendente', 'label' => 'Pendente'],
+                ['value' => 'pago', 'label' => 'Pago'],
+                ['value' => 'cancelado', 'label' => 'Cancelado'],
             ],
         ]);
     }

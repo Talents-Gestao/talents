@@ -224,53 +224,67 @@ const removeRegulation = (id) => {
             <section class="surface-card overflow-hidden p-6 sm:p-8">
                 <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span
-                                class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
-                                :class="
-                                    company.is_active
-                                        ? 'bg-emerald-50 text-emerald-800 ring-emerald-200/80'
-                                        : 'bg-slate-100 text-slate-600 ring-slate-200/80'
-                                "
+                        <div class="flex items-start gap-4">
+                            <div
+                                v-if="company.logo_url"
+                                class="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:h-20 sm:w-20"
                             >
-                                {{ company.is_active ? 'Ativa' : 'Inativa' }}
-                            </span>
-                            <span
-                                v-if="rhidConfigured"
-                                class="inline-flex items-center rounded-full bg-talents-50 px-2.5 py-0.5 text-xs font-semibold text-talents-800 ring-1 ring-talents-200/80"
-                            >
-                                RHID configurado
-                            </span>
-                            <span
-                                v-if="pendingRegistration"
-                                class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/80"
-                            >
-                                Aguarda cadastro
-                            </span>
+                                <img
+                                    :src="company.logo_url"
+                                    :alt="`Logo de ${company.name}`"
+                                    class="h-full w-full object-cover"
+                                />
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span
+                                        class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
+                                        :class="
+                                            company.is_active
+                                                ? 'bg-emerald-50 text-emerald-800 ring-emerald-200/80'
+                                                : 'bg-slate-100 text-slate-600 ring-slate-200/80'
+                                        "
+                                    >
+                                        {{ company.is_active ? 'Ativa' : 'Inativa' }}
+                                    </span>
+                                    <span
+                                        v-if="rhidConfigured"
+                                        class="inline-flex items-center rounded-full bg-talents-50 px-2.5 py-0.5 text-xs font-semibold text-talents-800 ring-1 ring-talents-200/80"
+                                    >
+                                        RHID configurado
+                                    </span>
+                                    <span
+                                        v-if="pendingRegistration"
+                                        class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/80"
+                                    >
+                                        Aguarda cadastro
+                                    </span>
+                                </div>
+                                <h1 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                                    {{ company.name }}
+                                </h1>
+                                <p
+                                    v-if="company.legal_name && company.legal_name !== company.name"
+                                    class="mt-1 text-sm text-slate-500"
+                                >
+                                    {{ company.legal_name }}
+                                </p>
+                                <dl class="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
+                                    <div v-if="company.cnpj">
+                                        <dt class="sr-only">CNPJ</dt>
+                                        <dd><span class="text-slate-400">CNPJ</span> {{ formatCnpj(company.cnpj) }}</dd>
+                                    </div>
+                                    <div v-if="company.segment">
+                                        <dt class="sr-only">Segmento</dt>
+                                        <dd><span class="text-slate-400">Segmento</span> {{ company.segment }}</dd>
+                                    </div>
+                                    <div v-if="locationLabel">
+                                        <dt class="sr-only">Localização</dt>
+                                        <dd><span class="text-slate-400">Local</span> {{ locationLabel }}</dd>
+                                    </div>
+                                </dl>
+                            </div>
                         </div>
-                        <h1 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-                            {{ company.name }}
-                        </h1>
-                        <p
-                            v-if="company.legal_name && company.legal_name !== company.name"
-                            class="mt-1 text-sm text-slate-500"
-                        >
-                            {{ company.legal_name }}
-                        </p>
-                        <dl class="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
-                            <div v-if="company.cnpj">
-                                <dt class="sr-only">CNPJ</dt>
-                                <dd><span class="text-slate-400">CNPJ</span> {{ formatCnpj(company.cnpj) }}</dd>
-                            </div>
-                            <div v-if="company.segment">
-                                <dt class="sr-only">Segmento</dt>
-                                <dd><span class="text-slate-400">Segmento</span> {{ company.segment }}</dd>
-                            </div>
-                            <div v-if="locationLabel">
-                                <dt class="sr-only">Localização</dt>
-                                <dd><span class="text-slate-400">Local</span> {{ locationLabel }}</dd>
-                            </div>
-                        </dl>
                     </div>
                     <div class="flex shrink-0 flex-wrap gap-2">
                         <button

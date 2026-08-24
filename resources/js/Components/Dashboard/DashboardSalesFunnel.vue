@@ -2,18 +2,18 @@
 import { computed } from 'vue';
 
 const FUNNEL_LABELS = {
-    leads: 'Leads',
-    meeting: 'Reunião',
     proposal: 'Proposta',
     negotiation: 'Negociação',
-    closed: 'Fechou',
+    approved: 'Aprovada',
+    sale: 'Venda',
+    ended: 'Encerrada',
 };
 
 /**
  * Larguras nas arestas entre segmentos (geometria clássica).
- * Independente de count — mesmo se um estágio intermédio > Leads.
+ * Independente de count — visual estável mesmo com etapas opcionais.
  */
-const EDGE_WIDTHS = [100, 88, 74, 60, 46, 34];
+const EDGE_WIDTHS = [100, 86, 72, 58, 44, 32];
 
 const BAND_COLORS = [
     'from-talents-700 to-talents-600',
@@ -32,19 +32,20 @@ const props = defineProps({
 
 const rows = computed(() => {
     const list = props.funnel || [];
+    // Base = etapa Proposta (cohort do mês); % nunca acima de 100 (salvo arredondamento).
     const base = Number(list[0]?.count || 0);
 
     return list.map((row, index) => {
         const count = Number(row.count || 0);
         const top = EDGE_WIDTHS[Math.min(index, EDGE_WIDTHS.length - 2)];
         const bottom = EDGE_WIDTHS[Math.min(index + 1, EDGE_WIDTHS.length - 1)];
+        const rawPct = base > 0 ? Math.round((100 * count) / base) : 0;
 
         return {
             key: row.key,
             label: FUNNEL_LABELS[row.key] ?? row.label ?? row.key,
             count,
-            // % relativo a Leads; pode ultrapassar 100% se a heurística do calendário o permitir
-            pct: base > 0 ? Math.round((100 * count) / base) : 0,
+            pct: Math.min(100, rawPct),
             topWidth: top,
             bottomWidth: bottom,
             colorClass: BAND_COLORS[Math.min(index, BAND_COLORS.length - 1)],

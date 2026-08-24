@@ -35,10 +35,10 @@ class AdminUserFunctionLabelTest extends TestCase
             ));
     }
 
-    public function test_active_super_admin_has_all_admin_permissions(): void
+    public function test_active_super_admin_without_grants_does_not_have_all_permissions(): void
     {
         $user = User::factory()->superAdmin()->create(['is_owner' => false]);
 
-        $this->assertTrue($user->hasAllAdminPermissions());
+        $this->assertFalse($user->hasAllAdminPermissions());
     }
 }

@@ -22,7 +22,7 @@ class AccessHierarchyVisibilityTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_owner_and_non_owner_super_admins_see_identical_admin_access(): void
+    public function test_owner_has_master_access_while_non_owner_needs_grants(): void
     {
         $owner = User::factory()->superAdmin()->create(['is_owner' => true]);
         $admin = User::factory()->superAdmin()->create([
@@ -33,17 +33,14 @@ class AccessHierarchyVisibilityTest extends TestCase
         foreach (AdminPermissionModule::all() as $module) {
             foreach (PermissionAction::all() as $action) {
                 $this->assertTrue($owner->canAccessAdmin($module, $action));
-                $this->assertTrue($admin->canAccessAdmin($module, $action));
+                $this->assertFalse($admin->canAccessAdmin($module, $action));
             }
         }
 
-        $this->assertSame(
-            $owner->adminPermissionMatrixForFrontend(),
-            $admin->adminPermissionMatrixForFrontend(),
-        );
-        $this->assertSame(['*' => true], $admin->adminPermissionMatrixForFrontend());
+        $this->assertSame(['*' => true], $owner->adminPermissionMatrixForFrontend());
+        $this->assertSame([], $admin->adminPermissionMatrixForFrontend());
         $this->assertTrue($owner->hasAllAdminPermissions());
-        $this->assertTrue($admin->hasAllAdminPermissions());
+        $this->assertFalse($admin->hasAllAdminPermissions());
 
         $resolver = app(AdminHomeResolver::class);
         $this->assertSame('admin.dashboard', $resolver->routeNameFor($owner));

@@ -92,7 +92,7 @@ const remove = (id) => {
             </div>
             <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Saldo cadastrado (ativos)
+                    Saldo atual (ativos)
                 </p>
                 <p class="mt-1 text-xl font-semibold tabular-nums text-emerald-700">
                     {{ formatBRL(summary.active_balance_cents ?? 0) }}
@@ -128,6 +128,7 @@ const remove = (id) => {
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Conta</th>
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Tipo</th>
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Saldo inicial</th>
+                            <th class="px-4 py-3 text-left font-medium text-slate-700">Saldo atual</th>
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Status</th>
                             <th class="px-4 py-3 text-right font-medium text-slate-700">Ações</th>
                         </tr>
@@ -146,6 +147,9 @@ const remove = (id) => {
                             <td class="px-4 py-3 text-slate-700">{{ item.type_label }}</td>
                             <td class="px-4 py-3 font-medium tabular-nums text-slate-900">
                                 {{ formatBRL(item.initial_balance_cents) }}
+                            </td>
+                            <td class="px-4 py-3 font-semibold tabular-nums text-emerald-800">
+                                {{ formatBRL(item.current_balance_cents) }}
                             </td>
                             <td class="px-4 py-3">
                                 <span

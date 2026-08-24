@@ -129,6 +129,11 @@ class User extends Authenticatable
 
     public function talentsWorkspace(): ?UserWorkspace
     {
+        $active = $this->activeWorkspace();
+        if ($active?->isTalents()) {
+            return $active;
+        }
+
         return $this->workspaces()
             ->where('workspace_type', WorkspaceType::Talents)
             ->first();
@@ -230,13 +235,41 @@ class User extends Authenticatable
             return false;
         }
 
-        // Admin Talents = master: todos os super_admin ativos têm acesso total.
-        return true;
+        $talentsWorkspace = $this->talentsWorkspace();
+        if ($talentsWorkspace === null) {
+            return false;
+        }
+
+        // Proprietário Talents: acesso master (não depende da matriz).
+        if ($talentsWorkspace->isOwner() || $this->isOwner()) {
+            return true;
+        }
+
+        return $talentsWorkspace->adminPermissions()
+            ->where('module', $module->value)
+            ->where('action', $action->value)
+            ->exists();
     }
 
     public function hasAllAdminPermissions(): bool
     {
-        return $this->isSuperAdmin() && $this->isActive();
+        if (! $this->isSuperAdmin() || ! $this->isActive()) {
+            return false;
+        }
+
+        $talentsWorkspace = $this->talentsWorkspace();
+        if ($talentsWorkspace === null) {
+            return false;
+        }
+
+        if ($talentsWorkspace->isOwner() || $this->isOwner()) {
+            return true;
+        }
+
+        $needed = count(AdminPermissionModule::all()) * count(PermissionAction::all());
+        $have = $talentsWorkspace->adminPermissions()->count();
+
+        return $have >= $needed;
     }
 
     /**
@@ -248,7 +281,36 @@ class User extends Authenticatable
             return [];
         }
 
-        return ['*' => true];
+        $talentsWorkspace = $this->talentsWorkspace();
+        if ($talentsWorkspace === null) {
+            return [];
+        }
+
+        if ($talentsWorkspace->isOwner() || $this->isOwner()) {
+            return ['*' => true];
+        }
+
+        $matrix = [];
+        $rows = $talentsWorkspace->relationLoaded('adminPermissions')
+            ? $talentsWorkspace->adminPermissions
+            : $talentsWorkspace->adminPermissions()->get();
+
+        foreach ($rows as $p) {
+            $mod = $p->module instanceof AdminPermissionModule
+                ? $p->module->value
+                : (string) $p->module;
+            $act = $p->action instanceof PermissionAction
+                ? $p->action->value
+                : (string) $p->action;
+            $matrix[$mod] ??= [];
+            $matrix[$mod][] = $act;
+        }
+
+        foreach ($matrix as $key => $actions) {
+            $matrix[$key] = array_values(array_unique($actions));
+        }
+
+        return $matrix;
     }
 
     /**

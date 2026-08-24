@@ -10,6 +10,7 @@ use App\Models\CommercialCommission;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
+use App\Models\HiringProcess;
 use App\Models\User;
 
 /**
@@ -45,6 +46,21 @@ class PublishCommercialNotice
             eventKind: CompanyNoticeEventKind::ProposalWon,
             sourceId: (int) $proposal->id,
             actor: $actor,
+        );
+    }
+
+    public function hiringFollowUpFromProposal(
+        CommercialProposal $proposal,
+        HiringProcess $process,
+        ?User $actor = null,
+    ): void {
+        $this->talents(
+            title: 'Novo acompanhamento criado',
+            body: "Acompanhamento «{$process->title}» aberto em Engenharia de Cargo a partir da proposta {$proposal->code}.",
+            eventKind: CompanyNoticeEventKind::HiringFollowUpFromProposal,
+            sourceId: (int) $process->id,
+            actor: $actor,
+            sourceType: 'hiring_process',
         );
     }
 

@@ -51,6 +51,8 @@ class HandleInertiaRequests extends Middleware
                         $workspace->unsetRelation('company');
                     }
                     $workspace->loadMissing(['company', 'permissions']);
+                } elseif ($workspace->isTalents()) {
+                    $workspace->loadMissing(['adminPermissions']);
                 }
             }
 

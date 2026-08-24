@@ -41,6 +41,7 @@ const props = defineProps({
     kpis: { type: Object, required: true },
     leadsBySource: { type: Array, default: () => [] },
     funnel: { type: Array, default: () => [] },
+    leadsThisMonth: { type: Number, default: 0 },
     monthlyGoal: { type: Object, required: true },
 });
 
@@ -632,6 +633,20 @@ const submitGoal = () => {
                                 >
                                     <div class="dashboard-panel-heading mb-1 pr-10">
                                         <h3 class="dashboard-panel-title">Funil comercial</h3>
+                                        <p class="mt-0.5 text-xs text-slate-500">Propostas criadas neste mês</p>
+                                    </div>
+                                    <div
+                                        class="mt-3 flex items-baseline justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2"
+                                    >
+                                        <div>
+                                            <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                                Leads do mês
+                                            </p>
+                                            <p class="text-xs text-slate-500">Captados (fora das % do funil)</p>
+                                        </div>
+                                        <p class="text-xl font-bold tabular-nums tracking-tight text-slate-900">
+                                            {{ leadsThisMonth }}
+                                        </p>
                                     </div>
                                     <div class="mt-4">
                                         <DashboardSalesFunnel :funnel="funnel" />

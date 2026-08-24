@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Admin\Finance;
 
 use App\Enums\FinancePayableStatus;
 use App\Http\Controllers\Controller;
+use App\Models\FinanceBankAccount;
 use App\Models\FinancePayable;
 use App\Models\FinancePaymentMethod;
 use App\Support\Finance\MonthlyRecurrenceDates;
@@ -22,7 +23,7 @@ class PayableController extends Controller
     public function index(Request $request): Response
     {
         $query = FinancePayable::query()
-            ->with(['paymentMethod:id,name', 'createdBy:id,name'])
+            ->with(['paymentMethod:id,name', 'bankAccount:id,name', 'createdBy:id,name'])
             ->orderByDesc('due_date')
             ->orderByDesc('id');
 
@@ -48,8 +49,12 @@ class PayableController extends Controller
             'status_label' => $p->status->label(),
             'paid_at' => $p->paid_at?->toIso8601String(),
             'payment_method' => $p->paymentMethod?->only(['id', 'name']),
+            'payment_method_id' => $p->payment_method_id,
+            'bank_account' => $p->bankAccount?->only(['id', 'name']),
+            'bank_account_id' => $p->bank_account_id,
             'is_recurring' => (bool) $p->is_recurring,
             'recurring_label' => $p->recurringLabel(),
+            'can_mark_paid' => $p->status === FinancePayableStatus::Pending,
         ]);
 
         return Inertia::render('Admin/Finance/Payables/Index', [
@@ -59,6 +64,7 @@ class PayableController extends Controller
                 'status' => $request->string('status')->toString(),
             ],
             'statusOptions' => $this->statusOptions(),
+            ...$this->formOptions(),
         ]);
     }
 
@@ -127,19 +133,20 @@ class PayableController extends Controller
                 'due_date' => $payable->due_date?->toDateString(),
                 'status' => $payable->status->value,
                 'payment_method_id' => $payable->payment_method_id,
+                'bank_account_id' => $payable->bank_account_id,
                 'notes' => $payable->notes,
                 'is_recurring' => (bool) $payable->is_recurring,
                 'recurring_months' => $payable->recurring_months,
                 'recurring_index' => $payable->recurring_index,
                 'recurring_label' => $payable->recurringLabel(),
             ],
-            ...$this->formOptions(),
+            ...$this->formOptions($payable->bank_account_id),
         ]);
     }
 
     public function update(Request $request, FinancePayable $payable): RedirectResponse
     {
-        $data = $this->validated($request, allowRecurrence: false);
+        $data = $this->validated($request, allowRecurrence: false, existingBankAccountId: $payable->bank_account_id);
 
         if ($data['status'] === FinancePayableStatus::Paid && $payable->paid_at === null) {
             $data['paid_at'] = now();
@@ -171,6 +178,9 @@ class PayableController extends Controller
     {
         $data = $request->validate([
             'payment_method_id' => ['nullable', 'exists:finance_payment_methods,id'],
+            'bank_account_id' => ['required', 'exists:finance_bank_accounts,id'],
+        ], [
+            'bank_account_id.required' => 'Selecione a conta de origem do pagamento.',
         ]);
 
         if ($payable->status === FinancePayableStatus::Cancelled) {
@@ -180,15 +190,20 @@ class PayableController extends Controller
         $payable->markPaid(
             paidAmountCents: $payable->amount_cents,
             paymentMethodId: isset($data['payment_method_id']) ? (int) $data['payment_method_id'] : null,
+            bankAccountId: (int) $data['bank_account_id'],
         );
 
         return back()->with('success', 'Conta marcada como paga.');
     }
 
     /**
-     * @return array{statusOptions: list<array{value: string, label: string}>, paymentMethods: list<array{id: int, name: string}>}
+     * @return array{
+     *   statusOptions: list<array{value: string, label: string}>,
+     *   paymentMethods: list<array{id: int, name: string}>,
+     *   bankAccounts: list<array{id: int, name: string}>
+     * }
      */
-    private function formOptions(): array
+    private function formOptions(?int $includeBankAccountId = null): array
     {
         return [
             'statusOptions' => $this->statusOptions(),
@@ -200,7 +215,28 @@ class PayableController extends Controller
                 ->map(fn (FinancePaymentMethod $m) => $m->only(['id', 'name']))
                 ->values()
                 ->all(),
+            'bankAccounts' => $this->activeBankAccounts($includeBankAccountId),
         ];
+    }
+
+    /**
+     * @return list<array{id: int, name: string}>
+     */
+    private function activeBankAccounts(?int $includeId = null): array
+    {
+        return FinanceBankAccount::query()
+            ->where(function ($q) use ($includeId) {
+                $q->where('is_active', true);
+                if ($includeId !== null) {
+                    $q->orWhere('id', $includeId);
+                }
+            })
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (FinanceBankAccount $a) => $a->only(['id', 'name']))
+            ->values()
+            ->all();
     }
 
     /**
@@ -215,7 +251,7 @@ class PayableController extends Controller
     }
 
     /**
-     * Recorrência só na criação: editar um item da série não regenera os demais.
+     * Pendente: conta bancária opcional. Ao pagar (status pago): conta de origem obrigatória.
      *
      * @return array{
      *   title: string,
@@ -224,16 +260,23 @@ class PayableController extends Controller
      *   due_date: string,
      *   status: FinancePayableStatus,
      *   payment_method_id: ?int,
+     *   bank_account_id: ?int,
      *   notes: ?string,
      *   is_recurring?: bool,
      *   recurring_months?: int|null
      * }
      */
-    private function validated(Request $request, bool $allowRecurrence): array
-    {
+    private function validated(
+        Request $request,
+        bool $allowRecurrence,
+        ?int $existingBankAccountId = null,
+    ): array {
         if ($allowRecurrence && ! $request->boolean('is_recurring')) {
             $request->merge(['recurring_months' => null]);
         }
+
+        $status = FinancePayableStatus::tryFrom((string) $request->input('status'));
+        $requiresBank = $status === FinancePayableStatus::Paid;
 
         $rules = [
             'title' => ['required', 'string', 'max:255'],
@@ -242,6 +285,10 @@ class PayableController extends Controller
             'due_date' => ['required', 'date'],
             'status' => ['required', Rule::enum(FinancePayableStatus::class)],
             'payment_method_id' => ['nullable', 'exists:finance_payment_methods,id'],
+            'bank_account_id' => [
+                $requiresBank ? 'required' : 'nullable',
+                'exists:finance_bank_accounts,id',
+            ],
             'notes' => ['nullable', 'string', 'max:5000'],
         ];
 
@@ -257,6 +304,7 @@ class PayableController extends Controller
         }
 
         $data = $request->validate($rules, [
+            'bank_account_id.required' => 'Selecione a conta de origem do pagamento.',
             'recurring_months.required' => 'Informe a duração em meses da recorrência.',
             'recurring_months.min' => 'A duração deve ser de pelo menos 2 meses.',
             'recurring_months.max' => 'A duração não pode ser maior que 60 meses.',
@@ -271,6 +319,7 @@ class PayableController extends Controller
             'due_date' => $data['due_date'],
             'status' => FinancePayableStatus::from($data['status']),
             'payment_method_id' => $data['payment_method_id'] ?? null,
+            'bank_account_id' => isset($data['bank_account_id']) ? (int) $data['bank_account_id'] : null,
             'notes' => $data['notes'] ?? null,
         ];
 

@@ -1,6 +1,7 @@
 <script setup>
 import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
+import SaleInstallmentEditModal from '@/Components/Finance/SaleInstallmentEditModal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
@@ -73,34 +74,24 @@ const statusClass = (status) =>
 const iconBtnClass =
     'rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900';
 
-const markPaidManual = (receivableId) => {
-    if (!confirm('Marcar esta conta como recebida?')) {
-        return;
-    }
-    router.patch(route('admin.financeiro.contas-a-receber.mark-paid', receivableId), {}, { preserveScroll: true });
-};
-
-const remove = (receivableId) => {
-    if (!confirm('Remover esta conta a receber?')) {
-        return;
-    }
-    router.delete(route('admin.financeiro.contas-a-receber.destroy', receivableId));
-};
-
-const editModalOpen = ref(false);
-const selectedItem = ref(null);
-const isSaleEdit = computed(() => selectedItem.value?.source === 'sale');
-
 const paymentModalOpen = ref(false);
 const paymentItem = ref(null);
 const paidAmountReais = ref(0);
+const manualReceiveOpen = ref(false);
+const manualReceiveItem = ref(null);
 
 const paymentForm = useForm({
     status: 'pago',
     paid_at: localTodayDate(),
     paid_amount_cents: 0,
+    bank_account_id: '',
     notes: '',
     receipt: null,
+});
+
+const manualReceiveForm = useForm({
+    bank_account_id: '',
+    payment_method_id: '',
 });
 
 const openReceive = (item) => {
@@ -112,13 +103,18 @@ const openReceive = (item) => {
         paymentForm.paid_at = localTodayDate();
         paymentForm.paid_amount_cents = item.amount_cents;
         paidAmountReais.value = Number(item.amount_cents || 0) / 100;
+        paymentForm.bank_account_id = item.bank_account_id ?? '';
         paymentForm.notes = item.notes ?? '';
         paymentForm.receipt = null;
         paymentModalOpen.value = true;
         return;
     }
 
-    markPaidManual(item.receivable_id);
+    manualReceiveItem.value = item;
+    manualReceiveForm.clearErrors();
+    manualReceiveForm.bank_account_id = item.bank_account_id ?? '';
+    manualReceiveForm.payment_method_id = item.payment_method_id ?? '';
+    manualReceiveOpen.value = true;
 };
 
 const closePaymentModal = () => {
@@ -126,6 +122,26 @@ const closePaymentModal = () => {
     paymentItem.value = null;
     paymentForm.reset();
     paymentForm.clearErrors();
+};
+
+const closeManualReceive = () => {
+    manualReceiveOpen.value = false;
+    manualReceiveItem.value = null;
+    manualReceiveForm.reset();
+    manualReceiveForm.clearErrors();
+};
+
+const submitManualReceive = () => {
+    if (!manualReceiveItem.value?.receivable_id) {
+        return;
+    }
+    manualReceiveForm.patch(
+        route('admin.financeiro.contas-a-receber.mark-paid', manualReceiveItem.value.receivable_id),
+        {
+            preserveScroll: true,
+            onSuccess: () => closeManualReceive(),
+        },
+    );
 };
 
 const onReceiptChange = (event) => {
@@ -151,6 +167,19 @@ const submitPayment = () => {
         });
 };
 
+const remove = (receivableId) => {
+    if (!confirm('Remover esta conta a receber?')) {
+        return;
+    }
+    router.delete(route('admin.financeiro.contas-a-receber.destroy', receivableId));
+};
+
+const editModalOpen = ref(false);
+const selectedItem = ref(null);
+const saleEditModalOpen = ref(false);
+const saleEditInstallment = ref(null);
+const saleEditSubtitle = ref('');
+
 const editForm = useForm({
     title: '',
     payer_name: '',
@@ -164,6 +193,22 @@ const editForm = useForm({
 });
 
 const openEditModal = (item) => {
+    if (item.source === 'sale') {
+        saleEditInstallment.value = {
+            id: item.installment_id,
+            number: item.installment_number ?? null,
+            amount_cents: item.amount_cents,
+            due_date: item.due_date,
+            method: item.method ?? 'pix',
+            status: item.installment_status ?? 'pendente',
+            bank_account_id: item.bank_account_id ?? '',
+            notes: item.notes ?? '',
+        };
+        saleEditSubtitle.value = item.counterparty ?? '';
+        saleEditModalOpen.value = true;
+        return;
+    }
+
     selectedItem.value = item;
     editForm.clearErrors();
     editForm.title = item.title ?? '';
@@ -171,19 +216,10 @@ const openEditModal = (item) => {
     editForm.amount_reais = centsToReais(item.amount_cents);
     editForm.due_date = item.due_date ?? '';
     editForm.notes = item.notes ?? '';
-
-    if (item.source === 'sale') {
-        editForm.status = item.installment_status ?? 'pendente';
-        editForm.method = item.method ?? 'pix';
-        editForm.payment_method_id = '';
-        editForm.bank_account_id = '';
-    } else {
-        editForm.status = item.status ?? 'pending';
-        editForm.payment_method_id = item.payment_method_id ?? '';
-        editForm.bank_account_id = item.bank_account_id ?? '';
-        editForm.method = 'pix';
-    }
-
+    editForm.status = item.status ?? 'pending';
+    editForm.payment_method_id = item.payment_method_id ?? '';
+    editForm.bank_account_id = item.bank_account_id ?? '';
+    editForm.method = 'pix';
     editModalOpen.value = true;
 };
 
@@ -194,16 +230,14 @@ const closeEditModal = () => {
     editForm.clearErrors();
 };
 
+const closeSaleEditModal = () => {
+    saleEditModalOpen.value = false;
+    saleEditInstallment.value = null;
+    saleEditSubtitle.value = '';
+};
+
 const submitEdit = () => {
     if (!selectedItem.value) {
-        return;
-    }
-
-    if (isSaleEdit.value) {
-        editForm.patch(route('admin.financeiro.parcelas.update', selectedItem.value.installment_id), {
-            preserveScroll: true,
-            onSuccess: () => closeEditModal(),
-        });
         return;
     }
 
@@ -434,6 +468,20 @@ const submitEdit = () => {
                         <p v-if="paymentForm.errors.paid_amount_cents" class="mt-1 text-xs text-rose-600">
                             {{ paymentForm.errors.paid_amount_cents }}
                         </p>
+                        <label class="mt-3 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Conta de destino/recebimento
+                        </label>
+                        <select
+                            v-model="paymentForm.bank_account_id"
+                            required
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        >
+                            <option value="" disabled>Selecione a conta</option>
+                            <option v-for="a in bankAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        </select>
+                        <p v-if="paymentForm.errors.bank_account_id" class="mt-1 text-xs text-rose-600">
+                            {{ paymentForm.errors.bank_account_id }}
+                        </p>
                     </div>
                     <div>
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Comprovante</label>
@@ -487,29 +535,27 @@ const submitEdit = () => {
                 </p>
 
                 <form class="mt-4 space-y-4" @submit.prevent="submitEdit">
-                    <template v-if="!isSaleEdit">
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Título</label>
-                            <input
-                                v-model="editForm.title"
-                                type="text"
-                                required
-                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                            <p v-if="editForm.errors.title" class="mt-1 text-xs text-rose-600">{{ editForm.errors.title }}</p>
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Pagador / cliente</label>
-                            <input
-                                v-model="editForm.payer_name"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                            <p v-if="editForm.errors.payer_name" class="mt-1 text-xs text-rose-600">
-                                {{ editForm.errors.payer_name }}
-                            </p>
-                        </div>
-                    </template>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Título</label>
+                        <input
+                            v-model="editForm.title"
+                            type="text"
+                            required
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
+                        <p v-if="editForm.errors.title" class="mt-1 text-xs text-rose-600">{{ editForm.errors.title }}</p>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Pagador / cliente</label>
+                        <input
+                            v-model="editForm.payer_name"
+                            type="text"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
+                        <p v-if="editForm.errors.payer_name" class="mt-1 text-xs text-rose-600">
+                            {{ editForm.errors.payer_name }}
+                        </p>
+                    </div>
 
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div>
@@ -547,70 +593,44 @@ const submitEdit = () => {
                             required
                             class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         >
-                            <template v-if="isSaleEdit">
-                                <option
-                                    v-for="opt in installmentStatusOptions"
-                                    :key="opt.value"
-                                    :value="opt.value"
-                                >
-                                    {{ opt.label }}
-                                </option>
-                            </template>
-                            <template v-else>
-                                <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
-                                    {{ opt.label }}
-                                </option>
-                            </template>
+                            <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
+                                {{ opt.label }}
+                            </option>
                         </select>
                         <p v-if="editForm.errors.status" class="mt-1 text-xs text-rose-600">{{ editForm.errors.status }}</p>
                     </div>
 
-                    <div v-if="isSaleEdit">
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Método</label>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Forma de pagamento</label>
                         <select
-                            v-model="editForm.method"
-                            required
+                            v-model="editForm.payment_method_id"
                             class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         >
-                            <option
-                                v-for="opt in installmentMethodOptions"
-                                :key="opt.value"
-                                :value="opt.value"
-                            >
-                                {{ opt.label }}
-                            </option>
+                            <option value="">Não informado</option>
+                            <option v-for="m in paymentMethods" :key="m.id" :value="m.id">{{ m.name }}</option>
                         </select>
-                        <p v-if="editForm.errors.method" class="mt-1 text-xs text-rose-600">{{ editForm.errors.method }}</p>
+                        <p v-if="editForm.errors.payment_method_id" class="mt-1 text-xs text-rose-600">
+                            {{ editForm.errors.payment_method_id }}
+                        </p>
                     </div>
-
-                    <template v-else>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Forma de pagamento</label>
-                            <select
-                                v-model="editForm.payment_method_id"
-                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            >
-                                <option value="">Não informado</option>
-                                <option v-for="m in paymentMethods" :key="m.id" :value="m.id">{{ m.name }}</option>
-                            </select>
-                            <p v-if="editForm.errors.payment_method_id" class="mt-1 text-xs text-rose-600">
-                                {{ editForm.errors.payment_method_id }}
-                            </p>
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Conta bancária</label>
-                            <select
-                                v-model="editForm.bank_account_id"
-                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            >
-                                <option value="">Não informado</option>
-                                <option v-for="a in bankAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
-                            </select>
-                            <p v-if="editForm.errors.bank_account_id" class="mt-1 text-xs text-rose-600">
-                                {{ editForm.errors.bank_account_id }}
-                            </p>
-                        </div>
-                    </template>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Conta de destino/recebimento
+                        </label>
+                        <select
+                            v-model="editForm.bank_account_id"
+                            :required="editForm.status === 'paid'"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        >
+                            <option value="">
+                                {{ editForm.status === 'paid' ? 'Selecione a conta' : 'Opcional (pendente)' }}
+                            </option>
+                            <option v-for="a in bankAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        </select>
+                        <p v-if="editForm.errors.bank_account_id" class="mt-1 text-xs text-rose-600">
+                            {{ editForm.errors.bank_account_id }}
+                        </p>
+                    </div>
 
                     <div>
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
@@ -642,5 +662,71 @@ const submitEdit = () => {
                 </form>
             </div>
         </FullScreenOverlay>
+
+        <FullScreenOverlay :show="manualReceiveOpen && !!manualReceiveItem" @close="closeManualReceive">
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-900">Receber conta</h3>
+                <p class="mt-1 text-sm text-slate-600">{{ manualReceiveItem?.title }}</p>
+                <p class="mt-1 text-sm text-slate-600">
+                    Valor: {{ formatBRL(manualReceiveItem?.amount_cents ?? 0) }}
+                </p>
+                <form class="mt-4 space-y-4" @submit.prevent="submitManualReceive">
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Conta de destino/recebimento
+                        </label>
+                        <select
+                            v-model="manualReceiveForm.bank_account_id"
+                            required
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        >
+                            <option value="" disabled>Selecione a conta</option>
+                            <option v-for="a in bankAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        </select>
+                        <p v-if="manualReceiveForm.errors.bank_account_id" class="mt-1 text-xs text-rose-600">
+                            {{ manualReceiveForm.errors.bank_account_id }}
+                        </p>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Forma de pagamento
+                        </label>
+                        <select
+                            v-model="manualReceiveForm.payment_method_id"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        >
+                            <option value="">Não informado</option>
+                            <option v-for="m in paymentMethods" :key="m.id" :value="m.id">{{ m.name }}</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button
+                            type="button"
+                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            @click="closeManualReceive"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
+                            :disabled="manualReceiveForm.processing"
+                        >
+                            {{ manualReceiveForm.processing ? 'A receber…' : 'Confirmar recebimento' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </FullScreenOverlay>
+
+        <SaleInstallmentEditModal
+            :show="saleEditModalOpen"
+            :installment="saleEditInstallment"
+            :subtitle="saleEditSubtitle"
+            :method-options="installmentMethodOptions"
+            :status-options="installmentStatusOptions"
+            :bank-accounts="bankAccounts"
+            @close="closeSaleEditModal"
+        />
     </AdminLayout>
 </template>

@@ -4,10 +4,14 @@ namespace App\Models;
 
 use App\Enums\PermissionModule;
 use App\Enums\UserRole;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Company extends Model
 {
@@ -22,6 +26,8 @@ class Company extends Model
         'name',
         'contact_email',
         'instagram',
+        'logo_path',
+        'logo_disk',
         'legal_name',
         'cnpj',
         'segment',
@@ -50,6 +56,10 @@ class Company extends Model
         'acompanhamento_access',
     ];
 
+    protected $appends = [
+        'logo_url',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -65,6 +75,55 @@ class Company extends Model
             'desligamento_access' => 'boolean',
             'acompanhamento_access' => 'boolean',
         ];
+    }
+
+    /**
+     * URL pública do logo (disco public), ou null.
+     */
+    protected function logoUrl(): Attribute
+    {
+        return Attribute::get(function (): ?string {
+            if ($this->logo_path === null || $this->logo_path === '') {
+                return null;
+            }
+
+            return Storage::disk($this->logo_disk ?: 'public')->url($this->logo_path);
+        });
+    }
+
+    public function storeLogo(UploadedFile $file): void
+    {
+        $this->deleteLogo();
+
+        $extension = strtolower($file->getClientOriginalExtension() ?: 'webp');
+        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            $extension = 'webp';
+        }
+
+        $filename = $this->id.'-'.Str::lower(Str::random(8)).'.'.$extension;
+        $path = $file->storeAs('companies/logos', $filename, 'public');
+
+        $this->forceFill([
+            'logo_path' => $path,
+            'logo_disk' => 'public',
+        ])->save();
+    }
+
+    public function deleteLogo(): void
+    {
+        if ($this->logo_path === null || $this->logo_path === '') {
+            return;
+        }
+
+        $disk = $this->logo_disk ?: 'public';
+        if (Storage::disk($disk)->exists($this->logo_path)) {
+            Storage::disk($disk)->delete($this->logo_path);
+        }
+
+        $this->forceFill([
+            'logo_path' => null,
+            'logo_disk' => null,
+        ])->save();
     }
 
     public function hiringProcesses(): HasMany
