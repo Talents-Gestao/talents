@@ -1,7 +1,9 @@
 <script setup>
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
+import MoneyInput from '@/Components/MoneyInput.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, reactive, ref } from 'vue';
+import { centsToMoneyModel, moneyToCents } from '@/utils/moneyMask';
 
 const props = defineProps({
     products: { type: Array, default: () => [] },
@@ -61,13 +63,10 @@ const form = useForm({
 const reaisFields = reactive({});
 
 const syncReaisFromCents = (key, cents) => {
-    reaisFields[key] = ((Number(cents) || 0) / 100).toFixed(2).replace('.', ',');
+    reaisFields[key] = centsToMoneyModel(cents);
 };
 
-const centsFromReais = (key) => {
-    const numeric = Number(String(reaisFields[key] ?? '').replace(/\./g, '').replace(',', '.'));
-    return Number.isFinite(numeric) ? Math.max(0, Math.round(numeric * 100)) : 0;
-};
+const centsFromReais = (key) => moneyToCents(reaisFields[key]);
 
 const openCreate = () => {
     editing.value = null;
@@ -308,12 +307,12 @@ const typeLabel = (type) => props.pricingTypeLabels[type] ?? type;
 
                     <div v-if="form.pricing_type === 'fixed'">
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Valor fixo (R$)</label>
-                        <input v-model="reaisFields.amount" type="text" class="mt-1 w-full rounded-xl border-slate-300 shadow-sm" />
+                        <MoneyInput v-model="reaisFields.amount" class="mt-1 w-full" />
                     </div>
 
                     <div v-if="form.pricing_type === 'per_employee'">
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Valor por funcionário (R$)</label>
-                        <input v-model="reaisFields.per_emp" type="text" class="mt-1 w-full rounded-xl border-slate-300 shadow-sm" />
+                        <MoneyInput v-model="reaisFields.per_emp" class="mt-1 w-full" />
                     </div>
 
                     <div v-if="form.pricing_type === 'tiered_per_employee'" class="space-y-3">
@@ -327,11 +326,10 @@ const typeLabel = (type) => props.pricingTypeLabels[type] ?? type;
                                 :disabled="tier === 'tier4'"
                                 class="rounded-xl border-slate-300 text-sm shadow-sm"
                             />
-                            <input
+                            <MoneyInput
                                 v-model="reaisFields[tier]"
-                                type="text"
-                                placeholder="R$"
-                                class="rounded-xl border-slate-300 text-sm shadow-sm"
+                                class="rounded-xl text-sm"
+                                placeholder="0,00"
                             />
                         </div>
                     </div>
@@ -344,7 +342,11 @@ const typeLabel = (type) => props.pricingTypeLabels[type] ?? type;
                         >
                             <input v-model="mod.label" type="text" placeholder="Nome da opção" class="mb-2 w-full rounded-lg border-slate-300 text-sm" />
                             <input v-model="mod.key" type="text" placeholder="chave (slug)" class="mb-2 w-full rounded-lg border-slate-300 font-mono text-xs" />
-                            <input v-model="reaisFields[`mod_${idx}`]" type="text" placeholder="Valor R$" class="w-full rounded-lg border-slate-300 text-sm" />
+                            <MoneyInput
+                                v-model="reaisFields[`mod_${idx}`]"
+                                class="w-full rounded-lg text-sm"
+                                placeholder="0,00"
+                            />
                             <button type="button" class="mt-2 text-xs text-rose-600" @click="removeModality(idx)">Remover</button>
                         </div>
                         <button type="button" class="text-xs font-semibold text-talents-700" @click="addModality">+ Modalidade</button>
@@ -357,7 +359,7 @@ const typeLabel = (type) => props.pricingTypeLabels[type] ?? type;
                     <div v-if="form.pricing_type === 'threshold_multiplier'" class="grid gap-3 sm:grid-cols-2">
                         <div>
                             <label class="text-xs font-medium uppercase text-slate-500">Valor base (R$)</label>
-                            <input v-model="reaisFields.base" type="text" class="mt-1 w-full rounded-xl border-slate-300 shadow-sm" />
+                            <MoneyInput v-model="reaisFields.base" class="mt-1 w-full" />
                         </div>
                         <div>
                             <label class="text-xs font-medium uppercase text-slate-500">Acima de (func.)</label>
@@ -398,10 +400,9 @@ const typeLabel = (type) => props.pricingTypeLabels[type] ?? type;
                             </label>
                             <div v-if="form.pricing_config.rates[def.key].enabled" class="mt-2">
                                 <label class="text-xs font-medium uppercase text-slate-500">Valor (R$)</label>
-                                <input
+                                <MoneyInput
                                     v-model="reaisFields[`flex_${def.key}`]"
-                                    type="text"
-                                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm"
+                                    class="mt-1 w-full text-sm"
                                 />
                             </div>
                         </div>

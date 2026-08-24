@@ -8,6 +8,7 @@ use App\Enums\FinancePayableStatus;
 use App\Enums\FinanceReceivableStatus;
 use App\Models\CommercialSaleInstallment;
 use App\Models\FinanceBankAccount;
+use App\Models\FinanceBankTransfer;
 use App\Models\FinancePayable;
 use App\Models\FinanceReceivable;
 
@@ -15,9 +16,12 @@ use App\Models\FinanceReceivable;
  * Saldo atual da conta = saldo inicial
  * + recebimentos manuais pagos nesta conta
  * + parcelas de venda pagas nesta conta
- * − contas a pagar pagas nesta conta.
+ * + transferências recebidas
+ * − contas a pagar pagas nesta conta
+ * − transferências enviadas.
  *
  * Só movimentos pagos/recebidos entram; pendentes não movem caixa.
+ * Transferências entre contas ativas não alteram o total agregado.
  */
 final class FinanceBankAccountBalance
 {
@@ -43,10 +47,22 @@ final class FinanceBankAccountBalance
             ->selectRaw('coalesce(sum(coalesce(paid_amount_cents, amount_cents)), 0) as total')
             ->value('total');
 
+        $transfersIn = (int) FinanceBankTransfer::query()
+            ->where('to_bank_account_id', $id)
+            ->selectRaw('coalesce(sum(amount_cents), 0) as total')
+            ->value('total');
+
+        $transfersOut = (int) FinanceBankTransfer::query()
+            ->where('from_bank_account_id', $id)
+            ->selectRaw('coalesce(sum(amount_cents), 0) as total')
+            ->value('total');
+
         return (int) $account->initial_balance_cents
             + $receivedManual
             + $receivedInstallments
-            - $paidOut;
+            + $transfersIn
+            - $paidOut
+            - $transfersOut;
     }
 
     /**

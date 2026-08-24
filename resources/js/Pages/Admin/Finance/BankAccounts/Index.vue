@@ -1,15 +1,18 @@
 <script setup>
 import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
+import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
+import MoneyInput from '@/Components/MoneyInput.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed, reactive, watch } from 'vue';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
     accounts: { type: Object, required: true },
     filters: { type: Object, default: () => ({}) },
     summary: { type: Object, default: () => ({}) },
+    transferAccounts: { type: Array, default: () => [] },
 });
 
 const page = usePage();
@@ -47,6 +50,47 @@ const remove = (id) => {
     }
     router.delete(route('admin.financeiro.contas-bancarias.destroy', id));
 };
+
+const transferModalOpen = ref(false);
+const today = () => new Date().toISOString().slice(0, 10);
+
+const transferForm = useForm({
+    from_bank_account_id: '',
+    to_bank_account_id: '',
+    amount_reais: '',
+    transferred_at: today(),
+    notes: '',
+});
+
+const canTransfer = computed(() => (props.transferAccounts?.length ?? 0) >= 2);
+
+const openTransferModal = (fromId = null) => {
+    transferForm.reset();
+    transferForm.clearErrors();
+    transferForm.transferred_at = today();
+    transferForm.from_bank_account_id = fromId ?? '';
+    transferForm.to_bank_account_id = '';
+    transferModalOpen.value = true;
+};
+
+const closeTransferModal = () => {
+    transferModalOpen.value = false;
+    transferForm.reset();
+    transferForm.clearErrors();
+};
+
+const submitTransfer = () => {
+    transferForm.post(route('admin.financeiro.contas-bancarias.transfer'), {
+        preserveScroll: true,
+        onSuccess: () => closeTransferModal(),
+    });
+};
+
+const destinationAccounts = computed(() =>
+    (props.transferAccounts ?? []).filter(
+        (a) => String(a.id) !== String(transferForm.from_bank_account_id),
+    ),
+);
 </script>
 
 <template>
@@ -62,9 +106,24 @@ const remove = (id) => {
                         Cadastro das contas usadas no fluxo de caixa e nos recebimentos.
                     </p>
                 </div>
-                <Link :href="route('admin.financeiro.contas-bancarias.create')">
-                    <PrimaryButton type="button">Nova conta</PrimaryButton>
-                </Link>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        :disabled="!canTransfer"
+                        :title="
+                            canTransfer
+                                ? 'Transferir entre contas'
+                                : 'Cadastre ao menos duas contas ativas para transferir'
+                        "
+                        @click="openTransferModal()"
+                    >
+                        Transferir
+                    </button>
+                    <Link :href="route('admin.financeiro.contas-bancarias.create')">
+                        <PrimaryButton type="button">Nova conta</PrimaryButton>
+                    </Link>
+                </div>
             </div>
         </template>
 
@@ -164,9 +223,17 @@ const remove = (id) => {
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-right">
+                                <button
+                                    v-if="item.is_active && canTransfer"
+                                    type="button"
+                                    class="font-medium text-slate-700 hover:underline"
+                                    @click="openTransferModal(item.id)"
+                                >
+                                    Transferir
+                                </button>
                                 <Link
                                     :href="route('admin.financeiro.contas-bancarias.edit', item.id)"
-                                    class="font-medium text-talents-700 hover:underline"
+                                    class="ml-3 font-medium text-talents-700 hover:underline"
                                 >
                                     Editar
                                 </Link>
@@ -183,5 +250,121 @@ const remove = (id) => {
                 </table>
             </div>
         </div>
+
+        <FullScreenOverlay :show="transferModalOpen" @close="closeTransferModal">
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-900">Transferir entre contas</h3>
+                <p class="mt-1 text-sm text-slate-600">
+                    Move o valor de uma conta ativa para outra, sem gerar conta a pagar ou a receber.
+                </p>
+
+                <form class="mt-4 space-y-4" @submit.prevent="submitTransfer">
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Conta de origem
+                        </label>
+                        <select
+                            v-model="transferForm.from_bank_account_id"
+                            required
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        >
+                            <option value="" disabled>Selecione a conta</option>
+                            <option
+                                v-for="a in transferAccounts"
+                                :key="a.id"
+                                :value="a.id"
+                            >
+                                {{ a.name }}
+                            </option>
+                        </select>
+                        <p v-if="transferForm.errors.from_bank_account_id" class="mt-1 text-xs text-rose-600">
+                            {{ transferForm.errors.from_bank_account_id }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Conta de destino
+                        </label>
+                        <select
+                            v-model="transferForm.to_bank_account_id"
+                            required
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        >
+                            <option value="" disabled>Selecione a conta</option>
+                            <option
+                                v-for="a in destinationAccounts"
+                                :key="a.id"
+                                :value="a.id"
+                            >
+                                {{ a.name }}
+                            </option>
+                        </select>
+                        <p v-if="transferForm.errors.to_bank_account_id" class="mt-1 text-xs text-rose-600">
+                            {{ transferForm.errors.to_bank_account_id }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Valor (R$)
+                        </label>
+                        <MoneyInput
+                            v-model="transferForm.amount_reais"
+                            class="mt-1 w-full text-sm"
+                            required
+                        />
+                        <p v-if="transferForm.errors.amount_reais" class="mt-1 text-xs text-rose-600">
+                            {{ transferForm.errors.amount_reais }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Data
+                        </label>
+                        <input
+                            v-model="transferForm.transferred_at"
+                            type="date"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
+                        <p v-if="transferForm.errors.transferred_at" class="mt-1 text-xs text-rose-600">
+                            {{ transferForm.errors.transferred_at }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Observações
+                        </label>
+                        <textarea
+                            v-model="transferForm.notes"
+                            rows="2"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
+                        <p v-if="transferForm.errors.notes" class="mt-1 text-xs text-rose-600">
+                            {{ transferForm.errors.notes }}
+                        </p>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button
+                            type="button"
+                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            @click="closeTransferModal"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
+                            :disabled="transferForm.processing"
+                        >
+                            {{ transferForm.processing ? 'A transferir…' : 'Confirmar transferência' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </FullScreenOverlay>
     </AdminLayout>
 </template>

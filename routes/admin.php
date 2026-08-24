@@ -381,6 +381,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('contas-bancarias', [FinanceBankAccountController::class, 'index'])->name('contas-bancarias.index');
         Route::get('contas-bancarias/nova', [FinanceBankAccountController::class, 'create'])->name('contas-bancarias.create');
         Route::post('contas-bancarias', [FinanceBankAccountController::class, 'store'])->name('contas-bancarias.store');
+        Route::post('contas-bancarias/transferir', [FinanceBankAccountController::class, 'transfer'])
+            ->name('contas-bancarias.transfer');
         Route::get('contas-bancarias/{bank_account}/editar', [FinanceBankAccountController::class, 'edit'])
             ->name('contas-bancarias.edit');
         Route::put('contas-bancarias/{bank_account}', [FinanceBankAccountController::class, 'update'])

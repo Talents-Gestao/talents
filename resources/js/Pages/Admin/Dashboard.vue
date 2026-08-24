@@ -8,10 +8,11 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
+import MoneyInput from '@/Components/MoneyInput.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { useAdminDashboardLayout } from '@/composables/useAdminDashboardLayout';
 import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
+import { centsToMoneyModel } from '@/utils/moneyMask';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import {
     ArrowPathIcon,
@@ -41,6 +42,7 @@ const props = defineProps({
     kpis: { type: Object, required: true },
     leadsBySource: { type: Array, default: () => [] },
     funnel: { type: Array, default: () => [] },
+    funnelEndedClosers: { type: Array, default: () => [] },
     leadsThisMonth: { type: Number, default: 0 },
     monthlyGoal: { type: Object, required: true },
 });
@@ -250,7 +252,7 @@ const goalForm = useForm({
 
 const openGoalModal = () => {
     const cents = Number(props.monthlyGoal?.goal_cents || 0);
-    goalForm.goal_reais = (cents / 100).toFixed(2);
+    goalForm.goal_reais = centsToMoneyModel(cents);
     goalForm.clearErrors();
     goalModalOpen.value = true;
 };
@@ -649,7 +651,10 @@ const submitGoal = () => {
                                         </p>
                                     </div>
                                     <div class="mt-4">
-                                        <DashboardSalesFunnel :funnel="funnel" />
+                                        <DashboardSalesFunnel
+                                            :funnel="funnel"
+                                            :ended-closers="funnelEndedClosers"
+                                        />
                                     </div>
                                 </section>
 
@@ -709,15 +714,11 @@ const submitGoal = () => {
 
                         <div>
                             <InputLabel for="goal_reais" value="Meta (R$)" />
-                            <TextInput
+                            <MoneyInput
                                 id="goal_reais"
                                 v-model="goalForm.goal_reais"
-                                type="number"
-                                step="0.01"
-                                min="0.01"
                                 class="mt-1 block w-full"
                                 required
-                                autofocus
                             />
                             <InputError class="mt-1" :message="goalForm.errors.goal_reais" />
                         </div>
