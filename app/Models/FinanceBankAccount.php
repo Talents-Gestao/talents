@@ -55,4 +55,14 @@ class FinanceBankAccount extends Model
     {
         return $this->hasMany(CommercialSaleInstallment::class, 'bank_account_id');
     }
+
+    public function transfersOut(): HasMany
+    {
+        return $this->hasMany(FinanceBankTransfer::class, 'from_bank_account_id');
+    }
+
+    public function transfersIn(): HasMany
+    {
+        return $this->hasMany(FinanceBankTransfer::class, 'to_bank_account_id');
+    }
 }

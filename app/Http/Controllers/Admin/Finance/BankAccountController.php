@@ -7,10 +7,12 @@ namespace App\Http\Controllers\Admin\Finance;
 use App\Enums\FinanceBankAccountType;
 use App\Http\Controllers\Controller;
 use App\Models\FinanceBankAccount;
+use App\Models\FinanceBankTransfer;
 use App\Support\Finance\FinanceBankAccountBalance;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -66,6 +68,16 @@ class BankAccountController extends Controller
                 'active_count' => FinanceBankAccount::query()->where('is_active', true)->count(),
                 'active_balance_cents' => $this->balances->activeAccountsTotalCents(),
             ],
+            'transferAccounts' => FinanceBankAccount::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (FinanceBankAccount $a) => [
+                    'id' => $a->id,
+                    'name' => $a->name,
+                ])
+                ->values()
+                ->all(),
         ]);
     }
 
@@ -122,11 +134,56 @@ class BankAccountController extends Controller
             ->with('success', 'Conta bancária atualizada.');
     }
 
+    public function transfer(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'from_bank_account_id' => [
+                'required',
+                'integer',
+                Rule::exists('finance_bank_accounts', 'id')->where(fn ($q) => $q->where('is_active', true)),
+            ],
+            'to_bank_account_id' => [
+                'required',
+                'integer',
+                'different:from_bank_account_id',
+                Rule::exists('finance_bank_accounts', 'id')->where(fn ($q) => $q->where('is_active', true)),
+            ],
+            'amount_reais' => ['required', 'numeric', 'gt:0'],
+            'transferred_at' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string', 'max:5000'],
+        ], [
+            'to_bank_account_id.different' => 'A conta de destino deve ser diferente da conta de origem.',
+            'amount_reais.gt' => 'O valor da transferência deve ser maior que zero.',
+        ]);
+
+        $amountCents = (int) round(((float) $data['amount_reais']) * 100);
+        if ($amountCents < 1) {
+            throw ValidationException::withMessages([
+                'amount_reais' => 'O valor da transferência deve ser maior que zero.',
+            ]);
+        }
+
+        FinanceBankTransfer::query()->create([
+            'from_bank_account_id' => (int) $data['from_bank_account_id'],
+            'to_bank_account_id' => (int) $data['to_bank_account_id'],
+            'amount_cents' => $amountCents,
+            'transferred_at' => $data['transferred_at'] ?? now()->toDateString(),
+            'notes' => filled($data['notes'] ?? null) ? trim((string) $data['notes']) : null,
+            'created_by' => $request->user()?->id,
+        ]);
+
+        return redirect()
+            ->route('admin.financeiro.contas-bancarias.index')
+            ->with('success', 'Transferência registrada.');
+    }
+
     public function destroy(FinanceBankAccount $bank_account): RedirectResponse
     {
         if ($bank_account->receivables()->exists()
             || $bank_account->payables()->exists()
-            || $bank_account->saleInstallments()->exists()) {
+            || $bank_account->saleInstallments()->exists()
+            || $bank_account->transfersOut()->exists()
+            || $bank_account->transfersIn()->exists()) {
             return back()->with(
                 'error',
                 'Não é possível excluir: existem lançamentos vinculados. Desative a conta em vez de excluir.',

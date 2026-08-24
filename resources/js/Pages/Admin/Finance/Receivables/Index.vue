@@ -1,6 +1,7 @@
 <script setup>
 import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
+import MoneyInput from '@/Components/MoneyInput.vue';
 import SaleInstallmentEditModal from '@/Components/Finance/SaleInstallmentEditModal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -8,6 +9,7 @@ import { formatBRL } from '@/composables/useCommercialPricing';
 import { BanknotesIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref, watch } from 'vue';
+import { formatMoneyModel } from '@/utils/moneyMask';
 
 const props = defineProps({
     items: { type: Object, required: true },
@@ -76,7 +78,7 @@ const iconBtnClass =
 
 const paymentModalOpen = ref(false);
 const paymentItem = ref(null);
-const paidAmountReais = ref(0);
+const paidAmountReais = ref('');
 const manualReceiveOpen = ref(false);
 const manualReceiveItem = ref(null);
 
@@ -102,7 +104,7 @@ const openReceive = (item) => {
         paymentForm.status = 'pago';
         paymentForm.paid_at = localTodayDate();
         paymentForm.paid_amount_cents = item.amount_cents;
-        paidAmountReais.value = Number(item.amount_cents || 0) / 100;
+        paidAmountReais.value = formatMoneyModel(Number(item.amount_cents || 0) / 100);
         paymentForm.bank_account_id = item.bank_account_id ?? '';
         paymentForm.notes = item.notes ?? '';
         paymentForm.receipt = null;
@@ -455,14 +457,10 @@ const submitEdit = () => {
                         <label class="mt-3 block text-xs font-medium uppercase tracking-wide text-slate-500">
                             Valor pago (R$)
                         </label>
-                        <input
-                            v-model.number="paidAmountReais"
-                            type="number"
-                            :min="paymentItem ? paymentItem.amount_cents / 100 : 0.01"
-                            :max="paymentItem ? paymentItem.amount_cents / 100 : undefined"
-                            step="0.01"
+                        <MoneyInput
+                            v-model="paidAmountReais"
+                            class="mt-1 w-full text-sm"
                             readonly
-                            class="mt-1 w-full rounded-xl border-slate-300 bg-slate-50 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         />
                         <p class="mt-1 text-xs text-slate-500">O valor pago precisa ser igual ao da parcela.</p>
                         <p v-if="paymentForm.errors.paid_amount_cents" class="mt-1 text-xs text-rose-600">
@@ -560,13 +558,10 @@ const submitEdit = () => {
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div>
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Valor (R$)</label>
-                            <input
+                            <MoneyInput
                                 v-model="editForm.amount_reais"
-                                type="number"
-                                step="0.01"
-                                min="0.01"
+                                class="mt-1 w-full text-sm"
                                 required
-                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             />
                             <p v-if="editForm.errors.amount_reais" class="mt-1 text-xs text-rose-600">
                                 {{ editForm.errors.amount_reais }}

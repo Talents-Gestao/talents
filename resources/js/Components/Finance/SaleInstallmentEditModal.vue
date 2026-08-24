@@ -1,7 +1,9 @@
 <script setup>
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
+import MoneyInput from '@/Components/MoneyInput.vue';
 import { useForm } from '@inertiajs/vue3';
 import { computed, watch } from 'vue';
+import { centsToMoneyModel } from '@/utils/moneyMask';
 
 const props = defineProps({
     show: { type: Boolean, default: false },
@@ -28,7 +30,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
-const centsToReais = (cents) => (Number(cents || 0) / 100).toFixed(2);
+const centsToReais = (cents) => centsToMoneyModel(cents);
 
 const form = useForm({
     amount_reais: '',
@@ -95,17 +97,11 @@ const submit = () => {
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Valor (R$)</label>
-                        <input
+                        <MoneyInput
                             v-model="form.amount_reais"
-                            type="number"
-                            step="0.01"
-                            min="0.01"
+                            class="mt-1 w-full text-sm"
                             required
                             :readonly="amountLocked"
-                            :class="[
-                                'mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500',
-                                amountLocked ? 'bg-slate-50 text-slate-600' : '',
-                            ]"
                         />
                         <p v-if="amountLocked" class="mt-1 text-xs text-slate-500">
                             Parcela paga: o valor não pode ser alterado.

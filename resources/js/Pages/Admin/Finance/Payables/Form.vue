@@ -5,10 +5,12 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import MoneyInput from '@/Components/MoneyInput.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { computed, watch } from 'vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
+import { parseMoneyToNumber } from '@/utils/moneyMask';
 
 const props = defineProps({
     mode: { type: String, required: true },
@@ -40,8 +42,8 @@ const recurringMonthsCount = computed(() => {
     return Number.isInteger(months) && months > 0 ? months : 0;
 });
 const monthlyCents = computed(() => {
-    const reais = Number(form.amount_reais);
-    return Number.isFinite(reais) && reais > 0 ? Math.round(reais * 100) : 0;
+    const reais = parseMoneyToNumber(form.amount_reais);
+    return reais !== null && reais > 0 ? Math.round(reais * 100) : 0;
 });
 const periodTotalCents = computed(() => recurringMonthsCount.value * monthlyCents.value);
 
@@ -96,12 +98,9 @@ const submit = () => {
                         for="amount_reais"
                         :value="isCreate && form.is_recurring ? 'Valor mensal (R$)' : 'Valor (R$)'"
                     />
-                    <TextInput
+                    <MoneyInput
                         id="amount_reais"
                         v-model="form.amount_reais"
-                        type="number"
-                        step="0.01"
-                        min="0.01"
                         class="mt-1 block w-full"
                         required
                     />

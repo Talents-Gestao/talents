@@ -4,12 +4,14 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import MoneyInput from '@/Components/MoneyInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import OptionalCommissionFields from '@/Components/Commercial/OptionalCommissionFields.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import { parseMoneyToNumber } from '@/utils/moneyMask';
 
 const props = defineProps({
     mode: { type: String, default: 'create' },
@@ -87,7 +89,7 @@ const mixPercentSum = computed(() =>
     (form.mix_parts || []).reduce((sum, part) => sum + (Number(part.percent) || 0), 0),
 );
 
-const totalCents = computed(() => Math.round((Number(form.total_reais) || 0) * 100));
+const totalCents = computed(() => Math.round((parseMoneyToNumber(form.total_reais) ?? 0) * 100));
 
 const estimatedCommissionCents = computed(() => {
     if (!form.pay_commission) {
@@ -187,7 +189,7 @@ const validate = () => {
         return Object.keys(form.errors).length === 0;
     }
 
-    if (!form.total_reais || Number(form.total_reais) <= 0) {
+    if (!form.total_reais || (parseMoneyToNumber(form.total_reais) ?? 0) <= 0) {
         form.setError('total_reais', 'Informe o valor total.');
     }
     if (!form.payment_method) {
@@ -394,12 +396,9 @@ const pageSubtitle = computed(() =>
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <InputLabel for="total_reais" value="Valor total (R$)" />
-                        <TextInput
+                        <MoneyInput
                             id="total_reais"
                             v-model="form.total_reais"
-                            type="number"
-                            step="0.01"
-                            min="0.01"
                             class="mt-1 block w-full"
                             required
                         />

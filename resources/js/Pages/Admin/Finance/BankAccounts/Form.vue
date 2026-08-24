@@ -5,6 +5,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import MoneyInput from '@/Components/MoneyInput.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
@@ -91,11 +92,9 @@ const submit = () => {
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <InputLabel for="initial_balance_reais" value="Saldo inicial (R$)" />
-                    <TextInput
+                    <MoneyInput
                         id="initial_balance_reais"
                         v-model="form.initial_balance_reais"
-                        type="number"
-                        step="0.01"
                         class="mt-1 block w-full"
                     />
                     <InputError class="mt-1" :message="form.errors.initial_balance_reais" />

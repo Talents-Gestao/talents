@@ -1,5 +1,7 @@
 <script setup>
+import MoneyInput from '@/Components/MoneyInput.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
+import { centsToMoneyModel, moneyToCents } from '@/utils/moneyMask';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -10,14 +12,10 @@ const props = defineProps({
 
 const discountValueReais = computed({
     get() {
-        const cents = props.selection.discount_value_cents ?? 0;
-        return ((Number(cents) || 0) / 100).toFixed(2).replace('.', ',');
+        return centsToMoneyModel(props.selection.discount_value_cents ?? 0);
     },
     set(reaisStr) {
-        const numeric = Number(String(reaisStr ?? '').replace(/\./g, '').replace(',', '.'));
-        props.selection.discount_value_cents = Number.isFinite(numeric)
-            ? Math.max(0, Math.round(numeric * 100))
-            : 0;
+        props.selection.discount_value_cents = moneyToCents(reaisStr);
     },
 });
 
@@ -67,11 +65,9 @@ const hasDiscount = computed(
 
             <div v-else>
                 <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Desconto (R$)</label>
-                <input
+                <MoneyInput
                     v-model="discountValueReais"
-                    type="text"
-                    placeholder="0,00"
-                    class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    class="mt-1 w-full max-w-xs"
                 />
             </div>
         </template>

@@ -14,6 +14,8 @@ import {
     FLEXIBLE_RATE_DEFS,
 } from '@/composables/useCatalogProductPricing';
 import { formatCnpj, maskCnpj } from '@/utils/formatCnpj';
+import { centsToMoneyModel, moneyToCents, parseMoneyToNumber } from '@/utils/moneyMask';
+import MoneyInput from '@/Components/MoneyInput.vue';
 import { CheckIcon } from '@heroicons/vue/24/solid';
 import axios from 'axios';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
@@ -207,8 +209,8 @@ const { totalFinalCents, catalogLines, legacySummary } = useCommercialPricing(
 );
 
 const recurringMonthlyCents = computed(() => {
-    const reais = Number(form.recurring_monthly_reais);
-    if (!Number.isFinite(reais) || reais <= 0) {
+    const reais = parseMoneyToNumber(form.recurring_monthly_reais);
+    if (reais === null || reais <= 0) {
         return 0;
     }
     return Math.round(reais * 100);
@@ -312,28 +314,16 @@ const showCommercialAdjustment = (product) => {
     return !!catalogSelection(product.id).enabled && catalogLineSubtotal(product.id) > 0;
 };
 
-const catalogSalaryReais = (productId) => {
-    const cents = catalogSelection(productId).salary_cents ?? 0;
-    return ((Number(cents) || 0) / 100).toFixed(2).replace('.', ',');
-};
+const catalogSalaryReais = (productId) => centsToMoneyModel(catalogSelection(productId).salary_cents ?? 0);
 
 const updateCatalogSalary = (productId, reaisStr) => {
-    const numeric = Number(String(reaisStr ?? '').replace(/\./g, '').replace(',', '.'));
-    catalogSelection(productId).salary_cents = Number.isFinite(numeric)
-        ? Math.max(0, Math.round(numeric * 100))
-        : 0;
+    catalogSelection(productId).salary_cents = moneyToCents(reaisStr);
 };
 
-const catalogCustomReais = (productId) => {
-    const cents = catalogSelection(productId).custom_cents ?? 0;
-    return ((Number(cents) || 0) / 100).toFixed(2).replace('.', ',');
-};
+const catalogCustomReais = (productId) => centsToMoneyModel(catalogSelection(productId).custom_cents ?? 0);
 
 const updateCatalogCustomValue = (productId, reaisStr) => {
-    const numeric = Number(String(reaisStr ?? '').replace(/\./g, '').replace(',', '.'));
-    catalogSelection(productId).custom_cents = Number.isFinite(numeric)
-        ? Math.max(0, Math.round(numeric * 100))
-        : 0;
+    catalogSelection(productId).custom_cents = moneyToCents(reaisStr);
 };
 
 const isFlexibleRateModeCustom = (productId) =>
@@ -569,8 +559,8 @@ const validateRequiredFields = () => {
             form.setError('recurring_months', 'Informe a duração em meses (1 a 60).');
             valid = false;
         }
-        const monthly = Number(form.recurring_monthly_reais);
-        if (!Number.isFinite(monthly) || monthly <= 0) {
+        const monthly = parseMoneyToNumber(form.recurring_monthly_reais);
+        if (monthly === null || monthly <= 0) {
             form.setError('recurring_monthly_reais', 'Informe o valor mensal.');
             valid = false;
         }
@@ -921,8 +911,8 @@ const validateCurrentStep = () => {
             form.setError('recurring_months', 'Informe a duração em meses (1 a 60).');
             valid = false;
         }
-        const monthly = Number(form.recurring_monthly_reais);
-        if (!Number.isFinite(monthly) || monthly <= 0) {
+        const monthly = parseMoneyToNumber(form.recurring_monthly_reais);
+        if (monthly === null || monthly <= 0) {
             form.setError('recurring_monthly_reais', 'Informe o valor mensal.');
             valid = false;
         }
@@ -1292,14 +1282,11 @@ const onStepClick = (index) => {
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
                                 Valor mensal (R$) *
                             </label>
-                            <input
+                            <MoneyInput
                                 v-model="form.recurring_monthly_reais"
-                                type="number"
-                                step="0.01"
-                                min="0.01"
+                                class="mt-1 w-full"
                                 required
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                :class="form.errors.recurring_monthly_reais ? 'border-rose-400' : ''"
+                                :input-class="form.errors.recurring_monthly_reais ? 'border-rose-400' : ''"
                             />
                             <p v-if="form.errors.recurring_monthly_reais" class="mt-1 text-xs text-rose-600">
                                 {{ form.errors.recurring_monthly_reais }}
@@ -1639,12 +1626,10 @@ const onStepClick = (index) => {
                                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
                                             {{ FLEXIBLE_RATE_CUSTOM.unitsLabel }}
                                         </label>
-                                        <input
-                                            :value="catalogCustomReais(product.id)"
-                                            type="text"
-                                            placeholder="0,00"
-                                            class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                            @input="updateCatalogCustomValue(product.id, $event.target.value)"
+                                        <MoneyInput
+                                            :model-value="catalogCustomReais(product.id)"
+                                            class="mt-1 w-full max-w-xs"
+                                            @update:model-value="updateCatalogCustomValue(product.id, $event)"
                                         />
                                     </div>
 
@@ -1712,12 +1697,10 @@ const onStepClick = (index) => {
                                     <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
                                         Salário base por funcionário (R$)
                                     </label>
-                                    <input
-                                        :value="catalogSalaryReais(product.id)"
-                                        type="text"
-                                        placeholder="0,00"
-                                        class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                        @input="updateCatalogSalary(product.id, $event.target.value)"
+                                    <MoneyInput
+                                        :model-value="catalogSalaryReais(product.id)"
+                                        class="mt-1 w-full"
+                                        @update:model-value="updateCatalogSalary(product.id, $event)"
                                     />
                                 </div>
                                 <CommercialAdjustmentFields

@@ -37,7 +37,8 @@ final class AdminHomeDashboardBuilder
      *     kpis: array<string, mixed>,
      *     leads_by_source: list<array{key: string, label: string, count: int}>,
      *     leads_this_month: int,
-     *     funnel: list<array{key: string, label: string, count: int}>,
+     *     funnel: list<array{key: string, label: string, count: int, href: string}>,
+     *     funnel_ended_closers: list<array{seller_id: int|null, seller_name: string, count: int}>,
      *     monthly_goal: array{current_cents: int, goal_cents: int, percent: float}
      * }
      */
@@ -132,6 +133,8 @@ final class AdminHomeDashboardBuilder
         $leadsBySource = $this->leadsBySource($monthStart);
         $leadsThisMonth = (int) collect($leadsBySource)->sum('count');
 
+        $funnelPayload = $this->proposalFunnelForMonth($monthStart, $monthEnd);
+
         return [
             'finance' => [
                 'receive_this_month_cents' => $receiveThisMonthCents,
@@ -159,7 +162,8 @@ final class AdminHomeDashboardBuilder
             'leads_by_source' => $leadsBySource,
             // Contexto do mês: não entra nas % do funil (unidade ≠ proposta).
             'leads_this_month' => $leadsThisMonth,
-            'funnel' => $this->proposalFunnelForMonth($monthStart, $monthEnd),
+            'funnel' => $funnelPayload['stages'],
+            'funnel_ended_closers' => $funnelPayload['ended_closers'],
             'monthly_goal' => [
                 'current_cents' => $revenueMonthCents,
                 'goal_cents' => $goalCents,
@@ -305,14 +309,20 @@ final class AdminHomeDashboardBuilder
      * aprovada no mesmo mês. Uma métrica separada «fechou no mês» (propostas de qualquer cohort
      * com closed_at no mês) pode usar closed_at; não misturar com este funil.
      *
-     * @return list<array{key: string, label: string, count: int}>
+     * @return array{
+     *     stages: list<array{key: string, label: string, count: int, href: string}>,
+     *     ended_closers: list<array{seller_id: int|null, seller_name: string, count: int}>
+     * }
      */
     private function proposalFunnelForMonth(Carbon $monthStart, Carbon $monthEnd): array
     {
         $cohort = CommercialProposal::query()
-            ->with(['sale:id,proposal_id,status'])
+            ->with([
+                'sale:id,proposal_id,status',
+                'seller:id,name',
+            ])
             ->whereBetween('created_at', [$monthStart, $monthEnd])
-            ->get(['id', 'is_closed', 'list_status', 'closed_at']);
+            ->get(['id', 'is_closed', 'list_status', 'closed_at', 'seller_id']);
 
         $cohortSize = $cohort->count();
 
@@ -320,6 +330,8 @@ final class AdminHomeDashboardBuilder
         $approved = 0;
         $withSale = 0;
         $ended = 0;
+        /** @var array<string, array{seller_id: int|null, seller_name: string, count: int}> $endedBySeller */
+        $endedBySeller = [];
 
         foreach ($cohort as $proposal) {
             $status = ProposalListStatus::for($proposal);
@@ -335,16 +347,91 @@ final class AdminHomeDashboardBuilder
             }
             if ($status === ProposalListStatus::ENDED) {
                 $ended++;
+                $sellerId = $proposal->seller_id !== null ? (int) $proposal->seller_id : null;
+                $bucketKey = $sellerId !== null ? 'u:'.$sellerId : 'none';
+                if (! isset($endedBySeller[$bucketKey])) {
+                    $endedBySeller[$bucketKey] = [
+                        'seller_id' => $sellerId,
+                        'seller_name' => $proposal->seller?->name ?: 'Sem vendedor',
+                        'count' => 0,
+                    ];
+                }
+                $endedBySeller[$bucketKey]['count']++;
             }
         }
 
-        return [
-            ['key' => 'proposal', 'label' => 'Proposta', 'count' => $cohortSize],
-            ['key' => 'negotiation', 'label' => 'Negociação', 'count' => $negotiation],
-            ['key' => 'approved', 'label' => 'Aprovada', 'count' => $approved],
-            ['key' => 'sale', 'label' => 'Venda', 'count' => $withSale],
-            ['key' => 'ended', 'label' => 'Encerrada', 'count' => $ended],
+        $from = $monthStart->toDateString();
+        $to = $monthEnd->toDateString();
+
+        $stages = [
+            [
+                'key' => 'proposal',
+                'label' => 'Proposta',
+                'count' => $cohortSize,
+                'href' => $this->proposalsIndexHref([
+                    'created_from' => $from,
+                    'created_to' => $to,
+                ]),
+            ],
+            [
+                'key' => 'negotiation',
+                'label' => 'Negociação',
+                'count' => $negotiation,
+                'href' => $this->proposalsIndexHref([
+                    'status' => 'em_negociacao',
+                    'created_from' => $from,
+                    'created_to' => $to,
+                ]),
+            ],
+            [
+                'key' => 'approved',
+                'label' => 'Aprovada',
+                'count' => $approved,
+                'href' => $this->proposalsIndexHref([
+                    'status' => 'aprovadas',
+                    'created_from' => $from,
+                    'created_to' => $to,
+                ]),
+            ],
+            [
+                'key' => 'sale',
+                'label' => 'Venda',
+                'count' => $withSale,
+                'href' => $this->proposalsIndexHref([
+                    'sale_situation' => 'with_sale',
+                    'created_from' => $from,
+                    'created_to' => $to,
+                ]),
+            ],
+            [
+                'key' => 'ended',
+                'label' => 'Encerrada',
+                'count' => $ended,
+                'href' => $this->proposalsIndexHref([
+                    'status' => 'encerradas',
+                    'created_from' => $from,
+                    'created_to' => $to,
+                ]),
+            ],
         ];
+
+        $endedClosers = collect($endedBySeller)
+            ->sortByDesc('count')
+            ->values()
+            ->all();
+
+        return [
+            'stages' => $stages,
+            'ended_closers' => $endedClosers,
+        ];
+    }
+
+    /**
+     * @param  array<string, string>  $query
+     */
+    private function proposalsIndexHref(array $query): string
+    {
+        return route('admin.comercial.propostas.index', $query);
     }
 
     /**
