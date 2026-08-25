@@ -50,6 +50,7 @@ class AdminUserController extends Controller
                     'is_owner' => $workspace?->isOwner() ?? false,
                     'is_active' => $workspace ? (bool) $workspace->is_active : $u->isActive(),
                     'is_commercial' => (bool) $u->is_commercial,
+                    'commission_percent' => (float) ($u->commission_percent ?? 0),
                     'pending_registration' => ! $u->hasCompletedRegistration(),
                 ];
             });
@@ -86,6 +87,7 @@ class AdminUserController extends Controller
             $existingUser->update([
                 'name' => $validated['name'],
                 'is_commercial' => $validated['is_commercial'] ?? $existingUser->is_commercial,
+                'commission_percent' => $validated['commission_percent'] ?? $existingUser->commission_percent,
             ]);
 
             $workspace = $this->workspaceManager->createTalentsWorkspace(
@@ -106,6 +108,7 @@ class AdminUserController extends Controller
                 'email_verified_at' => now(),
                 'is_active' => $validated['is_active'] ?? true,
                 'is_commercial' => $validated['is_commercial'] ?? false,
+                'commission_percent' => $validated['commission_percent'] ?? 0,
                 'is_owner' => false,
             ]);
 
@@ -166,6 +169,7 @@ class AdminUserController extends Controller
                 'is_owner' => $workspace->isOwner(),
                 'is_active' => (bool) $workspace->is_active,
                 'is_commercial' => (bool) $user->is_commercial,
+                'commission_percent' => (float) ($user->commission_percent ?? 0),
                 'permissions' => $permissions,
             ],
             'permissionModules' => $this->permissionModulesPayload(),
@@ -193,6 +197,7 @@ class AdminUserController extends Controller
                 'email' => $validated['email'],
                 'is_active' => true,
                 'is_commercial' => $validated['is_commercial'] ?? $user->is_commercial,
+                'commission_percent' => $validated['commission_percent'] ?? $user->commission_percent,
             ]);
 
             $workspace->update(['is_active' => true]);
@@ -205,6 +210,7 @@ class AdminUserController extends Controller
                 'email' => $validated['email'],
                 'is_active' => $validated['is_active'] ?? $user->is_active,
                 'is_commercial' => $validated['is_commercial'] ?? $user->is_commercial,
+                'commission_percent' => $validated['commission_percent'] ?? $user->commission_percent,
             ]);
 
             $workspace->update([
@@ -318,6 +324,7 @@ class AdminUserController extends Controller
             ],
             'is_active' => ['boolean'],
             'is_commercial' => ['boolean'],
+            'commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'permissions' => ['nullable', 'array'],
             'permissions.*.module' => ['required_with:permissions', 'string', Rule::in($moduleValues)],
             'permissions.*.action' => ['required_with:permissions', 'string', Rule::in($actionValues)],

@@ -155,12 +155,6 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::resource('destaques-mes', MonthlyHighlightController::class)
             ->parameters(['destaques-mes' => 'destaque_mes']);
 
-        Route::resource('diagnostico-empresarial', BusinessDiagnosticController::class)
-            ->parameters(['diagnostico-empresarial' => 'diagnostico_empresarial']);
-
-        Route::get('contratos-fechados', [ClosedContractsController::class, 'index'])
-            ->name('contratos-fechados.index');
-
         Route::get('companies/{company}/rhid-metrics', [RhidPortfolioController::class, 'companyMetrics'])
             ->name('companies.rhid-metrics');
         Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');
@@ -191,6 +185,16 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('companies/{company}/templates/{template}', [CompanyController::class, 'detachTemplate'])->name('companies.templates.detach');
         Route::post('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'attachTemplate'])->name('companies.methodology-templates.attach');
         Route::delete('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'detachTemplate'])->name('companies.methodology-templates.detach');
+    });
+
+    Route::middleware('admin.can:companies_diagnostico')->group(function () {
+        Route::resource('diagnostico-empresarial', BusinessDiagnosticController::class)
+            ->parameters(['diagnostico-empresarial' => 'diagnostico_empresarial']);
+    });
+
+    Route::middleware('admin.can:companies_contratos_fechados')->group(function () {
+        Route::get('contratos-fechados', [ClosedContractsController::class, 'index'])
+            ->name('contratos-fechados.index');
     });
 
     Route::middleware('admin.can:rhid')->prefix('rhid')->name('rhid.')->group(function () {
@@ -301,9 +305,11 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('ai-settings/test', [AiSettingsController::class, 'test'])->name('ai-settings.test');
     });
 
-    Route::middleware('admin.can:solides')->group(function () {
+    Route::middleware('admin.can:solides_banco_talentos')->group(function () {
         Route::get('solides/curriculos', [SolidesCurriculumController::class, 'index'])->name('solides.curriculos.index');
+    });
 
+    Route::middleware('admin.can:solides_acompanhamento')->group(function () {
         Route::get('acompanhamento', [HiringProcessController::class, 'index'])->name('acompanhamento.index');
         Route::post('acompanhamento', [HiringProcessController::class, 'store'])->name('acompanhamento.store');
         Route::post('acompanhamento/reordenar', [HiringProcessController::class, 'reorder'])->name('acompanhamento.reorder');
@@ -324,96 +330,123 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->parameters(['methodology-templates' => 'template']);
     });
 
-    Route::middleware('admin.can:comercial')->prefix('comercial')->name('comercial.')->group(function () {
-        Route::get('/', [CommercialDashboardController::class, 'index'])->name('dashboard');
-        Route::get('configuracoes', [CommercialSettingsController::class, 'edit'])->name('settings.edit');
-        Route::put('configuracoes', [CommercialSettingsController::class, 'update'])->name('settings.update');
-        Route::patch('vendedores/{user}', [CommercialSettingsController::class, 'toggleSeller'])->name('settings.sellers.toggle');
-        Route::post('propostas/preview', [CommercialPreviewController::class, 'calculate'])->name('propostas.preview');
-        Route::get('propostas/{proposal}/pdf', [CommercialProposalController::class, 'pdf'])->name('propostas.pdf');
-        Route::post('propostas/{proposal}/contratos', [CommercialContractController::class, 'store'])
-            ->name('propostas.contratos.store');
-        Route::post('propostas/{proposal}/converter', [FinanceSaleController::class, 'store'])
-            ->name('propostas.converter');
-        Route::patch('propostas/{proposal}/status', [CommercialProposalController::class, 'updateStatus'])
-            ->name('propostas.status');
-        Route::post('propostas/{proposal}/reabrir', [CommercialProposalController::class, 'reopen'])
-            ->name('propostas.reopen');
-        Route::get('contratos/{contract}/pdf', [CommercialContractController::class, 'pdf'])
-            ->name('contratos.pdf');
-        Route::post('contratos/{contract}/zapsign', [CommercialContractController::class, 'sendZapSign'])
-            ->name('contratos.zapsign');
-        Route::get('contract-templates/{template}/docx', [CommercialContractTemplateController::class, 'downloadDocx'])
-            ->name('contract-templates.docx');
-        Route::get('contract-templates/{template}/editor', [CommercialContractTemplateController::class, 'editor'])
-            ->name('contract-templates.editor');
-        Route::resource('contract-templates', CommercialContractTemplateController::class)
-            ->only(['store', 'update', 'destroy'])
-            ->parameters(['contract-templates' => 'template'])
-            ->names('contract-templates');
-        Route::resource('products', CommercialProductController::class)
-            ->only(['store', 'update', 'destroy'])
-            ->parameters(['products' => 'product'])
-            ->names('products');
-        Route::resource('propostas', CommercialProposalController::class)
-            ->except(['show'])
-            ->parameters(['propostas' => 'proposal']);
+    Route::prefix('comercial')->name('comercial.')->group(function () {
+        Route::middleware('admin.can:comercial_resumo')->group(function () {
+            Route::get('/', [CommercialDashboardController::class, 'index'])->name('dashboard');
+        });
+
+        Route::middleware('admin.can:comercial_valores_contratos')->group(function () {
+            Route::get('configuracoes', [CommercialSettingsController::class, 'edit'])->name('settings.edit');
+            Route::put('configuracoes', [CommercialSettingsController::class, 'update'])->name('settings.update');
+            Route::patch('vendedores/{user}', [CommercialSettingsController::class, 'toggleSeller'])->name('settings.sellers.toggle');
+            Route::get('contract-templates/{template}/docx', [CommercialContractTemplateController::class, 'downloadDocx'])
+                ->name('contract-templates.docx');
+            Route::get('contract-templates/{template}/editor', [CommercialContractTemplateController::class, 'editor'])
+                ->name('contract-templates.editor');
+            Route::resource('contract-templates', CommercialContractTemplateController::class)
+                ->only(['store', 'update', 'destroy'])
+                ->parameters(['contract-templates' => 'template'])
+                ->names('contract-templates');
+            Route::resource('products', CommercialProductController::class)
+                ->only(['store', 'update', 'destroy'])
+                ->parameters(['products' => 'product'])
+                ->names('products');
+        });
+
+        Route::middleware('admin.can:comercial_propostas')->group(function () {
+            Route::post('propostas/preview', [CommercialPreviewController::class, 'calculate'])->name('propostas.preview');
+            Route::get('propostas/{proposal}/pdf', [CommercialProposalController::class, 'pdf'])->name('propostas.pdf');
+            Route::post('propostas/{proposal}/contratos', [CommercialContractController::class, 'store'])
+                ->name('propostas.contratos.store');
+            Route::post('propostas/{proposal}/converter', [FinanceSaleController::class, 'store'])
+                ->name('propostas.converter');
+            Route::patch('propostas/{proposal}/status', [CommercialProposalController::class, 'updateStatus'])
+                ->name('propostas.status');
+            Route::post('propostas/{proposal}/reabrir', [CommercialProposalController::class, 'reopen'])
+                ->name('propostas.reopen');
+            Route::get('contratos/{contract}/pdf', [CommercialContractController::class, 'pdf'])
+                ->name('contratos.pdf');
+            Route::post('contratos/{contract}/zapsign', [CommercialContractController::class, 'sendZapSign'])
+                ->name('contratos.zapsign');
+            Route::resource('propostas', CommercialProposalController::class)
+                ->except(['show'])
+                ->parameters(['propostas' => 'proposal']);
+        });
     });
 
-    Route::middleware('admin.can:financeiro')->prefix('financeiro')->name('financeiro.')->group(function () {
-        Route::get('/', [FinanceDashboardController::class, 'index'])->name('dashboard');
-        Route::get('vendas', [FinanceSaleController::class, 'index'])->name('vendas.index');
-        Route::get('vendas/nova', [FinanceSaleController::class, 'create'])->name('vendas.create');
-        Route::post('vendas', [FinanceSaleController::class, 'storeManual'])->name('vendas.store');
-        Route::get('vendas/{sale}/editar', [FinanceSaleController::class, 'edit'])->name('vendas.edit');
-        Route::put('vendas/{sale}', [FinanceSaleController::class, 'update'])->name('vendas.update');
-        Route::get('vendas/{sale}', [FinanceSaleController::class, 'show'])->name('vendas.show');
-        Route::patch('parcelas/{installment}/pagamento', [FinanceInstallmentController::class, 'registerPayment'])
-            ->name('parcelas.pagamento');
-        Route::patch('parcelas/{installment}', [FinanceInstallmentController::class, 'update'])
-            ->name('parcelas.update');
-        Route::get('parcelas/{installment}/comprovante', [FinanceInstallmentController::class, 'receipt'])
-            ->name('parcelas.comprovante');
-        Route::get('comissoes', [FinanceCommissionController::class, 'index'])->name('comissoes.index');
-        Route::patch('comissoes/{commission}', [FinanceCommissionController::class, 'update'])
-            ->name('comissoes.update');
+    Route::prefix('financeiro')->name('financeiro.')->group(function () {
+        Route::middleware('admin.can:financeiro_resumo')->group(function () {
+            Route::get('/', [FinanceDashboardController::class, 'index'])->name('dashboard');
+        });
 
-        Route::get('contas-bancarias', [FinanceBankAccountController::class, 'index'])->name('contas-bancarias.index');
-        Route::get('contas-bancarias/nova', [FinanceBankAccountController::class, 'create'])->name('contas-bancarias.create');
-        Route::post('contas-bancarias', [FinanceBankAccountController::class, 'store'])->name('contas-bancarias.store');
-        Route::post('contas-bancarias/transferir', [FinanceBankAccountController::class, 'transfer'])
-            ->name('contas-bancarias.transfer');
-        Route::get('contas-bancarias/{bank_account}/editar', [FinanceBankAccountController::class, 'edit'])
-            ->name('contas-bancarias.edit');
-        Route::put('contas-bancarias/{bank_account}', [FinanceBankAccountController::class, 'update'])
-            ->name('contas-bancarias.update');
-        Route::delete('contas-bancarias/{bank_account}', [FinanceBankAccountController::class, 'destroy'])
-            ->name('contas-bancarias.destroy');
+        Route::middleware('admin.can:financeiro_vendas')->group(function () {
+            Route::get('vendas', [FinanceSaleController::class, 'index'])->name('vendas.index');
+            Route::get('vendas/nova', [FinanceSaleController::class, 'create'])->name('vendas.create');
+            Route::post('vendas', [FinanceSaleController::class, 'storeManual'])->name('vendas.store');
+            Route::get('vendas/{sale}/editar', [FinanceSaleController::class, 'edit'])->name('vendas.edit');
+            Route::put('vendas/{sale}', [FinanceSaleController::class, 'update'])->name('vendas.update');
+            Route::get('vendas/{sale}', [FinanceSaleController::class, 'show'])->name('vendas.show');
+        });
 
-        Route::resource('formas-pagamento', FinancePaymentMethodController::class)
-            ->except(['show'])
-            ->parameters(['formas-pagamento' => 'payment_method']);
+        Route::middleware('admin.can:financeiro_vendas,financeiro_contas_a_receber')->group(function () {
+            Route::patch('parcelas/{installment}/pagamento', [FinanceInstallmentController::class, 'registerPayment'])
+                ->name('parcelas.pagamento');
+            Route::patch('parcelas/{installment}', [FinanceInstallmentController::class, 'update'])
+                ->name('parcelas.update');
+            Route::get('parcelas/{installment}/comprovante', [FinanceInstallmentController::class, 'receipt'])
+                ->name('parcelas.comprovante');
+        });
 
-        Route::get('contas-a-pagar', [FinancePayableController::class, 'index'])->name('contas-a-pagar.index');
-        Route::get('contas-a-pagar/nova', [FinancePayableController::class, 'create'])->name('contas-a-pagar.create');
-        Route::post('contas-a-pagar', [FinancePayableController::class, 'store'])->name('contas-a-pagar.store');
-        Route::get('contas-a-pagar/{payable}/editar', [FinancePayableController::class, 'edit'])->name('contas-a-pagar.edit');
-        Route::put('contas-a-pagar/{payable}', [FinancePayableController::class, 'update'])->name('contas-a-pagar.update');
-        Route::delete('contas-a-pagar/{payable}', [FinancePayableController::class, 'destroy'])->name('contas-a-pagar.destroy');
-        Route::patch('contas-a-pagar/{payable}/pagar', [FinancePayableController::class, 'markPaid'])
-            ->name('contas-a-pagar.mark-paid');
+        Route::middleware('admin.can:financeiro_comissoes')->group(function () {
+            Route::get('comissoes', [FinanceCommissionController::class, 'index'])->name('comissoes.index');
+            Route::patch('comissoes/{commission}', [FinanceCommissionController::class, 'update'])
+                ->name('comissoes.update');
+        });
 
-        Route::get('contas-a-receber', [FinanceReceivableController::class, 'index'])->name('contas-a-receber.index');
-        Route::get('contas-a-receber/nova', [FinanceReceivableController::class, 'create'])->name('contas-a-receber.create');
-        Route::post('contas-a-receber', [FinanceReceivableController::class, 'store'])->name('contas-a-receber.store');
-        Route::get('contas-a-receber/{receivable}/editar', [FinanceReceivableController::class, 'edit'])
-            ->name('contas-a-receber.edit');
-        Route::put('contas-a-receber/{receivable}', [FinanceReceivableController::class, 'update'])
-            ->name('contas-a-receber.update');
-        Route::delete('contas-a-receber/{receivable}', [FinanceReceivableController::class, 'destroy'])
-            ->name('contas-a-receber.destroy');
-        Route::patch('contas-a-receber/{receivable}/receber', [FinanceReceivableController::class, 'markPaid'])
-            ->name('contas-a-receber.mark-paid');
+        Route::middleware('admin.can:financeiro_contas_bancarias')->group(function () {
+            Route::get('contas-bancarias', [FinanceBankAccountController::class, 'index'])->name('contas-bancarias.index');
+            Route::get('contas-bancarias/nova', [FinanceBankAccountController::class, 'create'])->name('contas-bancarias.create');
+            Route::post('contas-bancarias', [FinanceBankAccountController::class, 'store'])->name('contas-bancarias.store');
+            Route::post('contas-bancarias/transferir', [FinanceBankAccountController::class, 'transfer'])
+                ->name('contas-bancarias.transfer');
+            Route::get('contas-bancarias/{bank_account}/editar', [FinanceBankAccountController::class, 'edit'])
+                ->name('contas-bancarias.edit');
+            Route::put('contas-bancarias/{bank_account}', [FinanceBankAccountController::class, 'update'])
+                ->name('contas-bancarias.update');
+            Route::delete('contas-bancarias/{bank_account}', [FinanceBankAccountController::class, 'destroy'])
+                ->name('contas-bancarias.destroy');
+        });
+
+        Route::middleware('admin.can:financeiro_formas_pagamento')->group(function () {
+            Route::resource('formas-pagamento', FinancePaymentMethodController::class)
+                ->except(['show'])
+                ->parameters(['formas-pagamento' => 'payment_method']);
+        });
+
+        Route::middleware('admin.can:financeiro_contas_a_pagar')->group(function () {
+            Route::get('contas-a-pagar', [FinancePayableController::class, 'index'])->name('contas-a-pagar.index');
+            Route::get('contas-a-pagar/nova', [FinancePayableController::class, 'create'])->name('contas-a-pagar.create');
+            Route::post('contas-a-pagar', [FinancePayableController::class, 'store'])->name('contas-a-pagar.store');
+            Route::get('contas-a-pagar/{payable}/editar', [FinancePayableController::class, 'edit'])->name('contas-a-pagar.edit');
+            Route::put('contas-a-pagar/{payable}', [FinancePayableController::class, 'update'])->name('contas-a-pagar.update');
+            Route::delete('contas-a-pagar/{payable}', [FinancePayableController::class, 'destroy'])->name('contas-a-pagar.destroy');
+            Route::patch('contas-a-pagar/{payable}/pagar', [FinancePayableController::class, 'markPaid'])
+                ->name('contas-a-pagar.mark-paid');
+        });
+
+        Route::middleware('admin.can:financeiro_contas_a_receber')->group(function () {
+            Route::get('contas-a-receber', [FinanceReceivableController::class, 'index'])->name('contas-a-receber.index');
+            Route::get('contas-a-receber/nova', [FinanceReceivableController::class, 'create'])->name('contas-a-receber.create');
+            Route::post('contas-a-receber', [FinanceReceivableController::class, 'store'])->name('contas-a-receber.store');
+            Route::get('contas-a-receber/{receivable}/editar', [FinanceReceivableController::class, 'edit'])
+                ->name('contas-a-receber.edit');
+            Route::put('contas-a-receber/{receivable}', [FinanceReceivableController::class, 'update'])
+                ->name('contas-a-receber.update');
+            Route::delete('contas-a-receber/{receivable}', [FinanceReceivableController::class, 'destroy'])
+                ->name('contas-a-receber.destroy');
+            Route::patch('contas-a-receber/{receivable}/receber', [FinanceReceivableController::class, 'markPaid'])
+                ->name('contas-a-receber.mark-paid');
+        });
     });
 
     Route::middleware('admin.can:tarefas')->prefix('tarefas')->name('tarefas.')->group(function () {
@@ -477,13 +510,16 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('quadros/{board}/membros/{user}', [TaskBoardMemberController::class, 'destroy'])->name('quadros.membros.destroy');
     });
 
-    Route::middleware('admin.can:entrevistas')->prefix('entrevistas')->name('entrevistas.')->group(function () {
-        Route::get('/', [InterviewController::class, 'index'])->name('index');
-        Route::get('nova', [InterviewController::class, 'create'])->name('create');
-        Route::post('/', [InterviewController::class, 'store'])->name('store');
+    Route::middleware('admin.can:entrevistas_roteiros')->prefix('entrevistas')->name('entrevistas.')->group(function () {
         Route::resource('roteiros', InterviewQuestionnaireController::class)
             ->except(['show'])
             ->parameters(['roteiros' => 'questionnaire']);
+    });
+
+    Route::middleware('admin.can:entrevistas_ia')->prefix('entrevistas')->name('entrevistas.')->group(function () {
+        Route::get('/', [InterviewController::class, 'index'])->name('index');
+        Route::get('nova', [InterviewController::class, 'create'])->name('create');
+        Route::post('/', [InterviewController::class, 'store'])->name('store');
         Route::get('{interview}/relatorio.pdf', [InterviewReportController::class, 'pdf'])->name('report.pdf');
         Route::get('{interview}/relatorio.docx', [InterviewReportController::class, 'docx'])->name('report.docx');
         Route::post('{interview}/reprocessar', [InterviewController::class, 'reprocess'])->name('reprocess');
@@ -491,7 +527,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('{interview}', [InterviewController::class, 'destroy'])->name('destroy');
     });
 
-    Route::middleware('admin.can:entrevistas')->prefix('reunioes')->name('reunioes.')->group(function () {
+    Route::middleware('admin.can:entrevistas_reunioes')->prefix('reunioes')->name('reunioes.')->group(function () {
         Route::get('/', [MeetingController::class, 'index'])->name('index');
         Route::get('nova', [MeetingController::class, 'create'])->name('create');
         Route::post('/', [MeetingController::class, 'store'])->name('store');

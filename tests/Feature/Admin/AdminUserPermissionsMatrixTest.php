@@ -57,7 +57,7 @@ class AdminUserPermissionsMatrixTest extends TestCase
         $collaborator->setActiveWorkspace($collaborator->talentsWorkspace()?->fresh(['adminPermissions']));
 
         $this->assertTrue($collaborator->canAccessAdmin(AdminPermissionModule::Dashboard, PermissionAction::View));
-        $this->assertFalse($collaborator->canAccessAdmin(AdminPermissionModule::Financeiro, PermissionAction::View));
+        $this->assertFalse($collaborator->canAccessAdmin(AdminPermissionModule::FinanceiroVendas, PermissionAction::View));
 
         $this->actingAs($collaborator)
             ->get(route('admin.financeiro.vendas.index'))

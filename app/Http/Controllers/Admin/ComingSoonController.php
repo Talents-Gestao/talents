@@ -23,17 +23,17 @@ class ComingSoonController extends Controller
         'profiler' => [
             'title' => 'Profiler',
             'description' => 'Mapeamento comportamental integrado à Sólides (profiler) será disponibilizado em breve nesta área de contratação.',
-            'permission' => AdminPermissionModule::Solides,
+            'permission' => AdminPermissionModule::SolidesProfiler,
         ],
         'timeline' => [
             'title' => 'Timeline',
             'description' => 'Resumo do funil de contratação (candidatos, desclassificados, entrevistados) em sincronia com a Sólides chegará em uma próxima versão.',
-            'permission' => AdminPermissionModule::Solides,
+            'permission' => AdminPermissionModule::SolidesAcompanhamento,
         ],
         'diagnostico-empresarial' => [
             'title' => 'Diagnóstico empresarial',
             'description' => 'O diagnóstico empresarial completo para clientes estará disponível em breve neste módulo.',
-            'permission' => AdminPermissionModule::Companies,
+            'permission' => AdminPermissionModule::CompaniesDiagnostico,
         ],
         'cadastro-colaboradores' => [
             'title' => 'Cadastro de colaboradores',
@@ -48,12 +48,12 @@ class ComingSoonController extends Controller
         'contas-bancarias' => [
             'title' => 'Contas bancárias',
             'description' => 'Cadastro e conciliação de contas bancárias serão disponibilizados em breve no financeiro.',
-            'permission' => AdminPermissionModule::Financeiro,
+            'permission' => AdminPermissionModule::FinanceiroContasBancarias,
         ],
         'contas-a-receber' => [
             'title' => 'Contas a receber',
             'description' => 'Módulo dedicado de contas a receber será disponibilizado em breve (hoje o acompanhamento ocorre via vendas e parcelas).',
-            'permission' => AdminPermissionModule::Financeiro,
+            'permission' => AdminPermissionModule::FinanceiroContasAReceber,
         ],
     ];
 

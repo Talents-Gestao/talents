@@ -464,6 +464,8 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
                 ->has('bankAccounts')
                 ->has('installmentMethodOptions')
                 ->has('installmentStatusOptions')
+                ->has('sortOptions', 2)
+                ->where('filters.sort', 'due_date')
             );
     }
 
@@ -478,6 +480,47 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.coming-soon.show', 'contas-a-receber'))
             ->assertRedirect(route('admin.financeiro.contas-a-receber.index'));
+    }
+
+    public function test_receivables_index_can_sort_by_receipt_date(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $pending = FinanceReceivable::query()->create([
+            'title' => 'Pendente com vencimento novo',
+            'amount_cents' => 1000,
+            'due_date' => '2026-08-20',
+            'status' => FinanceReceivableStatus::Pending,
+            'created_by' => $admin->id,
+        ]);
+        $received = FinanceReceivable::query()->create([
+            'title' => 'Recebida',
+            'amount_cents' => 2000,
+            'due_date' => '2026-08-01',
+            'status' => FinanceReceivableStatus::Paid,
+            'paid_at' => '2026-08-18 10:00:00',
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.contas-a-receber.index', ['origin' => 'manual']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('items.data.0.receivable_id', $pending->id)
+            );
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.contas-a-receber.index', [
+                'origin' => 'manual',
+                'sort' => 'paid_at',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.sort', 'paid_at')
+                ->where('items.data.0.receivable_id', $received->id)
+                ->where('items.data.1.receivable_id', $pending->id)
+            );
     }
 
     public function test_guest_cannot_access_new_finance_modules(): void

@@ -7,7 +7,6 @@ import SidebarUserCard from '@/Components/SidebarUserCard.vue';
 import DailyQuoteCard from '@/Components/Dashboard/DailyQuoteCard.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import {
-    AcademicCapIcon,
     ArrowRightOnRectangleIcon,
     BriefcaseIcon,
     BuildingOfficeIcon,
@@ -167,6 +166,7 @@ const showDailyQuote = computed(
                 label="Cargos"
                 :collapsed="collapsed"
             />
+            <!-- Capacitação oculto até o módulo estar pronto
             <SidebarNavItem
                 v-if="can('capacitacao', 'view')"
                 :href="route('client.training.index')"
@@ -176,6 +176,7 @@ const showDailyQuote = computed(
                 :collapsed="collapsed"
                 badge="Em breve"
             />
+            -->
             <SidebarNavItem
                 v-if="can('rhid', 'view')"
                 :href="route('client.rhid.compliance.index')"

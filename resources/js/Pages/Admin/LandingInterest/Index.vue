@@ -30,9 +30,30 @@ const form = useForm({
 
 const notesForm = useForm({
     admin_notes: '',
+    is_qualified: '',
 });
 
 const flashSuccess = computed(() => page.props.flash?.success ?? null);
+
+function qualifiedLabel(value) {
+    if (value === true) {
+        return 'Sim';
+    }
+    if (value === false) {
+        return 'Não';
+    }
+    return '—';
+}
+
+function qualifiedBadgeClass(value) {
+    if (value === true) {
+        return 'bg-emerald-100 text-emerald-800';
+    }
+    if (value === false) {
+        return 'bg-slate-100 text-slate-600';
+    }
+    return 'bg-amber-50 text-amber-800';
+}
 
 function mailErrorPresent(value) {
     return value !== null && value !== undefined && String(value).trim() !== '';
@@ -70,6 +91,7 @@ function openDetailModal(lead) {
     selectedLead.value = lead;
     notesForm.clearErrors();
     notesForm.admin_notes = lead.admin_notes ?? '';
+    notesForm.is_qualified = lead.is_qualified === true ? '1' : lead.is_qualified === false ? '0' : '';
     showDetailModal.value = true;
 }
 
@@ -91,6 +113,11 @@ watch(
             selectedLead.value = fresh;
             if (!notesForm.isDirty) {
                 notesForm.admin_notes = fresh.admin_notes ?? '';
+                notesForm.is_qualified = fresh.is_qualified === true
+                    ? '1'
+                    : fresh.is_qualified === false
+                        ? '0'
+                        : '';
             }
         }
     },
@@ -112,9 +139,14 @@ function saveNotes() {
     if (!selectedLead.value) {
         return;
     }
-    notesForm.patch(route('admin.landing-interest.update', selectedLead.value.id), {
-        preserveScroll: true,
-    });
+    notesForm
+        .transform((data) => ({
+            admin_notes: data.admin_notes,
+            is_qualified: data.is_qualified === '' ? null : data.is_qualified === '1',
+        }))
+        .patch(route('admin.landing-interest.update', selectedLead.value.id), {
+            preserveScroll: true,
+        });
 }
 
 function destroyLead(lead, event) {
@@ -184,6 +216,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Telefone</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Empresa</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Origem</th>
+                            <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Qualificado</th>
                             <th class="min-w-[12rem] px-4 py-3 text-left font-medium text-gray-700">Mensagem</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">E-mail aviso</th>
                             <th class="whitespace-nowrap px-4 py-3 text-right font-medium text-gray-700">Ações</th>
@@ -216,6 +249,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                     class="inline-flex rounded-full bg-talents-50 px-2 py-0.5 text-xs font-medium text-talents-800 ring-1 ring-talents-100"
                                 >
                                     {{ s.source_label || '—' }}
+                                </span>
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-3">
+                                <span
+                                    class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                                    :class="qualifiedBadgeClass(s.is_qualified)"
+                                >
+                                    {{ qualifiedLabel(s.is_qualified) }}
                                 </span>
                             </td>
                             <td class="max-w-md px-4 py-3">
@@ -429,27 +470,49 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     </div>
                 </dl>
 
-                <form class="mt-6 border-t border-slate-100 pt-5" @submit.prevent="saveNotes">
-                    <label class="block text-sm font-medium text-gray-700" for="lead-admin-notes">
-                        Anotações internas
-                    </label>
-                    <p class="mt-0.5 text-xs text-slate-500">
-                        Use este campo para registar follow-ups, combinações e observações da equipa.
-                    </p>
-                    <textarea
-                        id="lead-admin-notes"
-                        v-model="notesForm.admin_notes"
-                        rows="5"
-                        class="field-input mt-2"
-                        placeholder="Ex.: Ligar na sexta; pediu proposta de NR-1…"
-                    />
-                    <p v-if="notesForm.errors.admin_notes" class="mt-1 text-sm text-red-600">
-                        {{ notesForm.errors.admin_notes }}
-                    </p>
-                    <div class="mt-4 flex justify-end gap-2">
+                <form class="mt-6 border-t border-slate-100 pt-5 space-y-4" @submit.prevent="saveNotes">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700" for="lead-is-qualified">
+                            Qualificado
+                        </label>
+                        <p class="mt-0.5 text-xs text-slate-500">
+                            Após a reunião com o cliente, indique se o lead foi qualificado.
+                        </p>
+                        <select
+                            id="lead-is-qualified"
+                            v-model="notesForm.is_qualified"
+                            class="field-input mt-2"
+                        >
+                            <option value="">Ainda não avaliado</option>
+                            <option value="1">Sim</option>
+                            <option value="0">Não</option>
+                        </select>
+                        <p v-if="notesForm.errors.is_qualified" class="mt-1 text-sm text-red-600">
+                            {{ notesForm.errors.is_qualified }}
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700" for="lead-admin-notes">
+                            Anotações internas
+                        </label>
+                        <p class="mt-0.5 text-xs text-slate-500">
+                            Use este campo para registar follow-ups, combinações e observações da equipa.
+                        </p>
+                        <textarea
+                            id="lead-admin-notes"
+                            v-model="notesForm.admin_notes"
+                            rows="5"
+                            class="field-input mt-2"
+                            placeholder="Ex.: Ligar na sexta; pediu proposta de NR-1…"
+                        />
+                        <p v-if="notesForm.errors.admin_notes" class="mt-1 text-sm text-red-600">
+                            {{ notesForm.errors.admin_notes }}
+                        </p>
+                    </div>
+                    <div class="flex justify-end gap-2">
                         <button type="button" class="btn-secondary" @click="closeDetailModal">Fechar</button>
                         <button type="submit" class="btn-primary" :disabled="notesForm.processing">
-                            {{ notesForm.processing ? 'Salvando…' : 'Salvar anotações' }}
+                            {{ notesForm.processing ? 'Salvando…' : 'Salvar' }}
                         </button>
                     </div>
                 </form>

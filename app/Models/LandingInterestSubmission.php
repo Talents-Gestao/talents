@@ -15,6 +15,7 @@ class LandingInterestSubmission extends Model
         'company',
         'message',
         'admin_notes',
+        'is_qualified',
         'source',
         'created_by',
         'mail_sent_at',
@@ -25,6 +26,7 @@ class LandingInterestSubmission extends Model
     {
         return [
             'mail_sent_at' => 'datetime',
+            'is_qualified' => 'boolean',
             'source' => LandingInterestSource::class,
         ];
     }

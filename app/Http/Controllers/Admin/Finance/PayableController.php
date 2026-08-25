@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\FinanceBankAccount;
 use App\Models\FinancePayable;
 use App\Models\FinancePaymentMethod;
+use App\Support\Finance\FinanceListSort;
 use App\Support\Finance\MonthlyRecurrenceDates;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,10 +23,12 @@ class PayableController extends Controller
 {
     public function index(Request $request): Response
     {
+        $sort = FinanceListSort::fromRequest($request);
+
         $query = FinancePayable::query()
-            ->with(['paymentMethod:id,name', 'bankAccount:id,name', 'createdBy:id,name'])
-            ->orderByDesc('due_date')
-            ->orderByDesc('id');
+            ->with(['paymentMethod:id,name', 'bankAccount:id,name', 'createdBy:id,name']);
+
+        FinanceListSort::applyToQuery($query, $sort);
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status')->toString());
@@ -62,7 +65,9 @@ class PayableController extends Controller
             'filters' => [
                 'q' => $request->string('q')->toString(),
                 'status' => $request->string('status')->toString(),
+                'sort' => $sort,
             ],
+            'sortOptions' => FinanceListSort::payableOptions(),
             'statusOptions' => $this->statusOptions(),
             ...$this->formOptions(),
         ]);

@@ -12,6 +12,7 @@ use App\Models\FinancePaymentMethod;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class FinancePayablesModuleTest extends TestCase
@@ -288,5 +289,46 @@ class FinancePayablesModuleTest extends TestCase
             ->assertRedirect(route('admin.financeiro.formas-pagamento.index'));
 
         $this->assertDatabaseHas('finance_payment_methods', ['id' => $method->id]);
+    }
+
+    public function test_payables_index_can_sort_by_payment_date(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $pending = FinancePayable::query()->create([
+            'title' => 'Pendente recente',
+            'amount_cents' => 1000,
+            'due_date' => '2026-08-20',
+            'status' => FinancePayableStatus::Pending,
+            'created_by' => $admin->id,
+        ]);
+        $paid = FinancePayable::query()->create([
+            'title' => 'Paga mais antiga no vencimento',
+            'amount_cents' => 2000,
+            'due_date' => '2026-08-01',
+            'status' => FinancePayableStatus::Paid,
+            'paid_at' => '2026-08-18 10:00:00',
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.contas-a-pagar.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Finance/Payables/Index')
+                ->has('sortOptions', 2)
+                ->where('filters.sort', 'due_date')
+                ->where('payables.data.0.id', $pending->id)
+            );
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.contas-a-pagar.index', ['sort' => 'paid_at']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.sort', 'paid_at')
+                ->where('payables.data.0.id', $paid->id)
+                ->where('payables.data.1.id', $pending->id)
+            );
     }
 }

@@ -1,14 +1,13 @@
 <script setup>
 import { computed, watch } from 'vue';
-import { formatBRL } from '@/composables/useCommercialPricing';
 
 const props = defineProps({
     payCommission: { type: Boolean, default: false },
     commissionPercent: { type: [Number, String], default: 0 },
-    defaultPercent: { type: Number, default: 0 },
-    estimatedCents: { type: Number, default: 0 },
-    errors: { type: Object, default: () => ({}) },
     disabled: { type: Boolean, default: false },
+    /** Quando true, permite editar a % (cadastro na Equipe). */
+    editablePercent: { type: Boolean, default: false },
+    errors: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits(['update:payCommission', 'update:commissionPercent']);
@@ -23,9 +22,6 @@ const selectMode = (enabled) => {
         return;
     }
     emit('update:payCommission', enabled);
-    if (enabled && !(Number(props.commissionPercent) > 0) && Number(props.defaultPercent) > 0) {
-        emit('update:commissionPercent', props.defaultPercent);
-    }
     if (!enabled) {
         emit('update:commissionPercent', 0);
     }
@@ -44,6 +40,11 @@ watch(
 <template>
     <fieldset class="space-y-3" :disabled="disabled">
         <legend class="text-xs font-medium uppercase tracking-wide text-slate-500">Comissão</legend>
+        <p class="text-sm text-slate-600">
+            Defina se este administrador recebe comissão nas propostas em que for o vendedor.
+            A porcentagem é fixa e aplicada automaticamente.
+        </p>
+
         <div class="grid gap-2 sm:grid-cols-2">
             <button
                 type="button"
@@ -66,37 +67,31 @@ watch(
                 :disabled="disabled"
                 @click="selectMode(true)"
             >
-                <span class="font-semibold">Comissão opcional</span>
-                <span class="mt-0.5 block text-xs text-slate-500">Percentual sobre o valor da venda.</span>
+                <span class="font-semibold">Com comissão</span>
+                <span class="mt-0.5 block text-xs text-slate-500">Percentual fixo sobre o valor da venda.</span>
             </button>
         </div>
 
-        <div v-if="payCommission">
-            <label class="text-xs font-medium uppercase tracking-wide text-slate-500" for="optional-commission-percent">
+        <div v-if="payCommission && editablePercent">
+            <label class="text-xs font-medium uppercase tracking-wide text-slate-500" for="admin-commission-percent">
                 Percentual (%)
             </label>
             <input
-                id="optional-commission-percent"
+                id="admin-commission-percent"
                 v-model.number="percentModel"
                 type="number"
                 min="0"
                 max="100"
                 step="0.01"
-                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                class="mt-1 w-full max-w-xs rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 :disabled="disabled"
             />
-            <p v-if="estimatedCents > 0" class="mt-1 text-xs tabular-nums text-slate-600">
-                Estimativa: {{ formatBRL(estimatedCents) }}
-            </p>
             <p v-if="errors.commission_percent" class="mt-1 text-xs text-rose-600">
                 {{ errors.commission_percent }}
             </p>
         </div>
-        <p v-else class="text-xs text-slate-500">
-            Nenhuma comissão será lançada no Financeiro.
-        </p>
-        <p v-if="errors.pay_commission" class="text-xs text-rose-600">
-            {{ errors.pay_commission }}
+        <p v-else-if="!payCommission" class="text-xs text-slate-500">
+            Nenhuma comissão será lançada nas propostas deste vendedor.
         </p>
     </fieldset>
 </template>

@@ -16,7 +16,7 @@ class ProposalListStatusFilterTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_index_exposes_list_status_and_filters_by_four_statuses(): void
+    public function test_index_exposes_list_status_and_filters_by_three_statuses(): void
     {
         $this->withoutVite();
 
@@ -31,19 +31,20 @@ class ProposalListStatusFilterTest extends TestCase
             'list_status' => ProposalListStatus::OPEN,
         ]);
 
-        $approvedOnly = CommercialProposal::create([
+        $closedOnly = CommercialProposal::create([
             'code' => 'PROP-2026-0102',
-            'client_name' => 'Aprovada sem venda',
+            'client_name' => 'Fechada sem venda',
             'employee_count' => 5,
             'total_final_cents' => 2000,
             'is_closed' => true,
             'closed_at' => now(),
-            'list_status' => ProposalListStatus::APPROVED,
+            'list_status' => ProposalListStatus::CLOSED,
         ]);
 
-        $negotiation = CommercialProposal::create([
+        // Slug legado ainda filtrável em «abertas» / «em_negociacao».
+        $legacyNegotiation = CommercialProposal::create([
             'code' => 'PROP-2026-0103',
-            'client_name' => 'Negociação',
+            'client_name' => 'Negociação legado',
             'employee_count' => 5,
             'total_final_cents' => 3000,
             'is_closed' => false,
@@ -52,7 +53,7 @@ class ProposalListStatusFilterTest extends TestCase
 
         $ended = CommercialProposal::create([
             'code' => 'PROP-2026-0105',
-            'client_name' => 'Encerrada',
+            'client_name' => 'Perdida',
             'employee_count' => 5,
             'total_final_cents' => 3500,
             'is_closed' => false,
@@ -66,7 +67,7 @@ class ProposalListStatusFilterTest extends TestCase
             'total_final_cents' => 4000,
             'is_closed' => true,
             'closed_at' => now(),
-            'list_status' => ProposalListStatus::APPROVED,
+            'list_status' => ProposalListStatus::CLOSED,
         ]);
 
         CommercialSale::create([
@@ -79,24 +80,33 @@ class ProposalListStatusFilterTest extends TestCase
             'sold_at' => now(),
         ]);
 
+        $expectedOpenIds = collect([$open->id, $legacyNegotiation->id])->sort()->values()->all();
+
         $this->actingAs($admin)
             ->get(route('admin.comercial.propostas.index', ['status' => 'em_negociacao']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Commercial/Proposals/Index')
-                ->has('proposals.data', 1)
-                ->where('proposals.data.0.id', $negotiation->id)
-                ->where('proposals.data.0.list_status', ProposalListStatus::NEGOTIATION)
-                ->where('proposals.data.0.list_status_label', 'Em negociação')
+                ->has('proposals.data', 2)
+                ->where(
+                    'proposals.data',
+                    fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all() === $expectedOpenIds,
+                )
+                ->where('proposals.data', fn ($rows) => collect($rows)->every(
+                    fn ($row) => ($row['list_status'] ?? null) === ProposalListStatus::OPEN
+                        && ($row['list_status_label'] ?? null) === 'Aberta',
+                ))
             );
 
         $this->actingAs($admin)
             ->get(route('admin.comercial.propostas.index', ['status' => 'abertas']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('proposals.data', 1)
-                ->where('proposals.data.0.id', $open->id)
-                ->where('proposals.data.0.list_status', ProposalListStatus::OPEN)
+                ->has('proposals.data', 2)
+                ->where(
+                    'proposals.data',
+                    fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all() === $expectedOpenIds,
+                )
             );
 
         $this->actingAs($admin)
@@ -108,7 +118,16 @@ class ProposalListStatusFilterTest extends TestCase
                 ->where('proposals.data.0.list_status', ProposalListStatus::ENDED)
             );
 
-        $expectedApprovedIds = collect([$approvedOnly->id, $quitada->id])->sort()->values()->all();
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index', ['status' => 'perdidas']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('proposals.data', 1)
+                ->where('proposals.data.0.id', $ended->id)
+                ->where('proposals.data.0.list_status_label', 'Perdida')
+            );
+
+        $expectedClosedIds = collect([$closedOnly->id, $quitada->id])->sort()->values()->all();
 
         $this->actingAs($admin)
             ->get(route('admin.comercial.propostas.index', ['status' => 'aprovadas']))
@@ -117,11 +136,22 @@ class ProposalListStatusFilterTest extends TestCase
                 ->has('proposals.data', 2)
                 ->where(
                     'proposals.data',
-                    fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all() === $expectedApprovedIds,
+                    fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all() === $expectedClosedIds,
                 )
                 ->where('proposals.data', fn ($rows) => collect($rows)->every(
-                    fn ($row) => ($row['list_status'] ?? null) === ProposalListStatus::APPROVED,
+                    fn ($row) => ($row['list_status'] ?? null) === ProposalListStatus::CLOSED,
                 ))
+            );
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index', ['status' => 'fechadas']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('proposals.data', 2)
+                ->where(
+                    'proposals.data',
+                    fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all() === $expectedClosedIds,
+                )
             );
     }
 
@@ -144,13 +174,13 @@ class ProposalListStatusFilterTest extends TestCase
 
         CommercialProposal::create([
             'code' => 'PROP-CNT-0002',
-            'client_name' => 'Aprovada Seller',
+            'client_name' => 'Fechada Seller',
             'employee_count' => 5,
             'total_final_cents' => 2000,
             'is_closed' => true,
             'closed_at' => now(),
             'seller_id' => $seller->id,
-            'list_status' => ProposalListStatus::APPROVED,
+            'list_status' => ProposalListStatus::CLOSED,
         ]);
 
         CommercialProposal::create([
@@ -172,6 +202,8 @@ class ProposalListStatusFilterTest extends TestCase
                 ->has('proposals.data', 1)
                 ->where('statusCounts.all', 2)
                 ->where('statusCounts.abertas', 1)
+                ->where('statusCounts.fechadas', 1)
+                ->where('statusCounts.perdidas', 0)
                 ->where('statusCounts.aprovadas', 1)
                 ->where('statusCounts.em_negociacao', 0)
                 ->where('statusCounts.encerradas', 0)
@@ -191,7 +223,7 @@ class ProposalListStatusFilterTest extends TestCase
             'total_final_cents' => 1000,
             'is_closed' => true,
             'closed_at' => now(),
-            'list_status' => ProposalListStatus::APPROVED,
+            'list_status' => ProposalListStatus::CLOSED,
         ]);
 
         $with = CommercialProposal::create([
@@ -201,7 +233,7 @@ class ProposalListStatusFilterTest extends TestCase
             'total_final_cents' => 2000,
             'is_closed' => true,
             'closed_at' => now(),
-            'list_status' => ProposalListStatus::APPROVED,
+            'list_status' => ProposalListStatus::CLOSED,
         ]);
 
         CommercialSale::create([
@@ -303,21 +335,21 @@ class ProposalListStatusFilterTest extends TestCase
 
         $ended = CommercialProposal::create([
             'code' => 'PROP-HIDE-0002',
-            'client_name' => 'Encerrada',
+            'client_name' => 'Perdida',
             'employee_count' => 5,
             'total_final_cents' => 2000,
             'is_closed' => false,
             'list_status' => ProposalListStatus::ENDED,
         ]);
 
-        $approved = CommercialProposal::create([
+        $closed = CommercialProposal::create([
             'code' => 'PROP-HIDE-0003',
-            'client_name' => 'Aprovada',
+            'client_name' => 'Fechada',
             'employee_count' => 5,
             'total_final_cents' => 3000,
             'is_closed' => true,
             'closed_at' => now(),
-            'list_status' => ProposalListStatus::APPROVED,
+            'list_status' => ProposalListStatus::CLOSED,
         ]);
 
         $hiddenAssertion = fn (Assert $page) => $page
@@ -327,7 +359,7 @@ class ProposalListStatusFilterTest extends TestCase
             ->where(
                 'proposals.data',
                 fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all()
-                    === collect([$open->id, $approved->id])->sort()->values()->all(),
+                    === collect([$open->id, $closed->id])->sort()->values()->all(),
             )
             ->where(
                 'proposals.data',
@@ -336,8 +368,10 @@ class ProposalListStatusFilterTest extends TestCase
                 ),
             )
             ->where('statusCounts.all', 3)
+            ->where('statusCounts.perdidas', 1)
             ->where('statusCounts.encerradas', 1)
             ->where('statusCounts.abertas', 1)
+            ->where('statusCounts.fechadas', 1)
             ->where('statusCounts.aprovadas', 1);
 
         $this->actingAs($admin)
@@ -365,7 +399,7 @@ class ProposalListStatusFilterTest extends TestCase
             );
     }
 
-    public function test_index_ignores_hide_ended_when_status_is_encerradas(): void
+    public function test_index_ignores_hide_ended_when_status_is_perdidas(): void
     {
         $this->withoutVite();
 
@@ -373,7 +407,7 @@ class ProposalListStatusFilterTest extends TestCase
 
         $ended = CommercialProposal::create([
             'code' => 'PROP-HIDE-0010',
-            'client_name' => 'Encerrada visível',
+            'client_name' => 'Perdida visível',
             'employee_count' => 5,
             'total_final_cents' => 1500,
             'is_closed' => false,
@@ -401,7 +435,7 @@ class ProposalListStatusFilterTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.comercial.propostas.index', [
-                'status' => 'encerradas',
+                'status' => 'perdidas',
                 'hide_ended' => 1,
             ]))
             ->assertOk()
@@ -409,8 +443,9 @@ class ProposalListStatusFilterTest extends TestCase
                 ->has('proposals.data', 1)
                 ->where('proposals.data.0.id', $ended->id)
                 ->where('proposals.data.0.list_status', ProposalListStatus::ENDED)
-                ->where('filters.status', 'encerradas')
+                ->where('filters.status', 'perdidas')
                 ->where('filters.hide_ended', false)
+                ->where('statusCounts.perdidas', 1)
                 ->where('statusCounts.encerradas', 1)
             );
     }

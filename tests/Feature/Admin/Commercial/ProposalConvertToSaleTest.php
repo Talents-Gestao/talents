@@ -150,7 +150,7 @@ class ProposalConvertToSaleTest extends TestCase
             'total_final_cents' => 18_000_00,
             'is_closed' => true,
             'closed_at' => now(),
-            'list_status' => 'approved',
+            'list_status' => 'closed',
             'is_recurring' => true,
             'recurring_months' => 6,
             'recurring_monthly_cents' => 3_000_00,
@@ -194,7 +194,7 @@ class ProposalConvertToSaleTest extends TestCase
             'total_final_cents' => 6_000_00,
             'is_closed' => true,
             'closed_at' => now(),
-            'list_status' => 'approved',
+            'list_status' => 'closed',
             'is_recurring' => true,
             'recurring_months' => 3,
             'recurring_monthly_cents' => 2_000_00,
@@ -243,12 +243,12 @@ class ProposalConvertToSaleTest extends TestCase
         );
     }
 
-    public function test_convert_rejects_negotiation_and_ended_proposals(): void
+    public function test_convert_rejects_open_and_ended_proposals(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
         foreach ([
-            ['code' => 'PROP-CONV-NEG', 'list_status' => 'negotiation'],
+            ['code' => 'PROP-CONV-OPEN-STATUS', 'list_status' => 'open'],
             ['code' => 'PROP-CONV-END', 'list_status' => 'ended'],
         ] as $row) {
             $proposal = CommercialProposal::create([
@@ -436,16 +436,20 @@ class ProposalConvertToSaleTest extends TestCase
         );
     }
 
-    public function test_convert_without_commission_does_not_create_payable_record(): void
+    public function test_convert_uses_proposal_commission_snapshot(): void
     {
         $this->withoutVite();
 
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
-        $seller = User::factory()->create(['is_commercial' => true, 'is_active' => true]);
+        $seller = User::factory()->create([
+            'is_commercial' => true,
+            'is_active' => true,
+            'commission_percent' => 10,
+        ]);
 
         $proposal = CommercialProposal::create([
-            'code' => 'PROP-CONV-NOCOM',
-            'client_name' => 'Cliente Sem Comissão',
+            'code' => 'PROP-CONV-COM',
+            'client_name' => 'Cliente Com Comissão',
             'employee_count' => 12,
             'seller_id' => $seller->id,
             'total_final_cents' => 10_000,
@@ -461,27 +465,33 @@ class ProposalConvertToSaleTest extends TestCase
                 'payment_method' => 'pix',
                 'installments_count' => 1,
                 'first_due_date' => now()->toDateString(),
-                'pay_commission' => false,
             ],
         )->assertRedirect(route('admin.comercial.propostas.index'));
 
-        $sale = CommercialSale::query()->where('proposal_id', $proposal->id)->first();
+        $sale = CommercialSale::query()->where('proposal_id', $proposal->id)->with('commission')->first();
         $this->assertNotNull($sale);
-        $this->assertSame(0.0, (float) $sale->commission_percent);
-        $this->assertSame(0, (int) $sale->commission_cents);
-        $this->assertFalse(CommercialCommission::query()->where('sale_id', $sale->id)->exists());
+        $this->assertSame(10.0, (float) $sale->commission_percent);
+        $this->assertSame(1_000, (int) $sale->commission_cents);
+        $this->assertNotNull($sale->commission);
+        $this->assertSame(1_000, (int) $sale->commission->amount_cents);
+        $this->assertSame($seller->id, $sale->commission->seller_id);
+        $this->assertSame(CommercialCommission::STATUS_A_PAGAR, $sale->commission->status);
     }
 
-    public function test_convert_with_commission_creates_payable_record(): void
+    public function test_convert_with_zero_snapshot_creates_no_payable_commission(): void
     {
         $this->withoutVite();
 
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
-        $seller = User::factory()->create(['is_commercial' => true, 'is_active' => true]);
+        $seller = User::factory()->create([
+            'is_commercial' => true,
+            'is_active' => true,
+            'commission_percent' => 0,
+        ]);
 
         $proposal = CommercialProposal::create([
-            'code' => 'PROP-CONV-COM',
-            'client_name' => 'Cliente Com Comissão',
+            'code' => 'PROP-CONV-NOCOM',
+            'client_name' => 'Cliente Sem Comissão',
             'employee_count' => 12,
             'seller_id' => $seller->id,
             'total_final_cents' => 10_000,
@@ -497,18 +507,13 @@ class ProposalConvertToSaleTest extends TestCase
                 'payment_method' => 'pix',
                 'installments_count' => 1,
                 'first_due_date' => now()->toDateString(),
-                'pay_commission' => true,
-                'commission_percent' => 10,
             ],
         )->assertRedirect(route('admin.comercial.propostas.index'));
 
-        $sale = CommercialSale::query()->where('proposal_id', $proposal->id)->with('commission')->first();
+        $sale = CommercialSale::query()->where('proposal_id', $proposal->id)->first();
         $this->assertNotNull($sale);
-        $this->assertSame(10.0, (float) $sale->commission_percent);
-        $this->assertSame(1_000, (int) $sale->commission_cents);
-        $this->assertNotNull($sale->commission);
-        $this->assertSame(1_000, (int) $sale->commission->amount_cents);
-        $this->assertSame($seller->id, $sale->commission->seller_id);
-        $this->assertSame(CommercialCommission::STATUS_A_PAGAR, $sale->commission->status);
+        $this->assertSame(0.0, (float) $sale->commission_percent);
+        $this->assertSame(0, (int) $sale->commission_cents);
+        $this->assertFalse(CommercialCommission::query()->where('sale_id', $sale->id)->exists());
     }
 }

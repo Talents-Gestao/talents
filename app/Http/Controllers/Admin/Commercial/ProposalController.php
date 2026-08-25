@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Commercial;
 
 use App\Actions\Hiring\CreateHiringProcessFromClosedProposal;
 use App\Actions\Notices\PublishCommercialNotice;
+use App\Enums\ProposalLostReason;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialContractTemplate;
 use App\Models\CommercialProduct;
@@ -22,6 +23,7 @@ use App\Support\CommercialProposalPdfOptionalSections;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -53,12 +55,13 @@ class ProposalController extends Controller
             'seller_id' => ['nullable', 'integer'],
             'status' => ['nullable', 'string', Rule::in([
                 'abertas',
+                'fechadas',
+                'perdidas',
+                // Filtros legados (compat. de links).
                 'em_negociacao',
+                'em_andamento',
                 'aprovadas',
                 'encerradas',
-                // Filtros legados (redirect/compat).
-                'em_andamento',
-                'fechadas',
             ])],
             'sale_situation' => ['nullable', 'string', Rule::in(['without_sale', 'with_sale'])],
             'created_from' => ['nullable', 'date'],
@@ -69,12 +72,11 @@ class ProposalController extends Controller
         ]);
 
         $statusFilter = $validated['status'] ?? '';
-        // Padrão: não exibir encerradas. Ausência de hide_ended = true; hide_ended=0 mostra.
-        // Chip «Encerradas» tem prioridade: não esconde o que o chip pede para ver.
+        // Padrão: não exibir perdidas. Chip «Perdidas» tem prioridade.
         $hideEndedRequested = array_key_exists('hide_ended', $validated) && $validated['hide_ended'] !== null
             ? (bool) $validated['hide_ended']
             : true;
-        $hideEnded = $hideEndedRequested && $statusFilter !== 'encerradas';
+        $hideEnded = $hideEndedRequested && ! in_array($statusFilter, ['encerradas', 'perdidas'], true);
 
         $filters = [
             'search' => $validated['search'] ?? '',
@@ -92,9 +94,12 @@ class ProposalController extends Controller
         $statusCounts = [
             'all' => (clone $baseQuery)->count(),
             'abertas' => ProposalListStatus::applyFilter((clone $baseQuery), 'abertas')->count(),
-            'em_negociacao' => ProposalListStatus::applyFilter((clone $baseQuery), 'em_negociacao')->count(),
-            'aprovadas' => ProposalListStatus::applyFilter((clone $baseQuery), 'aprovadas')->count(),
-            'encerradas' => ProposalListStatus::applyFilter((clone $baseQuery), 'encerradas')->count(),
+            'fechadas' => ProposalListStatus::applyFilter((clone $baseQuery), 'fechadas')->count(),
+            'perdidas' => ProposalListStatus::applyFilter((clone $baseQuery), 'perdidas')->count(),
+            // Compat. com UI/links antigos.
+            'em_negociacao' => 0,
+            'aprovadas' => ProposalListStatus::applyFilter((clone $baseQuery), 'fechadas')->count(),
+            'encerradas' => ProposalListStatus::applyFilter((clone $baseQuery), 'perdidas')->count(),
         ];
 
         $q = CommercialProposal::query()
@@ -120,6 +125,9 @@ class ProposalController extends Controller
             $arr = $proposal->toArray();
             $arr['list_status'] = $listStatus;
             $arr['list_status_label'] = ProposalListStatus::label($listStatus);
+            $arr['lost_reason'] = $proposal->lost_reason;
+            $arr['lost_reason_label'] = ProposalLostReason::tryFrom((string) ($proposal->lost_reason ?? ''))?->label();
+            $arr['lost_reason_notes'] = $proposal->lost_reason_notes;
             $arr['paid_installments'] = $proposal->sale?->paid_installments_count;
             $arr['total_installments'] = $proposal->sale?->total_installments_count
                 ?? $proposal->sale?->installments_count;
@@ -135,6 +143,7 @@ class ProposalController extends Controller
             'sellers' => $this->sellersOptions(),
             'filters' => $filters,
             'statusCounts' => $statusCounts,
+            'lostReasonOptions' => ProposalLostReason::options(),
             'templates' => CommercialContractTemplate::active()
                 ->orderBy('name')
                 ->get(['id', 'name'])
@@ -175,7 +184,7 @@ class ProposalController extends Controller
                 'created_by' => $request->user()?->id,
                 'closed_at' => ($data['is_closed'] ?? false) ? now() : null,
                 'list_status' => ($data['is_closed'] ?? false)
-                    ? ProposalListStatus::APPROVED
+                    ? ProposalListStatus::CLOSED
                     : ProposalListStatus::OPEN,
             ],
         ));
@@ -226,11 +235,6 @@ class ProposalController extends Controller
 
     public function update(Request $request, CommercialProposal $proposal): RedirectResponse
     {
-        $this->assertProposalNotConverted(
-            $proposal,
-            'Esta proposta já foi convertida em venda e não pode ser editada.',
-        );
-
         [$data, $totals, $catalogLines] = $this->validatedWithTotals($request, $proposal);
 
         $wasClosed = $proposal->is_closed;
@@ -243,11 +247,11 @@ class ProposalController extends Controller
                 default => $proposal->closed_at,
             },
             'list_status' => match (true) {
-                $isClosed => ProposalListStatus::APPROVED,
+                $isClosed => ProposalListStatus::CLOSED,
                 $wasClosed => ProposalListStatus::OPEN,
                 default => in_array(
                     ProposalListStatus::normalize((string) ($proposal->list_status ?? '')),
-                    [ProposalListStatus::OPEN, ProposalListStatus::NEGOTIATION, ProposalListStatus::ENDED],
+                    ProposalListStatus::values(),
                     true,
                 )
                     ? ProposalListStatus::normalize((string) $proposal->list_status)
@@ -285,7 +289,7 @@ class ProposalController extends Controller
     }
 
     /**
-     * Reabre proposta aprovada/encerrada para alteração de última hora (sem venda).
+     * Reabre proposta fechada/perdida para alteração de última hora (sem venda).
      */
     public function reopen(Request $request, CommercialProposal $proposal): RedirectResponse
     {
@@ -304,7 +308,9 @@ class ProposalController extends Controller
         $proposal->update([
             'is_closed' => false,
             'closed_at' => null,
-            'list_status' => ProposalListStatus::NEGOTIATION,
+            'list_status' => ProposalListStatus::OPEN,
+            'lost_reason' => null,
+            'lost_reason_notes' => null,
         ]);
 
         $message = 'Proposta reaberta. Pode editar os dados.';
@@ -322,12 +328,17 @@ class ProposalController extends Controller
         $data = $request->validate([
             'status' => ['required', Rule::in([
                 ...ProposalListStatus::values(),
+                // Slugs legados (normalizados no update).
                 'in_progress',
-                'closed',
+                'negotiation',
+                'approved',
             ])],
+            'lost_reason' => ['nullable', 'string', Rule::enum(ProposalLostReason::class)],
+            'lost_reason_notes' => ['nullable', 'string', 'max:5000'],
         ], [
             'status.required' => 'Selecione o status.',
             'status.in' => 'Status inválido.',
+            'lost_reason_notes.max' => 'A justificativa não pode ter mais de 5000 caracteres.',
         ]);
 
         $listStatus = ProposalListStatus::normalize($data['status']);
@@ -340,6 +351,29 @@ class ProposalController extends Controller
             ]);
         }
 
+        $lostReason = null;
+        $lostReasonNotes = null;
+
+        if ($listStatus === ProposalListStatus::ENDED) {
+            $reasonRaw = $data['lost_reason'] ?? null;
+            if (! is_string($reasonRaw) || $reasonRaw === '') {
+                throw ValidationException::withMessages([
+                    'lost_reason' => 'Selecione o motivo da perda.',
+                ]);
+            }
+
+            $lostReason = ProposalLostReason::from($reasonRaw);
+            $notes = isset($data['lost_reason_notes']) ? trim((string) $data['lost_reason_notes']) : '';
+
+            if ($lostReason === ProposalLostReason::Outros && $notes === '') {
+                throw ValidationException::withMessages([
+                    'lost_reason_notes' => 'Descreva a justificativa quando o motivo for «Outros».',
+                ]);
+            }
+
+            $lostReasonNotes = $notes !== '' ? $notes : null;
+        }
+
         $proposal->update([
             'list_status' => $listStatus,
             'is_closed' => $isClosed,
@@ -348,9 +382,11 @@ class ProposalController extends Controller
                 ! $isClosed => null,
                 default => $proposal->closed_at,
             },
+            'lost_reason' => $lostReason?->value,
+            'lost_reason_notes' => $lostReasonNotes,
         ]);
 
-        if ($listStatus === ProposalListStatus::APPROVED && ! $wasClosed) {
+        if ($listStatus === ProposalListStatus::CLOSED && ! $wasClosed) {
             $this->notices->proposalWon($proposal->refresh(), $request->user());
             $hiringFlash = $this->createHiringFromClosedProposal->handle($proposal, $request->user())['flash'] ?? null;
         } else {
@@ -370,16 +406,21 @@ class ProposalController extends Controller
 
     public function destroy(CommercialProposal $proposal): RedirectResponse
     {
-        $this->assertProposalNotConverted(
-            $proposal,
-            'Não é possível excluir uma proposta que já foi convertida em venda.',
-        );
+        $code = (string) $proposal->code;
 
-        $proposal->delete();
+        DB::transaction(function () use ($proposal): void {
+            // Venda/parcelas/comissão: remover antes (FK nullOnDelete deixaria órfãos financeiros).
+            $sale = $proposal->sale()->first();
+            if ($sale) {
+                $sale->delete();
+            }
+
+            $proposal->delete();
+        });
 
         return redirect()
             ->route('admin.comercial.propostas.index')
-            ->with('success', 'Proposta removida.');
+            ->with('success', "Proposta {$code} removida.");
     }
 
     public function pdf(CommercialProposal $proposal, CommercialProposalPdfService $pdfService): SymfonyResponse
@@ -445,7 +486,7 @@ class ProposalController extends Controller
     }
 
     /**
-     * @return array<int, array{id:int,name:string,is_owner:bool}>
+     * @return array<int, array{id:int,name:string,is_owner:bool,commission_percent:float}>
      */
     private function sellersOptions(): array
     {
@@ -453,11 +494,12 @@ class ProposalController extends Controller
             ->where('is_commercial', true)
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'is_owner'])
+            ->get(['id', 'name', 'is_owner', 'commission_percent'])
             ->map(fn (User $u) => [
                 'id' => $u->id,
                 'name' => $u->name,
                 'is_owner' => (bool) $u->is_owner,
+                'commission_percent' => (float) ($u->commission_percent ?? 0),
             ])
             ->all();
     }
@@ -570,15 +612,6 @@ class ProposalController extends Controller
         ]);
     }
 
-    private function assertProposalNotConverted(CommercialProposal $proposal, string $message): void
-    {
-        if ($proposal->hasSale()) {
-            throw ValidationException::withMessages([
-                'proposal' => $message,
-            ]);
-        }
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -586,6 +619,7 @@ class ProposalController extends Controller
     {
         $proposal->load([
             'seller:id,name',
+            'sale' => fn ($q) => $q->withCount('installments')->with('commission'),
             'contracts' => fn ($q) => $q->orderByDesc('generated_at')
                 ->select([
                     'id',
@@ -632,6 +666,7 @@ class ProposalController extends Controller
         $payload['has_zapsign_sent_contract'] = $proposal->hasZapSignSentContract();
         $payload['has_legacy_services'] = $proposal->hasLegacyServices();
         $payload['legacy_summary'] = $this->legacySummaryLines($proposal);
+        $payload['finance_impact'] = $this->financeImpactPayload($proposal);
         $payload['pdf_optional_sections'] = CommercialProposalPdfOptionalSections::normalizeSelection(
             $proposal->pdf_optional_sections
         );
@@ -640,6 +675,82 @@ class ProposalController extends Controller
             : '';
 
         return $payload;
+    }
+
+    /**
+     * Áreas financeiras/comerciais impactadas ao editar ou excluir proposta fechada/convertida.
+     *
+     * @return array{
+     *     requires_warning: bool,
+     *     is_closed: bool,
+     *     has_sale: bool,
+     *     items: list<array{key: string, label: string, detail: string, href: string|null}>
+     * }
+     */
+    private function financeImpactPayload(CommercialProposal $proposal): array
+    {
+        $sale = $proposal->relationLoaded('sale')
+            ? $proposal->sale
+            : $proposal->sale()->withCount('installments')->with('commission')->first();
+
+        if ($sale && ! $sale->relationLoaded('commission')) {
+            $sale->load('commission');
+        }
+        if ($sale && ! isset($sale->installments_count) && ! $sale->relationLoaded('installments')) {
+            $sale->loadCount('installments');
+        }
+
+        $isClosed = (bool) $proposal->is_closed
+            || ProposalListStatus::for($proposal) === ProposalListStatus::CLOSED;
+        $hasSale = $sale !== null;
+        $items = [];
+
+        if ($isClosed) {
+            $items[] = [
+                'key' => 'status',
+                'label' => 'Comercial · Propostas / Contratos fechados',
+                'detail' => 'A proposta continua marcada como fechada (status verde) no funil comercial.',
+                'href' => route('admin.comercial.propostas.index', ['status' => 'fechadas']),
+            ];
+        }
+
+        if ($hasSale) {
+            $installments = (int) ($sale->installments_count
+                ?? $sale->total_installments_count
+                ?? $sale->installments()->count());
+
+            $items[] = [
+                'key' => 'venda',
+                'label' => "Financeiro · Venda {$sale->code}",
+                'detail' => 'A venda vinculada permanece no Financeiro. Valores da proposta não recalculam a venda automaticamente.',
+                'href' => route('admin.financeiro.vendas.show', $sale),
+            ];
+
+            $items[] = [
+                'key' => 'receber',
+                'label' => 'Financeiro · Contas a receber',
+                'detail' => $installments === 1
+                    ? '1 parcela desta venda entra no saldo a receber / fluxo de caixa.'
+                    : "{$installments} parcelas desta venda entram no saldo a receber / fluxo de caixa.",
+                'href' => route('admin.financeiro.contas-a-receber.index'),
+            ];
+
+            if ($sale->commission && (int) $sale->commission->amount_cents > 0) {
+                $items[] = [
+                    'key' => 'comissao',
+                    'label' => 'Financeiro · Comissões',
+                    'detail' => 'Há comissão a pagar vinculada a esta venda.',
+                    'href' => route('admin.financeiro.comissoes.index'),
+                ];
+            }
+        }
+
+        return [
+            'requires_warning' => $isClosed || $hasSale,
+            'is_closed' => $isClosed,
+            'has_sale' => $hasSale,
+            'items' => $items,
+        ];
     }
 
     /**
@@ -686,9 +797,6 @@ class ProposalController extends Controller
             ->all();
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     /**
      * @return array<int, array{value: int, label: string, slug: string}>
      */
@@ -842,12 +950,7 @@ class ProposalController extends Controller
         $seller = filled($data['seller_id'] ?? null)
             ? User::query()->find((int) $data['seller_id'])
             : null;
-        $data['commission_percent'] = OptionalCommission::resolveFromRequest(
-            $data,
-            (float) (CommercialSetting::current()->default_commission_percent ?? 0),
-            $seller,
-            $request->user(),
-        );
+        $data['commission_percent'] = OptionalCommission::resolveForProposal($seller);
         unset($data['pay_commission']);
 
         $data['include_publico_atendido'] = (bool) ($data['include_publico_atendido'] ?? true);

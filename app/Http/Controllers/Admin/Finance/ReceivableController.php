@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\FinanceBankAccount;
 use App\Models\FinancePaymentMethod;
 use App\Models\FinanceReceivable;
+use App\Support\Finance\FinanceListSort;
 use App\Support\Finance\FinanceReceivableLedger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,11 +29,13 @@ class ReceivableController extends Controller
             'q' => $request->string('q')->toString(),
             'status' => $request->string('status')->toString(),
             'origin' => $request->string('origin')->toString(),
+            'sort' => FinanceListSort::fromRequest($request),
         ];
 
         return Inertia::render('Admin/Finance/Receivables/Index', [
             'items' => $this->ledger->paginate($filters),
             'filters' => $filters,
+            'sortOptions' => FinanceListSort::receivableOptions(),
             'statusOptions' => $this->statusOptions(),
             'originOptions' => [
                 ['value' => 'sale', 'label' => 'Vendas (parcelas)'],

@@ -27,7 +27,7 @@ class DashboardController extends Controller
             'leadsBySource' => $home['leads_by_source'],
             'leadsThisMonth' => $home['leads_this_month'],
             'funnel' => $home['funnel'],
-            'funnelEndedClosers' => $home['funnel_ended_closers'],
+            'funnelLost' => $home['funnel_lost'],
             'monthlyGoal' => $home['monthly_goal'],
         ]);
     }

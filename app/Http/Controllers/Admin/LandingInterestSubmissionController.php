@@ -48,19 +48,31 @@ class LandingInterestSubmissionController extends Controller
 
     public function update(Request $request, LandingInterestSubmission $submission): RedirectResponse
     {
+        if ($request->exists('is_qualified') && $request->input('is_qualified') === '') {
+            $request->merge(['is_qualified' => null]);
+        }
+
         $data = $request->validate([
             'admin_notes' => ['nullable', 'string', 'max:10000'],
+            'is_qualified' => ['nullable', 'boolean'],
         ], [
             'admin_notes.max' => 'As anotações não podem ter mais de 10000 caracteres.',
+            'is_qualified.boolean' => 'Informe se o lead está qualificado (Sim ou Não).',
         ]);
 
-        $submission->update([
+        $payload = [
             'admin_notes' => $data['admin_notes'] ?? null,
-        ]);
+        ];
+
+        if (array_key_exists('is_qualified', $data)) {
+            $payload['is_qualified'] = $data['is_qualified'];
+        }
+
+        $submission->update($payload);
 
         return redirect()
             ->route('admin.landing-interest.index')
-            ->with('success', 'Anotações do lead atualizadas.');
+            ->with('success', 'Lead atualizado.');
     }
 
     public function destroy(LandingInterestSubmission $submission): RedirectResponse
@@ -88,6 +100,7 @@ class LandingInterestSubmissionController extends Controller
             'company' => self::asUtf8String($s->company),
             'message' => self::asUtf8String($s->message),
             'admin_notes' => self::asUtf8String($s->admin_notes),
+            'is_qualified' => $s->is_qualified,
             'source' => $source->value,
             'source_label' => $source->label(),
             'created_by' => $s->created_by,

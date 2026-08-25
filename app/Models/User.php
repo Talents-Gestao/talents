@@ -32,6 +32,7 @@ class User extends Authenticatable
         'company_id',
         'is_active',
         'is_commercial',
+        'commission_percent',
         'is_owner',
     ];
 
@@ -49,6 +50,7 @@ class User extends Authenticatable
             'role' => UserRole::class,
             'is_active' => 'boolean',
             'is_commercial' => 'boolean',
+            'commission_percent' => 'float',
             'is_owner' => 'boolean',
         ];
     }
@@ -245,10 +247,38 @@ class User extends Authenticatable
             return true;
         }
 
-        return $talentsWorkspace->adminPermissions()
-            ->where('module', $module->value)
-            ->where('action', $action->value)
-            ->exists();
+        $permissions = $talentsWorkspace->relationLoaded('adminPermissions')
+            ? $talentsWorkspace->adminPermissions
+            : $talentsWorkspace->adminPermissions()->get();
+
+        $hasGrant = static function (string $moduleValue) use ($permissions, $action): bool {
+            foreach ($permissions as $p) {
+                $mod = $p->module instanceof AdminPermissionModule
+                    ? $p->module->value
+                    : (string) $p->module;
+                $act = $p->action instanceof PermissionAction
+                    ? $p->action->value
+                    : (string) $p->action;
+                if ($mod === $moduleValue && $act === $action->value) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        if ($hasGrant($module->value)) {
+            return true;
+        }
+
+        // Grants legados (ex.: financeiro) ainda cobrem os submódulos até o backfill.
+        foreach ($module->legacyParents() as $parent) {
+            if ($hasGrant($parent->value)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function hasAllAdminPermissions(): bool
@@ -308,6 +338,20 @@ class User extends Authenticatable
 
         foreach ($matrix as $key => $actions) {
             $matrix[$key] = array_values(array_unique($actions));
+        }
+
+        // Expõe filhos quando ainda existem grants legados (pré-migration / backfill).
+        foreach (AdminPermissionModule::legacyExpansionMap() as $parentValue => $children) {
+            if (! isset($matrix[$parentValue])) {
+                continue;
+            }
+
+            foreach ($children as $child) {
+                $matrix[$child->value] = array_values(array_unique(array_merge(
+                    $matrix[$child->value] ?? [],
+                    $matrix[$parentValue],
+                )));
+            }
         }
 
         return $matrix;

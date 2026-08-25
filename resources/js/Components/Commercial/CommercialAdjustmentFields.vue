@@ -25,7 +25,7 @@ const hasDiscount = computed(
 </script>
 
 <template>
-    <div class="mt-3 space-y-3 border-t border-talents-100 pt-3">
+    <div class="mt-1.5 space-y-2 border-t border-talents-100 pt-1.5">
         <div>
             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Ajuste comercial</label>
             <select

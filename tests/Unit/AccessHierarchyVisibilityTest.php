@@ -122,7 +122,7 @@ class AccessHierarchyVisibilityTest extends TestCase
             'is_active' => false,
         ]);
 
-        $this->assertFalse($admin->canAccessAdmin(AdminPermissionModule::Financeiro, PermissionAction::View));
+        $this->assertFalse($admin->canAccessAdmin(AdminPermissionModule::FinanceiroVendas, PermissionAction::View));
         $this->assertFalse($admin->hasAllAdminPermissions());
         $this->assertSame([], $admin->adminPermissionMatrixForFrontend());
         $this->assertNull(app(AdminHomeResolver::class)->routeNameFor($admin));

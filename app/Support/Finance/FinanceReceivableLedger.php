@@ -17,7 +17,7 @@ use Illuminate\Support\Collection;
 class FinanceReceivableLedger
 {
     /**
-     * @param  array{q?: string, status?: string, origin?: string}  $filters
+     * @param  array{q?: string, status?: string, origin?: string, sort?: string}  $filters
      * @return LengthAwarePaginator<int, array<string, mixed>>
      */
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -33,12 +33,7 @@ class FinanceReceivableLedger
             $items = $items->merge($this->saleRows($filters));
         }
 
-        $sorted = $items
-            ->sortBy([
-                ['due_date', 'desc'],
-                ['id', 'desc'],
-            ])
-            ->values();
+        $sorted = FinanceListSort::sortRows($items, (string) ($filters['sort'] ?? FinanceListSort::DUE_DATE));
 
         $page = max(1, (int) request()->integer('page', 1));
         $slice = $sorted->forPage($page, $perPage)->values();
@@ -62,8 +57,7 @@ class FinanceReceivableLedger
     private function manualRows(array $filters): Collection
     {
         $query = FinanceReceivable::query()
-            ->with(['paymentMethod:id,name', 'bankAccount:id,name'])
-            ->orderByDesc('due_date');
+            ->with(['paymentMethod:id,name', 'bankAccount:id,name']);
 
         if (($filters['status'] ?? '') !== '') {
             $query->where('status', $filters['status']);
@@ -88,6 +82,7 @@ class FinanceReceivableLedger
             'counterparty' => $r->payer_name,
             'amount_cents' => $r->amount_cents,
             'due_date' => $r->due_date?->toDateString(),
+            'paid_at' => $r->paid_at?->toDateString(),
             'status' => $r->status->value,
             'status_label' => $r->status->label(),
             'method' => null,
@@ -121,8 +116,7 @@ class FinanceReceivableLedger
             ->with([
                 'sale:id,code,client_name,is_recurring,recurring_months,recurring_monthly_cents,installments_count',
                 'bankAccount:id,name',
-            ])
-            ->orderByDesc('due_date');
+            ]);
 
         if (($filters['status'] ?? '') !== '' && isset($statusMap[$filters['status']])) {
             $query->where('status', $statusMap[$filters['status']]);
@@ -159,6 +153,7 @@ class FinanceReceivableLedger
                 'counterparty' => $i->sale?->client_name,
                 'amount_cents' => $i->amount_cents,
                 'due_date' => $i->due_date?->toDateString(),
+                'paid_at' => $i->paid_at?->toDateString(),
                 'status' => $status->value,
                 'status_label' => $status->label(),
                 'method' => $i->method,
