@@ -150,7 +150,7 @@
 15. Talentos certos geram impulso; os pilares dão estabilidade ao crescimento.
 16. O ponto de virada está no quadro de pessoal — e se consolida no dia a dia.
 17. Contratação inicia. Comportamento aprofunda. Estratégia orienta. Cuidado protege.
-18. Empresas mudam quando param de improvisar gente e passam a gerir com método.
+18. Empresas mudam quando param de improvisar gente e passam a gerenciar com método.
 19. O ponto de virada é a pessoa certa acompanhada de desenvolvimento real.
 20. Transformação sustentável exige talento, direção e saúde psicossocial.
 21. Metamorfose com base em evidência: perfil, cultura e acompanhamento.

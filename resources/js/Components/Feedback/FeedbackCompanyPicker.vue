@@ -27,7 +27,7 @@ const submit = () => {
                 <BuildingOffice2Icon class="h-6 w-6" />
             </div>
             <h3 class="mt-4 text-lg font-semibold text-talents-900">Selecione a empresa</h3>
-            <p class="mt-1 text-sm text-slate-600">Escolha o cliente para ver e gerir os feedbacks internos.</p>
+            <p class="mt-1 text-sm text-slate-600">Escolha o cliente para ver e gerenciar os feedbacks internos.</p>
         </div>
 
         <form

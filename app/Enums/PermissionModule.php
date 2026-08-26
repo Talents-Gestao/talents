@@ -33,7 +33,7 @@ enum PermissionModule: string
             self::DepartamentosCargos => 'Setores e cargos',
             self::Relatorios => 'Relatórios e exportações',
             self::ConfiguracoesEmpresa => 'Configurações da empresa',
-            self::Usuarios => 'Utilizadores',
+            self::Usuarios => 'Usuários',
             self::Capacitacao => 'Capacitação',
             self::Tarefas => 'Tarefas',
             self::Feedbacks => 'Feedbacks internos',

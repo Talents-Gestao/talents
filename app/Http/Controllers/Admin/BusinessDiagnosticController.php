@@ -80,7 +80,7 @@ class BusinessDiagnosticController extends Controller
 
         return redirect()
             ->route('admin.diagnostico-empresarial.show', $diagnostic)
-            ->with('success', 'Diagnóstico empresarial registado.');
+            ->with('success', 'Diagnóstico empresarial registrado.');
     }
 
     public function show(BusinessDiagnostic $diagnostico_empresarial): Response

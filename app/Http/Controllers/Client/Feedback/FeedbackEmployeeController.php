@@ -54,7 +54,7 @@ class FeedbackEmployeeController extends FeedbackCompanyController
 
         return $this->feedbackRedirect(
             'index',
-            message: 'O colaborador é informado por nome nos fluxos de Feedback, Férias e Desligamento e fica registado na empresa automaticamente.',
+            message: 'O colaborador é informado por nome nos fluxos de Feedback, Férias e Desligamento e fica registrado na empresa automaticamente.',
         );
     }
 }

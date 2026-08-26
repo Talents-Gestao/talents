@@ -27,7 +27,7 @@ Cadastro público desativado; acesso por login/convite.
 |------------|--------|
 | Hero com título **“O resultado que você espera está nas pessoas!”** e subtítulo **“Potencialize resultados com gestão de pessoas, ciência e estratégia.”** | Implementado (`Welcome.vue` + `LandingHeroTypewriter.vue`) |
 | Typewriter no **H1** (loop digitar/apagar, tipografia bold da 1ª versão, altura estável via texto fantasma; respeita `prefers-reduced-motion`) | Implementado |
-| Leads com campo **origem (`source`)** no formulário de contacto e fluxo admin | Implementado (`LandingInterestSource`, `LandingInterestSourceField`, etc.) |
+| Leads com campo **origem (`source`)** no formulário de contato e fluxo admin | Implementado (`LandingInterestSource`, `LandingInterestSourceField`, etc.) |
 
 ### 2.2 Painel operacional (Admin Home — `/admin`)
 
@@ -74,7 +74,7 @@ Abas **atuais** no `Companies/Show.vue`:
 
 ### 2.7 Painel Cliente
 
-Inalterado na narrativa desta atualização: dashboard, Voz do Time, acompanhamento, metodologia, feedbacks, férias (`company_admin`), calendário, tarefas, RHID/ponto, utilizadores, etc.
+Inalterado na narrativa desta atualização: dashboard, Voz do Time, acompanhamento, metodologia, feedbacks, férias (`company_admin`), calendário, tarefas, RHID/ponto, usuários, etc.
 
 ---
 
@@ -106,7 +106,7 @@ Itens já referidos no produto como “em breve” e ainda não fechados como m�
 
 **Financeiro Admin (implementado):** Contas bancárias (CRUD + saldo cadastrado no Resumo) e Contas a receber (ledger unificado: parcelas de venda + recebimentos manuais), alimentando Home e Resumo via `FinanceCashflowMetrics`.
 
-Qualquer feature só descrita em prompts e **ainda não** refletida no código deve ficar nesta secção até validação.
+Qualquer feature só descrita em prompts e **ainda não** refletida no código deve ficar nesta seção até validação.
 
 ---
 
@@ -119,7 +119,7 @@ Os números da Home **não** são mocks no Vue. Classificação típica:
 - **BD (cadastrável) + fallback env:** meta de faturamento mensal — `admin_dashboard_settings.monthly_revenue_goal_cents`; se vazio, `TALENTS_DASHBOARD_MONTHLY_GOAL_CENTS` (default R$ 20.000). Editável no card «Meta mensal» da Home.  
 - **Catálogo:** frase do dia (`MetamorfoseDailyQuote`).  
 
-Zeros no ecrã = falta de dados / filtros / preços de plano a 0 — não placeholder de UI.
+Zeros no tela = falta de dados / filtros / preços de plano a 0 — não placeholder de UI.
 
 ---
 

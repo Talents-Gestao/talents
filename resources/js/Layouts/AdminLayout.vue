@@ -117,7 +117,6 @@ const showContratacao = computed(() =>
     canAdminAny([
         'solides_banco_talentos',
         'solides_acompanhamento',
-        'solides_profiler',
         'entrevistas_ia',
         'entrevistas_roteiros',
     ]),
@@ -129,9 +128,6 @@ const contratacaoFallbackHref = computed(() => {
     }
     if (canAdmin('solides_acompanhamento')) {
         return route('admin.acompanhamento.index');
-    }
-    if (canAdmin('solides_profiler')) {
-        return comingSoonHref('profiler');
     }
     if (canAdmin('entrevistas_ia')) {
         return route('admin.entrevistas.index');
@@ -146,8 +142,7 @@ const contratacaoActive = computed(
     () =>
         route().current('admin.solides.*') ||
         route().current('admin.acompanhamento.*') ||
-        route().current('admin.entrevistas.*') ||
-        isComingSoon('profiler'),
+        route().current('admin.entrevistas.*'),
 );
 
 const showReunioes = computed(() => canAdmin('entrevistas_reunioes'));
@@ -411,16 +406,6 @@ const isComercialSettingsTab = (tab) => {
                     :collapsed="collapsed"
                     :compact="compact"
                     :badge="activeHiringProcessesCount > 0 ? activeHiringProcessesCount : null"
-                />
-                <SidebarNavItem
-                    v-if="canAdmin('solides_profiler')"
-                    :href="comingSoonHref('profiler')"
-                    :active="isComingSoon('profiler')"
-                    label="Profiler"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                    badge="Em breve"
                 />
                 <SidebarNavItem
                     v-if="canAdmin('entrevistas_ia')"

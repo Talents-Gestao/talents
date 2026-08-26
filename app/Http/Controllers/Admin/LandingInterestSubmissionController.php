@@ -142,7 +142,7 @@ class LandingInterestSubmissionController extends Controller
         }
 
         if (str_contains($error, 'htmlspecialchars()')) {
-            return 'Falha ao montar o e-mail de aviso (registo antigo; o envio já foi corrigido para novos leads).';
+            return 'Falha ao montar o e-mail de aviso (registro antigo; o envio já foi corrigido para novos leads).';
         }
 
         return $error;

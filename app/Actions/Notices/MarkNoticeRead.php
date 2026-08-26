@@ -34,7 +34,7 @@ class MarkNoticeRead
     }
 
     /**
-     * Marca como lidos todos os avisos visíveis no contexto ativo do utilizador
+     * Marca como lidos todos os avisos visíveis no contexto ativo do usuário
      * (admin Talents = todos; cliente = só a empresa).
      */
     public function markAllVisibleForUser(User $user, UnreadNoticeCounter $unreadNoticeCounter): int

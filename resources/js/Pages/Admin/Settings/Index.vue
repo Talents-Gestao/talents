@@ -321,7 +321,7 @@ const setTab = (name) => {
                 </div>
             </div>
             <div>
-                <InputLabel for="mail_username" value="Utilizador" />
+                <InputLabel for="mail_username" value="Usuário" />
                 <TextInput id="mail_username" v-model="mailForm.username" class="mt-1 block w-full" autocomplete="off" />
             </div>
             <div>

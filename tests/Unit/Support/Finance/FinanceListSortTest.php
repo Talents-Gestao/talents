@@ -38,6 +38,19 @@ class FinanceListSortTest extends TestCase
         $this->assertSame([3, 2, 1], $sorted);
     }
 
+    public function test_sort_rows_by_paid_at_breaks_null_ties_by_due_date(): void
+    {
+        $rows = new Collection([
+            ['id' => 1, 'paid_at' => null, 'due_date' => '2026-08-10'],
+            ['id' => 2, 'paid_at' => null, 'due_date' => '2026-08-20'],
+            ['id' => 3, 'paid_at' => '2026-08-15', 'due_date' => '2026-08-01'],
+        ]);
+
+        $sorted = FinanceListSort::sortRows($rows, FinanceListSort::PAID_AT)->pluck('id')->all();
+
+        $this->assertSame([3, 2, 1], $sorted);
+    }
+
     public function test_sort_rows_by_due_date_keeps_newest_first(): void
     {
         $rows = new Collection([

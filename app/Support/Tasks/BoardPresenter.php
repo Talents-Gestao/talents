@@ -377,7 +377,7 @@ final class BoardPresenter
     }
 
     /**
-     * Utilizadores da empresa para menções no cliente.
+     * Usuários da empresa para menções no cliente.
      *
      * @return Collection<int, array{id:int,name:string,email:string}>
      */
@@ -392,7 +392,7 @@ final class BoardPresenter
     }
 
     /**
-     * Utilizadores internos Talents (admin) atribuíveis em tarefas.
+     * Usuários internos Talents (admin) atribuíveis em tarefas.
      *
      * @return Collection<int, array{id:int,name:string,email:string}>
      */

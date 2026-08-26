@@ -46,7 +46,7 @@ function submit() {
                 <input v-model="form.is_active" type="checkbox" class="rounded border-slate-300" />
                 Ativo
             </label>
-            <PrimaryButton :disabled="form.processing">Guardar</PrimaryButton>
+            <PrimaryButton :disabled="form.processing">Salvar</PrimaryButton>
         </form>
     </AdminLayout>
 </template>

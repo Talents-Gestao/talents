@@ -64,7 +64,7 @@ watch(
             open.value = false;
             releaseOpen();
         }
-        // Não reabre pelo fato da rota estar ativa — só por clique do utilizador.
+        // Não reabre pelo fato da rota estar ativa — só por clique do usuário.
     },
     { immediate: true },
 );
@@ -72,7 +72,7 @@ watch(
 watch(
     () => props.active,
     (isActive, wasActive) => {
-        // Só abre ao navegar para a secção, nunca ao recolher/expandir a barra.
+        // Só abre ao navegar para a seção, nunca ao recolher/expandir a barra.
         if (isActive && wasActive === false && !props.collapsed) {
             setOpen(true);
         }

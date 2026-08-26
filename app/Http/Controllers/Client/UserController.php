@@ -125,7 +125,7 @@ class UserController extends Controller
             );
 
             $user = $existingUser;
-            $mailMessage = ' Utilizador vinculado à empresa (conta existente reutilizada).';
+            $mailMessage = ' Usuário vinculado à empresa (conta existente reutilizada).';
         } else {
             $user = User::create([
                 'name' => $validated['name'],
@@ -144,7 +144,7 @@ class UserController extends Controller
                 $validated['is_active'] ?? true,
             );
 
-            $mailMessage = ' Utilizador criado.';
+            $mailMessage = ' Usuário criado.';
         }
 
         $this->syncUserPermissions->execute($workspace, $company, $validated['permissions'] ?? []);
@@ -223,7 +223,7 @@ class UserController extends Controller
         $this->syncUserPermissions->execute($workspace, $company, $validated['permissions'] ?? []);
         $this->workspaceManager->syncLegacyUserColumns($user);
 
-        return redirect()->route('client.usuarios.index')->with('success', 'Utilizador atualizado.');
+        return redirect()->route('client.usuarios.index')->with('success', 'Usuário atualizado.');
     }
 
     public function destroy(Request $request, User $user): RedirectResponse
@@ -244,7 +244,7 @@ class UserController extends Controller
             $this->workspaceManager->syncLegacyUserColumns($user);
         }
 
-        return redirect()->route('client.usuarios.index')->with('success', 'Utilizador removido.');
+        return redirect()->route('client.usuarios.index')->with('success', 'Usuário removido.');
     }
 
     private function assertCompanyUserWorkspace(Company $company, User $user): UserWorkspace

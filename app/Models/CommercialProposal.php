@@ -14,7 +14,7 @@ class CommercialProposal extends Model
     protected $guarded = ['id'];
 
     /**
-     * Compatível com propostas antigas: secção e permanência no PDF por defeito.
+     * Compatível com propostas antigas: seção e permanência no PDF por padrão.
      *
      * @var array<string, mixed>
      */

@@ -380,7 +380,7 @@ watch(
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
                 <PrimaryButton type="button" :disabled="saving" @click="submitForm">
-                    {{ saving ? 'A gravar…' : editingId ? 'Guardar alterações' : 'Criar na RHID' }}
+                    {{ saving ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Criar na RHID' }}
                 </PrimaryButton>
                 <SecondaryButton type="button" :disabled="saving" @click="cancelForm">Cancelar</SecondaryButton>
             </div>

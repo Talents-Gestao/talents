@@ -3,13 +3,15 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import BoardIndexPreview from '@/Components/Tasks/BoardIndexPreview.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import {
+    Bars3Icon,
     ChevronDownIcon,
     ChevronRightIcon,
     PlusIcon,
 } from '@heroicons/vue/24/outline';
-import { computed, onMounted, ref } from 'vue';
+import { VueDraggable } from 'vue-draggable-plus';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
     boards: { type: Array, default: () => [] },
@@ -19,6 +21,8 @@ const STORAGE_KEY = 'talents-tarefas-boards-collapsed';
 
 const search = ref('');
 const collapsedIds = ref(new Set());
+const localInternal = ref([]);
+const localCompany = ref([]);
 
 onMounted(() => {
     try {
@@ -80,6 +84,48 @@ const filteredBoards = computed(() => {
 
 const internalBoards = computed(() => filteredBoards.value.filter((b) => b.is_internal));
 const companyBoards = computed(() => filteredBoards.value.filter((b) => !b.is_internal));
+const isSearching = computed(() => search.value.trim() !== '');
+
+function cloneBoards(list) {
+    return list.map((board) => ({ ...board }));
+}
+
+watch(
+    () => [props.boards, search.value],
+    () => {
+        localInternal.value = cloneBoards(internalBoards.value);
+        localCompany.value = cloneBoards(companyBoards.value);
+    },
+    { immediate: true, deep: true },
+);
+
+function persistOrder(scope, evt) {
+    if (isSearching.value) {
+        return;
+    }
+    if (evt && evt.oldIndex === evt.newIndex) {
+        return;
+    }
+
+    const list = scope === 'internal' ? localInternal.value : localCompany.value;
+
+    router.post(
+        route('admin.tarefas.quadros.reordenar'),
+        {
+            scope,
+            board_ids: list.map((board) => board.id),
+        },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['boards'],
+            onError: () => {
+                localInternal.value = cloneBoards(internalBoards.value);
+                localCompany.value = cloneBoards(companyBoards.value);
+            },
+        },
+    );
+}
 </script>
 
 <template>
@@ -91,7 +137,8 @@ const companyBoards = computed(() => filteredBoards.value.filter((b) => !b.is_in
                 <div>
                     <h2 class="text-xl font-semibold text-gray-900">Quadros de tarefas</h2>
                     <p class="mt-1 text-sm text-gray-600">
-                        Gerencie vários quadros internos ou abra quadros vinculados a empresas.
+                        Gerencie vários quadros internos ou abra quadros vinculados a empresas. Arraste pelo ícone para
+                        mudar a ordem — ela também vale no painel da empresa.
                     </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
@@ -134,17 +181,39 @@ const companyBoards = computed(() => filteredBoards.value.filter((b) => !b.is_in
             >
                 Recolher todos
             </button>
+            <p v-if="isSearching" class="text-sm text-slate-500">Limpe a busca para reordenar os quadros.</p>
         </div>
 
-        <section v-if="internalBoards.length" class="mb-8">
+        <section v-if="localInternal.length" class="mb-8">
             <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Quadros internos</h3>
-            <ul class="space-y-2">
+            <VueDraggable
+                v-model="localInternal"
+                item-key="id"
+                tag="ul"
+                class="space-y-2"
+                handle=".board-index-drag-handle"
+                filter="button:not(.board-index-drag-handle), a, input, textarea"
+                :prevent-on-filter="true"
+                :disabled="isSearching || localInternal.length < 2"
+                :animation="150"
+                ghost-class="opacity-40"
+                @end="persistOrder('internal', $event)"
+            >
                 <li
-                    v-for="board in internalBoards"
+                    v-for="board in localInternal"
                     :key="board.id"
                     class="surface-card overflow-hidden ring-1 ring-slate-200"
                 >
                     <div class="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2">
+                        <button
+                            v-if="!isSearching && localInternal.length > 1"
+                            type="button"
+                            class="board-index-drag-handle shrink-0 cursor-grab rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 active:cursor-grabbing"
+                            title="Arrastar para reordenar"
+                            aria-label="Arrastar para reordenar"
+                        >
+                            <Bars3Icon class="h-5 w-5" aria-hidden="true" />
+                        </button>
                         <button
                             type="button"
                             class="rounded p-1 text-slate-600 hover:bg-slate-200"
@@ -178,18 +247,39 @@ const companyBoards = computed(() => filteredBoards.value.filter((b) => !b.is_in
                         :show-route="route('admin.tarefas.quadros.show', board.id)"
                     />
                 </li>
-            </ul>
+            </VueDraggable>
         </section>
 
-        <section v-if="companyBoards.length">
+        <section v-if="localCompany.length">
             <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Quadros por empresa</h3>
-            <ul class="space-y-2">
+            <VueDraggable
+                v-model="localCompany"
+                item-key="id"
+                tag="ul"
+                class="space-y-2"
+                handle=".board-index-drag-handle"
+                filter="button:not(.board-index-drag-handle), a, input, textarea"
+                :prevent-on-filter="true"
+                :disabled="isSearching || localCompany.length < 2"
+                :animation="150"
+                ghost-class="opacity-40"
+                @end="persistOrder('company', $event)"
+            >
                 <li
-                    v-for="board in companyBoards"
+                    v-for="board in localCompany"
                     :key="board.id"
                     class="surface-card overflow-hidden ring-1 ring-slate-200"
                 >
                     <div class="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2">
+                        <button
+                            v-if="!isSearching && localCompany.length > 1"
+                            type="button"
+                            class="board-index-drag-handle shrink-0 cursor-grab rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 active:cursor-grabbing"
+                            title="Arrastar para reordenar"
+                            aria-label="Arrastar para reordenar"
+                        >
+                            <Bars3Icon class="h-5 w-5" aria-hidden="true" />
+                        </button>
                         <button
                             type="button"
                             class="rounded p-1 text-slate-600 hover:bg-slate-200"
@@ -216,7 +306,7 @@ const companyBoards = computed(() => filteredBoards.value.filter((b) => !b.is_in
                         :show-route="route('admin.tarefas.quadros.show', board.id)"
                     />
                 </li>
-            </ul>
+            </VueDraggable>
         </section>
 
         <p v-if="!filteredBoards.length" class="text-sm text-slate-500">Nenhum quadro encontrado.</p>

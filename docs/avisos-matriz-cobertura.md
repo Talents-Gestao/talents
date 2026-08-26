@@ -4,7 +4,7 @@ Documento vivo da **Fase 0** (auditoria). Princípio de produto: avisar ações 
 
 Audiências:
 - **Talents** — administradores `/admin` (`CompanyNoticeAudience::Talents`)
-- **Empresa** — utilizadores do workspace `/client` (`CompanyNoticeAudience::Company`)
+- **Empresa** — usuários do workspace `/client` (`CompanyNoticeAudience::Company`)
 
 Infra: `PublishCompanyNotice` (+ dedupe opcional) → publishers por domínio → `CompanyNotice` → sino/`NoticeBellDropdown`.
 
@@ -80,4 +80,4 @@ Por cada evento P0:
 
 ---
 
-*Gerado na auditoria de cobertura de avisos (branch `new-tasks`). Atualizar este ficheiro quando P0 for implementado.*
+*Gerado na auditoria de cobertura de avisos (branch `new-tasks`). Atualizar este arquivo quando P0 for implementado.*

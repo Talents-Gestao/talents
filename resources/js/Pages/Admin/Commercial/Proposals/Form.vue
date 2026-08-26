@@ -999,7 +999,7 @@ const stepStatus = (index) => {
     if (index === currentStepIndex.value) {
         return 'active';
     }
-    if (index === currentStepIndex.value + 1) {
+    if (isEdit.value || index === currentStepIndex.value + 1) {
         return 'default';
     }
     return 'disabled';
@@ -1016,11 +1016,10 @@ const connectorClass = (index) => {
     return 'bg-slate-200';
 };
 
-const canNavigateToStep = (index) => index <= currentStepIndex.value;
+const canNavigateToStep = (index) => isEdit.value || index <= currentStepIndex.value;
 
 const onStepClick = (index) => {
-    // Só volta para passos já alcançados; avanço só via Continuar (com validação).
-    if (index > currentStepIndex.value) {
+    if (!canNavigateToStep(index)) {
         return;
     }
     goToStep(index);
@@ -1462,7 +1461,7 @@ const onStepClick = (index) => {
                                         Incluir “Público Atendido” no PDF
                                     </span>
                                     <span class="mt-0.5 block text-xs text-slate-500">
-                                        Quando marcado, o PDF mostra a secção com o número de colaboradores acima.
+                                        Quando marcado, o PDF mostra a seção com o número de colaboradores acima.
                                     </span>
                                 </span>
                             </label>
@@ -1925,7 +1924,7 @@ const onStepClick = (index) => {
                                 </option>
                             </select>
                             <p class="mt-1 text-xs text-slate-500">
-                                Aparece na secção «Condições de Pagamento» do PDF desta proposta.
+                                Aparece na seção «Condições de Pagamento» do PDF desta proposta.
                                 Origem: Financeiro → Formas de pagamento.
                             </p>
                             <p v-if="!paymentMethodOptions.length" class="mt-1 text-xs text-amber-700">

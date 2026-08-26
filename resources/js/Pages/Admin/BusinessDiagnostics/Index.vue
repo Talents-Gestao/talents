@@ -37,7 +37,7 @@ const remove = (id) => {
                 :back-href="route('admin.companies.index')"
                 back-label="Clientes"
                 title="Diagnóstico empresarial"
-                subtitle="Diagnósticos de maturidade em gestão de pessoas registados pela equipa Talents"
+                subtitle="Diagnósticos de maturidade em gestão de pessoas registrados pela equipe Talents"
             >
                 <template #trailing>
                     <Link :href="route('admin.diagnostico-empresarial.create')">
@@ -78,7 +78,7 @@ const remove = (id) => {
 
         <div class="surface-card overflow-hidden">
             <div v-if="!diagnostics.data.length" class="px-4 py-10 text-center text-sm text-slate-600">
-                Nenhum diagnóstico registado.
+                Nenhum diagnóstico registrado.
             </div>
             <div v-else class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm text-slate-900">
@@ -87,7 +87,7 @@ const remove = (id) => {
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">Data</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">Empresa</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">Responsável</th>
-                            <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">Contacto</th>
+                            <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">Contato</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">Maturidade</th>
                             <th class="whitespace-nowrap px-4 py-3 text-right font-medium text-slate-700">Ações</th>
                         </tr>

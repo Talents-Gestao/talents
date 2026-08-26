@@ -26,7 +26,7 @@ enum CommercialProposalPaymentMethod: string
     }
 
     /**
-     * Texto em bullet exibido na secção «Condições de Pagamento» do PDF.
+     * Texto em bullet exibido na seção «Condições de Pagamento» do PDF.
      * Não incluir valor por parcela (ex.: «2x R$ 500,00») — só o total nos demais campos.
      */
     public function pdfBullet(): string

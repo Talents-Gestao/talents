@@ -10,7 +10,7 @@ use App\Support\Tasks\TaskCardVisibility;
 class TaskCardPolicy
 {
     /**
-     * Utilizador do portal empresa (não super admin): apenas ver e comentar.
+     * Usuário do portal empresa (não super admin): apenas ver e comentar.
      */
     private function isCompanyPortalUser(User $user): bool
     {

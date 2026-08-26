@@ -100,7 +100,7 @@ function deleteCard(cardId) {
                     <input v-model="metaForm.is_active" type="checkbox" class="rounded border-slate-300" />
                     Ativo
                 </label>
-                <PrimaryButton :disabled="metaForm.processing">Guardar modelo</PrimaryButton>
+                <PrimaryButton :disabled="metaForm.processing">Salvar modelo</PrimaryButton>
             </form>
 
             <div class="surface-card space-y-4 p-6">

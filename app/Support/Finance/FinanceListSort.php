@@ -11,8 +11,8 @@ use Illuminate\Support\Collection;
 /**
  * Ordenação partilhada das listagens de contas a pagar e a receber.
  *
- * Default: vencimento (comportamento atual). A opção «data de pagamento /
- * recebimento» usa paid_at; itens sem data efetiva ficam no fim.
+ * Default: vencimento (mais recente primeiro). A opção «data de pagamento /
+ * recebimento» usa paid_at; itens sem data efetiva ficam no fim, desempate por vencimento.
  */
 final class FinanceListSort
 {
@@ -61,6 +61,7 @@ final class FinanceListSort
             $query
                 ->orderByRaw('CASE WHEN paid_at IS NULL THEN 1 ELSE 0 END')
                 ->orderByDesc('paid_at')
+                ->orderByDesc('due_date')
                 ->orderByDesc('id');
 
             return;
@@ -79,6 +80,27 @@ final class FinanceListSort
 
         return $items
             ->sort(function (array $a, array $b) use ($column): int {
+                if ($column === self::PAID_AT) {
+                    $aNull = ! self::hasDate($a['paid_at'] ?? null);
+                    $bNull = ! self::hasDate($b['paid_at'] ?? null);
+                    if ($aNull !== $bNull) {
+                        return $aNull <=> $bNull;
+                    }
+                    if (! $aNull) {
+                        $cmp = self::sortKey($b['paid_at'] ?? null) <=> self::sortKey($a['paid_at'] ?? null);
+                        if ($cmp !== 0) {
+                            return $cmp;
+                        }
+                    }
+
+                    $dueCmp = self::sortKey($b['due_date'] ?? null) <=> self::sortKey($a['due_date'] ?? null);
+                    if ($dueCmp !== 0) {
+                        return $dueCmp;
+                    }
+
+                    return self::rowId($b) <=> self::rowId($a);
+                }
+
                 $cmp = self::sortKey($b[$column] ?? null) <=> self::sortKey($a[$column] ?? null);
                 if ($cmp !== 0) {
                     return $cmp;
@@ -89,13 +111,18 @@ final class FinanceListSort
             ->values();
     }
 
+    private static function hasDate(mixed $value): bool
+    {
+        return is_string($value) && $value !== '';
+    }
+
     private static function sortKey(mixed $value): string
     {
-        if (! is_string($value) || $value === '') {
+        if (! self::hasDate($value)) {
             return '0000-01-01';
         }
 
-        return substr($value, 0, 10);
+        return substr((string) $value, 0, 10);
     }
 
     /**

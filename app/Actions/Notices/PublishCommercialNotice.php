@@ -67,7 +67,7 @@ class PublishCommercialNotice
     public function saleCreated(CommercialSale $sale, ?User $actor = null): void
     {
         $this->talents(
-            title: 'Nova venda registada',
+            title: 'Nova venda registrada',
             body: "Venda {$sale->code} de «{$sale->client_name}» no valor de "
                 .$this->money($sale->total_cents)." em {$sale->installments_count}x.",
             eventKind: CompanyNoticeEventKind::SaleCreated,

@@ -27,7 +27,7 @@ const submit = () => {
                 <BuildingOffice2Icon class="h-6 w-6" />
             </div>
             <h3 class="mt-4 text-lg font-semibold text-talents-900">Selecione a empresa</h3>
-            <p class="mt-1 text-sm text-slate-600">Escolha o cliente para gerir os períodos de férias.</p>
+            <p class="mt-1 text-sm text-slate-600">Escolha o cliente para gerenciar os períodos de férias.</p>
         </div>
 
         <form

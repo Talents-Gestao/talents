@@ -4,6 +4,7 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import Modal from '@/Components/Modal.vue';
 import MoneyInput from '@/Components/MoneyInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -224,6 +225,15 @@ const submit = () => {
         return;
     }
 
+    if (isEdit.value && requiresFinanceWarning.value) {
+        saveImpactModalOpen.value = true;
+        return;
+    }
+
+    performSubmit();
+};
+
+const performSubmit = () => {
     if (isEdit.value) {
         form
             .transform((data) => ({
@@ -262,6 +272,19 @@ const submit = () => {
             return payload;
         })
         .post(route('admin.financeiro.vendas.store'));
+};
+
+const financeImpact = computed(() => props.sale?.finance_impact ?? null);
+const requiresFinanceWarning = computed(() => Boolean(financeImpact.value?.requires_warning));
+const saveImpactModalOpen = ref(false);
+
+const closeSaveImpactModal = () => {
+    saveImpactModalOpen.value = false;
+};
+
+const confirmSaveWithImpact = () => {
+    saveImpactModalOpen.value = false;
+    performSubmit();
 };
 
 const pageTitle = computed(() =>
@@ -303,6 +326,17 @@ const pageSubtitle = computed(() =>
             >
                 <p v-for="(msg, idx) in clientErrors" :key="`ce-${idx}`">{{ msg }}</p>
                 <p v-for="(msg, key) in form.errors" :key="`fe-${key}`">{{ msg }}</p>
+            </div>
+
+            <div
+                v-if="isEdit"
+                class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950"
+            >
+                <p class="font-semibold">Venda com impacto no saldo</p>
+                <p class="mt-0.5 text-amber-900/80">
+                    Você pode editar os dados comerciais. Parcelas, total e comissão já gerados
+                    <strong>não</strong> são recalculados automaticamente.
+                </p>
             </div>
 
             <div
@@ -519,5 +553,51 @@ const pageSubtitle = computed(() =>
                 </PrimaryButton>
             </div>
         </form>
+
+        <Modal :show="saveImpactModalOpen" max-width="lg" @close="closeSaveImpactModal">
+            <div class="p-6">
+                <h2 class="text-lg font-semibold text-slate-900">Salvar venda com impacto no saldo?</h2>
+                <p class="mt-2 text-sm text-slate-600">
+                    Confirme se deseja salvar. As alterações de dados comerciais não recalculam
+                    parcelas nem comissão; o acompanhamento nestes pontos continua ligado a esta venda:
+                </p>
+                <ul class="mt-4 space-y-3">
+                    <li
+                        v-for="item in (financeImpact?.items ?? [])"
+                        :key="item.key"
+                        class="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-sm text-amber-950"
+                    >
+                        <p class="font-semibold">{{ item.label }}</p>
+                        <p class="mt-0.5 text-amber-900/80">{{ item.detail }}</p>
+                        <a
+                            v-if="item.href"
+                            :href="item.href"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="mt-1 inline-flex text-xs font-semibold text-talents-700 underline hover:text-talents-800"
+                        >
+                            Abrir área
+                        </a>
+                    </li>
+                </ul>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                        @click="closeSaveImpactModal"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        :disabled="form.processing"
+                        class="inline-flex items-center rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:opacity-60"
+                        @click="confirmSaveWithImpact"
+                    >
+                        {{ form.processing ? 'Salvando…' : 'Salvar mesmo assim' }}
+                    </button>
+                </div>
+            </div>
+        </Modal>
     </AdminLayout>
 </template>

@@ -175,13 +175,6 @@ const barChartSeries = computed(() => [
                         <option v-for="opt in periodOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
                     </select>
                     <Link
-                        v-if="$page.props.auth?.user?.can_commercial_settings"
-                        :href="route('admin.comercial.settings.edit')"
-                        class="inline-flex items-center rounded-xl border border-talents-200 bg-talents-50 px-4 py-2 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-100"
-                    >
-                        Valores e contratos
-                    </Link>
-                    <Link
                         :href="route('admin.comercial.propostas.index')"
                         class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                     >
@@ -216,7 +209,7 @@ const barChartSeries = computed(() => [
                             <p class="mt-2 font-serif text-3xl font-bold tracking-tight sm:text-4xl">
                                 {{ formatBRL(kpis.pipeline_open_cents) }}
                             </p>
-                            <p class="mt-2 max-w-md text-sm text-white/85">Soma de todas as propostas em aberto — passe o rato nas barras do relatório mensal para detalhes.</p>
+                            <p class="mt-2 max-w-md text-sm text-white/85">Soma de todas as propostas em aberto — passe o mouse nas barras do relatório mensal para detalhes.</p>
                         </div>
                     </div>
                     <Link

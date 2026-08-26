@@ -283,7 +283,7 @@ function destroyAttachment(attachmentId) {
         <div class="flex max-h-[min(90vh,820px)] flex-col">
             <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Gerir dia</p>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Gerenciar dia</p>
                     <h3 class="mt-1 text-lg font-semibold capitalize text-slate-900">{{ dayLabel }}</h3>
                 </div>
                 <button

@@ -140,7 +140,7 @@ const submit = () => {
             </div>
 
             <div>
-                <InputLabel for="file" value="Anexo (ficheiro)" />
+                <InputLabel for="file" value="Anexo (arquivo)" />
                 <input
                     id="file"
                     ref="fileInput"
@@ -180,7 +180,7 @@ const submit = () => {
 
             <div class="flex flex-wrap gap-3 pt-2">
                 <PrimaryButton type="submit" :disabled="form.processing">
-                    {{ form.processing ? 'A guardar…' : mode === 'create' ? 'Criar' : 'Guardar' }}
+                    {{ form.processing ? 'Salvando…' : mode === 'create' ? 'Criar' : 'Salvar' }}
                 </PrimaryButton>
                 <Link :href="route('admin.regulamento-interno.index')">
                     <SecondaryButton type="button">Cancelar</SecondaryButton>

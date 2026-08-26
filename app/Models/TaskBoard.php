@@ -17,6 +17,7 @@ class TaskBoard extends Model
         'description',
         'cover_color',
         'is_archived',
+        'position',
         'created_by_user_id',
     ];
 
@@ -24,7 +25,26 @@ class TaskBoard extends Model
     {
         return [
             'is_archived' => 'boolean',
+            'position' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (TaskBoard $board): void {
+            if ((int) ($board->position ?? 0) > 0) {
+                return;
+            }
+
+            $board->position = self::nextPosition();
+        });
+    }
+
+    public static function nextPosition(): int
+    {
+        $max = (int) self::query()->max('position');
+
+        return $max > 0 ? $max + 1000 : 1000;
     }
 
     public function company(): BelongsTo

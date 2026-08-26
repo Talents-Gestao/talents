@@ -190,7 +190,7 @@ const showDailyQuote = computed(
                 :href="route('client.usuarios.index')"
                 :active="route().current('client.usuarios.*')"
                 :icon="UsersIcon"
-                label="Utilizadores"
+                label="Usuários"
                 :collapsed="collapsed"
             />
         </template>

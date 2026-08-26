@@ -9,21 +9,21 @@ defineProps({
 });
 
 const remove = (id) => {
-    if (confirm('Remover este utilizador?')) {
+    if (confirm('Remover este usuário?')) {
         router.delete(route('client.usuarios.destroy', id));
     }
 };
 </script>
 
 <template>
-    <Head title="Utilizadores" />
+    <Head title="Usuários" />
 
     <ClientLayout>
         <template #header>
             <div class="flex flex-wrap items-center justify-between gap-2">
-                <h2 class="text-xl font-semibold leading-tight text-talents-900">Utilizadores</h2>
+                <h2 class="text-xl font-semibold leading-tight text-talents-900">Usuários</h2>
                 <Link :href="route('client.usuarios.create')">
-                    <PrimaryButton>Novo utilizador</PrimaryButton>
+                    <PrimaryButton>Novo usuário</PrimaryButton>
                 </Link>
             </div>
         </template>
@@ -69,7 +69,7 @@ const remove = (id) => {
                                 <span v-if="u.role === 'company_admin'" class="text-slate-400">—</span>
                             </td>
                         </tr>
-                        <TableEmptyRow v-if="!users.length" :colspan="5" message="Nenhum utilizador encontrado." />
+                        <TableEmptyRow v-if="!users.length" :colspan="5" message="Nenhum usuário encontrado." />
                     </tbody>
                 </table>
             </div>

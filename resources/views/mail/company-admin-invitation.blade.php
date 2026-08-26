@@ -8,7 +8,7 @@
     <p>Olá,</p>
     @if ($user->hasCompletedRegistration())
         <p>Foi solicitada a <strong>redefinição de senha</strong> do seu acesso ao <strong>portal da empresa cliente</strong> da plataforma Talents para <strong>{{ $company->name }}</strong>.</p>
-        <p>Seu utilizador é o e-mail: <strong>{{ $user->email }}</strong></p>
+        <p>Seu usuário é o e-mail: <strong>{{ $user->email }}</strong></p>
         <p>Para <strong>redefinir sua senha</strong> e entrar no portal, use o link abaixo:</p>
         <p style="margin: 24px 0;">
             <a href="{{ $resetPasswordUrl }}" style="display: inline-block; background: #632a7e; color: #fff; padding: 0.75rem 1.25rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">
@@ -19,7 +19,7 @@
         <p style="font-size: 0.875rem; color: #6b7280;">Se você não solicitou esta redefinição, ignore este e-mail.</p>
     @else
         <p>Foi criado o acesso ao <strong>portal da empresa cliente</strong> da plataforma Talents para <strong>{{ $company->name }}</strong>.</p>
-        <p>Seu utilizador é o e-mail: <strong>{{ $user->email }}</strong></p>
+        <p>Seu usuário é o e-mail: <strong>{{ $user->email }}</strong></p>
         <p>Para <strong>definir sua senha</strong> e entrar no portal, use o link abaixo (permanece válido até você concluir o cadastro da senha):</p>
         <p style="margin: 24px 0;">
             <a href="{{ $resetPasswordUrl }}" style="display: inline-block; background: #632a7e; color: #fff; padding: 0.75rem 1.25rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">

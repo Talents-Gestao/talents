@@ -16,9 +16,9 @@ const form = useForm({ body: '' });
 const countLabel = computed(() => {
     const n = props.comments.length;
     if (n === 0) {
-        return 'Histórico (vazio)';
+        return 'Mensagens (nenhuma)';
     }
-    return n === 1 ? 'Histórico · 1 mensagem' : `Histórico · ${n} mensagens`;
+    return n === 1 ? 'Mensagens · 1' : `Mensagens · ${n}`;
 });
 
 const formatDate = (iso) => {
@@ -71,7 +71,7 @@ const submit = () => {
 
         <div class="space-y-3 border-t border-slate-100 px-3.5 py-3">
             <p class="text-xs text-slate-500">
-                Mensagens append-only do processo (não substitui a ficha por etapa acima).
+                Comentários livres do processo (não substituem a ficha por etapa nem o histórico acima).
             </p>
             <ul v-if="comments.length" class="max-h-56 space-y-2 overflow-y-auto pr-1">
                 <li
@@ -96,10 +96,10 @@ const submit = () => {
                     <p class="mt-1 whitespace-pre-wrap text-sm text-slate-800">{{ c.body }}</p>
                 </li>
             </ul>
-            <p v-else class="text-sm text-slate-500">Ainda não há mensagens no histórico.</p>
+            <p v-else class="text-sm text-slate-500">Ainda não há mensagens publicadas.</p>
 
             <form class="space-y-2" @submit.prevent="submit">
-                <label class="sr-only" :for="'obs-' + processId">Nova mensagem no histórico</label>
+                <label class="sr-only" :for="'obs-' + processId">Nova mensagem</label>
                 <textarea
                     :id="'obs-' + processId"
                     v-model="form.body"
@@ -107,7 +107,7 @@ const submit = () => {
                     required
                     maxlength="2000"
                     class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
-                    placeholder="Adicionar mensagem ao histórico…"
+                    placeholder="Adicionar mensagem…"
                 />
                 <p v-if="form.errors.body" class="text-sm text-red-600">{{ form.errors.body }}</p>
                 <button
@@ -115,7 +115,7 @@ const submit = () => {
                     class="inline-flex items-center rounded-xl bg-talents-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-talents-700 disabled:opacity-50"
                     :disabled="form.processing || !form.body.trim()"
                 >
-                    Publicar no histórico
+                    Publicar mensagem
                 </button>
             </form>
         </div>

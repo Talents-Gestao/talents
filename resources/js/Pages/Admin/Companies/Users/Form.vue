@@ -48,14 +48,14 @@ const submit = () => {
 </script>
 
 <template>
-    <Head :title="mode === 'create' ? 'Novo utilizador' : 'Editar utilizador'" />
+    <Head :title="mode === 'create' ? 'Novo usuário' : 'Editar usuário'" />
 
     <AdminLayout>
         <template #header>
             <FormPageHeader
                 :back-href="route('admin.companies.users.index', company.id)"
-                back-label="Utilizadores"
-                :title="mode === 'create' ? 'Novo utilizador' : 'Editar utilizador'"
+                back-label="Usuários"
+                :title="mode === 'create' ? 'Novo usuário' : 'Editar usuário'"
             />
         </template>
 
@@ -89,7 +89,7 @@ const submit = () => {
 
             <div v-if="showMatrix">
                 <InputLabel value="Permissões por módulo" />
-                <p class="mt-1 text-sm text-gray-600">Marque as ações permitidas para este utilizador (apenas módulos do plano).</p>
+                <p class="mt-1 text-sm text-gray-600">Marque as ações permitidas para este usuário (apenas módulos do plano).</p>
                 <div class="mt-3">
                     <PermissionsMatrix
                         v-model="form.permissions"
@@ -101,7 +101,7 @@ const submit = () => {
             </div>
 
             <div class="flex gap-2">
-                <PrimaryButton :disabled="form.processing">Guardar</PrimaryButton>
+                <PrimaryButton :disabled="form.processing">Salvar</PrimaryButton>
                 <Link :href="route('admin.companies.users.index', company.id)">
                     <SecondaryButton type="button">Cancelar</SecondaryButton>
                 </Link>

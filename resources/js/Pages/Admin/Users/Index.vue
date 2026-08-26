@@ -19,7 +19,7 @@ const remove = (user) => {
     if (user.is_owner || user.id === page.props.auth?.user?.id) {
         return;
     }
-    if (confirm('Remover este utilizador?')) {
+    if (confirm('Remover este usuário?')) {
         router.delete(route('admin.users.destroy', user.id));
     }
 };

@@ -52,7 +52,7 @@ const applyFilters = () => {
             q: localFilters.q || undefined,
             status: localFilters.status || undefined,
             origin: localFilters.origin || undefined,
-            sort: localFilters.sort && localFilters.sort !== 'due_date' ? localFilters.sort : undefined,
+            sort: localFilters.sort || 'due_date',
         },
         { preserveState: true, replace: true },
     );
@@ -320,10 +320,14 @@ const submitEdit = () => {
             </select>
             <select
                 v-model="localFilters.sort"
+                aria-label="Ordenar por"
+                title="Ordenar por"
                 class="rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/60"
                 @change="applyFilters"
             >
-                <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+                    Ordenar por {{ opt.label.toLowerCase() }}
+                </option>
             </select>
             <PrimaryButton type="submit">Filtrar</PrimaryButton>
         </form>

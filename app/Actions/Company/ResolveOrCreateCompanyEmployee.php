@@ -13,7 +13,7 @@ class ResolveOrCreateCompanyEmployee
     /**
      * Resolve um colaborador da empresa a partir do nome (e e-mail opcional).
      * Com e-mail: chave (company_id, email). Sem e-mail: reutiliza o mesmo nome
-     * (case-insensitive) sem e-mail, ou cria um novo registo.
+     * (case-insensitive) sem e-mail, ou cria um novo registro.
      */
     public function execute(
         Company $company,

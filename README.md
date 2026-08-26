@@ -53,7 +53,7 @@ docker compose --profile dev up vite
 
 Para parar o HMR: `Ctrl+C` no terminal do `vite` ou `docker compose --profile dev stop vite`.
 
-Build de produção continua sendo `npm run build` (sem profile `dev`). O ficheiro `public/hot` é criado só em dev e está no `.gitignore`.
+Build de produção continua sendo `npm run build` (sem profile `dev`). O arquivo `public/hot` é criado só em dev e está no `.gitignore`.
 
 Comando alternativo (one-shot, sem serviço `vite` no compose):
 

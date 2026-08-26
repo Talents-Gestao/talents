@@ -1,14 +1,16 @@
 <script setup>
 import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import SaleInstallmentEditModal from '@/Components/Finance/SaleInstallmentEditModal.vue';
+import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { PencilSquareIcon } from '@heroicons/vue/24/outline';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
     sale: { type: Object, required: true },
+    finance_impact: { type: Object, default: null },
     paymentMethods: { type: Object, default: () => ({}) },
     installmentMethodOptions: { type: Array, default: () => [] },
     installmentStatusOptions: { type: Array, default: () => [] },
@@ -105,6 +107,68 @@ const submitCommission = () => {
         preserveScroll: true,
     });
 };
+
+const destroyModalOpen = ref(false);
+const destroying = ref(false);
+
+const destroyImpactItems = computed(() => {
+    const total = Number(props.sale.installments_count) || (props.sale.installments?.length ?? 0);
+    const items = [
+        {
+            key: 'receber',
+            label: 'Financeiro · Contas a receber',
+            detail:
+                total === 1
+                    ? '1 parcela desta venda será removida do saldo a receber / fluxo de caixa.'
+                    : `${total || 'As'} parcelas desta venda serão removidas do saldo a receber / fluxo de caixa.`,
+            href: route('admin.financeiro.contas-a-receber.index'),
+        },
+    ];
+
+    if (props.sale.commission && Number(props.sale.commission.amount_cents) > 0) {
+        items.push({
+            key: 'comissao',
+            label: 'Financeiro · Comissões',
+            detail: 'A comissão desta venda também será removida.',
+            href: route('admin.financeiro.comissoes.index'),
+        });
+    }
+
+    if (props.sale.proposal?.id) {
+        items.push({
+            key: 'proposta',
+            label: `Comercial · Proposta ${props.sale.proposal.code}`,
+            detail: 'A proposta permanece no Comercial, sem venda vinculada (pode ser convertida de novo).',
+            href: route('admin.comercial.propostas.edit', props.sale.proposal.id),
+        });
+    }
+
+    return items;
+});
+
+const openDestroy = () => {
+    destroyModalOpen.value = true;
+};
+
+const closeDestroyModal = () => {
+    if (destroying.value) {
+        return;
+    }
+    destroyModalOpen.value = false;
+};
+
+const confirmDestroy = () => {
+    if (destroying.value) {
+        return;
+    }
+    destroying.value = true;
+    router.delete(route('admin.financeiro.vendas.destroy', props.sale.id), {
+        onFinish: () => {
+            destroying.value = false;
+            destroyModalOpen.value = false;
+        },
+    });
+};
 </script>
 
 <template>
@@ -131,6 +195,13 @@ const submitCommission = () => {
                     >
                         Editar
                     </Link>
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50"
+                        @click="openDestroy"
+                    >
+                        Excluir
+                    </button>
                     <Link
                         v-if="sale.proposal"
                         :href="route('admin.comercial.propostas.edit', sale.proposal.id)"
@@ -305,5 +376,57 @@ const submitCommission = () => {
             :status-options="installmentStatusOptions"
             @close="closeEditInstallment"
         />
+
+        <Modal :show="destroyModalOpen" max-width="lg" @close="closeDestroyModal">
+            <div class="p-6">
+                <h2 class="text-lg font-semibold text-slate-900">Excluir venda?</h2>
+                <p class="mt-2 text-sm text-slate-600">
+                    Excluir «{{ sale.client_name }}» ({{ sale.code }})?
+                    Esta ação não pode ser desfeita.
+                </p>
+                <template v-if="destroyImpactItems.length">
+                    <p class="mt-3 text-sm font-medium text-amber-950">
+                        Isto afetará o saldo / acompanhamento nestes pontos:
+                    </p>
+                    <ul class="mt-2 space-y-2">
+                        <li
+                            v-for="item in destroyImpactItems"
+                            :key="item.key"
+                            class="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-sm text-amber-950"
+                        >
+                            <p class="font-semibold">{{ item.label }}</p>
+                            <p class="mt-0.5 text-amber-900/80">{{ item.detail }}</p>
+                            <a
+                                v-if="item.href"
+                                :href="item.href"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="mt-1 inline-flex text-xs font-semibold text-talents-700 underline hover:text-talents-800"
+                            >
+                                Abrir área
+                            </a>
+                        </li>
+                    </ul>
+                </template>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+                        :disabled="destroying"
+                        @click="closeDestroyModal"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-60"
+                        :disabled="destroying"
+                        @click="confirmDestroy"
+                    >
+                        {{ destroying ? 'Excluindo…' : 'Excluir venda' }}
+                    </button>
+                </div>
+            </div>
+        </Modal>
     </AdminLayout>
 </template>
