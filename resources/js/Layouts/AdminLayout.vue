@@ -8,7 +8,6 @@ import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import {
-    AcademicCapIcon,
     ArrowRightOnRectangleIcon,
     BanknotesIcon,
     BuildingOffice2Icon,
@@ -23,7 +22,7 @@ import {
     ViewColumnsIcon,
 } from '@heroicons/vue/24/outline';
 
-const { canAdmin } = useAdminPermissions();
+const { canAdmin, canAdminAny } = useAdminPermissions();
 const page = usePage();
 
 const activeHiringProcessesCount = computed(
@@ -31,15 +30,26 @@ const activeHiringProcessesCount = computed(
 );
 
 const canCommercialSettings = computed(
-    () => canAdmin('comercial') || page.props.auth?.user?.can_commercial_settings,
+    () =>
+        canAdmin('comercial_valores_contratos') ||
+        page.props.auth?.user?.can_commercial_settings,
 );
 
 const showComercial = computed(
-    () => canAdmin('comercial') || canCommercialSettings.value || canAdmin('plans'),
+    () =>
+        canAdminAny([
+            'comercial_resumo',
+            'comercial_propostas',
+            'comercial_valores_contratos',
+            'plans',
+        ]) || canCommercialSettings.value,
 );
 
 const comercialFallbackHref = computed(() => {
-    if (canAdmin('comercial')) {
+    if (canAdmin('comercial_resumo')) {
+        return route('admin.comercial.dashboard');
+    }
+    if (canAdmin('comercial_propostas')) {
         return route('admin.comercial.propostas.index');
     }
     if (canCommercialSettings.value) {
@@ -58,7 +68,13 @@ const comercialActive = computed(
 );
 
 const showClientes = computed(
-    () => canAdmin('companies') || canAdmin('landing_interest'),
+    () =>
+        canAdminAny([
+            'landing_interest',
+            'companies',
+            'companies_diagnostico',
+            'companies_contratos_fechados',
+        ]),
 );
 
 const comingSoonModule = computed(() => {
@@ -74,11 +90,17 @@ const comingSoonHref = (module) => `/admin/em-breve/${encodeURIComponent(module)
 const isComingSoon = (...modules) => modules.includes(comingSoonModule.value);
 
 const clientesFallbackHref = computed(() => {
+    if (canAdmin('landing_interest')) {
+        return route('admin.landing-interest.index');
+    }
     if (canAdmin('companies')) {
         return route('admin.companies.index');
     }
-    if (canAdmin('landing_interest')) {
-        return route('admin.landing-interest.index');
+    if (canAdmin('companies_diagnostico')) {
+        return route('admin.diagnostico-empresarial.index');
+    }
+    if (canAdmin('companies_contratos_fechados')) {
+        return route('admin.contratos-fechados.index');
     }
     return route('admin.dashboard');
 });
@@ -91,14 +113,31 @@ const clientesActive = computed(
         route().current('admin.contratos-fechados.*'),
 );
 
-const showContratacao = computed(() => canAdmin('solides') || canAdmin('entrevistas'));
+const showContratacao = computed(() =>
+    canAdminAny([
+        'solides_banco_talentos',
+        'solides_acompanhamento',
+        'solides_profiler',
+        'entrevistas_ia',
+        'entrevistas_roteiros',
+    ]),
+);
 
 const contratacaoFallbackHref = computed(() => {
-    if (canAdmin('solides')) {
+    if (canAdmin('solides_banco_talentos')) {
         return route('admin.solides.curriculos.index');
     }
-    if (canAdmin('entrevistas')) {
+    if (canAdmin('solides_acompanhamento')) {
+        return route('admin.acompanhamento.index');
+    }
+    if (canAdmin('solides_profiler')) {
+        return comingSoonHref('profiler');
+    }
+    if (canAdmin('entrevistas_ia')) {
         return route('admin.entrevistas.index');
+    }
+    if (canAdmin('entrevistas_roteiros')) {
+        return route('admin.entrevistas.roteiros.index');
     }
     return route('admin.dashboard');
 });
@@ -108,15 +147,24 @@ const contratacaoActive = computed(
         route().current('admin.solides.*') ||
         route().current('admin.acompanhamento.*') ||
         route().current('admin.entrevistas.*') ||
-        route().current('admin.reunioes.*') ||
         isComingSoon('profiler'),
 );
 
-const showReunioes = computed(() => canAdmin('entrevistas'));
+const showReunioes = computed(() => canAdmin('entrevistas_reunioes'));
 
 const showVozDoTime = computed(
-    () => canAdmin('survey_templates') || canAdmin('desligamento') || canAdmin('denuncias'),
+    () => canAdminAny(['survey_templates', 'desligamento', 'denuncias']),
 );
+
+const vozDoTimeFallbackHref = computed(() => {
+    if (canAdmin('survey_templates') || canAdmin('desligamento')) {
+        return route('admin.survey-templates.index');
+    }
+    if (canAdmin('denuncias')) {
+        return route('admin.complaints.index');
+    }
+    return route('admin.dashboard');
+});
 
 const vozDoTimeActive = computed(
     () =>
@@ -125,11 +173,46 @@ const vozDoTimeActive = computed(
         route().current('admin.complaints.*'),
 );
 
-const showFinanceiro = computed(() => canAdmin('financeiro'));
+const financeiroModules = [
+    'financeiro_resumo',
+    'financeiro_vendas',
+    'financeiro_comissoes',
+    'financeiro_contas_bancarias',
+    'financeiro_contas_a_pagar',
+    'financeiro_contas_a_receber',
+    'financeiro_formas_pagamento',
+];
+
+const showFinanceiro = computed(() => canAdminAny(financeiroModules));
+
+const financeiroFallbackHref = computed(() => {
+    if (canAdmin('financeiro_resumo')) {
+        return route('admin.financeiro.dashboard');
+    }
+    if (canAdmin('financeiro_vendas')) {
+        return route('admin.financeiro.vendas.index');
+    }
+    if (canAdmin('financeiro_comissoes')) {
+        return route('admin.financeiro.comissoes.index');
+    }
+    if (canAdmin('financeiro_contas_bancarias')) {
+        return route('admin.financeiro.contas-bancarias.index');
+    }
+    if (canAdmin('financeiro_contas_a_pagar')) {
+        return route('admin.financeiro.contas-a-pagar.index');
+    }
+    if (canAdmin('financeiro_contas_a_receber')) {
+        return route('admin.financeiro.contas-a-receber.index');
+    }
+    if (canAdmin('financeiro_formas_pagamento')) {
+        return route('admin.financeiro.formas-pagamento.index');
+    }
+    return route('admin.dashboard');
+});
 
 const financeiroActive = computed(() => route().current('admin.financeiro.*'));
 const showConfiguracao = computed(
-    () => canAdmin('settings') || canAdmin('equipe') || canAdmin('empresa_talents'),
+    () => canAdminAny(['settings', 'equipe', 'empresa_talents']),
 );
 
 const configuracaoFallbackHref = computed(() => {
@@ -208,6 +291,15 @@ const isComercialSettingsTab = (tab) => {
                 :fallback-href="comercialFallbackHref"
             >
                 <SidebarNavItem
+                    v-if="canAdmin('comercial_resumo')"
+                    :href="route('admin.comercial.dashboard')"
+                    :active="route().current('admin.comercial.dashboard')"
+                    label="Resumo"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
                     v-if="canCommercialSettings"
                     :href="comercialSettingsProdutosHref"
                     :active="isComercialSettingsTab('produtos')"
@@ -226,7 +318,7 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
-                    v-if="canAdmin('comercial')"
+                    v-if="canAdmin('comercial_propostas')"
                     :href="route('admin.comercial.propostas.index')"
                     :active="route().current('admin.comercial.propostas.*')"
                     label="Proposta"
@@ -273,7 +365,7 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
-                    v-if="canAdmin('companies')"
+                    v-if="canAdmin('companies_diagnostico')"
                     :href="route('admin.diagnostico-empresarial.index')"
                     :active="route().current('admin.diagnostico-empresarial.*')"
                     label="Diagnóstico empresarial"
@@ -282,7 +374,7 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
-                    v-if="canAdmin('companies')"
+                    v-if="canAdmin('companies_contratos_fechados')"
                     :href="route('admin.contratos-fechados.index')"
                     :active="route().current('admin.contratos-fechados.*')"
                     label="Contratos fechados"
@@ -302,7 +394,7 @@ const isComercialSettingsTab = (tab) => {
                 :fallback-href="contratacaoFallbackHref"
             >
                 <SidebarNavItem
-                    v-if="canAdmin('solides')"
+                    v-if="canAdmin('solides_banco_talentos')"
                     :href="route('admin.solides.curriculos.index')"
                     :active="route().current('admin.solides.*')"
                     label="Banco de talentos"
@@ -311,7 +403,7 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
-                    v-if="canAdmin('solides')"
+                    v-if="canAdmin('solides_acompanhamento')"
                     :href="route('admin.acompanhamento.index')"
                     :active="route().current('admin.acompanhamento.*')"
                     label="Acompanhamento"
@@ -321,7 +413,7 @@ const isComercialSettingsTab = (tab) => {
                     :badge="activeHiringProcessesCount > 0 ? activeHiringProcessesCount : null"
                 />
                 <SidebarNavItem
-                    v-if="canAdmin('solides')"
+                    v-if="canAdmin('solides_profiler')"
                     :href="comingSoonHref('profiler')"
                     :active="isComingSoon('profiler')"
                     label="Profiler"
@@ -331,7 +423,7 @@ const isComercialSettingsTab = (tab) => {
                     badge="Em breve"
                 />
                 <SidebarNavItem
-                    v-if="canAdmin('entrevistas')"
+                    v-if="canAdmin('entrevistas_ia')"
                     :href="route('admin.entrevistas.index')"
                     :active="
                         route().current('admin.entrevistas.*') &&
@@ -343,7 +435,7 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
-                    v-if="canAdmin('entrevistas')"
+                    v-if="canAdmin('entrevistas_roteiros')"
                     :href="route('admin.entrevistas.roteiros.index')"
                     :active="route().current('admin.entrevistas.roteiros.*')"
                     label="Roteiros"
@@ -380,7 +472,7 @@ const isComercialSettingsTab = (tab) => {
                 :collapsed="collapsed"
                 :compact="compact"
                 :active="vozDoTimeActive"
-                :fallback-href="route('admin.survey-templates.index')"
+                :fallback-href="vozDoTimeFallbackHref"
             >
                 <SidebarNavItem
                     v-if="canAdmin('survey_templates') || canAdmin('desligamento')"
@@ -425,6 +517,7 @@ const isComercialSettingsTab = (tab) => {
                 :compact="compact"
             />
 
+            <!-- Capacitação oculto até o módulo estar pronto
             <SidebarNavItem
                 v-if="canAdmin('training')"
                 :href="route('admin.training.index')"
@@ -435,6 +528,7 @@ const isComercialSettingsTab = (tab) => {
                 :compact="compact"
                 badge="Em breve"
             />
+            -->
 
             <SidebarNavGroup
                 v-if="showFinanceiro"
@@ -443,9 +537,10 @@ const isComercialSettingsTab = (tab) => {
                 :collapsed="collapsed"
                 :compact="compact"
                 :active="financeiroActive"
-                :fallback-href="route('admin.financeiro.dashboard')"
+                :fallback-href="financeiroFallbackHref"
             >
                 <SidebarNavItem
+                    v-if="canAdmin('financeiro_resumo')"
                     :href="route('admin.financeiro.dashboard')"
                     :active="route().current('admin.financeiro.dashboard')"
                     label="Resumo"
@@ -454,6 +549,7 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
+                    v-if="canAdmin('financeiro_vendas')"
                     :href="route('admin.financeiro.vendas.index')"
                     :active="route().current('admin.financeiro.vendas.*')"
                     label="Vendas"
@@ -462,6 +558,7 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
+                    v-if="canAdmin('financeiro_comissoes')"
                     :href="route('admin.financeiro.comissoes.index')"
                     :active="route().current('admin.financeiro.comissoes.*')"
                     label="Comissões"
@@ -470,6 +567,7 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
+                    v-if="canAdmin('financeiro_contas_bancarias')"
                     :href="route('admin.financeiro.contas-bancarias.index')"
                     :active="route().current('admin.financeiro.contas-bancarias.*')"
                     label="Contas bancárias"
@@ -478,6 +576,7 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
+                    v-if="canAdmin('financeiro_contas_a_pagar')"
                     :href="route('admin.financeiro.contas-a-pagar.index')"
                     :active="route().current('admin.financeiro.contas-a-pagar.*')"
                     label="Contas a pagar"
@@ -486,6 +585,7 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
+                    v-if="canAdmin('financeiro_contas_a_receber')"
                     :href="route('admin.financeiro.contas-a-receber.index')"
                     :active="route().current('admin.financeiro.contas-a-receber.*')"
                     label="Contas a receber"
@@ -494,6 +594,7 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
+                    v-if="canAdmin('financeiro_formas_pagamento')"
                     :href="route('admin.financeiro.formas-pagamento.index')"
                     :active="route().current('admin.financeiro.formas-pagamento.*')"
                     label="Formas de pagamento"

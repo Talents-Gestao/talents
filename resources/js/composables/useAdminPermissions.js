@@ -19,5 +19,12 @@ export function useAdminPermissions() {
         return Array.isArray(actions) && actions.includes(action);
     };
 
-    return { canAdmin };
+    /**
+     * @param {string[]} modules
+     * @param {'view'|'create'|'edit'|'delete'} [action='view']
+     */
+    const canAdminAny = (modules, action = 'view') =>
+        modules.some((module) => canAdmin(module, action));
+
+    return { canAdmin, canAdminAny };
 }

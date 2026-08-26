@@ -3,7 +3,6 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import CommercialAdjustmentFields from '@/Components/Commercial/CommercialAdjustmentFields.vue';
 import CatalogProductObservationField from '@/Components/Commercial/CatalogProductObservationField.vue';
 import CommercialModuleNav from '@/Components/Commercial/CommercialModuleNav.vue';
-import OptionalCommissionFields from '@/Components/Commercial/OptionalCommissionFields.vue';
 import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
@@ -36,30 +35,25 @@ const props = defineProps({
 
 const inertiaPage = usePage();
 
-const isCurrentUserOwner = computed(() => inertiaPage.props.auth?.user?.is_owner === true);
-const defaultCommissionPercent = computed(() => Number(props.settings?.default_commission_percent ?? 0));
-
-const sellerIsOwner = (sellerId) => {
+const sellerById = (sellerId) => {
     const id = Number(sellerId);
     if (!Number.isFinite(id) || id < 1) {
-        return false;
+        return null;
     }
-    return props.sellers.some((s) => Number(s.id) === id && s.is_owner === true);
+    return props.sellers.find((s) => Number(s.id) === id) ?? null;
 };
 
-const defaultPayCommissionFor = (sellerId) => {
-    if (!sellerId) {
-        return !isCurrentUserOwner.value;
+const commissionPercentForSeller = (sellerId) => {
+    const seller = sellerById(sellerId);
+    if (!seller) {
+        return 0;
     }
-    return !sellerIsOwner(sellerId);
+    return Number(seller.commission_percent ?? 0) || 0;
 };
 
-const initialPayCommission = props.proposal
-    ? Number(props.proposal.commission_percent) > 0
-    : defaultPayCommissionFor('');
 const initialCommissionPercent = props.proposal
     ? Number(props.proposal.commission_percent ?? 0)
-    : (initialPayCommission ? defaultCommissionPercent.value : 0);
+    : 0;
 
 const settingsRef = ref({ ...props.settings });
 const catalogProductsRef = computed(() => props.catalogProducts);
@@ -107,7 +101,6 @@ const formInitial = props.proposal
           employee_count: props.proposal.employee_count ?? 0,
           include_publico_atendido: props.proposal.include_publico_atendido ?? true,
           seller_id: props.proposal.seller_id ?? '',
-          pay_commission: initialPayCommission,
           commission_percent: initialCommissionPercent,
           is_closed: !!props.proposal.is_closed,
           notes: props.proposal.notes ?? '',
@@ -142,7 +135,6 @@ const formInitial = props.proposal
           employee_count: 0,
           include_publico_atendido: true,
           seller_id: '',
-          pay_commission: initialPayCommission,
           commission_percent: initialCommissionPercent,
           is_closed: false,
           notes: '',
@@ -231,11 +223,12 @@ const honorarioFinalCents = computed(() => {
     return totalFinalCents.value;
 });
 
+const selectedSeller = computed(() => sellerById(form.seller_id));
+
+const sellerFixedPercent = computed(() => commissionPercentForSeller(form.seller_id));
+
 const estimatedCommissionCents = computed(() => {
-    if (!form.pay_commission) {
-        return 0;
-    }
-    const percent = Number(form.commission_percent) || 0;
+    const percent = sellerFixedPercent.value;
     if (percent <= 0) {
         return 0;
     }
@@ -245,12 +238,10 @@ const estimatedCommissionCents = computed(() => {
 watch(
     () => form.seller_id,
     (sellerId) => {
-        if (props.mode === 'edit' || props.proposal) {
+        if (hasLinkedSale.value) {
             return;
         }
-        const pay = defaultPayCommissionFor(sellerId);
-        form.pay_commission = pay;
-        form.commission_percent = pay ? defaultCommissionPercent.value : 0;
+        form.commission_percent = commissionPercentForSeller(sellerId);
     },
 );
 
@@ -594,15 +585,7 @@ const validateRequiredFields = () => {
     return valid;
 };
 
-const submit = () => {
-    if (hasLinkedSale.value) {
-        return;
-    }
-
-    if (!validateRequiredFields()) {
-        return;
-    }
-
+const performSubmit = () => {
     const options = {
         onError: () => {
             goToStepForErrors();
@@ -618,6 +601,28 @@ const submit = () => {
     } else {
         form.post(route('admin.comercial.propostas.store'), options);
     }
+};
+
+const submit = () => {
+    if (!validateRequiredFields()) {
+        return;
+    }
+
+    if (isEdit.value && requiresFinanceWarning.value) {
+        saveImpactModalOpen.value = true;
+        return;
+    }
+
+    performSubmit();
+};
+
+const closeSaveImpactModal = () => {
+    saveImpactModalOpen.value = false;
+};
+
+const confirmSaveWithImpact = () => {
+    saveImpactModalOpen.value = false;
+    performSubmit();
 };
 
 const markAsClosedModalOpen = ref(false);
@@ -663,6 +668,9 @@ const formatContractDate = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR')
 const isEdit = computed(() => props.mode === 'edit');
 const hasLinkedSale = computed(() => Boolean(props.proposal?.has_sale));
 const canReopen = computed(() => Boolean(props.proposal?.can_reopen) && !hasLinkedSale.value);
+const financeImpact = computed(() => props.proposal?.finance_impact ?? null);
+const requiresFinanceWarning = computed(() => Boolean(financeImpact.value?.requires_warning));
+const saveImpactModalOpen = ref(false);
 const hasSignedContract = computed(() => Boolean(props.proposal?.has_signed_contract));
 const hasZapSignSentContract = computed(() => Boolean(props.proposal?.has_zapsign_sent_contract));
 const suggestUpdatedContract = computed(() => Boolean(inertiaPage.props.flash?.suggest_updated_contract));
@@ -860,7 +868,6 @@ const errorKeyToStepId = (key) => {
     }
     if (
         key === 'seller_id'
-        || key === 'pay_commission'
         || key === 'commission_percent'
         || key === 'payment_method_id'
         || key === 'include_minimum_stay'
@@ -1062,10 +1069,15 @@ const onStepClick = (index) => {
 
         <div
             v-if="hasLinkedSale"
-            class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
             role="status"
         >
-            Esta proposta já foi convertida em venda. Os valores comerciais não podem ser alterados.
+            <p class="font-semibold">Proposta convertida em venda</p>
+            <p class="mt-0.5 text-amber-900/90">
+                Você pode editar (ex.: data da palestra), mas ao salvar verá um alerta: a venda, as parcelas
+                (contas a receber) e a comissão no Financeiro
+                <strong>não são recalculadas automaticamente</strong>. Se o valor mudou, ajuste também no Financeiro.
+            </p>
         </div>
 
         <div
@@ -1074,9 +1086,10 @@ const onStepClick = (index) => {
             role="status"
         >
             <div>
-                <p class="font-semibold">Proposta fechada ou encerrada</p>
+                <p class="font-semibold">Proposta fechada ou perdida</p>
                 <p class="mt-0.5 text-sky-900/80">
-                    Reabra para alterações de última hora. Se já houver contrato assinado, depois salve e gere um contrato novo para o cliente.
+                    Você já pode editar e salvar. Se quiser voltar o status para Aberta, use «Reabrir».
+                    Ao salvar alterações, um alerta listará onde o saldo/acompanhamento pode ser afetado.
                 </p>
             </div>
             <button
@@ -1892,16 +1905,6 @@ const onStepClick = (index) => {
                                 Nenhum vendedor marcado como Comercial. Marque usuários como "Comercial" no cadastro de usuários.
                             </p>
                         </div>
-                        <div class="sm:col-span-2">
-                            <OptionalCommissionFields
-                                v-model:pay-commission="form.pay_commission"
-                                v-model:commission-percent="form.commission_percent"
-                                :default-percent="defaultCommissionPercent"
-                                :estimated-cents="estimatedCommissionCents"
-                                :errors="form.errors"
-                                :disabled="hasLinkedSale"
-                            />
-                        </div>
                         <div id="proposal-field-payment_method_id" data-error-for="payment_method_id">
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
                                 Forma de pagamento (PDF) *
@@ -2046,7 +2049,7 @@ const onStepClick = (index) => {
                         <button
                             v-else
                             type="submit"
-                            :disabled="form.processing || hasLinkedSale"
+                            :disabled="form.processing"
                             class="inline-flex items-center rounded-xl bg-talents-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:opacity-60"
                         >
                             {{ isEdit ? 'Salvar alterações' : 'Salvar proposta' }}
@@ -2096,7 +2099,7 @@ const onStepClick = (index) => {
                             <span class="tabular-nums">{{ formatBRL(honorarioFinalCents) }}</span>
                         </div>
                         <div class="mt-2 flex items-center justify-between text-sm text-slate-600">
-                            <span>{{ form.pay_commission ? 'Comissão opcional' : 'Sem comissão' }}</span>
+                            <span>{{ sellerFixedPercent > 0 ? `Comissão ${sellerFixedPercent}%` : 'Sem comissão' }}</span>
                             <span class="tabular-nums">{{ formatBRL(estimatedCommissionCents) }}</span>
                         </div>
                     </div>
@@ -2127,12 +2130,61 @@ const onStepClick = (index) => {
             </aside>
         </form>
 
+        <Modal :show="saveImpactModalOpen" max-width="lg" @close="closeSaveImpactModal">
+            <div class="p-6">
+                <h2 class="text-lg font-semibold text-slate-900">Salvar proposta fechada / com impacto no saldo?</h2>
+                <p class="mt-2 text-sm text-slate-600">
+                    Esta proposta está fechada ou já foi convertida em venda. Confirme se deseja salvar.
+                    As alterações podem afetar o acompanhamento e o saldo nestes pontos:
+                </p>
+                <ul class="mt-4 space-y-3">
+                    <li
+                        v-for="item in (financeImpact?.items ?? [])"
+                        :key="item.key"
+                        class="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-sm text-amber-950"
+                    >
+                        <p class="font-semibold">{{ item.label }}</p>
+                        <p class="mt-0.5 text-amber-900/80">{{ item.detail }}</p>
+                        <a
+                            v-if="item.href"
+                            :href="item.href"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="mt-1 inline-flex text-xs font-semibold text-talents-700 underline hover:text-talents-800"
+                        >
+                            Abrir área
+                        </a>
+                    </li>
+                </ul>
+                <p v-if="hasLinkedSale" class="mt-3 text-xs text-slate-500">
+                    A venda e as parcelas já geradas não são atualizadas automaticamente a partir desta proposta.
+                </p>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                        @click="closeSaveImpactModal"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        :disabled="form.processing"
+                        class="inline-flex items-center rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:opacity-60"
+                        @click="confirmSaveWithImpact"
+                    >
+                        {{ form.processing ? 'Salvando…' : 'Salvar mesmo assim' }}
+                    </button>
+                </div>
+            </div>
+        </Modal>
+
         <Modal :show="reopenModalOpen" max-width="md" @close="closeReopenModal">
             <div class="p-6">
                 <h2 class="text-lg font-semibold text-slate-900">Reabrir proposta?</h2>
                 <p class="mt-2 text-sm text-slate-600">
-                    A proposta voltará para <strong>Em negociação</strong> e poderá ser editada novamente.
-                    Se houver contrato assinado, depois das alterações gere um contrato novo para o cliente.
+                    A proposta voltará para <strong>Aberta</strong> (status deixa de ficar verde).
+                    Você também pode editar sem reabrir; use isto só se quiser mudar o status.
                 </p>
                 <div class="mt-6 flex justify-end gap-2">
                     <button

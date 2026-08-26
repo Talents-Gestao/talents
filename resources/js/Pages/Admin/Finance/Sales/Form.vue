@@ -8,8 +8,7 @@ import MoneyInput from '@/Components/MoneyInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
-import OptionalCommissionFields from '@/Components/Commercial/OptionalCommissionFields.vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { parseMoneyToNumber } from '@/utils/moneyMask';
 
@@ -18,26 +17,24 @@ const props = defineProps({
     sale: { type: Object, default: null },
     sellers: { type: Array, default: () => [] },
     paymentMethodOptions: { type: Array, default: () => [] },
-    default_commission_percent: { type: Number, default: 0 },
 });
 
 const isEdit = computed(() => props.mode === 'edit' && !!props.sale);
-const page = usePage();
-const isCurrentUserOwner = computed(() => page.props.auth?.user?.is_owner === true);
 
-const sellerIsOwner = (sellerId) => {
+const sellerById = (sellerId) => {
     const id = Number(sellerId);
     if (!Number.isFinite(id) || id < 1) {
-        return false;
+        return null;
     }
-    return props.sellers.some((s) => Number(s.id) === id && s.is_owner === true);
+    return props.sellers.find((s) => Number(s.id) === id) ?? null;
 };
 
-const defaultPayCommissionFor = (sellerId) => {
-    if (!sellerId) {
-        return !isCurrentUserOwner.value;
+const commissionPercentForSeller = (sellerId) => {
+    const seller = sellerById(sellerId);
+    if (!seller) {
+        return 0;
     }
-    return !sellerIsOwner(sellerId);
+    return Number(seller.commission_percent ?? 0) || 0;
 };
 
 const fieldClass =
@@ -72,10 +69,9 @@ const form = useForm({
     seller_id: props.sale?.seller_id ?? '',
     sold_at: props.sale?.sold_at ?? localTodayDate(),
     total_reais: props.sale?.total_reais ?? '',
-    pay_commission: defaultPayCommissionFor(props.sale?.seller_id ?? ''),
-    commission_percent: defaultPayCommissionFor(props.sale?.seller_id ?? '')
-        ? Number(props.default_commission_percent) || 0
-        : 0,
+    commission_percent: isEdit.value
+        ? Number(props.sale?.commission_percent ?? 0) || 0
+        : commissionPercentForSeller(props.sale?.seller_id ?? ''),
     payment_method: props.sale?.payment_method ?? 'pix',
     installments_count: props.sale?.installments_count ?? 1,
     first_due_date: localTodayDate(),
@@ -91,11 +87,10 @@ const mixPercentSum = computed(() =>
 
 const totalCents = computed(() => Math.round((parseMoneyToNumber(form.total_reais) ?? 0) * 100));
 
+const sellerFixedPercent = computed(() => commissionPercentForSeller(form.seller_id));
+
 const estimatedCommissionCents = computed(() => {
-    if (!form.pay_commission) {
-        return 0;
-    }
-    const percent = Number(form.commission_percent) || 0;
+    const percent = sellerFixedPercent.value;
     if (percent <= 0) {
         return 0;
     }
@@ -113,9 +108,7 @@ watch(
         if (isEdit.value) {
             return;
         }
-        const pay = defaultPayCommissionFor(sellerId);
-        form.pay_commission = pay;
-        form.commission_percent = pay ? Number(props.default_commission_percent) || 0 : 0;
+        form.commission_percent = commissionPercentForSeller(sellerId);
     },
 );
 
@@ -255,8 +248,6 @@ const submit = () => {
                 client_phone: data.client_phone || null,
                 seller_id: data.seller_id || null,
                 total_reais: data.total_reais,
-                pay_commission: !!data.pay_commission,
-                commission_percent: data.pay_commission ? data.commission_percent || 0 : 0,
                 payment_method: data.payment_method,
                 first_due_date: data.first_due_date,
                 notes: data.notes || null,
@@ -406,14 +397,18 @@ const pageSubtitle = computed(() =>
                     </div>
                 </div>
 
-                <OptionalCommissionFields
-                    v-model:pay-commission="form.pay_commission"
-                    v-model:commission-percent="form.commission_percent"
-                    :default-percent="Number(default_commission_percent) || 0"
-                    :estimated-cents="estimatedCommissionCents"
-                    :errors="form.errors"
-                    :disabled="form.processing"
-                />
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
+                    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Comissão</p>
+                    <p v-if="sellerFixedPercent > 0" class="mt-1 font-semibold text-slate-900">
+                        {{ sellerFixedPercent }}% do vendedor
+                        <span v-if="estimatedCommissionCents > 0" class="font-normal text-slate-600">
+                            · estimativa {{ formatBRL(estimatedCommissionCents) }}
+                        </span>
+                    </p>
+                    <p v-else class="mt-1 text-slate-600">
+                        Sem comissão (definida no cadastro do vendedor na Equipe).
+                    </p>
+                </div>
 
                 <div>
                     <InputLabel for="payment_method" value="Forma de pagamento" />

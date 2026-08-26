@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\ProposalLostReason;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
+use App\Models\LandingInterestSubmission;
 use App\Models\User;
 use App\Support\Admin\AdminHomeDashboardBuilder;
 use App\Support\Commercial\ProposalListStatus;
@@ -17,15 +19,34 @@ class AdminHomeProposalFunnelTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_funnel_uses_proposal_cohort_of_current_month(): void
+    public function test_funnel_uses_leads_qualification_proposal_and_closed(): void
     {
         $this->withoutVite();
+
+        LandingInterestSubmission::query()->create([
+            'name' => 'Lead A',
+            'email' => 'a@example.com',
+            'source' => 'site',
+            'is_qualified' => true,
+        ]);
+        LandingInterestSubmission::query()->create([
+            'name' => 'Lead B',
+            'email' => 'b@example.com',
+            'source' => 'site',
+            'is_qualified' => false,
+        ]);
+        LandingInterestSubmission::query()->create([
+            'name' => 'Lead C',
+            'email' => 'c@example.com',
+            'source' => 'site',
+            'is_qualified' => null,
+        ]);
 
         // Fora do cohort (mês anterior)
         CommercialProposal::query()->create([
             'code' => 'PROP-OLD',
             'client_name' => 'Antiga',
-            'list_status' => ProposalListStatus::APPROVED,
+            'list_status' => ProposalListStatus::CLOSED,
             'is_closed' => true,
             'closed_at' => now()->subMonth(),
             'created_at' => now()->subMonth(),
@@ -39,17 +60,10 @@ class AdminHomeProposalFunnelTest extends TestCase
             'is_closed' => false,
         ]);
 
-        CommercialProposal::query()->create([
-            'code' => 'PROP-NEG',
-            'client_name' => 'Negociação',
-            'list_status' => ProposalListStatus::NEGOTIATION,
-            'is_closed' => false,
-        ]);
-
-        $approved = CommercialProposal::query()->create([
+        $closed = CommercialProposal::query()->create([
             'code' => 'PROP-OK',
-            'client_name' => 'Aprovada',
-            'list_status' => ProposalListStatus::APPROVED,
+            'client_name' => 'Fechada',
+            'list_status' => ProposalListStatus::CLOSED,
             'is_closed' => true,
             'closed_at' => now(),
             'total_final_cents' => 10_000,
@@ -57,8 +71,8 @@ class AdminHomeProposalFunnelTest extends TestCase
 
         CommercialSale::query()->create([
             'code' => 'VENDA-OK',
-            'proposal_id' => $approved->id,
-            'client_name' => 'Aprovada',
+            'proposal_id' => $closed->id,
+            'client_name' => 'Fechada',
             'total_cents' => 10_000,
             'payment_method' => 'pix',
             'installments_count' => 1,
@@ -68,48 +82,47 @@ class AdminHomeProposalFunnelTest extends TestCase
 
         CommercialProposal::query()->create([
             'code' => 'PROP-END',
-            'client_name' => 'Encerrada',
+            'client_name' => 'Perdida',
             'list_status' => ProposalListStatus::ENDED,
             'is_closed' => false,
+            'lost_reason' => ProposalLostReason::Preco->value,
         ]);
 
         $home = app(AdminHomeDashboardBuilder::class)->build();
         $funnel = collect($home['funnel'])->keyBy('key');
 
-        $this->assertSame(4, $funnel['proposal']['count']);
-        $this->assertSame(1, $funnel['negotiation']['count']);
-        $this->assertSame(1, $funnel['approved']['count']);
-        $this->assertSame(1, $funnel['sale']['count']);
-        $this->assertSame(1, $funnel['ended']['count']);
+        $this->assertSame(3, $funnel['leads']['count']);
+        $this->assertSame(1, $funnel['qualified']['count']);
+        $this->assertSame(3, $funnel['proposal']['count']);
+        $this->assertSame(1, $funnel['closed']['count']);
+        $this->assertSame(1, $home['funnel_lost']['count']);
+        $this->assertSame('Preço', $home['funnel_lost']['items'][0]['responses'][0]['lost_reason_label'] ?? null);
+        $this->assertSame('Perdida', $home['funnel_lost']['items'][0]['name'] ?? null);
 
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $this->actingAs($admin)
             ->get(route('admin.dashboard'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->where('funnel.0.key', 'proposal')
-                ->where('funnel.0.count', 4)
-                ->where('funnel.1.key', 'negotiation')
+                ->where('funnel.0.key', 'leads')
+                ->where('funnel.0.count', 3)
+                ->where('funnel.1.key', 'qualified')
                 ->where('funnel.1.count', 1)
-                ->where('funnel.3.key', 'sale')
-                ->where('funnel.3.count', 1));
+                ->where('funnel.3.key', 'closed')
+                ->where('funnel.3.count', 1)
+                ->where('funnelLost.count', 1));
     }
 
-    public function test_funnel_stages_include_hrefs_and_ended_closers_by_seller(): void
+    public function test_funnel_lost_href_and_items_by_client(): void
     {
         $this->withoutVite();
-
-        $seller = User::factory()->superAdmin()->create([
-            'name' => 'Vendedora Encerrada',
-            'is_owner' => true,
-        ]);
 
         CommercialProposal::query()->create([
             'code' => 'PROP-END-1',
             'client_name' => 'Cliente A',
             'list_status' => ProposalListStatus::ENDED,
             'is_closed' => false,
-            'seller_id' => $seller->id,
+            'lost_reason' => ProposalLostReason::Timing->value,
         ]);
 
         CommercialProposal::query()->create([
@@ -117,49 +130,39 @@ class AdminHomeProposalFunnelTest extends TestCase
             'client_name' => 'Cliente B',
             'list_status' => ProposalListStatus::ENDED,
             'is_closed' => false,
-            'seller_id' => $seller->id,
+            'lost_reason' => ProposalLostReason::Timing->value,
         ]);
 
         CommercialProposal::query()->create([
             'code' => 'PROP-END-NONE',
-            'client_name' => 'Sem Vendedor',
+            'client_name' => 'Sem Motivo',
             'list_status' => ProposalListStatus::ENDED,
             'is_closed' => false,
-            'seller_id' => null,
+            'lost_reason' => null,
         ]);
 
         $home = app(AdminHomeDashboardBuilder::class)->build();
-        $funnel = collect($home['funnel'])->keyBy('key');
         $from = Carbon::today()->startOfMonth()->toDateString();
         $to = Carbon::today()->endOfMonth()->toDateString();
 
-        $this->assertStringContainsString('status=encerradas', $funnel['ended']['href']);
-        $this->assertStringContainsString('created_from='.$from, $funnel['ended']['href']);
-        $this->assertStringContainsString('created_to='.$to, $funnel['ended']['href']);
-        $this->assertStringContainsString('sale_situation=with_sale', $funnel['sale']['href']);
-        $this->assertStringContainsString('status=em_negociacao', $funnel['negotiation']['href']);
-        $this->assertStringContainsString('status=aprovadas', $funnel['approved']['href']);
+        $this->assertSame(3, $home['funnel_lost']['count']);
+        $this->assertStringContainsString('status=perdidas', $home['funnel_lost']['href']);
+        $this->assertStringContainsString('created_from='.$from, $home['funnel_lost']['href']);
+        $this->assertStringContainsString('created_to='.$to, $home['funnel_lost']['href']);
 
-        $closers = collect($home['funnel_ended_closers']);
-        $this->assertCount(2, $closers);
-
-        $sellerRow = $closers->firstWhere('seller_id', $seller->id);
-        $this->assertNotNull($sellerRow);
-        $this->assertSame('Vendedora Encerrada', $sellerRow['seller_name']);
-        $this->assertSame(2, $sellerRow['count']);
-
-        $noneRow = $closers->firstWhere('seller_id', null);
-        $this->assertNotNull($noneRow);
-        $this->assertSame('Sem vendedor', $noneRow['seller_name']);
-        $this->assertSame(1, $noneRow['count']);
+        $items = collect($home['funnel_lost']['items'])->keyBy('name');
+        $this->assertCount(3, $items);
+        $this->assertSame(1, $items['Cliente A']['count']);
+        $this->assertSame('Timing', $items['Cliente A']['responses'][0]['lost_reason_label']);
+        $this->assertSame(1, $items['Cliente B']['count']);
+        $this->assertSame('Sem motivo', $items['Sem Motivo']['responses'][0]['lost_reason_label']);
 
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $this->actingAs($admin)
             ->get(route('admin.dashboard'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->has('funnelEndedClosers', 2)
-                ->where('funnel.4.key', 'ended')
-                ->where('funnel.4.count', 3));
+                ->where('funnelLost.count', 3)
+                ->has('funnelLost.items', 3));
     }
 }

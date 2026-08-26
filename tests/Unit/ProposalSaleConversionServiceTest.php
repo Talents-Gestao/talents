@@ -93,7 +93,7 @@ class ProposalSaleConversionServiceTest extends TestCase
         $this->assertSame(10001, $sale->installments->sum('amount_cents'));
     }
 
-    public function test_convert_with_pay_commission_false_omits_payable_commission(): void
+    public function test_convert_keeps_proposal_commission_snapshot(): void
     {
         $proposal = CommercialProposal::create([
             'code' => 'PROP-2026-NOCOM',
@@ -110,21 +110,20 @@ class ProposalSaleConversionServiceTest extends TestCase
             'payment_method' => 'pix',
             'installments_count' => 1,
             'first_due_date' => now()->addDay()->toDateString(),
-            'pay_commission' => false,
         ]);
 
-        $this->assertSame(0.0, (float) $sale->commission_percent);
-        $this->assertSame(0, (int) $sale->commission_cents);
-        $this->assertNull($sale->commission);
+        $this->assertSame(10.0, (float) $sale->commission_percent);
+        $this->assertSame(1000, (int) $sale->commission_cents);
+        $this->assertNotNull($sale->commission);
     }
 
-    public function test_convert_with_pay_commission_true_uses_override_percent(): void
+    public function test_convert_with_zero_snapshot_omits_payable_commission(): void
     {
         $proposal = CommercialProposal::create([
             'code' => 'PROP-2026-COM',
             'client_name' => 'Cliente Com Comissão',
             'employee_count' => 10,
-            'seller_id' => User::factory()->create(['is_commercial' => true])->id,
+            'seller_id' => User::factory()->create(['is_commercial' => true, 'commission_percent' => 8])->id,
             'total_final_cents' => 10000,
             'commission_percent' => 0,
             'commission_cents' => 0,
@@ -136,14 +135,11 @@ class ProposalSaleConversionServiceTest extends TestCase
             'payment_method' => 'pix',
             'installments_count' => 1,
             'first_due_date' => now()->addDay()->toDateString(),
-            'pay_commission' => true,
-            'commission_percent' => 8,
         ]);
 
-        $this->assertSame(8.0, (float) $sale->commission_percent);
-        $this->assertSame(800, (int) $sale->commission_cents);
-        $this->assertNotNull($sale->commission);
-        $this->assertSame(800, (int) $sale->commission->amount_cents);
+        $this->assertSame(0.0, (float) $sale->commission_percent);
+        $this->assertSame(0, (int) $sale->commission_cents);
+        $this->assertNull($sale->commission);
     }
 
     public function test_rejects_misto_when_percent_sum_is_not_100(): void

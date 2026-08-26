@@ -19,16 +19,16 @@ class ProposalListStatusTest extends TestCase
         $proposal = $this->makeProposal(isClosed: false);
 
         $this->assertSame(ProposalListStatus::OPEN, ProposalListStatus::for($proposal));
-        $this->assertSame('Em aberto', ProposalListStatus::labelFor($proposal));
+        $this->assertSame('Aberta', ProposalListStatus::labelFor($proposal));
     }
 
-    public function test_approved_when_is_closed_without_sale(): void
+    public function test_closed_when_is_closed_without_sale(): void
     {
         $proposal = $this->makeProposal(isClosed: true);
 
-        $this->assertSame(ProposalListStatus::APPROVED, $proposal->list_status);
-        $this->assertSame(ProposalListStatus::APPROVED, ProposalListStatus::for($proposal));
-        $this->assertSame('Aprovada', ProposalListStatus::labelFor($proposal));
+        $this->assertSame(ProposalListStatus::CLOSED, $proposal->list_status);
+        $this->assertSame(ProposalListStatus::CLOSED, ProposalListStatus::for($proposal));
+        $this->assertSame('Fechada', ProposalListStatus::labelFor($proposal));
     }
 
     public function test_persisted_list_status_is_primary_source(): void
@@ -36,19 +36,23 @@ class ProposalListStatusTest extends TestCase
         $proposal = $this->makeProposal(isClosed: false, listStatus: ProposalListStatus::NEGOTIATION);
         $this->attachSale($proposal, CommercialSale::STATUS_ABERTA);
 
-        $this->assertSame(ProposalListStatus::NEGOTIATION, ProposalListStatus::for($proposal->fresh()));
-        $this->assertSame('Em negociação', ProposalListStatus::labelFor($proposal->fresh()));
+        // Slug legado negotiation é normalizado para open.
+        $this->assertSame(ProposalListStatus::OPEN, ProposalListStatus::for($proposal->fresh()));
+        $this->assertSame('Aberta', ProposalListStatus::labelFor($proposal->fresh()));
     }
 
     public function test_normalizes_legacy_slugs(): void
     {
-        $this->assertSame(ProposalListStatus::NEGOTIATION, ProposalListStatus::normalize('in_progress'));
-        $this->assertSame(ProposalListStatus::APPROVED, ProposalListStatus::normalize('closed'));
+        $this->assertSame(ProposalListStatus::OPEN, ProposalListStatus::normalize('in_progress'));
+        $this->assertSame(ProposalListStatus::OPEN, ProposalListStatus::normalize('negotiation'));
+        $this->assertSame(ProposalListStatus::CLOSED, ProposalListStatus::normalize('closed'));
+        $this->assertSame(ProposalListStatus::CLOSED, ProposalListStatus::normalize('approved'));
         $this->assertSame(ProposalListStatus::ENDED, ProposalListStatus::normalize('ended'));
     }
 
-    public function test_implies_closed_only_for_approved(): void
+    public function test_implies_closed_only_for_closed_and_approved_alias(): void
     {
+        $this->assertTrue(ProposalListStatus::impliesClosed(ProposalListStatus::CLOSED));
         $this->assertTrue(ProposalListStatus::impliesClosed(ProposalListStatus::APPROVED));
         $this->assertTrue(ProposalListStatus::impliesClosed('closed'));
         $this->assertFalse(ProposalListStatus::impliesClosed(ProposalListStatus::NEGOTIATION));
@@ -65,40 +69,40 @@ class ProposalListStatusTest extends TestCase
         $this->assertSame(ProposalListStatus::OPEN, ProposalListStatus::for($proposal->fresh()));
     }
 
-    public function test_legacy_null_negotiation_when_sale_parcial(): void
+    public function test_legacy_null_closed_when_sale_parcial(): void
     {
         $proposal = $this->makeProposal(isClosed: false);
         $this->attachSale($proposal, CommercialSale::STATUS_PARCIAL);
         $proposal->forceFill(['list_status' => null])->saveQuietly();
 
-        $this->assertSame(ProposalListStatus::NEGOTIATION, ProposalListStatus::for($proposal->fresh()));
-        $this->assertSame('Em negociação', ProposalListStatus::labelFor($proposal->fresh()));
+        $this->assertSame(ProposalListStatus::CLOSED, ProposalListStatus::for($proposal->fresh()));
+        $this->assertSame('Fechada', ProposalListStatus::labelFor($proposal->fresh()));
     }
 
-    public function test_legacy_null_negotiation_prevails_when_is_closed_and_parcial(): void
+    public function test_legacy_null_closed_when_is_closed_and_parcial(): void
     {
         $proposal = $this->makeProposal(isClosed: true);
         $this->attachSale($proposal, CommercialSale::STATUS_PARCIAL);
         $proposal->forceFill(['list_status' => null])->saveQuietly();
 
-        $this->assertSame(ProposalListStatus::NEGOTIATION, ProposalListStatus::for($proposal->fresh()));
+        $this->assertSame(ProposalListStatus::CLOSED, ProposalListStatus::for($proposal->fresh()));
     }
 
-    public function test_legacy_null_approved_when_sale_quitada(): void
+    public function test_legacy_null_closed_when_sale_quitada(): void
     {
         $proposal = $this->makeProposal(isClosed: false);
         $this->attachSale($proposal, CommercialSale::STATUS_QUITADA);
         $proposal->forceFill(['list_status' => null])->saveQuietly();
 
-        $this->assertSame(ProposalListStatus::APPROVED, ProposalListStatus::for($proposal->fresh()));
+        $this->assertSame(ProposalListStatus::CLOSED, ProposalListStatus::for($proposal->fresh()));
     }
 
     public function test_model_list_status_delegates_to_helper(): void
     {
         $proposal = $this->makeProposal(isClosed: true);
 
-        $this->assertSame(ProposalListStatus::APPROVED, $proposal->listStatus());
-        $this->assertSame('Aprovada', $proposal->listStatusLabel());
+        $this->assertSame(ProposalListStatus::CLOSED, $proposal->listStatus());
+        $this->assertSame('Fechada', $proposal->listStatusLabel());
     }
 
     public function test_ended_label(): void
@@ -106,7 +110,7 @@ class ProposalListStatusTest extends TestCase
         $proposal = $this->makeProposal(isClosed: false, listStatus: ProposalListStatus::ENDED);
 
         $this->assertSame(ProposalListStatus::ENDED, ProposalListStatus::for($proposal));
-        $this->assertSame('Encerrada', ProposalListStatus::labelFor($proposal));
+        $this->assertSame('Perdida', ProposalListStatus::labelFor($proposal));
         $this->assertFalse(ProposalListStatus::canConvert(ProposalListStatus::ENDED));
     }
 

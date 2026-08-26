@@ -78,7 +78,10 @@ class HandleInertiaRequests extends Middleware
                             ? $this->adminHomeUrlFor($user)
                             : null,
                         'can_commercial_settings' => $user->isSuperAdmin()
-                            && $user->canAccessAdmin(AdminPermissionModule::Comercial, PermissionAction::View),
+                            && $user->canAccessAdmin(
+                                AdminPermissionModule::ComercialValoresContratos,
+                                PermissionAction::View,
+                            ),
                     ]
                     : null,
             ],

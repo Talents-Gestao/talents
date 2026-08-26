@@ -8,6 +8,7 @@ use App\Models\CommercialCommission;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
+use App\Models\User;
 use App\Support\Commercial\OptionalCommission;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -22,14 +23,10 @@ class ProposalSaleConversionService
      *     installments_count?: int|null,
      *     first_due_date: string,
      *     notes?: string|null,
-     *     mix_parts?: list<array{method: string, percent: float|int|string}>|null,
-     *     pay_commission?: bool|null,
-     *     commission_percent?: float|int|null
+     *     mix_parts?: list<array{method: string, percent: float|int|string}>|null
      * }  $data
      *
-     * Sem comissão: commission_percent/cents = 0 na venda e nenhum registo em
-     * commercial_commissions (não há valor a pagar). Propostas antigas sem override
-     * no pedido continuam a usar o percentual já gravado.
+     * Comissão: usa o snapshot já gravado na proposta (percentual fixo do vendedor).
      */
     public function convert(CommercialProposal $proposal, array $data, ?int $createdBy = null): CommercialSale
     {
@@ -90,7 +87,6 @@ class ProposalSaleConversionService
 
             $installmentsCount = count($installmentPlan);
             $commission = OptionalCommission::forConversion(
-                $data,
                 (float) $locked->commission_percent,
                 (int) $locked->commission_cents,
                 $totalCents,
@@ -158,7 +154,6 @@ class ProposalSaleConversionService
      *     client_phone?: string|null,
      *     seller_id?: int|null,
      *     total_cents: int,
-     *     pay_commission?: bool|null,
      *     commission_percent?: float|int,
      *     payment_method: string,
      *     installments_count?: int|null,
@@ -189,7 +184,8 @@ class ProposalSaleConversionService
 
         $installmentsCount = count($installmentPlan);
         $sellerId = isset($data['seller_id']) ? (int) $data['seller_id'] : null;
-        $commissionPercent = OptionalCommission::resolveFromRequest($data, 0.0, null, null);
+        $seller = $sellerId ? User::query()->find($sellerId) : null;
+        $commissionPercent = OptionalCommission::resolveForProposal($seller);
         $commissionCents = OptionalCommission::centsFromPercent($totalCents, $commissionPercent);
 
         return DB::transaction(function () use ($data, $createdBy, $paymentMethod, $installmentsCount, $totalCents, $installmentPlan, $commissionPercent, $commissionCents, $sellerId) {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Middleware;
 
 use App\Enums\AdminPermissionModule;
@@ -11,6 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureAdminPermission
 {
     /**
+     * @param  string  $module  Um módulo ou vários separados por vírgula (OR).
      * @param  string  $action  view|create|edit|delete ou "auto" (mapeia pelo método HTTP).
      */
     public function handle(Request $request, Closure $next, string $module, string $action = 'auto'): Response
@@ -20,8 +23,6 @@ class EnsureAdminPermission
         if (! $user || ! $user->isSuperAdmin()) {
             abort(Response::HTTP_FORBIDDEN);
         }
-
-        $moduleEnum = AdminPermissionModule::from($module);
 
         if ($action === 'auto') {
             $actionEnum = match ($request->method()) {
@@ -34,10 +35,18 @@ class EnsureAdminPermission
             $actionEnum = PermissionAction::from($action);
         }
 
-        if (! $user->canAccessAdmin($moduleEnum, $actionEnum)) {
-            abort(Response::HTTP_FORBIDDEN, 'Sem permissão para esta área.');
+        $modules = array_values(array_filter(array_map(
+            static fn (string $m) => trim($m),
+            explode(',', $module),
+        )));
+
+        foreach ($modules as $moduleValue) {
+            $moduleEnum = AdminPermissionModule::from($moduleValue);
+            if ($user->canAccessAdmin($moduleEnum, $actionEnum)) {
+                return $next($request);
+            }
         }
 
-        return $next($request);
+        abort(Response::HTTP_FORBIDDEN, 'Sem permissão para esta área.');
     }
 }

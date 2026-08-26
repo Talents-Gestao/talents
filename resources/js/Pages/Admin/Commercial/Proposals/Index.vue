@@ -1,7 +1,7 @@
 <script setup>
 import CommercialModuleNav from '@/Components/Commercial/CommercialModuleNav.vue';
-import OptionalCommissionFields from '@/Components/Commercial/OptionalCommissionFields.vue';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
+import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { formatCnpj } from '@/utils/formatCnpj';
@@ -30,11 +30,12 @@ const props = defineProps({
         default: () => ({
             all: 0,
             abertas: 0,
-            em_negociacao: 0,
-            aprovadas: 0,
+            fechadas: 0,
+            perdidas: 0,
             encerradas: 0,
         }),
     },
+    lostReasonOptions: { type: Array, default: () => [] },
     templates: { type: Array, default: () => [] },
     zapsign_configured: { type: Boolean, default: false },
     zapsignParties: {
@@ -72,21 +73,22 @@ watch(
     { deep: true },
 );
 
-const showHideEndedCheckbox = computed(() => filterState.status !== 'encerradas');
+const showHideEndedCheckbox = computed(() => {
+    const status = filterState.status;
+    return status !== 'encerradas' && status !== 'perdidas';
+});
 
 const statusChipOptions = computed(() => [
     { value: '', label: 'Todas', count: props.statusCounts.all ?? 0 },
-    { value: 'abertas', label: 'Em aberto', count: props.statusCounts.abertas ?? 0 },
-    { value: 'em_negociacao', label: 'Em negociação', count: props.statusCounts.em_negociacao ?? 0 },
-    { value: 'aprovadas', label: 'Aprovadas', count: props.statusCounts.aprovadas ?? 0 },
-    { value: 'encerradas', label: 'Encerradas', count: props.statusCounts.encerradas ?? 0 },
+    { value: 'abertas', label: 'Abertas', count: props.statusCounts.abertas ?? 0 },
+    { value: 'fechadas', label: 'Fechadas', count: props.statusCounts.fechadas ?? props.statusCounts.aprovadas ?? 0 },
+    { value: 'perdidas', label: 'Perdidas', count: props.statusCounts.perdidas ?? props.statusCounts.encerradas ?? 0 },
 ]);
 
 const statusFilterLabel = (value) => {
-    if (value === 'abertas') return 'Em aberto';
-    if (value === 'em_negociacao' || value === 'em_andamento') return 'Em negociação';
-    if (value === 'aprovadas' || value === 'fechadas') return 'Aprovada';
-    if (value === 'encerradas') return 'Encerrada';
+    if (value === 'abertas' || value === 'em_negociacao' || value === 'em_andamento') return 'Aberta';
+    if (value === 'fechadas' || value === 'aprovadas') return 'Fechada';
+    if (value === 'perdidas' || value === 'encerradas') return 'Perdida';
     return 'Todos';
 };
 
@@ -130,7 +132,7 @@ const filterQuery = () => {
     if (String(filterState.created_to ?? '') !== '') {
         params.created_to = filterState.created_to;
     }
-    if (filterState.status !== 'encerradas' && !filterState.hide_ended) {
+    if (filterState.status !== 'encerradas' && filterState.status !== 'perdidas' && !filterState.hide_ended) {
         params.hide_ended = 0;
     }
     return params;
@@ -174,10 +176,7 @@ const activeFilterChips = computed(() => {
 });
 
 const listStatusBadgeClass = (status) => {
-    if (status === 'negotiation' || status === 'in_progress') {
-        return 'bg-indigo-100 text-indigo-800';
-    }
-    if (status === 'approved' || status === 'closed') {
+    if (status === 'closed' || status === 'approved') {
         return 'bg-emerald-100 text-emerald-800';
     }
     if (status === 'ended') {
@@ -187,13 +186,11 @@ const listStatusBadgeClass = (status) => {
 };
 
 const listStatusLabel = (proposal) => proposal.list_status_label
-    ?? (proposal.list_status === 'negotiation' || proposal.list_status === 'in_progress'
-        ? 'Em negociação'
-        : proposal.list_status === 'approved' || proposal.list_status === 'closed' || proposal.is_closed
-            ? 'Aprovada'
-            : proposal.list_status === 'ended'
-                ? 'Encerrada'
-                : 'Em aberto');
+    ?? (proposal.list_status === 'closed' || proposal.list_status === 'approved' || proposal.is_closed
+        ? 'Fechada'
+        : proposal.list_status === 'ended'
+            ? 'Perdida'
+            : 'Aberta');
 
 const installmentsProgressLabel = (proposal) => {
     const paid = proposal.paid_installments;
@@ -208,19 +205,28 @@ const statusModalOpen = ref(false);
 const statusProposal = ref(null);
 const statusForm = useForm({
     status: 'open',
+    lost_reason: '',
+    lost_reason_notes: '',
 });
+
+const showLostReasonFields = computed(() => statusForm.status === 'ended');
+const showLostReasonNotes = computed(
+    () => showLostReasonFields.value && statusForm.lost_reason === 'outros',
+);
 
 const openStatusModal = (proposal) => {
     statusProposal.value = proposal;
     statusForm.clearErrors();
     statusForm.status = proposal.list_status
-        ?? (proposal.is_closed ? 'approved' : 'open');
-    if (statusForm.status === 'in_progress') {
-        statusForm.status = 'negotiation';
+        ?? (proposal.is_closed ? 'closed' : 'open');
+    if (statusForm.status === 'in_progress' || statusForm.status === 'negotiation') {
+        statusForm.status = 'open';
     }
-    if (statusForm.status === 'closed') {
-        statusForm.status = 'approved';
+    if (statusForm.status === 'approved') {
+        statusForm.status = 'closed';
     }
+    statusForm.lost_reason = proposal.lost_reason ?? '';
+    statusForm.lost_reason_notes = proposal.lost_reason_notes ?? '';
     statusModalOpen.value = true;
 };
 
@@ -238,15 +244,23 @@ const submitStatus = () => {
     if (!statusProposal.value) {
         return;
     }
-    statusForm.patch(route('admin.comercial.propostas.status', statusProposal.value.id), {
-        preserveScroll: true,
-        onSuccess: () => {
-            statusModalOpen.value = false;
-            statusProposal.value = null;
-            statusForm.reset();
-            statusForm.clearErrors();
-        },
-    });
+    statusForm
+        .transform((data) => ({
+            status: data.status,
+            lost_reason: data.status === 'ended' ? (data.lost_reason || null) : null,
+            lost_reason_notes: data.status === 'ended' && data.lost_reason === 'outros'
+                ? (data.lost_reason_notes || null)
+                : (data.status === 'ended' ? (data.lost_reason_notes || null) : null),
+        }))
+        .patch(route('admin.comercial.propostas.status', statusProposal.value.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                statusModalOpen.value = false;
+                statusProposal.value = null;
+                statusForm.reset();
+                statusForm.clearErrors();
+            },
+        });
 };
 
 const reopeningId = ref(null);
@@ -300,9 +314,9 @@ const applyFilters = () => {
 };
 
 const applyStatusChip = (status) => {
-    if (status === 'encerradas') {
+    if (status === 'encerradas' || status === 'perdidas') {
         filterState.hide_ended = false;
-    } else if (filterState.status === 'encerradas') {
+    } else if (filterState.status === 'encerradas' || filterState.status === 'perdidas') {
         filterState.hide_ended = true;
     }
     filterState.status = status;
@@ -326,7 +340,7 @@ const clearActiveFilter = (key) => {
     } else if (key === 'seller_id') {
         filterState.seller_id = '';
     } else if (key === 'status') {
-        if (filterState.status === 'encerradas') {
+        if (filterState.status === 'encerradas' || filterState.status === 'perdidas') {
             filterState.hide_ended = true;
         }
         filterState.status = '';
@@ -339,13 +353,77 @@ const clearActiveFilter = (key) => {
     applyFilters();
 };
 
+const destroyModalOpen = ref(false);
+const destroyTarget = ref(null);
+const destroying = ref(false);
+
+const destroyImpactItems = computed(() => {
+    const p = destroyTarget.value;
+    if (!p) {
+        return [];
+    }
+    const items = [];
+    if (p.is_closed || p.list_status === 'closed') {
+        items.push({
+            key: 'status',
+            label: 'Comercial · Propostas / Contratos fechados',
+            detail: 'A proposta sai do funil e dos contratos fechados.',
+            href: route('admin.comercial.propostas.index', { status: 'fechadas' }),
+        });
+    }
+    if (p.sale) {
+        const total = Number(p.total_installments) || Number(p.sale.installments_count) || 0;
+        items.push({
+            key: 'venda',
+            label: `Financeiro · Venda ${p.sale.code}`,
+            detail: 'A venda vinculada será excluída junto com a proposta.',
+            href: route('admin.financeiro.vendas.show', p.sale.id),
+        });
+        items.push({
+            key: 'receber',
+            label: 'Financeiro · Contas a receber',
+            detail: total === 1
+                ? '1 parcela desta venda será removida do saldo a receber / fluxo de caixa.'
+                : `${total || 'As'} parcelas desta venda serão removidas do saldo a receber / fluxo de caixa.`,
+            href: route('admin.financeiro.contas-a-receber.index'),
+        });
+        items.push({
+            key: 'comissao',
+            label: 'Financeiro · Comissões',
+            detail: 'Se houver comissão desta venda, ela também será removida.',
+            href: route('admin.financeiro.comissoes.index'),
+        });
+    }
+    return items;
+});
+
 const destroy = (proposal) => {
-    if (proposal.sale) {
+    destroyTarget.value = proposal;
+    destroyModalOpen.value = true;
+};
+
+const closeDestroyModal = () => {
+    if (destroying.value) {
         return;
     }
-    if (confirm(`Excluir a proposta de «${proposal.client_name}»? Essa ação não pode ser desfeita.`)) {
-        router.delete(route('admin.comercial.propostas.destroy', proposal.id), { preserveScroll: true });
+    destroyModalOpen.value = false;
+    destroyTarget.value = null;
+};
+
+const confirmDestroy = () => {
+    const proposal = destroyTarget.value;
+    if (!proposal || destroying.value) {
+        return;
     }
+    destroying.value = true;
+    router.delete(route('admin.comercial.propostas.destroy', proposal.id), {
+        preserveScroll: true,
+        onFinish: () => {
+            destroying.value = false;
+            destroyModalOpen.value = false;
+            destroyTarget.value = null;
+        },
+    });
 };
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
@@ -516,36 +594,12 @@ const convertForm = useForm({
     first_due_date: localTodayDate(),
     notes: '',
     mix_parts: [],
-    pay_commission: false,
-    commission_percent: 0,
 });
 
 const isConvertMisto = computed(() => convertForm.payment_method === 'misto');
 const isConvertRecurring = computed(() => !!convertProposal.value?.is_recurring
     && Number(convertProposal.value?.recurring_months) > 0
     && Number(convertProposal.value?.recurring_monthly_cents) > 0);
-
-const convertBaseCents = computed(() => {
-    const proposal = convertProposal.value;
-    if (!proposal) {
-        return 0;
-    }
-    if (isConvertRecurring.value) {
-        return Number(proposal.recurring_months) * Number(proposal.recurring_monthly_cents);
-    }
-    return Number(proposal.total_final_cents) || 0;
-});
-
-const convertEstimatedCommissionCents = computed(() => {
-    if (!convertForm.pay_commission) {
-        return 0;
-    }
-    const percent = Number(convertForm.commission_percent) || 0;
-    if (percent <= 0) {
-        return 0;
-    }
-    return Math.round(convertBaseCents.value * percent / 100);
-});
 
 const mixPercentSum = computed(() => (
     (convertForm.mix_parts || []).reduce((sum, part) => sum + (Number(part.percent) || 0), 0)
@@ -608,9 +662,9 @@ const canConvert = (proposal) => {
         return false;
     }
     const status = proposal.list_status
-        ?? (proposal.is_closed ? 'approved' : 'open');
+        ?? (proposal.is_closed ? 'closed' : 'open');
 
-    return status === 'approved' || status === 'closed' || proposal.is_closed;
+    return status === 'closed' || status === 'approved' || proposal.is_closed;
 };
 
 const addMixPart = () => {
@@ -679,16 +733,12 @@ const openConvertModal = (proposal) => {
     const recurringMonths = Number(proposal?.recurring_months) > 0
         ? Number(proposal.recurring_months)
         : 1;
-    const storedPercent = Number(proposal?.commission_percent) || 0;
-    const payCommission = storedPercent > 0;
     convertForm.defaults({
         payment_method: 'pix',
         installments_count: proposal?.is_recurring ? recurringMonths : 1,
         first_due_date: today,
         notes: '',
         mix_parts: [],
-        pay_commission: payCommission,
-        commission_percent: payCommission ? storedPercent : Number(props.default_commission_percent) || 0,
     });
     convertForm.reset();
     convertModalOpen.value = true;
@@ -776,11 +826,7 @@ const submitConvert = () => {
         convertForm.mix_parts = [];
     }
 
-    convertForm.transform((data) => ({
-        ...data,
-        pay_commission: !!data.pay_commission,
-        commission_percent: data.pay_commission ? Number(data.commission_percent) || 0 : 0,
-    })).post(route('admin.comercial.propostas.converter', convertProposal.value.id), {
+    convertForm.post(route('admin.comercial.propostas.converter', convertProposal.value.id), {
         preserveScroll: true,
         // Sem `only`: o redirect precisa repor a lista (venda na linha) e o flash (modal de sucesso).
         onStart: () => {
@@ -904,7 +950,7 @@ const submitConvert = () => {
                         class="rounded border-slate-300 text-talents-700 focus:ring-talents-500"
                         @change="applyFilters"
                     />
-                    Não exibir encerradas
+                    Não exibir perdidas
                 </label>
             </div>
 
@@ -1039,7 +1085,7 @@ const submitConvert = () => {
                                 <button
                                     type="button"
                                     class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium transition hover:ring-2 hover:ring-slate-200 focus:outline-none focus:ring-2 focus:ring-talents-300"
-                                    :class="listStatusBadgeClass(p.list_status ?? (p.is_closed ? 'approved' : 'open'))"
+                                    :class="listStatusBadgeClass(p.list_status ?? (p.is_closed ? 'closed' : 'open'))"
                                     title="Alterar status"
                                     :aria-label="`Alterar status de ${p.client_name}`"
                                     @click="openStatusModal(p)"
@@ -1123,7 +1169,6 @@ const submitConvert = () => {
                                         <DocumentTextIcon class="h-4 w-4" />
                                     </button>
                                     <button
-                                        v-if="!p.sale"
                                         type="button"
                                         class="rounded-lg p-1.5 text-slate-500 transition hover:bg-rose-50 hover:text-rose-700"
                                         title="Excluir"
@@ -1160,6 +1205,58 @@ const submitConvert = () => {
                 </template>
             </div>
         </div>
+
+        <Modal :show="destroyModalOpen" max-width="lg" @close="closeDestroyModal">
+            <div class="p-6">
+                <h2 class="text-lg font-semibold text-slate-900">Excluir proposta?</h2>
+                <p class="mt-2 text-sm text-slate-600">
+                    Excluir «{{ destroyTarget?.client_name }}» ({{ destroyTarget?.code }})?
+                    Esta ação não pode ser desfeita.
+                </p>
+                <template v-if="destroyImpactItems.length">
+                    <p class="mt-3 text-sm font-medium text-amber-950">
+                        Isto afetará o saldo / acompanhamento nestes pontos:
+                    </p>
+                    <ul class="mt-2 space-y-2">
+                        <li
+                            v-for="item in destroyImpactItems"
+                            :key="item.key"
+                            class="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-sm text-amber-950"
+                        >
+                            <p class="font-semibold">{{ item.label }}</p>
+                            <p class="mt-0.5 text-amber-900/80">{{ item.detail }}</p>
+                            <a
+                                v-if="item.href"
+                                :href="item.href"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="mt-1 inline-flex text-xs font-semibold text-talents-700 underline hover:text-talents-800"
+                            >
+                                Abrir área
+                            </a>
+                        </li>
+                    </ul>
+                </template>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+                        :disabled="destroying"
+                        @click="closeDestroyModal"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-60"
+                        :disabled="destroying"
+                        @click="confirmDestroy"
+                    >
+                        {{ destroying ? 'Excluindo…' : 'Excluir proposta' }}
+                    </button>
+                </div>
+            </div>
+        </Modal>
 
         <FullScreenOverlay :show="contractModalOpen" @close="closeContractModal">
             <div
@@ -1529,15 +1626,6 @@ const submitConvert = () => {
                                 class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             />
                         </div>
-
-                        <OptionalCommissionFields
-                            v-model:pay-commission="convertForm.pay_commission"
-                            v-model:commission-percent="convertForm.commission_percent"
-                            :default-percent="Number(default_commission_percent) || 0"
-                            :estimated-cents="convertEstimatedCommissionCents"
-                            :errors="convertForm.errors"
-                            :disabled="convertForm.processing"
-                        />
                     </div>
 
                     <div class="flex shrink-0 justify-end gap-2 border-t border-slate-100 bg-white px-6 py-4">
@@ -1584,7 +1672,7 @@ const submitConvert = () => {
                     {{ reopenProposalTarget.client_name }}
                 </p>
                 <p class="mt-3 text-sm text-slate-600">
-                    A proposta voltará para <strong>Em negociação</strong> e poderá ser editada novamente.
+                    A proposta voltará para <strong>Aberta</strong> e poderá ser editada novamente.
                     Se houver contrato assinado, depois das alterações gere um contrato novo para o cliente.
                 </p>
                 <div class="mt-6 flex justify-end gap-2">
@@ -1625,13 +1713,13 @@ const submitConvert = () => {
                     v-if="statusProposal?.sale"
                     class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
                 >
-                    Esta proposta já tem venda vinculada. Não é possível reabrir (voltar a Em aberto / Em negociação).
+                    Esta proposta já tem venda vinculada. Não é possível reabrir (voltar a Aberta).
                 </p>
                 <p
                     v-else-if="statusProposal?.can_reopen"
                     class="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900"
                 >
-                    Para alteração de última hora, escolha Em aberto ou Em negociação — ou use o botão Reabrir na linha.
+                    Para alteração de última hora, escolha Aberta — ou use o botão Reabrir na linha.
                 </p>
 
                 <form class="mt-4 space-y-4" @submit.prevent="submitStatus">
@@ -1656,11 +1744,57 @@ const submitConvert = () => {
                             class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             required
                         >
-                            <option value="open">Em aberto</option>
-                            <option value="negotiation">Em negociação</option>
-                            <option value="approved">Aprovada</option>
-                            <option value="ended">Encerrada</option>
+                            <option value="open">Aberta</option>
+                            <option value="closed">Fechada</option>
+                            <option value="ended">Perdida</option>
                         </select>
+                    </div>
+
+                    <div v-if="showLostReasonFields">
+                        <label
+                            for="proposal-lost-reason"
+                            class="text-xs font-medium uppercase tracking-wide text-slate-500"
+                        >
+                            Motivo da perda
+                        </label>
+                        <select
+                            id="proposal-lost-reason"
+                            v-model="statusForm.lost_reason"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            required
+                        >
+                            <option value="" disabled>Selecione o motivo</option>
+                            <option
+                                v-for="opt in lostReasonOptions"
+                                :key="opt.value"
+                                :value="opt.value"
+                            >
+                                {{ opt.label }}
+                            </option>
+                        </select>
+                        <p v-if="statusForm.errors.lost_reason" class="mt-1 text-sm text-rose-600">
+                            {{ statusForm.errors.lost_reason }}
+                        </p>
+                    </div>
+
+                    <div v-if="showLostReasonNotes">
+                        <label
+                            for="proposal-lost-reason-notes"
+                            class="text-xs font-medium uppercase tracking-wide text-slate-500"
+                        >
+                            Justificativa
+                        </label>
+                        <textarea
+                            id="proposal-lost-reason-notes"
+                            v-model="statusForm.lost_reason_notes"
+                            rows="3"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            placeholder="Descreva o motivo…"
+                            required
+                        />
+                        <p v-if="statusForm.errors.lost_reason_notes" class="mt-1 text-sm text-rose-600">
+                            {{ statusForm.errors.lost_reason_notes }}
+                        </p>
                     </div>
 
                     <div class="flex justify-end gap-2 pt-2">

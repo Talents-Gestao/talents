@@ -16,7 +16,7 @@ class ProposalUpdateStatusTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_approve_open_proposal_from_status_endpoint(): void
+    public function test_admin_can_close_open_proposal_from_status_endpoint(): void
     {
         $this->withoutVite();
 
@@ -40,11 +40,11 @@ class ProposalUpdateStatusTest extends TestCase
         $proposal->refresh();
         $this->assertTrue($proposal->is_closed);
         $this->assertNotNull($proposal->closed_at);
-        $this->assertSame(ProposalListStatus::APPROVED, $proposal->list_status);
-        $this->assertSame(ProposalListStatus::APPROVED, ProposalListStatus::for($proposal));
+        $this->assertSame(ProposalListStatus::CLOSED, $proposal->list_status);
+        $this->assertSame(ProposalListStatus::CLOSED, ProposalListStatus::for($proposal));
     }
 
-    public function test_legacy_closed_slug_normalizes_to_approved(): void
+    public function test_legacy_closed_slug_normalizes_to_closed(): void
     {
         $this->withoutVite();
 
@@ -65,11 +65,11 @@ class ProposalUpdateStatusTest extends TestCase
             ->assertRedirect(route('admin.comercial.propostas.index'));
 
         $proposal->refresh();
-        $this->assertSame(ProposalListStatus::APPROVED, $proposal->list_status);
+        $this->assertSame(ProposalListStatus::CLOSED, $proposal->list_status);
         $this->assertTrue($proposal->is_closed);
     }
 
-    public function test_admin_can_set_negotiation_without_closing(): void
+    public function test_admin_can_set_negotiation_normalizing_to_open(): void
     {
         $this->withoutVite();
 
@@ -93,19 +93,19 @@ class ProposalUpdateStatusTest extends TestCase
         $proposal->refresh();
         $this->assertFalse($proposal->is_closed);
         $this->assertNull($proposal->closed_at);
-        $this->assertSame(ProposalListStatus::NEGOTIATION, $proposal->list_status);
+        $this->assertSame(ProposalListStatus::OPEN, $proposal->list_status);
 
         $this->actingAs($admin)
             ->get(route('admin.comercial.propostas.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Commercial/Proposals/Index')
-                ->where('proposals.data.0.list_status', ProposalListStatus::NEGOTIATION)
-                ->where('proposals.data.0.list_status_label', 'Em negociação')
+                ->where('proposals.data.0.list_status', ProposalListStatus::OPEN)
+                ->where('proposals.data.0.list_status_label', 'Aberta')
             );
     }
 
-    public function test_legacy_in_progress_slug_normalizes_to_negotiation(): void
+    public function test_legacy_in_progress_slug_normalizes_to_open(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
@@ -124,7 +124,7 @@ class ProposalUpdateStatusTest extends TestCase
             ->assertRedirect();
 
         $proposal->refresh();
-        $this->assertSame(ProposalListStatus::NEGOTIATION, $proposal->list_status);
+        $this->assertSame(ProposalListStatus::OPEN, $proposal->list_status);
         $this->assertFalse($proposal->is_closed);
     }
 
@@ -134,7 +134,33 @@ class ProposalUpdateStatusTest extends TestCase
 
         $proposal = CommercialProposal::query()->create([
             'code' => 'PROP-STATUS-END',
-            'client_name' => 'Encerrada',
+            'client_name' => 'Perdida',
+            'employee_count' => 4,
+            'total_final_cents' => 5_000,
+            'is_closed' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.comercial.propostas.status', $proposal), [
+                'status' => 'ended',
+                'lost_reason' => 'preco',
+            ])
+            ->assertRedirect(route('admin.comercial.propostas.index'));
+
+        $proposal->refresh();
+        $this->assertFalse($proposal->is_closed);
+        $this->assertSame(ProposalListStatus::ENDED, $proposal->list_status);
+        $this->assertSame('preco', $proposal->lost_reason);
+        $this->assertSame('Perdida', ProposalListStatus::labelFor($proposal));
+    }
+
+    public function test_ending_proposal_requires_lost_reason(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-STATUS-END-REQ',
+            'client_name' => 'Sem Motivo',
             'employee_count' => 4,
             'total_final_cents' => 5_000,
             'is_closed' => false,
@@ -144,15 +170,72 @@ class ProposalUpdateStatusTest extends TestCase
             ->patch(route('admin.comercial.propostas.status', $proposal), [
                 'status' => 'ended',
             ])
+            ->assertSessionHasErrors('lost_reason');
+
+        $this->assertNotSame(ProposalListStatus::ENDED, $proposal->fresh()->list_status);
+    }
+
+    public function test_ending_with_outros_requires_notes(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-STATUS-END-OUTROS',
+            'client_name' => 'Outros',
+            'employee_count' => 4,
+            'total_final_cents' => 5_000,
+            'is_closed' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.comercial.propostas.status', $proposal), [
+                'status' => 'ended',
+                'lost_reason' => 'outros',
+            ])
+            ->assertSessionHasErrors('lost_reason_notes');
+
+        $this->actingAs($admin)
+            ->patch(route('admin.comercial.propostas.status', $proposal), [
+                'status' => 'ended',
+                'lost_reason' => 'outros',
+                'lost_reason_notes' => 'Cliente mudou de prioridade interna.',
+            ])
             ->assertRedirect(route('admin.comercial.propostas.index'));
 
         $proposal->refresh();
-        $this->assertFalse($proposal->is_closed);
         $this->assertSame(ProposalListStatus::ENDED, $proposal->list_status);
-        $this->assertSame('Encerrada', ProposalListStatus::labelFor($proposal));
+        $this->assertSame('outros', $proposal->lost_reason);
+        $this->assertSame('Cliente mudou de prioridade interna.', $proposal->lost_reason_notes);
     }
 
-    public function test_admin_can_reopen_approved_proposal(): void
+    public function test_reopening_clears_lost_reason(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $proposal = CommercialProposal::query()->create([
+            'code' => 'PROP-STATUS-END-CLEAR',
+            'client_name' => 'Limpar Motivo',
+            'employee_count' => 4,
+            'total_final_cents' => 5_000,
+            'is_closed' => false,
+            'list_status' => ProposalListStatus::ENDED,
+            'lost_reason' => 'preco',
+            'lost_reason_notes' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.comercial.propostas.status', $proposal), [
+                'status' => 'negotiation',
+            ])
+            ->assertRedirect(route('admin.comercial.propostas.index'));
+
+        $proposal->refresh();
+        $this->assertSame(ProposalListStatus::OPEN, $proposal->list_status);
+        $this->assertNull($proposal->lost_reason);
+        $this->assertNull($proposal->lost_reason_notes);
+    }
+
+    public function test_admin_can_reopen_closed_proposal(): void
     {
         $this->withoutVite();
 
@@ -165,7 +248,7 @@ class ProposalUpdateStatusTest extends TestCase
             'total_final_cents' => 5_000,
             'is_closed' => true,
             'closed_at' => now()->subDay(),
-            'list_status' => ProposalListStatus::APPROVED,
+            'list_status' => ProposalListStatus::CLOSED,
         ]);
 
         $this->actingAs($admin)
@@ -192,7 +275,7 @@ class ProposalUpdateStatusTest extends TestCase
             'total_final_cents' => 8_000,
             'is_closed' => true,
             'closed_at' => now(),
-            'list_status' => ProposalListStatus::APPROVED,
+            'list_status' => ProposalListStatus::CLOSED,
         ]);
 
         CommercialSale::query()->create([
@@ -216,10 +299,10 @@ class ProposalUpdateStatusTest extends TestCase
 
         $this->assertTrue($proposal->fresh()->sale()->exists());
         $this->assertTrue($proposal->fresh()->is_closed);
-        $this->assertSame(ProposalListStatus::APPROVED, $proposal->fresh()->list_status);
+        $this->assertSame(ProposalListStatus::CLOSED, $proposal->fresh()->list_status);
     }
 
-    public function test_setting_approved_persists_even_with_parcial_sale(): void
+    public function test_setting_approved_normalizes_to_closed_even_with_parcial_sale(): void
     {
         $this->withoutVite();
 
@@ -253,8 +336,8 @@ class ProposalUpdateStatusTest extends TestCase
 
         $proposal->refresh()->load('sale');
         $this->assertTrue($proposal->is_closed);
-        $this->assertSame(ProposalListStatus::APPROVED, $proposal->list_status);
-        $this->assertSame(ProposalListStatus::APPROVED, ProposalListStatus::for($proposal));
+        $this->assertSame(ProposalListStatus::CLOSED, $proposal->list_status);
+        $this->assertSame(ProposalListStatus::CLOSED, ProposalListStatus::for($proposal));
     }
 
     public function test_invalid_status_is_rejected(): void

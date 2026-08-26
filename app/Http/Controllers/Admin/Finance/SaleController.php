@@ -124,6 +124,7 @@ class SaleController extends Controller
                 'client_phone' => $sale->client_phone,
                 'seller_id' => $sale->seller_id,
                 'total_reais' => number_format(((int) $sale->total_cents) / 100, 2, '.', ''),
+                'commission_percent' => (float) ($sale->commission_percent ?? 0),
                 'payment_method' => $sale->payment_method,
                 'installments_count' => $sale->installments_count,
                 'sold_at' => $sale->sold_at?->toDateString(),
@@ -169,8 +170,7 @@ class SaleController extends Controller
 
     /**
      * @return array{
-     *   sellers: list<array{id: int, name: string, is_owner: bool}>,
-     *   default_commission_percent: float,
+     *   sellers: list<array{id: int, name: string, is_owner: bool, commission_percent: float}>,
      *   paymentMethodOptions: list<array{value: string, label: string}>
      * }
      */
@@ -181,14 +181,14 @@ class SaleController extends Controller
                 ->where('is_commercial', true)
                 ->where('is_active', true)
                 ->orderBy('name')
-                ->get(['id', 'name', 'is_owner'])
+                ->get(['id', 'name', 'is_owner', 'commission_percent'])
                 ->map(fn (User $u) => [
                     'id' => $u->id,
                     'name' => $u->name,
                     'is_owner' => (bool) $u->is_owner,
+                    'commission_percent' => (float) ($u->commission_percent ?? 0),
                 ])
                 ->all(),
-            'default_commission_percent' => (float) (\App\Models\CommercialSetting::current()->default_commission_percent ?? 0),
             'paymentMethodOptions' => [
                 ['value' => 'pix', 'label' => 'PIX'],
                 ['value' => 'boleto', 'label' => 'Boleto'],
@@ -209,8 +209,6 @@ class SaleController extends Controller
             'client_phone' => ['nullable', 'string', 'max:32'],
             'seller_id' => ['nullable', 'integer', 'exists:users,id'],
             'total_reais' => ['required', 'numeric', 'min:0.01'],
-            'pay_commission' => ['nullable', 'boolean'],
-            'commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'payment_method' => ['required', Rule::in(['pix', 'boleto', 'cartao', 'misto'])],
             'installments_count' => [
                 Rule::excludeIf($isMisto),
@@ -253,15 +251,10 @@ class SaleController extends Controller
         $payload = [
             ...$data,
             'total_cents' => (int) round(((float) $data['total_reais']) * 100),
-            'commission_percent' => OptionalCommission::resolveFromRequest(
-                $data,
-                (float) (\App\Models\CommercialSetting::current()->default_commission_percent ?? 0),
-                $seller,
-                $request->user(),
-            ),
+            'commission_percent' => OptionalCommission::resolveForProposal($seller),
             'seller_id' => filled($data['seller_id'] ?? null) ? (int) $data['seller_id'] : null,
         ];
-        unset($payload['total_reais'], $payload['pay_commission']);
+        unset($payload['total_reais']);
 
         $sale = $this->conversion->createManual($payload, $request->user()?->id);
 
@@ -302,8 +295,6 @@ class SaleController extends Controller
             // Permite vencimento passado (venda/parcelas retroativas).
             'first_due_date' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
-            'pay_commission' => ['nullable', 'boolean'],
-            'commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'mix_parts' => [
                 Rule::excludeIf($isRecurring || ! $isMisto),
                 Rule::requiredIf($isMisto),

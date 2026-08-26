@@ -10,6 +10,7 @@ import { computed, reactive, ref, watch } from 'vue';
 const props = defineProps({
     payables: { type: Object, required: true },
     filters: { type: Object, default: () => ({}) },
+    sortOptions: { type: Array, default: () => [] },
     statusOptions: { type: Array, default: () => [] },
     paymentMethods: { type: Array, default: () => [] },
     bankAccounts: { type: Array, default: () => [] },
@@ -22,6 +23,7 @@ const flashError = computed(() => page.props.flash?.error);
 const localFilters = reactive({
     q: props.filters.q ?? '',
     status: props.filters.status ?? '',
+    sort: props.filters.sort ?? 'due_date',
 });
 
 watch(
@@ -29,6 +31,7 @@ watch(
     (value) => {
         localFilters.q = value?.q ?? '';
         localFilters.status = value?.status ?? '';
+        localFilters.sort = value?.sort ?? 'due_date';
     },
     { deep: true },
 );
@@ -39,12 +42,19 @@ const applyFilters = () => {
         {
             q: localFilters.q || undefined,
             status: localFilters.status || undefined,
+            sort: localFilters.sort && localFilters.sort !== 'due_date' ? localFilters.sort : undefined,
         },
         { preserveState: true, replace: true },
     );
 };
 
-const formatDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR') : '—');
+const formatDate = (iso) => {
+    if (!iso) {
+        return '—';
+    }
+    const day = String(iso).slice(0, 10);
+    return new Date(`${day}T12:00:00`).toLocaleDateString('pt-BR');
+};
 
 const statusClass = (status) =>
     ({
@@ -126,7 +136,7 @@ const remove = (id) => {
         </div>
 
         <form
-            class="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-[1fr_12rem_auto]"
+            class="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-[1fr_12rem_14rem_auto]"
             @submit.prevent="applyFilters"
         >
             <input
@@ -142,6 +152,13 @@ const remove = (id) => {
                 <option value="">Todos os status</option>
                 <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
+            <select
+                v-model="localFilters.sort"
+                class="rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/60"
+                @change="applyFilters"
+            >
+                <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
             <PrimaryButton type="submit">Filtrar</PrimaryButton>
         </form>
 
@@ -155,6 +172,7 @@ const remove = (id) => {
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Título</th>
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Vencimento</th>
+                            <th class="px-4 py-3 text-left font-medium text-slate-700">Pagamento</th>
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Valor</th>
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Conta de origem</th>
                             <th class="px-4 py-3 text-left font-medium text-slate-700">Status</th>
@@ -174,6 +192,7 @@ const remove = (id) => {
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-slate-700">{{ formatDate(item.due_date) }}</td>
+                            <td class="px-4 py-3 text-slate-700">{{ formatDate(item.paid_at) }}</td>
                             <td class="px-4 py-3 font-medium text-slate-900">{{ formatBRL(item.amount_cents) }}</td>
                             <td class="px-4 py-3 text-slate-700">
                                 {{ item.bank_account?.name || item.payment_method?.name || '—' }}

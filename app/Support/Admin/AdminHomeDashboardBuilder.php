@@ -7,6 +7,7 @@ namespace App\Support\Admin;
 use App\Enums\FinancePayableStatus;
 use App\Enums\HiringProcessStage;
 use App\Enums\LandingInterestSource;
+use App\Enums\ProposalLostReason;
 use App\Models\AdminDashboardSettings;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
@@ -38,7 +39,7 @@ final class AdminHomeDashboardBuilder
      *     leads_by_source: list<array{key: string, label: string, count: int}>,
      *     leads_this_month: int,
      *     funnel: list<array{key: string, label: string, count: int, href: string}>,
-     *     funnel_ended_closers: list<array{seller_id: int|null, seller_name: string, count: int}>,
+     *     funnel_lost: array{count: int, href: string, items: list<array{key: string, name: string, count: int, responses: list<array<string, mixed>>}>},
      *     monthly_goal: array{current_cents: int, goal_cents: int, percent: float}
      * }
      */
@@ -160,10 +161,10 @@ final class AdminHomeDashboardBuilder
                 'methodology_active' => $activeMethodology,
             ],
             'leads_by_source' => $leadsBySource,
-            // Contexto do mês: não entra nas % do funil (unidade ≠ proposta).
+            // Contexto do mês: também é a base (%) do funil comercial.
             'leads_this_month' => $leadsThisMonth,
             'funnel' => $funnelPayload['stages'],
-            'funnel_ended_closers' => $funnelPayload['ended_closers'],
+            'funnel_lost' => $funnelPayload['lost'],
             'monthly_goal' => [
                 'current_cents' => $revenueMonthCents,
                 'goal_cents' => $goalCents,
@@ -291,138 +292,150 @@ final class AdminHomeDashboardBuilder
     }
 
     /**
-     * Funil comercial (cohort do mês): propostas criadas no mês corrente.
+     * Funil comercial (mês corrente): gaps do processo de vendas.
      *
-     * Unidade = CommercialProposal com created_at no intervalo do mês.
-     * % de cada etapa = count / tamanho do cohort (etapa «Proposta» = 100%).
-     * Leads e reuniões de calendário NÃO entram neste funil (leads ficam no widget de origem).
-     *
-     * Etapas (não são necessariamente exclusivas — uma proposta aprovada com venda conta em ambas):
-     * - Proposta: todas do cohort
-     * - Negociação: ProposalListStatus::NEGOTIATION
-     * - Aprovada: ProposalListStatus::APPROVED (ou is_closed legado)
-     * - Venda: tem CommercialSale vinculada
-     * - Encerrada: ProposalListStatus::ENDED (perda / fora do pipeline)
-     *
-     * Nota sobre closed_at: a data de negócio do fechamento é closed_at. Neste funil (cohort por
-     * created_at), «Aprovada» usa o status atual da proposta do cohort — tipicamente criada e
-     * aprovada no mesmo mês. Uma métrica separada «fechou no mês» (propostas de qualquer cohort
-     * com closed_at no mês) pode usar closed_at; não misturar com este funil.
+     * Contagens do mês (volumes reais). A % no front é conversão acumulada
+     * (produto das taxas entre etapas consecutivas) — só diminui ou estabiliza.
+     * - Leads: landing_interest_submissions do mês
+     * - Qualificação: leads do mês com is_qualified = true
+     * - Proposta: commercial_proposals criadas no mês
+     * - Fechada: propostas do cohort aprovadas OU com venda (sem double-count)
+     * - Perdido (card): propostas do cohort com list_status ended
      *
      * @return array{
      *     stages: list<array{key: string, label: string, count: int, href: string}>,
-     *     ended_closers: list<array{seller_id: int|null, seller_name: string, count: int}>
+     *     lost: array{count: int, href: string, items: list<array{key: string, name: string, count: int, responses: list<array<string, mixed>>}>}
      * }
      */
     private function proposalFunnelForMonth(Carbon $monthStart, Carbon $monthEnd): array
     {
-        $cohort = CommercialProposal::query()
-            ->with([
-                'sale:id,proposal_id,status',
-                'seller:id,name',
-            ])
-            ->whereBetween('created_at', [$monthStart, $monthEnd])
-            ->get(['id', 'is_closed', 'list_status', 'closed_at', 'seller_id']);
-
-        $cohortSize = $cohort->count();
-
-        $negotiation = 0;
-        $approved = 0;
-        $withSale = 0;
-        $ended = 0;
-        /** @var array<string, array{seller_id: int|null, seller_name: string, count: int}> $endedBySeller */
-        $endedBySeller = [];
-
-        foreach ($cohort as $proposal) {
-            $status = ProposalListStatus::for($proposal);
-
-            if ($status === ProposalListStatus::NEGOTIATION) {
-                $negotiation++;
-            }
-            if ($status === ProposalListStatus::APPROVED || $proposal->is_closed) {
-                $approved++;
-            }
-            if ($proposal->sale !== null) {
-                $withSale++;
-            }
-            if ($status === ProposalListStatus::ENDED) {
-                $ended++;
-                $sellerId = $proposal->seller_id !== null ? (int) $proposal->seller_id : null;
-                $bucketKey = $sellerId !== null ? 'u:'.$sellerId : 'none';
-                if (! isset($endedBySeller[$bucketKey])) {
-                    $endedBySeller[$bucketKey] = [
-                        'seller_id' => $sellerId,
-                        'seller_name' => $proposal->seller?->name ?: 'Sem vendedor',
-                        'count' => 0,
-                    ];
-                }
-                $endedBySeller[$bucketKey]['count']++;
-            }
-        }
-
         $from = $monthStart->toDateString();
         $to = $monthEnd->toDateString();
 
+        $leadsCount = (int) LandingInterestSubmission::query()
+            ->whereBetween('created_at', [$monthStart, $monthEnd])
+            ->count();
+
+        $qualifiedCount = (int) LandingInterestSubmission::query()
+            ->whereBetween('created_at', [$monthStart, $monthEnd])
+            ->where('is_qualified', true)
+            ->count();
+
+        $cohort = CommercialProposal::query()
+            ->with([
+                'sale:id,proposal_id',
+                'seller:id,name',
+            ])
+            ->whereBetween('created_at', [$monthStart, $monthEnd])
+            ->get(['id', 'code', 'client_name', 'is_closed', 'list_status', 'lost_reason', 'lost_reason_notes', 'seller_id', 'created_at']);
+
+        $proposalCount = $cohort->count();
+
+        $closedCount = 0;
+        $lostCount = 0;
+        /** @var array<string, array{name: string, responses: list<array<string, mixed>>}> $lostByClient */
+        $lostByClient = [];
+
+        foreach ($cohort as $proposal) {
+            $status = ProposalListStatus::for($proposal);
+            $hasSale = $proposal->sale !== null;
+
+            if ($status !== ProposalListStatus::ENDED
+                && ($status === ProposalListStatus::CLOSED || $proposal->is_closed || $hasSale)
+            ) {
+                $closedCount++;
+            }
+
+            if ($status === ProposalListStatus::ENDED) {
+                $lostCount++;
+                $clientName = trim((string) ($proposal->client_name ?? '')) !== ''
+                    ? (string) $proposal->client_name
+                    : 'Cliente sem nome';
+                $bucketKey = mb_strtolower($clientName);
+                $reasonKey = is_string($proposal->lost_reason) && $proposal->lost_reason !== ''
+                    ? $proposal->lost_reason
+                    : null;
+                $reasonLabel = $reasonKey !== null
+                    ? (ProposalLostReason::tryFrom($reasonKey)?->label() ?? $reasonKey)
+                    : 'Sem motivo';
+
+                if (! isset($lostByClient[$bucketKey])) {
+                    $lostByClient[$bucketKey] = [
+                        'name' => $clientName,
+                        'responses' => [],
+                    ];
+                }
+
+                $lostByClient[$bucketKey]['responses'][] = [
+                    'id' => (int) $proposal->id,
+                    'code' => (string) ($proposal->code ?? ''),
+                    'lost_reason' => $reasonKey,
+                    'lost_reason_label' => $reasonLabel,
+                    'lost_reason_notes' => $proposal->lost_reason_notes,
+                    'seller_name' => $proposal->seller?->name ?: 'Sem vendedor',
+                    'created_at' => $proposal->created_at?->toIso8601String(),
+                ];
+            }
+        }
+
         $stages = [
+            [
+                'key' => 'leads',
+                'label' => 'Leads',
+                'count' => $leadsCount,
+                'href' => route('admin.landing-interest.index'),
+            ],
+            [
+                'key' => 'qualified',
+                'label' => 'Qualificação',
+                'count' => $qualifiedCount,
+                'href' => route('admin.landing-interest.index'),
+            ],
             [
                 'key' => 'proposal',
                 'label' => 'Proposta',
-                'count' => $cohortSize,
+                'count' => $proposalCount,
                 'href' => $this->proposalsIndexHref([
                     'created_from' => $from,
                     'created_to' => $to,
                 ]),
             ],
             [
-                'key' => 'negotiation',
-                'label' => 'Negociação',
-                'count' => $negotiation,
+                'key' => 'closed',
+                'label' => 'Fechada',
+                'count' => $closedCount,
                 'href' => $this->proposalsIndexHref([
-                    'status' => 'em_negociacao',
-                    'created_from' => $from,
-                    'created_to' => $to,
-                ]),
-            ],
-            [
-                'key' => 'approved',
-                'label' => 'Aprovada',
-                'count' => $approved,
-                'href' => $this->proposalsIndexHref([
-                    'status' => 'aprovadas',
-                    'created_from' => $from,
-                    'created_to' => $to,
-                ]),
-            ],
-            [
-                'key' => 'sale',
-                'label' => 'Venda',
-                'count' => $withSale,
-                'href' => $this->proposalsIndexHref([
-                    'sale_situation' => 'with_sale',
-                    'created_from' => $from,
-                    'created_to' => $to,
-                ]),
-            ],
-            [
-                'key' => 'ended',
-                'label' => 'Encerrada',
-                'count' => $ended,
-                'href' => $this->proposalsIndexHref([
-                    'status' => 'encerradas',
+                    'status' => 'fechadas',
                     'created_from' => $from,
                     'created_to' => $to,
                 ]),
             ],
         ];
 
-        $endedClosers = collect($endedBySeller)
+        $lostItems = collect($lostByClient)
+            ->map(static function (array $group, string $key): array {
+                return [
+                    'key' => $key,
+                    'name' => $group['name'],
+                    'count' => count($group['responses']),
+                    'responses' => $group['responses'],
+                ];
+            })
             ->sortByDesc('count')
             ->values()
             ->all();
 
         return [
             'stages' => $stages,
-            'ended_closers' => $endedClosers,
+            'lost' => [
+                'count' => $lostCount,
+                'href' => $this->proposalsIndexHref([
+                    'status' => 'perdidas',
+                    'created_from' => $from,
+                    'created_to' => $to,
+                ]),
+                'items' => $lostItems,
+            ],
         ];
     }
 

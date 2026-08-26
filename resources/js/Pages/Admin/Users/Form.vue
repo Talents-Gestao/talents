@@ -1,5 +1,6 @@
 <script setup>
 import FormPageHeader from '@/Components/FormPageHeader.vue';
+import OptionalCommissionFields from '@/Components/Commercial/OptionalCommissionFields.vue';
 import PermissionsMatrix from '@/Components/PermissionsMatrix.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
@@ -8,6 +9,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
 
 const props = defineProps({
     mode: String,
@@ -29,12 +31,22 @@ const initialPermissions = () => {
     return [...(props.defaultPermissions ?? [])];
 };
 
+const initialPercent = Number(props.user?.commission_percent ?? 0) || 0;
+const payCommission = ref(initialPercent > 0);
+
 const form = useForm({
     name: props.user?.name ?? '',
     email: props.user?.email ?? '',
     is_active: props.user?.is_active ?? true,
     is_commercial: props.user?.is_commercial ?? false,
+    commission_percent: initialPercent,
     permissions: initialPermissions(),
+});
+
+watch(payCommission, (enabled) => {
+    if (!enabled) {
+        form.commission_percent = 0;
+    }
 });
 
 const grantAll = () => {
@@ -58,6 +70,9 @@ const clearAll = () => {
 };
 
 const submit = () => {
+    if (!payCommission.value) {
+        form.commission_percent = 0;
+    }
     if (props.mode === 'create') {
         form.post(route('admin.users.store'));
     } else {
@@ -115,6 +130,14 @@ const submit = () => {
             </div>
             <InputError class="mt-1" :message="form.errors.is_commercial" />
 
+            <OptionalCommissionFields
+                v-model:pay-commission="payCommission"
+                v-model:commission-percent="form.commission_percent"
+                :editable-percent="true"
+                :errors="form.errors"
+                :disabled="form.processing"
+            />
+
             <div v-if="isOwner" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
                 <p class="font-semibold">Proprietário — acesso total</p>
                 <p class="mt-1 text-amber-900/90">
@@ -128,7 +151,7 @@ const submit = () => {
                     <div>
                         <InputLabel value="Permissões do painel Admin" />
                         <p class="mt-1 text-sm text-slate-600">
-                            Marque o que este colaborador pode ver e fazer. Sem «Financeiro», o módulo não aparece no menu.
+                            Marque o que este colaborador pode ver e fazer em cada tela. Sem o item marcado, a tela não aparece no menu.
                         </p>
                     </div>
                     <div class="flex flex-wrap gap-2">

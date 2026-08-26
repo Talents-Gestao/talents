@@ -20,7 +20,7 @@ class LandingInterestAdminStoreTest extends TestCase
     public function test_super_admin_can_store_lead_manually(): void
     {
         Mail::fake();
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
         $response = $this->actingAs($admin)->post(route('admin.landing-interest.store'), [
             'name' => 'Lead Telefone',
@@ -47,7 +47,7 @@ class LandingInterestAdminStoreTest extends TestCase
     public function test_manual_lead_requires_source(): void
     {
         Mail::fake();
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
         $this->actingAs($admin)->post(route('admin.landing-interest.store'), [
             'name' => 'Sem origem',
@@ -78,7 +78,7 @@ class LandingInterestAdminStoreTest extends TestCase
 
     public function test_index_lists_source_label(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         LandingInterestSubmission::query()->create([
             'name' => 'Ana',
             'email' => 'ana@example.com',
@@ -99,7 +99,7 @@ class LandingInterestAdminStoreTest extends TestCase
 
     public function test_super_admin_can_update_admin_notes(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $lead = LandingInterestSubmission::query()->create([
             'name' => 'Bruno',
             'email' => 'bruno@example.com',
@@ -129,7 +129,7 @@ class LandingInterestAdminStoreTest extends TestCase
 
     public function test_super_admin_can_destroy_lead(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $lead = LandingInterestSubmission::query()->create([
             'name' => 'Carla',
             'email' => 'carla@example.com',
@@ -177,5 +177,37 @@ class LandingInterestAdminStoreTest extends TestCase
             'id' => $lead->id,
             'email' => 'diego@example.com',
         ]);
+    }
+
+    public function test_super_admin_can_mark_lead_as_qualified(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $lead = LandingInterestSubmission::query()->create([
+            'name' => 'Qualificar',
+            'email' => 'qualificar@example.com',
+            'source' => LandingInterestSource::Site,
+            'is_qualified' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.landing-interest.update', $lead), [
+                'admin_notes' => 'Reunião ok',
+                'is_qualified' => true,
+            ])
+            ->assertRedirect(route('admin.landing-interest.index'));
+
+        $lead->refresh();
+        $this->assertTrue($lead->is_qualified);
+        $this->assertSame('Reunião ok', $lead->admin_notes);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.landing-interest.update', $lead), [
+                'admin_notes' => 'Reunião ok',
+                'is_qualified' => null,
+            ])
+            ->assertRedirect(route('admin.landing-interest.index'));
+
+        $this->assertNull($lead->fresh()->is_qualified);
     }
 }
