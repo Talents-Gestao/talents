@@ -23,13 +23,7 @@ final class HiringProcessStageRecorder
         ?int $userId,
         bool $onlyIfFilled = false,
     ): ?HiringProcessStageEntry {
-        $notes = array_key_exists('notes', $payload ?? [])
-            ? $this->normalizeNotes($payload['notes'] ?? null)
-            : $this->normalizeNotes($process->notes);
-
-        $candidatesCount = array_key_exists('candidates_count', $payload ?? [])
-            ? $this->normalizeCandidatesCount($payload['candidates_count'] ?? null)
-            : $process->candidates_count;
+        [$notes, $candidatesCount] = $this->resolveStageSnapshot($process, $payload);
 
         if ($onlyIfFilled && $notes === null && $candidatesCount === null) {
             return null;
@@ -189,5 +183,30 @@ final class HiringProcessStageRecorder
         }
 
         return (int) $count;
+    }
+
+    /**
+     * Monta o snapshot da ficha da etapa atual: formulário (quando enviado),
+     * rascunho persistido no processo ou entrada já gravada nesta etapa.
+     *
+     * @param  array{notes?: mixed, candidates_count?: mixed}|null  $payload
+     * @return array{0: string|null, 1: int|null}
+     */
+    private function resolveStageSnapshot(HiringProcess $process, ?array $payload): array
+    {
+        $existing = HiringProcessStageEntry::query()
+            ->where('hiring_process_id', $process->id)
+            ->where('stage', $process->current_stage->value)
+            ->first();
+
+        $notes = $payload !== null && array_key_exists('notes', $payload)
+            ? $this->normalizeNotes($payload['notes'])
+            : ($this->normalizeNotes($process->notes) ?? $existing?->notes);
+
+        $candidatesCount = $payload !== null && array_key_exists('candidates_count', $payload)
+            ? $this->normalizeCandidatesCount($payload['candidates_count'])
+            : ($process->candidates_count ?? $existing?->candidates_count);
+
+        return [$notes, $candidatesCount !== null ? (int) $candidatesCount : null];
     }
 }

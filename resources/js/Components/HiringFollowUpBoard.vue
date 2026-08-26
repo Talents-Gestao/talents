@@ -14,6 +14,7 @@ import {
     Bars3Icon,
     BuildingOffice2Icon,
     ChevronDownIcon,
+    ClockIcon,
     MagnifyingGlassIcon,
     PlusIcon,
     TrashIcon,
@@ -217,7 +218,7 @@ const saveProcessFields = (processId) => {
         preserveScroll: true,
         onError: (errors) => {
             draft.error =
-                errors?.candidates_count || errors?.notes || 'Não foi possível guardar.';
+                errors?.candidates_count || errors?.notes || 'Não foi possível salvar.';
         },
         onFinish: () => {
             draft.saving = false;
@@ -287,8 +288,21 @@ const destroyProcess = (processId) => {
 
 const commentsStoreUrl = (processId) => route(props.routes.comments_store, processId);
 
+const currentStageOrder = (process) =>
+    props.stages.find((s) => s.value === process.current_stage)?.order ?? 0;
+
 const pastStageEntries = (process) =>
-    (process.stage_entries ?? []).filter((e) => e.stage !== process.current_stage);
+    (process.stage_entries ?? [])
+        .filter((entry) => (entry.stage_order ?? 0) < currentStageOrder(process))
+        .sort((a, b) => (a.stage_order ?? 0) - (b.stage_order ?? 0));
+
+const stageHistoryLabel = (process) => {
+    const n = pastStageEntries(process).length;
+    if (n === 0) {
+        return 'Histórico (etapas anteriores)';
+    }
+    return n === 1 ? 'Histórico · 1 etapa' : `Histórico · ${n} etapas`;
+};
 
 // Controla quais cards estão expandidos. Por padrão todos fechados.
 const expandedIds = ref(new Set());
@@ -689,51 +703,72 @@ watch(
                                     </p>
                                 </div>
 
-                                <!-- Histórico das etapas anteriores -->
-                                <div
-                                    v-if="pastStageEntries(p).length"
-                                    class="mt-4 space-y-2 rounded-xl border border-slate-100 bg-white p-3"
+                                <!-- Histórico das etapas anteriores (fichas já concluídas) -->
+                                <details
+                                    class="group mt-4 overflow-hidden rounded-xl border border-slate-200/90 bg-white open:border-talents-200 open:shadow-sm"
+                                    :open="pastStageEntries(p).length > 0 || undefined"
                                 >
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                        Histórico das etapas
-                                    </p>
-                                    <ul class="space-y-2">
-                                        <li
-                                            v-for="entry in pastStageEntries(p)"
-                                            :key="entry.id"
-                                            class="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5"
-                                        >
-                                            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
-                                                <span class="font-semibold text-slate-800">{{ entry.stage_label }}</span>
-                                                <span v-if="entry.created_by_name">· {{ entry.created_by_name }}</span>
-                                                <span v-if="entry.updated_at">
-                                                    · {{ formatDateTime(entry.updated_at) }}
-                                                </span>
-                                            </div>
-                                            <p
-                                                v-if="entry.candidates_count !== null && entry.candidates_count !== undefined"
-                                                class="mt-1.5 inline-flex items-center rounded-full bg-talents-50 px-2 py-0.5 text-xs font-semibold text-talents-800"
-                                            >
-                                                {{ entry.candidates_count }}
-                                                {{ Number(entry.candidates_count) === 1 ? 'candidato' : 'candidatos' }}
-                                            </p>
-                                            <p
-                                                v-if="entry.notes"
-                                                class="mt-1.5 whitespace-pre-wrap text-sm text-slate-700"
-                                            >
-                                                {{ entry.notes }}
-                                            </p>
-                                            <p
-                                                v-if="!entry.notes && (entry.candidates_count === null || entry.candidates_count === undefined)"
-                                                class="mt-1 text-sm text-slate-500"
-                                            >
-                                                Sem informações registradas.
-                                            </p>
-                                        </li>
-                                    </ul>
-                                </div>
+                                    <summary
+                                        class="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 transition hover:bg-talents-50/50 marker:content-none [&::-webkit-details-marker]:hidden"
+                                    >
+                                        <span class="inline-flex min-w-0 items-center gap-2 text-sm font-semibold text-talents-700">
+                                            <ClockIcon class="h-4 w-4 shrink-0" aria-hidden="true" />
+                                            <span class="truncate">{{ stageHistoryLabel(p) }}</span>
+                                        </span>
+                                        <ChevronDownIcon
+                                            class="h-4 w-4 shrink-0 text-talents-500 transition-transform duration-200 group-open:rotate-180"
+                                            aria-hidden="true"
+                                        />
+                                    </summary>
 
-                                <!-- Observações / mensagens append-only -->
+                                    <div class="space-y-2 border-t border-slate-100 px-3.5 py-3">
+                                        <p class="text-xs text-slate-500">
+                                            Candidatos e comentários das etapas já concluídas. Ao clicar em
+                                            <span class="font-semibold">Avançar</span>, a ficha da etapa atual é
+                                            registrada aqui.
+                                        </p>
+                                        <ul v-if="pastStageEntries(p).length" class="space-y-2">
+                                            <li
+                                                v-for="entry in pastStageEntries(p)"
+                                                :key="entry.id"
+                                                class="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5"
+                                            >
+                                                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+                                                    <span class="font-semibold text-slate-800">{{ entry.stage_label }}</span>
+                                                    <span v-if="entry.created_by_name">· {{ entry.created_by_name }}</span>
+                                                    <span v-if="entry.updated_at">
+                                                        · {{ formatDateTime(entry.updated_at) }}
+                                                    </span>
+                                                </div>
+                                                <p
+                                                    v-if="entry.candidates_count !== null && entry.candidates_count !== undefined"
+                                                    class="mt-1.5 inline-flex items-center rounded-full bg-talents-50 px-2 py-0.5 text-xs font-semibold text-talents-800"
+                                                >
+                                                    {{ entry.candidates_count }}
+                                                    {{ Number(entry.candidates_count) === 1 ? 'candidato' : 'candidatos' }}
+                                                </p>
+                                                <p
+                                                    v-if="entry.notes"
+                                                    class="mt-1.5 whitespace-pre-wrap text-sm text-slate-700"
+                                                >
+                                                    {{ entry.notes }}
+                                                </p>
+                                                <p
+                                                    v-if="!entry.notes && (entry.candidates_count === null || entry.candidates_count === undefined)"
+                                                    class="mt-1 text-sm text-slate-500"
+                                                >
+                                                    Sem informações registradas nesta etapa.
+                                                </p>
+                                            </li>
+                                        </ul>
+                                        <p v-else class="text-sm text-slate-500">
+                                            Ainda não há etapas anteriores registradas. Preencha a ficha acima e avance
+                                            o processo para ver o histórico aqui.
+                                        </p>
+                                    </div>
+                                </details>
+
+                                <!-- Mensagens livres do processo -->
                                 <div class="mt-4">
                                     <HiringProcessObservations
                                         :process-id="p.id"
