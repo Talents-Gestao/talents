@@ -125,7 +125,7 @@ class UnreadNoticeCounter
     }
 
     /**
-     * Resolve a que conjunto de avisos o utilizador tem acesso no contexto ativo.
+     * Resolve a que conjunto de avisos o usuário tem acesso no contexto ativo.
      *
      * @return array{0: CompanyNoticeAudience, 1: int|null}|null
      */

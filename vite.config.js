@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, projectRoot, '');
     const devServerPort = Number(env.VITE_DEV_SERVER_PORT || process.env.VITE_DEV_SERVER_PORT || 5173);
     const hmrHost = env.VITE_HMR_HOST || process.env.VITE_HMR_HOST || 'localhost';
-    // Docker Compose passa VITE_USE_POLLING via process.env; loadEnv só lê ficheiros .env
+    // Docker Compose passa VITE_USE_POLLING via process.env; loadEnv só lê arquivos .env
     const usePolling = (env.VITE_USE_POLLING ?? process.env.VITE_USE_POLLING ?? 'true') !== 'false';
 
     return {

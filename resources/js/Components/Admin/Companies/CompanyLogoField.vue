@@ -74,13 +74,13 @@ const onFileSelected = async (event) => {
     }
 
     if (!ACCEPTED.includes(file.type) && !/\.(jpe?g|png|webp)$/i.test(file.name)) {
-        localError.value = 'Use um ficheiro JPG, PNG ou WebP.';
+        localError.value = 'Use um arquivo JPG, PNG ou WebP.';
         event.target.value = '';
         return;
     }
 
     if (file.size > MAX_BYTES) {
-        localError.value = 'O ficheiro original deve ter no máximo 2 MB.';
+        localError.value = 'O arquivo original deve ter no máximo 2 MB.';
         event.target.value = '';
         return;
     }

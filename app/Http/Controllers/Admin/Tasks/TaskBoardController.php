@@ -10,7 +10,10 @@ use App\Models\TaskBoard;
 use App\Support\Tasks\BoardPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -71,7 +74,8 @@ class TaskBoardController extends Controller
         $boards = TaskBoard::query()
             ->where('is_archived', false)
             ->orderByRaw('company_id is null desc')
-            ->orderBy('name')
+            ->orderBy('position')
+            ->orderBy('id')
             ->get()
             ->map(fn (TaskBoard $board) => BoardPresenter::forAdminIndex($board));
 
@@ -113,6 +117,43 @@ class TaskBoardController extends Controller
         return redirect()
             ->route('admin.tarefas.quadros.show', $board)
             ->with('success', 'Quadro criado.');
+    }
+
+    public function reorder(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'scope' => ['required', Rule::in(['internal', 'company'])],
+            'board_ids' => ['required', 'array', 'min:1'],
+            'board_ids.*' => ['integer', 'distinct', 'exists:task_boards,id'],
+        ]);
+
+        $ids = array_map('intval', $data['board_ids']);
+
+        $scopeQuery = TaskBoard::query()->where('is_archived', false);
+        if ($data['scope'] === 'internal') {
+            $scopeQuery->whereNull('company_id');
+        } else {
+            $scopeQuery->whereNotNull('company_id');
+        }
+
+        $scopeIds = $scopeQuery->pluck('id')->map(fn ($id) => (int) $id)->sort()->values();
+        $requestedIds = collect($ids)->sort()->values();
+
+        if ($scopeIds->count() !== $requestedIds->count() || $scopeIds->all() !== $requestedIds->all()) {
+            throw ValidationException::withMessages([
+                'board_ids' => 'A lista de quadros não corresponde ao conjunto atual desta seção.',
+            ]);
+        }
+
+        DB::transaction(function () use ($ids): void {
+            $position = 1000;
+            foreach ($ids as $id) {
+                TaskBoard::query()->whereKey($id)->update(['position' => $position]);
+                $position += 1000;
+            }
+        });
+
+        return back();
     }
 
     public function show(Request $request, TaskBoard $board): Response

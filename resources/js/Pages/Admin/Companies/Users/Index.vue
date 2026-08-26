@@ -24,7 +24,7 @@ const roleLabel = (role) => {
 };
 
 const remove = (userId) => {
-    if (confirm('Remover este utilizador?')) {
+    if (confirm('Remover este usuário?')) {
         router.delete(route('admin.companies.users.destroy', [props.company.id, userId]));
     }
 };
@@ -50,7 +50,7 @@ const resendInvitation = (user) => {
 </script>
 
 <template>
-    <Head :title="'Utilizadores — ' + company.name" />
+    <Head :title="'Usuários — ' + company.name" />
 
     <AdminLayout>
         <template #header>
@@ -59,11 +59,11 @@ const resendInvitation = (user) => {
                     <Link :href="route('admin.companies.show', company.id)" class="text-sm font-medium text-talents-700 hover:underline">
                         ← Empresa
                     </Link>
-                    <h2 class="mt-1 text-xl font-semibold leading-tight text-gray-900">Utilizadores</h2>
+                    <h2 class="mt-1 text-xl font-semibold leading-tight text-gray-900">Usuários</h2>
                     <p class="text-sm text-gray-600">{{ company.name }}</p>
                 </div>
                 <Link :href="route('admin.companies.users.create', company.id)">
-                    <PrimaryButton>Novo utilizador</PrimaryButton>
+                    <PrimaryButton>Novo usuário</PrimaryButton>
                 </Link>
             </div>
         </template>
@@ -118,7 +118,7 @@ const resendInvitation = (user) => {
                                 </button>
                             </td>
                         </tr>
-                        <TableEmptyRow v-if="!users.length" :colspan="5" message="Nenhum utilizador encontrado." />
+                        <TableEmptyRow v-if="!users.length" :colspan="5" message="Nenhum usuário encontrado." />
                     </tbody>
                 </table>
             </div>

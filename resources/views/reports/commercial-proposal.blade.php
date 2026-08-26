@@ -121,7 +121,7 @@
             margin: 0 0 4px;
         }
 
-        /* Títulos de secção — coluna alinhada ao conteúdo */
+        /* Títulos de seção — coluna alinhada ao conteúdo */
         .pdf-section {
             margin: 16px 0 0;
             padding: 0;
@@ -351,7 +351,7 @@
             line-height: 1.55;
         }
 
-        /* Rodapé fixo — tagline → contactos → banda */
+        /* Rodapé fixo — tagline → contatos → banda */
         .footer-wrap {
             position: fixed;
             bottom: 7mm;

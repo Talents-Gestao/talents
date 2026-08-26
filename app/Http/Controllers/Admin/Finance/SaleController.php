@@ -25,7 +25,11 @@ class SaleController extends Controller
     public function index(Request $request): Response
     {
         $q = CommercialSale::query()
-            ->with(['seller:id,name', 'proposal:id,code'])
+            ->with([
+                'seller:id,name',
+                'proposal:id,code',
+                'commission:id,sale_id,amount_cents',
+            ])
             ->withCount([
                 'installments as pending_installments_count' => fn ($query) => $query
                     ->where('status', 'pendente'),
@@ -80,6 +84,7 @@ class SaleController extends Controller
 
         return Inertia::render('Admin/Finance/Sales/Show', [
             'sale' => $sale,
+            'finance_impact' => $this->financeImpactPayload($sale),
             'paymentMethods' => [
                 'pix' => 'PIX',
                 'boleto' => 'Boleto',
@@ -109,7 +114,7 @@ class SaleController extends Controller
 
     public function edit(CommercialSale $sale): Response
     {
-        $sale->load(['seller:id,name', 'proposal:id,code']);
+        $sale->load(['seller:id,name', 'proposal:id,code', 'commission']);
 
         return Inertia::render('Admin/Finance/Sales/Form', [
             'mode' => 'edit',
@@ -131,6 +136,7 @@ class SaleController extends Controller
                 'notes' => $sale->notes,
                 'status' => $sale->status,
                 'is_recurring' => (bool) $sale->is_recurring,
+                'finance_impact' => $this->financeImpactPayload($sale),
             ],
             ...$this->saleFormOptions(),
         ]);
@@ -166,6 +172,92 @@ class SaleController extends Controller
         return redirect()
             ->route('admin.financeiro.vendas.show', $sale)
             ->with('success', "Venda {$sale->code} atualizada.");
+    }
+
+    public function destroy(CommercialSale $sale): RedirectResponse
+    {
+        $code = (string) $sale->code;
+        $proposalId = $sale->proposal_id ? (int) $sale->proposal_id : null;
+
+        $sale->delete();
+
+        // Proposta permanece (fechada, sem venda) — pode reconverter depois.
+        $redirect = redirect()
+            ->route('admin.financeiro.vendas.index')
+            ->with('success', "Venda {$code} removida.");
+
+        if ($proposalId) {
+            $redirect->with(
+                'info',
+                'A proposta vinculada permanece no Comercial (sem venda). Você pode convertê-la novamente se necessário.',
+            );
+        }
+
+        return $redirect;
+    }
+
+    /**
+     * Áreas financeiras/comerciais impactadas ao editar ou excluir a venda.
+     *
+     * @return array{
+     *     requires_warning: bool,
+     *     has_proposal: bool,
+     *     has_commission: bool,
+     *     installments_count: int,
+     *     items: list<array{key: string, label: string, detail: string, href: string|null}>
+     * }
+     */
+    private function financeImpactPayload(CommercialSale $sale): array
+    {
+        if (! $sale->relationLoaded('proposal')) {
+            $sale->load('proposal:id,code');
+        }
+        if (! $sale->relationLoaded('commission')) {
+            $sale->load('commission');
+        }
+
+        $installments = (int) ($sale->installments_count
+            ?? $sale->installments()->count());
+        $hasCommission = $sale->commission !== null
+            && (int) $sale->commission->amount_cents > 0;
+        $hasProposal = $sale->proposal_id !== null && $sale->proposal !== null;
+
+        $items = [
+            [
+                'key' => 'receber',
+                'label' => 'Financeiro · Contas a receber',
+                'detail' => $installments === 1
+                    ? '1 parcela desta venda entra no saldo a receber / fluxo de caixa.'
+                    : "{$installments} parcelas desta venda entram no saldo a receber / fluxo de caixa.",
+                'href' => route('admin.financeiro.contas-a-receber.index'),
+            ],
+        ];
+
+        if ($hasCommission) {
+            $items[] = [
+                'key' => 'comissao',
+                'label' => 'Financeiro · Comissões',
+                'detail' => 'Há comissão vinculada a esta venda.',
+                'href' => route('admin.financeiro.comissoes.index'),
+            ];
+        }
+
+        if ($hasProposal) {
+            $items[] = [
+                'key' => 'proposta',
+                'label' => "Comercial · Proposta {$sale->proposal->code}",
+                'detail' => 'A proposta permanece fechada. Editar a venda não altera a proposta; excluir a venda deixa a proposta sem venda vinculada.',
+                'href' => route('admin.comercial.propostas.edit', $sale->proposal),
+            ];
+        }
+
+        return [
+            'requires_warning' => true,
+            'has_proposal' => $hasProposal,
+            'has_commission' => $hasCommission,
+            'installments_count' => $installments,
+            'items' => $items,
+        ];
     }
 
     /**

@@ -385,6 +385,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::post('vendas', [FinanceSaleController::class, 'storeManual'])->name('vendas.store');
             Route::get('vendas/{sale}/editar', [FinanceSaleController::class, 'edit'])->name('vendas.edit');
             Route::put('vendas/{sale}', [FinanceSaleController::class, 'update'])->name('vendas.update');
+            Route::delete('vendas/{sale}', [FinanceSaleController::class, 'destroy'])->name('vendas.destroy');
             Route::get('vendas/{sale}', [FinanceSaleController::class, 'show'])->name('vendas.show');
         });
 
@@ -462,6 +463,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('processo-cards/{template_card}', [TasksTemplateCardController::class, 'destroy'])->name('processo-cards.destroy');
 
         Route::get('quadros/ativar', [TasksBoardActivationController::class, 'create'])->name('quadros.ativar');
+        Route::post('quadros/reordenar', [TasksTaskBoardController::class, 'reorder'])->name('quadros.reordenar');
         Route::post('processos/{template}/ativar', [TasksBoardActivationController::class, 'store'])->name('processos.ativar');
 
         Route::resource('quadros', TasksTaskBoardController::class)

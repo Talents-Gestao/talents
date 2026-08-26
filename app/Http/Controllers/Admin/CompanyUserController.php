@@ -88,7 +88,7 @@ class CompanyUserController extends Controller
             );
 
             $user = $existingUser;
-            $mailMessage = ' Utilizador vinculado à empresa (conta existente reutilizada).';
+            $mailMessage = ' Usuário vinculado à empresa (conta existente reutilizada).';
         } else {
             $user = User::create([
                 'name' => $validated['name'],
@@ -107,7 +107,7 @@ class CompanyUserController extends Controller
                 $validated['is_active'] ?? true,
             );
 
-            $mailMessage = ' Utilizador criado.';
+            $mailMessage = ' Usuário criado.';
         }
 
         if ($workspace->isCompanyUser()) {
@@ -186,7 +186,7 @@ class CompanyUserController extends Controller
 
         return redirect()
             ->route('admin.companies.users.index', $company)
-            ->with('success', 'Utilizador atualizado.');
+            ->with('success', 'Usuário atualizado.');
     }
 
     public function destroy(Company $company, User $user): RedirectResponse
@@ -210,7 +210,7 @@ class CompanyUserController extends Controller
 
         return redirect()
             ->route('admin.companies.users.index', $company)
-            ->with('success', 'Utilizador removido.');
+            ->with('success', 'Usuário removido.');
     }
 
     public function resendInvitation(Company $company, User $user): RedirectResponse

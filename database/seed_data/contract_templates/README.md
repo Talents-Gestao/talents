@@ -4,7 +4,7 @@
 
 O conteúdo dos **três modelos padrão** é definido em código em `App\Support\CanonicalContractTemplates`: texto enxuto com **apenas placeholders** (`{{servicos_detalhada_html}}`, `{{total_reais}}`, etc.), **sem** tabelas de preço fixas do Word.
 
-Os ficheiros `.docx` nesta pasta são **arquivo de referência** (versões antigas). O `ContractTemplateSeeder` **já não** converte DOCX para HTML no deploy.
+Os arquivos `.docx` nesta pasta são **arquivo de referência** (versões antigas). O `ContractTemplateSeeder` **já não** converte DOCX para HTML no deploy.
 
 O **timbrado oficial** (cabeçalho/rodapé dos PDFs) está em `TIMBRADO-TALENTS-ATUALIZADO.docx`. Assets usados no DomPDF:
 

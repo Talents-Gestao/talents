@@ -300,7 +300,7 @@ const submitGoal = () => {
                         <button
                             type="button"
                             class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                            title="Repor a ordem padrão das secções e dos cards"
+                            title="Repor a ordem padrão das seções e dos cards"
                             @click="resetLayout"
                         >
                             <ArrowPathIcon class="h-4 w-4" aria-hidden="true" />
@@ -359,11 +359,11 @@ const submitGoal = () => {
                         <button
                             type="button"
                             class="dashboard-section-drag-handle mt-1 inline-flex shrink-0 cursor-grab items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-700 active:cursor-grabbing"
-                            title="Arrastar secção"
-                            aria-label="Arrastar secção"
+                            title="Arrastar seção"
+                            aria-label="Arrastar seção"
                         >
                             <Bars3Icon class="h-4 w-4" aria-hidden="true" />
-                            Mover secção
+                            Mover seção
                         </button>
                     </div>
 
@@ -395,7 +395,7 @@ const submitGoal = () => {
                                 type="button"
                                 class="dashboard-widget-drag-handle absolute z-20 cursor-grab rounded-lg border border-slate-200/80 bg-white/90 p-1 text-slate-400 shadow-sm transition hover:border-slate-300 hover:text-slate-600 active:cursor-grabbing"
                                 :class="kpiById[widgetId] ? 'right-2 top-2' : 'right-3 top-3'"
-                                title="Arrastar para outra secção ou reordenar"
+                                title="Arrastar para outra seção ou reordenar"
                                 :aria-label="kpiById[widgetId] ? 'Arrastar indicador' : 'Arrastar card'"
                                 @click.stop
                             >

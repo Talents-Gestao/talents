@@ -1365,7 +1365,7 @@ function itemDueClass(item) {
                                         {{ u.name }}
                                     </label>
                                     <p v-if="!usersForSelectedCompany.length" class="text-xs text-slate-500">
-                                        Nenhum utilizador ativo nesta empresa.
+                                        Nenhum usuário ativo nesta empresa.
                                     </p>
                                 </div>
                                 <p

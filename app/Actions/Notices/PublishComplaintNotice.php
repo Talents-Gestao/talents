@@ -42,7 +42,7 @@ class PublishComplaintNotice
         $this->publish->handle(
             companyId: (int) $complaint->company_id,
             title: 'Nova denúncia recebida',
-            body: "Foi registada uma denúncia ({$category}). Protocolo {$complaint->protocol}. "
+            body: "Foi registrada uma denúncia ({$category}). Protocolo {$complaint->protocol}. "
                 .'Acesse o canal de denúncias para acompanhar.',
             audience: CompanyNoticeAudience::Company,
             sourceType: 'complaint',

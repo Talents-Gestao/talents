@@ -211,7 +211,7 @@ class TaskModuleTest extends TestCase
         app(\App\Support\WorkspaceManager::class)->syncLegacyUserColumns($dualUser);
 
         $dualUser->refresh();
-        $this->assertNotNull($dualUser->company_id, 'Utilizador dual deve manter company_id legado após sync.');
+        $this->assertNotNull($dualUser->company_id, 'Usuário dual deve manter company_id legado após sync.');
 
         $teamUserIds = BoardPresenter::allActiveTalentsTeamUsers()->pluck('id')->all();
         $this->assertContains($dualUser->id, $teamUserIds);
@@ -887,6 +887,121 @@ class TaskModuleTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Admin/Tasks/Boards/Index')
                 ->has('boards', 1)
+            );
+    }
+
+    public function test_admin_can_reorder_internal_boards(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $first = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Zebra',
+            'is_archived' => false,
+        ]);
+        $second = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Alfa',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/quadros/reordenar', [
+                'scope' => 'internal',
+                'board_ids' => [$second->id, $first->id],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1000, $second->fresh()->position);
+        $this->assertSame(2000, $first->fresh()->position);
+
+        $this->actingAs($admin)
+            ->get('/admin/tarefas/quadros')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Tasks/Boards/Index')
+                ->where('boards.0.id', $second->id)
+                ->where('boards.1.id', $first->id)
+            );
+    }
+
+    public function test_admin_can_reorder_company_boards_without_mixing_internal(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = $this->baseCompany();
+
+        $internal = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Interno',
+            'is_archived' => false,
+            'position' => 1000,
+        ]);
+        $companyFirst = TaskBoard::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Empresa Z',
+            'is_archived' => false,
+            'position' => 2000,
+        ]);
+        $companySecond = TaskBoard::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Empresa A',
+            'is_archived' => false,
+            'position' => 3000,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/quadros/reordenar', [
+                'scope' => 'company',
+                'board_ids' => [$companySecond->id, $companyFirst->id],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1000, $internal->fresh()->position);
+        $this->assertSame(1000, $companySecond->fresh()->position);
+        $this->assertSame(2000, $companyFirst->fresh()->position);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/quadros/reordenar', [
+                'scope' => 'internal',
+                'board_ids' => [$internal->id, $companyFirst->id],
+            ])
+            ->assertSessionHasErrors('board_ids');
+
+        $this->actingAs($admin)
+            ->get('/admin/tarefas/quadros')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('boards.0.id', $internal->id)
+                ->where('boards.1.id', $companySecond->id)
+                ->where('boards.2.id', $companyFirst->id)
+            );
+    }
+
+    public function test_client_boards_index_follows_admin_position(): void
+    {
+        $company = $this->baseCompany();
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $later = TaskBoard::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Alfa',
+            'is_archived' => false,
+            'position' => 2000,
+        ]);
+        $earlier = TaskBoard::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Zebra',
+            'is_archived' => false,
+            'position' => 1000,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/client/tarefas')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Client/Tasks/Index')
+                ->where('boards.0.id', $earlier->id)
+                ->where('boards.1.id', $later->id)
             );
     }
 

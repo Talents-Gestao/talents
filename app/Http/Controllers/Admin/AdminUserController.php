@@ -97,7 +97,7 @@ class AdminUserController extends Controller
             );
 
             $user = $existingUser;
-            $mailMessage = 'Utilizador vinculado à equipe Talents (conta existente reutilizada).';
+            $mailMessage = 'Usuário vinculado à equipe Talents (conta existente reutilizada).';
         } else {
             $user = User::create([
                 'name' => $validated['name'],
@@ -118,7 +118,7 @@ class AdminUserController extends Controller
                 isActive: $validated['is_active'] ?? true,
             );
 
-            $mailMessage = 'Utilizador criado.';
+            $mailMessage = 'Usuário criado.';
         }
 
         $this->syncAdminUserPermissions->execute(
@@ -225,7 +225,7 @@ class AdminUserController extends Controller
 
         $this->workspaceManager->syncLegacyUserColumns($user);
 
-        return redirect()->route('admin.users.index')->with('success', 'Utilizador atualizado.');
+        return redirect()->route('admin.users.index')->with('success', 'Usuário atualizado.');
     }
 
     public function destroy(User $user): RedirectResponse
@@ -252,7 +252,7 @@ class AdminUserController extends Controller
             $this->workspaceManager->syncLegacyUserColumns($user);
         }
 
-        return redirect()->route('admin.users.index')->with('success', 'Utilizador removido.');
+        return redirect()->route('admin.users.index')->with('success', 'Usuário removido.');
     }
 
     public function resendInvitation(User $user): RedirectResponse

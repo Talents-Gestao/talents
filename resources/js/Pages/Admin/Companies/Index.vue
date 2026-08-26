@@ -26,7 +26,7 @@ const resendInvitation = (company) => {
     if (resendingId.value || !hasPendingRegistration(company.id)) {
         return;
     }
-    const email = company.contact_email || 'o e-mail de contacto';
+    const email = company.contact_email || 'o e-mail de contato';
     if (!confirm(`Reenviar o convite de cadastro para ${email}?`)) {
         return;
     }

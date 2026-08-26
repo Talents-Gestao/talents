@@ -70,7 +70,7 @@ final class ProposalListStatus
     }
 
     /**
-     * Lógica anterior à coluna list_status (registos legados com null).
+     * Lógica anterior à coluna list_status (registros legados com null).
      */
     public static function legacyFor(CommercialProposal $proposal): string
     {

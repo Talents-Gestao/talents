@@ -182,7 +182,7 @@ const submit = () => {
             </div>
 
             <div class="flex gap-2">
-                <PrimaryButton :disabled="form.processing">Guardar</PrimaryButton>
+                <PrimaryButton :disabled="form.processing">Salvar</PrimaryButton>
                 <Link :href="route('admin.users.index')">
                     <SecondaryButton type="button">Cancelar</SecondaryButton>
                 </Link>

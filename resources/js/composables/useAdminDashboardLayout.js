@@ -20,7 +20,7 @@ export const ADMIN_DASHBOARD_DEFAULT_SECTION_ORDER = Object.freeze([
 ]);
 
 /**
- * Ordem padrão dos widgets por secção (ids estáveis).
+ * Ordem padrão dos widgets por seção (ids estáveis).
  * @type {Readonly<Record<DashboardSectionId, ReadonlyArray<string>>>}
  */
 export const ADMIN_DASHBOARD_DEFAULT_SECTIONS = Object.freeze({
@@ -47,7 +47,7 @@ export const ADMIN_DASHBOARD_ALL_WIDGET_IDS = Object.freeze([
     ...ADMIN_DASHBOARD_DEFAULT_SECTIONS.insights,
 ]);
 
-/** Secção de origem de cada widget (para recolocar ids em falta). */
+/** Seção de origem de cada widget (para recolocar ids em falta). */
 export const ADMIN_DASHBOARD_WIDGET_HOME = Object.freeze(
     Object.fromEntries(
         Object.entries(ADMIN_DASHBOARD_DEFAULT_SECTIONS).flatMap(([sectionId, ids]) =>
@@ -94,8 +94,8 @@ function parseStoredWidgetIds(storedWidgets) {
 }
 
 /**
- * Aceita widgets em qualquer secção (arrastar entre blocos).
- * Ids em falta voltam à secção de origem; duplicados ficam só na primeira ocorrência.
+ * Aceita widgets em qualquer seção (arrastar entre blocos).
+ * Ids em falta voltam à seção de origem; duplicados ficam só na primeira ocorrência.
  *
  * @param {Partial<Record<DashboardSectionId, unknown>>} storedSections
  * @returns {Record<DashboardSectionId, string[]>}
@@ -176,7 +176,7 @@ export function mergeAdminDashboardLayout(stored) {
             kpis: sections.kpis ?? sections.indicators,
             insights: sections.insights,
         };
-        // v2 → v3: aplica nova ordem padrão das secções; mantém ordem dos widgets.
+        // v2 → v3: aplica nova ordem padrão das seções; mantém ordem dos widgets.
         storedOrder = raw.version === 3 ? raw.sectionOrder : null;
     } else {
         // v1 flat: { operation, indicators|kpis, insights }

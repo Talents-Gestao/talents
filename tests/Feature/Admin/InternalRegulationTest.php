@@ -106,7 +106,7 @@ class InternalRegulationTest extends TestCase
 
         $row = CompanyInternalRegulation::query()->create([
             'company_id' => $company->id,
-            'title' => 'Com ficheiro',
+            'title' => 'Com arquivo',
             'body_html' => '<p>x</p>',
             'file_path' => $path,
             'file_name' => 'old.pdf',
@@ -116,7 +116,7 @@ class InternalRegulationTest extends TestCase
         $this->actingAs($admin)
             ->put(route('admin.regulamento-interno.update', $row), [
                 'company_id' => $company->id,
-                'title' => 'Com ficheiro',
+                'title' => 'Com arquivo',
                 'body_html' => '<p>x</p>',
                 'is_published' => false,
                 'remove_file' => true,

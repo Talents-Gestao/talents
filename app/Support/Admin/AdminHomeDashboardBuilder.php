@@ -209,7 +209,7 @@ final class AdminHomeDashboardBuilder
     }
 
     /**
-     * Tarefas Admin (boards sem company_id) atribuídas ao utilizador, relevantes para o dia:
+     * Tarefas Admin (boards sem company_id) atribuídas ao usuário, relevantes para o dia:
      * membro do cartão, due_date <= hoje, abertas (não arquivadas / não concluídas). Limite 6.
      * Sem due_date ou sem atribuição não entram.
      *

@@ -109,7 +109,7 @@ class TaskCard extends Model
     }
 
     /**
-     * Cards visíveis para utilizadores da empresa no cliente.
+     * Cards visíveis para usuários da empresa no cliente.
      *
      * Inclui listas internas quando o cartão está atribuído à empresa (company_id)
      * e a visibilidade do cartão não é estritamente interna.

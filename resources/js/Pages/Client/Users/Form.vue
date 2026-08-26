@@ -33,14 +33,14 @@ const submit = () => {
 </script>
 
 <template>
-    <Head :title="mode === 'create' ? 'Novo utilizador' : 'Editar utilizador'" />
+    <Head :title="mode === 'create' ? 'Novo usuário' : 'Editar usuário'" />
 
     <ClientLayout>
         <template #header>
             <FormPageHeader
                 :back-href="route('client.usuarios.index')"
-                back-label="Utilizadores"
-                :title="mode === 'create' ? 'Novo utilizador' : 'Editar utilizador'"
+                back-label="Usuários"
+                :title="mode === 'create' ? 'Novo usuário' : 'Editar usuário'"
             />
         </template>
 
@@ -62,7 +62,7 @@ const submit = () => {
 
             <div>
                 <InputLabel value="Permissões por módulo" />
-                <p class="mt-1 text-sm text-gray-600">O novo utilizador terá o papel <strong>Usuário da empresa</strong> com as permissões abaixo.</p>
+                <p class="mt-1 text-sm text-gray-600">O novo usuário terá o papel <strong>Usuário da empresa</strong> com as permissões abaixo.</p>
                 <div class="mt-3">
                     <PermissionsMatrix
                         v-model="form.permissions"
@@ -74,7 +74,7 @@ const submit = () => {
             </div>
 
             <div class="flex gap-2">
-                <PrimaryButton :disabled="form.processing">Guardar</PrimaryButton>
+                <PrimaryButton :disabled="form.processing">Salvar</PrimaryButton>
                 <Link :href="route('client.usuarios.index')">
                     <SecondaryButton type="button">Cancelar</SecondaryButton>
                 </Link>

@@ -39,7 +39,7 @@ return [
     | Session expiry warning (frontend)
     |--------------------------------------------------------------------------
     |
-    | Minutos antes do fim da sessão por inatividade em que o utilizador
+    | Minutos antes do fim da sessão por inatividade em que o usuário
     | autenticado vê um aviso no browser (composable SessionExpiryMonitor).
     |
     */

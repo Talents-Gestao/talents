@@ -28,7 +28,7 @@ const submit = () => {
         <template #header>
             <div>
                 <h2 class="text-xl font-semibold leading-tight text-talents-900">Publicar aviso</h2>
-                <p class="mt-1 text-sm text-slate-500">O aviso aparecerá para os utilizadores da empresa selecionada.</p>
+                <p class="mt-1 text-sm text-slate-500">O aviso aparecerá para os usuários da empresa selecionada.</p>
             </div>
         </template>
 

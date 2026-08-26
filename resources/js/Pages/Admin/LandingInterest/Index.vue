@@ -229,11 +229,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             class="cursor-pointer transition hover:bg-talents-50/60"
                             @click="openDetailModal(s)"
                         >
-                            <td class="whitespace-nowrap px-4 py-3 text-gray-600">
+                            <td class="whitespace-nowrap px-4 py-3 align-middle text-gray-600">
                                 {{ formatDateTime(s.created_at) }}
                             </td>
-                            <td class="px-4 py-3 font-medium text-talents-800">{{ s.name }}</td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 align-middle font-medium text-talents-800">{{ s.name }}</td>
+                            <td class="px-4 py-3 align-middle">
                                 <a
                                     :href="'mailto:' + s.email"
                                     class="font-medium text-talents-700 hover:underline"
@@ -242,16 +242,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                     {{ s.email }}
                                 </a>
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3 text-gray-700">{{ s.phone || '—' }}</td>
-                            <td class="max-w-xs truncate px-4 py-3">{{ s.company || '—' }}</td>
-                            <td class="whitespace-nowrap px-4 py-3">
+                            <td class="whitespace-nowrap px-4 py-3 align-middle text-gray-700">{{ s.phone || '—' }}</td>
+                            <td class="max-w-xs truncate px-4 py-3 align-middle">{{ s.company || '—' }}</td>
+                            <td class="whitespace-nowrap px-4 py-3 align-middle">
                                 <span
                                     class="inline-flex rounded-full bg-talents-50 px-2 py-0.5 text-xs font-medium text-talents-800 ring-1 ring-talents-100"
                                 >
                                     {{ s.source_label || '—' }}
                                 </span>
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3">
+                            <td class="whitespace-nowrap px-4 py-3 align-middle">
                                 <span
                                     class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
                                     :class="qualifiedBadgeClass(s.is_qualified)"
@@ -259,10 +259,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                     {{ qualifiedLabel(s.is_qualified) }}
                                 </span>
                             </td>
-                            <td class="max-w-md px-4 py-3">
+                            <td class="max-w-md px-4 py-3 align-middle">
                                 <span class="line-clamp-3 whitespace-pre-wrap">{{ s.message || '—' }}</span>
                             </td>
-                            <td class="px-4 py-3 align-top">
+                            <td class="px-4 py-3 align-middle">
                                 <span
                                     v-if="s.mail_sent_at"
                                     class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
@@ -283,7 +283,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 </span>
                                 <span v-else class="text-gray-400">—</span>
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3 text-right">
+                            <td class="whitespace-nowrap px-4 py-3 align-middle text-right">
                                 <button
                                     type="button"
                                     class="mr-2 font-medium text-talents-700 hover:underline"
@@ -496,7 +496,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             Anotações internas
                         </label>
                         <p class="mt-0.5 text-xs text-slate-500">
-                            Use este campo para registar follow-ups, combinações e observações da equipa.
+                            Use este campo para registar follow-ups, combinações e observações da equipe.
                         </p>
                         <textarea
                             id="lead-admin-notes"

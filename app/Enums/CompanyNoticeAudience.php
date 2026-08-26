@@ -6,7 +6,7 @@ namespace App\Enums;
 
 enum CompanyNoticeAudience: string
 {
-    /** Avisos dirigidos a utilizadores de uma empresa (portal /client). */
+    /** Avisos dirigidos a usuários de uma empresa (portal /client). */
     case Company = 'company';
 
     /** Avisos internos dirigidos aos administradores Talents (portal /admin). */

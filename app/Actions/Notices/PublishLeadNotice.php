@@ -24,7 +24,7 @@ class PublishLeadNotice
         $this->publish->handle(
             companyId: null,
             title: 'Novo lead recebido',
-            body: "{$submission->name}{$company} demonstrou interesse. Contacto: "
+            body: "{$submission->name}{$company} demonstrou interesse. Contato: "
                 .$submission->email.($submission->phone ? " · {$submission->phone}" : '').'.',
             audience: CompanyNoticeAudience::Talents,
             sourceType: 'landing_interest_submission',

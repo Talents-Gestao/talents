@@ -36,7 +36,7 @@ class RhidEspelhoBatchRunner
             return;
         }
         if (! $batch->user_id) {
-            $this->failBatch($batch, 'Utilizador do lote não informado.');
+            $this->failBatch($batch, 'Usuário do lote não informado.');
 
             return;
         }

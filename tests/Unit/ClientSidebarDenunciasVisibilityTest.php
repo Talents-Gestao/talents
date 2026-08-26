@@ -31,7 +31,7 @@ use Tests\TestCase;
  *    - company_admin: todas as actions dos módulos ativos → vê Denúncias se (1)
  *    - company_user: precisa UserPermission denuncias/view no workspace ativo
  *      (e o módulo tem de estar em activePermissionModuleValues)
- * 3) Secção “Voz do Time” só renderiza se pesquisas|denuncias|desligamento view.
+ * 3) Seção “Voz do Time” só renderiza se pesquisas|denuncias|desligamento view.
  *
  * Caso típico “Isabela não vê Denúncias”: company_user sem permissão granular,
  * ou empresa sem módulo/override, ou denuncias_access=false.

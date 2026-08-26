@@ -11,12 +11,12 @@ use App\Models\User;
  *
  * Com/sem comissão e a % são definidos no cadastro do administrador.
  * Proposta/venda guardam snapshot (commission_percent / commission_cents).
- * O registo em commercial_commissions só é criado quando amount_cents > 0.
+ * O registro em commercial_commissions só é criado quando amount_cents > 0.
  */
 final class OptionalCommission
 {
     /**
-     * Percentual fixo cadastrado no utilizador da Equipe.
+     * Percentual fixo cadastrado no usuário da Equipe.
      */
     public static function percentForSeller(?User $seller): float
     {

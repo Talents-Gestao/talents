@@ -33,7 +33,7 @@ final class FeedbackVisibility
     }
 
     /**
-     * Secção «Perguntas do líder para o líder» — visível apenas ao perfil admin.
+     * Seção «Perguntas do líder para o líder» — visível apenas ao perfil admin.
      */
     public static function canViewLeaderSelfSections(User $user): bool
     {

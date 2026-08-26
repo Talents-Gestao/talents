@@ -166,7 +166,8 @@ function toggleListMenu(list, event) {
     }
 
     const menuWidth = 192;
-    const menuHeight = 148;
+    // Cores + arquivar/restaurar + excluir — altura real ~260px; subestimar corta o rodapé.
+    const menuHeight = 280;
     const left = Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8));
 
     let top = rect.bottom + 6;
@@ -440,12 +441,11 @@ function onListDragEnd(evt) {
 
 onMounted(() => {
     document.addEventListener('click', closeListMenu);
-    window.addEventListener('scroll', onListMenuViewportChange, true);
+    // Não fechar no scroll do quadro: o capture impedia chegar em «Excluir lista».
     window.addEventListener('resize', onListMenuViewportChange);
 });
 onUnmounted(() => {
     document.removeEventListener('click', closeListMenu);
-    window.removeEventListener('scroll', onListMenuViewportChange, true);
     window.removeEventListener('resize', onListMenuViewportChange);
     document.removeEventListener('scroll', onDragScrollCapture, true);
     dragScrollSnapshot = null;
@@ -639,8 +639,11 @@ function expandList(list) {
                 item-key="id"
                 tag="div"
                 class="flex items-start gap-3"
+                direction="horizontal"
                 :disabled="!isAdmin"
                 handle=".list-column-drag-handle"
+                filter="button, input, a, textarea"
+                :prevent-on-filter="true"
                 :animation="150"
                 ghost-class="opacity-40"
                 @end="onListDragEnd"
@@ -1000,7 +1003,7 @@ function expandList(list) {
                     </div>
                 </div>
                 <button
-                    v-if="list.is_archived"
+                    v-if="listMenuPosition.list.is_archived"
                     type="button"
                     class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-talents-700 hover:bg-talents-50"
                     @click="restoreList(listMenuPosition.list, $event)"

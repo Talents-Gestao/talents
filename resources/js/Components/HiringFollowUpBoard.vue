@@ -647,7 +647,7 @@ watch(
                                             :disabled="fieldDrafts[p.id].saving"
                                             @click="saveProcessFields(p.id)"
                                         >
-                                            {{ fieldDrafts[p.id].saving ? 'A guardar…' : 'Guardar campos' }}
+                                            {{ fieldDrafts[p.id].saving ? 'Salvando…' : 'Salvar campos' }}
                                         </button>
                                         <p v-if="fieldDrafts[p.id].error" class="text-xs font-medium text-red-600">
                                             {{ fieldDrafts[p.id].error }}
@@ -727,7 +727,7 @@ watch(
                                                 v-if="!entry.notes && (entry.candidates_count === null || entry.candidates_count === undefined)"
                                                 class="mt-1 text-sm text-slate-500"
                                             >
-                                                Sem informações registadas.
+                                                Sem informações registradas.
                                             </p>
                                         </li>
                                     </ul>

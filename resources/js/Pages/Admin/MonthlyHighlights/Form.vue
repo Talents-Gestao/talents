@@ -284,7 +284,7 @@ const submit = () => {
 
                         <div class="min-w-0 flex-1 text-center sm:text-left">
                             <p class="text-sm font-medium text-slate-800">
-                                {{ photoPreview ? 'Foto pronta para o destaque' : 'Arraste uma imagem ou escolha um ficheiro' }}
+                                {{ photoPreview ? 'Foto pronta para o destaque' : 'Arraste uma imagem ou escolha um arquivo' }}
                             </p>
                             <p class="mt-1 truncate text-xs text-slate-500" :title="photoFileName || undefined">
                                 {{ photoStatusLabel }}
@@ -340,7 +340,7 @@ const submit = () => {
 
             <div class="flex flex-wrap gap-3 pt-2">
                 <PrimaryButton type="submit" :disabled="form.processing">
-                    {{ form.processing ? 'A guardar…' : mode === 'create' ? 'Criar' : 'Guardar' }}
+                    {{ form.processing ? 'Salvando…' : mode === 'create' ? 'Criar' : 'Salvar' }}
                 </PrimaryButton>
                 <Link :href="route('admin.destaques-mes.index')">
                     <SecondaryButton type="button">Cancelar</SecondaryButton>

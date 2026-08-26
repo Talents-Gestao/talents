@@ -243,7 +243,7 @@ const submit = () => {
                         v-if="cnpjBlocksSave"
                         class="mt-2 text-sm text-red-600"
                     >
-                        Não é possível guardar o diagnóstico com um CNPJ inexistente. Corrija o CNPJ e busque novamente.
+                        Não é possível salvar o diagnóstico com um CNPJ inexistente. Corrija o CNPJ e busque novamente.
                     </p>
                     <InputError class="mt-1" :message="form.errors.cnpj" />
                 </div>
@@ -339,7 +339,7 @@ const submit = () => {
 
                 <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
                     <PrimaryButton type="submit" :disabled="!canSubmit">
-                        {{ mode === 'create' ? 'Guardar diagnóstico' : 'Atualizar diagnóstico' }}
+                        {{ mode === 'create' ? 'Salvar diagnóstico' : 'Atualizar diagnóstico' }}
                     </PrimaryButton>
                     <div class="flex items-center gap-3">
                         <button

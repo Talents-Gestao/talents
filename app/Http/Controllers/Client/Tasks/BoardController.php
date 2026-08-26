@@ -28,7 +28,8 @@ class BoardController extends Controller
                 'lists' => fn ($q) => $q->where('is_archived', false),
             ])
             ->orderByRaw('company_id is null desc')
-            ->orderBy('name');
+            ->orderBy('position')
+            ->orderBy('id');
 
         if ($user->isCompanyUser()) {
             $boardsQuery->accessibleByCompanyUser($user->id, $companyId);

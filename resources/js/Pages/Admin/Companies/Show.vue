@@ -79,7 +79,7 @@ const resendInvitation = () => {
     if (!props.registrationAdminEmail || resendingInvitation.value) {
         return;
     }
-    const email = props.registrationAdminEmail || props.company.contact_email || 'o e-mail de contacto';
+    const email = props.registrationAdminEmail || props.company.contact_email || 'o e-mail de contato';
     const message = props.pendingRegistration
         ? `Reenviar o convite de cadastro para ${email}?`
         : `Enviar link para redefinir a senha para ${email}?`;
@@ -143,7 +143,7 @@ const subscriptionStatusLabel = (status) => {
 const roleLabel = (role) => {
     const map = {
         company_admin: 'Administrador da empresa',
-        company_user: 'Utilizador da empresa',
+        company_user: 'Usuário da empresa',
         super_admin: 'Administrador Talents',
     };
     const key = String(role || '').toLowerCase();
@@ -319,7 +319,7 @@ const removeRegulation = (id) => {
                             class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-talents-200 hover:bg-talents-50/50 hover:text-talents-800"
                         >
                             <UserGroupIcon class="h-4 w-4" aria-hidden="true" />
-                            Gerir usuários
+                            Gerenciar usuários
                         </Link>
                     </div>
                 </div>
@@ -558,7 +558,7 @@ const removeRegulation = (id) => {
                     <p v-else class="text-sm text-slate-500">Nenhuma pesquisa cadastrada para esta empresa.</p>
                 </CompanyShowAccordion>
 
-                <CompanyShowAccordion title="Utilizadores" description="Utilizadores vinculados a esta empresa">
+                <CompanyShowAccordion title="Usuários" description="Usuários vinculados a esta empresa">
                     <template #icon>
                         <UserGroupIcon class="h-5 w-5" />
                     </template>
@@ -568,7 +568,7 @@ const removeRegulation = (id) => {
                             class="inline-flex items-center gap-1.5 text-sm font-medium text-talents-700 hover:underline"
                         >
                             <LinkIcon class="h-4 w-4" aria-hidden="true" />
-                            Gerir utilizadores
+                            Gerenciar usuários
                         </Link>
                     </div>
                     <ul v-if="company.users?.length" class="divide-y divide-slate-100">

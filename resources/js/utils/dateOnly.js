@@ -5,8 +5,8 @@
  *   - O backend Laravel está em `America/Sao_Paulo` (config/app.php).
  *   - Aqui no front, "hoje" / "amanhã" / "ontem" são calculados na timezone
  *     de São Paulo, independente da timezone do navegador. Isto evita que
- *     um utilizador que viaje ou tenha o sistema em outro fuso veja uma data
- *     diferente da que a equipa cadastrou no calendário estratégico.
+ *     um usuário que viaje ou tenha o sistema em outro fuso veja uma data
+ *     diferente da que a equipe cadastrou no calendário estratégico.
  *
  * Implementação:
  *   - Para datas só-dia (`YYYY-MM-DD`), extraímos os componentes e construímos
