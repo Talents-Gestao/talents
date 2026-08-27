@@ -2,6 +2,8 @@
 
 namespace App\Policies;
 
+use App\Enums\AdminPermissionModule;
+use App\Enums\PermissionAction;
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
 use App\Models\User;
@@ -65,5 +67,14 @@ class TaskBoardPolicy
     public function manageAsAdmin(User $user, TaskBoard $board): bool
     {
         return $user->isSuperAdmin();
+    }
+
+    /**
+     * Reordenar a listagem Admin (internos ou de empresas).
+     * Utilizadores de empresa não passam: canAccessAdmin exige super_admin.
+     */
+    public function reorder(User $user): bool
+    {
+        return $user->canAccessAdmin(AdminPermissionModule::Tarefas, PermissionAction::Edit);
     }
 }

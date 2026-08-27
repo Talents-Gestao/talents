@@ -121,6 +121,8 @@ class TaskBoardController extends Controller
 
     public function reorder(Request $request): RedirectResponse
     {
+        $this->authorize('reorder', TaskBoard::class);
+
         $data = $request->validate([
             'scope' => ['required', Rule::in(['internal', 'company'])],
             'board_ids' => ['required', 'array', 'min:1'],
