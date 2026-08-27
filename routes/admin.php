@@ -389,7 +389,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::get('vendas/{sale}', [FinanceSaleController::class, 'show'])->name('vendas.show');
         });
 
-        Route::middleware('admin.can:financeiro_vendas,financeiro_contas_a_receber')->group(function () {
+        // "|" = OR entre módulos (vírgula é reservada pelo Laravel para parâmetros).
+        Route::middleware('admin.can:financeiro_vendas|financeiro_contas_a_receber')->group(function () {
             Route::patch('parcelas/{installment}/pagamento', [FinanceInstallmentController::class, 'registerPayment'])
                 ->name('parcelas.pagamento');
             Route::patch('parcelas/{installment}', [FinanceInstallmentController::class, 'update'])
@@ -463,7 +464,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('processo-cards/{template_card}', [TasksTemplateCardController::class, 'destroy'])->name('processo-cards.destroy');
 
         Route::get('quadros/ativar', [TasksBoardActivationController::class, 'create'])->name('quadros.ativar');
-        Route::post('quadros/reordenar', [TasksTaskBoardController::class, 'reorder'])->name('quadros.reordenar');
+        Route::post('quadros/reordenar', [TasksTaskBoardController::class, 'reorder'])
+            ->middleware('admin.can:tarefas,edit')
+            ->name('quadros.reordenar');
         Route::post('processos/{template}/ativar', [TasksBoardActivationController::class, 'store'])->name('processos.ativar');
 
         Route::resource('quadros', TasksTaskBoardController::class)

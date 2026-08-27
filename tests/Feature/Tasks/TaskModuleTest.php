@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Tasks;
 
+use App\Actions\SyncAdminUserPermissions;
+use App\Enums\AdminPermissionModule;
+use App\Enums\PermissionAction;
 use App\Models\Company;
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
@@ -975,6 +978,87 @@ class TaskModuleTest extends TestCase
                 ->where('boards.1.id', $companySecond->id)
                 ->where('boards.2.id', $companyFirst->id)
             );
+    }
+
+    public function test_company_users_cannot_reorder_admin_boards(): void
+    {
+        $companyA = $this->baseCompany();
+        $companyB = Company::query()->create([
+            'name' => 'Outra empresa',
+            'cnpj' => '44.444.444/0001-44',
+            'is_active' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+            'tasks_access' => true,
+        ]);
+
+        $internal = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Interno',
+            'is_archived' => false,
+        ]);
+        $boardA = TaskBoard::query()->create([
+            'company_id' => $companyA->id,
+            'name' => 'Quadro A',
+            'is_archived' => false,
+        ]);
+        $boardB = TaskBoard::query()->create([
+            'company_id' => $companyB->id,
+            'name' => 'Quadro B',
+            'is_archived' => false,
+        ]);
+
+        $companyAdmin = User::factory()->companyAdmin($companyA->id)->create();
+
+        $internalPosition = (int) $internal->position;
+        $boardAPosition = (int) $boardA->position;
+        $boardBPosition = (int) $boardB->position;
+
+        $this->actingAs($companyAdmin)
+            ->post('/admin/tarefas/quadros/reordenar', [
+                'scope' => 'internal',
+                'board_ids' => [$internal->id],
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($companyAdmin)
+            ->post('/admin/tarefas/quadros/reordenar', [
+                'scope' => 'company',
+                'board_ids' => [$boardB->id, $boardA->id],
+            ])
+            ->assertForbidden();
+
+        $this->assertSame($internalPosition, (int) $internal->fresh()->position);
+        $this->assertSame($boardAPosition, (int) $boardA->fresh()->position);
+        $this->assertSame($boardBPosition, (int) $boardB->fresh()->position);
+    }
+
+    public function test_admin_without_tarefas_edit_cannot_reorder_boards(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => false]);
+        $workspace = $admin->talentsWorkspace();
+        $this->assertNotNull($workspace);
+
+        app(SyncAdminUserPermissions::class)->execute($workspace, [
+            ['module' => AdminPermissionModule::Dashboard->value, 'action' => PermissionAction::View->value],
+            ['module' => AdminPermissionModule::Tarefas->value, 'action' => PermissionAction::View->value],
+            ['module' => AdminPermissionModule::Tarefas->value, 'action' => PermissionAction::Create->value],
+        ]);
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Interno',
+            'is_archived' => false,
+            'position' => 1000,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/quadros/reordenar', [
+                'scope' => 'internal',
+                'board_ids' => [$board->id],
+            ])
+            ->assertForbidden();
+
+        $this->assertSame(1000, $board->fresh()->position);
     }
 
     public function test_client_boards_index_follows_admin_position(): void
