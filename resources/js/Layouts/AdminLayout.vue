@@ -41,9 +41,11 @@ const showComercial = computed(
             'comercial_resumo',
             'comercial_propostas',
             'comercial_valores_contratos',
-            'plans',
         ]) || canCommercialSettings.value,
 );
+
+/** Menu Assinaturas oculto temporariamente (rotas /admin/plans continuam ativas). */
+const showAssinaturasMenu = false;
 
 const comercialFallbackHref = computed(() => {
     if (canAdmin('comercial_resumo')) {
@@ -55,7 +57,7 @@ const comercialFallbackHref = computed(() => {
     if (canCommercialSettings.value) {
         return route('admin.comercial.settings.edit', { tab: 'produtos' });
     }
-    if (canAdmin('plans')) {
+    if (showAssinaturasMenu && canAdmin('plans')) {
         return route('admin.plans.index');
     }
     return route('admin.dashboard');
@@ -304,7 +306,7 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
-                    v-if="canAdmin('plans')"
+                    v-if="showAssinaturasMenu && canAdmin('plans')"
                     :href="route('admin.plans.index')"
                     :active="route().current('admin.plans.*')"
                     label="Assinaturas"

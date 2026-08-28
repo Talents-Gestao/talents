@@ -319,7 +319,7 @@ class FinancePayablesModuleTest extends TestCase
                 ->component('Admin/Finance/Payables/Index')
                 ->has('sortOptions', 2)
                 ->where('filters.sort', 'due_date')
-                ->where('payables.data.0.id', $pending->id)
+                ->where('payables.data.0.id', $paid->id)
             );
 
         $this->actingAs($admin)

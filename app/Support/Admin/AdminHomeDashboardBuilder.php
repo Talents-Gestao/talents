@@ -40,6 +40,8 @@ final class AdminHomeDashboardBuilder
      *     leads_this_month: int,
      *     funnel: list<array{key: string, label: string, count: int, href: string}>,
      *     funnel_lost: array{count: int, href: string, items: list<array{key: string, name: string, count: int, responses: list<array<string, mixed>>}>},
+     *     funnel_all: list<array{key: string, label: string, count: int, href: string}>,
+     *     funnel_lost_all: array{count: int, href: string, items: list<array{key: string, name: string, count: int, responses: list<array<string, mixed>>}>},
      *     monthly_goal: array{current_cents: int, goal_cents: int, percent: float}
      * }
      */
@@ -134,7 +136,8 @@ final class AdminHomeDashboardBuilder
         $leadsBySource = $this->leadsBySource($monthStart);
         $leadsThisMonth = (int) collect($leadsBySource)->sum('count');
 
-        $funnelPayload = $this->proposalFunnelForMonth($monthStart, $monthEnd);
+        $funnelMonth = $this->proposalFunnelForPeriod($monthStart, $monthEnd);
+        $funnelAll = $this->proposalFunnelForPeriod(null, null);
 
         return [
             'finance' => [
@@ -161,10 +164,12 @@ final class AdminHomeDashboardBuilder
                 'methodology_active' => $activeMethodology,
             ],
             'leads_by_source' => $leadsBySource,
-            // Contexto do mês: também é a base (%) do funil comercial.
+            // Contexto do mês: também é a base (%) do funil comercial (visão «Neste mês»).
             'leads_this_month' => $leadsThisMonth,
-            'funnel' => $funnelPayload['stages'],
-            'funnel_lost' => $funnelPayload['lost'],
+            'funnel' => $funnelMonth['stages'],
+            'funnel_lost' => $funnelMonth['lost'],
+            'funnel_all' => $funnelAll['stages'],
+            'funnel_lost_all' => $funnelAll['lost'],
             'monthly_goal' => [
                 'current_cents' => $revenueMonthCents,
                 'goal_cents' => $goalCents,
@@ -292,13 +297,14 @@ final class AdminHomeDashboardBuilder
     }
 
     /**
-     * Funil comercial (mês corrente): gaps do processo de vendas.
+     * Funil comercial (coorte por data de criação).
+     * Com $start/$end: restringe ao intervalo. Sem datas: histórico completo.
      *
-     * Contagens do mês (volumes reais). A % no front é conversão acumulada
+     * Contagens = volumes reais. A % no front é conversão acumulada
      * (produto das taxas entre etapas consecutivas) — só diminui ou estabiliza.
-     * - Leads: landing_interest_submissions do mês
-     * - Qualificação: leads do mês com is_qualified = true
-     * - Proposta: commercial_proposals criadas no mês
+     * - Leads: landing_interest_submissions
+     * - Qualificação: leads com is_qualified = true
+     * - Proposta: commercial_proposals
      * - Fechada: propostas do cohort aprovadas OU com venda (sem double-count)
      * - Perdido (card): propostas do cohort com list_status ended
      *
@@ -307,27 +313,40 @@ final class AdminHomeDashboardBuilder
      *     lost: array{count: int, href: string, items: list<array{key: string, name: string, count: int, responses: list<array<string, mixed>>}>}
      * }
      */
-    private function proposalFunnelForMonth(Carbon $monthStart, Carbon $monthEnd): array
+    private function proposalFunnelForPeriod(?Carbon $start, ?Carbon $end): array
     {
-        $from = $monthStart->toDateString();
-        $to = $monthEnd->toDateString();
+        $scoped = $start !== null && $end !== null;
+        $from = $scoped ? $start->toDateString() : null;
+        $to = $scoped ? $end->toDateString() : null;
 
-        $leadsCount = (int) LandingInterestSubmission::query()
-            ->whereBetween('created_at', [$monthStart, $monthEnd])
-            ->count();
-
-        $qualifiedCount = (int) LandingInterestSubmission::query()
-            ->whereBetween('created_at', [$monthStart, $monthEnd])
-            ->where('is_qualified', true)
-            ->count();
-
-        $cohort = CommercialProposal::query()
+        $leadsQuery = LandingInterestSubmission::query();
+        $qualifiedQuery = LandingInterestSubmission::query()->where('is_qualified', true);
+        $proposalsQuery = CommercialProposal::query()
             ->with([
                 'sale:id,proposal_id',
                 'seller:id,name',
-            ])
-            ->whereBetween('created_at', [$monthStart, $monthEnd])
-            ->get(['id', 'code', 'client_name', 'is_closed', 'list_status', 'lost_reason', 'lost_reason_notes', 'seller_id', 'created_at']);
+            ]);
+
+        if ($scoped) {
+            $leadsQuery->whereBetween('created_at', [$start, $end]);
+            $qualifiedQuery->whereBetween('created_at', [$start, $end]);
+            $proposalsQuery->whereBetween('created_at', [$start, $end]);
+        }
+
+        $leadsCount = (int) $leadsQuery->count();
+        $qualifiedCount = (int) $qualifiedQuery->count();
+
+        $cohort = $proposalsQuery->get([
+            'id',
+            'code',
+            'client_name',
+            'is_closed',
+            'list_status',
+            'lost_reason',
+            'lost_reason_notes',
+            'seller_id',
+            'created_at',
+        ]);
 
         $proposalCount = $cohort->count();
 
@@ -378,6 +397,12 @@ final class AdminHomeDashboardBuilder
             }
         }
 
+        $proposalQueryParams = $scoped
+            ? ['created_from' => $from, 'created_to' => $to]
+            : [];
+        $closedQueryParams = array_merge(['status' => 'fechadas'], $proposalQueryParams);
+        $lostQueryParams = array_merge(['status' => 'perdidas'], $proposalQueryParams);
+
         $stages = [
             [
                 'key' => 'leads',
@@ -395,20 +420,13 @@ final class AdminHomeDashboardBuilder
                 'key' => 'proposal',
                 'label' => 'Proposta',
                 'count' => $proposalCount,
-                'href' => $this->proposalsIndexHref([
-                    'created_from' => $from,
-                    'created_to' => $to,
-                ]),
+                'href' => $this->proposalsIndexHref($proposalQueryParams),
             ],
             [
                 'key' => 'closed',
                 'label' => 'Fechada',
                 'count' => $closedCount,
-                'href' => $this->proposalsIndexHref([
-                    'status' => 'fechadas',
-                    'created_from' => $from,
-                    'created_to' => $to,
-                ]),
+                'href' => $this->proposalsIndexHref($closedQueryParams),
             ],
         ];
 
@@ -429,11 +447,7 @@ final class AdminHomeDashboardBuilder
             'stages' => $stages,
             'lost' => [
                 'count' => $lostCount,
-                'href' => $this->proposalsIndexHref([
-                    'status' => 'perdidas',
-                    'created_from' => $from,
-                    'created_to' => $to,
-                ]),
+                'href' => $this->proposalsIndexHref($lostQueryParams),
                 'items' => $lostItems,
             ],
         ];

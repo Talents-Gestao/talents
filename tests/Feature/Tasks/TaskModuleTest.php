@@ -913,7 +913,7 @@ class TaskModuleTest extends TestCase
                 'scope' => 'internal',
                 'board_ids' => [$second->id, $first->id],
             ])
-            ->assertRedirect();
+            ->assertRedirect(route('admin.tarefas.quadros.index'));
 
         $this->assertSame(1000, $second->fresh()->position);
         $this->assertSame(2000, $first->fresh()->position);
@@ -957,7 +957,7 @@ class TaskModuleTest extends TestCase
                 'scope' => 'company',
                 'board_ids' => [$companySecond->id, $companyFirst->id],
             ])
-            ->assertRedirect();
+            ->assertRedirect(route('admin.tarefas.quadros.index'));
 
         $this->assertSame(1000, $internal->fresh()->position);
         $this->assertSame(1000, $companySecond->fresh()->position);

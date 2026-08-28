@@ -99,6 +99,14 @@ class AdminHomeProposalFunnelTest extends TestCase
         $this->assertSame('Preço', $home['funnel_lost']['items'][0]['responses'][0]['lost_reason_label'] ?? null);
         $this->assertSame('Perdida', $home['funnel_lost']['items'][0]['name'] ?? null);
 
+        $funnelAll = collect($home['funnel_all'])->keyBy('key');
+        $this->assertSame(3, $funnelAll['leads']['count']);
+        $this->assertSame(1, $funnelAll['qualified']['count']);
+        $this->assertSame(4, $funnelAll['proposal']['count']);
+        $this->assertSame(2, $funnelAll['closed']['count']);
+        $this->assertSame(1, $home['funnel_lost_all']['count']);
+        $this->assertStringNotContainsString('created_from=', $home['funnel_lost_all']['href']);
+
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $this->actingAs($admin)
             ->get(route('admin.dashboard'))
@@ -110,7 +118,11 @@ class AdminHomeProposalFunnelTest extends TestCase
                 ->where('funnel.1.count', 1)
                 ->where('funnel.3.key', 'closed')
                 ->where('funnel.3.count', 1)
-                ->where('funnelLost.count', 1));
+                ->where('funnelLost.count', 1)
+                ->where('funnelAll.2.key', 'proposal')
+                ->where('funnelAll.2.count', 4)
+                ->where('funnelAll.3.count', 2)
+                ->where('funnelLostAll.count', 1));
     }
 
     public function test_funnel_lost_href_and_items_by_client(): void

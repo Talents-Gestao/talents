@@ -7,7 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import { VueDraggable } from 'vue-draggable-plus';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import {
     ArrowLeftIcon,
     ArrowRightIcon,
@@ -16,6 +16,7 @@ import {
     ChevronDownIcon,
     ClockIcon,
     MagnifyingGlassIcon,
+    PencilSquareIcon,
     PlusIcon,
     TrashIcon,
 } from '@heroicons/vue/24/outline';
@@ -286,6 +287,66 @@ const destroyProcess = (processId) => {
     router.delete(route(props.routes.destroy, processId), { preserveScroll: true });
 };
 
+/** @type {import('vue').Ref<Record<number, { value: string, saving: boolean, error: string|null }>>} */
+const titleEdits = ref({});
+
+const isEditingTitle = (processId) => Boolean(titleEdits.value[processId]);
+
+const startTitleEdit = async (process) => {
+    if (!props.can_manage) {
+        return;
+    }
+    titleEdits.value = {
+        ...titleEdits.value,
+        [process.id]: {
+            value: process.title ?? '',
+            saving: false,
+            error: null,
+        },
+    };
+    await nextTick();
+    document.getElementById(`title-edit-${process.id}`)?.focus();
+};
+
+const cancelTitleEdit = (processId) => {
+    const next = { ...titleEdits.value };
+    delete next[processId];
+    titleEdits.value = next;
+};
+
+const saveTitle = (processId) => {
+    if (!props.can_manage) {
+        return;
+    }
+    const edit = titleEdits.value[processId];
+    if (!edit) {
+        return;
+    }
+    const title = edit.value.trim();
+    if (!title) {
+        edit.error = 'Informe o nome da vaga.';
+        return;
+    }
+
+    edit.saving = true;
+    edit.error = null;
+
+    router.patch(
+        route(props.routes.update, processId),
+        { title },
+        {
+            preserveScroll: true,
+            onSuccess: () => cancelTitleEdit(processId),
+            onError: (errors) => {
+                edit.error = errors?.title || 'Não foi possível salvar o nome da vaga.';
+            },
+            onFinish: () => {
+                edit.saving = false;
+            },
+        },
+    );
+};
+
 const commentsStoreUrl = (processId) => route(props.routes.comments_store, processId);
 
 const currentStageOrder = (process) =>
@@ -324,6 +385,7 @@ watch(
     () => props.processes,
     () => {
         expandedIds.value = new Set();
+        titleEdits.value = {};
     },
 );
 </script>
@@ -516,43 +578,93 @@ watch(
                                     <Bars3Icon class="h-5 w-5" />
                                 </button>
 
-                                <!-- Botão accordion (título + meta) -->
-                                <button
-                                    type="button"
-                                    class="min-w-0 flex-1 text-left"
-                                    @click="toggleExpanded(p.id)"
+                                <!-- Edição do nome da vaga -->
+                                <div
+                                    v-if="can_manage && isEditingTitle(p.id)"
+                                    class="min-w-0 flex-1 space-y-2"
+                                    @click.stop
                                 >
-                                    <div class="flex min-w-0 items-center gap-2">
-                                        <p class="truncate text-base font-semibold text-slate-900">{{ p.title }}</p>
-                                        <ChevronDownIcon
-                                            class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200"
-                                            :class="isExpanded(p.id) ? 'rotate-180' : ''"
-                                        />
+                                    <label :for="'title-edit-' + p.id" class="sr-only">Nome da vaga</label>
+                                    <input
+                                        :id="'title-edit-' + p.id"
+                                        v-model="titleEdits[p.id].value"
+                                        type="text"
+                                        maxlength="255"
+                                        class="block w-full rounded-xl border border-talents-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
+                                        @keydown.enter.prevent="saveTitle(p.id)"
+                                        @keydown.escape.prevent="cancelTitleEdit(p.id)"
+                                    />
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center rounded-xl bg-talents-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-talents-700 disabled:opacity-50"
+                                            :disabled="titleEdits[p.id].saving"
+                                            @click="saveTitle(p.id)"
+                                        >
+                                            {{ titleEdits[p.id].saving ? 'Salvando…' : 'Salvar nome' }}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                                            :disabled="titleEdits[p.id].saving"
+                                            @click="cancelTitleEdit(p.id)"
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <p v-if="titleEdits[p.id].error" class="text-xs font-medium text-red-600">
+                                            {{ titleEdits[p.id].error }}
+                                        </p>
                                     </div>
-                                    <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
-                                        <span v-if="show_company_on_card" class="inline-flex items-center gap-1">
-                                            <BuildingOffice2Icon class="h-3.5 w-3.5 text-talents-500" />
-                                            {{ p.company?.name ?? '—' }}
-                                        </span>
-                                        <span v-if="show_company_on_card && p.updated_by_name" class="text-slate-300">·</span>
-                                        <span v-if="p.updated_by_name" class="text-slate-400">atualizado por {{ p.updated_by_name }}</span>
-                                        <!-- Resumo rápido visível mesmo fechado -->
-                                        <template v-if="!isExpanded(p.id)">
-                                            <span v-if="p.candidates_count !== null && p.candidates_count !== undefined" class="text-slate-300">·</span>
-                                            <span
-                                                v-if="p.candidates_count !== null && p.candidates_count !== undefined"
-                                                class="inline-flex items-center rounded-full bg-talents-50 px-2 py-0.5 text-xs font-semibold text-talents-700"
-                                            >
-                                                {{ p.candidates_count }}
-                                                {{ Number(p.candidates_count) === 1 ? 'candidato' : 'candidatos' }}
+                                </div>
+
+                                <!-- Título + accordion (modo leitura) -->
+                                <div v-else class="flex min-w-0 flex-1 items-start gap-1">
+                                    <button
+                                        type="button"
+                                        class="min-w-0 flex-1 text-left"
+                                        @click="toggleExpanded(p.id)"
+                                    >
+                                        <div class="flex min-w-0 items-center gap-2">
+                                            <p class="truncate text-base font-semibold text-slate-900">{{ p.title }}</p>
+                                            <ChevronDownIcon
+                                                class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200"
+                                                :class="isExpanded(p.id) ? 'rotate-180' : ''"
+                                            />
+                                        </div>
+                                        <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+                                            <span v-if="show_company_on_card" class="inline-flex items-center gap-1">
+                                                <BuildingOffice2Icon class="h-3.5 w-3.5 text-talents-500" />
+                                                {{ p.company?.name ?? '—' }}
                                             </span>
-                                            <span v-if="p.notes" class="text-slate-300">·</span>
-                                            <span v-if="p.notes" class="max-w-[18rem] truncate text-xs italic text-slate-400">
-                                                {{ p.notes }}
-                                            </span>
-                                        </template>
-                                    </p>
-                                </button>
+                                            <span v-if="show_company_on_card && p.updated_by_name" class="text-slate-300">·</span>
+                                            <span v-if="p.updated_by_name" class="text-slate-400">atualizado por {{ p.updated_by_name }}</span>
+                                            <template v-if="!isExpanded(p.id)">
+                                                <span v-if="p.candidates_count !== null && p.candidates_count !== undefined" class="text-slate-300">·</span>
+                                                <span
+                                                    v-if="p.candidates_count !== null && p.candidates_count !== undefined"
+                                                    class="inline-flex items-center rounded-full bg-talents-50 px-2 py-0.5 text-xs font-semibold text-talents-700"
+                                                >
+                                                    {{ p.candidates_count }}
+                                                    {{ Number(p.candidates_count) === 1 ? 'candidato' : 'candidatos' }}
+                                                </span>
+                                                <span v-if="p.notes" class="text-slate-300">·</span>
+                                                <span v-if="p.notes" class="max-w-[18rem] truncate text-xs italic text-slate-400">
+                                                    {{ p.notes }}
+                                                </span>
+                                            </template>
+                                        </p>
+                                    </button>
+                                    <button
+                                        v-if="can_manage"
+                                        type="button"
+                                        class="mt-0.5 shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-talents-50 hover:text-talents-700"
+                                        title="Editar nome da vaga"
+                                        aria-label="Editar nome da vaga"
+                                        @click="startTitleEdit(p)"
+                                    >
+                                        <PencilSquareIcon class="h-4 w-4" />
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Ações de fase (sempre visíveis) -->

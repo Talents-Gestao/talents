@@ -48,18 +48,21 @@ class FinanceListSortTest extends TestCase
 
         $sorted = FinanceListSort::sortRows($rows, FinanceListSort::PAID_AT)->pluck('id')->all();
 
-        $this->assertSame([3, 2, 1], $sorted);
+        // Pagos primeiro (mais recente), depois pendentes pelo vencimento mais próximo.
+        $this->assertSame([3, 1, 2], $sorted);
     }
 
-    public function test_sort_rows_by_due_date_keeps_newest_first(): void
+    public function test_sort_rows_by_due_date_puts_nearest_first(): void
     {
         $rows = new Collection([
             ['id' => 1, 'due_date' => '2026-08-01', 'paid_at' => '2026-08-20'],
             ['id' => 2, 'due_date' => '2026-08-15', 'paid_at' => null],
+            ['id' => 3, 'due_date' => '2026-12-01', 'paid_at' => null],
+            ['id' => 4, 'due_date' => null, 'paid_at' => null],
         ]);
 
         $sorted = FinanceListSort::sortRows($rows, FinanceListSort::DUE_DATE)->pluck('id')->all();
 
-        $this->assertSame([2, 1], $sorted);
+        $this->assertSame([1, 2, 3, 4], $sorted);
     }
 }

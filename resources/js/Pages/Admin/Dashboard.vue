@@ -50,11 +50,37 @@ const props = defineProps({
             items: [],
         }),
     },
+    funnelAll: { type: Array, default: () => [] },
+    funnelLostAll: {
+        type: Object,
+        default: () => ({
+            count: 0,
+            href: null,
+            items: [],
+        }),
+    },
     monthlyGoal: { type: Object, required: true },
 });
 
 const dailyQuote = computed(() => page.props.dailyQuote ?? null);
 const userId = computed(() => page.props.auth?.user?.id ?? null);
+
+/** Visão do funil: mês corrente ou histórico completo. */
+const funnelScope = ref('month');
+
+const activeFunnel = computed(() =>
+    funnelScope.value === 'all' ? (props.funnelAll || []) : (props.funnel || []),
+);
+
+const activeFunnelLost = computed(() =>
+    funnelScope.value === 'all' ? (props.funnelLostAll || {}) : (props.funnelLost || {}),
+);
+
+const funnelScopeLabel = computed(() =>
+    funnelScope.value === 'all'
+        ? 'Todas as propostas (histórico)'
+        : 'Propostas criadas neste mês',
+);
 
 const { layout, resetLayout, dragAnimationMs, prefersReducedMotion } = useAdminDashboardLayout(userId);
 
@@ -640,13 +666,50 @@ const submitGoal = () => {
                                     class="dashboard-panel dashboard-reveal h-full"
                                 >
                                     <div class="dashboard-panel-heading mb-1 pr-10">
-                                        <h3 class="dashboard-panel-title">Funil comercial</h3>
-                                        <p class="mt-0.5 text-xs text-slate-500">Propostas criadas neste mês</p>
+                                        <div class="flex flex-wrap items-start justify-between gap-2">
+                                            <div class="min-w-0">
+                                                <h3 class="dashboard-panel-title">Funil comercial</h3>
+                                                <p class="mt-0.5 text-xs text-slate-500">{{ funnelScopeLabel }}</p>
+                                            </div>
+                                            <div
+                                                class="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5"
+                                                role="group"
+                                                aria-label="Período do funil"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    class="rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
+                                                    :class="
+                                                        funnelScope === 'month'
+                                                            ? 'bg-white text-talents-800 shadow-sm'
+                                                            : 'text-slate-500 hover:text-slate-700'
+                                                    "
+                                                    :aria-pressed="funnelScope === 'month'"
+                                                    @click="funnelScope = 'month'"
+                                                >
+                                                    Neste mês
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
+                                                    :class="
+                                                        funnelScope === 'all'
+                                                            ? 'bg-white text-talents-800 shadow-sm'
+                                                            : 'text-slate-500 hover:text-slate-700'
+                                                    "
+                                                    :aria-pressed="funnelScope === 'all'"
+                                                    @click="funnelScope = 'all'"
+                                                >
+                                                    Total
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="mt-4">
                                         <DashboardSalesFunnel
-                                            :funnel="funnel"
-                                            :lost="funnelLost"
+                                            :funnel="activeFunnel"
+                                            :lost="activeFunnelLost"
+                                            :scope="funnelScope"
                                         />
                                     </div>
                                 </section>

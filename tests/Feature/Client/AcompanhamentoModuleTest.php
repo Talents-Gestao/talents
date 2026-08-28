@@ -184,6 +184,29 @@ class AcompanhamentoModuleTest extends TestCase
         $this->assertDatabaseMissing('hiring_processes', ['title' => 'Não deveria']);
     }
 
+    public function test_company_admin_can_rename_process_title(): void
+    {
+        $company = Company::query()->create([
+            'name' => 'Empresa Rename Client',
+            'acompanhamento_access' => true,
+        ]);
+        $this->subscribeCompanyToNr1($company);
+        $admin = User::factory()->companyAdmin($company->id)->create();
+        $process = HiringProcess::query()->create([
+            'company_id' => $company->id,
+            'title' => 'Vaga antiga',
+            'current_stage' => HiringProcessStage::AnuncioVagas,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('client.acompanhamento.update', $process), [
+                'title' => 'Vaga atualizada',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('Vaga atualizada', $process->fresh()->title);
+    }
+
     public function test_company_admin_forbidden_when_module_disabled(): void
     {
         $company = Company::query()->create([

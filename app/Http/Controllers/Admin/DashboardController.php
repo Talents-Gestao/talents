@@ -28,6 +28,8 @@ class DashboardController extends Controller
             'leadsThisMonth' => $home['leads_this_month'],
             'funnel' => $home['funnel'],
             'funnelLost' => $home['funnel_lost'],
+            'funnelAll' => $home['funnel_all'],
+            'funnelLostAll' => $home['funnel_lost_all'],
             'monthlyGoal' => $home['monthly_goal'],
         ]);
     }

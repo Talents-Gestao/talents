@@ -331,6 +331,28 @@ class HiringProcessAdminTest extends TestCase
         $this->assertSame(HiringProcessStage::VisitaEmpresa, $process->current_stage);
     }
 
+    public function test_admin_can_rename_process_title(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = Company::query()->create(['name' => 'Empresa Rename', 'is_active' => true]);
+        $process = HiringProcess::query()->create([
+            'company_id' => $company->id,
+            'title' => 'COORDENADOR DE LOJA | ANTIGO',
+            'current_stage' => HiringProcessStage::EntrevistaPresencial,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.acompanhamento.update', $process), [
+                'title' => 'COORDENADOR DE LOJA | GELATO BORELLI',
+            ])
+            ->assertRedirect();
+
+        $process->refresh();
+        $this->assertSame('COORDENADOR DE LOJA | GELATO BORELLI', $process->title);
+        $this->assertSame(HiringProcessStage::EntrevistaPresencial, $process->current_stage);
+        $this->assertSame($admin->id, $process->updated_by);
+    }
+
     public function test_admin_can_destroy_process(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);

@@ -439,14 +439,19 @@ function onListDragEnd(evt) {
     );
 }
 
+let mainScrollEl = null;
+
 onMounted(() => {
     document.addEventListener('click', closeListMenu);
-    // Não fechar no scroll do quadro: o capture impedia chegar em «Excluir lista».
     window.addEventListener('resize', onListMenuViewportChange);
+    mainScrollEl = document.querySelector(MAIN_SCROLL_SELECTOR);
+    mainScrollEl?.addEventListener('scroll', onListMenuViewportChange);
 });
 onUnmounted(() => {
     document.removeEventListener('click', closeListMenu);
     window.removeEventListener('resize', onListMenuViewportChange);
+    mainScrollEl?.removeEventListener('scroll', onListMenuViewportChange);
+    mainScrollEl = null;
     document.removeEventListener('scroll', onDragScrollCapture, true);
     dragScrollSnapshot = null;
 });
@@ -633,7 +638,11 @@ function expandList(list) {
 
 <template>
     <div class="space-y-3">
-        <div class="flex items-start gap-3 overflow-x-auto pb-3" data-kanban-board-scroll>
+        <div
+            class="flex items-start gap-3 overflow-x-auto pb-3"
+            data-kanban-board-scroll
+            @scroll="onListMenuViewportChange"
+        >
             <VueDraggable
                 v-model="localLists"
                 item-key="id"

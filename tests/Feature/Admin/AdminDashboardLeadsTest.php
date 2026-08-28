@@ -37,7 +37,7 @@ class AdminDashboardLeadsTest extends TestCase
         $submission = LandingInterestSubmission::query()->where('email', 'joao@example.com')->firstOrFail();
         $this->assertNotNull($submission->mail_sent_at);
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
         $this->actingAs($admin)
             ->get(route('admin.dashboard'))
@@ -49,8 +49,12 @@ class AdminDashboardLeadsTest extends TestCase
                     fn ($row) => ($row['key'] ?? null) === 'site' && (int) ($row['count'] ?? 0) === 1
                 ))
                 ->has('funnel')
-                ->where('funnel.0.key', 'proposal')
-                ->where('funnel.0.count', 0)
+                ->where('funnel.0.key', 'leads')
+                ->where('funnel.0.count', 1)
+                ->where('funnel.2.key', 'proposal')
+                ->where('funnel.2.count', 0)
+                ->has('funnelAll')
+                ->where('funnelAll.0.count', 1)
                 ->where('leadsThisMonth', 1)
                 ->missing('commercial')
                 ->missing('alertsCount'));
