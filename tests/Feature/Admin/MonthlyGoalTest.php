@@ -58,7 +58,10 @@ class MonthlyGoalTest extends TestCase
 
     public function test_admin_can_update_monthly_goal_and_dashboard_reflects_it(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create([
+            'is_owner' => true,
+            'is_commercial' => true,
+        ]);
 
         config(['talents.dashboard.monthly_revenue_goal_cents' => 2_000_000]);
 
@@ -106,7 +109,7 @@ class MonthlyGoalTest extends TestCase
 
     public function test_monthly_goal_validation_rejects_invalid_values(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
         foreach ([null, '', 0, -10] as $invalid) {
             $payload = ['goal_reais' => $invalid];
@@ -125,7 +128,10 @@ class MonthlyGoalTest extends TestCase
 
     public function test_monthly_goal_current_excludes_sales_from_other_months(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create([
+            'is_owner' => true,
+            'is_commercial' => true,
+        ]);
 
         $this->createSale($admin, 'PROP-META-CUR', 'VENDA-META-CUR', 800_000, now());
         $this->createSale($admin, 'PROP-META-OLD', 'VENDA-META-OLD', 9_000_000, now()->subMonth());
@@ -138,7 +144,10 @@ class MonthlyGoalTest extends TestCase
 
     public function test_monthly_goal_recurring_sale_counts_only_monthly_parcel(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create([
+            'is_owner' => true,
+            'is_commercial' => true,
+        ]);
 
         $proposal = CommercialProposal::query()->create([
             'code' => 'PROP-META-REC',
@@ -170,6 +179,25 @@ class MonthlyGoalTest extends TestCase
 
         // Recorrente 12× R$1.000 → conta R$1.000; pontual R$2.500 → total R$3.500.
         $this->assertSame(350_000, $home['monthly_goal']['current_cents']);
+    }
+
+    public function test_monthly_goal_excludes_sales_from_non_commercial_sellers(): void
+    {
+        $commercial = User::factory()->superAdmin()->create([
+            'is_owner' => true,
+            'is_commercial' => true,
+        ]);
+        $nonCommercial = User::factory()->superAdmin()->create([
+            'is_owner' => true,
+            'is_commercial' => false,
+        ]);
+
+        $this->createSale($commercial, 'PROP-META-COM', 'VENDA-META-COM', 500_000, now());
+        $this->createSale($nonCommercial, 'PROP-META-ADM', 'VENDA-META-ADM', 9_000_000, now());
+
+        $home = app(AdminHomeDashboardBuilder::class)->build();
+
+        $this->assertSame(500_000, $home['monthly_goal']['current_cents']);
     }
 
     private function createSale(

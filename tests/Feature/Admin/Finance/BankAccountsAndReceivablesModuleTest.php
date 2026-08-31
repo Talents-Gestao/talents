@@ -469,6 +469,50 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
             );
     }
 
+    public function test_receivables_index_can_filter_by_pending_and_paid_status(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $pending = FinanceReceivable::query()->create([
+            'title' => 'A receber',
+            'amount_cents' => 1500,
+            'due_date' => '2026-08-10',
+            'status' => FinanceReceivableStatus::Pending,
+            'created_by' => $admin->id,
+        ]);
+        $received = FinanceReceivable::query()->create([
+            'title' => 'Já recebida',
+            'amount_cents' => 2500,
+            'due_date' => '2026-08-05',
+            'status' => FinanceReceivableStatus::Paid,
+            'paid_at' => '2026-08-06 10:00:00',
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.contas-a-receber.index', [
+                'origin' => 'manual',
+                'status' => FinanceReceivableStatus::Pending->value,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.status', FinanceReceivableStatus::Pending->value)
+                ->has('items.data', 1)
+                ->where('items.data.0.receivable_id', $pending->id));
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.contas-a-receber.index', [
+                'origin' => 'manual',
+                'status' => FinanceReceivableStatus::Paid->value,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.status', FinanceReceivableStatus::Paid->value)
+                ->has('items.data', 1)
+                ->where('items.data.0.receivable_id', $received->id));
+    }
+
     public function test_coming_soon_redirects_to_new_finance_modules(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);

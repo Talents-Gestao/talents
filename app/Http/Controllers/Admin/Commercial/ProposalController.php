@@ -17,12 +17,14 @@ use App\Services\CommercialProposalPdfService;
 use App\Models\CommercialSaleInstallment;
 use App\Support\Commercial\CommercialCodeSearch;
 use App\Support\Commercial\OptionalCommission;
+use App\Support\Commercial\ProposalKanbanBoard;
 use App\Support\Commercial\ProposalListStatus;
 use App\Support\CommercialProposalPdfDefaults;
 use App\Support\CommercialProposalPdfOptionalSections;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -48,6 +50,7 @@ class ProposalController extends Controller
             'created_from' => $request->filled('created_from') ? $request->input('created_from') : null,
             'created_to' => $request->filled('created_to') ? $request->input('created_to') : null,
             'hide_ended' => $request->has('hide_ended') ? $request->input('hide_ended') : null,
+            'view' => $request->filled('view') ? $request->input('view') : null,
         ]);
 
         $validated = $request->validate([
@@ -67,25 +70,31 @@ class ProposalController extends Controller
             'created_from' => ['nullable', 'date'],
             'created_to' => ['nullable', 'date', 'after_or_equal:created_from'],
             'hide_ended' => ['nullable', 'boolean'],
+            'view' => ['nullable', 'string', Rule::in(ProposalKanbanBoard::views())],
         ], [
             'created_to.after_or_equal' => 'A data final deve ser igual ou posterior à data inicial.',
         ]);
 
+        $view = ProposalKanbanBoard::viewFromRequest($request);
         $statusFilter = $validated['status'] ?? '';
         // Padrão: não exibir perdidas. Chip «Perdidas» tem prioridade.
+        // No Kanban as 3 colunas são o status — hide_ended não se aplica.
         $hideEndedRequested = array_key_exists('hide_ended', $validated) && $validated['hide_ended'] !== null
             ? (bool) $validated['hide_ended']
             : true;
-        $hideEnded = $hideEndedRequested && ! in_array($statusFilter, ['encerradas', 'perdidas'], true);
+        $hideEnded = $view !== ProposalKanbanBoard::VIEW_KANBAN
+            && $hideEndedRequested
+            && ! in_array($statusFilter, ['encerradas', 'perdidas'], true);
 
         $filters = [
             'search' => $validated['search'] ?? '',
             'seller_id' => isset($validated['seller_id']) ? (string) $validated['seller_id'] : '',
-            'status' => $statusFilter,
+            'status' => $view === ProposalKanbanBoard::VIEW_KANBAN ? '' : $statusFilter,
             'sale_situation' => $validated['sale_situation'] ?? '',
             'created_from' => $validated['created_from'] ?? '',
             'created_to' => $validated['created_to'] ?? '',
             'hide_ended' => $hideEnded,
+            'view' => $view,
         ];
 
         $baseQuery = CommercialProposal::query();
@@ -102,44 +111,32 @@ class ProposalController extends Controller
             'encerradas' => ProposalListStatus::applyFilter((clone $baseQuery), 'perdidas')->count(),
         ];
 
-        $q = CommercialProposal::query()
-            ->with([
-                'seller:id,name',
-                'sale' => function ($saleQuery): void {
-                    $saleQuery->select('id', 'proposal_id', 'code', 'status', 'installments_count')
-                        ->withCount([
-                            'installments as paid_installments_count' => fn ($iq) => $iq
-                                ->where('status', CommercialSaleInstallment::STATUS_PAGO),
-                            'installments as total_installments_count',
-                        ]);
-                },
-            ])
-            ->orderByDesc('created_at');
+        $kanban = null;
+        if ($view === ProposalKanbanBoard::VIEW_KANBAN) {
+            $kanban = $this->buildKanbanBoard($filters, $statusCounts);
+            $proposals = new LengthAwarePaginator([], 0, 15, 1, [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]);
+        } else {
+            $q = CommercialProposal::query()
+                ->with($this->proposalIndexRelations())
+                ->orderByDesc('created_at');
 
-        $this->applyProposalIndexFilters($q, $filters, includeStatus: true);
+            $this->applyProposalIndexFilters($q, $filters, includeStatus: true);
 
-        $proposals = $q->paginate(15)->withQueryString();
-
-        $proposals->getCollection()->transform(function (CommercialProposal $proposal) {
-            $listStatus = ProposalListStatus::for($proposal);
-            $arr = $proposal->toArray();
-            $arr['list_status'] = $listStatus;
-            $arr['list_status_label'] = ProposalListStatus::label($listStatus);
-            $arr['lost_reason'] = $proposal->lost_reason;
-            $arr['lost_reason_label'] = ProposalLostReason::tryFrom((string) ($proposal->lost_reason ?? ''))?->label();
-            $arr['lost_reason_notes'] = $proposal->lost_reason_notes;
-            $arr['paid_installments'] = $proposal->sale?->paid_installments_count;
-            $arr['total_installments'] = $proposal->sale?->total_installments_count
-                ?? $proposal->sale?->installments_count;
-            $arr['can_reopen'] = $proposal->canReopen();
-
-            return $arr;
-        });
+            $proposals = $q->paginate(15)->withQueryString();
+            $proposals->getCollection()->transform(
+                fn (CommercialProposal $proposal) => $this->transformProposalForIndex($proposal),
+            );
+        }
 
         $commercialSettings = CommercialSetting::current();
 
         return Inertia::render('Admin/Commercial/Proposals/Index', [
             'proposals' => $proposals,
+            'kanban' => $kanban,
+            'view' => $view,
             'sellers' => $this->sellersOptions(),
             'filters' => $filters,
             'statusCounts' => $statusCounts,
@@ -301,7 +298,7 @@ class ProposalController extends Controller
 
         if (! $proposal->canReopen()) {
             return redirect()
-                ->back()
+                ->route('admin.comercial.propostas.index', $this->proposalsIndexRedirectQuery($request))
                 ->with('success', 'A proposta já está em aberto para edição.');
         }
 
@@ -319,7 +316,7 @@ class ProposalController extends Controller
         }
 
         return redirect()
-            ->back()
+            ->route('admin.comercial.propostas.index', $this->proposalsIndexRedirectQuery($request))
             ->with('success', $message);
     }
 
@@ -335,6 +332,7 @@ class ProposalController extends Controller
             ])],
             'lost_reason' => ['nullable', 'string', Rule::enum(ProposalLostReason::class)],
             'lost_reason_notes' => ['nullable', 'string', 'max:5000'],
+            'view' => ['nullable', 'string', Rule::in(ProposalKanbanBoard::views())],
         ], [
             'status.required' => 'Selecione o status.',
             'status.in' => 'Status inválido.',
@@ -396,7 +394,7 @@ class ProposalController extends Controller
         $label = ProposalListStatus::label($listStatus);
 
         $redirect = redirect()
-            ->route('admin.comercial.propostas.index')
+            ->route('admin.comercial.propostas.index', $this->proposalsIndexRedirectQuery($request))
             ->with('success', "Status da proposta {$proposal->code} atualizado para «{$label}».");
 
         return $hiringFlash !== null
@@ -430,6 +428,152 @@ class ProposalController extends Controller
         return $pdfService
             ->generate($proposal)
             ->stream("proposta-{$proposal->code}.pdf");
+    }
+
+    /**
+     * Query string para voltar à Index (preserva view=kanban após status/reabrir).
+     *
+     * @return array{view?: string}
+     */
+    private function proposalsIndexRedirectQuery(Request $request): array
+    {
+        $view = ProposalKanbanBoard::viewFromRequest($request);
+
+        return $view === ProposalKanbanBoard::VIEW_KANBAN
+            ? ['view' => ProposalKanbanBoard::VIEW_KANBAN]
+            : [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function proposalIndexRelations(): array
+    {
+        return [
+            'seller:id,name',
+            'sale' => function ($saleQuery): void {
+                $saleQuery->select('id', 'proposal_id', 'code', 'status', 'installments_count')
+                    ->withCount([
+                        'installments as paid_installments_count' => fn ($iq) => $iq
+                            ->where('status', CommercialSaleInstallment::STATUS_PAGO),
+                        'installments as total_installments_count',
+                    ]);
+            },
+            'contracts' => function ($contractQuery): void {
+                $contractQuery->select(
+                    'id',
+                    'proposal_id',
+                    'zapsign_status',
+                    'zapsign_document_token',
+                    'zapsign_sent_at',
+                );
+            },
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function transformProposalForIndex(CommercialProposal $proposal): array
+    {
+        $listStatus = ProposalListStatus::for($proposal);
+        $hasSale = $proposal->sale !== null;
+        $zapsignPending = $proposal->hasZapSignSentContract() && ! $proposal->hasSignedContract();
+        $isStagnant = $listStatus === ProposalListStatus::OPEN
+            && $proposal->updated_at !== null
+            && $proposal->updated_at->lte(now()->subDays(ProposalKanbanBoard::STAGNANT_DAYS));
+
+        $arr = $proposal->toArray();
+        unset($arr['contracts']);
+        $arr['list_status'] = $listStatus;
+        $arr['list_status_label'] = ProposalListStatus::label($listStatus);
+        $arr['lost_reason'] = $proposal->lost_reason;
+        $arr['lost_reason_label'] = ProposalLostReason::tryFrom((string) ($proposal->lost_reason ?? ''))?->label();
+        $arr['lost_reason_notes'] = $proposal->lost_reason_notes;
+        $arr['paid_installments'] = $proposal->sale?->paid_installments_count;
+        $arr['total_installments'] = $proposal->sale?->total_installments_count
+            ?? $proposal->sale?->installments_count;
+        $arr['can_reopen'] = $proposal->canReopen();
+        $arr['is_stagnant'] = $isStagnant;
+        $arr['closed_without_sale'] = $listStatus === ProposalListStatus::CLOSED && ! $hasSale;
+        $arr['zapsign_pending'] = $zapsignPending;
+
+        return $arr;
+    }
+
+    /**
+     * @param  array{
+     *     search: string,
+     *     seller_id: string,
+     *     status: string,
+     *     sale_situation: string,
+     *     created_from: string,
+     *     created_to: string,
+     *     hide_ended: bool,
+     *     view?: string
+     * }  $filters
+     * @param  array<string, int>  $statusCounts
+     * @return array{
+     *     columns: list<array{
+     *         key: string,
+     *         label: string,
+     *         count: int,
+     *         total_cents: int,
+     *         truncated: bool,
+     *         items: list<array<string, mixed>>
+     *     }>,
+     *     pipeline_open_cents: int
+     * }
+     */
+    private function buildKanbanBoard(array $filters, array $statusCounts): array
+    {
+        $kanbanFilters = array_merge($filters, [
+            'status' => '',
+            'hide_ended' => false,
+        ]);
+
+        $columns = [];
+        foreach (ProposalKanbanBoard::columns() as $column) {
+            $query = CommercialProposal::query()
+                ->with($this->proposalIndexRelations())
+                ->orderByDesc('updated_at')
+                ->orderByDesc('id');
+
+            $this->applyProposalIndexFilters($query, $kanbanFilters, includeStatus: false);
+            ProposalListStatus::applyFilter($query, $column['filter']);
+
+            $count = (int) (match ($column['filter']) {
+                'abertas' => $statusCounts['abertas'] ?? null,
+                'fechadas' => $statusCounts['fechadas'] ?? null,
+                'perdidas' => $statusCounts['perdidas'] ?? null,
+                default => null,
+            } ?? (clone $query)->count());
+
+            $totalCents = (int) (clone $query)->sum('total_final_cents');
+
+            $items = $query
+                ->limit(ProposalKanbanBoard::PER_COLUMN_LIMIT)
+                ->get()
+                ->map(fn (CommercialProposal $proposal) => $this->transformProposalForIndex($proposal))
+                ->all();
+
+            $columns[] = [
+                'key' => $column['key'],
+                'label' => $column['label'],
+                'count' => $count,
+                'total_cents' => $totalCents,
+                'truncated' => $count > ProposalKanbanBoard::PER_COLUMN_LIMIT,
+                'items' => $items,
+            ];
+        }
+
+        $openColumn = collect($columns)->firstWhere('key', ProposalListStatus::OPEN);
+        $pipelineOpenCents = (int) ($openColumn['total_cents'] ?? 0);
+
+        return [
+            'columns' => $columns,
+            'pipeline_open_cents' => $pipelineOpenCents,
+        ];
     }
 
     /**

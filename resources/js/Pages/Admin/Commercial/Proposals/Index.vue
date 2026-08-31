@@ -1,5 +1,5 @@
 <script setup>
-import CommercialModuleNav from '@/Components/Commercial/CommercialModuleNav.vue';
+import ProposalsKanbanBoard from '@/Components/Commercial/ProposalsKanbanBoard.vue';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -11,8 +11,10 @@ import {
     CheckCircleIcon,
     DocumentArrowDownIcon,
     DocumentTextIcon,
+    ListBulletIcon,
     PencilSquareIcon,
     PlusIcon,
+    Squares2X2Icon,
     TrashIcon,
     XMarkIcon,
 } from '@heroicons/vue/24/outline';
@@ -23,6 +25,8 @@ const inertiaPage = usePage();
 
 const props = defineProps({
     proposals: { type: Object, required: true },
+    kanban: { type: Object, default: null },
+    view: { type: String, default: 'list' },
     sellers: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
     statusCounts: {
@@ -49,6 +53,8 @@ const props = defineProps({
     default_commission_percent: { type: Number, default: 0 },
 });
 
+const isKanbanView = computed(() => props.view === 'kanban');
+
 const filterState = reactive({
     search: props.filters.search ?? '',
     seller_id: props.filters.seller_id ?? '',
@@ -74,6 +80,9 @@ watch(
 );
 
 const showHideEndedCheckbox = computed(() => {
+    if (isKanbanView.value) {
+        return false;
+    }
     const status = filterState.status;
     return status !== 'encerradas' && status !== 'perdidas';
 });
@@ -114,13 +123,16 @@ const sellerNameById = (id) => {
 
 const filterQuery = () => {
     const params = {};
+    if (isKanbanView.value) {
+        params.view = 'kanban';
+    }
     if (String(filterState.search ?? '').trim() !== '') {
         params.search = String(filterState.search).trim();
     }
     if (String(filterState.seller_id ?? '') !== '') {
         params.seller_id = filterState.seller_id;
     }
-    if (String(filterState.status ?? '') !== '') {
+    if (!isKanbanView.value && String(filterState.status ?? '') !== '') {
         params.status = filterState.status;
     }
     if (String(filterState.sale_situation ?? '') !== '') {
@@ -132,10 +144,34 @@ const filterQuery = () => {
     if (String(filterState.created_to ?? '') !== '') {
         params.created_to = filterState.created_to;
     }
-    if (filterState.status !== 'encerradas' && filterState.status !== 'perdidas' && !filterState.hide_ended) {
+    if (
+        !isKanbanView.value
+        && filterState.status !== 'encerradas'
+        && filterState.status !== 'perdidas'
+        && !filterState.hide_ended
+    ) {
         params.hide_ended = 0;
     }
     return params;
+};
+
+const setViewMode = (mode) => {
+    const next = mode === 'kanban' ? 'kanban' : 'list';
+    if ((next === 'kanban') === isKanbanView.value) {
+        return;
+    }
+    const params = filterQuery();
+    if (next === 'kanban') {
+        params.view = 'kanban';
+        delete params.status;
+        delete params.hide_ended;
+    } else {
+        delete params.view;
+    }
+    router.get(route('admin.comercial.propostas.index'), params, {
+        preserveScroll: true,
+        replace: true,
+    });
 };
 
 const activeFilterChips = computed(() => {
@@ -208,6 +244,10 @@ const statusForm = useForm({
     lost_reason: '',
     lost_reason_notes: '',
 });
+/** @type {import('vue').Ref<null | { proposal: object, revert: () => void }>} */
+const pendingKanbanLostMove = ref(null);
+const kanbanBusy = ref(false);
+const kanbanMoveError = ref('');
 
 const showLostReasonFields = computed(() => statusForm.status === 'ended');
 const showLostReasonNotes = computed(
@@ -215,6 +255,7 @@ const showLostReasonNotes = computed(
 );
 
 const openStatusModal = (proposal) => {
+    pendingKanbanLostMove.value = null;
     statusProposal.value = proposal;
     statusForm.clearErrors();
     statusForm.status = proposal.list_status
@@ -234,11 +275,19 @@ const closeStatusModal = () => {
     if (statusForm.processing) {
         return;
     }
+    if (pendingKanbanLostMove.value?.revert) {
+        pendingKanbanLostMove.value.revert();
+    }
+    pendingKanbanLostMove.value = null;
     statusModalOpen.value = false;
     statusProposal.value = null;
     statusForm.reset();
     statusForm.clearErrors();
 };
+
+const statusPayloadExtras = () => (
+    isKanbanView.value ? { view: 'kanban' } : {}
+);
 
 const submitStatus = () => {
     if (!statusProposal.value) {
@@ -251,14 +300,22 @@ const submitStatus = () => {
             lost_reason_notes: data.status === 'ended' && data.lost_reason === 'outros'
                 ? (data.lost_reason_notes || null)
                 : (data.status === 'ended' ? (data.lost_reason_notes || null) : null),
+            ...statusPayloadExtras(),
         }))
         .patch(route('admin.comercial.propostas.status', statusProposal.value.id), {
             preserveScroll: true,
             onSuccess: () => {
+                pendingKanbanLostMove.value = null;
                 statusModalOpen.value = false;
                 statusProposal.value = null;
                 statusForm.reset();
                 statusForm.clearErrors();
+            },
+            onError: () => {
+                if (pendingKanbanLostMove.value?.revert) {
+                    pendingKanbanLostMove.value.revert();
+                    pendingKanbanLostMove.value = null;
+                }
             },
         });
 };
@@ -291,7 +348,7 @@ const confirmReopenProposal = () => {
     reopeningId.value = proposal.id;
     router.post(
         route('admin.comercial.propostas.reopen', proposal.id),
-        {},
+        statusPayloadExtras(),
         {
             preserveScroll: true,
             onFinish: () => {
@@ -303,6 +360,79 @@ const confirmReopenProposal = () => {
             },
         },
     );
+};
+
+const patchKanbanStatus = (proposal, status, revert) => {
+    kanbanBusy.value = true;
+    kanbanMoveError.value = '';
+    router.patch(
+        route('admin.comercial.propostas.status', proposal.id),
+        {
+            status,
+            ...statusPayloadExtras(),
+        },
+        {
+            preserveScroll: true,
+            onError: (errors) => {
+                revert?.();
+                kanbanMoveError.value = errors?.status
+                    || errors?.proposal
+                    || 'Não foi possível mover a proposta.';
+            },
+            onFinish: () => {
+                kanbanBusy.value = false;
+            },
+        },
+    );
+};
+
+const onKanbanMove = ({ proposal, toStatus, revert }) => {
+    kanbanMoveError.value = '';
+
+    if (toStatus === 'ended') {
+        pendingKanbanLostMove.value = { proposal, revert };
+        statusProposal.value = proposal;
+        statusForm.clearErrors();
+        statusForm.status = 'ended';
+        statusForm.lost_reason = proposal.lost_reason ?? '';
+        statusForm.lost_reason_notes = proposal.lost_reason_notes ?? '';
+        statusModalOpen.value = true;
+        return;
+    }
+
+    if (toStatus === 'open') {
+        if (proposal.sale || !proposal.can_reopen) {
+            revert?.();
+            kanbanMoveError.value = proposal.sale
+                ? 'Não é possível reabrir uma proposta que já possui venda vinculada.'
+                : 'Esta proposta não pode ser reaberta.';
+            return;
+        }
+        kanbanBusy.value = true;
+        router.post(
+            route('admin.comercial.propostas.reopen', proposal.id),
+            statusPayloadExtras(),
+            {
+                preserveScroll: true,
+                onError: (errors) => {
+                    revert?.();
+                    kanbanMoveError.value = errors?.proposal
+                        || 'Não foi possível reabrir a proposta.';
+                },
+                onFinish: () => {
+                    kanbanBusy.value = false;
+                },
+            },
+        );
+        return;
+    }
+
+    if (toStatus === 'closed') {
+        patchKanbanStatus(proposal, 'closed', revert);
+        return;
+    }
+
+    revert?.();
 };
 
 const applyFilters = () => {
@@ -882,6 +1012,42 @@ const submitConvert = () => {
                     </h2>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
+                    <div
+                        class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-0.5"
+                        role="group"
+                        aria-label="Modo de visualização"
+                    >
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition"
+                            :class="
+                                !isKanbanView
+                                    ? 'bg-white text-talents-800 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                            "
+                            :aria-pressed="!isKanbanView"
+                            title="Lista"
+                            @click="setViewMode('list')"
+                        >
+                            <ListBulletIcon class="h-4 w-4" />
+                            Lista
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition"
+                            :class="
+                                isKanbanView
+                                    ? 'bg-white text-talents-800 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                            "
+                            :aria-pressed="isKanbanView"
+                            title="Kanban"
+                            @click="setViewMode('kanban')"
+                        >
+                            <Squares2X2Icon class="h-4 w-4" />
+                            Kanban
+                        </button>
+                    </div>
                     <Link
                         :href="route('admin.comercial.propostas.create')"
                         class="inline-flex items-center gap-1.5 rounded-xl bg-talents-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
@@ -893,8 +1059,6 @@ const submitConvert = () => {
                 </div>
             </div>
         </template>
-
-        <CommercialModuleNav />
 
         <div
             v-if="inertiaPage.props.flash?.success && !generatedContractId && !inertiaPage.props.flash?.sale_id"
@@ -912,8 +1076,19 @@ const submitConvert = () => {
             {{ inertiaPage.props.flash.info }}
         </div>
 
+        <div
+            v-if="kanbanMoveError"
+            class="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
+            role="alert"
+        >
+            {{ kanbanMoveError }}
+        </div>
+
         <div class="surface-card p-6">
-            <div class="flex flex-wrap items-center justify-between gap-3">
+            <div
+                v-if="!isKanbanView"
+                class="flex flex-wrap items-center justify-between gap-3"
+            >
                 <div class="flex flex-wrap items-center gap-2">
                     <button
                         v-for="chip in statusChipOptions"
@@ -953,6 +1128,12 @@ const submitConvert = () => {
                     Não exibir perdidas
                 </label>
             </div>
+            <p
+                v-else
+                class="text-sm text-slate-600"
+            >
+                Funil por status do Talents. Filtre abaixo e arraste os cards para mudar Aberta, Fechada ou Perdida.
+            </p>
 
             <form class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6" @submit.prevent="applyFilters">
                 <div class="xl:col-span-2">
@@ -1049,7 +1230,22 @@ const submitConvert = () => {
             </div>
         </div>
 
-        <div class="mt-6 surface-card overflow-hidden">
+        <div v-if="isKanbanView" class="mt-6">
+            <ProposalsKanbanBoard
+                v-if="kanban"
+                :kanban="kanban"
+                :reopening-id="reopeningId"
+                :busy="kanbanBusy || statusForm.processing"
+                @move="onKanbanMove"
+                @edit-status="openStatusModal"
+                @reopen="openReopenModal"
+                @convert="openConvertModal"
+                @contract="openContractModal"
+                @destroy="destroy"
+            />
+        </div>
+
+        <div v-else class="mt-6 surface-card overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">

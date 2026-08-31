@@ -2,7 +2,6 @@
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import CommercialAdjustmentFields from '@/Components/Commercial/CommercialAdjustmentFields.vue';
 import CatalogProductObservationField from '@/Components/Commercial/CatalogProductObservationField.vue';
-import CommercialModuleNav from '@/Components/Commercial/CommercialModuleNav.vue';
 import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
@@ -1047,8 +1046,6 @@ const onStepClick = (index) => {
                 </template>
             </FormPageHeader>
         </template>
-
-        <CommercialModuleNav />
 
         <div
             v-if="inertiaPage.props.flash?.success"

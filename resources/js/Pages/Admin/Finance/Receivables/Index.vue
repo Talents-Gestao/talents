@@ -58,6 +58,21 @@ const applyFilters = () => {
     );
 };
 
+const statusTabOptions = [
+    { value: 'pending', label: 'Pendentes' },
+    { value: 'paid', label: 'Recebidas' },
+    { value: '', label: 'Todas' },
+];
+
+const setStatusTab = (status) => {
+    const next = status ?? '';
+    if (localFilters.status === next) {
+        return;
+    }
+    localFilters.status = next;
+    applyFilters();
+};
+
 const formatDate = (iso) => {
     if (!iso) {
         return '—';
@@ -294,8 +309,31 @@ const submitEdit = () => {
             {{ flashError }}
         </div>
 
+        <div
+            class="mb-4 flex flex-wrap items-center gap-2"
+            role="tablist"
+            aria-label="Filtrar por status"
+        >
+            <button
+                v-for="tab in statusTabOptions"
+                :key="tab.value === '' ? 'all' : tab.value"
+                type="button"
+                role="tab"
+                class="rounded-xl px-3 py-1.5 text-sm font-semibold transition"
+                :class="
+                    localFilters.status === tab.value
+                        ? 'bg-talents-600 text-white shadow-sm'
+                        : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-900'
+                "
+                :aria-selected="localFilters.status === tab.value"
+                @click="setStatusTab(tab.value)"
+            >
+                {{ tab.label }}
+            </button>
+        </div>
+
         <form
-            class="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 lg:grid-cols-[1fr_10rem_12rem_14rem_auto]"
+            class="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 lg:grid-cols-[1fr_12rem_14rem_auto]"
             @submit.prevent="applyFilters"
         >
             <input
@@ -304,13 +342,6 @@ const submitEdit = () => {
                 placeholder="Buscar título, cliente ou código da venda"
                 class="rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/60"
             />
-            <select
-                v-model="localFilters.status"
-                class="rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/60"
-            >
-                <option value="">Todos os status</option>
-                <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
             <select
                 v-model="localFilters.origin"
                 class="rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/60"
