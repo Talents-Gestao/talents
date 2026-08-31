@@ -507,7 +507,7 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
             ->get(route('admin.financeiro.contas-a-receber.index', ['origin' => 'manual']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('items.data.0.receivable_id', $pending->id)
+                ->where('items.data.0.receivable_id', $received->id)
             );
 
         $this->actingAs($admin)
@@ -520,6 +520,61 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
                 ->where('filters.sort', 'paid_at')
                 ->where('items.data.0.receivable_id', $received->id)
                 ->where('items.data.1.receivable_id', $pending->id)
+            );
+    }
+
+    public function test_receivables_index_lists_nearest_due_dates_first_for_recurring_sale(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $sale = CommercialSale::query()->create([
+            'code' => 'VENDA-REC-SORT',
+            'client_name' => 'Cliente Recorrente Sort',
+            'total_cents' => 120_000,
+            'installments_count' => 3,
+            'payment_method' => 'pix',
+            'status' => CommercialSale::STATUS_ABERTA,
+            'is_recurring' => true,
+            'recurring_months' => 3,
+            'recurring_monthly_cents' => 40_000,
+            'sold_at' => now(),
+            'created_by' => $admin->id,
+            'seller_id' => $admin->id,
+        ]);
+
+        $month3 = $sale->installments()->create([
+            'number' => 3,
+            'amount_cents' => 40_000,
+            'due_date' => '2026-10-01',
+            'method' => 'pix',
+            'status' => CommercialSaleInstallment::STATUS_PENDENTE,
+        ]);
+        $month1 = $sale->installments()->create([
+            'number' => 1,
+            'amount_cents' => 40_000,
+            'due_date' => '2026-08-01',
+            'method' => 'pix',
+            'status' => CommercialSaleInstallment::STATUS_PENDENTE,
+        ]);
+        $month2 = $sale->installments()->create([
+            'number' => 2,
+            'amount_cents' => 40_000,
+            'due_date' => '2026-09-01',
+            'method' => 'pix',
+            'status' => CommercialSaleInstallment::STATUS_PENDENTE,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.contas-a-receber.index', [
+                'origin' => 'sale',
+                'sort' => 'due_date',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('items.data.0.installment_id', $month1->id)
+                ->where('items.data.1.installment_id', $month2->id)
+                ->where('items.data.2.installment_id', $month3->id)
             );
     }
 

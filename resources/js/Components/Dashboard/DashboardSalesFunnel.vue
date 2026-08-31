@@ -36,11 +36,20 @@ const props = defineProps({
             items: [],
         }),
     },
+    /** 'month' | 'all' — textos do bloco Perdido e tooltips. */
+    scope: {
+        type: String,
+        default: 'month',
+        validator: (value) => ['month', 'all'].includes(value),
+    },
 });
+
+const scopePhrase = computed(() => (props.scope === 'all' ? 'no total' : 'neste mês'));
+const scopeShort = computed(() => (props.scope === 'all' ? 'no total' : 'no mês'));
 
 /**
  * % = conversão acumulada a partir do topo (produto das taxas entre etapas).
- * Assim a % só diminui ou estabiliza. O count exibido é o volume real do mês.
+ * Assim a % só diminui ou estabiliza. O count exibido é o volume real do período.
  */
 const rows = computed(() => {
     const list = props.funnel || [];
@@ -127,7 +136,7 @@ function formatLostDate(iso) {
                     'dashboard-sales-funnel__row--link': !!row.href,
                     'dashboard-sales-funnel__row--last': index === rows.length - 1,
                 }"
-                :title="`${row.label}: ${row.count} no mês · ${row.pct}% de conversão acumulada`"
+                :title="`${row.label}: ${row.count} ${scopeShort} · ${row.pct}% de conversão acumulada`"
             >
                 <div class="dashboard-sales-funnel__label">
                     {{ row.label }}
@@ -193,7 +202,7 @@ function formatLostDate(iso) {
                 </li>
             </ul>
             <p v-else class="mt-2 text-sm text-slate-500">
-                Nenhuma proposta perdida neste mês.
+                Nenhuma proposta perdida {{ scopePhrase }}.
             </p>
         </div>
 
@@ -211,7 +220,7 @@ function formatLostDate(iso) {
                             {{ selectedLost.name }}
                         </h3>
                         <p class="mt-1 text-sm text-slate-600">
-                            Respostas de perda neste mês
+                            Respostas de perda {{ scopePhrase }}
                             ({{ selectedLost.count }}
                             {{ selectedLost.count === 1 ? 'registro' : 'registros' }}).
                         </p>

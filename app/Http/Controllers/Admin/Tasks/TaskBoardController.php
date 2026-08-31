@@ -155,7 +155,7 @@ class TaskBoardController extends Controller
             }
         });
 
-        return back();
+        return redirect()->route('admin.tarefas.quadros.index');
     }
 
     public function show(Request $request, TaskBoard $board): Response

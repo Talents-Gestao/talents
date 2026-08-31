@@ -11,8 +11,8 @@ use Illuminate\Support\Collection;
 /**
  * Ordenação partilhada das listagens de contas a pagar e a receber.
  *
- * Default: vencimento (mais recente primeiro). A opção «data de pagamento /
- * recebimento» usa paid_at; itens sem data efetiva ficam no fim, desempate por vencimento.
+ * Default: vencimento (mais próximos primeiro). A opção «data de pagamento /
+ * recebimento» usa paid_at; itens sem data efetiva ficam no fim, desempate por vencimento ASC.
  */
 final class FinanceListSort
 {
@@ -61,13 +61,16 @@ final class FinanceListSort
             $query
                 ->orderByRaw('CASE WHEN paid_at IS NULL THEN 1 ELSE 0 END')
                 ->orderByDesc('paid_at')
-                ->orderByDesc('due_date')
-                ->orderByDesc('id');
+                ->orderBy('due_date')
+                ->orderBy('id');
 
             return;
         }
 
-        $query->orderByDesc('due_date')->orderByDesc('id');
+        $query
+            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('due_date')
+            ->orderBy('id');
     }
 
     /**
@@ -93,22 +96,39 @@ final class FinanceListSort
                         }
                     }
 
-                    $dueCmp = self::sortKey($b['due_date'] ?? null) <=> self::sortKey($a['due_date'] ?? null);
+                    $dueCmp = self::compareDueDatesAscending($a, $b);
                     if ($dueCmp !== 0) {
                         return $dueCmp;
                     }
 
-                    return self::rowId($b) <=> self::rowId($a);
+                    return self::rowId($a) <=> self::rowId($b);
                 }
 
-                $cmp = self::sortKey($b[$column] ?? null) <=> self::sortKey($a[$column] ?? null);
-                if ($cmp !== 0) {
-                    return $cmp;
+                $dueCmp = self::compareDueDatesAscending($a, $b);
+                if ($dueCmp !== 0) {
+                    return $dueCmp;
                 }
 
-                return self::rowId($b) <=> self::rowId($a);
+                return self::rowId($a) <=> self::rowId($b);
             })
             ->values();
+    }
+
+    /**
+     * Vencimentos mais próximos primeiro; sem data no fim.
+     *
+     * @param  array<string, mixed>  $a
+     * @param  array<string, mixed>  $b
+     */
+    private static function compareDueDatesAscending(array $a, array $b): int
+    {
+        $aNull = ! self::hasDate($a['due_date'] ?? null);
+        $bNull = ! self::hasDate($b['due_date'] ?? null);
+        if ($aNull !== $bNull) {
+            return $aNull <=> $bNull;
+        }
+
+        return self::sortKey($a['due_date'] ?? null) <=> self::sortKey($b['due_date'] ?? null);
     }
 
     private static function hasDate(mixed $value): bool

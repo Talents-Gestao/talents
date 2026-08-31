@@ -2,7 +2,7 @@
 import AppTopBar from '@/Components/AppTopBar.vue';
 import NewsFeedDrawer from '@/Components/NewsFeedDrawer.vue';
 import NoticeBellDropdown from '@/Components/NoticeBellDropdown.vue';
-import { Bars3Icon, MapPinIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { Bars3Icon, ChevronDownIcon, ChevronUpIcon, MapPinIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import {
     computed,
     nextTick,
@@ -54,6 +54,7 @@ const mobileOpen = ref(false);
 
 const navEl = ref(null);
 const canScrollMore = ref(false);
+const canScrollUp = ref(false);
 
 let showLabelsTimer = null;
 let hideWidthTimer = null;
@@ -100,12 +101,24 @@ const updateScrollHints = () => {
     const el = navEl.value;
     if (!el) {
         canScrollMore.value = false;
+        canScrollUp.value = false;
         return;
     }
 
     const overflow = el.scrollHeight - el.clientHeight > 2;
+    const atTop = el.scrollTop <= 2;
     const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+    canScrollUp.value = overflow && !atTop;
     canScrollMore.value = overflow && !atBottom;
+};
+
+const scrollNavBy = (direction) => {
+    const el = navEl.value;
+    if (!el) {
+        return;
+    }
+    const delta = Math.max(120, Math.round(el.clientHeight * 0.55));
+    el.scrollBy({ top: direction === 'up' ? -delta : delta, behavior: 'smooth' });
 };
 
 const onAsideEnter = () => {
@@ -313,11 +326,43 @@ const pinButtonTitle = computed(() =>
                         </div>
                     </nav>
 
+                    <!-- Hint: há itens acima -->
                     <div
-                        class="pointer-events-none absolute inset-x-0 bottom-0 h-7 bg-gradient-to-t from-white/70 via-white/25 to-transparent transition-opacity duration-200"
+                        class="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-center transition-opacity duration-200"
+                        :class="canScrollUp ? 'opacity-100' : 'opacity-0'"
+                        aria-hidden="true"
+                    >
+                        <div class="h-8 w-full bg-gradient-to-b from-white via-white/90 to-transparent" />
+                        <button
+                            v-if="canScrollUp"
+                            type="button"
+                            class="pointer-events-auto -mt-6 inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200/90 bg-white text-talents-700 shadow-sm transition hover:bg-talents-50 hover:text-talents-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-400/50"
+                            aria-label="Rolar menu para cima"
+                            @click="scrollNavBy('up')"
+                        >
+                            <ChevronUpIcon class="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+
+                    <!-- Hint: há itens abaixo -->
+                    <div
+                        class="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col items-center justify-end transition-opacity duration-200"
                         :class="canScrollMore ? 'opacity-100' : 'opacity-0'"
                         aria-hidden="true"
-                    />
+                    >
+                        <div class="relative flex w-full flex-col items-center">
+                            <button
+                                v-if="canScrollMore"
+                                type="button"
+                                class="pointer-events-auto absolute bottom-3 z-[1] inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200/90 bg-white text-talents-700 shadow-sm transition hover:bg-talents-50 hover:text-talents-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-400/50"
+                                aria-label="Rolar menu para baixo"
+                                @click="scrollNavBy('down')"
+                            >
+                                <ChevronDownIcon class="h-3.5 w-3.5" />
+                            </button>
+                            <div class="h-10 w-full bg-gradient-to-t from-white via-white/95 to-transparent" />
+                        </div>
+                    </div>
                 </div>
 
                 <div class="shrink-0 overflow-hidden border-t border-slate-200/70 px-2 py-2">

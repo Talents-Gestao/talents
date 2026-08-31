@@ -31,7 +31,7 @@ class AdminHomeDashboardMetricsTest extends TestCase
 
     public function test_home_metrics_come_from_domain_records_not_placeholders(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
         $company = Company::query()->create(['name' => 'Cliente Ativo A', 'is_active' => true]);
         Company::query()->create(['name' => 'Cliente Ativo B', 'is_active' => true]);
@@ -121,9 +121,13 @@ class AdminHomeDashboardMetricsTest extends TestCase
                 ->where('tasksToday.0.title', 'Revisar proposta')
                 ->has('leadsBySource')
                 ->has('funnel')
-                ->where('funnel.0.key', 'proposal')
-                ->where('funnel.0.count', 1)
-                ->where('funnel.0.label', 'Proposta')
+                ->where('funnel.0.key', 'leads')
+                ->where('funnel.0.count', 2)
+                ->where('funnel.0.label', 'Leads')
+                ->where('funnel.2.key', 'proposal')
+                ->where('funnel.2.count', 1)
+                ->has('funnelAll')
+                ->where('funnelAll.2.count', 1)
                 ->where('leadsThisMonth', 2)
                 ->has('monthlyGoal')
                 ->missing('commercial')
