@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 class Survey extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'company_id',
         'survey_template_id',
@@ -19,6 +22,8 @@ class Survey extends Model
         'status',
         'min_responses_for_breakdown',
         'answers_reconstructed_at',
+        'deleted_by',
+        'archive_path',
     ];
 
     protected function casts(): array
@@ -73,6 +78,16 @@ class Survey extends Model
     public function aiAnalyses(): HasMany
     {
         return $this->hasMany(AiAnalysis::class);
+    }
+
+    public function nr1Reports(): HasMany
+    {
+        return $this->hasMany(SurveyNr1Report::class);
+    }
+
+    public function deletedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     /**

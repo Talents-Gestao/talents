@@ -63,7 +63,7 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
     Route::get('voz-do-time', [VozDoTimeController::class, 'index'])->name('voz-do-time.index');
 
     Route::middleware('can.module:pesquisas')->group(function () {
-        Route::resource('surveys', SurveyController::class);
+        Route::resource('surveys', SurveyController::class)->except(['destroy']);
         Route::get('surveys/{survey}/results', [SurveyResultsController::class, 'show'])->name('surveys.results');
     });
 
