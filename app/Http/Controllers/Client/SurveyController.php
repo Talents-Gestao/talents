@@ -127,12 +127,4 @@ class SurveyController extends Controller
 
         return redirect()->route('client.surveys.show', $survey)->with('success', 'Campanha atualizada.');
     }
-
-    public function destroy(Request $request, Survey $survey): RedirectResponse
-    {
-        $survey = $this->findSurvey($request, $survey);
-        $survey->delete();
-
-        return redirect()->route('client.surveys.index')->with('success', 'Campanha removida.');
-    }
 }

@@ -29,6 +29,7 @@ use App\Http\Controllers\Admin\Finance\PaymentMethodController as FinancePayment
 use App\Http\Controllers\Admin\Finance\ReceivableController as FinanceReceivableController;
 use App\Http\Controllers\Admin\Finance\SaleController as FinanceSaleController;
 use App\Http\Controllers\Admin\CompanyController;
+use App\Http\Controllers\Admin\CompanySurveyController;
 use App\Http\Controllers\Admin\InternalRegulationController;
 use App\Http\Controllers\Admin\MonthlyHighlightController;
 use App\Http\Controllers\Admin\CompanyEmployeeController;
@@ -160,6 +161,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');
         Route::get('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'edit'])
             ->name('companies.surveys.action-plan.edit');
+        Route::delete('companies/{company}/surveys/{survey}', [CompanySurveyController::class, 'destroy'])
+            ->name('companies.surveys.destroy');
         Route::put('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'update'])
             ->name('companies.surveys.action-plan.update');
         Route::post('companies/{company}/surveys/{survey}/action-plan/generate-suggested', [ActionPlanAdminController::class, 'generateSuggestedPlan'])

@@ -42,6 +42,8 @@ const props = defineProps({
 const { canAdmin } = useAdminPermissions();
 
 const showDeleteModal = ref(false);
+const showDeleteSurveyModal = ref(false);
+const surveyToDelete = ref(null);
 const resendingInvitation = ref(false);
 
 const tabs = computed(() => {
@@ -181,6 +183,27 @@ const deleteCompany = () => {
             showDeleteModal.value = false;
         },
     });
+};
+
+const openDeleteSurveyModal = (survey) => {
+    surveyToDelete.value = survey;
+    showDeleteSurveyModal.value = true;
+};
+
+const deleteSurvey = () => {
+    if (!surveyToDelete.value) {
+        return;
+    }
+
+    router.delete(
+        route('admin.companies.surveys.destroy', [props.company.id, surveyToDelete.value.id]),
+        {
+            onFinish: () => {
+                showDeleteSurveyModal.value = false;
+                surveyToDelete.value = null;
+            },
+        },
+    );
 };
 
 const formatDate = (iso) => {
@@ -546,13 +569,23 @@ const removeRegulation = (id) => {
                             class="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
                         >
                             <span class="text-sm font-medium text-slate-800">{{ s.title }}</span>
-                            <Link
-                                :href="route('admin.companies.surveys.action-plan.edit', [company.id, s.id])"
-                                class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-talents-700 ring-1 ring-talents-200/80 transition hover:bg-talents-50"
-                            >
-                                <DocumentTextIcon class="h-3.5 w-3.5" aria-hidden="true" />
-                                Parecer e plano
-                            </Link>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <Link
+                                    :href="route('admin.companies.surveys.action-plan.edit', [company.id, s.id])"
+                                    class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-talents-700 ring-1 ring-talents-200/80 transition hover:bg-talents-50"
+                                >
+                                    <DocumentTextIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                                    Parecer e plano
+                                </Link>
+                                <button
+                                    v-if="canAdmin('companies', 'delete')"
+                                    type="button"
+                                    class="rounded-full px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200/80 transition hover:bg-red-50"
+                                    @click="openDeleteSurveyModal(s)"
+                                >
+                                    Excluir
+                                </button>
+                            </div>
                         </li>
                     </ul>
                     <p v-else class="text-sm text-slate-500">Nenhuma pesquisa cadastrada para esta empresa.</p>
@@ -766,6 +799,20 @@ const removeRegulation = (id) => {
                 </div>
             </div>
         </div>
+
+        <Modal :show="showDeleteSurveyModal" @close="showDeleteSurveyModal = false">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900">Confirmar exclusão</h2>
+                <p class="mt-2 text-sm text-gray-600">
+                    Excluir a pesquisa <strong>{{ surveyToDelete?.title }}</strong> e todos os resultados? A empresa
+                    deixará de ver esta pesquisa. Os dados serão arquivados internamente.
+                </p>
+                <div class="mt-6 flex justify-end gap-2">
+                    <SecondaryButton type="button" @click="showDeleteSurveyModal = false">Cancelar</SecondaryButton>
+                    <DangerButton type="button" @click="deleteSurvey">Sim, excluir pesquisa</DangerButton>
+                </div>
+            </div>
+        </Modal>
 
         <Modal :show="showDeleteModal" @close="showDeleteModal = false">
             <div class="p-6">

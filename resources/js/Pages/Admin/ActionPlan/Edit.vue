@@ -4,9 +4,13 @@ import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import MiaNr1AdminPanel from '@/Components/MiaNr1AdminPanel.vue';
 import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import DangerButton from '@/Components/DangerButton.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -43,6 +47,17 @@ const props = defineProps({
     riskScenarioLabel: { type: String, default: null },
     nr1Reports: { type: Object, default: () => ({ executive: null, technical_referral: null }) },
 });
+
+const { canAdmin } = useAdminPermissions();
+const showDeleteSurveyModal = ref(false);
+
+const deleteSurvey = () => {
+    router.delete(route('admin.companies.surveys.destroy', [props.company.id, props.survey.id]), {
+        onFinish: () => {
+            showDeleteSurveyModal.value = false;
+        },
+    });
+};
 
 const initialOpinionHtml =
     props.technical_opinion?.trim() || props.plan?.technical_opinion?.trim() || '<p></p>';
@@ -675,6 +690,34 @@ const submit = () => {
                 <PrimaryButton :disabled="form.processing">Salvar e publicar para a empresa</PrimaryButton>
             </div>
         </form>
+
+        <div
+            v-if="canAdmin('companies', 'delete')"
+            class="mt-8 rounded-xl border border-red-100 bg-red-50/50 p-6"
+        >
+            <h3 class="font-semibold text-red-900">Zona de perigo</h3>
+            <p class="mt-2 text-sm text-red-900/80">
+                Excluir a pesquisa e todos os resultados. A empresa deixará de ver esta pesquisa; os dados serão
+                arquivados internamente.
+            </p>
+            <DangerButton type="button" class="mt-4" @click="showDeleteSurveyModal = true">
+                Excluir pesquisa
+            </DangerButton>
+        </div>
+
+        <Modal :show="showDeleteSurveyModal" @close="showDeleteSurveyModal = false">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900">Confirmar exclusão</h2>
+                <p class="mt-2 text-sm text-gray-600">
+                    Excluir a pesquisa <strong>{{ survey.title }}</strong> e todos os resultados? A empresa deixará de
+                    ver esta pesquisa. Os dados serão arquivados internamente.
+                </p>
+                <div class="mt-6 flex justify-end gap-2">
+                    <SecondaryButton type="button" @click="showDeleteSurveyModal = false">Cancelar</SecondaryButton>
+                    <DangerButton type="button" @click="deleteSurvey">Sim, excluir pesquisa</DangerButton>
+                </div>
+            </div>
+        </Modal>
     </AdminLayout>
 </template>
 
