@@ -741,7 +741,7 @@ const submitGoal = () => {
                                             {{ formatMoney(monthlyGoal.current_cents) }}
                                         </p>
                                         <p class="mt-1 text-xs text-slate-600">
-                                            de {{ formatMoney(monthlyGoal.goal_cents) }} (vendas fechadas no mês; recorrente = 1 parcela)
+                                            de {{ formatMoney(monthlyGoal.goal_cents) }} (vendas de comerciais no mês; recorrente = 1 parcela)
                                         </p>
                                     </div>
                                 </section>

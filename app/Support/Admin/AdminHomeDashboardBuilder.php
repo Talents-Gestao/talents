@@ -198,10 +198,14 @@ final class AdminHomeDashboardBuilder
      */
     private function monthlyGoalRevenueCents(Carbon $monthStart, Carbon $monthEnd): int
     {
+        // Meta mensal do Painel operacional: só vendas de vendedores comerciais.
         $sales = CommercialSale::query()
             ->where('status', '!=', CommercialSale::STATUS_CANCELADA)
             ->whereBetween('sold_at', [$monthStart, $monthEnd])
+            ->whereHas('seller', static fn ($q) => $q->where('is_commercial', true))
             ->get([
+                'id',
+                'seller_id',
                 'total_cents',
                 'is_recurring',
                 'recurring_months',
