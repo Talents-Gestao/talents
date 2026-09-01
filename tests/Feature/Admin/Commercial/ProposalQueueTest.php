@@ -59,6 +59,7 @@ class ProposalQueueTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.comercial.propostas.index', [
+                'view' => 'list',
                 'status' => 'abertas',
                 'ordenacao' => 'fila',
             ]))

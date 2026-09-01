@@ -96,7 +96,7 @@ class ProposalUpdateStatusTest extends TestCase
         $this->assertSame(ProposalListStatus::OPEN, $proposal->list_status);
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index'))
+            ->get(route('admin.comercial.propostas.index', ['view' => 'list']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Commercial/Proposals/Index')

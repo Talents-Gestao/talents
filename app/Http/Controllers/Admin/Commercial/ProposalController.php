@@ -431,7 +431,7 @@ class ProposalController extends Controller
     }
 
     /**
-     * Query string para voltar à Index (preserva view=kanban após status/reabrir).
+     * Query string para voltar à Index (Kanban é o padrão; lista exige view=list).
      *
      * @return array{view?: string}
      */
@@ -439,7 +439,11 @@ class ProposalController extends Controller
     {
         $view = ProposalKanbanBoard::viewFromRequest($request);
 
-        return $view === ProposalKanbanBoard::VIEW_KANBAN
+        if ($view === ProposalKanbanBoard::VIEW_LIST) {
+            return ['view' => ProposalKanbanBoard::VIEW_LIST];
+        }
+
+        return $request->filled('view')
             ? ['view' => ProposalKanbanBoard::VIEW_KANBAN]
             : [];
     }
@@ -854,7 +858,10 @@ class ProposalController extends Controller
                 'key' => 'status',
                 'label' => 'Comercial · Propostas / Contratos fechados',
                 'detail' => 'A proposta continua marcada como fechada (status verde) no funil comercial.',
-                'href' => route('admin.comercial.propostas.index', ['status' => 'fechadas']),
+                'href' => route('admin.comercial.propostas.index', [
+                    'view' => ProposalKanbanBoard::VIEW_LIST,
+                    'status' => 'fechadas',
+                ]),
             ];
         }
 

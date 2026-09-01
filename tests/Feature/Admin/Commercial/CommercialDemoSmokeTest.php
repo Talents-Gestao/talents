@@ -152,6 +152,7 @@ class CommercialDemoSmokeTest extends TestCase
 
         $this->actingAs($this->admin)
             ->get(route('admin.comercial.propostas.index', [
+                'view' => 'list',
                 'status' => 'abertas',
                 'ordenacao' => 'fila',
             ]))
