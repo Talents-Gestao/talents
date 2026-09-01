@@ -29,25 +29,32 @@ RUN npm run build
 # -----------------------------------------------------------------------------
 FROM php:8.3-fpm-alpine AS php
 
-# Extensoes e libs de build (sem ffmpeg — instalado no passo seguinte, repo community).
+# Community cedo: ffmpeg e alguns pacotes nao existem no main em builders minimos (Coolify).
+RUN set -eux; \
+    ALPINE_VER="$(cut -d. -f1,2 /etc/alpine-release)"; \
+    grep -qs "/community" /etc/apk/repositories \
+        || echo "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_VER}/community" >> /etc/apk/repositories
+
+# Deps de build separadas das extensoes (menor pico de RAM; falhas mais legiveis no log).
 RUN apk add --no-cache \
     git curl zip unzip libzip-dev libpng-dev libjpeg-turbo-dev freetype-dev libwebp-dev \
     oniguruma-dev postgresql-dev icu-dev \
-    linux-headers $PHPIZE_DEPS \
-    && docker-php-ext-configure intl \
-    && docker-php-ext-install -j"$(nproc)" pdo_pgsql pgsql bcmath intl opcache mbstring \
+    linux-headers $PHPIZE_DEPS
+
+# -j2 evita OOM no builder remoto: nproc alto compila gd/intl/pgsql em paralelo e estoura RAM.
+RUN docker-php-ext-configure intl \
+    && docker-php-ext-install -j2 pdo_pgsql pgsql bcmath intl opcache mbstring \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install -j"$(nproc)" gd zip \
-    && pecl install redis \
+    && docker-php-ext-install -j2 gd zip
+
+RUN pecl install redis \
     && docker-php-ext-enable redis \
-    && apk del $PHPIZE_DEPS linux-headers
+    && rm -rf /tmp/pear /root/.pearrc
+
+RUN apk del $PHPIZE_DEPS linux-headers
 
 # ffmpeg (community): chunking de audio em Entrevistas / Reunioes.
-# Em alguns mirrors/imagens o community nao vem habilitado; forcamos a URL da mesma major.minor do Alpine.
-RUN set -eux; \
-    ALPINE_VER="$(cut -d. -f1,2 /etc/alpine-release)"; \
-    echo "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_VER}/community" >> /etc/apk/repositories; \
-    apk add --no-cache ffmpeg
+RUN apk add --no-cache ffmpeg
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -81,17 +88,4 @@ EXPOSE 9000
 ENTRYPOINT ["/var/www/html/docker/entrypoint.sh"]
 CMD ["php-fpm", "-F"]
 
-# -----------------------------------------------------------------------------
-# Stage 3: Nginx (estáticos + proxy para PHP-FPM)
-# -----------------------------------------------------------------------------
-FROM nginx:1.27-alpine AS nginx
-
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=php /var/www/html/public /var/www/html/public
-
-RUN rm -f /var/www/html/public/storage \
-    && ln -s /var/www/html/storage/app/public /var/www/html/public/storage
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+# Stage nginx: ver docker/Dockerfile.nginx (reutiliza talents-php:prod; evita rebuild duplicado no Coolify).
