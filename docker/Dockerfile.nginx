@@ -1,8 +1,6 @@
 # Nginx de produção — reutiliza a imagem PHP já buildada (evita recompilar extensões no Coolify).
-# Build: docker compose -f docker-compose.prod.yml build app && docker compose -f docker-compose.prod.yml build nginx
-
-ARG APP_IMAGE=talents-php:prod
-FROM ${APP_IMAGE} AS app
+# O contexto nomeado "app" vem de additional_contexts: service:app no docker-compose.prod.yml.
+# Build: docker compose -f docker-compose.prod.yml build nginx
 
 FROM nginx:1.27-alpine
 

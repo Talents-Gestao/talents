@@ -44,8 +44,8 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.nginx
-      args:
-        APP_IMAGE: talents-php:prod
+      additional_contexts:
+        app: service:app
     image: talents-nginx:prod
     restart: unless-stopped
     # Sem "ports:" no host: Coolify/Traefik já usa a :80 e encaminha pelo proxy.
