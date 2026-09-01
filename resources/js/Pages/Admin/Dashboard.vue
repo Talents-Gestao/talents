@@ -247,7 +247,7 @@ const kpiById = computed(() => ({
         id: 'revenue',
         label: 'Faturamento (mês)',
         value: formatMoneyCompact(props.kpis.revenue_month_cents),
-        hint: `${Math.round(Number(props.kpis.revenue_goal_pct || 0))}% da meta`,
+        hint: `${Math.round(Number(props.kpis.revenue_goal_pct || 0))}% da meta (parcelas pagas)`,
         icon: ChartBarIcon,
         href: route('admin.financeiro.vendas.index'),
     },
@@ -741,7 +741,7 @@ const submitGoal = () => {
                                             {{ formatMoney(monthlyGoal.current_cents) }}
                                         </p>
                                         <p class="mt-1 text-xs text-slate-600">
-                                            de {{ formatMoney(monthlyGoal.goal_cents) }} (vendas de comerciais no mês; recorrente = 1 parcela)
+                                            de {{ formatMoney(monthlyGoal.goal_cents) }} (parcelas pagas de comerciais neste mês)
                                         </p>
                                     </div>
                                 </section>
@@ -754,14 +754,14 @@ const submitGoal = () => {
                 <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
                     <h3 class="text-lg font-semibold text-slate-900">Meta mensal</h3>
                     <p class="mt-1 text-sm text-slate-600">
-                        Defina o alvo de faturamento do mês. O valor atingido soma vendas com data de venda neste mês
-                        (recorrentes entram só com a parcela mensal, não o total do período).
+                        Defina o alvo de faturamento do mês. O valor atingido soma parcelas pagas neste mês
+                        (vendedores comerciais). Pendentes entram no mês em que forem recebidas.
                     </p>
 
                     <form class="mt-5 space-y-4" @submit.prevent="submitGoal">
                         <div>
                             <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                Valor atingido (vendas fechadas no mês)
+                                Valor atingido (recebido no mês)
                             </p>
                             <p class="mt-1 text-lg font-bold tabular-nums text-slate-900">
                                 {{ formatMoney(monthlyGoal.current_cents) }}

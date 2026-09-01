@@ -16,6 +16,14 @@ class ProposalListStatusFilterTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    private function listIndexUrl(array $query = []): string
+    {
+        return route('admin.comercial.propostas.index', array_merge($query, ['view' => 'list']));
+    }
+
     public function test_index_exposes_list_status_and_filters_by_three_statuses(): void
     {
         $this->withoutVite();
@@ -83,7 +91,7 @@ class ProposalListStatusFilterTest extends TestCase
         $expectedOpenIds = collect([$open->id, $legacyNegotiation->id])->sort()->values()->all();
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['status' => 'em_negociacao']))
+            ->get($this->listIndexUrl(['status' => 'em_negociacao']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Commercial/Proposals/Index')
@@ -99,7 +107,7 @@ class ProposalListStatusFilterTest extends TestCase
             );
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['status' => 'abertas']))
+            ->get($this->listIndexUrl(['status' => 'abertas']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('proposals.data', 2)
@@ -110,7 +118,7 @@ class ProposalListStatusFilterTest extends TestCase
             );
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['status' => 'encerradas']))
+            ->get($this->listIndexUrl(['status' => 'encerradas']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('proposals.data', 1)
@@ -119,7 +127,7 @@ class ProposalListStatusFilterTest extends TestCase
             );
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['status' => 'perdidas']))
+            ->get($this->listIndexUrl(['status' => 'perdidas']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('proposals.data', 1)
@@ -130,7 +138,7 @@ class ProposalListStatusFilterTest extends TestCase
         $expectedClosedIds = collect([$closedOnly->id, $quitada->id])->sort()->values()->all();
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['status' => 'aprovadas']))
+            ->get($this->listIndexUrl(['status' => 'aprovadas']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('proposals.data', 2)
@@ -144,7 +152,7 @@ class ProposalListStatusFilterTest extends TestCase
             );
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['status' => 'fechadas']))
+            ->get($this->listIndexUrl(['status' => 'fechadas']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('proposals.data', 2)
@@ -193,7 +201,7 @@ class ProposalListStatusFilterTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', [
+            ->get($this->listIndexUrl([
                 'seller_id' => $seller->id,
                 'status' => 'abertas',
             ]))
@@ -247,7 +255,7 @@ class ProposalListStatusFilterTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['sale_situation' => 'without_sale']))
+            ->get($this->listIndexUrl(['sale_situation' => 'without_sale']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('proposals.data', 1)
@@ -256,7 +264,7 @@ class ProposalListStatusFilterTest extends TestCase
             );
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['sale_situation' => 'with_sale']))
+            ->get($this->listIndexUrl(['sale_situation' => 'with_sale']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('proposals.data', 1)
@@ -291,7 +299,7 @@ class ProposalListStatusFilterTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', [
+            ->get($this->listIndexUrl([
                 'created_from' => '2026-03-01',
                 'created_to' => '2026-03-31',
             ]))
@@ -375,17 +383,17 @@ class ProposalListStatusFilterTest extends TestCase
             ->where('statusCounts.aprovadas', 1);
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index'))
+            ->get($this->listIndexUrl())
             ->assertOk()
             ->assertInertia($hiddenAssertion);
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['hide_ended' => 1]))
+            ->get($this->listIndexUrl(['hide_ended' => 1]))
             ->assertOk()
             ->assertInertia($hiddenAssertion);
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['hide_ended' => 0]))
+            ->get($this->listIndexUrl(['hide_ended' => 0]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('proposals.data', 3)
@@ -424,7 +432,7 @@ class ProposalListStatusFilterTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', ['status' => 'encerradas']))
+            ->get($this->listIndexUrl(['status' => 'encerradas']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('proposals.data', 1)
@@ -434,7 +442,7 @@ class ProposalListStatusFilterTest extends TestCase
             );
 
         $this->actingAs($admin)
-            ->get(route('admin.comercial.propostas.index', [
+            ->get($this->listIndexUrl([
                 'status' => 'perdidas',
                 'hide_ended' => 1,
             ]))

@@ -11,6 +11,7 @@ use App\Enums\ProposalLostReason;
 use App\Models\AdminDashboardSettings;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
+use App\Models\CommercialSaleInstallment;
 use App\Models\Company;
 use App\Models\CompanyMethodology;
 use App\Models\FinancePayable;
@@ -115,8 +116,8 @@ final class AdminHomeDashboardBuilder
             ->join('plans', 'plans.id', '=', 'subscriptions.plan_id')
             ->sum('plans.price_monthly_cents');
 
-        // Meta mensal — realizado: só vendas com sold_at no mês corrente.
-        // Pontuais: total_cents. Recorrentes: apenas a parcela mensal (não o total do período).
+        // Meta mensal — realizado: parcelas pagas no mês (caixa), vendedores comerciais.
+        // Pendentes/futuras entram só no mês em que forem recebidas (paid_at).
         $revenueMonthCents = $this->monthlyGoalRevenueCents($monthStart, $monthEnd);
 
         $goalCents = AdminDashboardSettings::resolvedMonthlyRevenueGoalCents();
@@ -193,28 +194,20 @@ final class AdminHomeDashboardBuilder
     }
 
     /**
-     * Realizado da Meta mensal no intervalo [monthStart, monthEnd] (inclusive).
-     * Usa sold_at; vendas canceladas ficam de fora; recorrentes contam só a parcela mensal.
+     * Realizado da Meta mensal: soma de parcelas de vendas pagas em [monthStart, monthEnd].
+     * Vendedor comercial; vendas canceladas excluídas. Pendentes não entram até o pagamento.
      */
     private function monthlyGoalRevenueCents(Carbon $monthStart, Carbon $monthEnd): int
     {
-        // Meta mensal do Painel operacional: só vendas de vendedores comerciais.
-        $sales = CommercialSale::query()
-            ->where('status', '!=', CommercialSale::STATUS_CANCELADA)
-            ->whereBetween('sold_at', [$monthStart, $monthEnd])
-            ->whereHas('seller', static fn ($q) => $q->where('is_commercial', true))
-            ->get([
-                'id',
-                'seller_id',
-                'total_cents',
-                'is_recurring',
-                'recurring_months',
-                'recurring_monthly_cents',
-            ]);
-
-        return (int) $sales->sum(
-            static fn (CommercialSale $sale): int => $sale->monthlyGoalContributionCents(),
-        );
+        return (int) CommercialSaleInstallment::query()
+            ->where('status', CommercialSaleInstallment::STATUS_PAGO)
+            ->whereBetween('paid_at', [$monthStart, $monthEnd])
+            ->whereHas('sale', static function ($query): void {
+                $query
+                    ->where('status', '!=', CommercialSale::STATUS_CANCELADA)
+                    ->whereHas('seller', static fn ($sellerQuery) => $sellerQuery->where('is_commercial', true));
+            })
+            ->sum('paid_amount_cents');
     }
 
     /**

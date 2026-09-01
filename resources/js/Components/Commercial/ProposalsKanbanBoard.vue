@@ -240,7 +240,10 @@ function onCardDragEnd(columnKey, evt) {
                         class="proposals-kanban__list flex min-h-[14rem] flex-1 flex-col gap-2.5 overflow-y-auto p-2.5"
                         group="proposal-kanban-cards"
                         :animation="200"
+                        :distance="8"
                         :disabled="busy"
+                        filter="a, button"
+                        prevent-on-filter
                         ghost-class="proposals-kanban__ghost"
                         drag-class="proposals-kanban__drag"
                         @end="(e) => onCardDragEnd(column.key, e)"

@@ -11,8 +11,14 @@ import {
     TrashIcon,
     UserIcon,
 } from '@heroicons/vue/24/outline';
+import {
+    activeProposalKanbanMenuId,
+    claimProposalKanbanMenu,
+    releaseProposalKanbanMenu,
+} from '@/composables/useExclusiveProposalKanbanMenu';
+import { positionAnchoredMenu } from '@/utils/positionAnchoredMenu';
 import { Link } from '@inertiajs/vue3';
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps({
     proposal: { type: Object, required: true },
@@ -34,7 +40,7 @@ const menuButtonEl = ref(null);
 const menuPanelEl = ref(null);
 
 const MENU_WIDTH = 176;
-const MENU_HEIGHT = 260;
+const MENU_HEIGHT_FALLBACK = 200;
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
 
@@ -77,24 +83,61 @@ const statusBadgeClass = computed(() => {
     return 'bg-amber-50 text-amber-900 ring-amber-200/80 hover:bg-amber-100';
 });
 
-const closeMenu = () => {
+const ellipsisButtonEl = ref(null);
+const cardEl = ref(null);
+const dragMoved = ref(false);
+const pointerOrigin = ref(null);
+
+const closeMenu = ({ release = true } = {}) => {
     menuOpen.value = false;
     menuPosition.value = null;
+    if (release) {
+        releaseProposalKanbanMenu(props.proposal.id);
+    }
 };
 
-const positionMenu = (buttonEl) => {
-    const rect = buttonEl?.getBoundingClientRect?.();
+watch(activeProposalKanbanMenuId, (activeId) => {
+    if (activeId !== props.proposal.id && menuOpen.value) {
+        closeMenu({ release: false });
+    }
+});
+
+const resolveAnchorEl = (anchorEl) => {
+    const candidate = anchorEl ?? ellipsisButtonEl.value ?? cardEl.value;
+    const rect = candidate?.getBoundingClientRect?.();
+    if (rect && (rect.width > 0 || rect.height > 0)) {
+        return candidate;
+    }
+
+    return cardEl.value ?? candidate;
+};
+
+const positionMenu = (anchorEl, menuHeight = MENU_HEIGHT_FALLBACK) => {
+    const el = resolveAnchorEl(anchorEl);
+    const rect = el?.getBoundingClientRect?.();
     if (!rect) {
         return null;
     }
 
-    const left = Math.max(8, Math.min(rect.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8));
-    let top = rect.bottom + 6;
-    if (top + MENU_HEIGHT > window.innerHeight - 8) {
-        top = Math.max(8, rect.top - MENU_HEIGHT - 6);
-    }
+    return positionAnchoredMenu({
+        anchorRect: rect,
+        menuWidth: MENU_WIDTH,
+        menuHeight,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+    });
+};
 
-    return { top, left };
+const openMenu = async (anchorEl) => {
+    const button = resolveAnchorEl(anchorEl);
+    menuButtonEl.value = button;
+    claimProposalKanbanMenu(props.proposal.id);
+    menuOpen.value = true;
+    // Fora do ecrã até medir a altura real — evita o salto para cima com altura estimada.
+    menuPosition.value = { top: -9999, left: -9999 };
+    await nextTick();
+    const measured = menuPanelEl.value?.getBoundingClientRect?.()?.height || MENU_HEIGHT_FALLBACK;
+    menuPosition.value = positionMenu(button, measured) ?? { top: 8, left: 8 };
 };
 
 const toggleMenu = async (event) => {
@@ -104,11 +147,58 @@ const toggleMenu = async (event) => {
         return;
     }
 
-    const button = event?.currentTarget;
-    menuButtonEl.value = button;
-    menuPosition.value = positionMenu(button);
-    menuOpen.value = true;
-    await nextTick();
+    await openMenu(event?.currentTarget);
+};
+
+const isInteractiveTarget = (target) => target instanceof Element && Boolean(target.closest('a, button'));
+
+const onCardPointerDown = (event) => {
+    if (event.button !== undefined && event.button !== 0) {
+        return;
+    }
+    if (isInteractiveTarget(event.target)) {
+        pointerOrigin.value = null;
+        dragMoved.value = false;
+        return;
+    }
+    pointerOrigin.value = { x: event.clientX, y: event.clientY };
+    dragMoved.value = false;
+};
+
+const onCardPointerMove = (event) => {
+    // Só conta arrasto com o botão pressionado. Mover o rato após o clique
+    // (para chegar ao menu) não pode fechar o painel.
+    if (!pointerOrigin.value || dragMoved.value || event.buttons !== 1) {
+        return;
+    }
+    const dx = event.clientX - pointerOrigin.value.x;
+    const dy = event.clientY - pointerOrigin.value.y;
+    if (Math.hypot(dx, dy) > 6) {
+        dragMoved.value = true;
+    }
+};
+
+const onCardPointerUp = () => {
+    pointerOrigin.value = null;
+};
+
+const onCardClick = async (event) => {
+    if (dragMoved.value) {
+        dragMoved.value = false;
+        return;
+    }
+
+    if (isInteractiveTarget(event.target)) {
+        return;
+    }
+
+    event.stopPropagation();
+    if (menuOpen.value) {
+        closeMenu();
+        return;
+    }
+
+    await openMenu(ellipsisButtonEl.value);
 };
 
 const onDocumentClick = (event) => {
@@ -136,20 +226,28 @@ const runAction = (action) => {
 onMounted(() => {
     document.addEventListener('click', onDocumentClick);
     window.addEventListener('resize', onViewportChange);
-    window.addEventListener('scroll', onViewportChange, true);
+    window.addEventListener('scroll', onViewportChange);
 });
 
 onUnmounted(() => {
     document.removeEventListener('click', onDocumentClick);
     window.removeEventListener('resize', onViewportChange);
-    window.removeEventListener('scroll', onViewportChange, true);
+    window.removeEventListener('scroll', onViewportChange);
+    closeMenu();
 });
 </script>
 
 <template>
     <article
+        ref="cardEl"
         class="proposal-kanban-card group relative cursor-grab rounded-xl border border-slate-200/90 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-talents-200 hover:shadow-md active:cursor-grabbing"
         :data-proposal-id="proposal.id"
+        title="Clique para ações · arraste para mudar o status"
+        @pointerdown="onCardPointerDown"
+        @pointermove="onCardPointerMove"
+        @pointerup="onCardPointerUp"
+        @pointercancel="onCardPointerUp"
+        @click="onCardClick"
     >
         <div
             class="absolute inset-y-3 left-0 w-1 rounded-full"
@@ -175,6 +273,7 @@ onUnmounted(() => {
                 </div>
 
                 <button
+                    ref="ellipsisButtonEl"
                     type="button"
                     class="shrink-0 rounded-lg p-1.5 text-slate-400 opacity-70 transition hover:bg-slate-100 hover:text-slate-700 group-hover:opacity-100"
                     :class="menuOpen ? 'bg-slate-100 text-slate-700 opacity-100' : ''"
@@ -275,6 +374,7 @@ onUnmounted(() => {
                 :style="{
                     top: `${menuPosition.top}px`,
                     left: `${menuPosition.left}px`,
+                    visibility: menuPosition.top < 0 ? 'hidden' : 'visible',
                 }"
                 @click.stop
             >

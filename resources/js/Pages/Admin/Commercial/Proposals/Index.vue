@@ -26,7 +26,7 @@ const inertiaPage = usePage();
 const props = defineProps({
     proposals: { type: Object, required: true },
     kanban: { type: Object, default: null },
-    view: { type: String, default: 'list' },
+    view: { type: String, default: 'kanban' },
     sellers: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
     statusCounts: {
@@ -123,8 +123,8 @@ const sellerNameById = (id) => {
 
 const filterQuery = () => {
     const params = {};
-    if (isKanbanView.value) {
-        params.view = 'kanban';
+    if (!isKanbanView.value) {
+        params.view = 'list';
     }
     if (String(filterState.search ?? '').trim() !== '') {
         params.search = String(filterState.search).trim();
@@ -162,11 +162,11 @@ const setViewMode = (mode) => {
     }
     const params = filterQuery();
     if (next === 'kanban') {
-        params.view = 'kanban';
+        delete params.view;
         delete params.status;
         delete params.hide_ended;
     } else {
-        delete params.view;
+        params.view = 'list';
     }
     router.get(route('admin.comercial.propostas.index'), params, {
         preserveScroll: true,
@@ -286,7 +286,7 @@ const closeStatusModal = () => {
 };
 
 const statusPayloadExtras = () => (
-    isKanbanView.value ? { view: 'kanban' } : {}
+    isKanbanView.value ? { view: 'kanban' } : { view: 'list' }
 );
 
 const submitStatus = () => {
@@ -498,7 +498,7 @@ const destroyImpactItems = computed(() => {
             key: 'status',
             label: 'Comercial · Propostas / Contratos fechados',
             detail: 'A proposta sai do funil e dos contratos fechados.',
-            href: route('admin.comercial.propostas.index', { status: 'fechadas' }),
+            href: route('admin.comercial.propostas.index', { view: 'list', status: 'fechadas' }),
         });
     }
     if (p.sale) {

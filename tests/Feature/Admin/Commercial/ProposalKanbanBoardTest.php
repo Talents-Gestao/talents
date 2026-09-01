@@ -17,6 +17,58 @@ class ProposalKanbanBoardTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_index_without_view_query_defaults_to_kanban(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        CommercialProposal::query()->create([
+            'code' => 'PROP-KANBAN-DEFAULT',
+            'client_name' => 'Padrão Kanban',
+            'employee_count' => 5,
+            'total_final_cents' => 1_200,
+            'is_closed' => false,
+            'list_status' => ProposalListStatus::OPEN,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Commercial/Proposals/Index')
+                ->where('view', ProposalKanbanBoard::VIEW_KANBAN)
+                ->has('kanban.columns', 3)
+                ->where('kanban.columns.0.items.0.code', 'PROP-KANBAN-DEFAULT')
+                ->where('proposals.data', []));
+    }
+
+    public function test_list_view_is_available_via_query_string(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        CommercialProposal::query()->create([
+            'code' => 'PROP-LIST-VIEW',
+            'client_name' => 'Lista explícita',
+            'employee_count' => 5,
+            'total_final_cents' => 800,
+            'is_closed' => false,
+            'list_status' => ProposalListStatus::OPEN,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index', ['view' => 'list']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Commercial/Proposals/Index')
+                ->where('view', ProposalKanbanBoard::VIEW_LIST)
+                ->where('kanban', null)
+                ->has('proposals.data', 1)
+                ->where('proposals.data.0.code', 'PROP-LIST-VIEW'));
+    }
+
     public function test_index_kanban_view_groups_proposals_by_list_status(): void
     {
         $this->withoutVite();

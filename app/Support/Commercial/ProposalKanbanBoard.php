@@ -29,9 +29,9 @@ final class ProposalKanbanBoard
 
     public static function viewFromRequest(Request $request): string
     {
-        $view = (string) $request->input('view', self::VIEW_LIST);
+        $view = (string) $request->input('view', self::VIEW_KANBAN);
 
-        return in_array($view, self::views(), true) ? $view : self::VIEW_LIST;
+        return in_array($view, self::views(), true) ? $view : self::VIEW_KANBAN;
     }
 
     /**
