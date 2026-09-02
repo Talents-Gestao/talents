@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin\Commercial;
 
+use App\Models\CommercialContract;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
 use App\Models\User;
@@ -455,6 +456,60 @@ class ProposalListStatusFilterTest extends TestCase
                 ->where('filters.hide_ended', false)
                 ->where('statusCounts.perdidas', 1)
                 ->where('statusCounts.encerradas', 1)
+            );
+    }
+
+    public function test_list_exposes_whether_contract_was_signed(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $unsigned = CommercialProposal::create([
+            'code' => 'PROP-2026-SIG-1',
+            'client_name' => 'Sem assinatura',
+            'employee_count' => 5,
+            'total_final_cents' => 1000,
+            'is_closed' => false,
+            'list_status' => ProposalListStatus::OPEN,
+        ]);
+
+        $signed = CommercialProposal::create([
+            'code' => 'PROP-2026-SIG-2',
+            'client_name' => 'Com assinatura',
+            'employee_count' => 5,
+            'total_final_cents' => 2000,
+            'is_closed' => true,
+            'closed_at' => now(),
+            'list_status' => ProposalListStatus::CLOSED,
+        ]);
+
+        CommercialContract::query()->create([
+            'proposal_id' => $signed->id,
+            'code' => 'CTR-2026-SIG-2',
+            'template_name_snapshot' => 'Template demo',
+            'pdf_path' => 'contracts/signed.pdf',
+            'html_snapshot' => '<p>demo</p>',
+            'generated_at' => now(),
+            'zapsign_document_token' => 'tok-signed',
+            'zapsign_status' => 'signed',
+            'zapsign_sent_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get($this->listIndexUrl())
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('proposals.data', fn ($rows) => collect($rows)->contains(
+                    fn ($row) => $row['id'] === $unsigned->id
+                        && $row['contract_signed'] === false
+                        && $row['zapsign_pending'] === false,
+                ))
+                ->where('proposals.data', fn ($rows) => collect($rows)->contains(
+                    fn ($row) => $row['id'] === $signed->id
+                        && $row['contract_signed'] === true
+                        && $row['zapsign_pending'] === false,
+                ))
             );
     }
 }

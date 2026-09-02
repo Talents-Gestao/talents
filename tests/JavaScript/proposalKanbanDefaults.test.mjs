@@ -36,6 +36,9 @@ describe('ProposalKanbanCard — clique no card abre o menu', () => {
         assert.match(kanbanCard, /await openMenu\(ellipsisButtonEl\.value\)/);
         assert.match(kanbanCard, /aria-label="Mais ações"/);
         assert.match(kanbanCard, /<EllipsisHorizontalIcon\b/);
+        assert.match(kanbanCard, /bg-slate-100 p-2/);
+        assert.match(kanbanCard, /<EllipsisHorizontalIcon class="h-5 w-5"/);
+        assert.doesNotMatch(kanbanCard, /group-hover:opacity-100/);
     });
 
     it('não trata arrasto como clique de menu', () => {

@@ -94,7 +94,11 @@ class MonthlyGoalTest extends TestCase
                 ->component('Admin/Dashboard')
                 ->where('monthlyGoal.goal_cents', 1_000_000)
                 ->where('monthlyGoal.current_cents', 1_000_000)
-                ->where('monthlyGoal.percent', 100));
+                ->where('monthlyGoal.percent', 100)
+                ->has('monthlyGoal.sellers', 1)
+                ->where('monthlyGoal.sellers.0.id', $admin->id)
+                ->where('monthlyGoal.sellers.0.current_cents', 1_000_000)
+                ->where('monthlyGoal.sellers.0.percent', 100));
     }
 
     public function test_monthly_goal_validation_rejects_invalid_values(): void
@@ -235,6 +239,69 @@ class MonthlyGoalTest extends TestCase
         $home = app(AdminHomeDashboardBuilder::class)->build();
 
         $this->assertSame(600_000, $home['monthly_goal']['current_cents']);
+    }
+
+    public function test_monthly_goal_breaks_down_revenue_by_commercial_seller(): void
+    {
+        $karen = User::factory()->superAdmin()->create([
+            'name' => 'Karen',
+            'is_owner' => true,
+            'is_commercial' => true,
+        ]);
+        $luciana = User::factory()->superAdmin()->create([
+            'name' => 'Luciana',
+            'is_owner' => true,
+            'is_commercial' => true,
+        ]);
+        $idle = User::factory()->superAdmin()->create([
+            'name' => 'Ana',
+            'is_owner' => true,
+            'is_commercial' => true,
+        ]);
+        $nonCommercial = User::factory()->superAdmin()->create([
+            'name' => 'Admin interno',
+            'is_owner' => true,
+            'is_commercial' => false,
+        ]);
+
+        config(['talents.dashboard.monthly_revenue_goal_cents' => 1_000_000]);
+
+        $this->createSaleWithInstallment($karen, 'PROP-META-K', 'VENDA-META-K', 400_000, now(), now());
+        $this->createSaleWithInstallment($luciana, 'PROP-META-L', 'VENDA-META-L', 100_000, now(), now());
+        $this->createSaleWithInstallment($nonCommercial, 'PROP-META-ADM', 'VENDA-META-ADM', 9_000_000, now(), now());
+
+        $home = app(AdminHomeDashboardBuilder::class)->build();
+
+        $this->assertSame(500_000, $home['monthly_goal']['current_cents']);
+        $this->assertSame(1_000_000, $home['monthly_goal']['goal_cents']);
+        $this->assertCount(3, $home['monthly_goal']['sellers']);
+        $this->assertSame(
+            [
+                [
+                    'id' => $karen->id,
+                    'name' => 'Karen',
+                    'current_cents' => 400_000,
+                    'percent' => 40.0,
+                ],
+                [
+                    'id' => $luciana->id,
+                    'name' => 'Luciana',
+                    'current_cents' => 100_000,
+                    'percent' => 10.0,
+                ],
+                [
+                    'id' => $idle->id,
+                    'name' => 'Ana',
+                    'current_cents' => 0,
+                    'percent' => 0.0,
+                ],
+            ],
+            $home['monthly_goal']['sellers'],
+        );
+        $this->assertSame(
+            $home['monthly_goal']['current_cents'],
+            collect($home['monthly_goal']['sellers'])->sum('current_cents'),
+        );
     }
 
     private function createSaleWithInstallment(

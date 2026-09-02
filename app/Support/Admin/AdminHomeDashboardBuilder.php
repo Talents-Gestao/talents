@@ -43,7 +43,12 @@ final class AdminHomeDashboardBuilder
      *     funnel_lost: array{count: int, href: string, items: list<array{key: string, name: string, count: int, responses: list<array<string, mixed>>}>},
      *     funnel_all: list<array{key: string, label: string, count: int, href: string}>,
      *     funnel_lost_all: array{count: int, href: string, items: list<array{key: string, name: string, count: int, responses: list<array<string, mixed>>}>},
-     *     monthly_goal: array{current_cents: int, goal_cents: int, percent: float}
+     *     monthly_goal: array{
+     *         current_cents: int,
+     *         goal_cents: int,
+     *         percent: float,
+     *         sellers: list<array{id: int, name: string, current_cents: int, percent: float}>
+     *     }
      * }
      */
     public function build(?User $viewer = null): array
@@ -122,6 +127,7 @@ final class AdminHomeDashboardBuilder
 
         $goalCents = AdminDashboardSettings::resolvedMonthlyRevenueGoalCents();
         $goalPercent = $goalCents > 0 ? round(100 * $revenueMonthCents / $goalCents, 0) : 0.0;
+        $revenueBySeller = $this->monthlyGoalRevenueBySeller($monthStart, $monthEnd, $goalCents);
 
         $openHiring = HiringProcess::query()
             ->where('current_stage', '!=', HiringProcessStage::Contratacao->value)
@@ -175,6 +181,7 @@ final class AdminHomeDashboardBuilder
                 'current_cents' => $revenueMonthCents,
                 'goal_cents' => $goalCents,
                 'percent' => min(100.0, $goalPercent),
+                'sellers' => $revenueBySeller,
             ],
         ];
     }
@@ -199,15 +206,70 @@ final class AdminHomeDashboardBuilder
      */
     private function monthlyGoalRevenueCents(Carbon $monthStart, Carbon $monthEnd): int
     {
-        return (int) CommercialSaleInstallment::query()
-            ->where('status', CommercialSaleInstallment::STATUS_PAGO)
-            ->whereBetween('paid_at', [$monthStart, $monthEnd])
+        return (int) $this->monthlyGoalPaidInstallmentsQuery($monthStart, $monthEnd)
+            ->sum('commercial_sale_installments.paid_amount_cents');
+    }
+
+    /**
+     * Contribuição de cada vendedor comercial para a meta do mês (mesma regra de caixa da venda geral).
+     *
+     * @return list<array{id: int, name: string, current_cents: int, percent: float}>
+     */
+    private function monthlyGoalRevenueBySeller(Carbon $monthStart, Carbon $monthEnd, int $goalCents): array
+    {
+        $totalsBySellerId = $this->monthlyGoalPaidInstallmentsQuery($monthStart, $monthEnd)
+            ->join('commercial_sales', 'commercial_sales.id', '=', 'commercial_sale_installments.sale_id')
+            ->join('users', 'users.id', '=', 'commercial_sales.seller_id')
+            ->groupBy('commercial_sales.seller_id')
+            ->selectRaw('commercial_sales.seller_id as seller_id, COALESCE(SUM(commercial_sale_installments.paid_amount_cents), 0) as total_cents')
+            ->pluck('total_cents', 'seller_id')
+            ->mapWithKeys(static fn (mixed $cents, mixed $sellerId): array => [(int) $sellerId => (int) $cents]);
+
+        $sellerIdsWithRevenue = $totalsBySellerId->keys()->all();
+
+        $sellers = User::query()
+            ->where('is_commercial', true)
+            ->where(function ($query) use ($sellerIdsWithRevenue): void {
+                $query->where('is_active', true);
+                if ($sellerIdsWithRevenue !== []) {
+                    $query->orWhereIn('id', $sellerIdsWithRevenue);
+                }
+            })
+            ->get(['id', 'name']);
+
+        return $sellers
+            ->map(static function (User $seller) use ($totalsBySellerId, $goalCents): array {
+                $current = (int) ($totalsBySellerId[$seller->id] ?? 0);
+                $percent = $goalCents > 0 ? round(100 * $current / $goalCents, 1) : 0.0;
+
+                return [
+                    'id' => (int) $seller->id,
+                    'name' => (string) $seller->name,
+                    'current_cents' => $current,
+                    'percent' => $percent,
+                ];
+            })
+            ->sortBy([
+                ['current_cents', 'desc'],
+                ['name', 'asc'],
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<CommercialSaleInstallment>
+     */
+    private function monthlyGoalPaidInstallmentsQuery(Carbon $monthStart, Carbon $monthEnd)
+    {
+        return CommercialSaleInstallment::query()
+            ->where('commercial_sale_installments.status', CommercialSaleInstallment::STATUS_PAGO)
+            ->whereBetween('commercial_sale_installments.paid_at', [$monthStart, $monthEnd])
             ->whereHas('sale', static function ($query): void {
                 $query
                     ->where('status', '!=', CommercialSale::STATUS_CANCELADA)
                     ->whereHas('seller', static fn ($sellerQuery) => $sellerQuery->where('is_commercial', true));
-            })
-            ->sum('paid_amount_cents');
+            });
     }
 
     /**

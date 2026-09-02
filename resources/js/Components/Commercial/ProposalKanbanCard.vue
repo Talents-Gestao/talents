@@ -17,6 +17,7 @@ import {
     releaseProposalKanbanMenu,
 } from '@/composables/useExclusiveProposalKanbanMenu';
 import { positionAnchoredMenu } from '@/utils/positionAnchoredMenu';
+import { proposalContractSignature } from '@/utils/proposalContractSignature';
 import { Link } from '@inertiajs/vue3';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
@@ -61,7 +62,7 @@ const installmentsLabel = computed(() => {
 
 const showStagnantAlert = computed(() => Boolean(props.proposal.is_stagnant));
 const showClosedWithoutSaleAlert = computed(() => Boolean(props.proposal.closed_without_sale));
-const showZapsignPendingAlert = computed(() => Boolean(props.proposal.zapsign_pending));
+const contractSignature = computed(() => proposalContractSignature(props.proposal));
 
 const accentClass = computed(() => {
     if (props.statusKey === 'closed') {
@@ -275,15 +276,15 @@ onUnmounted(() => {
                 <button
                     ref="ellipsisButtonEl"
                     type="button"
-                    class="shrink-0 rounded-lg p-1.5 text-slate-400 opacity-70 transition hover:bg-slate-100 hover:text-slate-700 group-hover:opacity-100"
-                    :class="menuOpen ? 'bg-slate-100 text-slate-700 opacity-100' : ''"
+                    class="shrink-0 rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200 hover:text-slate-800"
+                    :class="menuOpen ? 'bg-slate-200 text-slate-800' : ''"
                     title="Mais ações"
                     aria-label="Mais ações"
                     aria-haspopup="true"
                     :aria-expanded="menuOpen"
                     @click="toggleMenu"
                 >
-                    <EllipsisHorizontalIcon class="h-4 w-4" />
+                    <EllipsisHorizontalIcon class="h-5 w-5" />
                 </button>
             </div>
 
@@ -329,11 +330,11 @@ onUnmounted(() => {
                     Sem venda
                 </span>
                 <span
-                    v-if="showZapsignPendingAlert"
-                    class="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900 ring-1 ring-sky-200/80"
-                    title="Contrato enviado no ZapSign, aguardando assinatura"
+                    class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                    :class="contractSignature.className"
+                    :title="contractSignature.title"
                 >
-                    ZapSign pendente
+                    {{ contractSignature.label }}
                 </span>
                 <span
                     v-if="proposal.sale"

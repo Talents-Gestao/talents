@@ -2,15 +2,25 @@
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import LandingInterestSourceField from '@/Components/Landing/LandingInterestSourceField.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { TrashIcon } from '@heroicons/vue/24/outline';
+import { TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 
-defineProps({
+const props = defineProps({
     submissions: Object,
     sourceOptions: {
         type: Array,
         default: () => [],
+    },
+    filters: {
+        type: Object,
+        default: () => ({
+            search: '',
+            source: '',
+            qualified: '',
+            created_from: '',
+            created_to: '',
+        }),
     },
 });
 
@@ -34,6 +44,141 @@ const notesForm = useForm({
 });
 
 const flashSuccess = computed(() => page.props.flash?.success ?? null);
+const filterErrors = computed(() => page.props.errors ?? {});
+
+const filterState = reactive({
+    search: props.filters.search ?? '',
+    source: props.filters.source ?? '',
+    qualified: props.filters.qualified ?? '',
+    created_from: props.filters.created_from ?? '',
+    created_to: props.filters.created_to ?? '',
+});
+
+watch(
+    () => props.filters,
+    (filters) => {
+        filterState.search = filters.search ?? '';
+        filterState.source = filters.source ?? '';
+        filterState.qualified = filters.qualified ?? '';
+        filterState.created_from = filters.created_from ?? '';
+        filterState.created_to = filters.created_to ?? '';
+    },
+    { deep: true },
+);
+
+const filterQuery = () => {
+    const params = {};
+    if (String(filterState.search ?? '').trim() !== '') {
+        params.search = String(filterState.search).trim();
+    }
+    if (String(filterState.source ?? '') !== '') {
+        params.source = filterState.source;
+    }
+    if (String(filterState.qualified ?? '') !== '') {
+        params.qualified = filterState.qualified;
+    }
+    if (String(filterState.created_from ?? '') !== '') {
+        params.created_from = filterState.created_from;
+    }
+    if (String(filterState.created_to ?? '') !== '') {
+        params.created_to = filterState.created_to;
+    }
+    return params;
+};
+
+const applyFilters = () => {
+    router.get(route('admin.landing-interest.index'), filterQuery(), {
+        preserveScroll: true,
+        preserveState: true,
+        replace: true,
+    });
+};
+
+const clearFilters = () => {
+    filterState.search = '';
+    filterState.source = '';
+    filterState.qualified = '';
+    filterState.created_from = '';
+    filterState.created_to = '';
+    applyFilters();
+};
+
+const formatFilterDate = (ymd) => {
+    const raw = String(ymd ?? '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        return raw;
+    }
+    const [y, m, d] = raw.split('-');
+    return `${d}/${m}/${y}`;
+};
+
+const sourceFilterLabel = (value) => {
+    const found = props.sourceOptions.find((option) => option.value === value);
+    return found?.label ?? value;
+};
+
+const qualifiedFilterLabel = (value) => {
+    if (value === 'yes') {
+        return 'Sim';
+    }
+    if (value === 'no') {
+        return 'Não';
+    }
+    if (value === 'pending') {
+        return 'Ainda não avaliado';
+    }
+    return '';
+};
+
+const activeFilterChips = computed(() => {
+    const chips = [];
+    if (String(filterState.search ?? '').trim() !== '') {
+        chips.push({
+            key: 'search',
+            label: `Busca: ${String(filterState.search).trim()}`,
+        });
+    }
+    if (String(filterState.source ?? '') !== '') {
+        chips.push({
+            key: 'source',
+            label: `Origem: ${sourceFilterLabel(filterState.source)}`,
+        });
+    }
+    if (String(filterState.qualified ?? '') !== '') {
+        chips.push({
+            key: 'qualified',
+            label: `Qualificado: ${qualifiedFilterLabel(filterState.qualified)}`,
+        });
+    }
+    if (filterState.created_from || filterState.created_to) {
+        const from = filterState.created_from ? formatFilterDate(filterState.created_from) : '…';
+        const to = filterState.created_to ? formatFilterDate(filterState.created_to) : '…';
+        chips.push({
+            key: 'created',
+            label: `Data: ${from} – ${to}`,
+        });
+    }
+    return chips;
+});
+
+const hasActiveFilters = computed(() => activeFilterChips.value.length > 0);
+
+const clearActiveFilter = (key) => {
+    if (key === 'search') {
+        filterState.search = '';
+    }
+    if (key === 'source') {
+        filterState.source = '';
+    }
+    if (key === 'qualified') {
+        filterState.qualified = '';
+    }
+    if (key === 'created') {
+        filterState.created_from = '';
+        filterState.created_to = '';
+    }
+    applyFilters();
+};
 
 function qualifiedLabel(value) {
     if (value === true) {
@@ -202,9 +347,123 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             {{ flashSuccess }}
         </div>
 
-        <div class="surface-card overflow-hidden">
+        <div class="surface-card p-6">
+            <form class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6" @submit.prevent="applyFilters">
+                <div class="xl:col-span-2">
+                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500" for="leads-filter-search">
+                        Buscar
+                    </label>
+                    <input
+                        id="leads-filter-search"
+                        v-model="filterState.search"
+                        type="search"
+                        class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        placeholder="Nome, e-mail, empresa ou telefone"
+                    />
+                </div>
+                <div>
+                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500" for="leads-filter-source">
+                        Origem
+                    </label>
+                    <select
+                        id="leads-filter-source"
+                        v-model="filterState.source"
+                        class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    >
+                        <option value="">Todas</option>
+                        <option v-for="option in sourceOptions" :key="option.value" :value="option.value">
+                            {{ option.label }}
+                        </option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500" for="leads-filter-qualified">
+                        Qualificado
+                    </label>
+                    <select
+                        id="leads-filter-qualified"
+                        v-model="filterState.qualified"
+                        class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    >
+                        <option value="">Todos</option>
+                        <option value="yes">Sim</option>
+                        <option value="no">Não</option>
+                        <option value="pending">Ainda não avaliado</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500" for="leads-filter-from">
+                        Data de
+                    </label>
+                    <input
+                        id="leads-filter-from"
+                        v-model="filterState.created_from"
+                        type="date"
+                        class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    />
+                    <p v-if="filterErrors.created_from" class="mt-1 text-xs text-rose-600">
+                        {{ filterErrors.created_from }}
+                    </p>
+                </div>
+                <div>
+                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500" for="leads-filter-to">
+                        até
+                    </label>
+                    <input
+                        id="leads-filter-to"
+                        v-model="filterState.created_to"
+                        type="date"
+                        class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    />
+                    <p v-if="filterErrors.created_to" class="mt-1 text-xs text-rose-600">
+                        {{ filterErrors.created_to }}
+                    </p>
+                </div>
+                <div class="flex items-end justify-end gap-2 md:col-span-2 xl:col-span-6">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                        @click="clearFilters"
+                    >
+                        Limpar
+                    </button>
+                    <button
+                        type="submit"
+                        class="inline-flex items-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                    >
+                        Filtrar
+                    </button>
+                </div>
+            </form>
+
+            <div
+                v-if="activeFilterChips.length"
+                class="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4"
+            >
+                <button
+                    v-for="chip in activeFilterChips"
+                    :key="chip.key"
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded-full border border-talents-200 bg-talents-50 px-2.5 py-1 text-xs font-medium text-talents-800 transition hover:bg-talents-100"
+                    :title="`Remover filtro ${chip.label}`"
+                    @click="clearActiveFilter(chip.key)"
+                >
+                    <span>{{ chip.label }}</span>
+                    <XMarkIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                <button
+                    type="button"
+                    class="text-xs font-semibold text-slate-500 underline-offset-2 transition hover:text-talents-700 hover:underline"
+                    @click="clearFilters"
+                >
+                    Limpar tudo
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-6 surface-card overflow-hidden">
             <div v-if="!submissions.data.length" class="px-4 py-10 text-center text-sm text-gray-600">
-                Nenhum lead encontrado.
+                {{ hasActiveFilters ? 'Nenhum lead encontrado para os filtros selecionados.' : 'Nenhum lead encontrado.' }}
             </div>
             <div v-else class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm text-gray-900">
