@@ -14,17 +14,38 @@ use Inertia\Response;
 
 class LandingInterestSubmissionController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'source' => ['nullable', 'string', Rule::enum(LandingInterestSource::class)],
+            'qualified' => ['nullable', 'string', Rule::in(['yes', 'no', 'pending'])],
+            'created_from' => ['nullable', 'date'],
+            'created_to' => ['nullable', 'date', 'after_or_equal:created_from'],
+        ], [
+            'created_to.after_or_equal' => 'A data final deve ser igual ou posterior à data inicial.',
+        ]);
+
+        $filters = [
+            'search' => trim((string) ($validated['search'] ?? '')),
+            'source' => (string) ($validated['source'] ?? ''),
+            'qualified' => (string) ($validated['qualified'] ?? ''),
+            'created_from' => (string) ($validated['created_from'] ?? ''),
+            'created_to' => (string) ($validated['created_to'] ?? ''),
+        ];
+
         $paginator = LandingInterestSubmission::query()
             ->with('creator:id,name')
+            ->filtered($filters)
             ->orderByDesc('id')
             ->paginate(30)
+            ->withQueryString()
             ->through(fn (LandingInterestSubmission $s) => self::submissionRow($s));
 
         return Inertia::render('Admin/LandingInterest/Index', [
             'submissions' => self::scrubPaginatorArray($paginator->toArray()),
             'sourceOptions' => LandingInterestSource::options(),
+            'filters' => $filters,
         ]);
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin\Commercial;
 
 use App\Enums\ProposalLostReason;
+use App\Models\CommercialContract;
 use App\Models\CommercialProposal;
 use App\Models\User;
 use App\Support\Commercial\ProposalKanbanBoard;
@@ -265,9 +266,65 @@ class ProposalKanbanBoardTest extends TestCase
                     fn ($item) => $item['code'] === 'PROP-KANBAN-STAG' && $item['is_stagnant'] === true,
                 ))
                 ->where('kanban.columns.0.items', fn ($items) => collect($items)->contains(
-                    fn ($item) => $item['code'] === 'PROP-KANBAN-ZAP' && $item['zapsign_pending'] === true,
+                    fn ($item) => $item['code'] === 'PROP-KANBAN-ZAP'
+                        && $item['zapsign_pending'] === true
+                        && $item['contract_signed'] === false,
                 ))
                 ->where('kanban.columns.1.items.0.code', 'PROP-KANBAN-NOSALE')
-                ->where('kanban.columns.1.items.0.closed_without_sale', true));
+                ->where('kanban.columns.1.items.0.closed_without_sale', true)
+                ->where('kanban.columns.1.items.0.contract_signed', false));
+    }
+
+    public function test_kanban_marks_proposal_when_contract_is_signed(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $signed = CommercialProposal::query()->create([
+            'code' => 'PROP-KANBAN-SIGNED',
+            'client_name' => 'Contrato assinado',
+            'employee_count' => 5,
+            'total_final_cents' => 4_000,
+            'is_closed' => true,
+            'closed_at' => now(),
+            'list_status' => ProposalListStatus::CLOSED,
+        ]);
+
+        CommercialContract::query()->create([
+            'proposal_id' => $signed->id,
+            'code' => 'CTR-KANBAN-SIGNED',
+            'template_name_snapshot' => 'Template demo',
+            'pdf_path' => 'contracts/kanban-signed.pdf',
+            'html_snapshot' => '<p>demo</p>',
+            'generated_at' => now(),
+            'zapsign_document_token' => 'tok-assinado',
+            'zapsign_status' => 'signed',
+            'zapsign_sent_at' => now()->subDay(),
+        ]);
+
+        $unsigned = CommercialProposal::query()->create([
+            'code' => 'PROP-KANBAN-UNSIGNED',
+            'client_name' => 'Sem contrato',
+            'employee_count' => 5,
+            'total_final_cents' => 1_500,
+            'is_closed' => false,
+            'list_status' => ProposalListStatus::OPEN,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index', ['view' => 'kanban']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('kanban.columns.0.items', fn ($items) => collect($items)->contains(
+                    fn ($item) => $item['id'] === $unsigned->id
+                        && $item['contract_signed'] === false
+                        && $item['zapsign_pending'] === false,
+                ))
+                ->where('kanban.columns.1.items', fn ($items) => collect($items)->contains(
+                    fn ($item) => $item['id'] === $signed->id
+                        && $item['contract_signed'] === true
+                        && $item['zapsign_pending'] === false,
+                )));
     }
 }

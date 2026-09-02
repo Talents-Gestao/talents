@@ -5,6 +5,7 @@ import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { formatCnpj } from '@/utils/formatCnpj';
+import { proposalContractSignature } from '@/utils/proposalContractSignature';
 import {
     ArrowPathIcon,
     BanknotesIcon,
@@ -236,6 +237,8 @@ const installmentsProgressLabel = (proposal) => {
     }
     return `${paid}/${total} pagas`;
 };
+
+const contractSignatureFor = (proposal) => proposalContractSignature(proposal);
 
 const statusModalOpen = ref(false);
 const statusProposal = ref(null);
@@ -1255,6 +1258,7 @@ const submitConvert = () => {
                             <th class="px-4 py-3 text-right font-medium">Funcionários</th>
                             <th class="px-4 py-3 text-right font-medium">Total</th>
                             <th class="px-4 py-3 text-left font-medium">Status</th>
+                            <th class="px-4 py-3 text-left font-medium">Contrato</th>
                             <th class="px-4 py-3 text-right font-medium">Criada</th>
                             <th class="px-4 py-3 text-right font-medium">Ações</th>
                         </tr>
@@ -1301,6 +1305,15 @@ const submitConvert = () => {
                                 >
                                     Ver venda
                                 </Link>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                                    :class="contractSignatureFor(p).className"
+                                    :title="contractSignatureFor(p).title"
+                                >
+                                    {{ contractSignatureFor(p).label }}
+                                </span>
                             </td>
                             <td class="px-4 py-3 text-right text-xs text-slate-500">
                                 {{ formatDate(p.created_at) }}
@@ -1376,7 +1389,7 @@ const submitConvert = () => {
                             </td>
                         </tr>
                         <tr v-if="!proposals.data.length">
-                            <td colspan="7" class="px-4 py-10 text-center text-slate-500">
+                            <td colspan="8" class="px-4 py-10 text-center text-slate-500">
                                 Nenhuma proposta encontrada.
                             </td>
                         </tr>

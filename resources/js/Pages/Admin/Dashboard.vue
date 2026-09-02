@@ -3,6 +3,7 @@ import ApexChart from '@/Components/Charts/ApexChart.vue';
 import DailyQuoteCard from '@/Components/Dashboard/DailyQuoteCard.vue';
 import DashboardSalesFunnel from '@/Components/Dashboard/DashboardSalesFunnel.vue';
 import EmptyState from '@/Components/Dashboard/EmptyState.vue';
+import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -183,6 +184,16 @@ const leadsDonutOptions = computed(() => ({
 }));
 
 const goalPercent = computed(() => Math.min(100, Number(props.monthlyGoal?.percent || 0)));
+
+const goalSellers = computed(() =>
+    Array.isArray(props.monthlyGoal?.sellers) ? props.monthlyGoal.sellers : [],
+);
+
+const formatGoalShare = (percent) => {
+    const value = Number(percent || 0);
+    const rounded = Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
+    return `${rounded}% da meta`;
+};
 
 const goalGaugeOptions = computed(() => ({
     chart: {
@@ -737,11 +748,35 @@ const submitGoal = () => {
                                         />
                                     </div>
                                     <div class="text-center">
-                                        <p class="text-xl font-bold tabular-nums tracking-tight text-slate-900">
+                                        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                            Venda geral
+                                        </p>
+                                        <p class="mt-1 text-xl font-bold tabular-nums tracking-tight text-slate-900">
                                             {{ formatMoney(monthlyGoal.current_cents) }}
                                         </p>
                                         <p class="mt-1 text-xs text-slate-600">
                                             de {{ formatMoney(monthlyGoal.goal_cents) }} (parcelas pagas de comerciais neste mês)
+                                        </p>
+                                    </div>
+                                    <div class="mt-4 border-t border-slate-100 pt-3" @click.stop>
+                                        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                            Por vendedor
+                                        </p>
+                                        <ul
+                                            v-if="goalSellers.length"
+                                            class="mt-3 max-h-44 space-y-3 overflow-y-auto pr-0.5"
+                                        >
+                                            <li v-for="seller in goalSellers" :key="seller.id">
+                                                <ProgressBar
+                                                    :label="seller.name"
+                                                    :value="seller.percent"
+                                                    :display-value="`${formatMoney(seller.current_cents)} · ${formatGoalShare(seller.percent)}`"
+                                                    bar-class="bg-violet-600"
+                                                />
+                                            </li>
+                                        </ul>
+                                        <p v-else class="mt-2 text-xs text-slate-500">
+                                            Nenhum vendedor comercial para exibir neste mês.
                                         </p>
                                     </div>
                                 </section>
@@ -761,11 +796,27 @@ const submitGoal = () => {
                     <form class="mt-5 space-y-4" @submit.prevent="submitGoal">
                         <div>
                             <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                Valor atingido (recebido no mês)
+                                Venda geral (recebido no mês)
                             </p>
                             <p class="mt-1 text-lg font-bold tabular-nums text-slate-900">
                                 {{ formatMoney(monthlyGoal.current_cents) }}
                             </p>
+                        </div>
+
+                        <div v-if="goalSellers.length" class="space-y-3 border-t border-slate-100 pt-4">
+                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                Por vendedor
+                            </p>
+                            <ul class="max-h-56 space-y-3 overflow-y-auto">
+                                <li v-for="seller in goalSellers" :key="`modal-seller-${seller.id}`">
+                                    <ProgressBar
+                                        :label="seller.name"
+                                        :value="seller.percent"
+                                        :display-value="`${formatMoney(seller.current_cents)} · ${formatGoalShare(seller.percent)}`"
+                                        bar-class="bg-violet-600"
+                                    />
+                                </li>
+                            </ul>
                         </div>
 
                         <div>

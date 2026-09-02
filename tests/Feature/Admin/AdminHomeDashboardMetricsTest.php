@@ -130,6 +130,7 @@ class AdminHomeDashboardMetricsTest extends TestCase
                 ->where('funnelAll.2.count', 1)
                 ->where('leadsThisMonth', 2)
                 ->has('monthlyGoal')
+                ->has('monthlyGoal.sellers')
                 ->missing('commercial')
                 ->missing('alertsCount')
                 ->missing('recentLeads')

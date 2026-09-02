@@ -482,7 +482,8 @@ class ProposalController extends Controller
     {
         $listStatus = ProposalListStatus::for($proposal);
         $hasSale = $proposal->sale !== null;
-        $zapsignPending = $proposal->hasZapSignSentContract() && ! $proposal->hasSignedContract();
+        $contractSigned = $proposal->hasSignedContract();
+        $zapsignPending = $proposal->hasZapSignSentContract() && ! $contractSigned;
         $isStagnant = $listStatus === ProposalListStatus::OPEN
             && $proposal->updated_at !== null
             && $proposal->updated_at->lte(now()->subDays(ProposalKanbanBoard::STAGNANT_DAYS));
@@ -500,6 +501,7 @@ class ProposalController extends Controller
         $arr['can_reopen'] = $proposal->canReopen();
         $arr['is_stagnant'] = $isStagnant;
         $arr['closed_without_sale'] = $listStatus === ProposalListStatus::CLOSED && ! $hasSale;
+        $arr['contract_signed'] = $contractSigned;
         $arr['zapsign_pending'] = $zapsignPending;
 
         return $arr;

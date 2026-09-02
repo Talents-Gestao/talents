@@ -94,7 +94,12 @@ class LandingInterestAdminStoreTest extends TestCase
                 ->where('submissions.data.0.source', 'event')
                 ->where('submissions.data.0.source_label', 'Evento')
                 ->where('submissions.data.0.admin_notes', null)
-                ->has('sourceOptions'));
+                ->has('sourceOptions')
+                ->where('filters.search', '')
+                ->where('filters.source', '')
+                ->where('filters.qualified', '')
+                ->where('filters.created_from', '')
+                ->where('filters.created_to', ''));
     }
 
     public function test_super_admin_can_update_admin_notes(): void
