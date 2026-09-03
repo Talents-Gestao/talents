@@ -2,13 +2,14 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 defineProps({
     questionnaires: Array,
 });
 
-const destroyQuestionnaire = (id, name) => {
-    if (!confirm(`Excluir o roteiro "${name}"?`)) {
+const destroyQuestionnaire = async (id, name) => {
+    if (!(await confirmDialog(`Excluir o roteiro "${name}"?`))) {
         return;
     }
     router.delete(route('admin.entrevistas.roteiros.destroy', id));

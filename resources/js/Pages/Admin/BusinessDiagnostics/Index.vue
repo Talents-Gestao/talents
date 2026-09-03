@@ -5,6 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 import { ref } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     diagnostics: { type: Object, required: true },
@@ -21,8 +22,8 @@ const applyFilters = () => {
     );
 };
 
-const remove = (id) => {
-    if (confirm('Remover este diagnóstico?')) {
+const remove = async (id) => {
+    if (await confirmDialog('Remover este diagnóstico?')) {
         router.delete(route('admin.diagnostico-empresarial.destroy', id));
     }
 };

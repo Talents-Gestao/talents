@@ -5,6 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { MagnifyingGlassIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { ref } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     highlights: { type: Object, required: true },
@@ -54,8 +55,8 @@ const applyFilters = () => {
 const createHref = () =>
     route('admin.destaques-mes.create', companyId.value ? { company_id: companyId.value } : {});
 
-const remove = (id) => {
-    if (confirm('Remover este destaque do mês?')) {
+const remove = async (id) => {
+    if (await confirmDialog('Remover este destaque do mês?')) {
         router.delete(route('admin.destaques-mes.destroy', id));
     }
 };

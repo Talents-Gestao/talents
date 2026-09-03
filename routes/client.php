@@ -14,9 +14,6 @@ use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
 use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
 use App\Http\Controllers\Client\ExportController;
 use App\Http\Controllers\Client\ImportController;
-use App\Http\Controllers\Client\MethodologyController as ClientMethodologyController;
-use App\Http\Controllers\Client\MethodologySurveyController;
-use App\Http\Controllers\Client\MethodologySurveyResultsController;
 use App\Http\Controllers\Client\PositionController;
 use App\Http\Controllers\Client\ReportController;
 use App\Http\Controllers\Client\RhidApiController;
@@ -104,13 +101,14 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
             ->name('strategic-calendar.attachment-download');
     });
 
-    Route::middleware('can.module:metodologia')->prefix('metodologia')->name('metodologia.')->group(function () {
-        Route::get('/', [ClientMethodologyController::class, 'index'])->name('index');
-        Route::get('pesquisa-satisfacao/{survey}/results', [MethodologySurveyResultsController::class, 'show'])->name('pesquisa-satisfacao.results');
-        Route::get('pesquisa-satisfacao/{survey}/export/csv', [MethodologySurveyResultsController::class, 'exportCsv'])->name('pesquisa-satisfacao.export.csv');
-        Route::resource('pesquisa-satisfacao', MethodologySurveyController::class)
-            ->parameters(['pesquisa-satisfacao' => 'survey']);
-    });
+    // Direcionamento Estratégico oculto no painel do cliente até o módulo estar pronto.
+    // Route::middleware('can.module:metodologia')->prefix('metodologia')->name('metodologia.')->group(function () {
+    //     Route::get('/', [ClientMethodologyController::class, 'index'])->name('index');
+    //     Route::get('pesquisa-satisfacao/{survey}/results', [MethodologySurveyResultsController::class, 'show'])->name('pesquisa-satisfacao.results');
+    //     Route::get('pesquisa-satisfacao/{survey}/export/csv', [MethodologySurveyResultsController::class, 'exportCsv'])->name('pesquisa-satisfacao.export.csv');
+    //     Route::resource('pesquisa-satisfacao', MethodologySurveyController::class)
+    //         ->parameters(['pesquisa-satisfacao' => 'survey']);
+    // });
 
     Route::middleware('can.module:denuncias')->group(function () {
         Route::get('complaints', [ComplaintController::class, 'index'])->name('complaints.index');

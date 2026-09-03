@@ -17,6 +17,7 @@ import {
 import { useCollapsedLists } from '@/composables/useCollapsedLists';
 import { VueDraggable } from 'vue-draggable-plus';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     boardPayload: { type: Object, required: true },
@@ -321,7 +322,7 @@ function setListColor(list, color, event) {
     );
 }
 
-function deleteList(list, event) {
+async function deleteList(list, event) {
     event?.stopPropagation?.();
     if (!props.isAdmin || !list?.id) return;
 
@@ -334,11 +335,8 @@ function deleteList(list, event) {
             ? `\n\n${cardCount} tarefa(s) nesta coluna também serão removidas.`
             : '';
 
-    if (
-        !window.confirm(
-            `Excluir a lista "${name}"?${cardsWarning}\n\nEsta ação não pode ser desfeita.`,
-        )
-    ) {
+    if (!(await confirmDialog(
+            `Excluir a lista "${name}"?${cardsWarning}\n\nEsta ação não pode ser desfeita.`))) {
         return;
     }
 
@@ -348,7 +346,7 @@ function deleteList(list, event) {
     });
 }
 
-function archiveList(list, event) {
+async function archiveList(list, event) {
     event?.stopPropagation?.();
     if (!props.isAdmin || !list?.id || list.is_archived) return;
 
@@ -359,7 +357,7 @@ function archiveList(list, event) {
     const cardsWarning =
         cardCount > 0 ? `\n\n${cardCount} tarefa(s) nesta coluna também serão arquivadas.` : '';
 
-    if (!window.confirm(`Arquivar a lista "${name}"?${cardsWarning}`)) {
+    if (!(await confirmDialog(`Arquivar a lista "${name}"?${cardsWarning}`))) {
         return;
     }
 
@@ -381,12 +379,12 @@ function restoreList(list, event) {
     });
 }
 
-function archiveCard(card, event) {
+async function archiveCard(card, event) {
     event?.stopPropagation?.();
     if (!props.isAdmin || !card?.id || card.is_archived) return;
 
     const title = card.title || 'esta tarefa';
-    if (!window.confirm(`Arquivar "${title}"?`)) {
+    if (!(await confirmDialog(`Arquivar "${title}"?`))) {
         return;
     }
 
@@ -478,14 +476,11 @@ function toggleCardComplete(card, event) {
     );
 }
 
-function requestDeleteCard(card) {
+async function requestDeleteCard(card) {
     if (!props.isAdmin || !card?.id) return;
     const title = card.title || 'esta tarefa';
-    if (
-        !window.confirm(
-            `Excluir "${title}"?\n\nA tarefa e todos os seus anexos, comentários e checklists serão removidos.`,
-        )
-    ) {
+    if (!(await confirmDialog(
+            `Excluir "${title}"?\n\nA tarefa e todos os seus anexos, comentários e checklists serão removidos.`))) {
         return;
     }
 

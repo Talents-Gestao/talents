@@ -120,6 +120,17 @@ class TaskBoardCardController extends Controller
 
         $mergedCompanyId = array_key_exists('company_id', $data) ? $data['company_id'] : $card->company_id;
         $mergedVisibility = $data['visibility'] ?? $card->visibility;
+
+        // Se atribuir responsáveis de uma única empresa e o cartão ainda não estiver
+        // partilhado, assume essa empresa para aparecer no portal do cliente.
+        if (empty($mergedCompanyId) && is_array($memberIds)) {
+            $inferredCompanyId = self::inferCompanyIdFromMemberIds($memberIds);
+            if ($inferredCompanyId !== null) {
+                $data['company_id'] = $inferredCompanyId;
+                $mergedCompanyId = $inferredCompanyId;
+            }
+        }
+
         if (! empty($mergedCompanyId) && $mergedVisibility === 'internal') {
             $data['visibility'] = 'company';
         }
@@ -223,5 +234,30 @@ class TaskBoardCardController extends Controller
             })
             ->pluck('id')
             ->all();
+    }
+
+    /**
+     * Infere a empresa a partilhar quando todos os membros atribuídos
+     * com empresa apontam para a mesma (ex.: usuário dual Talents + cliente).
+     *
+     * @param  list<int>  $memberIds
+     */
+    private static function inferCompanyIdFromMemberIds(array $memberIds): ?int
+    {
+        $companyIds = User::query()
+            ->whereIn('id', $memberIds)
+            ->whereNotNull('company_id')
+            ->where('is_active', true)
+            ->distinct()
+            ->pluck('company_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if (count($companyIds) !== 1) {
+            return null;
+        }
+
+        return $companyIds[0];
     }
 }

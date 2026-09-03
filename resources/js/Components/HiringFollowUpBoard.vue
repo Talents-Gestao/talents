@@ -8,6 +8,7 @@ import TextInput from '@/Components/TextInput.vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import { VueDraggable } from 'vue-draggable-plus';
 import { computed, nextTick, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 import {
     ArrowLeftIcon,
     ArrowRightIcon,
@@ -277,11 +278,11 @@ const retreat = (processId) => {
     router.post(route(props.routes.retreat, processId), {}, { preserveScroll: true });
 };
 
-const destroyProcess = (processId) => {
+const destroyProcess = async (processId) => {
     if (!props.can_delete) {
         return;
     }
-    if (!confirm('Remover este processo de acompanhamento?')) {
+    if (!(await confirmDialog('Remover este processo de acompanhamento?'))) {
         return;
     }
     router.delete(route(props.routes.destroy, processId), { preserveScroll: true });

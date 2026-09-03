@@ -8,6 +8,7 @@ import { desligamentoRoute } from '@/composables/useDesligamentoRoutes';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { EyeIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { computed, reactive, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     interviews: Object,
@@ -74,8 +75,8 @@ const statusBadgeClass = (status) => {
 
 const formatDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR') : '—');
 
-const remove = (id) => {
-    if (confirm('Remover esta pesquisa de desligamento?')) {
+const remove = async (id) => {
+    if (await confirmDialog('Remover esta pesquisa de desligamento?')) {
         router.delete(desligamentoRoute('destroy', id));
     }
 };

@@ -10,6 +10,7 @@ import { BanknotesIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/ou
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref, watch } from 'vue';
 import { formatMoneyModel } from '@/utils/moneyMask';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     items: { type: Object, required: true },
@@ -194,8 +195,8 @@ const submitPayment = () => {
         });
 };
 
-const remove = (receivableId) => {
-    if (!confirm('Remover esta conta a receber?')) {
+const remove = async (receivableId) => {
+    if (!(await confirmDialog('Remover esta conta a receber?'))) {
         return;
     }
     router.delete(route('admin.financeiro.contas-a-receber.destroy', receivableId));

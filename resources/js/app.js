@@ -1,6 +1,7 @@
 import '../css/app.css';
 import './bootstrap';
 
+import ConfirmModal from '@/Components/ConfirmModal.vue';
 import SessionExpiryMonitor from '@/Components/SessionExpiryMonitor.vue';
 import { isSessionExpiredHttpStatus, redirectToLoginExpired } from '@/utils/sessionExpiry';
 import { recordAppNavigation } from '@/utils/navigationHistory';
@@ -85,6 +86,7 @@ createInertiaApp({
                 h(Fragment, null, [
                     h(App, props),
                     h(SessionExpiryMonitor),
+                    h(ConfirmModal),
                 ]),
         })
             .use(plugin)

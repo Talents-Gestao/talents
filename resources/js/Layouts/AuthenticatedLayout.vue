@@ -26,14 +26,14 @@ import {
                 :href="route('dashboard')"
                 :active="route().current('dashboard')"
                 :icon="HomeIcon"
-                label="Dashboard"
+                label="Painel"
                 :collapsed="collapsed"
             />
             <SidebarNavItem
                 :href="route('profile.edit')"
                 :active="route().current('profile.*')"
                 :icon="IdentificationIcon"
-                label="Profile"
+                label="Perfil"
                 :collapsed="collapsed"
             />
         </template>
@@ -52,6 +52,7 @@ import {
                     :href="route('profile.edit')"
                     :active="route().current('profile.*')"
                     :label="$page.props.auth.user.name"
+                    :sublabel="$page.props.auth.user.company_name ?? $page.props.auth.user.role_label"
                     :collapsed="collapsed"
                 />
             </div>

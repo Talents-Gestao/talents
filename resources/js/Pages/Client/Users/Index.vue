@@ -3,13 +3,14 @@ import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 defineProps({
     users: Array,
 });
 
-const remove = (id) => {
-    if (confirm('Remover este usuário?')) {
+const remove = async (id) => {
+    if (await confirmDialog('Remover este usuário?')) {
         router.delete(route('client.usuarios.destroy', id));
     }
 };

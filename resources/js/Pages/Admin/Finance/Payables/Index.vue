@@ -6,6 +6,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     payables: { type: Object, required: true },
@@ -95,8 +96,8 @@ const submitPay = () => {
     });
 };
 
-const remove = (id) => {
-    if (!confirm('Remover esta conta a pagar?')) {
+const remove = async (id) => {
+    if (!(await confirmDialog('Remover esta conta a pagar?'))) {
         return;
     }
     router.delete(route('admin.financeiro.contas-a-pagar.destroy', id));

@@ -10,6 +10,7 @@ import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { PlusIcon } from '@heroicons/vue/24/outline';
 import { computed, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     item: Object,
@@ -116,8 +117,8 @@ function uploadAttachments(event) {
     event.target.value = '';
 }
 
-function destroyAttachment(attachmentId) {
-    if (!window.confirm('Remover este anexo?')) return;
+async function destroyAttachment(attachmentId) {
+    if (!(await confirmDialog('Remover este anexo?'))) return;
 
     router.delete(route('admin.strategic-calendar.attachment.destroy', attachmentId), {
         preserveScroll: true,

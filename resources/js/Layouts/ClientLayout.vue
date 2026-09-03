@@ -18,7 +18,6 @@ import {
     MegaphoneIcon,
     ChatBubbleLeftRightIcon,
     FlagIcon,
-    RocketLaunchIcon,
     ShieldExclamationIcon,
     SunIcon,
     UsersIcon,
@@ -110,6 +109,7 @@ const showDailyQuote = computed(
                 :collapsed="collapsed"
                 :badge="activeHiringProcessesCount > 0 ? activeHiringProcessesCount : null"
             />
+            <!-- Direcionamento Estratégico oculto no painel do cliente até o módulo estar pronto
             <SidebarNavItem
                 v-if="can('metodologia', 'view')"
                 :href="route('client.metodologia.index')"
@@ -118,6 +118,7 @@ const showDailyQuote = computed(
                 label="Direcionamento Estratégico"
                 :collapsed="collapsed"
             />
+            -->
             <SidebarNavItem
                 v-if="can('feedbacks', 'view')"
                 :href="route('client.feedbacks.index')"
@@ -209,6 +210,7 @@ const showDailyQuote = computed(
                     :href="route('profile.edit')"
                     :active="route().current('profile.*')"
                     :label="$page.props.auth.user.name"
+                    :sublabel="$page.props.auth.user.company_name ?? $page.props.auth.user.role_label"
                     :collapsed="collapsed"
                     :compact="compact"
                 />

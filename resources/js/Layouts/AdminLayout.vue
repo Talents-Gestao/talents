@@ -647,6 +647,7 @@ const isComercialSettingsTab = (tab) => {
                     :href="route('profile.edit')"
                     :active="route().current('profile.*')"
                     :label="$page.props.auth.user.name"
+                    :sublabel="$page.props.auth.user.role_label"
                     :collapsed="collapsed"
                     :compact="compact"
                 />

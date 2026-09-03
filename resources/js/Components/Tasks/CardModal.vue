@@ -18,6 +18,7 @@ import { router, useForm } from '@inertiajs/vue3';
 import { formatDateNumeric, formatRelativeDate } from '@/utils/dateOnly';
 import { VueDraggable } from 'vue-draggable-plus';
 import { computed, nextTick, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     show: Boolean,
@@ -137,6 +138,75 @@ const assignableTeamUsers = computed(() => {
     return props.teamUsers || [];
 });
 
+const companyUserById = computed(() => {
+    const map = new Map();
+    for (const u of props.companyUsers || []) {
+        map.set(Number(u.id), u);
+    }
+    return map;
+});
+
+const selectedCompanyName = computed(() => {
+    if (!cardUpdate.company_id) return null;
+    const company = (props.companies || []).find((c) => Number(c.id) === Number(cardUpdate.company_id));
+    return company?.name || null;
+});
+
+const isSharedWithCompany = computed(
+    () => Boolean(cardUpdate.company_id) && cardUpdate.visibility !== 'internal',
+);
+
+const inferredCompanyFromMembers = computed(() => {
+    const companyIds = new Set();
+    for (const id of cardUpdate.member_ids || []) {
+        const user = companyUserById.value.get(Number(id));
+        if (user?.company_id) {
+            companyIds.add(Number(user.company_id));
+        }
+    }
+    if (companyIds.size !== 1) return null;
+    const companyId = [...companyIds][0];
+    const company = (props.companies || []).find((c) => Number(c.id) === companyId);
+    return company ? { id: company.id, name: company.name } : { id: companyId, name: null };
+});
+
+const needsCompanyShareHint = computed(
+    () => props.isAdmin && !isSharedWithCompany.value && inferredCompanyFromMembers.value !== null,
+);
+
+function applyCompanyShareFromMembers() {
+    const inferred = inferredCompanyFromMembers.value;
+    if (!inferred) return;
+    cardUpdate.company_id = inferred.id;
+    if (cardUpdate.visibility === 'internal') {
+        cardUpdate.visibility = 'company';
+    }
+}
+
+watch(
+    () => [...(cardUpdate.member_ids || [])],
+    (ids, previousIds = []) => {
+        if (!props.isAdmin) return;
+        const prev = new Set((previousIds || []).map(Number));
+        const added = ids.map(Number).filter((id) => !prev.has(id));
+        if (!added.length || cardUpdate.company_id) return;
+
+        const companies = new Set();
+        for (const id of added) {
+            const user = companyUserById.value.get(id);
+            if (user?.company_id) {
+                companies.add(Number(user.company_id));
+            }
+        }
+        if (companies.size !== 1) return;
+
+        cardUpdate.company_id = [...companies][0];
+        if (cardUpdate.visibility === 'internal') {
+            cardUpdate.visibility = 'company';
+        }
+    },
+);
+
 function sortChecklistItems(items) {
     return [...(items || [])].sort((a, b) => {
         const posA = Number(a.position ?? 0);
@@ -246,14 +316,11 @@ function saveCard() {
     }
 }
 
-function deleteCard() {
+async function deleteCard() {
     if (!props.card?.id || !props.isAdmin) return;
     const title = props.card.title || 'esta tarefa';
-    if (
-        !window.confirm(
-            `Excluir "${title}"?\n\nA tarefa e todos os seus anexos, comentários e checklists serão removidos.`,
-        )
-    ) {
+    if (!(await confirmDialog(
+            `Excluir "${title}"?\n\nA tarefa e todos os seus anexos, comentários e checklists serão removidos.`))) {
         return;
     }
 
@@ -263,10 +330,10 @@ function deleteCard() {
     });
 }
 
-function archiveCard() {
+async function archiveCard() {
     if (!props.card?.id || !props.isAdmin || props.card.is_archived) return;
     const title = props.card.title || 'esta tarefa';
-    if (!window.confirm(`Arquivar "${title}"?`)) {
+    if (!(await confirmDialog(`Arquivar "${title}"?`))) {
         return;
     }
 
@@ -442,14 +509,11 @@ function saveInlineEditChecklist(checklist) {
     );
 }
 
-function deleteChecklist(checklist) {
+async function deleteChecklist(checklist) {
     if (!props.isAdmin || !checklist?.id) return;
     const display = (checklist.name || '').trim() || 'sem nome';
-    if (
-        !window.confirm(
-            `Excluir a checklist "${display}"?\n\nTodos os itens desta checklist serão removidos.`,
-        )
-    ) {
+    if (!(await confirmDialog(
+            `Excluir a checklist "${display}"?\n\nTodos os itens desta checklist serão removidos.`))) {
         return;
     }
 
@@ -538,10 +602,10 @@ function saveItemDescription(item) {
     );
 }
 
-function deleteChecklistItem(item) {
+async function deleteChecklistItem(item) {
     if (!props.isAdmin || !item?.id) return;
     const display = (item.text || '').trim() || 'esta etapa';
-    if (!window.confirm(`Excluir "${display}"?`)) {
+    if (!(await confirmDialog(`Excluir "${display}"?`))) {
         return;
     }
 
@@ -723,14 +787,11 @@ function saveLabelEdit(label) {
     );
 }
 
-function deleteLabel(label) {
+async function deleteLabel(label) {
     if (!label?.id || !props.isAdmin) return;
     const display = (label.name || '').trim() || 'sem nome';
-    if (
-        !window.confirm(
-            `Excluir a etiqueta "${display}"? Ela será removida de todas as tarefas deste quadro.`,
-        )
-    ) {
+    if (!(await confirmDialog(
+            `Excluir a etiqueta "${display}"? Ela será removida de todas as tarefas deste quadro.`))) {
         return;
     }
 
@@ -1308,6 +1369,33 @@ function itemDueClass(item) {
                         </p>
                     </div>
 
+                    <div
+                        v-if="needsCompanyShareHint"
+                        class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                    >
+                        <p class="font-medium">Esta tarefa ainda não aparece no portal do cliente.</p>
+                        <p class="mt-0.5 text-xs text-amber-800">
+                            Há responsável ligado a
+                            {{ inferredCompanyFromMembers?.name || 'uma empresa' }}, mas o cartão não está partilhado.
+                        </p>
+                        <button
+                            type="button"
+                            class="mt-2 rounded-md bg-amber-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-700"
+                            @click="applyCompanyShareFromMembers"
+                        >
+                            Partilhar com {{ inferredCompanyFromMembers?.name || 'a empresa' }}
+                        </button>
+                    </div>
+
+                    <div
+                        v-else-if="isAdmin && isSharedWithCompany"
+                        class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900"
+                    >
+                        Visível no portal de
+                        <span class="font-semibold">{{ selectedCompanyName || 'empresa selecionada' }}</span>
+                        para quem tiver acesso às tarefas.
+                    </div>
+
                     <div v-if="isAdmin && visibilityCardOptions.length">
                         <InputLabel value="Visibilidade do cartão" />
                         <select
@@ -1322,22 +1410,23 @@ function itemDueClass(item) {
 
                     <div v-if="isAdmin" class="grid grid-cols-1 gap-3 md:grid-cols-2">
                         <div class="md:col-span-2">
-                            <InputLabel value="Empresa responsável (cliente)" />
+                            <InputLabel value="Partilhar com empresa (portal cliente)" />
                             <select
                                 v-model="cardUpdate.company_id"
                                 class="mt-1 block w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
                             >
-                                <option value="">Não compartilhar com empresa</option>
+                                <option value="">Não partilhar com empresa</option>
                                 <option v-for="c in companies" :key="c.id" :value="c.id">
                                     {{ c.name }}
                                 </option>
                             </select>
                             <p class="mt-1 text-xs text-slate-500">
-                                Quando definida, a tarefa aparece para essa empresa no portal cliente.
+                                Sem empresa selecionada, a tarefa fica só no admin — mesmo com responsável atribuído.
+                                Ao marcar um usuário do cliente, a empresa é preenchida automaticamente.
                             </p>
                         </div>
                         <div>
-                            <InputLabel value="Membros" />
+                            <InputLabel value="Responsáveis" />
                             <div class="mt-1 max-h-52 space-y-3 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm">
                                 <div v-if="assignableTeamUsers.length">
                                     <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -1349,7 +1438,13 @@ function itemDueClass(item) {
                                         class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
                                     >
                                         <input v-model="cardUpdate.member_ids" type="checkbox" :value="u.id" />
-                                        {{ u.name }}
+                                        <span class="min-w-0 flex-1 truncate">{{ u.name }}</span>
+                                        <span
+                                            v-if="companyUserById.get(Number(u.id))?.company_name"
+                                            class="shrink-0 text-[10px] text-slate-400"
+                                        >
+                                            {{ companyUserById.get(Number(u.id)).company_name }}
+                                        </span>
                                     </label>
                                 </div>
                                 <div v-if="cardUpdate.company_id">
@@ -1378,7 +1473,7 @@ function itemDueClass(item) {
                                     v-else-if="!cardUpdate.company_id"
                                     class="text-xs text-slate-500"
                                 >
-                                    Selecione uma empresa acima para incluir responsáveis do cliente.
+                                    Selecione a empresa acima (ou marque um usuário do cliente na Equipe Talents) para incluir responsáveis do portal.
                                 </p>
                             </div>
                         </div>

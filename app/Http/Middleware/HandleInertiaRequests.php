@@ -68,7 +68,9 @@ class HandleInertiaRequests extends Middleware
                         'name' => $user->name,
                         'email' => $user->email,
                         'role' => $user->contextRole()->value,
+                        'role_label' => $user->contextRole()->label(),
                         'company_id' => $user->contextCompanyId(),
+                        'company_name' => $user->contextCompany()?->name,
                         'permissions' => $permissions,
                         'admin_permissions' => $user->isSuperAdmin()
                             ? $user->adminPermissionMatrixForFrontend()

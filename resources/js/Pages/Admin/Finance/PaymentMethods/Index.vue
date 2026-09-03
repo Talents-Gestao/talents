@@ -3,13 +3,14 @@ import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 defineProps({
     methods: { type: Array, default: () => [] },
 });
 
-const remove = (id) => {
-    if (confirm('Remover esta forma de pagamento?')) {
+const remove = async (id) => {
+    if (await confirmDialog('Remover esta forma de pagamento?')) {
         router.delete(route('admin.financeiro.formas-pagamento.destroy', id));
     }
 };

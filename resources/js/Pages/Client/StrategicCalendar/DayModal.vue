@@ -5,6 +5,7 @@ import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import { formatStrategicCalendarDateRange } from '@/utils/strategicCalendarDate';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     show: { type: Boolean, default: false },
@@ -160,9 +161,9 @@ function submitEdit() {
     });
 }
 
-function removeItem(item) {
+async function removeItem(item) {
     if (!item.can_manage) return;
-    if (!confirm('Remover este evento da agenda interna?')) return;
+    if (!(await confirmDialog('Remover este evento da agenda interna?'))) return;
     router.delete(route('client.strategic-calendar.destroy', item.source_id), {
         preserveScroll: true,
     });

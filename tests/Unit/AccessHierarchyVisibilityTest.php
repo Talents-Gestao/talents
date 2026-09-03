@@ -47,6 +47,12 @@ class AccessHierarchyVisibilityTest extends TestCase
         $this->assertSame('admin.dashboard', $resolver->routeNameFor($admin));
     }
 
+    public function test_hidden_capacitacao_is_not_assignable_in_permission_matrices(): void
+    {
+        $this->assertNotContains(PermissionModule::Capacitacao, PermissionModule::all());
+        $this->assertNotContains(AdminPermissionModule::Training, AdminPermissionModule::all());
+    }
+
     public function test_company_roles_cannot_access_admin_modules(): void
     {
         $company = $this->createCompanyWithModules([

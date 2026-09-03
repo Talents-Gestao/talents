@@ -5,6 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     users: Array,
@@ -15,11 +16,11 @@ const page = usePage();
 
 const resendingId = ref(null);
 
-const remove = (user) => {
+const remove = async (user) => {
     if (user.is_owner || user.id === page.props.auth?.user?.id) {
         return;
     }
-    if (confirm('Remover este usuário?')) {
+    if (await confirmDialog('Remover este usuário?')) {
         router.delete(route('admin.users.destroy', user.id));
     }
 };
@@ -32,14 +33,14 @@ function functionLabel(user) {
     return { text: 'Administrador', class: 'bg-talents-100 text-talents-800' };
 }
 
-const resendInvitation = (user) => {
+const resendInvitation = async (user) => {
     if (resendingId.value) {
         return;
     }
     const message = user.pending_registration
         ? `Reenviar o link de cadastro para ${user.email}?`
         : `Enviar link para redefinir a senha para ${user.email}?`;
-    if (!confirm(message)) {
+    if (!(await confirmDialog(message))) {
         return;
     }
     resendingId.value = user.id;

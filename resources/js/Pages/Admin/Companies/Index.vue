@@ -6,6 +6,7 @@ import TextInput from '@/Components/TextInput.vue';
 import { formatCnpj } from '@/utils/formatCnpj';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     companies: Object,
@@ -22,12 +23,12 @@ const hasPendingRegistration = (companyId) => pendingRegistrationIdSet.has(Numbe
 
 const resendingId = ref(null);
 
-const resendInvitation = (company) => {
+const resendInvitation = async (company) => {
     if (resendingId.value || !hasPendingRegistration(company.id)) {
         return;
     }
     const email = company.contact_email || 'o e-mail de contato';
-    if (!confirm(`Reenviar o convite de cadastro para ${email}?`)) {
+    if (!(await confirmDialog(`Reenviar o convite de cadastro para ${email}?`))) {
         return;
     }
     resendingId.value = company.id;

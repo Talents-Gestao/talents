@@ -2,14 +2,15 @@
 import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 defineProps({
     templates: Object,
     filters: Object,
 });
 
-function destroy(id) {
-    if (!confirm('Remover este modelo de processo?')) return;
+async function destroy(id) {
+    if (!(await confirmDialog('Remover este modelo de processo?'))) return;
     router.delete(route('admin.tarefas.processos.destroy', id));
 }
 </script>

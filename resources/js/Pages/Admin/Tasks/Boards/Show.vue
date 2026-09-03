@@ -6,6 +6,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatDateNumeric, formatRelativeDate } from '@/utils/dateOnly';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     boardPayload: Object,
@@ -63,14 +64,11 @@ function toggleShowArchived() {
     );
 }
 
-function deleteListCard(card, event) {
+async function deleteListCard(card, event) {
     event?.stopPropagation?.();
     const title = card.title || 'esta tarefa';
-    if (
-        !window.confirm(
-            `Excluir "${title}"?\n\nA tarefa e todos os seus anexos, comentários e checklists serão removidos.`,
-        )
-    ) {
+    if (!(await confirmDialog(
+            `Excluir "${title}"?\n\nA tarefa e todos os seus anexos, comentários e checklists serão removidos.`))) {
         return;
     }
     router.delete(route('admin.tarefas.cards.destroy', card.id), {

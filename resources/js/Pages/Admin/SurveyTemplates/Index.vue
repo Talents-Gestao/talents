@@ -6,6 +6,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { desligamentoRoute } from '@/composables/useDesligamentoRoutes';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     templates: Object,
@@ -28,8 +29,8 @@ const flashSuccess = computed(() => page.props.flash?.success);
 
 const templatesCount = computed(() => props.templates?.data?.length ?? 0);
 
-const removeInterview = (id) => {
-    if (confirm('Remover esta pesquisa de desligamento?')) {
+const removeInterview = async (id) => {
+    if (await confirmDialog('Remover esta pesquisa de desligamento?')) {
         router.delete(desligamentoRoute('destroy', id));
     }
 };

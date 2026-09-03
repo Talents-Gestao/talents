@@ -6,6 +6,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { formatCpf } from '@/utils/formatCpf';
 import { maskPhoneBr } from '@/utils/formatPhone';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     employee: { type: Object, required: true },
@@ -21,8 +22,8 @@ const display = (value) => {
     return text || '—';
 };
 
-const remove = () => {
-    if (confirm('Remover este colaborador?')) {
+const remove = async () => {
+    if (await confirmDialog('Remover este colaborador?')) {
         router.delete(route('admin.colaboradores.destroy', props.employee.id));
     }
 };

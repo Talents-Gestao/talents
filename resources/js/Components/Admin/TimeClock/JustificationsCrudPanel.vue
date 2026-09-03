@@ -15,6 +15,7 @@ import {
 } from '@/utils/rhidDate';
 import axios from 'axios';
 import { computed, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     companyId: { type: [Number, String], required: true },
@@ -235,7 +236,7 @@ const destroyRow = async (row) => {
         error.value = 'Esta justificativa não tem ID para remoção.';
         return;
     }
-    if (!confirm(`Remover a justificativa de ${row.personName}? Esta ação aplica-se na RHID.`)) {
+    if (!(await confirmDialog(`Remover a justificativa de ${row.personName}? Esta ação aplica-se na RHID.`))) {
         return;
     }
     saving.value = true;

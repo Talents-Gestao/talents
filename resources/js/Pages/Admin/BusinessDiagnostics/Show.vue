@@ -4,13 +4,14 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     diagnostic: { type: Object, required: true },
 });
 
-const remove = () => {
-    if (confirm('Remover este diagnóstico?')) {
+const remove = async () => {
+    if (await confirmDialog('Remover este diagnóstico?')) {
         router.delete(route('admin.diagnostico-empresarial.destroy', props.diagnostic.id));
     }
 };

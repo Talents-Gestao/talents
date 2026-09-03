@@ -79,6 +79,11 @@ class AdminUserPermissionsMatrixTest extends TestCase
                 ->has('permissionModules')
                 ->has('permissionActions')
                 ->where('user.is_owner', false)
+                ->where(
+                    'permissionModules',
+                    fn ($modules) => collect($modules)->pluck('value')->doesntContain('training')
+                        && collect($modules)->pluck('label')->doesntContain('Capacitação'),
+                )
             );
     }
 }

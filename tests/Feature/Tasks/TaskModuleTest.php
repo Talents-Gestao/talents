@@ -204,7 +204,7 @@ class TaskModuleTest extends TestCase
     public function test_dual_workspace_user_appears_in_talents_team_users_for_card_assignment(): void
     {
         $company = $this->baseCompany();
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
         $dualUser = User::factory()->companyUser($company->id)->create([
             'email' => 'dual@talents.test',
@@ -253,6 +253,58 @@ class TaskModuleTest extends TestCase
             $card->fresh()->members()->where('users.id', $dualUser->id)->exists(),
             'Membro da equipe Talents com workspace dual deve ser atribuível ao cartão.',
         );
+    }
+
+    public function test_assigning_company_linked_member_auto_shares_card_with_their_company(): void
+    {
+        $company = $this->baseCompany();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $dualUser = User::factory()->companyUser($company->id)->create([
+            'email' => 'adriana.dual@talents.test',
+        ]);
+        app(\App\Support\WorkspaceManager::class)->createTalentsWorkspace($dualUser, isOwner: false, isActive: true);
+        app(\App\Support\WorkspaceManager::class)->syncLegacyUserColumns($dualUser);
+        $dualUser->refresh();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'PASQUALINO',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'company_id' => null,
+            'title' => 'PLANO DE CARREIRA',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/cards/'.$card->id, [
+                'member_ids' => [$dualUser->id],
+            ])
+            ->assertRedirect();
+
+        $card->refresh();
+        $this->assertSame($company->id, (int) $card->company_id);
+        $this->assertSame('company', $card->visibility);
+        $this->assertTrue($card->members()->where('users.id', $dualUser->id)->exists());
+
+        $clientPayload = BoardPresenter::forClient($board->fresh(), $company->id, $dualUser);
+        $cardIds = collect($clientPayload['lists'])->flatMap(fn ($l) => collect($l['cards'])->pluck('id'))->all();
+        $this->assertContains($card->id, $cardIds);
     }
 
     public function test_admin_can_invite_talents_team_member_to_internal_board_as_viewer(): void

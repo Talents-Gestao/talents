@@ -4,6 +4,7 @@ import MoneyInput from '@/Components/MoneyInput.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, reactive, ref } from 'vue';
 import { centsToMoneyModel, moneyToCents } from '@/utils/moneyMask';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     products: { type: Array, default: () => [] },
@@ -176,8 +177,8 @@ const submit = () => {
     }
 };
 
-const destroy = (product) => {
-    if (!confirm(`Remover o produto "${product.name}"?`)) return;
+const destroy = async (product) => {
+    if (!(await confirmDialog(`Remover o produto "${product.name}"?`))) return;
     router.delete(route('admin.comercial.products.destroy', product.id), { preserveScroll: true });
 };
 

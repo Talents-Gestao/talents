@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\UserPermission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\CreatesSurveyFixtures;
 use Tests\TestCase;
 
@@ -216,5 +217,52 @@ class UserPermissionsTest extends TestCase
 
         $this->assertFalse($company->hasModuleEnabled(PermissionModule::Denuncias));
         $this->assertTrue($company->hasModuleEnabled(PermissionModule::Pesquisas));
+        $this->assertFalse($company->hasModuleEnabled(PermissionModule::Capacitacao));
+    }
+
+    public function test_company_user_form_does_not_include_hidden_capacitacao_module(): void
+    {
+        $this->withoutVite();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Sem Capacitação',
+            'cnpj' => '33.333.333/0001-33',
+            'is_active' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+        ]);
+        $this->subscribeCompanyToNr1($company);
+
+        $admin = User::factory()->companyAdmin($company->id)->create();
+
+        $this->actingAs($admin)
+            ->get(route('client.usuarios.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Client/Users/Form')
+                ->where(
+                    'permissionModules',
+                    fn ($modules) => collect($modules)->pluck('value')->doesntContain('capacitacao')
+                        && collect($modules)->pluck('label')->doesntContain('Capacitação'),
+                )
+            );
+    }
+
+    public function test_company_admin_cannot_open_hidden_capacitacao_screen(): void
+    {
+        $this->withoutVite();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Tela Oculta',
+            'cnpj' => '44.444.444/0001-44',
+            'is_active' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+        ]);
+        $this->subscribeCompanyToNr1($company);
+
+        $admin = User::factory()->companyAdmin($company->id)->create();
+
+        $this->actingAs($admin)
+            ->get(route('client.training.index'))
+            ->assertForbidden();
     }
 }

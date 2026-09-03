@@ -7,6 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { reactive } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     template: Object,
@@ -62,13 +63,13 @@ function addCard(listId) {
     );
 }
 
-function deleteList(listId) {
-    if (!confirm('Remover lista e cartões modelo?')) return;
+async function deleteList(listId) {
+    if (!(await confirmDialog('Remover lista e cartões modelo?'))) return;
     router.delete(route('admin.tarefas.processo-listas.destroy', listId));
 }
 
-function deleteCard(cardId) {
-    if (!confirm('Remover cartão modelo?')) return;
+async function deleteCard(cardId) {
+    if (!(await confirmDialog('Remover cartão modelo?'))) return;
     router.delete(route('admin.tarefas.processo-cards.destroy', cardId));
 }
 </script>

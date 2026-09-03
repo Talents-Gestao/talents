@@ -4,11 +4,11 @@ import { Head } from '@inertiajs/vue3';
 </script>
 
 <template>
-    <Head title="Dashboard" />
+    <Head title="Painel" />
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-slate-900">Dashboard</h2>
+            <h2 class="text-xl font-semibold leading-tight text-slate-900">Painel</h2>
         </template>
 
         <div class="w-full">
