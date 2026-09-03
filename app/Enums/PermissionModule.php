@@ -44,6 +44,8 @@ enum PermissionModule: string
     }
 
     /**
+     * Módulos atribuíveis na matriz do cliente. Capacitação fica de fora enquanto a tela estiver oculta.
+     *
      * @return list<self>
      */
     public static function all(): array
@@ -59,7 +61,6 @@ enum PermissionModule: string
             self::Relatorios,
             self::ConfiguracoesEmpresa,
             self::Usuarios,
-            self::Capacitacao,
             self::Tarefas,
             self::Feedbacks,
             self::Ferias,

@@ -6,11 +6,12 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 defineProps({ employees: Object });
 
-const remove = (id) => {
-    if (confirm('Remover este colaborador?')) {
+const remove = async (id) => {
+    if (await confirmDialog('Remover este colaborador?')) {
         router.delete(feedbackRoute('employees.destroy', id));
     }
 };

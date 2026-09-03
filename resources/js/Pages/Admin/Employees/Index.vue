@@ -5,6 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { MagnifyingGlassIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { ref } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     employees: { type: Object, required: true },
@@ -36,8 +37,8 @@ const createHref = () => {
     return route('admin.colaboradores.create', { company_id: companyId.value });
 };
 
-const remove = (id) => {
-    if (confirm('Remover este colaborador?')) {
+const remove = async (id) => {
+    if (await confirmDialog('Remover este colaborador?')) {
         router.delete(route('admin.colaboradores.destroy', id));
     }
 };

@@ -10,6 +10,7 @@ import {
 } from '@heroicons/vue/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/vue/24/solid';
 import { computed, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     boardPayload: { type: Object, required: true },
@@ -161,8 +162,8 @@ function openInviteModal() {
     inviting.value = true;
 }
 
-function removeMember(userId) {
-    if (!confirm('Remover este membro do quadro?')) return;
+async function removeMember(userId) {
+    if (!(await confirmDialog('Remover este membro do quadro?'))) return;
     router.delete(
         route('admin.tarefas.quadros.membros.destroy', [props.boardPayload.id, userId]),
         {
@@ -205,14 +206,11 @@ function saveCoverColor(color) {
     });
 }
 
-function deleteBoard() {
+async function deleteBoard() {
     if (!props.isAdmin) return;
     const name = props.boardPayload?.name || 'este quadro';
-    if (
-        !window.confirm(
-            `Excluir "${name}" permanentemente?\n\nTodas as listas, tarefas, anexos, comentários e checklists serão removidos. Esta ação NÃO pode ser desfeita.`,
-        )
-    ) {
+    if (!(await confirmDialog(
+            `Excluir "${name}" permanentemente?\n\nTodas as listas, tarefas, anexos, comentários e checklists serão removidos. Esta ação NÃO pode ser desfeita.`))) {
         return;
     }
 

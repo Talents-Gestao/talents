@@ -5,6 +5,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     submissions: Object,
@@ -294,9 +295,9 @@ function saveNotes() {
         });
 }
 
-function destroyLead(lead, event) {
+async function destroyLead(lead, event) {
     event?.stopPropagation?.();
-    if (!window.confirm(`Excluir o lead «${lead.name}»? Esta ação não pode ser desfeita.`)) {
+    if (!(await confirmDialog(`Excluir o lead «${lead.name}»? Esta ação não pode ser desfeita.`))) {
         return;
     }
     if (selectedLead.value?.id === lead.id) {

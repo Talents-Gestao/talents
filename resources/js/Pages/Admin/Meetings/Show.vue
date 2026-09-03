@@ -5,6 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     meeting: Object,
@@ -181,15 +182,15 @@ const saveMinutes = () => {
     });
 };
 
-const reprocess = () => {
-    if (!confirm('Reprocessar esta reunião? A ata e a transcrição atuais serão substituídas.')) {
+const reprocess = async () => {
+    if (!(await confirmDialog('Reprocessar esta reunião? A ata e a transcrição atuais serão substituídas.'))) {
         return;
     }
     router.post(route('admin.reunioes.reprocess', props.meeting.id), {}, { preserveScroll: true });
 };
 
-const destroyMeeting = () => {
-    if (!confirm('Excluir esta reunião permanentemente?')) {
+const destroyMeeting = async () => {
+    if (!(await confirmDialog('Excluir esta reunião permanentemente?'))) {
         return;
     }
     router.delete(route('admin.reunioes.destroy', props.meeting.id));

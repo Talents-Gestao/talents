@@ -12,6 +12,10 @@ const props = defineProps({
         type: String,
         required: true,
     },
+    sublabel: {
+        type: String,
+        default: null,
+    },
     active: {
         type: Boolean,
         default: false,
@@ -63,9 +67,10 @@ const onNavigate = () => {
         <Transition name="fade">
             <span
                 v-if="!collapsed"
-                class="min-w-0 flex-1 truncate font-medium leading-snug text-slate-900"
+                class="min-w-0 flex-1 overflow-hidden"
             >
-                {{ label }}
+                <span class="block truncate font-medium leading-snug text-slate-900">{{ label }}</span>
+                <span v-if="sublabel" class="block truncate text-xs leading-tight text-slate-500">{{ sublabel }}</span>
             </span>
         </Transition>
     </Link>

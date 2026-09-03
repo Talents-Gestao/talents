@@ -3,6 +3,7 @@ import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { formatRelativeDate } from '@/utils/dateOnly';
 import { TrashIcon } from '@heroicons/vue/24/outline';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 defineProps({
     notices: Object,
@@ -12,15 +13,15 @@ function markAllRead() {
     router.post(route('client.notices.mark-all-read'), {}, { preserveScroll: true });
 }
 
-function destroyNotice(notice) {
-    if (!confirm('Excluir este aviso? Esta ação não pode ser desfeita.')) {
+async function destroyNotice(notice) {
+    if (!(await confirmDialog('Excluir este aviso? Esta ação não pode ser desfeita.'))) {
         return;
     }
     router.delete(route('client.notices.destroy', notice.id), { preserveScroll: true });
 }
 
-function destroyAll() {
-    if (!confirm('Excluir todos os avisos? Esta ação não pode ser desfeita.')) {
+async function destroyAll() {
+    if (!(await confirmDialog('Excluir todos os avisos? Esta ação não pode ser desfeita.'))) {
         return;
     }
     router.post(route('client.notices.destroy-all'), {}, { preserveScroll: true });

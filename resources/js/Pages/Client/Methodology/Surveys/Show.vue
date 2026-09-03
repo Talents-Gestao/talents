@@ -4,6 +4,7 @@ import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     survey: Object,
@@ -26,8 +27,8 @@ const copyLink = async () => {
 
 const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(props.publicUrl)}`;
 
-const deleteSurvey = () => {
-    if (confirm('Remover esta pesquisa e todas as respostas?')) {
+const deleteSurvey = async () => {
+    if (await confirmDialog('Remover esta pesquisa e todas as respostas?')) {
         router.delete(route('client.metodologia.pesquisa-satisfacao.destroy', props.survey.id));
     }
 };

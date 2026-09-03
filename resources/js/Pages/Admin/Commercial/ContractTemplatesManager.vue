@@ -7,6 +7,7 @@ import Underline from '@tiptap/extension-underline';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { onBeforeUnmount, reactive, ref } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     templates: { type: Array, default: () => [] },
@@ -191,8 +192,8 @@ const submitModal = () => {
     }
 };
 
-const destroyTemplate = (t) => {
-    if (!confirm(`Excluir o modelo "${t.name}"? Contratos já gerados permanecem no histórico.`)) return;
+const destroyTemplate = async (t) => {
+    if (!(await confirmDialog(`Excluir o modelo "${t.name}"? Contratos já gerados permanecem no histórico.`))) return;
     router.delete(route('admin.comercial.contract-templates.destroy', t.id), { preserveScroll: true });
 };
 

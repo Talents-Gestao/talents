@@ -2,6 +2,7 @@
 import ListEmptyState from '@/Components/ListEmptyState.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 defineProps({ positions: Object });
 
@@ -13,8 +14,8 @@ const submit = () => {
     });
 };
 
-const remove = (id) => {
-    if (confirm('Excluir este cargo?')) {
+const remove = async (id) => {
+    if (await confirmDialog('Excluir este cargo?')) {
         router.delete(route('client.positions.destroy', id));
     }
 };

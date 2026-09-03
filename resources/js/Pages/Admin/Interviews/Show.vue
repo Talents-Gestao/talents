@@ -4,6 +4,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { onMounted, onUnmounted } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     interview: Object,
@@ -23,15 +24,15 @@ const statusClass = (value) => {
     return map[value] ?? 'bg-slate-100 text-slate-800';
 };
 
-const reprocess = () => {
-    if (!confirm('Reprocessar esta entrevista? As respostas atuais serão substituídas.')) {
+const reprocess = async () => {
+    if (!(await confirmDialog('Reprocessar esta entrevista? As respostas atuais serão substituídas.'))) {
         return;
     }
     router.post(route('admin.entrevistas.reprocess', props.interview.id), {}, { preserveScroll: true });
 };
 
-const destroyInterview = () => {
-    if (!confirm('Excluir esta entrevista permanentemente?')) {
+const destroyInterview = async () => {
+    if (!(await confirmDialog('Excluir esta entrevista permanentemente?'))) {
         return;
     }
     router.delete(route('admin.entrevistas.destroy', props.interview.id));

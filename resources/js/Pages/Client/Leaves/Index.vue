@@ -8,6 +8,7 @@ import { feriasRoute } from '@/composables/useFeriasRoutes';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { computed, reactive, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     leaves: Object,
@@ -61,8 +62,8 @@ const statusBadgeClass = (status) => {
 
 const formatDate = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR') : '—');
 
-const remove = (id) => {
-    if (confirm('Remover este período de férias?')) {
+const remove = async (id) => {
+    if (await confirmDialog('Remover este período de férias?')) {
         router.delete(feriasRoute('destroy', id));
     }
 };

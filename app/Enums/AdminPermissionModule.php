@@ -108,6 +108,7 @@ enum AdminPermissionModule: string
 
     /**
      * Módulos exibidos na matriz de permissões (Equipe).
+     * Capacitação fica de fora enquanto a tela estiver oculta.
      *
      * @return list<self>
      */
@@ -147,7 +148,6 @@ enum AdminPermissionModule: string
             self::Settings,
             self::Equipe,
             self::EmpresaTalents,
-            self::Training,
             self::Ferias,
         ];
     }

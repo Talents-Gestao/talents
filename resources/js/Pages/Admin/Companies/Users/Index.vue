@@ -4,6 +4,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     company: Object,
@@ -23,20 +24,20 @@ const roleLabel = (role) => {
     return map[key] ?? role ?? '—';
 };
 
-const remove = (userId) => {
-    if (confirm('Remover este usuário?')) {
+const remove = async (userId) => {
+    if (await confirmDialog('Remover este usuário?')) {
         router.delete(route('admin.companies.users.destroy', [props.company.id, userId]));
     }
 };
 
-const resendInvitation = (user) => {
+const resendInvitation = async (user) => {
     if (resendingId.value) {
         return;
     }
     const message = user.pending_registration
         ? `Reenviar o link de cadastro para ${user.email}?`
         : `Enviar link para redefinir a senha para ${user.email}?`;
-    if (!confirm(message)) {
+    if (!(await confirmDialog(message))) {
         return;
     }
     resendingId.value = user.id;

@@ -8,6 +8,7 @@ import { formatStrategicCalendarDateRange } from '@/utils/strategicCalendarDate'
 import { router, useForm } from '@inertiajs/vue3';
 import { PlusIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { computed, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     show: { type: Boolean, default: false },
@@ -214,8 +215,8 @@ function submitEdit(sourceId) {
         });
 }
 
-function destroyItem(sourceId) {
-    if (!window.confirm('Excluir este item do calendário? Esta ação não pode ser desfeita.')) return;
+async function destroyItem(sourceId) {
+    if (!(await confirmDialog('Excluir este item do calendário? Esta ação não pode ser desfeita.'))) return;
 
     router.delete(route('admin.strategic-calendar.destroy', sourceId), {
         preserveScroll: true,
@@ -268,8 +269,8 @@ function uploadAttachments(sourceId, event) {
     event.target.value = '';
 }
 
-function destroyAttachment(attachmentId) {
-    if (!window.confirm('Remover este anexo?')) return;
+async function destroyAttachment(attachmentId) {
+    if (!(await confirmDialog('Remover este anexo?'))) return;
 
     router.delete(route('admin.strategic-calendar.attachment.destroy', attachmentId), {
         preserveScroll: true,

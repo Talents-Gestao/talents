@@ -2,6 +2,7 @@
 import ListEmptyState from '@/Components/ListEmptyState.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 defineProps({ departments: Object });
 
@@ -22,8 +23,8 @@ const importCsv = () => {
     });
 };
 
-const remove = (id) => {
-    if (confirm('Excluir este setor?')) {
+const remove = async (id) => {
+    if (await confirmDialog('Excluir este setor?')) {
         router.delete(route('client.departments.destroy', id));
     }
 };

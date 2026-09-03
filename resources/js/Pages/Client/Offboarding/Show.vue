@@ -8,6 +8,7 @@ import { desligamentoRoute, isDesligamentoAdminContext } from '@/composables/use
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ArrowDownTrayIcon, ClipboardDocumentIcon, LinkIcon, NoSymbolIcon } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     interview: Object,
@@ -59,8 +60,8 @@ const generateLink = () => {
     );
 };
 
-const revokeLink = () => {
-    if (!confirm('Desativar o link público? O colaborador não poderá mais responder por ele.')) {
+const revokeLink = async () => {
+    if (!(await confirmDialog('Desativar o link público? O colaborador não poderá mais responder por ele.'))) {
         return;
     }
     linkBusy.value = true;

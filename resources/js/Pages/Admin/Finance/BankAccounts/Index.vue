@@ -7,6 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     accounts: { type: Object, required: true },
@@ -44,8 +45,8 @@ const applyFilters = () => {
     );
 };
 
-const remove = (id) => {
-    if (!confirm('Remover esta conta bancária?')) {
+const remove = async (id) => {
+    if (!(await confirmDialog('Remover esta conta bancária?'))) {
         return;
     }
     router.delete(route('admin.financeiro.contas-bancarias.destroy', id));

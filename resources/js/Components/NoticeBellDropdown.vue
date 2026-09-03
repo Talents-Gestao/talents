@@ -4,6 +4,7 @@ import { formatRelativeDate } from '@/utils/dateOnly';
 import { Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const page = usePage();
 
@@ -112,7 +113,7 @@ async function destroyNotice(notice) {
     if (deletingId.value || deletingAll.value) {
         return;
     }
-    if (!confirm('Excluir este aviso? Esta ação não pode ser desfeita.')) {
+    if (!(await confirmDialog('Excluir este aviso? Esta ação não pode ser desfeita.'))) {
         return;
     }
 
@@ -135,7 +136,7 @@ async function destroyAll() {
     if (!notices.value.length || deletingAll.value) {
         return;
     }
-    if (!confirm('Excluir todos os avisos? Esta ação não pode ser desfeita.')) {
+    if (!(await confirmDialog('Excluir todos os avisos? Esta ação não pode ser desfeita.'))) {
         return;
     }
 

@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class CompanyUserManagementTest extends TestCase
@@ -91,5 +92,32 @@ class CompanyUserManagementTest extends TestCase
             ->assertSessionHas('success');
 
         Mail::assertSent(UserInvitationMail::class, fn ($mail) => $mail->hasTo($registered->email));
+    }
+
+    public function test_company_user_form_does_not_include_hidden_capacitacao_module(): void
+    {
+        $this->withoutVite();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Permissões',
+            'cnpj' => '55.555.555/0001-55',
+            'is_active' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+        ]);
+        $this->subscribeCompanyToNr1($company);
+
+        $super = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $this->actingAs($super)
+            ->get(route('admin.companies.users.create', $company))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Companies/Users/Form')
+                ->where(
+                    'permissionModules',
+                    fn ($modules) => collect($modules)->pluck('value')->doesntContain('capacitacao')
+                        && collect($modules)->pluck('label')->doesntContain('Capacitação'),
+                )
+            );
     }
 }

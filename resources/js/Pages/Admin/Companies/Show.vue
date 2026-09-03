@@ -23,6 +23,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { collectiveBargainingMonthLabel } from '@/utils/collectiveBargainingMonths';
 import { formatCnpj } from '@/utils/formatCnpj';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
     company: Object,
@@ -75,7 +76,7 @@ const selectTab = (tabId) => {
     );
 };
 
-const resendInvitation = () => {
+const resendInvitation = async () => {
     if (!props.registrationAdminEmail || resendingInvitation.value) {
         return;
     }
@@ -83,7 +84,7 @@ const resendInvitation = () => {
     const message = props.pendingRegistration
         ? `Reenviar o convite de cadastro para ${email}?`
         : `Enviar link para redefinir a senha para ${email}?`;
-    if (!confirm(message)) {
+    if (!(await confirmDialog(message))) {
         return;
     }
     resendingInvitation.value = true;
@@ -194,14 +195,14 @@ const formatDate = (iso) => {
     }
 };
 
-const removeEmployee = (id) => {
-    if (confirm('Remover este colaborador?')) {
+const removeEmployee = async (id) => {
+    if (await confirmDialog('Remover este colaborador?')) {
         router.delete(route('admin.colaboradores.destroy', id), { preserveScroll: true });
     }
 };
 
-const removeRegulation = (id) => {
-    if (confirm('Remover este regulamento?')) {
+const removeRegulation = async (id) => {
+    if (await confirmDialog('Remover este regulamento?')) {
         router.delete(route('admin.regulamento-interno.destroy', id), { preserveScroll: true });
     }
 };

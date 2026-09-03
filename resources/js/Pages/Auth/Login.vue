@@ -64,7 +64,7 @@ const dismissExpiredNotice = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Log in" />
+        <Head title="Entrar" />
 
         <Modal
             :show="expiredModalVisible"
@@ -102,7 +102,7 @@ const dismissExpiredNotice = () => {
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" value="E-mail" />
 
                 <TextInput
                     id="email"
@@ -118,7 +118,7 @@ const dismissExpiredNotice = () => {
             </div>
 
             <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+                <InputLabel for="password" value="Senha" />
 
                 <div class="relative mt-1">
                     <TextInput
@@ -146,7 +146,7 @@ const dismissExpiredNotice = () => {
             <div class="mt-4 block">
                 <label class="flex items-center">
                     <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-sm text-gray-600">Remember me</span>
+                    <span class="ms-2 text-sm text-gray-600">Lembrar-me</span>
                 </label>
             </div>
 
@@ -156,7 +156,7 @@ const dismissExpiredNotice = () => {
                     :href="route('password.request')"
                     class="rounded-md text-sm text-slate-600 underline hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-talents-500/40 focus:ring-offset-2"
                 >
-                    Forgot your password?
+                    Esqueceu a senha?
                 </Link>
 
                 <PrimaryButton
@@ -164,7 +164,7 @@ const dismissExpiredNotice = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Log in
+                    Entrar
                 </PrimaryButton>
             </div>
         </form>
