@@ -15,6 +15,7 @@ use App\Support\HtmlSanitizer;
 use App\Support\Nr1RiskScenarioResolver;
 use App\Services\ActionPlanGenerator;
 use App\Services\Nr1AiAnalyzer;
+use App\Services\ReportGenerator;
 use App\Services\SurveyResultsPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -31,6 +33,13 @@ class ActionPlanAdminController extends Controller
     private function assertSurveyBelongsToCompany(Company $company, Survey $survey): void
     {
         abort_unless($survey->company_id === $company->id, 404);
+    }
+
+    public function pdf(Company $company, Survey $survey, ReportGenerator $generator): SymfonyResponse
+    {
+        $this->assertSurveyBelongsToCompany($company, $survey);
+
+        return $generator->actionPlanPdf($survey)->stream('plano-de-acao-'.$survey->id.'.pdf');
     }
 
     public function edit(Company $company, Survey $survey): Response

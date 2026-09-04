@@ -161,6 +161,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');
         Route::get('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'edit'])
             ->name('companies.surveys.action-plan.edit');
+        Route::get('companies/{company}/surveys/{survey}/action-plan/pdf', [ActionPlanAdminController::class, 'pdf'])
+            ->name('companies.surveys.action-plan.pdf');
         Route::delete('companies/{company}/surveys/{survey}', [CompanySurveyController::class, 'destroy'])
             ->name('companies.surveys.destroy');
         Route::put('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'update'])

@@ -288,7 +288,18 @@ const submit = () => {
                 back-label="Voltar à empresa"
                 title="Parecer técnico e plano de ação (NR-1)"
                 :subtitle="`${company.name} — ${survey.title}`"
-            />
+            >
+                <template #trailing>
+                    <a
+                        :href="route('admin.companies.surveys.action-plan.pdf', [company.id, survey.id])"
+                        target="_blank"
+                        rel="noopener"
+                        class="inline-flex items-center rounded-full bg-talents-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-talents-800"
+                    >
+                        Exportar PDF
+                    </a>
+                </template>
+            </FormPageHeader>
         </template>
 
         <div
