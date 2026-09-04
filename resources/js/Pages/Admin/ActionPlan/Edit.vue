@@ -50,6 +50,23 @@ const props = defineProps({
 
 const { canAdmin } = useAdminPermissions();
 const showDeleteSurveyModal = ref(false);
+const showExportPdfModal = ref(false);
+const includeActionsInPdf = ref(true);
+
+const openExportPdfModal = () => {
+    includeActionsInPdf.value = true;
+    showExportPdfModal.value = true;
+};
+
+const confirmExportPdf = () => {
+    const url = route('admin.companies.surveys.action-plan.pdf', {
+        company: props.company.id,
+        survey: props.survey.id,
+        include_actions: includeActionsInPdf.value ? 1 : 0,
+    });
+    showExportPdfModal.value = false;
+    window.open(url, '_blank', 'noopener');
+};
 
 const deleteSurvey = () => {
     router.delete(route('admin.companies.surveys.destroy', [props.company.id, props.survey.id]), {
@@ -290,14 +307,13 @@ const submit = () => {
                 :subtitle="`${company.name} — ${survey.title}`"
             >
                 <template #trailing>
-                    <a
-                        :href="route('admin.companies.surveys.action-plan.pdf', [company.id, survey.id])"
-                        target="_blank"
-                        rel="noopener"
+                    <button
+                        type="button"
                         class="inline-flex items-center rounded-full bg-talents-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-talents-800"
+                        @click="openExportPdfModal"
                     >
                         Exportar PDF
-                    </a>
+                    </button>
                 </template>
             </FormPageHeader>
         </template>
@@ -726,6 +742,32 @@ const submit = () => {
                 <div class="mt-6 flex justify-end gap-2">
                     <SecondaryButton type="button" @click="showDeleteSurveyModal = false">Cancelar</SecondaryButton>
                     <DangerButton type="button" @click="deleteSurvey">Sim, excluir pesquisa</DangerButton>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="showExportPdfModal" max-width="md" @close="showExportPdfModal = false">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900">Exportar PDF do plano de ação</h2>
+                <p class="mt-2 text-sm text-gray-600">
+                    Escolha se a seção de ações deve constar no documento gerado.
+                </p>
+                <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800">
+                    <input
+                        v-model="includeActionsInPdf"
+                        type="checkbox"
+                        class="mt-0.5 rounded border-slate-300 text-talents-700 focus:ring-talents-500"
+                    />
+                    <span>
+                        <span class="font-medium">Incluir seção «Ações»</span>
+                        <span class="mt-0.5 block text-xs text-slate-500">
+                            Tabela de ações, texto introdutório e aviso de validação SST/PGR.
+                        </span>
+                    </span>
+                </label>
+                <div class="mt-6 flex justify-end gap-2">
+                    <SecondaryButton type="button" @click="showExportPdfModal = false">Cancelar</SecondaryButton>
+                    <PrimaryButton type="button" @click="confirmExportPdf">Gerar PDF</PrimaryButton>
                 </div>
             </div>
         </Modal>
