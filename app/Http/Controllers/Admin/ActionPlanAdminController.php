@@ -35,11 +35,19 @@ class ActionPlanAdminController extends Controller
         abort_unless($survey->company_id === $company->id, 404);
     }
 
-    public function pdf(Company $company, Survey $survey, ReportGenerator $generator): SymfonyResponse
+    public function pdf(Request $request, Company $company, Survey $survey, ReportGenerator $generator): SymfonyResponse
     {
         $this->assertSurveyBelongsToCompany($company, $survey);
 
-        return $generator->actionPlanPdf($survey)->stream('plano-de-acao-'.$survey->id.'.pdf');
+        $request->validate([
+            'include_actions' => ['sometimes', 'boolean'],
+        ]);
+
+        $includeActions = $request->boolean('include_actions', true);
+
+        return $generator
+            ->actionPlanPdf($survey, $includeActions)
+            ->stream('plano-de-acao-'.$survey->id.'.pdf');
     }
 
     public function edit(Company $company, Survey $survey): Response

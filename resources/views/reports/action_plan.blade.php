@@ -287,40 +287,42 @@
         </div>
     @endif
 
-    <h2>Ações</h2>
-    <p>{{ $actionPlan['intro'] ?? 'Plano de ação derivado dos resultados da pesquisa psicossocial.' }}</p>
+    @if($includeActions ?? true)
+        <h2>Ações</h2>
+        <p>{{ $actionPlan['intro'] ?? 'Plano de ação derivado dos resultados da pesquisa psicossocial.' }}</p>
 
-    <table class="data">
-        <thead>
-            <tr>
-                <th style="width: 5%;">#</th>
-                <th style="width: 28%;">Ação</th>
-                <th>Descrição</th>
-                <th style="width: 14%;">Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($items as $index => $item)
+        <table class="data">
+            <thead>
                 <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td>{{ $item->title }}</td>
-                    <td>{{ $item->description ?? '—' }}</td>
-                    <td>{{ match($item->status) {
-                        'done' => 'Concluída',
-                        'in_progress' => 'Em andamento',
-                        default => 'Pendente',
-                    } }}</td>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 28%;">Ação</th>
+                    <th>Descrição</th>
+                    <th style="width: 14%;">Status</th>
                 </tr>
-            @empty
-                <tr>
-                    <td colspan="4">Nenhuma ação cadastrada. O administrador Talents deve publicar o plano de ação na plataforma.</td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @forelse($items as $index => $item)
+                    <tr>
+                        <td>{{ $index + 1 }}</td>
+                        <td>{{ $item->title }}</td>
+                        <td>{{ $item->description ?? '—' }}</td>
+                        <td>{{ match($item->status) {
+                            'done' => 'Concluída',
+                            'in_progress' => 'Em andamento',
+                            default => 'Pendente',
+                        } }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="4">Nenhuma ação cadastrada. O administrador Talents deve publicar o plano de ação na plataforma.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
 
-    <p class="notice">
-        <strong>Aviso:</strong> este plano deve ser validado pela equipe de SST e integrado ao PGR da organização, com responsáveis e prazos definidos internamente.
-    </p>
+        <p class="notice">
+            <strong>Aviso:</strong> este plano deve ser validado pela equipe de SST e integrado ao PGR da organização, com responsáveis e prazos definidos internamente.
+        </p>
+    @endif
 </body>
 </html>

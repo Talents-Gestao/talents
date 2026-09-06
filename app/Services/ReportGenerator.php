@@ -118,7 +118,7 @@ class ReportGenerator
         );
     }
 
-    public function actionPlanPdf(Survey $survey): \Barryvdh\DomPDF\PDF
+    public function actionPlanPdf(Survey $survey, bool $includeActions = true): \Barryvdh\DomPDF\PDF
     {
         $survey->load([
             'company',
@@ -163,6 +163,7 @@ class ReportGenerator
         $data['logoBase64'] = TalentsLogoDataUri::get();
         $data['plan'] = $plan;
         $data['items'] = $plan?->items ?? collect();
+        $data['includeActions'] = $includeActions;
         $data['technicalOpinion'] = $plan?->technical_opinion;
         $data['overall'] = $overall;
         $data['bySection'] = $bySection;
