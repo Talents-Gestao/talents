@@ -65,55 +65,98 @@ const submit = () => {
             </div>
         </template>
 
-        <form class="mb-6 flex gap-2" @submit.prevent="submit">
+        <form class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center" @submit.prevent="submit">
             <TextInput v-model="form.search" class="w-full max-w-md" placeholder="Buscar por nome ou CNPJ" />
-            <PrimaryButton type="submit">Filtrar</PrimaryButton>
+            <PrimaryButton type="submit" class="shrink-0 justify-center">Filtrar</PrimaryButton>
         </form>
 
         <div class="surface-card overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 text-sm text-gray-900">
-                    <thead class="bg-gray-50">
+                <table class="min-w-[64rem] w-full table-fixed divide-y divide-slate-200 text-sm text-slate-900">
+                    <thead class="bg-slate-50">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-gray-700">Nome</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-700">CNPJ</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-700">Segmento</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-700">Ativa</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-700">RHID</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-700">Cadastro</th>
-                            <th class="px-4 py-3"></th>
+                            <th class="w-[22%] px-4 py-3 text-left font-medium text-slate-700">Nome</th>
+                            <th class="w-[14%] px-4 py-3 text-left font-medium text-slate-700">CNPJ</th>
+                            <th class="w-[28%] px-4 py-3 text-left font-medium text-slate-700">Segmento</th>
+                            <th class="w-[7%] px-4 py-3 text-left font-medium text-slate-700">Ativa</th>
+                            <th class="w-[10%] px-4 py-3 text-left font-medium text-slate-700">RHID</th>
+                            <th class="w-[11%] px-4 py-3 text-left font-medium text-slate-700">Cadastro</th>
+                            <th class="w-[8%] px-4 py-3 text-right font-medium text-slate-700">Ações</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        <tr v-for="c in companies.data" :key="c.id">
-                            <td class="px-4 py-3">{{ c.name }}</td>
-                            <td class="px-4 py-3">{{ formatCnpj(c.cnpj) || '—' }}</td>
-                            <td class="px-4 py-3">{{ c.segment || '—' }}</td>
-                            <td class="px-4 py-3">{{ c.is_active ? 'Sim' : 'Não' }}</td>
+                    <tbody class="divide-y divide-slate-200">
+                        <tr v-for="c in companies.data" :key="c.id" class="align-top hover:bg-slate-50/70">
                             <td class="px-4 py-3">
+                                <p class="line-clamp-2 font-medium leading-snug text-slate-900" :title="c.name">
+                                    {{ c.name }}
+                                </p>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="whitespace-nowrap font-mono text-[13px] tabular-nums text-slate-700">
+                                    {{ formatCnpj(c.cnpj) || '—' }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <p
+                                    class="line-clamp-2 leading-snug text-slate-600"
+                                    :title="c.segment || undefined"
+                                >
+                                    {{ c.segment || '—' }}
+                                </p>
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-3">
+                                <span
+                                    class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1"
+                                    :class="
+                                        c.is_active
+                                            ? 'bg-emerald-50 text-emerald-800 ring-emerald-200'
+                                            : 'bg-slate-100 text-slate-600 ring-slate-200'
+                                    "
+                                >
+                                    {{ c.is_active ? 'Sim' : 'Não' }}
+                                </span>
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-3">
                                 <span
                                     v-if="isRhidConfigured(c.id)"
                                     class="inline-flex rounded-full bg-talents-100 px-2 py-0.5 text-[11px] font-semibold text-talents-800 ring-1 ring-talents-200"
                                 >
                                     Configurado
                                 </span>
-                                <span v-else class="text-xs text-gray-400">—</span>
+                                <span v-else class="text-xs text-slate-400">—</span>
                             </td>
-                            <td class="px-4 py-3">
-                                <span v-if="hasPendingRegistration(c.id)" class="text-xs font-medium text-amber-700">Aguarda cadastro</span>
-                                <span v-else class="text-xs text-gray-400">Concluído</span>
-                            </td>
-                            <td class="space-x-3 px-4 py-3 text-right">
-                                <button
+                            <td class="whitespace-nowrap px-4 py-3">
+                                <span
                                     v-if="hasPendingRegistration(c.id)"
-                                    type="button"
-                                    class="text-sm font-medium text-amber-700 hover:underline disabled:opacity-50"
-                                    :disabled="resendingId === c.id"
-                                    @click="resendInvitation(c)"
+                                    class="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200"
                                 >
-                                    {{ resendingId === c.id ? 'Enviando…' : 'Reenviar convite' }}
-                                </button>
-                                <Link :href="route('admin.companies.show', c.id)" class="font-medium text-talents-700 hover:underline">Ver</Link>
+                                    Aguarda cadastro
+                                </span>
+                                <span
+                                    v-else
+                                    class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200"
+                                >
+                                    Concluído
+                                </span>
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-3 text-right">
+                                <div class="inline-flex flex-col items-end gap-1.5">
+                                    <Link
+                                        :href="route('admin.companies.show', c.id)"
+                                        class="font-medium text-talents-700 hover:underline"
+                                    >
+                                        Ver
+                                    </Link>
+                                    <button
+                                        v-if="hasPendingRegistration(c.id)"
+                                        type="button"
+                                        class="text-xs font-medium text-amber-700 hover:underline disabled:opacity-50"
+                                        :disabled="resendingId === c.id"
+                                        @click="resendInvitation(c)"
+                                    >
+                                        {{ resendingId === c.id ? 'Enviando…' : 'Reenviar convite' }}
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         <TableEmptyRow v-if="!companies.data.length" :colspan="7" message="Nenhuma empresa encontrada." />

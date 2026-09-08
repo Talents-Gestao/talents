@@ -73,7 +73,6 @@ use App\Http\Controllers\Admin\Interviews\InterviewController;
 use App\Http\Controllers\Admin\Meetings\MeetingController;
 use App\Http\Controllers\Admin\Interviews\InterviewQuestionnaireController;
 use App\Http\Controllers\Admin\Interviews\InterviewReportController;
-use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
 use App\Http\Controllers\NewsFeedController;
 use Illuminate\Support\Facades\Route;
 
@@ -323,10 +322,6 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('acompanhamento/{hiringProcess}/recuar', [HiringProcessController::class, 'retreat'])->name('acompanhamento.retreat');
         Route::post('acompanhamento/{hiringProcess}/observacoes', [HiringProcessController::class, 'storeComment'])->name('acompanhamento.comments.store');
         Route::delete('acompanhamento/{hiringProcess}', [HiringProcessController::class, 'destroy'])->name('acompanhamento.destroy');
-    });
-
-    Route::middleware('admin.can:training')->group(function () {
-        Route::get('capacitacao', [AdminTrainingController::class, 'index'])->name('training.index');
     });
 
     Route::middleware('admin.can:methodology')->group(function () {

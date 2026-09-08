@@ -22,7 +22,6 @@ use App\Http\Controllers\Client\RhidSettingsController;
 use App\Http\Controllers\Client\StrategicCalendarController as ClientStrategicCalendarController;
 use App\Http\Controllers\Client\SurveyController;
 use App\Http\Controllers\Client\SurveyResultsController;
-use App\Http\Controllers\Client\TrainingController;
 use App\Http\Controllers\Client\VozDoTimeController;
 use App\Http\Controllers\Client\Tasks\BoardController as ClientTasksBoardController;
 use App\Http\Controllers\Client\Tasks\BoardFavoriteController as ClientTasksBoardFavoriteController;
@@ -82,10 +81,6 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('surveys/{survey}/reports/action-plan', [ReportController::class, 'actionPlan'])->name('surveys.reports.action-plan');
         Route::get('surveys/{survey}/export/json', [ExportController::class, 'json'])->name('surveys.export.json');
         Route::get('surveys/{survey}/export/csv', [ExportController::class, 'csv'])->name('surveys.export.csv');
-    });
-
-    Route::middleware('can.module:capacitacao')->group(function () {
-        Route::get('capacitacao', [TrainingController::class, 'index'])->name('training.index');
     });
 
     Route::middleware(['strategic_calendar', 'can.module:calendario_estrategico'])->group(function () {

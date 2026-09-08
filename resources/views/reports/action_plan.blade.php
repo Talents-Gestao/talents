@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
-    <title>Plano de ação - {{ $survey->title }}</title>
+    <title>Pesquisa - Riscos Psicossociais - {{ $survey->title }}</title>
     <style>
         @page { margin: 14mm 12mm 16mm 12mm; }
         * { box-sizing: border-box; }
@@ -87,12 +87,12 @@
         @endif
     </div>
 
-    <h1>Plano de ação NR-1</h1>
+    <h1>Pesquisa - Riscos Psicossociais</h1>
     <div class="meta">
         <p class="muted">Empresa: {{ $survey->company->name }} — Campanha: {{ $survey->title }}</p>
         <p class="muted">Data de emissão: {{ now()->format('d/m/Y') }}</p>
         @if(!empty($scenarioConfig['short_label']))
-            <p class="muted">Cenário: {{ $scenarioConfig['short_label'] }}</p>
+            <p class="muted">{{ $scenarioConfig['short_label'] }}</p>
         @endif
     </div>
 

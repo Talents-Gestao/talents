@@ -102,7 +102,6 @@ Itens já referidos no produto como “em breve” e ainda não fechados como m�
 
 - Contratos fechados (Clientes)  
 - Profiler (Contratação)  
-- Capacitação (Admin e Cliente)  
 
 **Financeiro Admin (implementado):** Contas bancárias (CRUD + saldo cadastrado no Resumo) e Contas a receber (ledger unificado: parcelas de venda + recebimentos manuais), alimentando Home e Resumo via `FinanceCashflowMetrics`.
 

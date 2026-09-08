@@ -504,19 +504,6 @@ const isComercialSettingsTab = (tab) => {
                 :compact="compact"
             />
 
-            <!-- Capacitação oculto até o módulo estar pronto
-            <SidebarNavItem
-                v-if="canAdmin('training')"
-                :href="route('admin.training.index')"
-                :active="route().current('admin.training.*')"
-                :icon="AcademicCapIcon"
-                label="Capacitação"
-                :collapsed="collapsed"
-                :compact="compact"
-                badge="Em breve"
-            />
-            -->
-
             <SidebarNavGroup
                 v-if="showFinanceiro"
                 label="Financeiro"
