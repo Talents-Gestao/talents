@@ -36,7 +36,6 @@ Contexto de sessão via workspaces (Talents | Company). Módulos do cliente depe
 - Calendário estratégico + avisos internos
 - Tarefas: Kanban (templates/processos → quadros/cards)
 - Financeiro: vendas/conversão de propostas, comissões, contas a pagar, formas de pagamento; contas bancárias/a receber em breve
-- Capacitação: em breve
 - Configuração: Geral (Mia/IA, SMTP, Sólides), Equipe, Empresa Talents
 - Hubs que **continuam** fora do detalhe da empresa: Portfólio RHID (`/admin/rhid`), Destaques do mês (`/admin/destaques-mes`), Férias Admin (`/admin/ferias` com seleção de empresa)
  
@@ -52,7 +51,6 @@ Contexto de sessão via workspaces (Talents | Company). Módulos do cliente depe
 - Setores / Cargos
 - RHID / Ponto (Control iD): compliance, espelhos, aderência, justificativas, dispositivos, AFD, banco de horas, Top 5 cumprimento, etc.
 - Utilizadores (company_admin)
-- Capacitação: em breve
  
 ## Domínios de negócio centrais
 - NR-1 / riscos psicossociais: templates, campanhas, respostas anónimas, análise/IA, plano de ação, PDFs/relatórios

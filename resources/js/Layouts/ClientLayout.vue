@@ -167,17 +167,6 @@ const showDailyQuote = computed(
                 label="Cargos"
                 :collapsed="collapsed"
             />
-            <!-- Capacitação oculto até o módulo estar pronto
-            <SidebarNavItem
-                v-if="can('capacitacao', 'view')"
-                :href="route('client.training.index')"
-                :active="route().current('client.training.*')"
-                :icon="AcademicCapIcon"
-                label="Capacitação"
-                :collapsed="collapsed"
-                badge="Em breve"
-            />
-            -->
             <SidebarNavItem
                 v-if="can('rhid', 'view')"
                 :href="route('client.rhid.compliance.index')"

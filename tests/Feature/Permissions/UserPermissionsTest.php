@@ -247,7 +247,7 @@ class UserPermissionsTest extends TestCase
             );
     }
 
-    public function test_company_admin_cannot_open_hidden_capacitacao_screen(): void
+    public function test_hidden_capacitacao_route_is_unavailable(): void
     {
         $this->withoutVite();
 
@@ -262,7 +262,7 @@ class UserPermissionsTest extends TestCase
         $admin = User::factory()->companyAdmin($company->id)->create();
 
         $this->actingAs($admin)
-            ->get(route('client.training.index'))
-            ->assertForbidden();
+            ->get('/client/capacitacao')
+            ->assertNotFound();
     }
 }
