@@ -1,5 +1,4 @@
 <script setup>
-import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import SaleInstallmentEditModal from '@/Components/Finance/SaleInstallmentEditModal.vue';
 import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -212,8 +211,6 @@ const confirmDestroy = () => {
                 </div>
             </div>
         </template>
-
-        <FinanceModuleNav />
 
         <div class="grid gap-6 lg:grid-cols-3">
             <div class="surface-card p-6 lg:col-span-2">

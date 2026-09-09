@@ -1,5 +1,4 @@
 <script setup>
-import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
@@ -78,8 +77,6 @@ const submit = () => {
                 subtitle="Registro manual de gasto ou obrigação"
             />
         </template>
-
-        <FinanceModuleNav />
 
         <form class="surface-card mx-auto max-w-xl space-y-4 p-6" @submit.prevent="submit">
             <div>

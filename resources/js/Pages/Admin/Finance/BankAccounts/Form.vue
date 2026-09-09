@@ -1,5 +1,4 @@
 <script setup>
-import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
@@ -52,8 +51,6 @@ const submit = () => {
                 subtitle="Documente bancos e caixa usados no financeiro"
             />
         </template>
-
-        <FinanceModuleNav />
 
         <form class="surface-card mx-auto max-w-xl space-y-4 p-6" @submit.prevent="submit">
             <div>

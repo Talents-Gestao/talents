@@ -1,5 +1,4 @@
 <script setup>
-import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
@@ -315,8 +314,6 @@ const pageSubtitle = computed(() =>
                 :subtitle="pageSubtitle"
             />
         </template>
-
-        <FinanceModuleNav />
 
         <form class="surface-card mx-auto max-w-2xl space-y-4 p-6" @submit.prevent="submit">
             <div

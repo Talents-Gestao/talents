@@ -1,5 +1,4 @@
 <script setup>
-import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
@@ -54,8 +53,6 @@ const statusClass = (s) =>
                 <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Financeiro</h2>
             </div>
         </template>
-
-        <FinanceModuleNav />
 
         <div class="mb-6 flex flex-wrap gap-2">
             <button

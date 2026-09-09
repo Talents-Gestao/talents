@@ -1,5 +1,4 @@
 <script setup>
-import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -32,8 +31,6 @@ const remove = async (id) => {
                 </Link>
             </div>
         </template>
-
-        <FinanceModuleNav />
 
         <div
             v-if="$page.props.flash?.success"

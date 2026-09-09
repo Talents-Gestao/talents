@@ -1,5 +1,4 @@
 <script setup>
-import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
@@ -99,8 +98,6 @@ const canMarkSelectedCommissionPaid = () =>
                 </div>
             </div>
         </template>
-
-        <FinanceModuleNav />
 
         <div class="mb-6 grid gap-4 sm:grid-cols-3">
             <div class="surface-card p-5">

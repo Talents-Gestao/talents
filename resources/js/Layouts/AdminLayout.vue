@@ -39,6 +39,7 @@ const showComercial = computed(
     () =>
         canAdminAny([
             'comercial_propostas',
+            'comercial_processos',
             'comercial_valores_contratos',
         ]) || canCommercialSettings.value,
 );
@@ -49,6 +50,9 @@ const showAssinaturasMenu = false;
 const comercialFallbackHref = computed(() => {
     if (canAdmin('comercial_propostas')) {
         return route('admin.comercial.propostas.index');
+    }
+    if (canAdmin('comercial_processos')) {
+        return route('admin.comercial.processos.index');
     }
     if (canCommercialSettings.value) {
         return route('admin.comercial.settings.edit', { tab: 'produtos' });
@@ -306,6 +310,15 @@ const isComercialSettingsTab = (tab) => {
                     :href="route('admin.comercial.propostas.index')"
                     :active="route().current('admin.comercial.propostas.*')"
                     label="Gestão"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('comercial_processos')"
+                    :href="route('admin.comercial.processos.index')"
+                    :active="route().current('admin.comercial.processos.*')"
+                    label="Processos"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
