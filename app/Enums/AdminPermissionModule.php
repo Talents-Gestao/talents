@@ -21,6 +21,7 @@ enum AdminPermissionModule: string
     case StrategicCalendar = 'strategic_calendar';
     case Tarefas = 'tarefas';
 
+    /** Legado: a tela Resumo foi unificada na Gestão de propostas. Grants antigos continuam válidos. */
     case ComercialResumo = 'comercial_resumo';
     case ComercialPropostas = 'comercial_propostas';
     case ComercialValoresContratos = 'comercial_valores_contratos';
@@ -75,8 +76,8 @@ enum AdminPermissionModule: string
             self::Methodology => 'Direcionamento Estratégico',
             self::StrategicCalendar => 'Calendário estratégico',
             self::Tarefas => 'Tarefas',
-            self::ComercialResumo => 'Comercial · Resumo',
-            self::ComercialPropostas => 'Comercial · Propostas',
+            self::ComercialResumo => 'Comercial · Resumo (legado)',
+            self::ComercialPropostas => 'Comercial · Gestão',
             self::ComercialValoresContratos => 'Comercial · Valores e contratos',
             self::FinanceiroResumo => 'Financeiro · Resumo',
             self::FinanceiroVendas => 'Financeiro · Vendas',
@@ -109,6 +110,7 @@ enum AdminPermissionModule: string
     /**
      * Módulos exibidos na matriz de permissões (Equipe).
      * Capacitação fica de fora enquanto a tela estiver oculta.
+     * Comercial · Resumo saiu da matriz após unificação na Gestão.
      *
      * @return list<self>
      */
@@ -121,7 +123,6 @@ enum AdminPermissionModule: string
             self::CompaniesDiagnostico,
             self::CompaniesContratosFechados,
             self::Rhid,
-            self::ComercialResumo,
             self::ComercialPropostas,
             self::ComercialValoresContratos,
             self::Plans,

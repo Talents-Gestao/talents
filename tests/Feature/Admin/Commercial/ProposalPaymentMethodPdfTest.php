@@ -99,12 +99,16 @@ class ProposalPaymentMethodPdfTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.comercial.propostas.create'))
+            ->assertRedirect(route('admin.comercial.propostas.index', ['form' => 'create']));
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index', ['form' => 'create']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Commercial/Proposals/Form')
-                ->has('paymentMethodOptions')
+                ->component('Admin/Commercial/Proposals/Index')
+                ->has('formModal.paymentMethodOptions')
                 ->where(
-                    'paymentMethodOptions',
+                    'formModal.paymentMethodOptions',
                     fn ($opts) => collect($opts)->contains(fn ($o) => ($o['label'] ?? null) === 'Cheque')
                         && collect($opts)->every(fn ($o) => ($o['label'] ?? null) !== 'Inativo'),
                 )

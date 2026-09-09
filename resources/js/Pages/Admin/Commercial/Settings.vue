@@ -94,7 +94,7 @@ const pdfProductLabels = computed(() =>
     <AdminLayout>
         <template #header>
             <FormPageHeader
-                :back-href="route('admin.comercial.dashboard')"
+                :back-href="route('admin.comercial.propostas.index')"
                 back-label="Comercial"
                 title="Valores e contratos"
                 subtitle="Tabelas de preço, PDF da proposta e modelos usados na geração de contratos."

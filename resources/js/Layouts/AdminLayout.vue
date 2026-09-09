@@ -38,7 +38,6 @@ const canCommercialSettings = computed(
 const showComercial = computed(
     () =>
         canAdminAny([
-            'comercial_resumo',
             'comercial_propostas',
             'comercial_valores_contratos',
         ]) || canCommercialSettings.value,
@@ -48,9 +47,6 @@ const showComercial = computed(
 const showAssinaturasMenu = false;
 
 const comercialFallbackHref = computed(() => {
-    if (canAdmin('comercial_resumo')) {
-        return route('admin.comercial.dashboard');
-    }
     if (canAdmin('comercial_propostas')) {
         return route('admin.comercial.propostas.index');
     }
@@ -288,15 +284,6 @@ const isComercialSettingsTab = (tab) => {
                 :fallback-href="comercialFallbackHref"
             >
                 <SidebarNavItem
-                    v-if="canAdmin('comercial_resumo')"
-                    :href="route('admin.comercial.dashboard')"
-                    :active="route().current('admin.comercial.dashboard')"
-                    label="Resumo"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                />
-                <SidebarNavItem
                     v-if="canCommercialSettings"
                     :href="comercialSettingsProdutosHref"
                     :active="isComercialSettingsTab('produtos')"
@@ -318,7 +305,7 @@ const isComercialSettingsTab = (tab) => {
                     v-if="canAdmin('comercial_propostas')"
                     :href="route('admin.comercial.propostas.index')"
                     :active="route().current('admin.comercial.propostas.*')"
-                    label="Proposta"
+                    label="Gestão"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
@@ -612,6 +599,14 @@ const isComercialSettingsTab = (tab) => {
                     :href="route('admin.empresa-talents.edit')"
                     :active="route().current('admin.empresa-talents.*')"
                     label="Empresa Talents"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
+                    href="https://certificado.pasqualino.com.br/certificado-com-nome.html"
+                    label="Certificados"
+                    external
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"

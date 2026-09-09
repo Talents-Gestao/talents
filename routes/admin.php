@@ -6,7 +6,6 @@ use App\Http\Controllers\Admin\AiSettingsController;
 use App\Http\Controllers\Admin\Commercial\ContractController as CommercialContractController;
 use App\Http\Controllers\Admin\Commercial\ProductController as CommercialProductController;
 use App\Http\Controllers\Admin\Commercial\ContractTemplateController as CommercialContractTemplateController;
-use App\Http\Controllers\Admin\Commercial\DashboardController as CommercialDashboardController;
 use App\Http\Controllers\Admin\Commercial\PreviewController as CommercialPreviewController;
 use App\Http\Controllers\Admin\Commercial\ProposalController as CommercialProposalController;
 use App\Http\Controllers\Admin\Commercial\SettingsController as CommercialSettingsController;
@@ -331,8 +330,31 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     });
 
     Route::prefix('comercial')->name('comercial.')->group(function () {
-        Route::middleware('admin.can:comercial_resumo')->group(function () {
-            Route::get('/', [CommercialDashboardController::class, 'index'])->name('dashboard');
+        Route::middleware('admin.can:comercial_propostas')->group(function () {
+            Route::get('/', function () {
+                return redirect()->route('admin.comercial.propostas.index');
+            })->name('dashboard');
+            Route::post('propostas/preview', [CommercialPreviewController::class, 'calculate'])->name('propostas.preview');
+            Route::get('propostas/{proposal}/pdf', [CommercialProposalController::class, 'pdf'])->name('propostas.pdf');
+            Route::post('propostas/{proposal}/contratos', [CommercialContractController::class, 'store'])
+                ->name('propostas.contratos.store');
+            Route::post('propostas/{proposal}/converter', [FinanceSaleController::class, 'store'])
+                ->name('propostas.converter');
+            Route::patch('propostas/{proposal}/status', [CommercialProposalController::class, 'updateStatus'])
+                ->name('propostas.status');
+            Route::patch('propostas/{proposal}/contacted', [CommercialProposalController::class, 'markContacted'])
+                ->name('propostas.contacted');
+            Route::patch('propostas/{proposal}/notes', [CommercialProposalController::class, 'updateNotes'])
+                ->name('propostas.notes');
+            Route::post('propostas/{proposal}/reabrir', [CommercialProposalController::class, 'reopen'])
+                ->name('propostas.reopen');
+            Route::get('contratos/{contract}/pdf', [CommercialContractController::class, 'pdf'])
+                ->name('contratos.pdf');
+            Route::post('contratos/{contract}/zapsign', [CommercialContractController::class, 'sendZapSign'])
+                ->name('contratos.zapsign');
+            Route::resource('propostas', CommercialProposalController::class)
+                ->except(['show'])
+                ->parameters(['propostas' => 'proposal']);
         });
 
         Route::middleware('admin.can:comercial_valores_contratos')->group(function () {
@@ -351,26 +373,6 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
                 ->only(['store', 'update', 'destroy'])
                 ->parameters(['products' => 'product'])
                 ->names('products');
-        });
-
-        Route::middleware('admin.can:comercial_propostas')->group(function () {
-            Route::post('propostas/preview', [CommercialPreviewController::class, 'calculate'])->name('propostas.preview');
-            Route::get('propostas/{proposal}/pdf', [CommercialProposalController::class, 'pdf'])->name('propostas.pdf');
-            Route::post('propostas/{proposal}/contratos', [CommercialContractController::class, 'store'])
-                ->name('propostas.contratos.store');
-            Route::post('propostas/{proposal}/converter', [FinanceSaleController::class, 'store'])
-                ->name('propostas.converter');
-            Route::patch('propostas/{proposal}/status', [CommercialProposalController::class, 'updateStatus'])
-                ->name('propostas.status');
-            Route::post('propostas/{proposal}/reabrir', [CommercialProposalController::class, 'reopen'])
-                ->name('propostas.reopen');
-            Route::get('contratos/{contract}/pdf', [CommercialContractController::class, 'pdf'])
-                ->name('contratos.pdf');
-            Route::post('contratos/{contract}/zapsign', [CommercialContractController::class, 'sendZapSign'])
-                ->name('contratos.zapsign');
-            Route::resource('propostas', CommercialProposalController::class)
-                ->except(['show'])
-                ->parameters(['propostas' => 'proposal']);
         });
     });
 

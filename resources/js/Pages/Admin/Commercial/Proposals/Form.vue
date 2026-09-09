@@ -1,9 +1,7 @@
 <script setup>
-import FormPageHeader from '@/Components/FormPageHeader.vue';
 import CommercialAdjustmentFields from '@/Components/Commercial/CommercialAdjustmentFields.vue';
 import CatalogProductObservationField from '@/Components/Commercial/CatalogProductObservationField.vue';
 import Modal from '@/Components/Modal.vue';
-import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
 import {
     catalogReferenceDisplay,
@@ -14,7 +12,7 @@ import {
 import { formatCnpj, maskCnpj } from '@/utils/formatCnpj';
 import { centsToMoneyModel, moneyToCents, parseMoneyToNumber } from '@/utils/moneyMask';
 import MoneyInput from '@/Components/MoneyInput.vue';
-import { CheckIcon } from '@heroicons/vue/24/solid';
+import { XMarkIcon } from '@heroicons/vue/24/outline';
 import axios from 'axios';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
 import { computed, nextTick, ref, watch } from 'vue';
@@ -22,6 +20,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 const props = defineProps({
     mode: { type: String, default: 'create' },
     proposal: { type: Object, default: null },
+    fromLead: { type: Object, default: null },
     sellers: { type: Array, default: () => [] },
     settings: { type: Object, required: true },
     catalogProducts: { type: Array, default: () => [] },
@@ -33,6 +32,7 @@ const props = defineProps({
 });
 
 const inertiaPage = usePage();
+const emit = defineEmits(['close']);
 
 const sellerById = (sellerId) => {
     const id = Number(sellerId);
@@ -123,20 +123,20 @@ const formInitial = props.proposal
           pdf_optional_sections: buildPdfOptionalSections(),
       }
     : {
-          client_name: '',
+          client_name: props.fromLead?.client_name ?? '',
           client_cnpj: '',
-          client_email: '',
-          client_phone: '',
+          client_email: props.fromLead?.client_email ?? '',
+          client_phone: props.fromLead?.client_phone ?? '',
           client_address: '',
-          client_representative: '',
+          client_representative: props.fromLead?.client_representative ?? '',
           client_representative_role: '',
-          indication: '',
+          indication: props.fromLead?.indication ?? '',
           employee_count: 0,
           include_publico_atendido: true,
           seller_id: '',
           commission_percent: initialCommissionPercent,
           is_closed: false,
-          notes: '',
+          notes: props.fromLead?.notes ?? '',
           payment_method_id: '',
           include_minimum_stay: true,
           is_recurring: false,
@@ -577,7 +577,6 @@ const validateRequiredFields = () => {
     }
 
     if (!valid) {
-        goToStepForErrors();
         scrollToFirstFormError();
     }
 
@@ -587,7 +586,6 @@ const validateRequiredFields = () => {
 const performSubmit = () => {
     const options = {
         onError: () => {
-            goToStepForErrors();
             scrollToFirstFormError();
         },
     };
@@ -808,244 +806,63 @@ const services = computed(() => {
     return [...legacy, ...catalog];
 });
 
-const wizardSteps = [
-    { id: 'cliente', label: 'Cliente', title: 'Dados do cliente' },
-    { id: 'produtos', label: 'Produtos', title: 'Produtos' },
-    { id: 'tipo', label: 'Tipo', title: 'Tipo de serviço' },
-    { id: 'pdf', label: 'PDF', title: 'Conteúdo do PDF' },
-    { id: 'comercial', label: 'Comercial', title: 'Informações comerciais' },
-];
-
-const currentStepIndex = ref(0);
-const currentStepId = computed(() => wizardSteps[currentStepIndex.value]?.id ?? 'cliente');
-const isFirstStep = computed(() => currentStepIndex.value === 0);
-const isLastStep = computed(() => currentStepIndex.value === wizardSteps.length - 1);
-const currentStepMeta = computed(() => wizardSteps[currentStepIndex.value] ?? wizardSteps[0]);
-
-const stepIndexById = (id) => wizardSteps.findIndex((step) => step.id === id);
-
-const goToStep = (index) => {
-    if (index < 0 || index >= wizardSteps.length) {
-        return;
-    }
-    currentStepIndex.value = index;
-    nextTick(() => {
-        document.getElementById('proposal-wizard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+const closeModal = () => {
+    emit('close');
 };
 
 watch(suggestUpdatedContract, (on) => {
     if (on && isEdit.value && (hasSignedContract.value || hasZapSignSentContract.value)) {
-        const idx = wizardSteps.findIndex((s) => s.id === 'comercial');
-        if (idx >= 0) {
-            goToStep(idx);
-        }
+        nextTick(() => {
+            document.getElementById('proposal-section-comercial')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        });
     }
 }, { immediate: true });
-
-const errorKeyToStepId = (key) => {
-    if (key.startsWith('recurring_') || key === 'is_recurring') {
-        return 'tipo';
-    }
-    if (
-        key.startsWith('client_')
-        || key === 'indication'
-        || key === 'employee_count'
-        || key === 'include_publico_atendido'
-    ) {
-        return 'cliente';
-    }
-    if (key.startsWith('catalog_products') || key.startsWith('svc_')) {
-        return 'produtos';
-    }
-    if (
-        key.startsWith('pdf_')
-        || key.startsWith('service_descriptions')
-        || key.startsWith('palestra_')
-    ) {
-        return 'pdf';
-    }
-    if (
-        key === 'seller_id'
-        || key === 'commission_percent'
-        || key === 'payment_method_id'
-        || key === 'include_minimum_stay'
-        || key === 'notes'
-        || key === 'is_closed'
-    ) {
-        return 'comercial';
-    }
-
-    return null;
-};
-
-const goToStepForErrors = () => {
-    const priority = [
-        'client_name',
-        'employee_count',
-        'catalog_products',
-        'recurring_months',
-        'recurring_monthly_reais',
-        'payment_method_id',
-        'client_email',
-    ];
-    const keys = [
-        ...priority.filter((key) => form.errors[key]),
-        ...Object.keys(form.errors).filter((key) => !priority.includes(key)),
-    ];
-    for (const key of keys) {
-        const stepId = errorKeyToStepId(key);
-        const index = stepId ? stepIndexById(stepId) : -1;
-        if (index >= 0) {
-            goToStep(index);
-            return;
-        }
-    }
-};
-
-const validateCurrentStep = () => {
-    const stepId = currentStepId.value;
-
-    if (stepId === 'tipo') {
-        form.clearErrors('recurring_months', 'recurring_monthly_reais');
-        if (!form.is_recurring) {
-            return true;
-        }
-        let valid = true;
-        const months = Number(form.recurring_months);
-        if (!Number.isInteger(months) || months < 1 || months > 60) {
-            form.setError('recurring_months', 'Informe a duração em meses (1 a 60).');
-            valid = false;
-        }
-        const monthly = parseMoneyToNumber(form.recurring_monthly_reais);
-        if (monthly === null || monthly <= 0) {
-            form.setError('recurring_monthly_reais', 'Informe o valor mensal.');
-            valid = false;
-        }
-        return valid;
-    }
-
-    if (stepId === 'cliente') {
-        form.clearErrors('client_name', 'employee_count');
-        let valid = true;
-        if (!String(form.client_name ?? '').trim()) {
-            form.setError('client_name', 'Informe o nome / razão social.');
-            valid = false;
-        }
-        if (!isEmployeeCountValid(form.employee_count)) {
-            form.setError('employee_count', 'Informe o número de funcionários.');
-            valid = false;
-        }
-        return valid;
-    }
-
-    if (stepId === 'produtos') {
-        form.clearErrors('catalog_products');
-        if (form.is_recurring || props.proposal?.has_legacy_services) {
-            return true;
-        }
-        if (!hasPricedCatalogProduct.value) {
-            form.setError('catalog_products', 'Selecione pelo menos um produto com valor.');
-            return false;
-        }
-        return true;
-    }
-
-    if (stepId === 'comercial') {
-        form.clearErrors('payment_method_id');
-        if (!form.payment_method_id) {
-            form.setError('payment_method_id', 'Selecione a forma de pagamento.');
-            return false;
-        }
-        return true;
-    }
-
-    return true;
-};
-
-const goNextStep = () => {
-    if (!validateCurrentStep()) {
-        scrollToFirstFormError();
-        return;
-    }
-    if (!isLastStep.value) {
-        goToStep(currentStepIndex.value + 1);
-    }
-};
-
-const goPrevStep = () => {
-    if (!isFirstStep.value) {
-        goToStep(currentStepIndex.value - 1);
-    }
-};
-
-const stepHasErrors = (index) => {
-    const stepId = wizardSteps[index]?.id;
-    if (!stepId) {
-        return false;
-    }
-    return Object.keys(form.errors).some((key) => errorKeyToStepId(key) === stepId);
-};
-
-/** completed | active | invalid | default | disabled */
-const stepStatus = (index) => {
-    if (stepHasErrors(index)) {
-        return 'invalid';
-    }
-    if (index < currentStepIndex.value) {
-        return 'completed';
-    }
-    if (index === currentStepIndex.value) {
-        return 'active';
-    }
-    if (isEdit.value || index === currentStepIndex.value + 1) {
-        return 'default';
-    }
-    return 'disabled';
-};
-
-const connectorClass = (index) => {
-    const status = stepStatus(index);
-    if (status === 'completed' || status === 'active') {
-        return 'bg-talents-600';
-    }
-    if (status === 'invalid') {
-        return 'bg-rose-500';
-    }
-    return 'bg-slate-200';
-};
-
-const canNavigateToStep = (index) => isEdit.value || index <= currentStepIndex.value;
-
-const onStepClick = (index) => {
-    if (!canNavigateToStep(index)) {
-        return;
-    }
-    goToStep(index);
-};
 </script>
 
 <template>
     <Head :title="`Comercial — ${titleText}`" />
 
-    <AdminLayout>
-        <template #header>
-            <FormPageHeader
-                :back-href="route('admin.comercial.propostas.index')"
-                back-label="Propostas"
-                :title="titleText"
+    <div class="flex max-h-[min(92vh,920px)] min-h-0 flex-col overflow-hidden">
+            <header
+                class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4"
             >
-                <template v-if="isEdit" #trailing>
+                <div class="min-w-0">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Comercial · Propostas</p>
+                    <h2 class="truncate text-lg font-semibold text-slate-900">{{ titleText }}</h2>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
                     <button
+                        v-if="isEdit"
                         type="button"
-                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                         @click="downloadPdf"
                     >
                         Gerar PDF
                     </button>
-                </template>
-            </FormPageHeader>
-        </template>
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:opacity-60"
+                        :disabled="form.processing"
+                        @click="submit"
+                    >
+                        {{ isEdit ? 'Salvar alterações' : 'Salvar proposta' }}
+                    </button>
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50"
+                        title="Fechar"
+                        aria-label="Fechar"
+                        @click="closeModal"
+                    >
+                        <XMarkIcon class="h-5 w-5" />
+                    </button>
+                </div>
+            </header>
+
+            <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50/90 px-5 py-5">
 
         <div
             v-if="inertiaPage.props.flash?.success"
@@ -1053,6 +870,16 @@ const onStepClick = (index) => {
             role="status"
         >
             {{ inertiaPage.props.flash.success }}
+        </div>
+
+        <div
+            v-if="mode === 'create' && fromLead"
+            class="mb-6 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"
+            role="status"
+        >
+            Dados preenchidos a partir do lead
+            <strong v-if="fromLead.client_name">{{ fromLead.client_name }}</strong>.
+            Confira os campos e complete a proposta.
         </div>
 
         <div
@@ -1148,185 +975,13 @@ const onStepClick = (index) => {
             {{ form.errors.proposal || 'Corrija os campos destacados antes de salvar a proposta.' }}
         </div>
 
-        <div id="proposal-wizard" class="mb-8 rounded-xl border border-slate-200 bg-white px-4 py-6 shadow-sm sm:px-8">
-            <nav aria-label="Progresso da proposta">
-                <ol class="flex w-full items-start">
-                    <li
-                        v-for="(step, index) in wizardSteps"
-                        :key="step.id"
-                        class="relative flex flex-1 flex-col items-center"
-                    >
-                        <!-- Linha à esquerda (exceto o 1º) -->
-                        <div
-                            v-if="index > 0"
-                            class="absolute left-0 right-1/2 top-[1.125rem] h-0.5 -translate-y-1/2"
-                            :class="connectorClass(index - 1)"
-                            aria-hidden="true"
-                        />
-                        <!-- Linha à direita (exceto o último) -->
-                        <div
-                            v-if="index < wizardSteps.length - 1"
-                            class="absolute left-1/2 right-0 top-[1.125rem] h-0.5 -translate-y-1/2"
-                            :class="connectorClass(index)"
-                            aria-hidden="true"
-                        />
-
-                        <button
-                            type="button"
-                            class="relative z-10 flex flex-col items-center text-center disabled:cursor-not-allowed"
-                            :disabled="!canNavigateToStep(index)"
-                            :aria-current="stepStatus(index) === 'active' ? 'step' : undefined"
-                            :aria-label="step.title"
-                            @click="onStepClick(index)"
-                        >
-                            <span
-                                class="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-base font-semibold"
-                                :class="{
-                                    'bg-emerald-500 text-white': stepStatus(index) === 'completed',
-                                    'bg-talents-600 text-white': stepStatus(index) === 'active',
-                                    'bg-rose-500 text-white': stepStatus(index) === 'invalid',
-                                    'border-2 border-slate-400 bg-white text-slate-600': stepStatus(index) === 'default',
-                                    'border-2 border-slate-200 bg-white text-slate-300': stepStatus(index) === 'disabled',
-                                }"
-                            >
-                                <CheckIcon v-if="stepStatus(index) === 'completed'" class="h-4 w-4" aria-hidden="true" />
-                                <template v-else>{{ index + 1 }}</template>
-                                <span
-                                    v-if="stepStatus(index) === 'active'"
-                                    class="absolute -bottom-2 left-1/2 h-0 w-0 -translate-x-1/2 border-x-[5px] border-b-[6px] border-x-transparent border-b-talents-400"
-                                    aria-hidden="true"
-                                />
-                            </span>
-
-                            <span
-                                class="mt-3 max-w-[6rem] text-xs font-semibold leading-tight sm:max-w-none sm:text-sm"
-                                :class="{
-                                    'text-emerald-600': stepStatus(index) === 'completed',
-                                    'text-talents-700': stepStatus(index) === 'active',
-                                    'text-rose-600': stepStatus(index) === 'invalid',
-                                    'text-slate-600': stepStatus(index) === 'default',
-                                    'text-slate-300': stepStatus(index) === 'disabled',
-                                }"
-                            >
-                                {{ step.label }}
-                            </span>
-                        </button>
-                    </li>
-                </ol>
-            </nav>
-            <p class="mt-5 text-center text-base font-semibold text-talents-800">{{ currentStepMeta.title }}</p>
-        </div>
-
-        <form class="grid gap-8 lg:grid-cols-3" novalidate @submit.prevent="submit">
-            <div class="space-y-6 lg:col-span-2">
-                <!-- Tipo de serviço (após cliente e produtos) -->
-                <section v-show="currentStepId === 'tipo'" class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Tipo de serviço</h3>
-                    <p class="mt-1 text-sm text-slate-600">
-                        Defina se a proposta é pontual ou um acompanhamento recorrente ao longo dos meses.
-                    </p>
-
-                    <div
-                        class="mt-4 inline-flex w-full max-w-md rounded-xl border border-slate-200 bg-slate-50 p-1"
-                        role="tablist"
-                        aria-label="Tipo de serviço"
-                    >
-                        <button
-                            type="button"
-                            role="tab"
-                            class="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition"
-                            :class="
-                                !form.is_recurring
-                                    ? 'bg-white text-talents-800 shadow-sm ring-1 ring-slate-200'
-                                    : 'text-slate-600 hover:text-slate-900'
-                            "
-                            :aria-selected="!form.is_recurring"
-                            @click="setServiceType('esporadico')"
-                        >
-                            Esporádico
-                        </button>
-                        <button
-                            type="button"
-                            role="tab"
-                            class="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition"
-                            :class="
-                                form.is_recurring
-                                    ? 'bg-white text-talents-800 shadow-sm ring-1 ring-slate-200'
-                                    : 'text-slate-600 hover:text-slate-900'
-                            "
-                            :aria-selected="form.is_recurring"
-                            @click="setServiceType('recorrente')"
-                        >
-                            Recorrente
-                        </button>
-                    </div>
-
-                    <p v-if="!form.is_recurring" class="mt-3 text-sm text-slate-600">
-                        Entrega pontual: o honorário final segue o cálculo dos produtos selecionados.
-                    </p>
-                    <template v-else>
-                        <p class="mt-3 text-sm text-slate-600">
-                            Em proposta recorrente o honorário usa o valor mensal e a duração abaixo — não o catálogo de produtos.
-                        </p>
-
-                        <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                Duração (meses) *
-                            </label>
-                            <input
-                                v-model.number="form.recurring_months"
-                                type="number"
-                                min="1"
-                                max="60"
-                                required
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                :class="form.errors.recurring_months ? 'border-rose-400' : ''"
-                            />
-                            <p v-if="form.errors.recurring_months" class="mt-1 text-xs text-rose-600">
-                                {{ form.errors.recurring_months }}
-                            </p>
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                Valor mensal (R$) *
-                            </label>
-                            <MoneyInput
-                                v-model="form.recurring_monthly_reais"
-                                class="mt-1 w-full"
-                                required
-                                :input-class="form.errors.recurring_monthly_reais ? 'border-rose-400' : ''"
-                            />
-                            <p v-if="form.errors.recurring_monthly_reais" class="mt-1 text-xs text-rose-600">
-                                {{ form.errors.recurring_monthly_reais }}
-                            </p>
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                Cronograma / descrição da recorrência
-                            </label>
-                            <textarea
-                                v-model="form.recurring_notes"
-                                rows="3"
-                                placeholder="Ex.: Acompanhamento mensal de Direcionamento Estratégico ao longo de 6 meses."
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                            <p class="mt-1 text-xs text-slate-500">
-                                O total do período será valor mensal × duração. Na conversão em venda, gera uma
-                                cobrança por mês em Contas a receber.
-                            </p>
-                            <p v-if="form.errors.recurring_notes" class="mt-1 text-xs text-rose-600">
-                                {{ form.errors.recurring_notes }}
-                            </p>
-                        </div>
-                    </div>
-                    </template>
-                </section>
-
-                <!-- Cliente -->
-                <section v-show="currentStepId === 'cliente'" class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Dados do cliente</h3>
-                    <p class="mt-1 text-xs text-slate-500">Lead / prospect — não vinculado a empresas cadastradas.</p>
+        <form class="grid items-start gap-5 lg:grid-cols-3" novalidate @submit.prevent="submit">
+            <div class="flex flex-col gap-5 lg:col-span-2">
+                <section class="overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-talents-600 bg-white p-5 shadow-sm">
+                    <header class="-mx-5 -mt-5 mb-5 border-b border-talents-100 bg-talents-50/80 px-5 py-3.5">
+                        <h3 class="text-base font-bold tracking-tight text-talents-900">Dados do cliente</h3>
+                        <p class="mt-1 text-xs leading-relaxed text-slate-600">Lead / prospect — não vinculado a empresas cadastradas.</p>
+                    </header>
 
                     <div class="mt-4 space-y-4">
                         <div>
@@ -1469,15 +1124,16 @@ const onStepClick = (index) => {
                 <!-- Produtos -->
                 <section
                     id="proposal-field-catalog_products"
-                    v-show="currentStepId === 'produtos'"
-                    class="surface-card p-6"
+                    class="overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-talents-600 bg-white p-5 shadow-sm"
                     data-error-for="catalog_products"
                 >
-                    <h3 class="text-lg font-semibold text-slate-900">Produtos</h3>
-                    <p class="mt-1 text-xs text-slate-500">
-                        Selecione os produtos; o cálculo aparece no resumo ao lado.
-                        Cadastre novos em Comercial → Valores e contratos → aba Produtos.
-                    </p>
+                    <header class="-mx-5 -mt-5 mb-5 border-b border-talents-100 bg-talents-50/80 px-5 py-3.5">
+                        <h3 class="text-base font-bold tracking-tight text-talents-900">Produtos</h3>
+                        <p class="mt-1 text-xs leading-relaxed text-slate-600">
+                            Selecione os produtos; o cálculo aparece no resumo ao lado.
+                            Cadastre novos em Comercial → Valores e contratos → aba Produtos.
+                        </p>
+                    </header>
                     <p v-if="form.errors.catalog_products" class="mt-2 text-sm text-rose-600">
                         {{ form.errors.catalog_products }}
                     </p>
@@ -1731,16 +1387,123 @@ const onStepClick = (index) => {
                 </section>
 
                 <!-- Seções opcionais do PDF -->
-                <section
-                    v-show="currentStepId === 'pdf'"
-                    v-if="pdfOptionalSectionOptions.length"
-                    class="surface-card p-6"
-                >
-                    <h3 class="text-lg font-semibold text-slate-900">Seções opcionais no PDF</h3>
-                    <p class="mt-1 text-xs text-slate-500">
-                        Marque os blocos informativos que devem aparecer no PDF, além dos serviços orçados.
-                        Itens sem preço — «conforme proposta específica».
+                <section class="overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-talents-600 bg-white p-5 shadow-sm">
+                    <header class="-mx-5 -mt-5 mb-5 border-b border-talents-100 bg-talents-50/80 px-5 py-3.5">
+                        <h3 class="text-base font-bold tracking-tight text-talents-900">Tipo de serviço</h3>
+                        <p class="mt-1 text-xs leading-relaxed text-slate-600">
+                            Defina se a proposta é pontual ou um acompanhamento recorrente ao longo dos meses.
+                        </p>
+                    </header>
+
+                    <div
+                        class="mt-4 inline-flex w-full max-w-md rounded-xl border border-slate-200 bg-slate-50 p-1"
+                        role="tablist"
+                        aria-label="Tipo de serviço"
+                    >
+                        <button
+                            type="button"
+                            role="tab"
+                            class="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition"
+                            :class="
+                                !form.is_recurring
+                                    ? 'bg-white text-talents-800 shadow-sm ring-1 ring-slate-200'
+                                    : 'text-slate-600 hover:text-slate-900'
+                            "
+                            :aria-selected="!form.is_recurring"
+                            @click="setServiceType('esporadico')"
+                        >
+                            Esporádico
+                        </button>
+                        <button
+                            type="button"
+                            role="tab"
+                            class="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition"
+                            :class="
+                                form.is_recurring
+                                    ? 'bg-white text-talents-800 shadow-sm ring-1 ring-slate-200'
+                                    : 'text-slate-600 hover:text-slate-900'
+                            "
+                            :aria-selected="form.is_recurring"
+                            @click="setServiceType('recorrente')"
+                        >
+                            Recorrente
+                        </button>
+                    </div>
+
+                    <p v-if="!form.is_recurring" class="mt-3 text-sm text-slate-600">
+                        Entrega pontual: o honorário final segue o cálculo dos produtos selecionados.
                     </p>
+                    <template v-else>
+                        <p class="mt-3 text-sm text-slate-600">
+                            Em proposta recorrente o honorário usa o valor mensal e a duração abaixo — não o catálogo de produtos.
+                        </p>
+
+                        <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                Duração (meses) *
+                            </label>
+                            <input
+                                v-model.number="form.recurring_months"
+                                type="number"
+                                min="1"
+                                max="60"
+                                required
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                :class="form.errors.recurring_months ? 'border-rose-400' : ''"
+                            />
+                            <p v-if="form.errors.recurring_months" class="mt-1 text-xs text-rose-600">
+                                {{ form.errors.recurring_months }}
+                            </p>
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                Valor mensal (R$) *
+                            </label>
+                            <MoneyInput
+                                v-model="form.recurring_monthly_reais"
+                                class="mt-1 w-full"
+                                required
+                                :input-class="form.errors.recurring_monthly_reais ? 'border-rose-400' : ''"
+                            />
+                            <p v-if="form.errors.recurring_monthly_reais" class="mt-1 text-xs text-rose-600">
+                                {{ form.errors.recurring_monthly_reais }}
+                            </p>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                Cronograma / descrição da recorrência
+                            </label>
+                            <textarea
+                                v-model="form.recurring_notes"
+                                rows="3"
+                                placeholder="Ex.: Acompanhamento mensal de Direcionamento Estratégico ao longo de 6 meses."
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">
+                                O total do período será valor mensal × duração. Na conversão em venda, gera uma
+                                cobrança por mês em Contas a receber.
+                            </p>
+                            <p v-if="form.errors.recurring_notes" class="mt-1 text-xs text-rose-600">
+                                {{ form.errors.recurring_notes }}
+                            </p>
+                        </div>
+                    </div>
+                    </template>
+                </section>
+
+                <!-- Seções opcionais no PDF -->
+                <section
+                    v-if="pdfOptionalSectionOptions.length"
+                    class="overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-talents-600 bg-white p-5 shadow-sm"
+                >
+                    <header class="-mx-5 -mt-5 mb-5 border-b border-talents-100 bg-talents-50/80 px-5 py-3.5">
+                        <h3 class="text-base font-bold tracking-tight text-talents-900">Seções opcionais no PDF</h3>
+                        <p class="mt-1 text-xs leading-relaxed text-slate-600">
+                            Marque os blocos informativos que devem aparecer no PDF, além dos serviços orçados.
+                            Itens sem preço — «conforme proposta específica».
+                        </p>
+                    </header>
                     <div class="mt-4 space-y-3">
                         <label
                             v-for="opt in pdfOptionalSectionOptions"
@@ -1761,11 +1524,13 @@ const onStepClick = (index) => {
                 </section>
 
                 <!-- Descrições dos serviços no PDF -->
-                <section v-show="currentStepId === 'pdf'" class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Descrições no PDF</h3>
-                    <p class="mt-1 text-xs text-slate-500">
-                        Textos exibidos em cada serviço da proposta. Preenchidos automaticamente; clique para editar.
-                    </p>
+                <section class="overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-talents-600 bg-white p-5 shadow-sm">
+                    <header class="-mx-5 -mt-5 mb-5 border-b border-talents-100 bg-talents-50/80 px-5 py-3.5">
+                        <h3 class="text-base font-bold tracking-tight text-talents-900">Descrições no PDF</h3>
+                        <p class="mt-1 text-xs leading-relaxed text-slate-600">
+                            Textos exibidos em cada serviço da proposta. Preenchidos automaticamente; clique para editar.
+                        </p>
+                    </header>
                     <div v-if="activePdfServices.length" class="mt-4 space-y-3">
                         <div
                             v-for="svc in activePdfServices"
@@ -1806,14 +1571,15 @@ const onStepClick = (index) => {
 
                 <!-- Palestra — evento (contrato) -->
                 <section
-                    v-show="currentStepId === 'pdf'"
                     v-if="palestrasProductSelected"
-                    class="surface-card p-6"
+                    class="overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-talents-600 bg-white p-5 shadow-sm"
                 >
-                    <h3 class="text-lg font-semibold text-slate-900">Palestra — dados do evento (contrato)</h3>
-                    <p class="mt-1 text-xs text-slate-500">
-                        Alimentam os placeholders do modelo &quot;Palestra — Padrão Talents&quot; (tema, data, local, formato, etc.).
-                    </p>
+                    <header class="-mx-5 -mt-5 mb-5 border-b border-talents-100 bg-talents-50/80 px-5 py-3.5">
+                        <h3 class="text-base font-bold tracking-tight text-talents-900">Palestra — dados do evento (contrato)</h3>
+                        <p class="mt-1 text-xs leading-relaxed text-slate-600">
+                            Alimentam os placeholders do modelo &quot;Palestra — Padrão Talents&quot; (tema, data, local, formato, etc.).
+                        </p>
+                    </header>
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
                         <div class="sm:col-span-2">
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Tema da palestra</label>
@@ -1884,8 +1650,10 @@ const onStepClick = (index) => {
                 </section>
 
                 <!-- Comercial -->
-                <section v-show="currentStepId === 'comercial'" class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Informações comerciais</h3>
+                <section id="proposal-section-comercial" class="overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-talents-600 bg-white p-5 shadow-sm">
+                    <header class="-mx-5 -mt-5 mb-5 border-b border-talents-100 bg-talents-50/80 px-5 py-3.5">
+                        <h3 class="text-base font-bold tracking-tight text-talents-900">Informações comerciais</h3>
+                    </header>
 
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
                         <div>
@@ -1965,14 +1733,13 @@ const onStepClick = (index) => {
                 </section>
 
                 <section
-                    v-show="currentStepId === 'comercial'"
                     v-if="isEdit"
-                    class="surface-card p-6"
+                    class="overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-talents-600 bg-white p-5 shadow-sm"
                 >
-                    <div class="flex flex-wrap items-start justify-between gap-3">
+                    <header class="-mx-5 -mt-5 mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-talents-100 bg-talents-50/80 px-5 py-3.5">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900">Contratos gerados</h3>
-                            <p class="mt-1 text-xs text-slate-500">
+                            <h3 class="text-base font-bold tracking-tight text-talents-900">Contratos gerados</h3>
+                            <p class="mt-1 text-xs leading-relaxed text-slate-600">
                                 Histórico de contratos PDF. Documentos assinados não são sobrescritos — gere um novo após alterações.
                             </p>
                         </div>
@@ -1984,7 +1751,7 @@ const onStepClick = (index) => {
                         >
                             {{ hasSignedContract || hasZapSignSentContract ? 'Gerar contrato atualizado' : 'Gerar contrato' }}
                         </button>
-                    </div>
+                    </header>
                     <ul
                         v-if="proposal?.contracts?.length"
                         class="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-200"
@@ -2023,42 +1790,15 @@ const onStepClick = (index) => {
                     </ul>
                     <p v-else class="mt-4 text-sm text-slate-500">Nenhum contrato gerado ainda.</p>
                 </section>
-
-                <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                    <button
-                        type="button"
-                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                        :disabled="isFirstStep"
-                        @click="goPrevStep"
-                    >
-                        Voltar
-                    </button>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button
-                            v-if="!isLastStep"
-                            type="button"
-                            class="inline-flex items-center rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
-                            @click="goNextStep"
-                        >
-                            Continuar
-                        </button>
-                        <button
-                            v-else
-                            type="submit"
-                            :disabled="form.processing"
-                            class="inline-flex items-center rounded-xl bg-talents-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:opacity-60"
-                        >
-                            {{ isEdit ? 'Salvar alterações' : 'Salvar proposta' }}
-                        </button>
-                    </div>
-                </div>
             </div>
 
             <!-- Resumo lateral sticky -->
-            <aside class="lg:sticky lg:top-24 lg:self-start">
-                <div class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Resumo</h3>
-                    <p class="mt-1 text-xs text-slate-500">Cálculo em tempo real conforme você preenche.</p>
+                <aside class="lg:sticky lg:top-4 lg:self-start">
+                    <div class="overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-talents-600 bg-white p-5 shadow-sm">
+                    <header class="-mx-5 -mt-5 mb-5 border-b border-talents-100 bg-talents-50/80 px-5 py-3.5">
+                        <h3 class="text-base font-bold tracking-tight text-talents-900">Resumo</h3>
+                        <p class="mt-1 text-xs leading-relaxed text-slate-600">Cálculo em tempo real conforme você preenche.</p>
+                    </header>
 
                     <ul class="mt-4 space-y-2 text-sm">
                         <li
@@ -2125,6 +1865,8 @@ const onStepClick = (index) => {
                 </div>
             </aside>
         </form>
+            </div>
+    </div>
 
         <Modal :show="saveImpactModalOpen" max-width="lg" @close="closeSaveImpactModal">
             <div class="p-6">
@@ -2314,5 +2056,4 @@ const onStepClick = (index) => {
                 </div>
             </div>
         </Modal>
-    </AdminLayout>
-</template>
+    </template>

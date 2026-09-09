@@ -11,14 +11,17 @@ use App\Models\CommercialProduct;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSetting;
 use App\Models\FinancePaymentMethod;
+use App\Models\LandingInterestSubmission;
 use App\Models\User;
 use App\Services\CommercialPricingService;
 use App\Services\CommercialProposalPdfService;
 use App\Models\CommercialSaleInstallment;
 use App\Support\Commercial\CommercialCodeSearch;
 use App\Support\Commercial\OptionalCommission;
+use App\Support\Commercial\ProposalBoardMetrics;
 use App\Support\Commercial\ProposalKanbanBoard;
 use App\Support\Commercial\ProposalListStatus;
+use App\Support\Commercial\ProposalValidity;
 use App\Support\CommercialProposalPdfDefaults;
 use App\Support\CommercialProposalPdfOptionalSections;
 use Illuminate\Http\RedirectResponse;
@@ -71,6 +74,9 @@ class ProposalController extends Controller
             'created_to' => ['nullable', 'date', 'after_or_equal:created_from'],
             'hide_ended' => ['nullable', 'boolean'],
             'view' => ['nullable', 'string', Rule::in(ProposalKanbanBoard::views())],
+            'form' => ['nullable', 'string', Rule::in(['create', 'edit'])],
+            'proposal_id' => ['nullable', 'integer', 'min:1'],
+            'lead_id' => ['nullable', 'integer', 'min:1'],
         ], [
             'created_to.after_or_equal' => 'A data final deve ser igual ou posterior à data inicial.',
         ]);
@@ -152,20 +158,25 @@ class ProposalController extends Controller
                 'contratada_email' => $commercialSettings->company_email,
             ],
             'default_commission_percent' => (float) ($commercialSettings->default_commission_percent ?? 0),
+            'formModal' => $this->resolveFormModal($request),
+            'expiringProposals' => $this->expiringProposalsPayload($commercialSettings),
+            'boardMetrics' => ProposalBoardMetrics::build(
+                clone $baseQuery,
+                ProposalValidity::daysFromSettings((int) ($commercialSettings->pdf_validade_dias ?? 7)),
+                $this->kanbanLeadsCount($kanban),
+            ),
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): RedirectResponse
     {
-        return Inertia::render('Admin/Commercial/Proposals/Form', [
-            'mode' => 'create',
-            'proposal' => null,
-            'sellers' => $this->sellersOptions(),
-            'settings' => $this->publicSettings(),
-            'catalogProducts' => $this->catalogProductsPayload(),
-            'pdfOptionalSectionOptions' => CommercialProposalPdfOptionalSections::options(),
-            'paymentMethodOptions' => $this->paymentMethodOptions(null),
-        ]);
+        $query = ['form' => 'create'];
+        $leadId = (int) $request->query('lead_id', 0);
+        if ($leadId > 0) {
+            $query['lead_id'] = $leadId;
+        }
+
+        return redirect()->route('admin.comercial.propostas.index', $query);
     }
 
     public function store(Request $request): RedirectResponse
@@ -205,28 +216,11 @@ class ProposalController extends Controller
             : $redirect;
     }
 
-    public function edit(CommercialProposal $proposal): Response
+    public function edit(CommercialProposal $proposal): RedirectResponse
     {
-        $commercialSettings = CommercialSetting::current();
-
-        return Inertia::render('Admin/Commercial/Proposals/Form', [
-            'mode' => 'edit',
-            'proposal' => $this->proposalFormPayload($proposal),
-            'sellers' => $this->sellersOptions(),
-            'settings' => $this->publicSettings(),
-            'catalogProducts' => $this->catalogProductsPayload(),
-            'pdfOptionalSectionOptions' => CommercialProposalPdfOptionalSections::options(),
-            'paymentMethodOptions' => $this->paymentMethodOptions($proposal),
-            'templates' => CommercialContractTemplate::active()
-                ->orderBy('name')
-                ->get(['id', 'name'])
-                ->all(),
-            'zapsign_configured' => filled(trim((string) ($commercialSettings->zapsign_api_token ?? ''))),
-            'zapsignParties' => [
-                'contratada_signatario' => trim((string) ($commercialSettings->company_contract_signatory_name ?? '')),
-                'contratada_telefone' => $commercialSettings->company_phone,
-                'contratada_email' => $commercialSettings->company_email,
-            ],
+        return redirect()->route('admin.comercial.propostas.index', [
+            'form' => 'edit',
+            'proposal_id' => $proposal->id,
         ]);
     }
 
@@ -266,7 +260,10 @@ class ProposalController extends Controller
 
         $proposal->refresh()->load('contracts');
 
-        $redirect = redirect()->route('admin.comercial.propostas.edit', $proposal);
+        $redirect = redirect()->route('admin.comercial.propostas.index', [
+            'form' => 'edit',
+            'proposal_id' => $proposal->id,
+        ]);
 
         if ($proposal->hasSignedContract()) {
             $redirect = $redirect
@@ -430,6 +427,152 @@ class ProposalController extends Controller
             ->stream("proposta-{$proposal->code}.pdf");
     }
 
+    public function markContacted(CommercialProposal $proposal): RedirectResponse
+    {
+        if ($proposal->contacted_at === null) {
+            $proposal->update(['contacted_at' => now()]);
+        }
+
+        return back();
+    }
+
+    public function updateNotes(Request $request, CommercialProposal $proposal): RedirectResponse
+    {
+        $data = $request->validate([
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'notes.max' => 'A observação não pode ter mais de 2000 caracteres.',
+        ]);
+
+        $notes = isset($data['notes']) ? trim((string) $data['notes']) : '';
+        $proposal->update([
+            'notes' => $notes !== '' ? $notes : null,
+        ]);
+
+        return back()->with('success', 'Observação atualizada.');
+    }
+
+    /**
+     * Formulário de proposta aberto como modal sobre a lista (create/edit).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function resolveFormModal(Request $request): ?array
+    {
+        $form = (string) $request->query('form', '');
+
+        if ($form === 'create') {
+            $lead = null;
+            $leadId = (int) $request->query('lead_id', 0);
+            if ($leadId > 0) {
+                $lead = LandingInterestSubmission::query()->find($leadId);
+            }
+
+            return $this->formModalProps('create', null, $lead);
+        }
+
+        if ($form === 'edit') {
+            $proposalId = (int) $request->query('proposal_id', 0);
+            $proposal = $proposalId > 0
+                ? CommercialProposal::query()->find($proposalId)
+                : null;
+
+            if ($proposal === null) {
+                return null;
+            }
+
+            return $this->formModalProps('edit', $proposal, null);
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formModalProps(
+        string $mode,
+        ?CommercialProposal $proposal,
+        ?LandingInterestSubmission $lead,
+    ): array {
+        $commercialSettings = CommercialSetting::current();
+
+        return [
+            'mode' => $mode,
+            'proposal' => $proposal !== null ? $this->proposalFormPayload($proposal) : null,
+            'fromLead' => $lead !== null ? $this->transformLeadForProposalForm($lead) : null,
+            'sellers' => $this->sellersOptions(),
+            'settings' => $this->publicSettings(),
+            'catalogProducts' => $this->catalogProductsPayload(),
+            'pdfOptionalSectionOptions' => CommercialProposalPdfOptionalSections::options(),
+            'paymentMethodOptions' => $this->paymentMethodOptions($proposal),
+            'templates' => CommercialContractTemplate::active()
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->all(),
+            'zapsign_configured' => filled(trim((string) ($commercialSettings->zapsign_api_token ?? ''))),
+            'zapsignParties' => [
+                'contratada_signatario' => trim((string) ($commercialSettings->company_contract_signatory_name ?? '')),
+                'contratada_telefone' => $commercialSettings->company_phone,
+                'contratada_email' => $commercialSettings->company_email,
+            ],
+        ];
+    }
+
+    /**
+     * Propostas abertas com validade expirada ou a vencer nos próximos dias.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function expiringProposalsPayload(CommercialSetting $settings): array
+    {
+        $validityDays = ProposalValidity::daysFromSettings($settings->pdf_validade_dias);
+        $today = now();
+        $cutoff = ProposalValidity::createdAtCutoff($today, $validityDays);
+
+        $query = CommercialProposal::query()
+            ->with([
+                'sale:id,proposal_id,code,status',
+            ]);
+        ProposalListStatus::applyFilter($query, 'abertas');
+
+        $proposals = $query
+            ->whereDate('created_at', '<=', $cutoff->toDateString())
+            ->orderBy('created_at')
+            ->limit(ProposalValidity::MODAL_LIMIT)
+            ->get();
+
+        return $proposals
+            ->map(function (CommercialProposal $proposal) use ($validityDays, $today): array {
+                $createdAt = $proposal->created_at ?? $today;
+                $validUntil = ProposalValidity::validUntil($createdAt, $validityDays);
+                $contactName = trim((string) ($proposal->client_representative ?? ''));
+                $companyName = trim((string) ($proposal->client_name ?? ''));
+
+                return [
+                    'id' => $proposal->id,
+                    'code' => $proposal->code,
+                    'contact_name' => $contactName !== '' ? $contactName : $companyName,
+                    'company_name' => $contactName !== '' && $companyName !== '' && strcasecmp($contactName, $companyName) !== 0
+                        ? $companyName
+                        : null,
+                    'client_name' => $companyName,
+                    'client_representative' => $contactName !== '' ? $contactName : null,
+                    'valid_until' => $validUntil->toDateString(),
+                    'is_expired' => ProposalValidity::isExpired($validUntil, $today),
+                    'is_contacted' => $proposal->contacted_at !== null,
+                    'contacted_at' => $proposal->contacted_at?->toIso8601String(),
+                    'notes' => $proposal->notes,
+                    'list_status' => ProposalListStatus::for($proposal),
+                    'can_reopen' => $proposal->canReopen(),
+                    'sale' => $proposal->sale,
+                ];
+            })
+            ->sortBy('valid_until')
+            ->values()
+            ->all();
+    }
+
     /**
      * Query string para voltar à Index (Kanban é o padrão; lista exige view=list).
      *
@@ -490,6 +633,8 @@ class ProposalController extends Controller
 
         $arr = $proposal->toArray();
         unset($arr['contracts']);
+        $arr['card_kind'] = 'proposal';
+        $arr['card_key'] = 'proposal-'.$proposal->id;
         $arr['list_status'] = $listStatus;
         $arr['list_status_label'] = ProposalListStatus::label($listStatus);
         $arr['lost_reason'] = $proposal->lost_reason;
@@ -505,6 +650,20 @@ class ProposalController extends Controller
         $arr['zapsign_pending'] = $zapsignPending;
 
         return $arr;
+    }
+
+    /**
+     * @param  array{columns?: list<array{key?: string, count?: int}>}|null  $kanban
+     */
+    private function kanbanLeadsCount(?array $kanban): int
+    {
+        foreach ($kanban['columns'] ?? [] as $column) {
+            if (($column['key'] ?? '') === ProposalKanbanBoard::LEADS) {
+                return (int) ($column['count'] ?? 0);
+            }
+        }
+
+        return 0;
     }
 
     /**
@@ -540,13 +699,18 @@ class ProposalController extends Controller
 
         $columns = [];
         foreach (ProposalKanbanBoard::columns() as $column) {
+            if ($column['key'] === ProposalKanbanBoard::LEADS) {
+                $columns[] = $this->buildLeadsKanbanColumn($kanbanFilters);
+                continue;
+            }
+
             $query = CommercialProposal::query()
                 ->with($this->proposalIndexRelations())
                 ->orderByDesc('updated_at')
                 ->orderByDesc('id');
 
             $this->applyProposalIndexFilters($query, $kanbanFilters, includeStatus: false);
-            ProposalListStatus::applyFilter($query, $column['filter']);
+            ProposalListStatus::applyFilter($query, (string) $column['filter']);
 
             $count = (int) (match ($column['filter']) {
                 'abertas' => $statusCounts['abertas'] ?? null,
@@ -579,6 +743,111 @@ class ProposalController extends Controller
         return [
             'columns' => $columns,
             'pipeline_open_cents' => $pipelineOpenCents,
+        ];
+    }
+
+    /**
+     * @param  array{
+     *     search: string,
+     *     seller_id: string,
+     *     status: string,
+     *     sale_situation: string,
+     *     created_from: string,
+     *     created_to: string,
+     *     hide_ended: bool
+     * }  $filters
+     * @return array{
+     *     key: string,
+     *     label: string,
+     *     count: int,
+     *     total_cents: int,
+     *     truncated: bool,
+     *     items: list<array<string, mixed>>
+     * }
+     */
+    private function buildLeadsKanbanColumn(array $filters): array
+    {
+        $query = LandingInterestSubmission::query()
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        $leadFilters = [
+            'search' => $filters['search'] ?? '',
+            'created_from' => $filters['created_from'] ?? '',
+            'created_to' => $filters['created_to'] ?? '',
+        ];
+        $query->filtered($leadFilters);
+
+        $count = (clone $query)->count();
+        $items = $query
+            ->limit(ProposalKanbanBoard::PER_COLUMN_LIMIT)
+            ->get()
+            ->map(fn (LandingInterestSubmission $lead) => $this->transformLeadForKanban($lead))
+            ->all();
+
+        return [
+            'key' => ProposalKanbanBoard::LEADS,
+            'label' => 'Leads',
+            'count' => $count,
+            'total_cents' => 0,
+            'truncated' => $count > ProposalKanbanBoard::PER_COLUMN_LIMIT,
+            'items' => $items,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function transformLeadForKanban(LandingInterestSubmission $lead): array
+    {
+        $company = trim((string) ($lead->company ?? ''));
+        $name = trim((string) ($lead->name ?? ''));
+
+        return [
+            'card_kind' => 'lead',
+            'card_key' => 'lead-'.$lead->id,
+            'id' => $lead->id,
+            'code' => 'LEAD-'.$lead->id,
+            'client_name' => $company !== '' ? $company : ($name !== '' ? $name : 'Lead sem nome'),
+            'contact_name' => $name !== '' ? $name : null,
+            'client_email' => $lead->email,
+            'client_phone' => $lead->phone,
+            'company' => $company !== '' ? $company : null,
+            'message' => $lead->message,
+            'source' => $lead->sourceEnum()->value,
+            'source_label' => $lead->sourceEnum()->label(),
+            'is_qualified' => $lead->is_qualified,
+            'qualified_label' => match ($lead->is_qualified) {
+                true => 'Qualificado',
+                false => 'Não qualificado',
+                default => 'Não avaliado',
+            },
+            'created_at' => $lead->created_at?->toIso8601String(),
+            'total_final_cents' => 0,
+            'list_status_label' => 'Lead',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function transformLeadForProposalForm(LandingInterestSubmission $lead): array
+    {
+        $company = trim((string) ($lead->company ?? ''));
+        $name = trim((string) ($lead->name ?? ''));
+        $notes = collect([
+            filled($lead->message) ? 'Mensagem do lead: '.trim((string) $lead->message) : null,
+            filled($lead->admin_notes) ? 'Notas internas: '.trim((string) $lead->admin_notes) : null,
+        ])->filter()->implode("\n\n");
+
+        return [
+            'id' => $lead->id,
+            'client_name' => $company !== '' ? $company : $name,
+            'client_email' => $lead->email ?? '',
+            'client_phone' => $lead->phone ?? '',
+            'client_representative' => $company !== '' ? $name : '',
+            'indication' => 'Lead · '.$lead->sourceEnum()->label(),
+            'notes' => $notes,
         ];
     }
 
