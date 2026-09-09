@@ -1,5 +1,4 @@
 <script setup>
-import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import MoneyInput from '@/Components/MoneyInput.vue';
 import SaleInstallmentEditModal from '@/Components/Finance/SaleInstallmentEditModal.vue';
@@ -294,8 +293,6 @@ const submitEdit = () => {
                 </Link>
             </div>
         </template>
-
-        <FinanceModuleNav />
 
         <div
             v-if="flashSuccess"

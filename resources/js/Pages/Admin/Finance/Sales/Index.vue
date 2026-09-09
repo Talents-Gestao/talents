@@ -1,5 +1,4 @@
 <script setup>
-import FinanceModuleNav from '@/Components/Finance/FinanceModuleNav.vue';
 import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -144,8 +143,6 @@ const confirmDestroy = () => {
                 </Link>
             </div>
         </template>
-
-        <FinanceModuleNav />
 
         <div
             v-if="flashSuccess"

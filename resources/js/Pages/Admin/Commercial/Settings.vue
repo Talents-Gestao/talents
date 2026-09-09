@@ -1,6 +1,5 @@
 <script setup>
 import FormPageHeader from '@/Components/FormPageHeader.vue';
-import CommercialModuleNav from '@/Components/Commercial/CommercialModuleNav.vue';
 import CommercialPricingShortcuts from '@/Components/Commercial/CommercialPricingShortcuts.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import CommercialProductsManager from '@/Pages/Admin/Commercial/CommercialProductsManager.vue';
@@ -101,7 +100,6 @@ const pdfProductLabels = computed(() =>
             />
         </template>
 
-        <CommercialModuleNav />
         <CommercialPricingShortcuts />
 
         <div class="surface-card p-1">

@@ -29,6 +29,7 @@ use App\Http\Controllers\Admin\Finance\ReceivableController as FinanceReceivable
 use App\Http\Controllers\Admin\Finance\SaleController as FinanceSaleController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\CompanySurveyController;
+use App\Http\Controllers\Admin\Commercial\CommercialProcessController;
 use App\Http\Controllers\Admin\InternalRegulationController;
 use App\Http\Controllers\Admin\MonthlyHighlightController;
 use App\Http\Controllers\Admin\CompanyEmployeeController;
@@ -355,6 +356,13 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::resource('propostas', CommercialProposalController::class)
                 ->except(['show'])
                 ->parameters(['propostas' => 'proposal']);
+        });
+
+        Route::middleware('admin.can:comercial_processos')->group(function () {
+            Route::get('processos/{processo}/download', [CommercialProcessController::class, 'download'])
+                ->name('processos.download');
+            Route::resource('processos', CommercialProcessController::class)
+                ->parameters(['processos' => 'processo']);
         });
 
         Route::middleware('admin.can:comercial_valores_contratos')->group(function () {

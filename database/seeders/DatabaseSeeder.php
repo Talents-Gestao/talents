@@ -22,6 +22,14 @@ class DatabaseSeeder extends Seeder
         ]);
 
         try {
+            $this->call(CommercialProcessSeeder::class);
+        } catch (\Throwable $e) {
+            Log::warning('[DatabaseSeeder] CommercialProcessSeeder ignorado.', [
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        try {
             $this->call(ContractTemplateSeeder::class);
         } catch (\Throwable $e) {
             Log::warning('[DatabaseSeeder] ContractTemplateSeeder ignorado.', [

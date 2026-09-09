@@ -24,6 +24,7 @@ enum AdminPermissionModule: string
     /** Legado: a tela Resumo foi unificada na Gestão de propostas. Grants antigos continuam válidos. */
     case ComercialResumo = 'comercial_resumo';
     case ComercialPropostas = 'comercial_propostas';
+    case ComercialProcessos = 'comercial_processos';
     case ComercialValoresContratos = 'comercial_valores_contratos';
 
     case FinanceiroResumo = 'financeiro_resumo';
@@ -78,6 +79,7 @@ enum AdminPermissionModule: string
             self::Tarefas => 'Tarefas',
             self::ComercialResumo => 'Comercial · Resumo (legado)',
             self::ComercialPropostas => 'Comercial · Gestão',
+            self::ComercialProcessos => 'Comercial · Processos',
             self::ComercialValoresContratos => 'Comercial · Valores e contratos',
             self::FinanceiroResumo => 'Financeiro · Resumo',
             self::FinanceiroVendas => 'Financeiro · Vendas',
@@ -124,6 +126,7 @@ enum AdminPermissionModule: string
             self::CompaniesContratosFechados,
             self::Rhid,
             self::ComercialPropostas,
+            self::ComercialProcessos,
             self::ComercialValoresContratos,
             self::Plans,
             self::SolidesBancoTalentos,
@@ -173,6 +176,7 @@ enum AdminPermissionModule: string
             self::Comercial->value => [
                 self::ComercialResumo,
                 self::ComercialPropostas,
+                self::ComercialProcessos,
                 self::ComercialValoresContratos,
             ],
             self::Solides->value => [
