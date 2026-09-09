@@ -1,5 +1,8 @@
 <script setup>
 import ProposalsKanbanBoard from '@/Components/Commercial/ProposalsKanbanBoard.vue';
+import ProposalBoardMetrics from '@/Components/Commercial/ProposalBoardMetrics.vue';
+import ExpiringProposalsModal from '@/Components/Commercial/ExpiringProposalsModal.vue';
+import ProposalForm from '@/Pages/Admin/Commercial/Proposals/Form.vue';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -10,6 +13,7 @@ import {
     ArrowPathIcon,
     BanknotesIcon,
     CheckCircleIcon,
+    ClockIcon,
     DocumentArrowDownIcon,
     DocumentTextIcon,
     ListBulletIcon,
@@ -52,6 +56,24 @@ const props = defineProps({
         }),
     },
     default_commission_percent: { type: Number, default: 0 },
+    formModal: { type: Object, default: null },
+    expiringProposals: { type: Array, default: () => [] },
+    boardMetrics: {
+        type: Object,
+        default: () => ({
+            won_month_count: 0,
+            won_month_cents: 0,
+            total_count: 0,
+            leads_count: 0,
+            pipeline_open_cents: 0,
+            open_count: 0,
+            avg_ticket_open_cents: 0,
+            expiring_count: 0,
+            expired_count: 0,
+            no_contact_count: 0,
+            zapsign_pending_count: 0,
+        }),
+    },
 });
 
 const isKanbanView = computed(() => props.view === 'kanban');
@@ -154,6 +176,82 @@ const filterQuery = () => {
         params.hide_ended = 0;
     }
     return params;
+};
+
+const proposalFormOpen = computed(() => !!props.formModal);
+
+const expiringModalOpen = ref(false);
+const expiringDismissedThisVisit = ref(false);
+const expiringCount = computed(() => (props.expiringProposals || []).length);
+const showExpiringModal = computed(
+    () => expiringModalOpen.value && expiringCount.value > 0 && !proposalFormOpen.value,
+);
+
+const tryOpenExpiringModal = () => {
+    if (expiringDismissedThisVisit.value || proposalFormOpen.value) {
+        return;
+    }
+    if (expiringCount.value === 0) {
+        expiringModalOpen.value = false;
+        return;
+    }
+    expiringModalOpen.value = true;
+};
+
+const openExpiringModal = () => {
+    if (expiringCount.value === 0) {
+        return;
+    }
+    expiringDismissedThisVisit.value = false;
+    expiringModalOpen.value = true;
+};
+
+const closeExpiringModal = () => {
+    expiringModalOpen.value = false;
+    expiringDismissedThisVisit.value = true;
+};
+
+onMounted(() => {
+    tryOpenExpiringModal();
+});
+
+watch(expiringCount, (count) => {
+    if (count === 0) {
+        expiringModalOpen.value = false;
+    }
+});
+
+watch(proposalFormOpen, (open) => {
+    if (open) {
+        expiringModalOpen.value = false;
+        return;
+    }
+    tryOpenExpiringModal();
+});
+
+const openProposalForm = (extra = {}) => {
+    router.get(
+        route('admin.comercial.propostas.index'),
+        { ...filterQuery(), ...extra },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+            only: ['formModal'],
+        },
+    );
+};
+
+const closeProposalForm = () => {
+    if (!proposalFormOpen.value) {
+        return;
+    }
+    router.get(route('admin.comercial.propostas.index'), filterQuery(), {
+        preserveScroll: true,
+        preserveState: true,
+        replace: true,
+        only: ['formModal'],
+    });
 };
 
 const setViewMode = (mode) => {
@@ -389,31 +487,56 @@ const patchKanbanStatus = (proposal, status, revert) => {
     );
 };
 
-const onKanbanMove = ({ proposal, toStatus, revert }) => {
+const onKanbanMove = ({ proposal, card, fromStatus, toStatus, revert }) => {
     kanbanMoveError.value = '';
+    const moved = card || proposal;
+
+    if (moved?.card_kind === 'lead' || fromStatus === 'leads') {
+        revert?.();
+        if (toStatus === 'leads') {
+            return;
+        }
+        router.get(
+            route('admin.comercial.propostas.index'),
+            { ...filterQuery(), form: 'create', lead_id: moved.id },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+                only: ['formModal'],
+            },
+        );
+        return;
+    }
+
+    if (toStatus === 'leads') {
+        revert?.();
+        kanbanMoveError.value = 'Propostas não podem voltar para a coluna de leads.';
+        return;
+    }
 
     if (toStatus === 'ended') {
-        pendingKanbanLostMove.value = { proposal, revert };
-        statusProposal.value = proposal;
+        pendingKanbanLostMove.value = { proposal: moved, revert };
+        statusProposal.value = moved;
         statusForm.clearErrors();
         statusForm.status = 'ended';
-        statusForm.lost_reason = proposal.lost_reason ?? '';
-        statusForm.lost_reason_notes = proposal.lost_reason_notes ?? '';
+        statusForm.lost_reason = moved.lost_reason ?? '';
+        statusForm.lost_reason_notes = moved.lost_reason_notes ?? '';
         statusModalOpen.value = true;
         return;
     }
 
     if (toStatus === 'open') {
-        if (proposal.sale || !proposal.can_reopen) {
+        if (moved.sale || !moved.can_reopen) {
             revert?.();
-            kanbanMoveError.value = proposal.sale
+            kanbanMoveError.value = moved.sale
                 ? 'Não é possível reabrir uma proposta que já possui venda vinculada.'
                 : 'Esta proposta não pode ser reaberta.';
             return;
         }
         kanbanBusy.value = true;
         router.post(
-            route('admin.comercial.propostas.reopen', proposal.id),
+            route('admin.comercial.propostas.reopen', moved.id),
             statusPayloadExtras(),
             {
                 preserveScroll: true,
@@ -431,7 +554,7 @@ const onKanbanMove = ({ proposal, toStatus, revert }) => {
     }
 
     if (toStatus === 'closed') {
-        patchKanbanStatus(proposal, 'closed', revert);
+        patchKanbanStatus(moved, 'closed', revert);
         return;
     }
 
@@ -1003,16 +1126,18 @@ const submitConvert = () => {
 </script>
 
 <template>
-    <Head title="Comercial — Propostas" />
+    <Head title="Gestão" />
 
     <AdminLayout>
         <template #header>
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <p class="text-sm text-slate-500">Comercial</p>
-                    <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-                        Propostas
+                    <h2 class="text-2xl font-semibold tracking-tight text-slate-900">
+                        Gestão
                     </h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Gestão de propostas comerciais
+                    </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <div
@@ -1051,14 +1176,28 @@ const submitConvert = () => {
                             Kanban
                         </button>
                     </div>
-                    <Link
-                        :href="route('admin.comercial.propostas.create')"
+                    <button
+                        v-if="expiringCount > 0"
+                        type="button"
+                        class="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100"
+                        title="Propostas prestes a vencer"
+                        @click="openExpiringModal"
+                    >
+                        <ClockIcon class="h-4 w-4" />
+                        A vencer
+                        <span class="rounded-full bg-amber-200/80 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
+                            {{ expiringCount }}
+                        </span>
+                    </button>
+                    <button
+                        type="button"
                         class="inline-flex items-center gap-1.5 rounded-xl bg-talents-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
                         title="Nova proposta"
+                        @click="openProposalForm({ form: 'create' })"
                     >
                         <PlusIcon class="h-4 w-4" />
-                        Nova
-                    </Link>
+                        Nova proposta
+                    </button>
                 </div>
             </div>
         </template>
@@ -1233,7 +1372,11 @@ const submitConvert = () => {
             </div>
         </div>
 
-        <div v-if="isKanbanView" class="mt-6">
+        <div v-if="isKanbanView" class="mt-6 space-y-4">
+            <ProposalBoardMetrics
+                :metrics="boardMetrics"
+                @open-expiring="openExpiringModal"
+            />
             <ProposalsKanbanBoard
                 v-if="kanban"
                 :kanban="kanban"
@@ -1245,6 +1388,7 @@ const submitConvert = () => {
                 @convert="openConvertModal"
                 @contract="openContractModal"
                 @destroy="destroy"
+                @edit="openProposalForm({ form: 'edit', proposal_id: $event.id })"
             />
         </div>
 
@@ -1335,13 +1479,14 @@ const submitConvert = () => {
                                         />
                                         <span>Reabrir</span>
                                     </button>
-                                    <Link
-                                        :href="route('admin.comercial.propostas.edit', p.id)"
+                                    <button
+                                        type="button"
                                         class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
                                         title="Editar"
+                                        @click="openProposalForm({ form: 'edit', proposal_id: p.id })"
                                     >
                                         <PencilSquareIcon class="h-4 w-4" />
-                                    </Link>
+                                    </button>
                                     <a
                                         :href="route('admin.comercial.propostas.pdf', p.id)"
                                         class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
@@ -1905,7 +2050,11 @@ const submitConvert = () => {
             </div>
         </FullScreenOverlay>
 
-        <FullScreenOverlay :show="statusModalOpen" @close="closeStatusModal">
+        <FullScreenOverlay
+            :show="statusModalOpen"
+            z-index-class="z-[110]"
+            @close="closeStatusModal"
+        >
             <div
                 class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
                 role="dialog"
@@ -2084,6 +2233,28 @@ const submitConvert = () => {
                         Fechar
                     </button>
                 </div>
+            </div>
+        </FullScreenOverlay>
+
+        <ExpiringProposalsModal
+            :show="showExpiringModal"
+            :proposals="expiringProposals"
+            @close="closeExpiringModal"
+            @edit-status="openStatusModal"
+        />
+
+        <FullScreenOverlay
+            :show="proposalFormOpen"
+            overlay-class="overflow-hidden overscroll-none bg-black/40 p-4"
+            @close="closeProposalForm"
+        >
+            <div class="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+                <ProposalForm
+                    v-if="formModal"
+                    :key="`${formModal.mode}-${formModal.proposal?.id ?? formModal.fromLead?.id ?? 'new'}`"
+                    v-bind="formModal"
+                    @close="closeProposalForm"
+                />
             </div>
         </FullScreenOverlay>
     </AdminLayout>

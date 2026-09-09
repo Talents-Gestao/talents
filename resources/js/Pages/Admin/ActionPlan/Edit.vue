@@ -18,6 +18,7 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { DocumentTextIcon } from '@heroicons/vue/24/outline';
 import { marked } from 'marked';
 import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue';
+import { formatDateNumeric } from '@/utils/dateOnly';
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -346,7 +347,7 @@ const submit = () => {
                 </div>
                 <div>
                     <span class="text-gray-500">Período:</span>
-                    {{ survey.starts_at }} — {{ survey.ends_at }}
+                    {{ formatDateNumeric(survey.starts_at) || '—' }} — {{ formatDateNumeric(survey.ends_at) || '—' }}
                 </div>
                 <div class="sm:col-span-2">
                     <span class="text-gray-500">Mín. respondentes por setor (quebra):</span>

@@ -29,6 +29,7 @@ const props = defineProps({
 
 const emit = defineEmits([
     'edit-status',
+    'edit',
     'reopen',
     'convert',
     'contract',
@@ -243,6 +244,8 @@ onUnmounted(() => {
         ref="cardEl"
         class="proposal-kanban-card group relative cursor-grab rounded-xl border border-slate-200/90 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-talents-200 hover:shadow-md active:cursor-grabbing"
         :data-proposal-id="proposal.id"
+        :data-card-key="proposal.card_key || `proposal-${proposal.id}`"
+        :data-card-kind="'proposal'"
         title="Clique para ações · arraste para mudar o status"
         @pointerdown="onCardPointerDown"
         @pointermove="onCardPointerMove"
@@ -379,15 +382,15 @@ onUnmounted(() => {
                 }"
                 @click.stop
             >
-                <Link
-                    :href="route('admin.comercial.propostas.edit', proposal.id)"
-                    class="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                <button
+                    type="button"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                     role="menuitem"
-                    @click="closeMenu"
+                    @click="runAction(() => emit('edit', proposal))"
                 >
                     <PencilSquareIcon class="h-3.5 w-3.5 text-slate-400" />
                     Editar
-                </Link>
+                </button>
                 <a
                     :href="route('admin.comercial.propostas.pdf', proposal.id)"
                     class="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50"

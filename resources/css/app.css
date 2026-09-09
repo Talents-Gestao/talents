@@ -575,3 +575,22 @@
         }
     }
 }
+
+/* Fora de @layer para ganhar das utilities do Tailwind (overflow-y-auto do shell/kanban). */
+html.modal-open,
+html.modal-open body {
+    overflow: hidden !important;
+}
+
+html.modal-open .app-shell-main-scroll,
+html.modal-open .proposals-kanban__list,
+html.modal-open [data-proposals-kanban-scroll] {
+    overflow: hidden !important;
+}
+
+html.modal-open dialog,
+dialog[open] {
+    overflow: hidden !important;
+    max-height: 100dvh;
+}
+

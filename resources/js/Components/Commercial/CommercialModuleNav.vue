@@ -10,15 +10,8 @@ const isPropostasRoute = computed(() => route().current('admin.comercial.propost
 const items = computed(() =>
     [
         {
-            id: 'dashboard',
-            label: 'Resumo',
-            module: 'comercial_resumo',
-            href: () => route('admin.comercial.dashboard'),
-            isActive: () => route().current('admin.comercial.dashboard'),
-        },
-        {
             id: 'propostas',
-            label: 'Propostas',
+            label: 'Gestão',
             module: 'comercial_propostas',
             href: () => route('admin.comercial.propostas.index'),
             isActive: () => isPropostasRoute.value,

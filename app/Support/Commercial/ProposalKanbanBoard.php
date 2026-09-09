@@ -7,13 +7,16 @@ namespace App\Support\Commercial;
 use Illuminate\Http\Request;
 
 /**
- * Visão Kanban da lista de propostas: colunas = list_status canónico do Talents.
+ * Visão Kanban da lista de propostas: colunas = list_status canónico do Talents (+ Leads).
  */
 final class ProposalKanbanBoard
 {
     public const VIEW_LIST = 'list';
 
     public const VIEW_KANBAN = 'kanban';
+
+    /** Coluna de interessados (landing) — ao arrastar para outra coluna abre criar proposta. */
+    public const LEADS = 'leads';
 
     /** Máximo de cards carregados por coluna (header mostra contagem total). */
     public const PER_COLUMN_LIMIT = 100;
@@ -35,11 +38,16 @@ final class ProposalKanbanBoard
     }
 
     /**
-     * @return list<array{key: string, filter: string, label: string}>
+     * @return list<array{key: string, filter: ?string, label: string}>
      */
     public static function columns(): array
     {
         return [
+            [
+                'key' => self::LEADS,
+                'filter' => null,
+                'label' => 'Leads',
+            ],
             [
                 'key' => ProposalListStatus::OPEN,
                 'filter' => 'abertas',

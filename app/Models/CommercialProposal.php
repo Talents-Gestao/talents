@@ -65,6 +65,7 @@ class CommercialProposal extends Model
             'is_closed' => 'boolean',
             'list_status' => 'string',
             'closed_at' => 'datetime',
+            'contacted_at' => 'datetime',
 
             'palestra_event_date' => 'date',
             'palestra_audience_estimate' => 'integer',

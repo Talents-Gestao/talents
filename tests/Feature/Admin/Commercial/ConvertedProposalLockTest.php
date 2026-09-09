@@ -102,12 +102,22 @@ class ConvertedProposalLockTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.comercial.propostas.edit', $proposal))
+            ->assertRedirect(route('admin.comercial.propostas.index', [
+                'form' => 'edit',
+                'proposal_id' => $proposal->id,
+            ]));
+
+        $this->actingAs($admin)
+            ->get(route('admin.comercial.propostas.index', [
+                'form' => 'edit',
+                'proposal_id' => $proposal->id,
+            ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('Admin/Commercial/Proposals/Form')
-                ->where('proposal.finance_impact.requires_warning', true)
-                ->where('proposal.finance_impact.has_sale', true)
-                ->has('proposal.finance_impact.items', 3));
+                ->component('Admin/Commercial/Proposals/Index')
+                ->where('formModal.proposal.finance_impact.requires_warning', true)
+                ->where('formModal.proposal.finance_impact.has_sale', true)
+                ->has('formModal.proposal.finance_impact.items', 3));
     }
 
     private function convertedProposal(CommercialProduct $product): CommercialProposal

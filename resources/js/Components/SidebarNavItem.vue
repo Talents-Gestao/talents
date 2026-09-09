@@ -49,6 +49,11 @@ const props = defineProps({
         type: [Boolean, String],
         default: false,
     },
+    /** Link externo (abre em nova aba; não usa Inertia). */
+    external: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const closeMobileSidebar = inject('closeMobileSidebar', null);
@@ -117,11 +122,14 @@ const onNavigate = () => {
 </script>
 
 <template>
-    <Link
+    <component
+        :is="external ? 'a' : Link"
         :href="href"
-        :method="method"
-        :as="as"
-        :prefetch="prefetch"
+        :method="external ? undefined : method"
+        :as="external ? undefined : as"
+        :prefetch="external ? undefined : prefetch"
+        :target="external ? '_blank' : undefined"
+        :rel="external ? 'noopener noreferrer' : undefined"
         :class="linkClasses"
         :title="collapsed ? label : undefined"
         @click="onNavigate"
@@ -183,7 +191,7 @@ const onNavigate = () => {
                 </span>
             </span>
         </Transition>
-    </Link>
+    </component>
 </template>
 
 <style scoped>

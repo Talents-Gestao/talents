@@ -72,39 +72,57 @@ const submit = () => {
 
         <div class="surface-card overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="min-w-[64rem] w-full table-fixed divide-y divide-slate-200 text-sm text-slate-900">
+                <table class="min-w-full border-collapse text-sm text-slate-900">
                     <thead class="bg-slate-50">
-                        <tr>
-                            <th class="w-[22%] px-4 py-3 text-left font-medium text-slate-700">Nome</th>
-                            <th class="w-[14%] px-4 py-3 text-left font-medium text-slate-700">CNPJ</th>
-                            <th class="w-[28%] px-4 py-3 text-left font-medium text-slate-700">Segmento</th>
-                            <th class="w-[7%] px-4 py-3 text-left font-medium text-slate-700">Ativa</th>
-                            <th class="w-[10%] px-4 py-3 text-left font-medium text-slate-700">RHID</th>
-                            <th class="w-[11%] px-4 py-3 text-left font-medium text-slate-700">Cadastro</th>
-                            <th class="w-[8%] px-4 py-3 text-right font-medium text-slate-700">Ações</th>
+                        <tr class="border-b border-slate-200">
+                            <th scope="col" class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">
+                                Nome
+                            </th>
+                            <th scope="col" class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">
+                                CNPJ
+                            </th>
+                            <th
+                                scope="col"
+                                class="min-w-[12rem] max-w-[18rem] px-4 py-3 text-left font-medium text-slate-700"
+                            >
+                                Segmento
+                            </th>
+                            <th scope="col" class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">
+                                Ativa
+                            </th>
+                            <th scope="col" class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">
+                                RHID
+                            </th>
+                            <th scope="col" class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">
+                                Cadastro
+                            </th>
+                            <th scope="col" class="whitespace-nowrap px-4 py-3 text-right font-medium text-slate-700">
+                                Ações
+                            </th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-200">
-                        <tr v-for="c in companies.data" :key="c.id" class="align-top hover:bg-slate-50/70">
-                            <td class="px-4 py-3">
-                                <p class="line-clamp-2 font-medium leading-snug text-slate-900" :title="c.name">
+                    <tbody>
+                        <tr
+                            v-for="c in companies.data"
+                            :key="c.id"
+                            class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/70"
+                        >
+                            <td class="max-w-[16rem] px-4 py-3 align-middle">
+                                <p class="truncate font-medium text-slate-900" :title="c.name">
                                     {{ c.name }}
                                 </p>
                             </td>
-                            <td class="px-4 py-3">
-                                <span class="whitespace-nowrap font-mono text-[13px] tabular-nums text-slate-700">
+                            <td class="whitespace-nowrap px-4 py-3 align-middle">
+                                <span class="font-mono text-[13px] tabular-nums text-slate-700">
                                     {{ formatCnpj(c.cnpj) || '—' }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3">
-                                <p
-                                    class="line-clamp-2 leading-snug text-slate-600"
-                                    :title="c.segment || undefined"
-                                >
+                            <td class="min-w-[12rem] max-w-[18rem] px-4 py-3 align-middle">
+                                <p class="truncate text-slate-600" :title="c.segment || undefined">
                                     {{ c.segment || '—' }}
                                 </p>
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3">
+                            <td class="whitespace-nowrap px-4 py-3 align-middle">
                                 <span
                                     class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1"
                                     :class="
@@ -116,7 +134,7 @@ const submit = () => {
                                     {{ c.is_active ? 'Sim' : 'Não' }}
                                 </span>
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3">
+                            <td class="whitespace-nowrap px-4 py-3 align-middle">
                                 <span
                                     v-if="isRhidConfigured(c.id)"
                                     class="inline-flex rounded-full bg-talents-100 px-2 py-0.5 text-[11px] font-semibold text-talents-800 ring-1 ring-talents-200"
@@ -125,7 +143,7 @@ const submit = () => {
                                 </span>
                                 <span v-else class="text-xs text-slate-400">—</span>
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3">
+                            <td class="whitespace-nowrap px-4 py-3 align-middle">
                                 <span
                                     v-if="hasPendingRegistration(c.id)"
                                     class="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200"
@@ -139,8 +157,8 @@ const submit = () => {
                                     Concluído
                                 </span>
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3 text-right">
-                                <div class="inline-flex flex-col items-end gap-1.5">
+                            <td class="whitespace-nowrap px-4 py-3 align-middle text-right">
+                                <div class="inline-flex items-center justify-end gap-3">
                                     <Link
                                         :href="route('admin.companies.show', c.id)"
                                         class="font-medium text-talents-700 hover:underline"
@@ -150,7 +168,7 @@ const submit = () => {
                                     <button
                                         v-if="hasPendingRegistration(c.id)"
                                         type="button"
-                                        class="text-xs font-medium text-amber-700 hover:underline disabled:opacity-50"
+                                        class="font-medium text-amber-700 hover:underline disabled:opacity-50"
                                         :disabled="resendingId === c.id"
                                         @click="resendInvitation(c)"
                                     >

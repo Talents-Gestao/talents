@@ -53,6 +53,11 @@ class AccessHierarchyVisibilityTest extends TestCase
         $this->assertNotContains(AdminPermissionModule::Training, AdminPermissionModule::all());
     }
 
+    public function test_legacy_commercial_summary_is_not_assignable_in_permission_matrices(): void
+    {
+        $this->assertNotContains(AdminPermissionModule::ComercialResumo, AdminPermissionModule::all());
+    }
+
     public function test_company_roles_cannot_access_admin_modules(): void
     {
         $company = $this->createCompanyWithModules([
