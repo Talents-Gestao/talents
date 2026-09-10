@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateAiAnalysisJob;
+use App\Models\ActionPlan;
 use App\Models\AiAnalysis;
 use App\Models\AiSetting;
 use App\Models\Survey;
@@ -60,6 +61,11 @@ class SurveyResultsController extends Controller
             'riskScenarioLabel' => Nr1RiskScenarioResolver::scenarioConfig(
                 Nr1RiskScenarioResolver::forSurvey($survey) ?? 'green'
             )['short_label'] ?? null,
+            'actionPlanPublished' => ActionPlan::query()
+                ->where('survey_id', $survey->id)
+                ->where('company_id', $survey->company_id)
+                ->whereNotNull('admin_published_at')
+                ->exists(),
         ]));
     }
 

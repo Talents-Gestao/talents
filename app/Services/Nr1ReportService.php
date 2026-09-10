@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ActionPlan;
 use App\Models\Survey;
 use App\Models\SurveyNr1Report;
 use App\Support\Nr1RiskScenarioResolver;
@@ -52,7 +53,16 @@ class Nr1ReportService
 
     public function streamActionPlan(Survey $survey): Response
     {
-        return $this->generator->actionPlanPdf($survey)->stream('plano-de-acao-'.$survey->id.'.pdf');
+        $plan = ActionPlan::query()
+            ->where('survey_id', $survey->id)
+            ->where('company_id', $survey->company_id)
+            ->first();
+
+        abort_unless($plan !== null && $plan->admin_published_at !== null, 404);
+
+        return $this->generator
+            ->actionPlanDocumentPdf($survey, ['is_draft' => false])
+            ->stream('plano-de-acao-'.$survey->id.'.pdf');
     }
 
     private function publishedUpload(Survey $survey, string $type): ?SurveyNr1Report

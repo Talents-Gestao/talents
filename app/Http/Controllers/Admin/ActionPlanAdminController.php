@@ -50,6 +50,38 @@ class ActionPlanAdminController extends Controller
             ->stream('plano-de-acao-'.$survey->id.'.pdf');
     }
 
+    public function documentPdf(Request $request, Company $company, Survey $survey, ReportGenerator $generator): SymfonyResponse
+    {
+        $this->assertSurveyBelongsToCompany($company, $survey);
+
+        $overrides = [];
+
+        if ($request->isMethod('post')) {
+            $data = $request->validate([
+                'items' => ['present', 'array'],
+                'items.*.title' => ['nullable', 'string', 'max:255'],
+                'items.*.description' => ['nullable', 'string'],
+                'technical_opinion' => ['nullable', 'string'],
+            ]);
+
+            $overrides = [
+                'items' => collect($data['items'])->filter(
+                    fn (array $row) => trim((string) ($row['title'] ?? '')) !== ''
+                )->values()->map(fn (array $row) => [
+                    'title' => $row['title'],
+                    'description' => $row['description'] ?? null,
+                    'status' => 'pending',
+                ])->all(),
+                'technical_opinion' => HtmlSanitizer::sanitizeRichText($data['technical_opinion'] ?? null),
+                'is_draft' => true,
+            ];
+        }
+
+        return $generator
+            ->actionPlanDocumentPdf($survey, $overrides)
+            ->stream('plano-de-acao-'.$survey->id.'.pdf');
+    }
+
     public function edit(Company $company, Survey $survey): Response
     {
         $this->assertSurveyBelongsToCompany($company, $survey);

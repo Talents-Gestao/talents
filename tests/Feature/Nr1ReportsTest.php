@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\ActionPlan;
+use App\Models\ActionPlanItem;
 use App\Models\SurveyNr1Report;
 use App\Models\User;
 use App\Support\Nr1RiskScenarioResolver;
@@ -60,6 +62,20 @@ class Nr1ReportsTest extends TestCase
     {
         $fx = $this->createSurveyFixture();
         $this->seedNr1OverallAndSectionResult($fx, 'green', 2.0);
+
+        $plan = ActionPlan::query()->create([
+            'company_id' => $fx->company->id,
+            'survey_id' => $fx->survey->id,
+            'status' => 'published',
+            'admin_published_at' => now(),
+        ]);
+        ActionPlanItem::query()->create([
+            'action_plan_id' => $plan->id,
+            'title' => 'Ação publicada',
+            'description' => 'Descrição',
+            'status' => 'pending',
+            'sort_order' => 0,
+        ]);
 
         $user = User::factory()->companyAdmin($fx->company->id)->create();
 

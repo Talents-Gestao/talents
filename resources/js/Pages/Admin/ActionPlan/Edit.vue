@@ -53,6 +53,7 @@ const { canAdmin } = useAdminPermissions();
 const showDeleteSurveyModal = ref(false);
 const showExportPdfModal = ref(false);
 const includeActionsInPdf = ref(true);
+const previewingPlanPdf = ref(false);
 
 const openExportPdfModal = () => {
     includeActionsInPdf.value = true;
@@ -195,6 +196,38 @@ const syncEditorToForm = () => {
     form.technical_opinion = html === '<p></p>' ? '' : html;
 };
 
+const previewPlanDocumentPdf = async () => {
+    syncEditorToForm();
+    previewingPlanPdf.value = true;
+    const tab = window.open('about:blank', '_blank');
+    try {
+        const response = await window.axios.post(
+            route('admin.companies.surveys.action-plan.document-pdf', [props.company.id, props.survey.id]),
+            {
+                items: form.items.filter((row) => String(row.title).trim() !== ''),
+                technical_opinion: form.technical_opinion || null,
+            },
+            { responseType: 'blob' },
+        );
+        const contentType = String(response.headers['content-type'] ?? '');
+        if (!contentType.includes('pdf')) {
+            throw new Error('Resposta inválida ao gerar o PDF.');
+        }
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        if (tab) {
+            tab.location.href = url;
+        } else {
+            window.open(url, '_blank', 'noopener');
+        }
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+        tab?.close();
+    } finally {
+        previewingPlanPdf.value = false;
+    }
+};
+
 const technicalOpinionPreviewHtml = computed(() => {
     const text = props.technicalOpinionAi?.content ?? '';
     if (!text) {
@@ -310,10 +343,18 @@ const submit = () => {
                 <template #trailing>
                     <button
                         type="button"
+                        class="inline-flex items-center rounded-full border border-talents-300 bg-white px-4 py-2 text-sm font-medium text-talents-800 shadow-sm hover:bg-talents-50 disabled:opacity-50"
+                        :disabled="previewingPlanPdf"
+                        @click="previewPlanDocumentPdf"
+                    >
+                        {{ previewingPlanPdf ? 'Gerando PDF…' : 'PDF do plano de ação' }}
+                    </button>
+                    <button
+                        type="button"
                         class="inline-flex items-center rounded-full bg-talents-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-talents-800"
                         @click="openExportPdfModal"
                     >
-                        Exportar PDF
+                        Exportar PDF dos resultados
                     </button>
                 </template>
             </FormPageHeader>
@@ -406,9 +447,10 @@ const submit = () => {
 
         <div class="mb-6 rounded-lg border border-sky-100 bg-sky-50/80 p-4 text-sm text-sky-950">
             <p>
-                Redija o <strong>parecer técnico</strong> e/ou os <strong>itens do plano de ação</strong>. Ao salvar com conteúdo em qualquer
-                um deles, o material fica <strong>visível para a empresa</strong> na página Plano de ação. Para ocultar tudo do cliente, limpe
-                o parecer e remova todos os itens e salve.
+                Redija o <strong>parecer técnico</strong> e/ou os <strong>itens do plano de ação</strong>. Use
+                <strong>PDF do plano de ação</strong> para gerar o documento individual (parecer e ações) com o conteúdo atual, sem publicar
+                para a empresa. Ao salvar com conteúdo, o material fica <strong>visível para a empresa</strong> na página Plano de ação. Para
+                ocultar tudo do cliente, limpe o parecer e remova todos os itens e salve.
             </p>
             <p v-if="plan?.admin_published_at" class="mt-2 text-xs text-sky-900/80">
                 Última publicação: {{ plan.admin_published_at }}
@@ -667,6 +709,14 @@ const submit = () => {
                     <h3 class="font-semibold text-talents-800">Itens do plano de ação</h3>
                     <div class="flex flex-wrap gap-2">
                         <button
+                            type="button"
+                            class="rounded-md border border-talents-300 bg-white px-3 py-1.5 text-sm font-medium text-talents-800 hover:bg-talents-50 disabled:opacity-50"
+                            :disabled="previewingPlanPdf"
+                            @click="previewPlanDocumentPdf"
+                        >
+                            {{ previewingPlanPdf ? 'Gerando PDF…' : 'Gerar PDF do plano' }}
+                        </button>
+                        <button
                             v-if="overall"
                             type="button"
                             class="rounded-md border border-talents-300 bg-white px-3 py-1.5 text-sm font-medium text-talents-800 hover:bg-talents-50"
@@ -749,9 +799,10 @@ const submit = () => {
 
         <Modal :show="showExportPdfModal" max-width="md" @close="showExportPdfModal = false">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900">Exportar PDF do plano de ação</h2>
+                <h2 class="text-lg font-medium text-gray-900">Exportar PDF dos resultados</h2>
                 <p class="mt-2 text-sm text-gray-600">
-                    Escolha se a seção de ações deve constar no documento gerado.
+                    Gera o relatório com indicadores e gráficos da pesquisa. O PDF individual do plano de ação (parecer e ações) está no botão
+                    <strong>PDF do plano de ação</strong> e não publica o conteúdo para a empresa.
                 </p>
                 <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800">
                     <input
