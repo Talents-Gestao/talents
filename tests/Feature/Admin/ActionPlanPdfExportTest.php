@@ -130,6 +130,139 @@ class ActionPlanPdfExportTest extends TestCase
         $this->assertStringStartsWith('%PDF', $output);
     }
 
+    public function test_document_blade_contains_only_opinion_and_actions(): void
+    {
+        $fx = $this->createSurveyFixture();
+        $this->seedNr1OverallAndSectionResult($fx, 'yellow', 3.0);
+
+        $survey = $fx->survey->fresh()->load('company');
+        $scenario = Nr1RiskScenarioResolver::forSurvey($survey) ?? 'yellow';
+
+        $html = view('reports.action_plan_document', [
+            'survey' => $survey,
+            'scenario' => $scenario,
+            'scenarioConfig' => Nr1RiskScenarioResolver::scenarioConfig($scenario),
+            'logoBase64' => null,
+            'technicalOpinion' => '<p>Parecer de rascunho</p>',
+            'items' => [
+                [
+                    'title' => 'Ação individual PDF',
+                    'description' => 'Descrição da ação',
+                    'status' => 'pending',
+                ],
+            ],
+            'isDraft' => true,
+        ])->render();
+
+        $this->assertStringContainsString('Parecer de rascunho', $html);
+        $this->assertStringContainsString('Ação individual PDF', $html);
+        $this->assertStringContainsString('Rascunho — este documento ainda não foi publicado', $html);
+        $this->assertStringNotContainsString('Indicador geral de risco', $html);
+        $this->assertStringNotContainsString('<h2>Dimensões</h2>', $html);
+    }
+
+    public function test_admin_can_preview_document_pdf_from_form_without_publishing(): void
+    {
+        $fx = $this->createSurveyFixture();
+        $this->seedNr1OverallAndSectionResult($fx, 'yellow', 3.0);
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $response = $this->actingAs($admin)
+            ->post(route('admin.companies.surveys.action-plan.document-pdf', [
+                'company' => $fx->company->id,
+                'survey' => $fx->survey->id,
+            ]), [
+                'technical_opinion' => '<p>Parecer ainda não publicado</p>',
+                'items' => [
+                    ['title' => 'Ação rascunho', 'description' => 'Fazer X'],
+                ],
+            ]);
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
+        $this->assertFalse(
+            ActionPlan::query()->where('survey_id', $fx->survey->id)->exists()
+        );
+    }
+
+    public function test_admin_can_download_unpublished_document_pdf_from_saved_draft(): void
+    {
+        $fx = $this->createSurveyFixture();
+        $this->seedNr1OverallAndSectionResult($fx, 'green', 2.0);
+
+        $plan = ActionPlan::query()->create([
+            'company_id' => $fx->company->id,
+            'survey_id' => $fx->survey->id,
+            'status' => 'open',
+            'admin_published_at' => null,
+            'technical_opinion' => '<p>Parecer salvo</p>',
+        ]);
+
+        ActionPlanItem::query()->create([
+            'action_plan_id' => $plan->id,
+            'title' => 'Ação não publicada',
+            'description' => 'Rascunho',
+            'status' => 'pending',
+            'sort_order' => 0,
+        ]);
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.companies.surveys.action-plan.document-pdf', [
+                'company' => $fx->company->id,
+                'survey' => $fx->survey->id,
+            ]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
+        $this->assertNull($plan->fresh()->admin_published_at);
+    }
+
+    public function test_client_cannot_download_unpublished_action_plan_document(): void
+    {
+        $fx = $this->createSurveyFixture();
+        $this->seedNr1OverallAndSectionResult($fx, 'green', 2.0);
+
+        $plan = ActionPlan::query()->create([
+            'company_id' => $fx->company->id,
+            'survey_id' => $fx->survey->id,
+            'status' => 'open',
+            'admin_published_at' => null,
+            'technical_opinion' => '<p>Segredo</p>',
+        ]);
+
+        ActionPlanItem::query()->create([
+            'action_plan_id' => $plan->id,
+            'title' => 'Ação secreta',
+            'description' => 'Não publicar',
+            'status' => 'pending',
+            'sort_order' => 0,
+        ]);
+
+        $user = User::factory()->companyAdmin($fx->company->id)->create();
+
+        $this->actingAs($user)
+            ->get(route('client.surveys.reports.action-plan', $fx->survey))
+            ->assertNotFound();
+    }
+
+    public function test_client_can_download_published_action_plan_document(): void
+    {
+        $fx = $this->createSurveyFixture();
+        $this->seedNr1OverallAndSectionResult($fx, 'green', 2.0);
+        $this->createPublishedPlanWithItem($fx, 'Ação publicada');
+
+        $user = User::factory()->companyAdmin($fx->company->id)->create();
+
+        $response = $this->actingAs($user)
+            ->get(route('client.surveys.reports.action-plan', $fx->survey));
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
+    }
+
     /**
      * @param  object{company: \App\Models\Company, survey: \App\Models\Survey}  $fx
      */

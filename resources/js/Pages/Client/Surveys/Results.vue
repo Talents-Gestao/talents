@@ -21,6 +21,7 @@ const props = defineProps({
     aiAnalysis: { type: Object, default: null },
     aiAnalysisPending: { type: Boolean, default: false },
     riskScenarioLabel: { type: String, default: null },
+    actionPlanPublished: { type: Boolean, default: false },
 });
 
 const recalculate = () => {
@@ -178,6 +179,7 @@ onUnmounted(() => {
                         Relatório executivo
                     </a>
                     <a
+                        v-if="actionPlanPublished"
                         :href="route('client.surveys.reports.action-plan', survey.id)"
                         class="rounded-md border border-talents-300 px-3 py-1 text-sm font-semibold text-talents-900"
                         target="_blank"

@@ -218,6 +218,76 @@ class ReportGenerator
     }
 
     /**
+     * PDF individual do plano de ação (parecer + ações), sem os resultados da pesquisa.
+     *
+     * @param  array{items?: list<array{title: string, description?: ?string, status?: string}>, technical_opinion?: ?string, is_draft?: bool}  $overrides
+     */
+    public function actionPlanDocumentPdf(Survey $survey, array $overrides = []): \Barryvdh\DomPDF\PDF
+    {
+        $survey->load('company');
+
+        $plan = ActionPlan::query()
+            ->where('survey_id', $survey->id)
+            ->where('company_id', $survey->company_id)
+            ->with('items')
+            ->first();
+
+        $items = array_key_exists('items', $overrides)
+            ? $this->normalizeActionPlanDocumentItems($overrides['items'] ?? [])
+            : $this->normalizeActionPlanDocumentItems($plan?->items ?? []);
+
+        $technicalOpinion = array_key_exists('technical_opinion', $overrides)
+            ? $overrides['technical_opinion']
+            : $plan?->technical_opinion;
+
+        $isDraft = array_key_exists('is_draft', $overrides)
+            ? (bool) $overrides['is_draft']
+            : ($plan === null || $plan->admin_published_at === null);
+
+        $data = $this->baseViewData($survey);
+        $data['logoBase64'] = TalentsLogoDataUri::get();
+        $data['plan'] = $plan;
+        $data['items'] = $items;
+        $data['technicalOpinion'] = $technicalOpinion;
+        $data['isDraft'] = $isDraft;
+
+        return $this->applyDompdfOptions(
+            Pdf::loadView('reports.action_plan_document', $data)->setPaper('a4')
+        );
+    }
+
+    /**
+     * @param  iterable<int, mixed>  $items
+     * @return list<array{title: string, description: ?string, status: string}>
+     */
+    private function normalizeActionPlanDocumentItems(iterable $items): array
+    {
+        $normalized = [];
+
+        foreach ($items as $item) {
+            $title = is_array($item)
+                ? trim((string) ($item['title'] ?? ''))
+                : trim((string) ($item->title ?? ''));
+
+            if ($title === '') {
+                continue;
+            }
+
+            $normalized[] = [
+                'title' => $title,
+                'description' => is_array($item)
+                    ? ($item['description'] ?? null)
+                    : ($item->description ?? null),
+                'status' => is_array($item)
+                    ? (string) ($item['status'] ?? 'pending')
+                    : (string) ($item->status ?? 'pending'),
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
      * @param  list<array{average_score: float, risk_level: ?string, section_title: string}>  $bySection
      * @param  callable(?string): string  $riskColor
      */
