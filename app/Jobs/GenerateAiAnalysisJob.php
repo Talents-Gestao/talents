@@ -6,6 +6,7 @@ use App\Models\AiAnalysis;
 use App\Models\AiSetting;
 use App\Models\Survey;
 use App\Services\Nr1AiAnalyzer;
+use App\Support\TechnicalOpinionDisclaimerStripper;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -49,11 +50,15 @@ class GenerateAiAnalysisJob implements ShouldQueue
             }
 
             $result = $analyzer->generateNarrative($survey, $setting, $this->type);
+            $content = $result['content'];
+            if ($this->type === Nr1AiAnalyzer::TYPE_NR1_TECHNICAL_OPINION) {
+                $content = TechnicalOpinionDisclaimerStripper::strip($content) ?? '';
+            }
 
             AiAnalysis::query()->create([
                 'survey_id' => $survey->id,
                 'type' => $this->type,
-                'content' => $result['content'],
+                'content' => $content,
                 'prompt_tokens' => $result['prompt_tokens'],
                 'completion_tokens' => $result['completion_tokens'],
                 'model_used' => $result['model_used'],

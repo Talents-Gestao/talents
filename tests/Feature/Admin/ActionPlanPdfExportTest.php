@@ -113,6 +113,32 @@ class ActionPlanPdfExportTest extends TestCase
         $this->assertStringNotContainsString('<h2>Dimensões</h2>', $html);
     }
 
+    public function test_saved_technical_opinion_is_persisted_without_disclaimer(): void
+    {
+        $fx = $this->createSurveyFixture();
+        $this->seedNr1OverallAndSectionResult($fx, 'yellow', 3.0);
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.companies.surveys.action-plan.update', [
+                'company' => $fx->company->id,
+                'survey' => $fx->survey->id,
+            ]), [
+                'technical_opinion' => '<p>Conclusão da análise do cenário.</p><h2>Disclaimer</h2><p>O parecer é apoio à gestão de riscos psicossociais e não dispensa obrigações legais nem avaliação por equipe técnica competente quando exigida.</p>',
+            ])
+            ->assertRedirect(route('admin.companies.surveys.action-plan.edit', [
+                $fx->company->id,
+                $fx->survey->id,
+            ]));
+
+        $plan = ActionPlan::query()->where('survey_id', $fx->survey->id)->firstOrFail();
+
+        $this->assertStringContainsString('Conclusão da análise do cenário.', (string) $plan->technical_opinion);
+        $this->assertStringNotContainsString('Disclaimer', (string) $plan->technical_opinion);
+        $this->assertStringNotContainsString('obrigações legais', (string) $plan->technical_opinion);
+    }
+
     public function test_admin_can_preview_document_pdf_from_form_without_publishing(): void
     {
         $fx = $this->createSurveyFixture();

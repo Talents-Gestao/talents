@@ -12,6 +12,7 @@ use App\Models\Survey;
 use App\Models\SurveyNr1Report;
 use App\Support\HtmlSanitizer;
 use App\Support\Nr1RiskScenarioResolver;
+use App\Support\TechnicalOpinionDisclaimerStripper;
 use App\Services\ActionPlanGenerator;
 use App\Services\Nr1AiAnalyzer;
 use App\Services\ReportGenerator;
@@ -55,7 +56,9 @@ class ActionPlanAdminController extends Controller
             ]);
 
             $overrides = [
-                'technical_opinion' => HtmlSanitizer::sanitizeRichText($data['technical_opinion'] ?? null),
+                'technical_opinion' => TechnicalOpinionDisclaimerStripper::strip(
+                    HtmlSanitizer::sanitizeRichText($data['technical_opinion'] ?? null)
+                ),
                 'is_draft' => true,
             ];
         }
@@ -110,20 +113,20 @@ class ActionPlanAdminController extends Controller
             'plan' => $plan ? [
                 'id' => $plan->id,
                 'admin_published_at' => $plan->admin_published_at?->format('d/m/Y H:i'),
-                'technical_opinion' => $plan->technical_opinion ?? '',
+                'technical_opinion' => TechnicalOpinionDisclaimerStripper::strip($plan->technical_opinion) ?? '',
                 'technical_opinion_file_name' => $plan->technical_opinion_file_name,
                 'technical_opinion_file_url' => $plan->technical_opinion_file_path
                     ? route('admin.companies.surveys.technical-opinion-file.download', [$company, $survey])
                     : null,
             ] : null,
-            'technical_opinion' => $plan?->technical_opinion ?? '',
+            'technical_opinion' => TechnicalOpinionDisclaimerStripper::strip($plan?->technical_opinion) ?? '',
             'aiEnabled' => $aiEnabled,
             'aiAnalysis' => $latestAi ? [
                 'content' => $latestAi->content,
             ] : null,
             'aiAnalysisPending' => $aiAnalysisPending,
             'technicalOpinionAi' => $latestTechnicalOpinionAi ? [
-                'content' => $latestTechnicalOpinionAi->content,
+                'content' => TechnicalOpinionDisclaimerStripper::strip($latestTechnicalOpinionAi->content) ?? '',
             ] : null,
             'technicalOpinionAiPending' => $technicalOpinionAiPending,
             'aiGeneratePostUrl' => url('/admin/companies/'.$company->getKey().'/surveys/'.$survey->getKey().'/ai-analysis'),
@@ -265,7 +268,9 @@ class ActionPlanAdminController extends Controller
             'technical_referral_file.max' => 'O encaminhamento técnico não pode exceder 20 MB.',
         ]);
 
-        $technicalOpinion = HtmlSanitizer::sanitizeRichText($data['technical_opinion'] ?? null);
+        $technicalOpinion = TechnicalOpinionDisclaimerStripper::strip(
+            HtmlSanitizer::sanitizeRichText($data['technical_opinion'] ?? null)
+        );
 
         $uploadedFile = $request->file('technical_opinion_file');
         $removeFile = $request->boolean('remove_technical_opinion_file');
