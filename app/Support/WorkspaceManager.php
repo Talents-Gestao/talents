@@ -56,9 +56,12 @@ class WorkspaceManager
 
         if ($request->hasSession()) {
             $request->session()->put(self::SESSION_KEY, $workspace->id);
+            // Evita ficar preso a um «intended» do outro ambiente (admin ↔ cliente).
+            $request->session()->forget('url.intended');
         }
 
         $user->setActiveWorkspace($workspace);
+        $this->syncLegacyUserColumns($user, $workspace);
     }
 
     public function clearSelection(Request $request): void

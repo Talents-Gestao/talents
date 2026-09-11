@@ -84,6 +84,12 @@ class HandleInertiaRequests extends Middleware
                                 AdminPermissionModule::ComercialValoresContratos,
                                 PermissionAction::View,
                             ),
+                        'active_workspace_id' => $workspace?->id,
+                        'workspaces' => $this->workspaceManager
+                            ->activeWorkspacesFor($user)
+                            ->map(static fn ($w) => $w->toFrontendArray())
+                            ->values()
+                            ->all(),
                     ]
                     : null,
             ],

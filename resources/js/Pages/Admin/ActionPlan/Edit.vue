@@ -559,12 +559,18 @@ const submit = () => {
                     Mia está elaborando o parecer técnico…
                 </div>
 
-                <div
-                    v-else-if="technicalOpinionAi"
-                    class="mia-prose prose prose-sm mt-4 max-h-48 overflow-y-auto rounded-lg border border-gray-100 bg-gray-50/80 p-4 text-gray-800"
-                >
-                    <p class="mb-2 text-xs font-medium text-gray-500">Pré-visualização do rascunho da IA (clique em Inserir no editor):</p>
-                    <div v-html="technicalOpinionPreviewHtml" />
+                <div v-else-if="technicalOpinionAi" class="mt-4">
+                    <p class="mb-2 text-xs font-medium text-gray-500">
+                        Pré-visualização do rascunho da IA (clique em Inserir no editor):
+                    </p>
+                    <div
+                        class="mia-prose max-h-[min(70vh,40rem)] overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 text-sm leading-relaxed text-gray-800 shadow-sm sm:p-6 sm:text-[15px] sm:leading-7"
+                    >
+                        <div
+                            class="[&_h1]:mb-3 [&_h1]:mt-5 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:text-slate-900 [&_h2]:mb-2.5 [&_h2]:mt-5 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-slate-900 [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-slate-900 [&_li]:my-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2.5 [&_strong]:font-semibold [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_h1:first-child]:mt-0 [&_h2:first-child]:mt-0 [&_h3:first-child]:mt-0 [&_p:first-child]:mt-0"
+                            v-html="technicalOpinionPreviewHtml"
+                        />
+                    </div>
                 </div>
 
                 <div v-if="opinionEditor" class="mt-4">
