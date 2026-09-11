@@ -7,6 +7,7 @@ use App\Models\Survey;
 use App\Models\SurveyResult;
 use App\Support\Nr1RiskScenarioResolver;
 use App\Support\TalentsLogoDataUri;
+use App\Support\TechnicalOpinionDisclaimerStripper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
@@ -161,7 +162,7 @@ class ReportGenerator
         $data = $this->baseViewData($survey);
         $data['logoBase64'] = TalentsLogoDataUri::get();
         $data['plan'] = $plan;
-        $data['technicalOpinion'] = $plan?->technical_opinion;
+        $data['technicalOpinion'] = TechnicalOpinionDisclaimerStripper::strip($plan?->technical_opinion);
         $data['overall'] = $overall;
         $data['bySection'] = $bySection;
         $data['deptOveralls'] = $deptOveralls;
@@ -239,7 +240,7 @@ class ReportGenerator
         $data = $this->baseViewData($survey);
         $data['logoBase64'] = TalentsLogoDataUri::get();
         $data['plan'] = $plan;
-        $data['technicalOpinion'] = $technicalOpinion;
+        $data['technicalOpinion'] = TechnicalOpinionDisclaimerStripper::strip($technicalOpinion);
         $data['isDraft'] = $isDraft;
 
         return $this->applyDompdfOptions(
