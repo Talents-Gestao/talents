@@ -69,6 +69,23 @@ class ActionPlanGeneratorTest extends TestCase
         $this->assertStringContainsString('Ação preventiva', (string) $plan->items->first()->title);
     }
 
+    public function test_generated_item_includes_complete_operational_description(): void
+    {
+        $fx = $this->createSurveyFixture();
+        $this->seedNr1OverallAndSectionResult($fx, 'yellow', 3.0, 'Demandas');
+
+        $plan = app(ActionPlanGenerator::class)->generate($fx->survey->fresh());
+        $item = $plan->items->first();
+
+        $this->assertNotNull($item);
+        $this->assertStringContainsString('Reequilibrar carga, prazos e priorização', (string) $item->title);
+        $this->assertStringContainsString('O que deve ser feito:', (string) $item->description);
+        $this->assertStringContainsString('Como conduzir:', (string) $item->description);
+        $this->assertStringContainsString('Mapear com a liderança', (string) $item->description);
+        $this->assertStringContainsString('PGR', (string) $item->description);
+        $this->assertGreaterThan(400, mb_strlen((string) $item->description));
+    }
+
     public function test_regenerating_plan_replaces_previous_items(): void
     {
         $fx = $this->createSurveyFixture();

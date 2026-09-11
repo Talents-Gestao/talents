@@ -745,9 +745,9 @@ const submit = () => {
                                 <textarea
                                     :id="'desc-' + index"
                                     v-model="row.description"
-                                    rows="3"
+                                    rows="6"
                                     class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                    placeholder="Orientações e próximos passos para a empresa..."
+                                    placeholder="O que deve ser feito, como conduzir e como acompanhar..."
                                 />
                             </div>
                         </div>
