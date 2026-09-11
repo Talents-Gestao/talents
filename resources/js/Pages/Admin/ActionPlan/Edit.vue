@@ -5,11 +5,9 @@ import MiaNr1AdminPanel from '@/Components/MiaNr1AdminPanel.vue';
 import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import DangerButton from '@/Components/DangerButton.vue';
-import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
@@ -35,7 +33,6 @@ const props = defineProps({
     questionDistributionsByDepartment: { type: Array, default: () => [] },
     plan: { type: Object, default: null },
     technical_opinion: { type: String, default: '' },
-    items: { type: Array, default: () => [] },
     aiEnabled: { type: Boolean, default: false },
     aiAnalysis: { type: Object, default: null },
     aiAnalysisPending: { type: Boolean, default: false },
@@ -43,7 +40,6 @@ const props = defineProps({
     technicalOpinionAi: { type: Object, default: null },
     technicalOpinionAiPending: { type: Boolean, default: false },
     technicalOpinionGeneratePostUrl: { type: String, required: true },
-    generateSuggestedPlanUrl: { type: String, required: true },
     riskScenario: { type: String, default: null },
     riskScenarioLabel: { type: String, default: null },
     nr1Reports: { type: Object, default: () => ({ executive: null, technical_referral: null }) },
@@ -52,11 +48,9 @@ const props = defineProps({
 const { canAdmin } = useAdminPermissions();
 const showDeleteSurveyModal = ref(false);
 const showExportPdfModal = ref(false);
-const includeActionsInPdf = ref(true);
 const previewingPlanPdf = ref(false);
 
 const openExportPdfModal = () => {
-    includeActionsInPdf.value = true;
     showExportPdfModal.value = true;
 };
 
@@ -64,7 +58,6 @@ const confirmExportPdf = () => {
     const url = route('admin.companies.surveys.action-plan.pdf', {
         company: props.company.id,
         survey: props.survey.id,
-        include_actions: includeActionsInPdf.value ? 1 : 0,
     });
     showExportPdfModal.value = false;
     window.open(url, '_blank', 'noopener');
@@ -81,13 +74,7 @@ const deleteSurvey = () => {
 const initialOpinionHtml =
     props.technical_opinion?.trim() || props.plan?.technical_opinion?.trim() || '<p></p>';
 
-const mapPlanItems = (items) =>
-    (items?.length ?? 0) > 0
-        ? items.map((i) => ({ title: i.title, description: i.description ?? '' }))
-        : [{ title: '', description: '' }];
-
 const form = useForm({
-    items: mapPlanItems(props.items),
     technical_opinion: initialOpinionHtml === '<p></p>' ? '' : initialOpinionHtml,
     technical_opinion_file: null,
     remove_technical_opinion_file: false,
@@ -96,13 +83,6 @@ const form = useForm({
     technical_referral_file: null,
     remove_technical_referral_file: false,
 });
-
-watch(
-    () => props.items,
-    (items) => {
-        form.items = mapPlanItems(items);
-    },
-);
 
 const existingOpinionFileName = ref(props.plan?.technical_opinion_file_name ?? null);
 const existingOpinionFileUrl = ref(props.plan?.technical_opinion_file_url ?? null);
@@ -182,26 +162,6 @@ const removeExistingReferralFile = () => {
     clearSelectedReferralFile();
 };
 
-const generatingSuggestedPlan = ref(false);
-
-const generateSuggestedPlan = () => {
-    generatingSuggestedPlan.value = true;
-    router.post(
-        props.generateSuggestedPlanUrl,
-        {},
-        {
-            preserveState: false,
-            preserveScroll: true,
-            onSuccess: () => {
-                form.items = mapPlanItems(props.items);
-            },
-            onFinish: () => {
-                generatingSuggestedPlan.value = false;
-            },
-        },
-    );
-};
-
 const opinionEditor = useEditor({
     extensions: [StarterKit.configure({ heading: { levels: [2, 3, 4] } }), Underline],
     content: initialOpinionHtml,
@@ -229,7 +189,6 @@ const previewPlanDocumentPdf = async () => {
         const response = await window.axios.post(
             route('admin.companies.surveys.action-plan.document-pdf', [props.company.id, props.survey.id]),
             {
-                items: form.items.filter((row) => String(row.title).trim() !== ''),
                 technical_opinion: form.technical_opinion || null,
             },
             { responseType: 'blob' },
@@ -317,22 +276,10 @@ onUnmounted(() => {
     }
 });
 
-const addRow = () => {
-    form.items.push({ title: '', description: '' });
-};
-
-const removeRow = (index) => {
-    form.items.splice(index, 1);
-    if (form.items.length === 0) {
-        form.items.push({ title: '', description: '' });
-    }
-};
-
 const submit = () => {
     syncEditorToForm();
     form
         .transform((data) => ({
-            items: data.items.filter((row) => String(row.title).trim() !== ''),
             technical_opinion: data.technical_opinion || null,
             technical_opinion_file: data.technical_opinion_file,
             remove_technical_opinion_file: data.remove_technical_opinion_file,
@@ -372,7 +319,7 @@ const submit = () => {
                         :disabled="previewingPlanPdf"
                         @click="previewPlanDocumentPdf"
                     >
-                        {{ previewingPlanPdf ? 'Gerando PDF…' : 'PDF do plano de ação' }}
+                        {{ previewingPlanPdf ? 'Gerando PDF…' : 'PDF do parecer técnico' }}
                     </button>
                     <button
                         type="button"
@@ -452,7 +399,7 @@ const submit = () => {
         >
             <strong>{{ riskScenarioLabel }}</strong>
             <span class="mt-1 block text-violet-900/90">
-                Os relatórios NR-1 (executivo, plano de ação e encaminhamento técnico) são gerados automaticamente conforme este cenário.
+                Os relatórios NR-1 (executivo e encaminhamento técnico) são gerados automaticamente conforme este cenário.
                 Você pode substituir o executivo ou o encaminhamento por arquivos personalizados abaixo.
             </span>
         </div>
@@ -467,15 +414,15 @@ const submit = () => {
         <div v-else class="mb-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             A Mia não está disponível (API desativada ou sem chave). Configure em
             <Link :href="route('admin.settings.edit')" class="font-medium text-talents-800 underline">Configurações</Link>
-            para gerar análise automática e apoiar o preenchimento do parecer e do plano.
+            para gerar análise automática e apoiar o preenchimento do parecer técnico.
         </div>
 
         <div class="mb-6 rounded-lg border border-sky-100 bg-sky-50/80 p-4 text-sm text-sky-950">
             <p>
-                Redija o <strong>parecer técnico</strong> e/ou os <strong>itens do plano de ação</strong>. Use
-                <strong>PDF do plano de ação</strong> para gerar o documento individual (parecer e ações) com o conteúdo atual, sem publicar
+                Redija o <strong>parecer técnico</strong> e, se quiser, anexe os arquivos abaixo. Use
+                <strong>PDF do parecer técnico</strong> para gerar o documento com o conteúdo atual, sem publicar
                 para a empresa. Ao salvar com conteúdo, o material fica <strong>visível para a empresa</strong> na página Plano de ação. Para
-                ocultar tudo do cliente, limpe o parecer e remova todos os itens e salve.
+                ocultar tudo do cliente, limpe o parecer, remova os anexos e salve.
             </p>
             <p v-if="plan?.admin_published_at" class="mt-2 text-xs text-sky-900/80">
                 Última publicação: {{ plan.admin_published_at }}
@@ -729,71 +676,6 @@ const submit = () => {
                 </div>
             </div>
 
-            <div class="space-y-6 surface-card p-6 text-slate-900">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <h3 class="font-semibold text-talents-800">Itens do plano de ação</h3>
-                    <div class="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            class="rounded-md border border-talents-300 bg-white px-3 py-1.5 text-sm font-medium text-talents-800 hover:bg-talents-50 disabled:opacity-50"
-                            :disabled="previewingPlanPdf"
-                            @click="previewPlanDocumentPdf"
-                        >
-                            {{ previewingPlanPdf ? 'Gerando PDF…' : 'Gerar PDF do plano' }}
-                        </button>
-                        <button
-                            v-if="overall"
-                            type="button"
-                            class="rounded-md border border-talents-300 bg-white px-3 py-1.5 text-sm font-medium text-talents-800 hover:bg-talents-50 disabled:opacity-50"
-                            :disabled="generatingSuggestedPlan"
-                            @click="generateSuggestedPlan"
-                        >
-                            {{ generatingSuggestedPlan ? 'Gerando plano…' : 'Gerar plano sugerido' }}
-                        </button>
-                        <button type="button" class="text-sm font-medium text-talents-700 hover:underline" @click="addRow">+ Adicionar item</button>
-                    </div>
-                </div>
-
-                <div
-                    v-for="(row, index) in form.items"
-                    :key="'plan-item-' + index + '-' + String(row.title).slice(0, 64)"
-                    class="rounded-lg border border-gray-200 p-4"
-                >
-                    <div class="flex items-start justify-between gap-2">
-                        <div class="grid flex-1 gap-3 sm:grid-cols-1">
-                            <div>
-                                <InputLabel :for="'title-' + index" value="Título" />
-                                <TextInput
-                                    :id="'title-' + index"
-                                    v-model="row.title"
-                                    class="mt-1 block w-full"
-                                    placeholder="Ex.: Revisar dimensão demanda psicológica"
-                                />
-                            </div>
-                            <div>
-                                <InputLabel :for="'desc-' + index" value="Descrição" />
-                                <textarea
-                                    :id="'desc-' + index"
-                                    v-model="row.description"
-                                    rows="6"
-                                    class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                    placeholder="O que deve ser feito, como conduzir e como acompanhar..."
-                                />
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            class="shrink-0 rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm text-red-700 hover:bg-red-50"
-                            @click="removeRow(index)"
-                        >
-                            Remover
-                        </button>
-                    </div>
-                </div>
-
-                <div v-if="form.errors.items" class="text-sm text-red-600">{{ form.errors.items }}</div>
-            </div>
-
             <div class="flex gap-3">
                 <PrimaryButton :disabled="form.processing">Salvar e publicar para a empresa</PrimaryButton>
             </div>
@@ -831,22 +713,9 @@ const submit = () => {
             <div class="p-6">
                 <h2 class="text-lg font-medium text-gray-900">Exportar PDF dos resultados</h2>
                 <p class="mt-2 text-sm text-gray-600">
-                    Gera o relatório com indicadores e gráficos da pesquisa. O PDF individual do plano de ação (parecer e ações) está no botão
-                    <strong>PDF do plano de ação</strong> e não publica o conteúdo para a empresa.
+                    Gera o relatório com indicadores e gráficos da pesquisa. O PDF individual do parecer técnico está no botão
+                    <strong>PDF do parecer técnico</strong> e não publica o conteúdo para a empresa.
                 </p>
-                <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800">
-                    <input
-                        v-model="includeActionsInPdf"
-                        type="checkbox"
-                        class="mt-0.5 rounded border-slate-300 text-talents-700 focus:ring-talents-500"
-                    />
-                    <span>
-                        <span class="font-medium">Incluir seção «Ações»</span>
-                        <span class="mt-0.5 block text-xs text-slate-500">
-                            Tabela de ações, texto introdutório e aviso de validação SST/PGR.
-                        </span>
-                    </span>
-                </label>
                 <div class="mt-6 flex justify-end gap-2">
                     <SecondaryButton type="button" @click="showExportPdfModal = false">Cancelar</SecondaryButton>
                     <PrimaryButton type="button" @click="confirmExportPdf">Gerar PDF</PrimaryButton>

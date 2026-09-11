@@ -313,13 +313,6 @@ const attentionHref = computed(() => {
                     detail-label="Abrir"
                 />
                 <StatCard
-                    v-if="can('planos_acao', 'view')"
-                    label="Itens de plano em aberto"
-                    :value="openActionPlanCount"
-                    :detail-href="actionPlanHref || route('client.surveys.index')"
-                    detail-label="Plano de ação"
-                />
-                <StatCard
                     v-if="can('denuncias', 'view')"
                     label="Denúncias pendentes"
                     :value="pendingComplaintsCount"
@@ -389,32 +382,6 @@ const attentionHref = computed(() => {
                 </ul>
                 <EmptyState v-else class="mt-2 border-0 bg-transparent py-6" title="Sem tarefas atribuídas" />
             </div>
-        </div>
-
-        <!-- Plano de ação itens -->
-        <div v-if="can('planos_acao', 'view') && openActionPlanItems?.length" class="dashboard-panel-compact mt-8">
-            <SectionHeader title="Próximos itens do plano de ação" subtitle="Em aberto na sua empresa">
-                <template #action>
-                    <Link v-if="actionPlanHref" :href="actionPlanHref" class="text-xs font-semibold text-talents-700 hover:underline">
-                        Abrir plano
-                    </Link>
-                </template>
-            </SectionHeader>
-            <ul class="mt-3 divide-y divide-slate-100 text-sm">
-                <li v-for="it in openActionPlanItems" :key="it.id" class="flex flex-wrap items-center justify-between gap-2 py-2">
-                    <div>
-                        <p class="font-medium text-slate-900">{{ it.title }}</p>
-                        <p class="text-xs text-slate-500">{{ it.survey_title }} · {{ it.status === 'in_progress' ? 'Em progresso' : 'Pendente' }}</p>
-                    </div>
-                    <span
-                        v-if="it.due_date"
-                        class="text-xs text-slate-500"
-                        :title="formatDateTitle(it.due_date)"
-                    >
-                        Prazo {{ formatRelative(it.due_date) }}
-                    </span>
-                </li>
-            </ul>
         </div>
 
         <!-- Denúncias — link público para colaboradores -->

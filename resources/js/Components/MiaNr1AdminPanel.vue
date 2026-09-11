@@ -88,8 +88,8 @@ onUnmounted(() => {
                         <span class="text-sm font-normal text-gray-500">Apoio ao plano de ação (admin)</span>
                     </div>
                     <p class="mt-2 text-sm text-gray-600">
-                        A Mia resume o cenário dos dados agregados. Use como referência ao redigir os itens do plano para a empresa — não
-                        substitui o parecer do especialista nem o preenchimento profissional do plano.
+                        A Mia resume o cenário dos dados agregados. Use como referência ao redigir o parecer técnico para a empresa — não
+                        substitui o parecer do especialista.
                     </p>
                     <div class="mt-4 flex flex-wrap gap-2">
                         <button

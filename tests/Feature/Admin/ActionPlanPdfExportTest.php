@@ -20,7 +20,7 @@ class ActionPlanPdfExportTest extends TestCase
     use RefreshDatabase;
     use SeedsNr1SurveyResults;
 
-    public function test_action_plan_blade_omits_actions_section_when_flag_is_false(): void
+    public function test_action_plan_blade_omits_actions_section(): void
     {
         $fx = $this->createSurveyFixture();
         $this->seedNr1OverallAndSectionResult($fx, 'yellow', 3.0);
@@ -28,9 +28,9 @@ class ActionPlanPdfExportTest extends TestCase
 
         $survey = $fx->survey->fresh()->load(['company', 'results', 'insights']);
         $scenario = Nr1RiskScenarioResolver::forSurvey($survey) ?? 'yellow';
-        $plan = ActionPlan::query()->where('survey_id', $survey->id)->with('items')->firstOrFail();
+        $plan = ActionPlan::query()->where('survey_id', $survey->id)->firstOrFail();
 
-        $htmlWithout = view('reports.action_plan', [
+        $html = view('reports.action_plan', [
             'survey' => $survey,
             'scenario' => $scenario,
             'scenarioConfig' => Nr1RiskScenarioResolver::scenarioConfig($scenario),
@@ -38,8 +38,6 @@ class ActionPlanPdfExportTest extends TestCase
             'riskColor' => fn (?string $l) => '#000',
             'logoBase64' => null,
             'plan' => $plan,
-            'items' => $plan->items,
-            'includeActions' => false,
             'technicalOpinion' => null,
             'overall' => null,
             'bySection' => [],
@@ -53,39 +51,12 @@ class ActionPlanPdfExportTest extends TestCase
             'likertLabel' => fn () => '',
         ])->render();
 
-        $this->assertStringNotContainsString('<h2>Ações</h2>', $htmlWithout);
-        $this->assertStringNotContainsString('Ação de teste PDF', $htmlWithout);
-        $this->assertStringNotContainsString('validado pela equipe de SST', $htmlWithout);
-
-        $htmlWith = view('reports.action_plan', [
-            'survey' => $survey,
-            'scenario' => $scenario,
-            'scenarioConfig' => Nr1RiskScenarioResolver::scenarioConfig($scenario),
-            'riskLevelLabel' => fn (?string $l) => config('nr1.risk_labels.'.$l, $l),
-            'riskColor' => fn (?string $l) => '#000',
-            'logoBase64' => null,
-            'plan' => $plan,
-            'items' => $plan->items,
-            'includeActions' => true,
-            'technicalOpinion' => null,
-            'overall' => null,
-            'bySection' => [],
-            'deptOveralls' => [],
-            'deptSectionsByDepartment' => [],
-            'departmentParticipation' => [],
-            'questionDistributions' => [],
-            'insights' => collect(),
-            'radarSvg' => null,
-            'heatmapCell' => fn () => null,
-            'likertLabel' => fn () => '',
-        ])->render();
-
-        $this->assertStringContainsString('<h2>Ações</h2>', $htmlWith);
-        $this->assertStringContainsString('Ação de teste PDF', $htmlWith);
-        $this->assertStringContainsString('validado pela equipe de SST', $htmlWith);
+        $this->assertStringNotContainsString('<h2>Ações</h2>', $html);
+        $this->assertStringNotContainsString('Ação de teste PDF', $html);
+        $this->assertStringNotContainsString('validado pela equipe de SST', $html);
     }
 
-    public function test_admin_pdf_endpoint_respects_include_actions_query(): void
+    public function test_admin_can_download_results_pdf(): void
     {
         $fx = $this->createSurveyFixture();
         $this->seedNr1OverallAndSectionResult($fx, 'yellow', 3.0);
@@ -93,31 +64,17 @@ class ActionPlanPdfExportTest extends TestCase
 
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
-        $withActions = $this->actingAs($admin)
+        $response = $this->actingAs($admin)
             ->get(route('admin.companies.surveys.action-plan.pdf', [
                 'company' => $fx->company->id,
                 'survey' => $fx->survey->id,
-                'include_actions' => 1,
             ]));
 
-        $withActions->assertOk();
-        $this->assertStringContainsString('application/pdf', (string) $withActions->headers->get('content-type'));
-
-        $withoutActions = $this->actingAs($admin)
-            ->get(route('admin.companies.surveys.action-plan.pdf', [
-                'company' => $fx->company->id,
-                'survey' => $fx->survey->id,
-                'include_actions' => 0,
-            ]));
-
-        $withoutActions->assertOk();
-        $this->assertStringContainsString('application/pdf', (string) $withoutActions->headers->get('content-type'));
-
-        // PDF binário difere quando a seção Ações é omitida.
-        $this->assertNotSame($withActions->getContent(), $withoutActions->getContent());
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
     }
 
-    public function test_report_generator_defaults_to_including_actions(): void
+    public function test_report_generator_builds_results_pdf(): void
     {
         $fx = $this->createSurveyFixture();
         $this->seedNr1OverallAndSectionResult($fx, 'green', 2.0);
@@ -130,7 +87,7 @@ class ActionPlanPdfExportTest extends TestCase
         $this->assertStringStartsWith('%PDF', $output);
     }
 
-    public function test_document_blade_contains_only_opinion_and_actions(): void
+    public function test_document_blade_contains_only_technical_opinion(): void
     {
         $fx = $this->createSurveyFixture();
         $this->seedNr1OverallAndSectionResult($fx, 'yellow', 3.0);
@@ -144,18 +101,13 @@ class ActionPlanPdfExportTest extends TestCase
             'scenarioConfig' => Nr1RiskScenarioResolver::scenarioConfig($scenario),
             'logoBase64' => null,
             'technicalOpinion' => '<p>Parecer de rascunho</p>',
-            'items' => [
-                [
-                    'title' => 'Ação individual PDF',
-                    'description' => 'Descrição da ação',
-                    'status' => 'pending',
-                ],
-            ],
             'isDraft' => true,
         ])->render();
 
         $this->assertStringContainsString('Parecer de rascunho', $html);
-        $this->assertStringContainsString('Ação individual PDF', $html);
+        $this->assertStringContainsString('Parecer técnico NR-1', $html);
+        $this->assertStringNotContainsString('<h2>Ações</h2>', $html);
+        $this->assertStringNotContainsString('Ação individual PDF', $html);
         $this->assertStringContainsString('Rascunho — este documento ainda não foi publicado', $html);
         $this->assertStringNotContainsString('Indicador geral de risco', $html);
         $this->assertStringNotContainsString('<h2>Dimensões</h2>', $html);
@@ -174,9 +126,6 @@ class ActionPlanPdfExportTest extends TestCase
                 'survey' => $fx->survey->id,
             ]), [
                 'technical_opinion' => '<p>Parecer ainda não publicado</p>',
-                'items' => [
-                    ['title' => 'Ação rascunho', 'description' => 'Fazer X'],
-                ],
             ]);
 
         $response->assertOk();
