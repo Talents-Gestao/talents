@@ -417,17 +417,9 @@ const submit = () => {
             para gerar análise automática e apoiar o preenchimento do parecer técnico.
         </div>
 
-        <div class="mb-6 rounded-lg border border-sky-100 bg-sky-50/80 p-4 text-sm text-sky-950">
-            <p>
-                Redija o <strong>parecer técnico</strong> e, se quiser, anexe os arquivos abaixo. Use
-                <strong>PDF do parecer técnico</strong> para gerar o documento com o conteúdo atual, sem publicar
-                para a empresa. Ao salvar com conteúdo, o material fica <strong>visível para a empresa</strong> na página Plano de ação. Para
-                ocultar tudo do cliente, limpe o parecer, remova os anexos e salve.
-            </p>
-            <p v-if="plan?.admin_published_at" class="mt-2 text-xs text-sky-900/80">
-                Última publicação: {{ plan.admin_published_at }}
-            </p>
-        </div>
+        <p v-if="plan?.admin_published_at" class="mb-6 text-sm text-gray-500">
+            Última publicação: {{ plan.admin_published_at }}
+        </p>
 
         <form class="space-y-8" @submit.prevent="submit">
             <div class="surface-card space-y-6 p-6 text-slate-900">
