@@ -81,11 +81,13 @@ const deleteSurvey = () => {
 const initialOpinionHtml =
     props.technical_opinion?.trim() || props.plan?.technical_opinion?.trim() || '<p></p>';
 
+const mapPlanItems = (items) =>
+    (items?.length ?? 0) > 0
+        ? items.map((i) => ({ title: i.title, description: i.description ?? '' }))
+        : [{ title: '', description: '' }];
+
 const form = useForm({
-    items:
-        props.items.length > 0
-            ? props.items.map((i) => ({ title: i.title, description: i.description ?? '' }))
-            : [{ title: '', description: '' }],
+    items: mapPlanItems(props.items),
     technical_opinion: initialOpinionHtml === '<p></p>' ? '' : initialOpinionHtml,
     technical_opinion_file: null,
     remove_technical_opinion_file: false,
@@ -94,6 +96,13 @@ const form = useForm({
     technical_referral_file: null,
     remove_technical_referral_file: false,
 });
+
+watch(
+    () => props.items,
+    (items) => {
+        form.items = mapPlanItems(items);
+    },
+);
 
 const existingOpinionFileName = ref(props.plan?.technical_opinion_file_name ?? null);
 const existingOpinionFileUrl = ref(props.plan?.technical_opinion_file_url ?? null);
@@ -173,8 +182,24 @@ const removeExistingReferralFile = () => {
     clearSelectedReferralFile();
 };
 
+const generatingSuggestedPlan = ref(false);
+
 const generateSuggestedPlan = () => {
-    router.post(props.generateSuggestedPlanUrl);
+    generatingSuggestedPlan.value = true;
+    router.post(
+        props.generateSuggestedPlanUrl,
+        {},
+        {
+            preserveState: false,
+            preserveScroll: true,
+            onSuccess: () => {
+                form.items = mapPlanItems(props.items);
+            },
+            onFinish: () => {
+                generatingSuggestedPlan.value = false;
+            },
+        },
+    );
 };
 
 const opinionEditor = useEditor({
@@ -719,16 +744,21 @@ const submit = () => {
                         <button
                             v-if="overall"
                             type="button"
-                            class="rounded-md border border-talents-300 bg-white px-3 py-1.5 text-sm font-medium text-talents-800 hover:bg-talents-50"
+                            class="rounded-md border border-talents-300 bg-white px-3 py-1.5 text-sm font-medium text-talents-800 hover:bg-talents-50 disabled:opacity-50"
+                            :disabled="generatingSuggestedPlan"
                             @click="generateSuggestedPlan"
                         >
-                            Gerar plano sugerido
+                            {{ generatingSuggestedPlan ? 'Gerando plano…' : 'Gerar plano sugerido' }}
                         </button>
                         <button type="button" class="text-sm font-medium text-talents-700 hover:underline" @click="addRow">+ Adicionar item</button>
                     </div>
                 </div>
 
-                <div v-for="(row, index) in form.items" :key="index" class="rounded-lg border border-gray-200 p-4">
+                <div
+                    v-for="(row, index) in form.items"
+                    :key="'plan-item-' + index + '-' + String(row.title).slice(0, 64)"
+                    class="rounded-lg border border-gray-200 p-4"
+                >
                     <div class="flex items-start justify-between gap-2">
                         <div class="grid flex-1 gap-3 sm:grid-cols-1">
                             <div>
