@@ -30,7 +30,7 @@ class ActionPlanController extends Controller
     {
         $survey = $this->findSurvey($request, $survey);
 
-        $plan = $survey->actionPlans()->with('items')->latest()->first();
+        $plan = $survey->actionPlans()->latest()->first();
 
         $hasOpinion = $plan !== null
             && filled($plan->technical_opinion)
@@ -38,11 +38,9 @@ class ActionPlanController extends Controller
 
         $hasOpinionFile = $plan !== null && filled($plan->technical_opinion_file_path);
 
-        $hasItems = $plan !== null && $plan->items->isNotEmpty();
-
         $visible = $plan !== null
             && $plan->admin_published_at !== null
-            && ($hasOpinion || $hasOpinionFile || $hasItems);
+            && ($hasOpinion || $hasOpinionFile);
 
         return Inertia::render('Client/Surveys/ActionPlan', [
             'survey' => $survey,
@@ -53,7 +51,6 @@ class ActionPlanController extends Controller
                 'technical_opinion_file_url' => $hasOpinionFile
                     ? route('client.surveys.action-plan.technical-opinion-file', $survey)
                     : null,
-                'items' => $plan->items,
             ] : null,
             'actionPlanLocked' => ! $visible,
         ]);
