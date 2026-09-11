@@ -525,6 +525,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
         Route::post('quadros/{board}/membros', [TaskBoardMemberController::class, 'store'])->name('quadros.membros.store');
         Route::delete('quadros/{board}/membros/{user}', [TaskBoardMemberController::class, 'destroy'])->name('quadros.membros.destroy');
+        Route::post('quadros/{board}/partilhar-cartoes', [TasksTaskBoardController::class, 'shareCards'])
+            ->middleware('admin.can:tarefas,edit')
+            ->name('quadros.partilhar-cartoes');
     });
 
     Route::middleware('admin.can:entrevistas_roteiros')->prefix('entrevistas')->name('entrevistas.')->group(function () {

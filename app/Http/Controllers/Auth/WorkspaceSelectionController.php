@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class WorkspaceSelectionController extends Controller
 {
@@ -42,7 +43,7 @@ class WorkspaceSelectionController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|SymfonyResponse
     {
         $user = $request->user();
         abort_unless($user, 403);
@@ -54,6 +55,7 @@ class WorkspaceSelectionController extends Controller
         $workspace = $user->workspaces()
             ->where('id', $validated['workspace_id'])
             ->where('is_active', true)
+            ->with('company:id,name')
             ->first();
 
         if (! $workspace) {
@@ -64,6 +66,9 @@ class WorkspaceSelectionController extends Controller
 
         $this->workspaceManager->selectWorkspace($user, $workspace, $request);
 
-        return $this->workspaceManager->redirectForWorkspace($user, $workspace);
+        $redirect = $this->workspaceManager->redirectForWorkspace($user, $workspace);
+
+        // Recarrega o frontend por completo (layout, permissões, menus).
+        return Inertia::location($redirect->getTargetUrl());
     }
 }

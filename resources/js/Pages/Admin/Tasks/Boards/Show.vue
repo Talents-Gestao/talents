@@ -121,6 +121,7 @@ function formatDateTitle(value) {
                 :is-admin="true"
                 :company-users="companyUsers || []"
                 :team-users="teamUsers || []"
+                :companies="companies || []"
                 @refresh="refreshBoard"
             />
 
