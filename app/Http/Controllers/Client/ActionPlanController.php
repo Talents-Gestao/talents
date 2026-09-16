@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\ActionPlanItem;
 use App\Models\Survey;
+use App\Support\TechnicalOpinionDisclaimerStripper;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -46,7 +47,7 @@ class ActionPlanController extends Controller
             'survey' => $survey,
             'plan' => $visible ? [
                 'id' => $plan->id,
-                'technical_opinion' => $plan->technical_opinion,
+                'technical_opinion' => TechnicalOpinionDisclaimerStripper::strip($plan->technical_opinion),
                 'technical_opinion_file_name' => $plan->technical_opinion_file_name,
                 'technical_opinion_file_url' => $hasOpinionFile
                     ? route('client.surveys.action-plan.technical-opinion-file', $survey)
