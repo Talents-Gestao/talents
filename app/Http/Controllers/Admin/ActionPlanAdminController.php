@@ -53,13 +53,14 @@ class ActionPlanAdminController extends Controller
         if ($request->isMethod('post')) {
             $data = $request->validate([
                 'technical_opinion' => ['nullable', 'string'],
+                'is_draft' => ['sometimes', 'boolean'],
             ]);
 
             $overrides = [
-                'technical_opinion' => TechnicalOpinionDisclaimerStripper::strip(
-                    HtmlSanitizer::sanitizeRichText($data['technical_opinion'] ?? null)
-                ),
-                'is_draft' => true,
+                'technical_opinion' => HtmlSanitizer::sanitizeRichText($data['technical_opinion'] ?? null),
+                'is_draft' => array_key_exists('is_draft', $data)
+                    ? (bool) $data['is_draft']
+                    : true,
             ];
         }
 
