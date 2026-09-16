@@ -1,6 +1,7 @@
 <script setup>
 import ApexChart from '@/Components/Charts/ApexChart.vue';
-import { computed, ref } from 'vue';
+import { ChevronDownIcon } from '@heroicons/vue/24/outline';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     survey: Object,
@@ -16,6 +17,30 @@ const props = defineProps({
 
 const likertScaleMax = 5;
 const likertScaleMin = 1;
+
+/** Médias Likert em PT-BR (vírgula decimal), com casas fixas. */
+const formatLikertScore = (value, digits = 2) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) {
+        return '—';
+    }
+    return n.toLocaleString('pt-BR', {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+    });
+};
+
+/** Eixo 1–5: inteiros limpos (evita 1.000 do ApexCharts). */
+const formatLikertAxisTick = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) {
+        return '';
+    }
+    if (Math.abs(n - Math.round(n)) < 1e-9) {
+        return String(Math.round(n));
+    }
+    return formatLikertScore(n, 1);
+};
 
 const selectedDepartmentId = ref('');
 
@@ -111,7 +136,13 @@ const buildDimensionRadarOptions = (sections) => {
     });
 
     return {
-        chart: { type: 'radar', toolbar: { show: false }, foreColor: '#334155' },
+        chart: {
+            type: 'radar',
+            toolbar: { show: false },
+            foreColor: '#334155',
+            animations: { enabled: true, speed: 700 },
+            fontFamily: 'inherit',
+        },
         colors: ['#64748b'],
         stroke: { width: 2.5, colors: ['#94a3b8'] },
         fill: { opacity: 0.12, colors: ['#cbd5e1'] },
@@ -136,8 +167,10 @@ const buildDimensionRadarOptions = (sections) => {
             min: likertScaleMin,
             max: likertScaleMax,
             tickAmount: 4,
+            forceNiceScale: false,
+            decimalsInFloat: 0,
             labels: {
-                formatter: (value) => Number(value).toFixed(1),
+                formatter: formatLikertAxisTick,
                 style: { fontSize: '11px', colors: ['#64748b'] },
             },
         },
@@ -150,7 +183,7 @@ const buildDimensionRadarOptions = (sections) => {
         },
         dataLabels: {
             enabled: true,
-            formatter: (value) => Number(value).toFixed(2),
+            formatter: (value) => formatLikertScore(value, 2),
             style: {
                 fontSize: '12px',
                 fontWeight: 700,
@@ -171,7 +204,7 @@ const buildDimensionRadarOptions = (sections) => {
                 formatter: (value, { dataPointIndex }) => {
                     const row = rows[dataPointIndex];
                     const level = resolveRiskLevel(row);
-                    return `${Number(value).toFixed(2)} · ${healthLevelLabel(level)}`;
+                    return `${formatLikertScore(value, 2)} · ${healthLevelLabel(level)}`;
                 },
             },
         },
@@ -244,23 +277,50 @@ const dimensionScoreClass = (level) => {
 const deptBarChart = computed(() => {
     const rows = props.deptOveralls ?? [];
     return {
-        chart: { type: 'bar', toolbar: { show: false }, foreColor: '#334155' },
+        chart: {
+            type: 'bar',
+            toolbar: { show: false },
+            foreColor: '#334155',
+            animations: { enabled: true, speed: 600 },
+            fontFamily: 'inherit',
+        },
         plotOptions: {
             bar: {
-                borderRadius: 4,
-                columnWidth: '55%',
+                borderRadius: 6,
+                columnWidth: '58%',
                 distributed: true,
                 dataLabels: { position: 'top' },
             },
         },
         colors: rows.map((r) => riskToBarColor(r.risk_level)),
-        dataLabels: { enabled: true, offsetY: -8 },
+        dataLabels: {
+            enabled: true,
+            offsetY: -18,
+            formatter: (val) => formatLikertScore(val, 2),
+            style: { fontSize: '12px', fontWeight: 700, colors: ['#0f172a'] },
+        },
+        grid: {
+            borderColor: '#e2e8f0',
+            strokeDashArray: 4,
+            padding: { top: 12 },
+        },
         xaxis: {
             categories: rows.map((r) => r.department_name),
+            labels: { style: { fontSize: '12px', fontWeight: 600, colors: '#475569' } },
+            axisBorder: { show: false },
+            axisTicks: { show: false },
         },
-        yaxis: { min: likertScaleMin, max: likertScaleMax, title: { text: 'Média (1–5)' } },
+        yaxis: {
+            min: likertScaleMin,
+            max: likertScaleMax,
+            tickAmount: 4,
+            forceNiceScale: false,
+            decimalsInFloat: 0,
+            title: { text: 'Média (1–5)', style: { fontSize: '12px', fontWeight: 600, color: '#64748b' } },
+            labels: { formatter: formatLikertAxisTick },
+        },
         legend: { show: false },
-        tooltip: { y: { formatter: (val) => `${Number(val).toFixed(1)}` } },
+        tooltip: { y: { formatter: (val) => formatLikertScore(val, 2) } },
     };
 });
 
@@ -287,14 +347,36 @@ const deptGroupedBar = computed(() => {
         };
     });
     return {
-        chart: { type: 'bar', toolbar: { show: false }, foreColor: '#334155' },
-        plotOptions: { bar: { horizontal: false, columnWidth: '70%' } },
-        xaxis: { categories: cats },
-        yaxis: { min: likertScaleMin, max: likertScaleMax, title: { text: 'Média (1–5)' } },
-        legend: { position: 'bottom' },
+        chart: {
+            type: 'bar',
+            toolbar: { show: false },
+            foreColor: '#334155',
+            animations: { enabled: true, speed: 650 },
+            fontFamily: 'inherit',
+        },
+        plotOptions: { bar: { horizontal: false, columnWidth: '68%', borderRadius: 3 } },
+        xaxis: {
+            categories: cats,
+            labels: { style: { fontSize: '12px', fontWeight: 600, colors: '#475569' } },
+        },
+        yaxis: {
+            min: likertScaleMin,
+            max: likertScaleMax,
+            tickAmount: 4,
+            forceNiceScale: false,
+            decimalsInFloat: 0,
+            title: { text: 'Média (1–5)', style: { fontSize: '12px', fontWeight: 600, color: '#64748b' } },
+            labels: { formatter: formatLikertAxisTick },
+        },
+        legend: { position: 'bottom', fontSize: '12px', fontWeight: 600, markers: { radius: 10 } },
         dataLabels: { enabled: false },
         colors: ['#7b4fa2', '#b388d9', '#632a7e', '#4a2070', '#9b6bc4', '#d4b8e4', '#e8dcf2'],
-        tooltip: { shared: true, intersect: false },
+        grid: { borderColor: '#e2e8f0', strokeDashArray: 4 },
+        tooltip: {
+            shared: true,
+            intersect: false,
+            y: { formatter: (val) => (val == null ? '—' : formatLikertScore(val, 2)) },
+        },
     };
 });
 
@@ -330,13 +412,116 @@ const healthBadge = (level) => {
     if (level === 'yellow') return 'bg-amber-100 text-amber-800';
     return 'bg-red-100 text-red-800';
 };
+
+/** Barras por opção Likert: intensidade de risco (1 baixo → 5 alto). */
+const optionBarClass = (value) => {
+    if (value <= 2) return 'bg-emerald-500';
+    if (value === 3) return 'bg-amber-400';
+    if (value === 4) return 'bg-orange-500';
+    return 'bg-red-500';
+};
+
+const questionAverage = (question) => {
+    if (!question?.total) {
+        return null;
+    }
+    let weighted = 0;
+    for (const value of [1, 2, 3, 4, 5]) {
+        weighted += value * (question.counts?.[value] ?? 0);
+    }
+    return weighted / question.total;
+};
+
+const showCriticalQuestionsOnly = ref(false);
+
+const filteredQuestionDistributions = computed(() => {
+    const sections = activeQuestionDistributions.value ?? [];
+    if (!showCriticalQuestionsOnly.value) {
+        return sections;
+    }
+    return sections
+        .map((section) => ({
+            ...section,
+            questions: (section.questions ?? []).filter((q) => {
+                const avg = questionAverage(q);
+                return avg != null && avg > 2.33;
+            }),
+        }))
+        .filter((section) => section.questions.length > 0);
+});
+
+const openQuestionSections = ref({});
+
+watch(
+    filteredQuestionDistributions,
+    (sections) => {
+        const next = { ...openQuestionSections.value };
+        for (const section of sections ?? []) {
+            if (next[section.section_id] === undefined) {
+                next[section.section_id] = false;
+            }
+        }
+        openQuestionSections.value = next;
+    },
+    { immediate: true },
+);
+
+const toggleQuestionSection = (sectionId) => {
+    openQuestionSections.value = {
+        ...openQuestionSections.value,
+        [sectionId]: !openQuestionSections.value[sectionId],
+    };
+};
+
+const expandAllQuestionSections = () => {
+    const next = {};
+    for (const section of filteredQuestionDistributions.value ?? []) {
+        next[section.section_id] = true;
+    }
+    openQuestionSections.value = next;
+};
+
+const collapseAllQuestionSections = () => {
+    const next = {};
+    for (const section of filteredQuestionDistributions.value ?? []) {
+        next[section.section_id] = false;
+    }
+    openQuestionSections.value = next;
+};
+
+const sectionQuestionMeta = (section) => {
+    const count = section.questions?.length ?? 0;
+    return `${count} pergunta${count === 1 ? '' : 's'}`;
+};
 </script>
 
 <template>
-    <div>
+    <div class="space-y-10">
+        <nav
+            class="sticky top-2 z-20 flex flex-wrap gap-2 rounded-2xl border border-talents-200/70 bg-white/95 px-3 py-2.5 text-xs font-semibold text-slate-600 shadow-sm backdrop-blur"
+            aria-label="Navegação dos resultados"
+        >
+            <span class="mr-1 hidden items-center text-[10px] font-bold uppercase tracking-wide text-talents-700 sm:inline-flex">
+                Ir para
+            </span>
+            <a href="#nr1-indicador" class="rounded-full bg-talents-50 px-3 py-1.5 text-talents-900 ring-1 ring-talents-200 hover:bg-talents-100">Indicador</a>
+            <a href="#nr1-dimensoes" class="rounded-full bg-talents-50 px-3 py-1.5 text-talents-900 ring-1 ring-talents-200 hover:bg-talents-100">Radar · dimensões</a>
+            <a href="#nr1-setores" class="rounded-full bg-talents-50 px-3 py-1.5 text-talents-900 ring-1 ring-talents-200 hover:bg-talents-100">Gráficos por setor</a>
+            <a href="#nr1-perguntas" class="rounded-full px-3 py-1.5 text-slate-600 hover:bg-slate-100">Perguntas</a>
+            <a href="#nr1-insights" class="rounded-full px-3 py-1.5 text-slate-600 hover:bg-slate-100">Insights</a>
+        </nav>
+
+        <div class="rounded-2xl border border-talents-200/60 bg-gradient-to-r from-talents-50/80 via-white to-white px-5 py-4 shadow-sm sm:px-6">
+            <p class="text-xs font-bold uppercase tracking-wider text-talents-700">Painel visual</p>
+            <h3 class="mt-1 text-xl font-semibold text-slate-900">Indicadores e gráficos principais</h3>
+            <p class="mt-1 max-w-3xl text-sm text-slate-600">
+                Leitura rápida do risco geral, radar de dimensões e comparativos por setor — mesmos dados da pesquisa, com destaque visual.
+            </p>
+        </div>
+
         <div
             v-if="departmentFilterOptions.length > 1"
-            class="mb-8 rounded-xl border border-talents-100 bg-white p-6 shadow-sm"
+            class="rounded-2xl border border-talents-100 bg-white p-5 shadow-sm sm:p-6"
         >
             <label for="department-filter" class="text-sm font-semibold text-talents-900">Filtrar por setor</label>
             <p class="mt-1 text-sm text-gray-500">
@@ -355,15 +540,19 @@ const healthBadge = (level) => {
 
         <div
             v-if="isDepartmentFiltered && activeDeptOverall"
-            class="rounded-xl border border-talents-200 bg-talents-50/40 p-6 shadow-sm"
+            id="nr1-indicador"
+            class="scroll-mt-28 overflow-hidden rounded-2xl border border-talents-200 bg-gradient-to-br from-talents-50 via-white to-white shadow-md ring-1 ring-talents-100"
         >
-            <h3 class="text-lg font-semibold text-talents-900">Resultados — {{ selectedDepartmentName }}</h3>
-            <p class="mt-1 text-sm text-gray-500">
-                {{ activeDeptOverall.respondent_count }} respondente{{ activeDeptOverall.respondent_count === 1 ? '' : 's' }} neste setor.
-            </p>
-            <div class="mt-4 flex flex-wrap items-center gap-4">
-                <span class="text-4xl font-bold text-talents-800">{{ Number(activeDeptOverall.average_score).toFixed(2) }}</span>
-                <span class="rounded-full px-3 py-1 text-sm font-medium" :class="healthBadge(activeDeptOverall.risk_level)">
+            <div class="border-b border-talents-100/80 px-6 py-4">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-talents-700">Indicador · setor</p>
+                <h3 class="mt-1 text-lg font-semibold text-talents-900">Resultados — {{ selectedDepartmentName }}</h3>
+                <p class="mt-1 text-sm text-gray-500">
+                    {{ activeDeptOverall.respondent_count }} respondente{{ activeDeptOverall.respondent_count === 1 ? '' : 's' }} neste setor.
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-4 px-6 py-6">
+                <span class="text-5xl font-bold tracking-tight text-talents-800 tabular-nums">{{ formatLikertScore(activeDeptOverall.average_score) }}</span>
+                <span class="rounded-full px-3 py-1.5 text-sm font-semibold" :class="healthBadge(activeDeptOverall.risk_level)">
                     {{ healthLevelLabel(activeDeptOverall.risk_level) }}
                 </span>
             </div>
@@ -371,25 +560,29 @@ const healthBadge = (level) => {
 
         <div
             v-if="isDepartmentFiltered && activeDeptSections.length"
-            class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+            id="nr1-dimensoes"
+            class="scroll-mt-28 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md ring-1 ring-slate-100"
         >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h3 class="text-lg font-semibold text-talents-900">Dimensões — {{ selectedDepartmentName }}</h3>
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-6 py-4">
+                <div>
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-talents-700">Gráfico · radar</p>
+                    <h3 class="mt-1 text-lg font-semibold text-talents-900">Dimensões — {{ selectedDepartmentName }}</h3>
+                </div>
                 <div class="flex flex-wrap gap-3 text-xs text-gray-600">
                     <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Favorável</span>
                     <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-amber-500" /> Intermediário</span>
                     <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-red-500" /> Elevado</span>
                 </div>
             </div>
-            <div class="mt-6 grid gap-8 xl:grid-cols-5">
-                <div class="xl:col-span-3 min-h-[34rem]">
-                    <ApexChart height="540" :options="filteredDeptRadar" :series="filteredDeptRadarSeries" />
+            <div class="grid gap-8 p-4 sm:p-6 xl:grid-cols-5">
+                <div class="min-h-[36rem] rounded-xl bg-gradient-to-b from-slate-50 to-white p-2 xl:col-span-3">
+                    <ApexChart height="560" :options="filteredDeptRadar" :series="filteredDeptRadarSeries" />
                 </div>
                 <ul class="space-y-2 xl:col-span-2">
                     <li
                         v-for="row in activeDeptSections"
                         :key="row.survey_template_section_id"
-                        class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
+                        class="flex items-center justify-between gap-3 rounded-xl border px-3 py-3 shadow-sm"
                         :class="dimensionRowClass(resolveRiskLevel(row))"
                     >
                         <span class="text-sm font-medium text-gray-900">{{ row.meta?.section_title || 'Dimensão' }}</span>
@@ -397,43 +590,59 @@ const healthBadge = (level) => {
                             class="shrink-0 rounded-md px-2.5 py-1 text-sm font-bold tabular-nums"
                             :class="dimensionScoreClass(resolveRiskLevel(row))"
                         >
-                            {{ Number(row.average_score).toFixed(2) }}
+                            {{ formatLikertScore(row.average_score) }}
                         </span>
                     </li>
                 </ul>
             </div>
         </div>
 
-        <div v-if="!isDepartmentFiltered && overall" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 class="text-lg font-semibold text-talents-900">Indicador geral de risco (1–5)</h3>
-            <p class="mt-1 text-sm text-gray-500">Média ponderada das respostas Likert. Quanto maior, maior o risco. Faixas: 1,00–2,33 favorável · 2,34–3,66 intermediário · 3,67–5,00 elevado.</p>
-            <div class="mt-4 flex flex-wrap items-center gap-4">
-                <span class="text-4xl font-bold text-talents-800">{{ Number(overall.average_score).toFixed(2) }}</span>
-                <span class="rounded-full px-3 py-1 text-sm font-medium" :class="healthBadge(overall.risk_level)">
+        <div
+            v-if="!isDepartmentFiltered && overall"
+            id="nr1-indicador"
+            class="scroll-mt-28 overflow-hidden rounded-2xl border border-talents-200 bg-gradient-to-br from-talents-50 via-white to-white shadow-md ring-1 ring-talents-100"
+        >
+            <div class="border-b border-talents-100/80 px-6 py-4">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-talents-700">Indicador geral</p>
+                <h3 class="mt-1 text-lg font-semibold text-talents-900">Indicador geral de risco (1–5)</h3>
+                <p class="mt-1 text-sm text-gray-500">
+                    Média ponderada das respostas Likert. Quanto maior, maior o risco. Faixas: 1,00–2,33 favorável · 2,34–3,66 intermediário · 3,67–5,00 elevado.
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-4 px-6 py-6">
+                <span class="text-5xl font-bold tracking-tight text-talents-800 tabular-nums">{{ formatLikertScore(overall.average_score) }}</span>
+                <span class="rounded-full px-3 py-1.5 text-sm font-semibold" :class="healthBadge(overall.risk_level)">
                     {{ healthLevelLabel(overall.risk_level) }}
                 </span>
-                <span class="text-sm text-gray-600">Respondentes: {{ overall.respondent_count }}</span>
+                <span class="text-sm font-medium text-gray-600">Respondentes: {{ overall.respondent_count }}</span>
             </div>
         </div>
 
-        <div v-if="!isDepartmentFiltered && bySection?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h3 class="text-lg font-semibold text-talents-900">Dimensões</h3>
+        <div
+            v-if="!isDepartmentFiltered && bySection?.length"
+            id="nr1-dimensoes"
+            class="scroll-mt-28 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md ring-1 ring-slate-100"
+        >
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-6 py-4">
+                <div>
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-talents-700">Gráfico · radar</p>
+                    <h3 class="mt-1 text-lg font-semibold text-talents-900">Dimensões</h3>
+                </div>
                 <div class="flex flex-wrap gap-3 text-xs text-gray-600">
                     <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Favorável (1,00–2,33)</span>
                     <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-amber-500" /> Intermediário (2,34–3,66)</span>
                     <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-red-500" /> Elevado (3,67–5,00)</span>
                 </div>
             </div>
-            <div class="mt-6 grid gap-8 xl:grid-cols-5">
-                <div class="xl:col-span-3 min-h-[34rem]">
-                    <ApexChart height="540" :options="radar" :series="radarSeries" />
+            <div class="grid gap-8 p-4 sm:p-6 xl:grid-cols-5">
+                <div class="min-h-[36rem] rounded-xl bg-gradient-to-b from-slate-50 to-white p-2 xl:col-span-3">
+                    <ApexChart height="560" :options="radar" :series="radarSeries" />
                 </div>
                 <ul class="space-y-2 xl:col-span-2">
                     <li
                         v-for="row in bySection"
                         :key="row.survey_template_section_id"
-                        class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
+                        class="flex items-center justify-between gap-3 rounded-xl border px-3 py-3 shadow-sm"
                         :class="dimensionRowClass(resolveRiskLevel(row))"
                     >
                         <span class="text-sm font-medium text-gray-900">{{ row.meta?.section_title || 'Dimensão' }}</span>
@@ -441,7 +650,7 @@ const healthBadge = (level) => {
                             class="shrink-0 rounded-md px-2.5 py-1 text-sm font-bold tabular-nums"
                             :class="dimensionScoreClass(resolveRiskLevel(row))"
                         >
-                            {{ Number(row.average_score).toFixed(2) }}
+                            {{ formatLikertScore(row.average_score) }}
                         </span>
                     </li>
                 </ul>
@@ -450,164 +659,275 @@ const healthBadge = (level) => {
 
         <div
             v-if="isDepartmentFiltered && !activeQuestionDistributions?.length"
-            class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+            class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
         >
             Não há respostas registradas para o setor {{ selectedDepartmentName }}.
         </div>
 
-        <div v-if="!isDepartmentFiltered && departmentParticipation?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 class="text-lg font-semibold text-talents-900">Participação por setor</h3>
-            <p class="mt-1 text-sm text-gray-500">
-                Setores informados pelos respondentes. Gráficos detalhados por setor exigem pelo menos 1 respondente no mesmo setor.
-            </p>
-            <table class="mt-4 min-w-full border-collapse text-sm">
-                <thead>
-                    <tr class="border-b border-gray-200 bg-gray-50">
-                        <th class="px-3 py-2 text-left font-medium text-gray-700">Setor</th>
-                        <th class="px-3 py-2 text-right font-medium text-gray-700">Respondentes</th>
-                        <th class="px-3 py-2 text-left font-medium text-gray-700">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="row in departmentParticipation"
-                        :key="row.department_id"
-                        class="border-b border-gray-100"
-                    >
-                        <td class="px-3 py-2 font-medium text-gray-900">{{ row.department_name }}</td>
-                        <td class="px-3 py-2 text-right text-gray-700">{{ row.respondent_count }}</td>
-                        <td class="px-3 py-2">
-                            <span
-                                v-if="row.meets_minimum"
-                                class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
-                            >
-                                Exibido nos gráficos
-                            </span>
-                            <span
-                                v-else
-                                class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
-                            >
-                                Aguardando mínimo (1)
-                            </span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div v-if="!isDepartmentFiltered && deptOveralls?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 class="text-lg font-semibold text-talents-900">Risco por setor (média geral)</h3>
-            <p class="mt-1 text-sm text-gray-500">
-                Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato).
-            </p>
-            <div class="mt-4 h-80">
-                <ApexChart height="320" :options="deptBarChart" :series="deptBarSeries" />
-            </div>
-        </div>
-
         <div
-            v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
-            class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+            v-if="!isDepartmentFiltered && departmentParticipation?.length"
+            id="nr1-setores"
+            class="scroll-mt-28 space-y-6"
         >
-            <h3 class="text-lg font-semibold text-talents-900">Dimensões por setor (barras agrupadas)</h3>
-            <div class="mt-4 min-h-[28rem]">
-                <ApexChart height="380" :options="deptGroupedBar" :series="deptGroupedSeries" />
+            <div class="rounded-2xl border border-talents-200/60 bg-gradient-to-r from-talents-50/80 via-white to-white px-5 py-4 shadow-sm sm:px-6">
+                <p class="text-xs font-bold uppercase tracking-wider text-talents-700">Por setor</p>
+                <h3 class="mt-1 text-xl font-semibold text-slate-900">Participação e gráficos de risco</h3>
+                <p class="mt-1 max-w-2xl text-sm text-slate-600">
+                    Comparativos dinâmicos por departamento, gerados a partir das respostas agregadas.
+                </p>
             </div>
-        </div>
 
-        <div
-            v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
-            class="mt-8 overflow-x-auto rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
-        >
-            <h3 class="text-lg font-semibold text-talents-900">Tabela de risco por setor e dimensão</h3>
-            <table class="mt-4 min-w-full border-collapse text-sm">
-                <thead>
-                    <tr class="border-b border-gray-200 bg-gray-50">
-                        <th class="px-3 py-2 text-left font-medium text-gray-700">Setor</th>
-                        <th
-                            v-for="sec in bySection"
-                            :key="sec.survey_template_section_id"
-                            class="px-2 py-2 text-center font-medium text-gray-700"
-                        >
-                            {{ sec.meta?.section_title || 'Dimensão' }}
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="row in deptOveralls"
-                        :key="row.department_id"
-                        class="border-b border-gray-100"
-                    >
-                        <td class="font-medium text-gray-900">{{ row.department_name }}</td>
-                        <td
-                            v-for="sec in bySection"
-                            :key="sec.survey_template_section_id + '-' + row.department_id"
-                            class="px-2 py-2 text-center"
-                        >
-                            <span
-                                v-if="scoreForDeptSection(row.department_id, sec.survey_template_section_id)"
-                                class="inline-block min-w-[3rem] rounded px-2 py-1 font-mono text-xs"
-                                :class="heatmapCellClass(scoreForDeptSection(row.department_id, sec.survey_template_section_id).risk_level)"
-                            >
-                                {{ Number(scoreForDeptSection(row.department_id, sec.survey_template_section_id).average_score).toFixed(2) }}
-                            </span>
-                            <span v-else class="text-gray-400">—</span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div v-if="activeQuestionDistributions?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 class="text-lg font-semibold text-talents-900">Detalhamento por pergunta</h3>
-            <p class="mt-1 text-sm text-gray-500">
-                <template v-if="isDepartmentFiltered">
-                    Quantidade de votos por opção da escala no setor {{ selectedDepartmentName }}.
-                </template>
-                <template v-else>
-                    Quantidade de votos por opção da escala, no total da campanha.
-                </template>
-            </p>
-
-            <div v-for="section in activeQuestionDistributions" :key="section.section_id" class="mt-8 first:mt-6">
-                <h4 class="text-base font-semibold text-talents-800">{{ section.section_title }}</h4>
-
-                <div
-                    v-for="question in section.questions"
-                    :key="question.id"
-                    class="mt-5 border-t border-gray-100 pt-5 first:border-t-0 first:pt-0"
-                >
-                    <p class="text-sm font-medium text-gray-900">{{ question.body }}</p>
-                    <p class="mt-1 text-xs text-gray-500">
-                        {{ question.total }} resposta{{ question.total === 1 ? '' : 's' }}
-                        <span v-if="question.response_scale === 'agreement'"> · Escala de concordância</span>
-                        <span v-else> · Escala de frequência</span>
+            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div class="border-b border-slate-100 bg-slate-50/70 px-6 py-3">
+                    <h4 class="text-sm font-semibold text-talents-900">Participação por setor</h4>
+                    <p class="mt-0.5 text-xs text-gray-500">
+                        Setores informados pelos respondentes. Gráficos detalhados por setor exigem pelo menos 1 respondente no mesmo setor.
                     </p>
-
-                    <div v-if="question.total" class="mt-3 space-y-2">
-                        <div v-for="value in [1, 2, 3, 4, 5]" :key="value" class="flex items-center gap-3">
-                            <span class="w-36 shrink-0 text-xs text-gray-600 sm:w-44">
-                                {{ labelForOption(question.response_scale, value) }}
-                            </span>
-                            <div class="h-5 flex-1 overflow-hidden rounded-full bg-gray-100">
-                                <div
-                                    class="h-full rounded-full bg-talents-600 transition-all"
-                                    :style="{ width: barWidth(question, value) + '%' }"
-                                />
-                            </div>
-                            <span class="w-20 shrink-0 text-right text-xs font-medium text-gray-700">
-                                {{ question.counts[value] }} ({{ percentForOption(question, value) }}%)
-                            </span>
-                        </div>
-                    </div>
-                    <p v-else class="mt-2 text-xs text-gray-400">Nenhuma resposta ainda.</p>
+                </div>
+                <div class="overflow-x-auto p-4 sm:p-6">
+                    <table class="min-w-full border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200 bg-gray-50">
+                                <th class="px-3 py-2 text-left font-medium text-gray-700">Setor</th>
+                                <th class="px-3 py-2 text-right font-medium text-gray-700">Respondentes</th>
+                                <th class="px-3 py-2 text-left font-medium text-gray-700">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="row in departmentParticipation"
+                                :key="row.department_id"
+                                class="border-b border-gray-100"
+                            >
+                                <td class="px-3 py-2 font-medium text-gray-900">{{ row.department_name }}</td>
+                                <td class="px-3 py-2 text-right tabular-nums text-gray-700">{{ row.respondent_count }}</td>
+                                <td class="px-3 py-2">
+                                    <span
+                                        v-if="row.meets_minimum"
+                                        class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
+                                    >
+                                        Exibido nos gráficos
+                                    </span>
+                                    <span
+                                        v-else
+                                        class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                                    >
+                                        Aguardando mínimo (1)
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <div class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 class="text-lg font-semibold text-talents-900">Insights</h3>
+        <div
+            v-if="!isDepartmentFiltered && deptOveralls?.length"
+            :id="departmentParticipation?.length ? undefined : 'nr1-setores'"
+            class="scroll-mt-28 overflow-hidden rounded-2xl border border-talents-200/80 bg-white shadow-md ring-1 ring-talents-100"
+        >
+            <div class="border-b border-talents-100 bg-gradient-to-r from-talents-50/90 to-white px-6 py-4">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-talents-700">Gráfico · barras</p>
+                <h3 class="mt-1 text-lg font-semibold text-talents-900">Risco por setor (média geral)</h3>
+                <p class="mt-1 text-sm text-gray-500">
+                    Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato). Cores conforme faixa de risco.
+                </p>
+            </div>
+            <div class="bg-gradient-to-b from-slate-50/80 to-white p-4 sm:p-6">
+                <div class="min-h-[26rem] rounded-xl border border-slate-100 bg-white p-2 shadow-inner sm:min-h-[28rem]">
+                    <ApexChart height="420" :options="deptBarChart" :series="deptBarSeries" />
+                </div>
+            </div>
+        </div>
+
+        <div
+            v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
+            class="overflow-hidden rounded-2xl border border-talents-200/80 bg-white shadow-md ring-1 ring-talents-100"
+        >
+            <div class="border-b border-talents-100 bg-gradient-to-r from-talents-50/90 to-white px-6 py-4">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-talents-700">Gráfico · barras agrupadas</p>
+                <h3 class="mt-1 text-lg font-semibold text-talents-900">Dimensões por setor</h3>
+                <p class="mt-1 text-sm text-gray-500">Comparação lado a lado das dimensões em cada setor.</p>
+            </div>
+            <div class="bg-gradient-to-b from-slate-50/80 to-white p-4 sm:p-6">
+                <div class="min-h-[30rem] rounded-xl border border-slate-100 bg-white p-2 shadow-inner sm:min-h-[32rem]">
+                    <ApexChart height="460" :options="deptGroupedBar" :series="deptGroupedSeries" />
+                </div>
+            </div>
+        </div>
+
+        <div
+            v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
+            class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+        >
+            <div class="border-b border-slate-100 bg-slate-50/70 px-6 py-3">
+                <h3 class="text-sm font-semibold text-talents-900">Tabela de risco por setor e dimensão</h3>
+                <p class="mt-0.5 text-xs text-gray-500">Valores numéricos complementares aos gráficos acima.</p>
+            </div>
+            <div class="overflow-x-auto p-4 sm:p-6">
+                <table class="min-w-full border-collapse text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200 bg-gray-50">
+                            <th class="px-3 py-2 text-left font-medium text-gray-700">Setor</th>
+                            <th
+                                v-for="sec in bySection"
+                                :key="sec.survey_template_section_id"
+                                class="px-2 py-2 text-center font-medium text-gray-700"
+                            >
+                                {{ sec.meta?.section_title || 'Dimensão' }}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr
+                            v-for="row in deptOveralls"
+                            :key="row.department_id"
+                            class="border-b border-gray-100"
+                        >
+                            <td class="px-3 py-2 font-medium text-gray-900">{{ row.department_name }}</td>
+                            <td
+                                v-for="sec in bySection"
+                                :key="sec.survey_template_section_id + '-' + row.department_id"
+                                class="px-2 py-2 text-center"
+                            >
+                                <span
+                                    v-if="scoreForDeptSection(row.department_id, sec.survey_template_section_id)"
+                                    class="inline-block min-w-[3rem] rounded px-2 py-1 font-mono text-xs"
+                                    :class="heatmapCellClass(scoreForDeptSection(row.department_id, sec.survey_template_section_id).risk_level)"
+                                >
+                                    {{ formatLikertScore(scoreForDeptSection(row.department_id, sec.survey_template_section_id).average_score) }}
+                                </span>
+                                <span v-else class="text-gray-400">—</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div
+            v-if="activeQuestionDistributions?.length"
+            id="nr1-perguntas"
+            class="scroll-mt-28 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+        >
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Detalhe analítico</p>
+                    <h3 class="mt-1 text-lg font-semibold text-talents-900">Detalhamento por pergunta</h3>
+                    <p class="mt-1 text-sm text-gray-500">
+                        <template v-if="isDepartmentFiltered">
+                            Votos por opção da escala no setor {{ selectedDepartmentName }}. Expanda cada dimensão para ver o detalhe.
+                        </template>
+                        <template v-else>
+                            Votos por opção da escala na campanha. Expanda cada dimensão para ver o detalhe.
+                        </template>
+                    </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
+                        <input v-model="showCriticalQuestionsOnly" type="checkbox" class="rounded border-gray-300 text-talents-700 focus:ring-talents-500" />
+                        Só intermediário/elevado
+                    </label>
+                    <button
+                        type="button"
+                        class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        @click="expandAllQuestionSections"
+                    >
+                        Expandir tudo
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        @click="collapseAllQuestionSections"
+                    >
+                        Recolher tudo
+                    </button>
+                </div>
+            </div>
+
+            <p
+                v-if="showCriticalQuestionsOnly && !filteredQuestionDistributions.length"
+                class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+            >
+                Nenhuma pergunta com média acima de 2,33 neste filtro.
+            </p>
+
+            <div class="mt-6 space-y-3">
+                <div
+                    v-for="section in filteredQuestionDistributions"
+                    :key="section.section_id"
+                    class="overflow-hidden rounded-xl border border-slate-200/90 bg-slate-50/40"
+                >
+                    <button
+                        type="button"
+                        class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/80"
+                        :aria-expanded="!!openQuestionSections[section.section_id]"
+                        @click="toggleQuestionSection(section.section_id)"
+                    >
+                        <div class="min-w-0">
+                            <h4 class="text-sm font-semibold text-talents-900">{{ section.section_title }}</h4>
+                            <p class="mt-0.5 text-xs text-slate-500">{{ sectionQuestionMeta(section) }}</p>
+                        </div>
+                        <ChevronDownIcon
+                            class="h-5 w-5 shrink-0 text-talents-500 transition-transform duration-200"
+                            :class="openQuestionSections[section.section_id] ? 'rotate-180' : ''"
+                            aria-hidden="true"
+                        />
+                    </button>
+
+                    <div
+                        v-show="openQuestionSections[section.section_id]"
+                        class="space-y-5 border-t border-slate-200/80 bg-white px-4 py-4"
+                    >
+                        <div
+                            v-for="question in section.questions"
+                            :key="question.id"
+                            class="border-b border-slate-100 pb-5 last:border-b-0 last:pb-0"
+                        >
+                            <div class="flex flex-wrap items-start justify-between gap-2">
+                                <p class="text-sm font-medium text-gray-900">{{ question.body }}</p>
+                                <span
+                                    v-if="questionAverage(question) != null"
+                                    class="shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums"
+                                    :class="dimensionScoreClass(riskLevelFromScore(questionAverage(question)))"
+                                >
+                                    {{ formatLikertScore(questionAverage(question)) }}
+                                </span>
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">
+                                {{ question.total }} resposta{{ question.total === 1 ? '' : 's' }}
+                                <span v-if="question.response_scale === 'agreement'"> · Escala de concordância</span>
+                                <span v-else> · Escala de frequência</span>
+                            </p>
+
+                            <div v-if="question.total" class="mt-3 space-y-2">
+                                <div v-for="value in [1, 2, 3, 4, 5]" :key="value" class="flex items-center gap-3">
+                                    <span class="w-36 shrink-0 text-xs text-gray-600 sm:w-44">
+                                        {{ labelForOption(question.response_scale, value) }}
+                                    </span>
+                                    <div class="h-4 flex-1 overflow-hidden rounded-full bg-gray-100">
+                                        <div
+                                            class="h-full rounded-full transition-all"
+                                            :class="optionBarClass(value)"
+                                            :style="{ width: barWidth(question, value) + '%' }"
+                                        />
+                                    </div>
+                                    <span class="w-20 shrink-0 text-right text-xs font-medium tabular-nums text-gray-700">
+                                        {{ question.counts[value] }} ({{ percentForOption(question, value) }}%)
+                                    </span>
+                                </div>
+                            </div>
+                            <p v-else class="mt-2 text-xs text-gray-400">Nenhuma resposta ainda.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="nr1-insights" class="scroll-mt-28 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Síntese</p>
+            <h3 class="mt-1 text-lg font-semibold text-talents-900">Insights</h3>
             <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-gray-700">
                 <li v-for="i in insights" :key="i.id">{{ i.message }}</li>
                 <li v-if="!insights?.length">Nenhum insight gerado ainda.</li>
@@ -616,14 +936,14 @@ const healthBadge = (level) => {
 
         <div
             v-if="!isDepartmentFiltered && overall && !deptOveralls?.length && departmentParticipation?.length"
-            class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+            class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
         >
             Os setores já aparecem na tabela acima, mas os gráficos por setor só serão exibidos quando cada setor atingir 1 respondente (regra de anonimato).
         </div>
 
         <div
             v-if="!isDepartmentFiltered && overall && !deptOveralls?.length && !departmentParticipation?.length"
-            class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+            class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
         >
             Não há setores informados nas respostas ainda. Peça aos respondentes que selecionem o setor ao responder a pesquisa.
         </div>

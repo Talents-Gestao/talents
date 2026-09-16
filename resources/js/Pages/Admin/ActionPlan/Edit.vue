@@ -48,7 +48,83 @@ const props = defineProps({
 const { canAdmin } = useAdminPermissions();
 const showDeleteSurveyModal = ref(false);
 const showExportPdfModal = ref(false);
+const showPublishConfirmModal = ref(false);
 const previewingPlanPdf = ref(false);
+const publishPreviewPdfUrl = ref(null);
+const publishPreviewError = ref(null);
+const showDangerZone = ref(false);
+
+const activeStep = ref('results');
+const steps = [
+    { id: 'results', number: '01', label: 'Diagnóstico' },
+    { id: 'opinion', number: '02', label: 'Parecer' },
+    { id: 'publish', number: '03', label: 'Publicar' },
+];
+
+const isPublished = computed(() => Boolean(props.plan?.admin_published_at));
+
+const publicationStatusLabel = computed(() =>
+    isPublished.value ? 'Publicado para a empresa' : 'Rascunho — ainda não enviado',
+);
+
+const selectStep = (stepId) => {
+    activeStep.value = stepId;
+    if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+};
+
+const revokePublishPreviewUrl = () => {
+    if (publishPreviewPdfUrl.value) {
+        URL.revokeObjectURL(publishPreviewPdfUrl.value);
+        publishPreviewPdfUrl.value = null;
+    }
+};
+
+const closePublishConfirmModal = () => {
+    showPublishConfirmModal.value = false;
+    publishPreviewError.value = null;
+    revokePublishPreviewUrl();
+};
+
+const loadPublishPreviewPdf = async () => {
+    syncEditorToForm();
+    previewingPlanPdf.value = true;
+    publishPreviewError.value = null;
+    revokePublishPreviewUrl();
+
+    try {
+        const response = await window.axios.post(
+            route('admin.companies.surveys.action-plan.document-pdf', [props.company.id, props.survey.id]),
+            {
+                technical_opinion: form.technical_opinion || null,
+                is_draft: false,
+            },
+            { responseType: 'blob' },
+        );
+        const contentType = String(response.headers['content-type'] ?? '');
+        if (!contentType.includes('pdf')) {
+            throw new Error('Resposta inválida ao gerar o PDF.');
+        }
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        publishPreviewPdfUrl.value = URL.createObjectURL(blob);
+    } catch {
+        publishPreviewError.value =
+            'Não foi possível gerar a pré-visualização do PDF. Você ainda pode confirmar a publicação.';
+    } finally {
+        previewingPlanPdf.value = false;
+    }
+};
+
+const openPublishConfirmModal = async () => {
+    showPublishConfirmModal.value = true;
+    await loadPublishPreviewPdf();
+};
+
+const confirmPublish = () => {
+    closePublishConfirmModal();
+    submit();
+};
 
 const openExportPdfModal = () => {
     showExportPdfModal.value = true;
@@ -181,37 +257,6 @@ const syncEditorToForm = () => {
     form.technical_opinion = html === '<p></p>' ? '' : html;
 };
 
-const previewPlanDocumentPdf = async () => {
-    syncEditorToForm();
-    previewingPlanPdf.value = true;
-    const tab = window.open('about:blank', '_blank');
-    try {
-        const response = await window.axios.post(
-            route('admin.companies.surveys.action-plan.document-pdf', [props.company.id, props.survey.id]),
-            {
-                technical_opinion: form.technical_opinion || null,
-            },
-            { responseType: 'blob' },
-        );
-        const contentType = String(response.headers['content-type'] ?? '');
-        if (!contentType.includes('pdf')) {
-            throw new Error('Resposta inválida ao gerar o PDF.');
-        }
-        const blob = new Blob([response.data], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        if (tab) {
-            tab.location.href = url;
-        } else {
-            window.open(url, '_blank', 'noopener');
-        }
-        setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch {
-        tab?.close();
-    } finally {
-        previewingPlanPdf.value = false;
-    }
-};
-
 const technicalOpinionPreviewHtml = computed(() => {
     const text = props.technicalOpinionAi?.content ?? '';
     if (!text) {
@@ -274,6 +319,7 @@ onUnmounted(() => {
     if (technicalPollTimer) {
         clearInterval(technicalPollTimer);
     }
+    revokePublishPreviewUrl();
 });
 
 const submit = () => {
@@ -315,18 +361,10 @@ const submit = () => {
                 <template #trailing>
                     <button
                         type="button"
-                        class="inline-flex items-center rounded-full border border-talents-300 bg-white px-4 py-2 text-sm font-medium text-talents-800 shadow-sm hover:bg-talents-50 disabled:opacity-50"
-                        :disabled="previewingPlanPdf"
-                        @click="previewPlanDocumentPdf"
-                    >
-                        {{ previewingPlanPdf ? 'Gerando PDF…' : 'PDF do parecer técnico' }}
-                    </button>
-                    <button
-                        type="button"
-                        class="inline-flex items-center rounded-full bg-talents-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-talents-800"
+                        class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
                         @click="openExportPdfModal"
                     >
-                        Exportar PDF dos resultados
+                        Exportar resultados
                     </button>
                 </template>
             </FormPageHeader>
@@ -351,77 +389,155 @@ const submit = () => {
             {{ $page.props.flash.info }}
         </div>
 
-        <div class="mb-6 surface-card p-5">
-            <h3 class="text-sm font-semibold text-gray-900">Pesquisa</h3>
-            <dl class="mt-3 grid gap-2 text-sm text-gray-700 sm:grid-cols-2">
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="text-gray-500">Status:</span>
-                    <SurveyStatusBadge :status="survey.status" />
+        <!-- Cabeçalho de laudo -->
+        <section class="mb-6 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm">
+            <div class="border-b border-slate-100 bg-gradient-to-r from-talents-50/70 via-white to-white px-5 py-4 sm:px-6">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-talents-700">Laudo NR-1</p>
+                        <h2 class="mt-1 text-lg font-semibold text-slate-900">{{ survey.title }}</h2>
+                        <p class="mt-0.5 text-sm text-slate-600">{{ company.name }}</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span
+                            class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset"
+                            :class="
+                                isPublished
+                                    ? 'bg-emerald-50 text-emerald-800 ring-emerald-200'
+                                    : 'bg-amber-50 text-amber-900 ring-amber-200'
+                            "
+                        >
+                            {{ publicationStatusLabel }}
+                        </span>
+                        <SurveyStatusBadge :status="survey.status" />
+                    </div>
+                </div>
+            </div>
+            <dl class="grid gap-4 px-5 py-4 text-sm sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Período</dt>
+                    <dd class="mt-1 text-slate-800">
+                        {{ formatDateNumeric(survey.starts_at) || '—' }} — {{ formatDateNumeric(survey.ends_at) || '—' }}
+                    </dd>
                 </div>
                 <div>
-                    <span class="text-gray-500">Período:</span>
-                    {{ formatDateNumeric(survey.starts_at) || '—' }} — {{ formatDateNumeric(survey.ends_at) || '—' }}
+                    <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Cenário de risco</dt>
+                    <dd class="mt-1 text-slate-800">{{ riskScenarioLabel || '—' }}</dd>
                 </div>
-                <div class="sm:col-span-2">
-                    <span class="text-gray-500">Mín. respondentes por setor (quebra):</span>
-                    {{ survey.min_responses_for_breakdown }}
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Mín. por setor</dt>
+                    <dd class="mt-1 text-slate-800">{{ survey.min_responses_for_breakdown }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Última publicação</dt>
+                    <dd class="mt-1 text-slate-800">{{ plan?.admin_published_at || 'Ainda não publicada' }}</dd>
                 </div>
             </dl>
+        </section>
+
+        <!-- Stepper -->
+        <nav class="mb-8" aria-label="Etapas do parecer">
+            <ol class="grid gap-2 sm:grid-cols-3">
+                <li v-for="step in steps" :key="step.id">
+                    <button
+                        type="button"
+                        class="flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition"
+                        :class="
+                            activeStep === step.id
+                                ? 'border-talents-300 bg-talents-50 shadow-sm ring-1 ring-talents-200'
+                                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                        "
+                        :aria-current="activeStep === step.id ? 'step' : undefined"
+                        @click="selectStep(step.id)"
+                    >
+                        <span
+                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                            :class="
+                                activeStep === step.id
+                                    ? 'bg-talents-700 text-white'
+                                    : 'bg-slate-100 text-slate-600'
+                            "
+                        >
+                            {{ step.number }}
+                        </span>
+                        <span>
+                            <span class="block text-sm font-semibold text-slate-900">{{ step.label }}</span>
+                            <span class="block text-xs text-slate-500">
+                                <template v-if="step.id === 'results'">Indicadores e detalhe</template>
+                                <template v-else-if="step.id === 'opinion'">Texto, IA e anexos</template>
+                                <template v-else>Revisar e enviar</template>
+                            </span>
+                        </span>
+                    </button>
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Etapa 01: Diagnóstico -->
+        <div v-show="activeStep === 'results'" class="pb-8">
+            <div class="mb-4">
+                <p class="text-xs font-bold uppercase tracking-wider text-talents-700">Etapa 01</p>
+                <h3 class="mt-1 text-lg font-semibold text-talents-900">Diagnóstico dos resultados</h3>
+                <p class="mt-1 text-sm text-gray-600">
+                    Painel visual com indicadores e gráficos da pesquisa — os mesmos dados agregados que a empresa vê em Resultados.
+                </p>
+            </div>
+
+            <Nr1SurveyResultsPanel
+                :survey="survey"
+                :overall="overall"
+                :by-section="bySection"
+                :dept-overalls="deptOveralls"
+                :dept-sections-by-department="deptSectionsByDepartment"
+                :insights="insights"
+                :question-distributions="questionDistributions"
+                :department-participation="departmentParticipation"
+                :question-distributions-by-department="questionDistributionsByDepartment"
+            />
+
+            <div v-if="!overall" class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                Ainda não há resultados agregados para esta pesquisa. Verifique se há respostas concluídas e se o recálculo foi feito no portal da
+                empresa.
+            </div>
+
+            <div class="mt-8 flex justify-end">
+                <PrimaryButton type="button" @click="selectStep('opinion')">Continuar para o parecer</PrimaryButton>
+            </div>
         </div>
 
-        <div class="mb-4">
-            <h3 class="text-lg font-semibold text-talents-900">Detalhamento dos resultados</h3>
-            <p class="mt-1 text-sm text-gray-600">
-                Visão completa da pesquisa — os mesmos dados agregados que a empresa vê em Resultados.
-            </p>
-        </div>
+        <form class="space-y-8" @submit.prevent="openPublishConfirmModal">
+            <div v-show="activeStep === 'opinion'" class="space-y-8 pb-28">
+                <div>
+                    <h3 class="text-lg font-semibold text-talents-900">02 · Parecer técnico</h3>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Elabore o documento entregue à empresa. Use a Mia para rascunho e revise antes de publicar.
+                    </p>
+                </div>
 
-        <Nr1SurveyResultsPanel
-            :survey="survey"
-            :overall="overall"
-            :by-section="bySection"
-            :dept-overalls="deptOveralls"
-            :dept-sections-by-department="deptSectionsByDepartment"
-            :insights="insights"
-            :question-distributions="questionDistributions"
-            :department-participation="departmentParticipation"
-            :question-distributions-by-department="questionDistributionsByDepartment"
-        />
+                <div
+                    v-if="overall && riskScenarioLabel"
+                    class="rounded-lg border border-violet-200 bg-violet-50/80 p-4 text-sm text-violet-950"
+                >
+                    <strong>{{ riskScenarioLabel }}</strong>
+                    <span class="mt-1 block text-violet-900/90">
+                        Os relatórios NR-1 (executivo e encaminhamento técnico) são gerados automaticamente conforme este cenário.
+                        Você pode substituir o executivo ou o encaminhamento por arquivos personalizados abaixo.
+                    </span>
+                </div>
 
-        <div v-if="!overall" class="mb-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-            Ainda não há resultados agregados para esta pesquisa. Verifique se há respostas concluídas e se o recálculo foi feito no portal da
-            empresa.
-        </div>
+                <MiaNr1AdminPanel
+                    v-if="aiEnabled"
+                    :generate-post-url="aiGeneratePostUrl"
+                    :ai-enabled="aiEnabled"
+                    :ai-analysis="aiAnalysis"
+                    :ai-analysis-pending="aiAnalysisPending"
+                />
+                <div v-else class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                    A Mia não está disponível (API desativada ou sem chave). Configure em
+                    <Link :href="route('admin.settings.edit')" class="font-medium text-talents-800 underline">Configurações</Link>
+                    para gerar análise automática e apoiar o preenchimento do parecer técnico.
+                </div>
 
-        <div
-            v-else-if="riskScenarioLabel"
-            class="mb-6 rounded-lg border border-violet-200 bg-violet-50/80 p-4 text-sm text-violet-950"
-        >
-            <strong>{{ riskScenarioLabel }}</strong>
-            <span class="mt-1 block text-violet-900/90">
-                Os relatórios NR-1 (executivo e encaminhamento técnico) são gerados automaticamente conforme este cenário.
-                Você pode substituir o executivo ou o encaminhamento por arquivos personalizados abaixo.
-            </span>
-        </div>
-
-        <MiaNr1AdminPanel
-            v-if="aiEnabled"
-            :generate-post-url="aiGeneratePostUrl"
-            :ai-enabled="aiEnabled"
-            :ai-analysis="aiAnalysis"
-            :ai-analysis-pending="aiAnalysisPending"
-        />
-        <div v-else class="mb-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-            A Mia não está disponível (API desativada ou sem chave). Configure em
-            <Link :href="route('admin.settings.edit')" class="font-medium text-talents-800 underline">Configurações</Link>
-            para gerar análise automática e apoiar o preenchimento do parecer técnico.
-        </div>
-
-        <p v-if="plan?.admin_published_at" class="mb-6 text-sm text-gray-500">
-            Última publicação: {{ plan.admin_published_at }}
-        </p>
-
-        <form class="space-y-8" @submit.prevent="submit">
             <div class="surface-card space-y-6 p-6 text-slate-900">
                 <div>
                     <h3 class="font-semibold text-talents-800">Relatórios NR-1 personalizados (opcional)</h3>
@@ -673,25 +789,181 @@ const submit = () => {
                     </div>
                 </div>
             </div>
+            </div>
 
-            <div class="flex gap-3">
-                <PrimaryButton :disabled="form.processing">Salvar e publicar para a empresa</PrimaryButton>
+            <!-- Etapa 03: Publicar -->
+            <div v-show="activeStep === 'publish'" class="space-y-6 pb-28">
+                <div>
+                    <h3 class="text-lg font-semibold text-talents-900">03 · Revisar e publicar</h3>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Ao salvar, você verá o PDF do parecer como a empresa receberá e poderá confirmar o envio.
+                    </p>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Status atual</p>
+                        <p class="mt-2 text-base font-semibold text-slate-900">{{ publicationStatusLabel }}</p>
+                        <p v-if="plan?.admin_published_at" class="mt-1 text-sm text-slate-600">
+                            Última publicação: {{ plan.admin_published_at }}
+                        </p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Entrega à empresa</p>
+                        <ul class="mt-2 space-y-1 text-sm text-slate-700">
+                            <li>· Parecer em texto (HTML) na página do cliente</li>
+                            <li>· PDF do plano gerado a partir deste parecer</li>
+                            <li v-if="existingOpinionFileName || form.technical_opinion_file">· Arquivo anexo do parecer</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-talents-200 bg-talents-50/50 p-5 text-sm text-talents-950">
+                    <p class="font-medium">Próximo passo</p>
+                    <p class="mt-1 text-talents-900/90">
+                        Clique em <strong>Salvar e publicar para a empresa</strong> no rodapé. Um modal mostrará a
+                        pré-visualização do PDF; só após confirmar o parecer será enviado.
+                    </p>
+                    <div class="mt-4">
+                        <SecondaryButton type="button" @click="selectStep('opinion')">Voltar ao editor</SecondaryButton>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sticky actions -->
+            <div
+                v-show="activeStep === 'opinion' || activeStep === 'publish'"
+                class="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-white/80"
+            >
+                <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
+                    <p class="text-xs text-slate-500 sm:text-sm">
+                        <template v-if="activeStep === 'opinion'">
+                            Revise o texto e avance para publicar quando estiver pronto.
+                        </template>
+                        <template v-else>
+                            A confirmação no modal publica o parecer para a empresa.
+                        </template>
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <SecondaryButton
+                            v-if="activeStep === 'opinion'"
+                            type="button"
+                            @click="selectStep('results')"
+                        >
+                            Voltar
+                        </SecondaryButton>
+                        <SecondaryButton
+                            v-if="activeStep === 'publish'"
+                            type="button"
+                            @click="selectStep('opinion')"
+                        >
+                            Voltar
+                        </SecondaryButton>
+                        <PrimaryButton
+                            v-if="activeStep === 'opinion'"
+                            type="button"
+                            @click="selectStep('publish')"
+                        >
+                            Revisar e publicar
+                        </PrimaryButton>
+                        <PrimaryButton
+                            v-else
+                            type="button"
+                            :disabled="form.processing || previewingPlanPdf"
+                            @click="openPublishConfirmModal"
+                        >
+                            Salvar e publicar para a empresa
+                        </PrimaryButton>
+                    </div>
+                </div>
             </div>
         </form>
 
         <div
             v-if="canAdmin('companies', 'delete')"
-            class="mt-8 rounded-xl border border-red-100 bg-red-50/50 p-6"
+            class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white"
         >
-            <h3 class="font-semibold text-red-900">Zona de perigo</h3>
-            <p class="mt-2 text-sm text-red-900/80">
-                Excluir a pesquisa e todos os resultados. A empresa deixará de ver esta pesquisa; os dados serão
-                arquivados internamente.
-            </p>
-            <DangerButton type="button" class="mt-4" @click="showDeleteSurveyModal = true">
-                Excluir pesquisa
-            </DangerButton>
+            <button
+                type="button"
+                class="flex w-full items-center justify-between gap-3 px-5 py-4 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                :aria-expanded="showDangerZone"
+                @click="showDangerZone = !showDangerZone"
+            >
+                <span>Zona de perigo</span>
+                <span class="text-xs font-normal text-slate-500">{{ showDangerZone ? 'Ocultar' : 'Mostrar' }}</span>
+            </button>
+            <div v-show="showDangerZone" class="border-t border-red-100 bg-red-50/50 px-5 py-5">
+                <h3 class="font-semibold text-red-900">Excluir pesquisa</h3>
+                <p class="mt-2 text-sm text-red-900/80">
+                    Excluir a pesquisa e todos os resultados. A empresa deixará de ver esta pesquisa; os dados serão
+                    arquivados internamente.
+                </p>
+                <DangerButton type="button" class="mt-4" @click="showDeleteSurveyModal = true">
+                    Excluir pesquisa
+                </DangerButton>
+            </div>
         </div>
+
+        <Modal :show="showPublishConfirmModal" max-width="5xl" @close="closePublishConfirmModal">
+            <div class="flex max-h-[min(90vh,52rem)] flex-col">
+                <div class="border-b border-slate-100 px-6 py-4">
+                    <h2 class="text-lg font-semibold text-gray-900">Confirmar publicação do parecer</h2>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Revise o PDF abaixo — é o documento que a empresa poderá baixar após a publicação.
+                    </p>
+                </div>
+
+                <div class="min-h-0 flex-1 overflow-auto px-6 py-4">
+                    <div
+                        v-if="previewingPlanPdf"
+                        class="flex h-[min(60vh,36rem)] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-600"
+                    >
+                        Gerando pré-visualização do PDF…
+                    </div>
+                    <div
+                        v-else-if="publishPreviewError"
+                        class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+                    >
+                        {{ publishPreviewError }}
+                    </div>
+                    <iframe
+                        v-else-if="publishPreviewPdfUrl"
+                        :src="publishPreviewPdfUrl"
+                        title="Pré-visualização do PDF do parecer técnico"
+                        class="h-[min(60vh,36rem)] w-full rounded-xl border border-slate-200 bg-white"
+                    />
+                    <div
+                        v-else
+                        class="flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500"
+                    >
+                        Nenhuma pré-visualização disponível.
+                    </div>
+
+                    <ul class="mt-4 space-y-1 text-sm text-slate-600">
+                        <li>· A empresa verá o parecer na página Plano de ação.</li>
+                        <li>· O PDF do plano será gerado a partir deste conteúdo.</li>
+                        <li v-if="existingOpinionFileName || form.technical_opinion_file">
+                            · O arquivo anexo do parecer também ficará disponível para download.
+                        </li>
+                    </ul>
+                </div>
+
+                <div
+                    class="sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-white px-6 py-4"
+                >
+                    <SecondaryButton type="button" :disabled="form.processing" @click="closePublishConfirmModal">
+                        Cancelar
+                    </SecondaryButton>
+                    <PrimaryButton
+                        type="button"
+                        :disabled="form.processing || previewingPlanPdf"
+                        @click="confirmPublish"
+                    >
+                        {{ form.processing ? 'Publicando…' : 'Confirmar e publicar' }}
+                    </PrimaryButton>
+                </div>
+            </div>
+        </Modal>
 
         <Modal :show="showDeleteSurveyModal" @close="showDeleteSurveyModal = false">
             <div class="p-6">
@@ -711,8 +983,8 @@ const submit = () => {
             <div class="p-6">
                 <h2 class="text-lg font-medium text-gray-900">Exportar PDF dos resultados</h2>
                 <p class="mt-2 text-sm text-gray-600">
-                    Gera o relatório com indicadores e gráficos da pesquisa. O PDF individual do parecer técnico está no botão
-                    <strong>PDF do parecer técnico</strong> e não publica o conteúdo para a empresa.
+                    Gera o relatório com indicadores e gráficos da pesquisa. Diferente do PDF do parecer técnico, que é
+                    confirmado no fluxo de publicação.
                 </p>
                 <div class="mt-6 flex justify-end gap-2">
                     <SecondaryButton type="button" @click="showExportPdfModal = false">Cancelar</SecondaryButton>
