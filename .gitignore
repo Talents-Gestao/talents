@@ -16,6 +16,9 @@
 /public/build
 /public/hot
 /public/storage
+# Manifest Ziggy gerado localmente (rotas vêm de @routes + vendor/tightenco/ziggy)
+/resources/js/ziggy.js
+
 /storage/*.key
 /storage/pail
 /storage/fonts

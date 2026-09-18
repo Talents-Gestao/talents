@@ -54,6 +54,7 @@ class ActionPlanPdfExportTest extends TestCase
         $this->assertStringNotContainsString('<h2>Ações</h2>', $html);
         $this->assertStringNotContainsString('Ação de teste PDF', $html);
         $this->assertStringNotContainsString('validado pela equipe de SST', $html);
+        $this->assertStringContainsString('CNPJ: '.$fx->company->cnpj, $html);
     }
 
     public function test_admin_can_download_results_pdf(): void
@@ -106,6 +107,7 @@ class ActionPlanPdfExportTest extends TestCase
 
         $this->assertStringContainsString('Parecer de rascunho', $html);
         $this->assertStringContainsString('Parecer técnico NR-1', $html);
+        $this->assertStringContainsString('CNPJ: '.$fx->company->cnpj, $html);
         $this->assertStringNotContainsString('<h2>Ações</h2>', $html);
         $this->assertStringNotContainsString('Ação individual PDF', $html);
         $this->assertStringContainsString('Rascunho — este documento ainda não foi publicado', $html);

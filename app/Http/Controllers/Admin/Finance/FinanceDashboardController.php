@@ -22,12 +22,7 @@ class FinanceDashboardController extends Controller
 
     public function index(Request $request): Response
     {
-        $period = $request->input('period', '90d');
-        if (! in_array($period, ['30d', '90d', 'year', 'all'], true)) {
-            $period = '90d';
-        }
-
-        [$start, $end] = $this->periodBounds($period);
+        [$period, $start, $end, $from, $to] = $this->resolvePeriodFilter($request);
 
         $upcomingInstallments = CommercialSaleInstallment::query()
             ->with(['sale:id,code,client_name'])
@@ -135,6 +130,8 @@ class FinanceDashboardController extends Controller
 
         return Inertia::render('Admin/Finance/Dashboard', [
             'period' => $period,
+            'from' => $from,
+            'to' => $to,
             'kpis' => [
                 'receivable_cents' => $this->cashflow->toReceiveCents(),
                 'received_cents' => $this->cashflow->receivedInPeriodCents($start, $end),
@@ -157,6 +154,58 @@ class FinanceDashboardController extends Controller
             'cartao' => 'Cartão',
             default => $method ?? '—',
         };
+    }
+
+    /**
+     * @return array{0: string, 1: ?Carbon, 2: ?Carbon, 3: ?string, 4: ?string}
+     */
+    private function resolvePeriodFilter(Request $request): array
+    {
+        $period = (string) $request->input('period', '90d');
+        $fromInput = $request->input('from');
+        $toInput = $request->input('to');
+
+        if ($period === 'custom') {
+            $start = $this->parseDateBound($fromInput);
+            $end = $this->parseDateBound($toInput);
+
+            if ($start !== null && $end !== null) {
+                if ($start->greaterThan($end)) {
+                    [$start, $end] = [$end->copy(), $start->copy()];
+                }
+
+                return [
+                    'custom',
+                    $start->copy()->startOfDay(),
+                    $end->copy()->endOfDay(),
+                    $start->toDateString(),
+                    $end->toDateString(),
+                ];
+            }
+
+            $period = '90d';
+        }
+
+        if (! in_array($period, ['30d', '90d', 'year', 'all'], true)) {
+            $period = '90d';
+        }
+
+        [$start, $end] = $this->periodBounds($period);
+
+        return [$period, $start, $end, null, null];
+    }
+
+    private function parseDateBound(mixed $value): ?Carbon
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::createFromFormat('Y-m-d', $value)->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

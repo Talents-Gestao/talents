@@ -476,10 +476,9 @@ const submit = () => {
         <!-- Etapa 01: Diagnóstico -->
         <div v-show="activeStep === 'results'" class="pb-8">
             <div class="mb-4">
-                <p class="text-xs font-bold uppercase tracking-wider text-talents-700">Etapa 01</p>
-                <h3 class="mt-1 text-lg font-semibold text-talents-900">Diagnóstico dos resultados</h3>
+                <h3 class="text-lg font-semibold text-talents-900">Diagnóstico dos resultados</h3>
                 <p class="mt-1 text-sm text-gray-600">
-                    Painel visual com indicadores e gráficos da pesquisa — os mesmos dados agregados que a empresa vê em Resultados.
+                    Indicadores e gráficos da pesquisa — os mesmos dados agregados que a empresa vê em Resultados.
                 </p>
             </div>
 

@@ -3,10 +3,12 @@ import StatCard from '@/Components/Dashboard/StatCard.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     period: { type: String, default: '90d' },
+    from: { type: String, default: null },
+    to: { type: String, default: null },
     kpis: { type: Object, required: true },
     upcomingInstallments: { type: Array, default: () => [] },
     overdueInstallments: { type: Array, default: () => [] },
@@ -20,8 +22,37 @@ const periodOptions = [
     { id: 'all', label: 'Tudo' },
 ];
 
+const customFrom = ref(props.from ?? '');
+const customTo = ref(props.to ?? '');
+
+watch(
+    () => [props.from, props.to],
+    ([from, to]) => {
+        customFrom.value = from ?? '';
+        customTo.value = to ?? '';
+    },
+);
+
+const canApplyCustom = computed(() => Boolean(customFrom.value && customTo.value));
+
 const setPeriod = (id) => {
     router.get(route('admin.financeiro.dashboard'), { period: id }, { preserveState: true, preserveScroll: true });
+};
+
+const applyCustomRange = () => {
+    if (!canApplyCustom.value) {
+        return;
+    }
+
+    router.get(
+        route('admin.financeiro.dashboard'),
+        {
+            period: 'custom',
+            from: customFrom.value,
+            to: customTo.value,
+        },
+        { preserveState: true, preserveScroll: true },
+    );
 };
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
@@ -54,21 +85,56 @@ const statusClass = (s) =>
             </div>
         </template>
 
-        <div class="mb-6 flex flex-wrap gap-2">
-            <button
-                v-for="opt in periodOptions"
-                :key="opt.id"
-                type="button"
-                class="rounded-full px-3 py-1 text-sm font-medium transition"
-                :class="
-                    period === opt.id
-                        ? 'bg-talents-600 text-white'
-                        : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
-                "
-                @click="setPeriod(opt.id)"
-            >
-                {{ opt.label }}
-            </button>
+        <div class="mb-6 flex flex-wrap items-end gap-3">
+            <div class="flex flex-wrap gap-2">
+                <button
+                    v-for="opt in periodOptions"
+                    :key="opt.id"
+                    type="button"
+                    class="rounded-full px-3 py-1 text-sm font-medium transition"
+                    :class="
+                        period === opt.id
+                            ? 'bg-talents-600 text-white'
+                            : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+                    "
+                    @click="setPeriod(opt.id)"
+                >
+                    {{ opt.label }}
+                </button>
+            </div>
+
+            <form class="flex flex-wrap items-end gap-2" @submit.prevent="applyCustomRange">
+                <div>
+                    <label for="finance-from" class="block text-xs font-medium text-slate-500">De</label>
+                    <input
+                        id="finance-from"
+                        v-model="customFrom"
+                        type="date"
+                        class="mt-1 rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    />
+                </div>
+                <div>
+                    <label for="finance-to" class="block text-xs font-medium text-slate-500">Até</label>
+                    <input
+                        id="finance-to"
+                        v-model="customTo"
+                        type="date"
+                        class="mt-1 rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    />
+                </div>
+                <button
+                    type="submit"
+                    class="rounded-full px-3 py-1.5 text-sm font-medium transition"
+                    :class="
+                        canApplyCustom
+                            ? 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'
+                            : 'cursor-not-allowed bg-slate-100 text-slate-400'
+                    "
+                    :disabled="!canApplyCustom"
+                >
+                    Filtrar período
+                </button>
+            </form>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">

@@ -45,6 +45,9 @@
     <h1>Parecer técnico NR-1</h1>
     <div class="meta">
         <p class="muted">Empresa: {{ $survey->company->name }} — Campanha: {{ $survey->title }}</p>
+        @if(!empty($survey->company?->cnpj))
+            <p class="muted">CNPJ: {{ $survey->company->cnpj }}</p>
+        @endif
         <p class="muted">Data de emissão: {{ now()->format('d/m/Y') }}</p>
         @if(!empty($scenarioLabel))
             <p class="muted">Cenário: {{ $scenarioLabel }}</p>

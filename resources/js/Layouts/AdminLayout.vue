@@ -147,7 +147,8 @@ const contratacaoActive = computed(
         route().current('admin.entrevistas.*'),
 );
 
-const showReunioes = computed(() => canAdmin('entrevistas_reunioes'));
+/** Temporariamente oculto no menu lateral (rotas /admin/reunioes* mantidas). */
+const showReunioes = computed(() => false);
 
 const showVozDoTime = computed(
     () => canAdminAny(['survey_templates', 'desligamento', 'denuncias']),

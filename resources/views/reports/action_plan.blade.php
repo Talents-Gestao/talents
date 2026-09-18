@@ -86,6 +86,9 @@
     <h1>Pesquisa - Riscos Psicossociais</h1>
     <div class="meta">
         <p class="muted">Empresa: {{ $survey->company->name }} — Campanha: {{ $survey->title }}</p>
+        @if(!empty($survey->company?->cnpj))
+            <p class="muted">CNPJ: {{ $survey->company->cnpj }}</p>
+        @endif
         <p class="muted">Data de emissão: {{ now()->format('d/m/Y') }}</p>
         @if(!empty($scenarioConfig['short_label']))
             <p class="muted">{{ $scenarioConfig['short_label'] }}</p>

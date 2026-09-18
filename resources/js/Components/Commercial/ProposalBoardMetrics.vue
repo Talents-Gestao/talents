@@ -44,7 +44,7 @@ const pipelineHint = () => {
 </script>
 
 <template>
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+    <div class="grid grid-cols-1 gap-3 min-[571px]:grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
         <article class="rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3.5 py-3 shadow-sm">
             <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-800/80">
                 Ganhos no mês
