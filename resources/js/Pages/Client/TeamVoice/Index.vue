@@ -4,12 +4,14 @@ import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import {
     ClipboardDocumentListIcon,
+    MapIcon,
     MegaphoneIcon,
     ShieldExclamationIcon,
 } from '@heroicons/vue/24/outline';
 
 defineProps({
     surveysCount: { type: Number, default: 0 },
+    purposeMapCount: { type: Number, default: 0 },
     complaintsCount: { type: Number, default: 0 },
     openComplaintsCount: { type: Number, default: 0 },
     canSurveys: { type: Boolean, default: false },
@@ -26,12 +28,12 @@ defineProps({
             <div class="flex flex-col gap-1">
                 <h2 class="text-xl font-semibold leading-tight text-slate-900">Voz do Time</h2>
                 <p class="text-sm text-slate-500">
-                    Escuta estruturada: pesquisas e canal de denúncias em um só lugar.
+                    Escuta estruturada: pesquisas, mapa de propósito e canal de denúncias.
                 </p>
             </div>
         </template>
 
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Link
                 v-if="canSurveys"
                 :href="route('client.surveys.index')"
@@ -47,6 +49,25 @@ defineProps({
                     <h3 class="font-semibold text-slate-900 group-hover:text-talents-700">Pesquisas NR1</h3>
                     <p class="mt-1 text-sm text-slate-500">
                         Mapeamento de riscos psicossociais, resultados e planos de ação.
+                    </p>
+                </div>
+            </Link>
+
+            <Link
+                v-if="canSurveys"
+                href="/client/mapa-proposito"
+                class="surface-card group flex flex-col gap-3 p-5 transition hover:border-talents-200 hover:shadow-md"
+            >
+                <div class="flex items-start justify-between gap-3">
+                    <div class="rounded-xl bg-violet-50 p-2.5 text-violet-800 ring-1 ring-violet-100">
+                        <MapIcon class="h-6 w-6" aria-hidden="true" />
+                    </div>
+                    <span class="text-2xl font-bold tabular-nums text-slate-900">{{ purposeMapCount }}</span>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-slate-900 group-hover:text-talents-700">Mapa de Propósito</h3>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Motivações, sonhos e dores resolvidas — por setor, em texto livre.
                     </p>
                 </div>
             </Link>

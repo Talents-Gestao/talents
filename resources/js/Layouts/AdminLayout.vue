@@ -151,7 +151,7 @@ const contratacaoActive = computed(
 const showReunioes = computed(() => false);
 
 const showVozDoTime = computed(
-    () => canAdminAny(['survey_templates', 'desligamento', 'denuncias']),
+    () => canAdminAny(['survey_templates', 'desligamento', 'denuncias', 'companies']),
 );
 
 const vozDoTimeFallbackHref = computed(() => {
@@ -161,14 +161,23 @@ const vozDoTimeFallbackHref = computed(() => {
     if (canAdmin('denuncias')) {
         return route('admin.complaints.index');
     }
+    if (canAdmin('companies')) {
+        return '/admin/mapa-proposito';
+    }
     return route('admin.dashboard');
+});
+
+const mapaPropositoActive = computed(() => {
+    const url = String(page.url ?? '').split('?')[0] ?? '';
+    return url === '/admin/mapa-proposito' || url.includes('/mapa-proposito');
 });
 
 const vozDoTimeActive = computed(
     () =>
         route().current('admin.survey-templates.*') ||
         route().current('admin.desligamento.*') ||
-        route().current('admin.complaints.*'),
+        route().current('admin.complaints.*') ||
+        mapaPropositoActive.value,
 );
 
 const financeiroModules = [
@@ -470,6 +479,15 @@ const isComercialSettingsTab = (tab) => {
                         route().current('admin.desligamento.*')
                     "
                     label="Pesquisas"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('companies')"
+                    href="/admin/mapa-proposito"
+                    :active="mapaPropositoActive"
+                    label="Mapa de Propósito"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"

@@ -15,6 +15,7 @@ import {
     ClipboardDocumentListIcon,
     FingerPrintIcon,
     HomeIcon,
+    MapIcon,
     MegaphoneIcon,
     ChatBubbleLeftRightIcon,
     FlagIcon,
@@ -45,6 +46,12 @@ const activeHiringProcessesCount = computed(() => {
 
 const showDailyQuote = computed(
     () => !!dailyQuote.value && route().current('client.dashboard'),
+);
+
+/** Href estável — evita crash se o Ziggy da sessão ainda não tiver a rota nova. */
+const mapaPropositoHref = '/client/mapa-proposito';
+const mapaPropositoActive = computed(() =>
+    String(page.url ?? '').startsWith('/client/mapa-proposito'),
 );
 </script>
 
@@ -81,6 +88,14 @@ const showDailyQuote = computed(
                     :active="route().current('client.surveys.*')"
                     :icon="ClipboardDocumentListIcon"
                     label="Pesquisas NR1"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="can('pesquisas', 'view')"
+                    :href="mapaPropositoHref"
+                    :active="mapaPropositoActive"
+                    :icon="MapIcon"
+                    label="Mapa de Propósito"
                     :collapsed="collapsed"
                 />
                 <SidebarNavItem

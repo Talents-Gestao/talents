@@ -17,6 +17,7 @@ import {
     LinkIcon,
     MapIcon,
     PencilSquareIcon,
+    SparklesIcon,
     UserGroupIcon,
 } from '@heroicons/vue/24/outline';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -590,6 +591,23 @@ const removeRegulation = async (id) => {
                         </li>
                     </ul>
                     <p v-else class="text-sm text-slate-500">Nenhuma pesquisa cadastrada para esta empresa.</p>
+                </CompanyShowAccordion>
+
+                <CompanyShowAccordion
+                    title="Mapa de Propósito"
+                    description="Perguntas anónimas e dashboard de resultados"
+                >
+                    <template #icon>
+                        <SparklesIcon class="h-5 w-5" />
+                    </template>
+                    <div class="flex flex-wrap gap-2">
+                        <Link
+                            href="/admin/mapa-proposito"
+                            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-talents-700 ring-1 ring-talents-200/80 transition hover:bg-talents-50"
+                        >
+                            Abrir dashboard
+                        </Link>
+                    </div>
                 </CompanyShowAccordion>
 
                 <CompanyShowAccordion title="Usuários" description="Usuários vinculados a esta empresa">

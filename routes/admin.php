@@ -29,6 +29,7 @@ use App\Http\Controllers\Admin\Finance\ReceivableController as FinanceReceivable
 use App\Http\Controllers\Admin\Finance\SaleController as FinanceSaleController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\CompanySurveyController;
+use App\Http\Controllers\Admin\PurposeMapCampaignController;
 use App\Http\Controllers\Admin\Commercial\CommercialProcessController;
 use App\Http\Controllers\Admin\InternalRegulationController;
 use App\Http\Controllers\Admin\MonthlyHighlightController;
@@ -178,6 +179,12 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.technical-opinion-file.download');
         Route::get('companies/{company}/surveys/{survey}/nr1-reports/{type}', [ActionPlanAdminController::class, 'downloadNr1Report'])
             ->name('companies.surveys.nr1-reports.download');
+        Route::get('mapa-proposito', [PurposeMapCampaignController::class, 'index'])
+            ->name('mapa-proposito.index');
+        Route::get('mapa-proposito/resultados', [PurposeMapCampaignController::class, 'show'])
+            ->name('mapa-proposito.dashboard');
+        Route::post('mapa-proposito/analisar', [PurposeMapCampaignController::class, 'analyze'])
+            ->name('mapa-proposito.analyze');
         Route::get('companies/{company}/users', [CompanyUserController::class, 'index'])->name('companies.users.index');
         Route::get('companies/{company}/users/create', [CompanyUserController::class, 'create'])->name('companies.users.create');
         Route::post('companies/{company}/users', [CompanyUserController::class, 'store'])->name('companies.users.store');
