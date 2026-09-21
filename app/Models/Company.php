@@ -213,6 +213,11 @@ class Company extends Model
         return $this->hasMany(Survey::class);
     }
 
+    public function purposeMapCampaigns(): HasMany
+    {
+        return $this->hasMany(PurposeMapCampaign::class);
+    }
+
     public function complaints(): HasMany
     {
         return $this->hasMany(Complaint::class);

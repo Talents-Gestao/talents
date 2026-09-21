@@ -216,6 +216,7 @@ class CompanyController extends Controller
             'methodologyFormTemplates',
             'users',
             'surveys' => fn ($q) => $q->orderByDesc('id'),
+            'purposeMapCampaigns' => fn ($q) => $q->withCount('responses')->orderByDesc('id'),
         ]);
 
         $tab = $request->string('tab')->toString();

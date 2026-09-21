@@ -6,6 +6,7 @@ use App\Enums\PermissionAction;
 use App\Enums\PermissionModule;
 use App\Http\Controllers\Controller;
 use App\Models\Complaint;
+use App\Models\PurposeMapCampaign;
 use App\Models\Survey;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,6 +20,7 @@ class VozDoTimeController extends Controller
         $company = $user->company;
 
         $surveysCount = 0;
+        $purposeMapCount = 0;
         $complaintsCount = 0;
         $openComplaintsCount = 0;
 
@@ -31,6 +33,10 @@ class VozDoTimeController extends Controller
 
         if ($canSurveys) {
             $surveysCount = Survey::query()
+                ->where('company_id', $company->id)
+                ->count();
+
+            $purposeMapCount = PurposeMapCampaign::query()
                 ->where('company_id', $company->id)
                 ->count();
         }
@@ -48,6 +54,7 @@ class VozDoTimeController extends Controller
 
         return Inertia::render('Client/TeamVoice/Index', [
             'surveysCount' => $surveysCount,
+            'purposeMapCount' => $purposeMapCount,
             'complaintsCount' => $complaintsCount,
             'openComplaintsCount' => $openComplaintsCount,
             'canSurveys' => $canSurveys,

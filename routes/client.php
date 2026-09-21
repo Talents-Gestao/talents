@@ -20,6 +20,7 @@ use App\Http\Controllers\Client\RhidApiController;
 use App\Http\Controllers\Client\RhidComplianceController;
 use App\Http\Controllers\Client\RhidSettingsController;
 use App\Http\Controllers\Client\StrategicCalendarController as ClientStrategicCalendarController;
+use App\Http\Controllers\Client\PurposeMapCampaignController;
 use App\Http\Controllers\Client\SurveyController;
 use App\Http\Controllers\Client\SurveyResultsController;
 use App\Http\Controllers\Client\VozDoTimeController;
@@ -61,11 +62,15 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
     Route::middleware('can.module:pesquisas')->group(function () {
         Route::resource('surveys', SurveyController::class)->except(['destroy']);
         Route::get('surveys/{survey}/results', [SurveyResultsController::class, 'show'])->name('surveys.results');
+
+        Route::get('mapa-proposito', [PurposeMapCampaignController::class, 'index'])->name('mapa-proposito.index');
+        Route::get('mapa-proposito/resultados', [PurposeMapCampaignController::class, 'show'])->name('mapa-proposito.dashboard');
     });
 
     Route::middleware('can.module:pesquisas,edit')->group(function () {
         Route::post('surveys/{survey}/ai-analysis', [SurveyResultsController::class, 'generateAiAnalysis'])->name('surveys.ai-analysis');
         Route::post('surveys/{survey}/recalculate', [SurveyResultsController::class, 'recalculate'])->name('surveys.recalculate');
+        Route::post('mapa-proposito/analisar', [PurposeMapCampaignController::class, 'analyze'])->name('mapa-proposito.analyze');
     });
 
     Route::middleware('can.module:planos_acao')->group(function () {
