@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -26,10 +27,13 @@ const submit = () => {
 
     <AdminLayout>
         <template #header>
-            <div>
-                <h2 class="text-xl font-semibold leading-tight text-talents-900">Publicar aviso</h2>
-                <p class="mt-1 text-sm text-slate-500">O aviso aparecerá para os usuários da empresa selecionada.</p>
-            </div>
+            <FormPageHeader
+                :back-href="route('admin.notices.index')"
+                back-label="Avisos"
+                title="Publicar aviso"
+                subtitle="O aviso aparecerá para os usuários da empresa selecionada."
+                :prefer-history="true"
+            />
         </template>
 
         <form class="surface-card max-w-2xl space-y-5 p-6" @submit.prevent="submit">

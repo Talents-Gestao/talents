@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 
@@ -12,10 +13,21 @@ const numberOrOne = (w) => (w != null && w !== '' ? Number(w) : 1);
 
     <AdminLayout>
         <template #header>
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold leading-tight text-gray-900">{{ template.title }}</h2>
-                <Link :href="route('admin.survey-templates.edit', template.id)" class="font-medium text-talents-700 hover:underline">Editar</Link>
-            </div>
+            <FormPageHeader
+                :back-href="route('admin.survey-templates.index')"
+                back-label="Mapeamentos"
+                :title="template.title"
+                :prefer-history="true"
+            >
+                <template #trailing>
+                    <Link
+                        :href="route('admin.survey-templates.edit', template.id)"
+                        class="font-medium text-talents-700 hover:underline"
+                    >
+                        Editar
+                    </Link>
+                </template>
+            </FormPageHeader>
         </template>
 
         <p class="text-gray-600">{{ template.description }}</p>

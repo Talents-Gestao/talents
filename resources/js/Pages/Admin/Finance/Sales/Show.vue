@@ -1,5 +1,6 @@
 <script setup>
 import SaleInstallmentEditModal from '@/Components/Finance/SaleInstallmentEditModal.vue';
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
@@ -175,19 +176,14 @@ const confirmDestroy = () => {
 
     <AdminLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <p class="text-sm text-slate-500">Financeiro / Vendas</p>
-                    <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{{ sale.client_name }}</h2>
-                    <p class="mt-1 text-sm text-slate-600">Detalhe da venda</p>
-                </div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <Link
-                        :href="route('admin.financeiro.vendas.index')"
-                        class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                    >
-                        Voltar
-                    </Link>
+            <FormPageHeader
+                :back-href="route('admin.financeiro.vendas.index')"
+                back-label="Vendas"
+                :title="sale.client_name || 'Venda'"
+                subtitle="Detalhe da venda"
+                :prefer-history="true"
+            >
+                <template #trailing>
                     <Link
                         :href="route('admin.financeiro.vendas.edit', sale.id)"
                         class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
@@ -208,8 +204,8 @@ const confirmDestroy = () => {
                     >
                         Ver proposta
                     </Link>
-                </div>
-            </div>
+                </template>
+            </FormPageHeader>
         </template>
 
         <div class="grid gap-6 lg:grid-cols-3">

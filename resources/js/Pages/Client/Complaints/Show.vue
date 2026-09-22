@@ -1,7 +1,8 @@
 <script setup>
 import ComplaintsLayout from '@/Components/Complaints/ComplaintsLayout.vue';
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import { complaintRoute } from '@/composables/useComplaintRoutes';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
     complaint: Object,
@@ -38,34 +39,37 @@ const statusLabel = (s) => {
 
     <ComplaintsLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <Link :href="complaintRoute('index')" class="text-sm text-talents-700 hover:underline">← Voltar</Link>
-                    <h2 class="mt-1 text-xl font-semibold text-talents-900">Denúncia</h2>
-                    <p class="font-mono text-sm text-gray-600">{{ complaint.protocol }}</p>
-                </div>
-                <form class="flex flex-wrap items-end gap-2" @submit.prevent="updateStatus">
-                    <div>
-                        <label class="text-xs text-gray-600">Status</label>
-                        <select
-                            v-model="statusForm.status"
-                            class="block rounded-md border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+            <FormPageHeader
+                :back-href="complaintRoute('index')"
+                back-label="Denúncias"
+                title="Denúncia"
+                :subtitle="complaint.protocol"
+                :prefer-history="true"
+            >
+                <template #trailing>
+                    <form class="flex flex-wrap items-end gap-2" @submit.prevent="updateStatus">
+                        <div>
+                            <label class="text-xs text-gray-600">Status</label>
+                            <select
+                                v-model="statusForm.status"
+                                class="block rounded-md border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            >
+                                <option value="new">Nova</option>
+                                <option value="under_review">Em análise</option>
+                                <option value="resolved">Resolvida</option>
+                                <option value="archived">Arquivada</option>
+                            </select>
+                        </div>
+                        <button
+                            type="submit"
+                            class="rounded-md bg-talents-700 px-3 py-2 text-sm font-semibold text-white"
+                            :disabled="statusForm.processing"
                         >
-                            <option value="new">Nova</option>
-                            <option value="under_review">Em análise</option>
-                            <option value="resolved">Resolvida</option>
-                            <option value="archived">Arquivada</option>
-                        </select>
-                    </div>
-                    <button
-                        type="submit"
-                        class="rounded-md bg-talents-700 px-3 py-2 text-sm font-semibold text-white"
-                        :disabled="statusForm.processing"
-                    >
-                        Salvar status
-                    </button>
-                </form>
-            </div>
+                            Salvar status
+                        </button>
+                    </form>
+                </template>
+            </FormPageHeader>
         </template>
 
         <div

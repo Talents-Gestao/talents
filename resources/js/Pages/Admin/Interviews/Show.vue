@@ -1,8 +1,8 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { onMounted, onUnmounted } from 'vue';
 import { confirmDialog } from '@/composables/useConfirmDialog';
 
@@ -59,18 +59,14 @@ onUnmounted(() => {
 
     <AdminLayout>
         <template #header>
-            <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <p class="text-sm text-gray-500">
-                        <Link :href="route('admin.entrevistas.index')" class="text-talents-700 hover:underline">
-                            Entrevistas
-                        </Link>
-                        / {{ interview.candidate_name }}
-                    </p>
-                    <h2 class="text-xl font-semibold leading-tight text-gray-900">{{ interview.candidate_name }}</h2>
-                    <p v-if="interview.position_title" class="mt-1 text-sm text-gray-600">Vaga: {{ interview.position_title }}</p>
-                </div>
-                <div class="flex flex-wrap gap-2">
+            <FormPageHeader
+                :back-href="route('admin.entrevistas.index')"
+                back-label="Entrevistas"
+                :title="interview.candidate_name"
+                :subtitle="interview.position_title ? `Vaga: ${interview.position_title}` : null"
+                :prefer-history="true"
+            >
+                <template #trailing>
                     <a
                         v-if="interview.status === 'completed'"
                         :href="route('admin.entrevistas.report.pdf', interview.id)"
@@ -91,8 +87,8 @@ onUnmounted(() => {
                     <SecondaryButton type="button" class="!text-red-700 ring-red-200" @click="destroyInterview">
                         Excluir
                     </SecondaryButton>
-                </div>
-            </div>
+                </template>
+            </FormPageHeader>
         </template>
 
         <div
