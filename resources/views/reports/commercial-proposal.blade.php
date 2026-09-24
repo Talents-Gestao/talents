@@ -677,7 +677,7 @@
         <div class="footer-band">
             <table>
                 <tr>
-                    <td class="col-left">WhatsApp (11) 97570-3032</td>
+                    <td class="col-left">WhatsApp (11) 3109-6837</td>
                     <td class="col-right">{{ $footerEmail }}</td>
                 </tr>
             </table>

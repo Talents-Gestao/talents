@@ -64,12 +64,12 @@ const breadcrumbJsonLd = computed(() =>
                         <div>
                             <p class="font-medium text-slate-900">WhatsApp</p>
                             <a
-                                href="https://wa.me/5511975703032"
+                                href="https://wa.me/551131096837"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 class="text-talents-700 hover:underline"
                             >
-                                (11) 97570-3032
+                                (11) 3109-6837
                             </a>
                         </div>
                         <div>
@@ -78,7 +78,7 @@ const breadcrumbJsonLd = computed(() =>
                         </div>
                     </div>
                     <a
-                        href="https://wa.me/5511975703032"
+                        href="https://wa.me/551131096837"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="btn-primary mt-8 w-full sm:w-auto"

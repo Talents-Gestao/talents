@@ -18,12 +18,12 @@ return [
             'short_label' => 'Cenário geral: Baixo risco',
             'executive' => [
                 'focus_heading' => 'Visão geral e oportunidades',
-                'focus_intro' => 'O indicador geral aponta situação favorável. Este relatório destaca oportunidades de melhoria contínua e recomendações para consolidar boas práticas no ambiente de trabalho.',
+                'focus_intro' => 'O indicador geral aponta situação leve. Este relatório destaca oportunidades de melhoria contínua e recomendações para consolidar boas práticas no ambiente de trabalho.',
                 'recommendations_heading' => 'Recomendações',
                 'recommendations' => [
                     'Manter práticas de comunicação, reconhecimento e equilíbrio entre demandas e recursos.',
                     'Registrar a evolução dos indicadores no PGR e revisar periodicamente após mudanças organizacionais.',
-                    'Promover ações preventivas leves nas dimensões com maior potencial de melhoria, mesmo dentro da faixa favorável.',
+                    'Promover ações preventivas leves nas dimensões com maior potencial de melhoria, mesmo dentro da faixa leve.',
                 ],
             ],
             'action_plan' => [
@@ -44,7 +44,7 @@ return [
                 'focus_intro' => 'O indicador geral requer atenção. Este relatório apresenta os pontos prioritários identificados na pesquisa e recomendações para mitigação dos riscos psicossociais.',
                 'recommendations_heading' => 'Recomendações prioritárias',
                 'recommendations' => [
-                    'Priorizar as dimensões classificadas como risco intermediário ou elevado nas ações do plano.',
+                    'Priorizar as dimensões classificadas como intermediário ou grave nas ações do plano.',
                     'Estabelecer acompanhamento obrigatório das medidas preventivas com responsáveis e prazos definidos.',
                     'Comunicar resultados à liderança e envolver trabalhadores no acompanhamento das ações.',
                 ],

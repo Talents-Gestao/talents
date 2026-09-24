@@ -21,7 +21,7 @@ class TalentsCompanyProfileSeeder extends Seeder
             'company_address' => 'Av. Fernão Dias Paes Leme, 1300 – Centro – Várzea Paulista – SP, CEP 13.220-001',
             'company_city_state' => 'Várzea Paulista – SP',
             'company_email' => 'contato@talentsgestao.com',
-            'company_phone' => '(11) 97570-3032',
+            'company_phone' => '(11) 3109-6837',
             'company_representative_line' => 'neste ato representada por Suzane G. Pasqualino, CPF 377.425.058-86',
             'company_forum_city_state' => 'Várzea Paulista – SP',
             'company_contract_signatory_name' => 'Suzane G. Pasqualino',

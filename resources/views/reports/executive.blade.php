@@ -84,7 +84,7 @@
     <p><strong>Uso deste relatório na documentação do PGR:</strong></p>
     <ul>
         <li>Evidência de levantamento participativo / percepção dos trabalhadores sobre o ambiente de trabalho (dados agregados).</li>
-        <li>Apoio à priorização de medidas de prevenção nas dimensões com indicador &quot;Risco intermediário&quot; ou &quot;Risco elevado&quot;.</li>
+        <li>Apoio à priorização de medidas de prevenção nas dimensões com indicador &quot;{{ config('nr1.risk_labels.yellow') }}&quot; ou &quot;{{ config('nr1.risk_labels.red') }}&quot;.</li>
         <li>Registro de campanha, período e unidade organizacional (setores, quando aplicável).</li>
         <li>Manter rastreabilidade com plano de ação, responsáveis e prazos definidos internamente.</li>
     </ul>

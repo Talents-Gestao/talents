@@ -365,10 +365,10 @@ class ProposalPaymentMethodPdfTest extends TestCase
             $html
         );
         $this->assertDoesNotMatchRegularExpression(
-            '/class="footer-contacts">[^<]*97570-3032/s',
+            '/class="footer-contacts">[^<]*3109-6837/s',
             $html
         );
-        $this->assertStringContainsString('WhatsApp (11) 97570-3032', $html);
+        $this->assertStringContainsString('WhatsApp (11) 3109-6837', $html);
     }
 
     public function test_pdf_includes_notes_when_filled(): void

@@ -127,7 +127,7 @@
             : 'contato@talentsgestao.com';
 
         $footerWebsite = 'www.talentsgestao.com';
-        $footerWhatsapp = '(11) 97570-3032';
+        $footerWhatsapp = '(11) 3109-6837';
     @endphp
 
     <div class="doc-main">

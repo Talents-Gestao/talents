@@ -34,9 +34,9 @@ class ReportGenerator
                 default => strtoupper((string) $l),
             },
             'healthLevelLabel' => fn (?string $l) => match ($l) {
-                'green' => 'Situação favorável',
-                'yellow' => 'Risco intermediário',
-                'red' => 'Risco elevado',
+                'green' => config('nr1.risk_labels.green'),
+                'yellow' => config('nr1.risk_labels.yellow'),
+                'red' => config('nr1.risk_labels.red'),
                 default => strtoupper((string) $l),
             },
             'riskColor' => fn (?string $l) => match ($l) {
