@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AiSetting;
 use App\Models\Survey;
 use App\Models\SurveyResult;
+use App\Support\Nr1Scoring;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -40,6 +41,7 @@ Você é a Mia, assistente de inteligência artificial da plataforma Talents, es
 Regras obrigatórias:
 - Use apenas os dados agregados fornecidos (médias, níveis de risco, contagens por dimensão/setor). Não invente números nem respondentes individuais.
 - Não identifique pessoas. Não solicite nem suponha dados pessoais.
+- Os níveis de risco oficiais são **Leve**, **Intermediário** e **Grave** (campo `risk_level` nos dados). Use sempre esses nomes. **Nunca** diga “risco verde/amarelo/vermelho”, “faixa amarela” ou qualquer referência a cor — a cor é só visual na interface, não faz parte do parecer.
 - Escreva em linguagem natural e acolhedora, como uma colega de SST falando com gestores, mas mantenha rigor técnico. No texto final, não diga que você é uma IA, assistente virtual ou modelo de linguagem — apresente-se como uma análise técnica direta.
 - Formate em Markdown: use ## para títulos de seção (sem numerar com 1., 2., 3.), **negrito** para destaques e subtópicos importantes, e listas quando fizer sentido. Não use enumeração automática do tipo "1." "2." no início das seções.
 - Sua função é **apenas avaliar o cenário** com base nos dados: panorama geral; dimensões mais críticas ou em atenção; diferenças entre setores (se houver dados). Não elabore plano de ação, lista de medidas corretivas, cronograma, nem recomendações operacionais passo a passo — isso fica com a equipe de especialistas da Talents.
@@ -60,6 +62,7 @@ Você é a Mia, assistente da plataforma Talents, elaborando um **parecer técni
 Regras obrigatórias:
 - Use apenas os dados agregados fornecidos (médias, níveis de risco, contagens por dimensão/setor). Não invente números nem respondentes individuais.
 - Não identifique pessoas. Não solicite nem suponha dados pessoais.
+- Os níveis de risco oficiais são **Leve**, **Intermediário** e **Grave** (campo `risk_level` nos dados). Use sempre esses nomes. **Nunca** diga “risco verde/amarelo/vermelho”, “faixa amarela” ou qualquer referência a cor — a cor é só visual na interface, não faz parte do parecer.
 - Escreva em linguagem técnica e profissional, em tom de parecer da Talents para gestores e SST. No texto final, não diga que você é uma IA ou modelo de linguagem.
 - Formate em Markdown: use ## para títulos de seção (sem numerar com 1., 2., 3.), **negrito** para destaques, e listas quando fizer sentido.
 - Estruture o parecer com: **Panorama geral**; **Dimensões e setores críticos ou em atenção**; **Interpretação técnica e riscos**; **Recomendações e medidas preventivas/corretivas** alinhadas à NR-1 e ao ciclo do PGR; **Priorização sugerida** (curto/médio prazo quando aplicável).
@@ -111,7 +114,7 @@ PROMPT;
             ->map(fn ($r) => [
                 'dimension' => data_get($r->meta, 'section_title') ?? $r->section?->title ?? 'Dimensão',
                 'average_score' => round((float) $r->average_score, 2),
-                'risk_level' => $r->risk_level,
+                'risk_level' => Nr1Scoring::riskLabel($r->risk_level),
                 'respondent_count' => $r->respondent_count,
             ])
             ->all();
@@ -121,7 +124,7 @@ PROMPT;
             ->map(fn ($r) => [
                 'department' => $r->department?->name ?? 'Setor',
                 'average_score' => round((float) $r->average_score, 2),
-                'risk_level' => $r->risk_level,
+                'risk_level' => Nr1Scoring::riskLabel($r->risk_level),
                 'respondent_count' => $r->respondent_count,
             ])
             ->values()
@@ -135,7 +138,7 @@ PROMPT;
             'department' => $r->department?->name ?? 'Setor',
             'dimension' => data_get($r->meta, 'section_title') ?? $r->section?->title ?? 'Dimensão',
             'average_score' => round((float) $r->average_score, 2),
-            'risk_level' => $r->risk_level,
+            'risk_level' => Nr1Scoring::riskLabel($r->risk_level),
             'respondent_count' => $r->respondent_count,
         ])->values()->all();
 
@@ -144,11 +147,16 @@ PROMPT;
             'company' => $survey->company?->name ?? 'Empresa',
             'methodology' => config('nr1.methodology'),
             'scale' => config('nr1.scale'),
-            'score_interpretation' => 'Média Likert 1–5: quanto maior, maior o risco. Faixas: 1,00–2,33 favorável, 2,34–3,66 intermediário, 3,67–5,00 elevado.',
+            'score_interpretation' => 'Média Likert 1–5: quanto maior, maior o risco. Faixas oficiais: 1,00–2,33 Leve; 2,34–3,66 Intermediário; 3,67–5,00 Grave. Nunca use nomes de cores.',
+            'risk_level_names' => [
+                'Leve' => '1,00–2,33',
+                'Intermediário' => '2,34–3,66',
+                'Grave' => '3,67–5,00',
+            ],
             'min_responses_for_breakdown' => $survey->min_responses_for_breakdown,
             'overall' => $overall ? [
                 'average_score' => round((float) $overall->average_score, 2),
-                'risk_level' => $overall->risk_level,
+                'risk_level' => Nr1Scoring::riskLabel($overall->risk_level),
                 'respondent_count' => $overall->respondent_count,
             ] : null,
             'by_dimension' => $bySection,

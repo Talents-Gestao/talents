@@ -91,9 +91,9 @@ class Nr1AuditScoringCommand extends Command
         $this->info('=== FAIXAS DO SISTEMA (COPSOQ / tercis na escala Likert 1–5) ===');
         $greenMax = config('nr1.risk_thresholds.green_max', 2.33);
         $yellowMax = config('nr1.risk_thresholds.yellow_max', 3.66);
-        $this->line("  Verde  1,00–{$greenMax}  (situação favorável, sem risco aparente)");
-        $this->line('  Amarelo '.number_format($greenMax + 0.01, 2, ',', '')."–{$yellowMax} (risco intermediário, monitorar)");
-        $this->line('  Vermelho '.number_format($yellowMax + 0.01, 2, ',', '').'–5,00 (risco elevado, ação imediata)');
+        $this->line('  Verde  1,00–'.$greenMax.'  (leve)');
+        $this->line('  Amarelo '.number_format($greenMax + 0.01, 2, ',', '')."–{$yellowMax} (intermediário)");
+        $this->line('  Vermelho '.number_format($yellowMax + 0.01, 2, ',', '').'–5,00 (grave)');
         $this->line('  Média ponderada das respostas Likert 1–5 (maior = maior risco psicossocial)');
 
         $this->newLine();

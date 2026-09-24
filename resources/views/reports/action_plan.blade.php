@@ -105,7 +105,7 @@
             </span>
             <p class="muted" style="margin: 6px 0 0;">
                 Respondentes: {{ $overall['respondent_count'] }}
-                · Faixas: 1,00–2,33 favorável · 2,34–3,66 intermediário · 3,67–5,00 elevado
+                · Faixas: 1,00–2,33 leve · 2,34–3,66 intermediário · 3,67–5,00 grave
             </p>
         </div>
     @else
@@ -115,9 +115,9 @@
     @if(count($bySection) > 0)
         <h2>Dimensões</h2>
         <div class="legend">
-            <span><span class="dot" style="background:#10b981;"></span> Favorável (1,00–2,33)</span>
+            <span><span class="dot" style="background:#10b981;"></span> Leve (1,00–2,33)</span>
             <span><span class="dot" style="background:#f59e0b;"></span> Intermediário (2,34–3,66)</span>
-            <span><span class="dot" style="background:#ef4444;"></span> Elevado (3,67–5,00)</span>
+            <span><span class="dot" style="background:#ef4444;"></span> Grave (3,67–5,00)</span>
         </div>
 
         <table class="two-col">

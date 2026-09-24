@@ -1,5 +1,6 @@
 <script setup>
 import ApexChart from '@/Components/Charts/ApexChart.vue';
+import Nr1RiskLevelLegend from '@/Components/Nr1RiskLevelLegend.vue';
 import { ChevronDownIcon } from '@heroicons/vue/24/outline';
 import { computed, ref, watch } from 'vue';
 
@@ -117,9 +118,9 @@ const riskLevelFromScore = (score) => {
 const resolveRiskLevel = (row) => row?.risk_level || riskLevelFromScore(row?.average_score);
 
 const healthLevelLabel = (level) => {
-    if (level === 'green') return 'Situação favorável';
-    if (level === 'yellow') return 'Risco intermediário';
-    return 'Risco elevado';
+    if (level === 'green') return 'Leve';
+    if (level === 'yellow') return 'Intermediário';
+    return 'Grave';
 };
 
 const buildDimensionRadarOptions = (sections) => {
@@ -397,9 +398,9 @@ const deptGroupedSeries = computed(() => {
 });
 
 const heatmapCellClass = (level) => {
-    if (level === 'green') return 'bg-emerald-100 text-emerald-900';
-    if (level === 'yellow') return 'bg-amber-100 text-amber-900';
-    return 'bg-red-100 text-red-900';
+    if (level === 'green') return 'bg-emerald-400 text-emerald-950 ring-1 ring-emerald-500/40';
+    if (level === 'yellow') return 'bg-amber-400 text-amber-950 ring-1 ring-amber-500/40';
+    return 'bg-red-400 text-red-950 ring-1 ring-red-500/40';
 };
 
 const scoreForDeptSection = (departmentId, sectionId) => {
@@ -611,11 +612,7 @@ const scrollToSection = (event, sectionId) => {
         >
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <h3 class="text-lg font-semibold text-talents-900">Dimensões — {{ selectedDepartmentName }}</h3>
-                <div class="flex flex-wrap gap-3 text-xs text-gray-600">
-                    <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Favorável</span>
-                    <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-amber-500" /> Intermediário</span>
-                    <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-red-500" /> Elevado</span>
-                </div>
+                <Nr1RiskLevelLegend :with-ranges="false" />
             </div>
             <div class="mt-6 grid gap-8 xl:grid-cols-5">
                 <div class="min-h-[34rem] xl:col-span-3">
@@ -646,10 +643,15 @@ const scrollToSection = (event, sectionId) => {
             tabindex="-1"
             class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
-            <h3 class="text-lg font-semibold text-talents-900">Indicador geral de risco (1–5)</h3>
-            <p class="mt-1 text-sm text-gray-500">
-                Média ponderada das respostas Likert. Quanto maior, maior o risco. Faixas: 1,00–2,33 favorável · 2,34–3,66 intermediário · 3,67–5,00 elevado.
-            </p>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-lg font-semibold text-talents-900">Indicador geral de risco (1–5)</h3>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Média ponderada das respostas Likert. Quanto maior, maior o risco.
+                    </p>
+                </div>
+                <Nr1RiskLevelLegend />
+            </div>
             <div class="mt-4 flex flex-wrap items-center gap-4">
                 <span class="text-4xl font-bold text-talents-800 tabular-nums">{{ formatLikertScore(overall.average_score) }}</span>
                 <span class="rounded-full px-3 py-1 text-sm font-medium" :class="healthBadge(overall.risk_level)">
@@ -667,11 +669,7 @@ const scrollToSection = (event, sectionId) => {
         >
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <h3 class="text-lg font-semibold text-talents-900">Dimensões</h3>
-                <div class="flex flex-wrap gap-3 text-xs text-gray-600">
-                    <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Favorável (1,00–2,33)</span>
-                    <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-amber-500" /> Intermediário (2,34–3,66)</span>
-                    <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-red-500" /> Elevado (3,67–5,00)</span>
-                </div>
+                <Nr1RiskLevelLegend />
             </div>
             <div class="mt-6 grid gap-8 xl:grid-cols-5">
                 <div class="min-h-[34rem] xl:col-span-3">
@@ -756,10 +754,15 @@ const scrollToSection = (event, sectionId) => {
             tabindex="-1"
             class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
-            <h3 class="text-lg font-semibold text-talents-900">Risco por setor (média geral)</h3>
-            <p class="mt-1 text-sm text-gray-500">
-                Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato). Cores conforme faixa de risco.
-            </p>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-lg font-semibold text-talents-900">Risco por setor (média geral)</h3>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato). Cores conforme faixa de risco.
+                    </p>
+                </div>
+                <Nr1RiskLevelLegend />
+            </div>
             <div class="mt-4 min-h-[26rem]">
                 <ApexChart height="420" :options="deptBarChart" :series="deptBarSeries" />
             </div>
@@ -769,8 +772,13 @@ const scrollToSection = (event, sectionId) => {
             v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
             class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
         >
-            <h3 class="text-lg font-semibold text-talents-900">Dimensões por setor</h3>
-            <p class="mt-1 text-sm text-gray-500">Comparação lado a lado das dimensões em cada setor.</p>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-lg font-semibold text-talents-900">Dimensões por setor</h3>
+                    <p class="mt-1 text-sm text-gray-500">Comparação lado a lado das dimensões em cada setor.</p>
+                </div>
+                <Nr1RiskLevelLegend />
+            </div>
             <div class="mt-4 min-h-[30rem]">
                 <ApexChart height="460" :options="deptGroupedBar" :series="deptGroupedSeries" />
             </div>
@@ -780,8 +788,13 @@ const scrollToSection = (event, sectionId) => {
             v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
             class="overflow-x-auto rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
         >
-            <h3 class="text-lg font-semibold text-talents-900">Tabela de risco por setor e dimensão</h3>
-            <p class="mt-1 text-sm text-gray-500">Valores numéricos complementares aos gráficos acima.</p>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-lg font-semibold text-talents-900">Tabela de risco por setor e dimensão</h3>
+                    <p class="mt-1 text-sm text-gray-500">Valores numéricos complementares aos gráficos acima.</p>
+                </div>
+                <Nr1RiskLevelLegend />
+            </div>
             <table class="mt-4 min-w-full border-collapse text-sm">
                 <thead>
                     <tr class="border-b border-gray-200 bg-gray-50">
@@ -809,7 +822,7 @@ const scrollToSection = (event, sectionId) => {
                         >
                             <span
                                 v-if="scoreForDeptSection(row.department_id, sec.survey_template_section_id)"
-                                class="inline-block min-w-[3rem] rounded px-2 py-1 font-mono text-xs"
+                                class="inline-block min-w-[3rem] rounded px-2 py-1 font-mono text-xs font-semibold"
                                 :class="heatmapCellClass(scoreForDeptSection(row.department_id, sec.survey_template_section_id).risk_level)"
                             >
                                 {{ formatLikertScore(scoreForDeptSection(row.department_id, sec.survey_template_section_id).average_score) }}
@@ -838,11 +851,14 @@ const scrollToSection = (event, sectionId) => {
                             Votos por opção da escala na campanha. Expanda cada dimensão para ver o detalhe.
                         </template>
                     </p>
+                    <div class="mt-3">
+                        <Nr1RiskLevelLegend />
+                    </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
                         <input v-model="showCriticalQuestionsOnly" type="checkbox" class="rounded border-gray-300 text-talents-700 focus:ring-talents-500" />
-                        Só intermediário/elevado
+                        Só intermediário/grave
                     </label>
                     <button
                         type="button"

@@ -9,9 +9,9 @@ const props = defineProps({
 });
 
 const label = computed(() => {
-    if (props.riskLevel === 'green') return 'Situação favorável';
-    if (props.riskLevel === 'yellow') return 'Risco intermediário';
-    if (props.riskLevel === 'red') return 'Risco elevado';
+    if (props.riskLevel === 'green') return 'Leve';
+    if (props.riskLevel === 'yellow') return 'Intermediário';
+    if (props.riskLevel === 'red') return 'Grave';
     return '—';
 });
 

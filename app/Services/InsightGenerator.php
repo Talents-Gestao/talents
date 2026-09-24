@@ -29,7 +29,7 @@ class InsightGenerator
             SurveyInsight::create([
                 'survey_id' => $survey->id,
                 'type' => 'alert',
-                'message' => 'Risco psicossocial elevado no indicador geral. Priorize ações imediatas com SESMT/RH e liderança.',
+                'message' => 'Risco psicossocial grave no indicador geral. Priorize ações imediatas com SESMT/RH e liderança.',
                 'meta' => ['average_score' => $overall->average_score],
             ]);
         }
