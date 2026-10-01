@@ -23,6 +23,29 @@ const props = defineProps({
     installmentStatusOptions: { type: Array, default: () => [] },
 });
 
+const groupKey = (item) =>
+    item?.source === 'sale' && item.sale_id ? `sale-${item.sale_id}` : String(item?.id ?? '');
+
+const groupedRows = computed(() => {
+    const data = props.items.data ?? [];
+    const sizes = new Map();
+    for (const item of data) {
+        const key = groupKey(item);
+        sizes.set(key, (sizes.get(key) ?? 0) + 1);
+    }
+
+    return data.map((item, index) => {
+        const key = groupKey(item);
+        const prevKey = index > 0 ? groupKey(data[index - 1]) : null;
+
+        return {
+            item,
+            groupStart: key !== prevKey,
+            groupSize: sizes.get(key) ?? 1,
+        };
+    });
+});
+
 const page = usePage();
 const flashSuccess = computed(() => page.props.flash?.success);
 const flashError = computed(() => page.props.flash?.error);
@@ -379,88 +402,130 @@ const submitEdit = () => {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        <tr v-for="item in items.data" :key="item.id">
+                        <template v-for="row in groupedRows" :key="row.item.id">
+                        <tr v-if="row.groupStart && row.groupSize > 1" class="bg-slate-50">
+                            <td colspan="7" class="px-4 py-2.5">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                        <p class="font-semibold text-slate-900">{{ row.item.counterparty || 'Venda' }}</p>
+                                        <p class="text-xs text-slate-500">{{ row.groupSize }} parcelas</p>
+                                    </div>
+                                    <Link
+                                        v-if="row.item.href"
+                                        :href="row.item.href"
+                                        class="text-xs font-semibold text-talents-700 hover:underline"
+                                    >
+                                        Ver venda
+                                    </Link>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr
+                            :class="row.groupSize > 1 ? 'border-l-4 border-l-talents-200 bg-white' : ''"
+                        >
                             <td class="px-4 py-3">
-                                <p class="font-medium text-slate-900">{{ item.title }}</p>
-                                <p class="text-xs text-slate-500">{{ item.counterparty || '—' }}</p>
+                                <p class="font-medium text-slate-900">{{ row.item.title }}</p>
+                                <p v-if="row.groupSize === 1" class="text-xs text-slate-500">{{ row.item.counterparty || '—' }}</p>
                                 <span
-                                    v-if="item.recurring_label"
+                                    v-if="row.item.recurring_label"
                                     class="mt-1 inline-flex rounded-full bg-talents-50 px-2 py-0.5 text-[11px] font-medium text-talents-800 ring-1 ring-talents-100"
                                 >
-                                    {{ item.recurring_label }}
+                                    {{ row.item.recurring_label }}
                                 </span>
                             </td>
                             <td class="px-4 py-3">
                                 <span
                                     class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
                                     :class="
-                                        item.source === 'sale'
+                                        row.item.source === 'sale'
                                             ? 'bg-violet-50 text-violet-800'
                                             : 'bg-sky-50 text-sky-800'
                                     "
                                 >
-                                    {{ item.source_label }}
+                                    {{ row.item.source_label }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-slate-700">{{ formatDate(item.due_date) }}</td>
-                            <td class="px-4 py-3 text-slate-700">{{ formatDate(item.paid_at) }}</td>
+                            <td class="px-4 py-3 text-slate-700">{{ formatDate(row.item.due_date) }}</td>
+                            <td class="px-4 py-3 text-slate-700">{{ formatDate(row.item.paid_at) }}</td>
                             <td class="px-4 py-3 font-medium tabular-nums text-slate-900">
-                                {{ formatBRL(item.amount_cents) }}
+                                {{ formatBRL(row.item.amount_cents) }}
                             </td>
                             <td class="px-4 py-3">
                                 <span
                                     class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
-                                    :class="statusClass(item.status)"
+                                    :class="statusClass(row.item.status)"
                                 >
-                                    {{ item.status_label }}
+                                    {{ row.item.status_label }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="inline-flex items-center justify-end gap-0.5">
                                     <button
-                                        v-if="item.can_mark_paid"
+                                        v-if="row.item.can_mark_paid"
                                         type="button"
                                         :class="iconBtnClass"
                                         class="text-emerald-700 hover:text-emerald-900"
                                         title="Receber"
                                         aria-label="Receber"
-                                        @click="openReceive(item)"
+                                        @click="openReceive(row.item)"
                                     >
                                         <BanknotesIcon class="h-4 w-4" />
                                     </button>
                                     <button
-                                        v-if="item.can_edit"
+                                        v-if="row.item.can_edit"
                                         type="button"
                                         :class="iconBtnClass"
                                         title="Editar"
                                         aria-label="Editar"
-                                        @click="openEditModal(item)"
+                                        @click="openEditModal(row.item)"
                                     >
                                         <PencilSquareIcon class="h-4 w-4" />
                                     </button>
                                     <Link
-                                        v-if="item.source === 'sale' && item.href"
-                                        :href="item.href"
+                                        v-if="row.groupSize === 1 && row.item.source === 'sale' && row.item.href"
+                                        :href="row.item.href"
                                         class="ml-1 text-xs font-medium text-slate-600 hover:underline"
                                     >
                                         Ver venda
                                     </Link>
                                     <button
-                                        v-if="item.can_delete"
+                                        v-if="row.item.can_delete"
                                         type="button"
                                         :class="iconBtnClass"
                                         class="text-red-600 hover:text-red-800"
                                         title="Excluir"
                                         aria-label="Excluir"
-                                        @click="remove(item.receivable_id)"
+                                        @click="remove(row.item.receivable_id)"
                                     >
                                         <TrashIcon class="h-4 w-4" />
                                     </button>
                                 </div>
                             </td>
                         </tr>
+                        </template>
                     </tbody>
                 </table>
+            </div>
+            <div
+                v-if="items.links?.length > 3"
+                class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-4 py-3 text-sm"
+            >
+                <p class="text-xs text-slate-500">
+                    {{ items.from }}–{{ items.to }} de {{ items.total }}
+                </p>
+                <div class="flex flex-wrap items-center justify-end gap-1">
+                    <template v-for="link in items.links" :key="link.label">
+                        <Link
+                            v-if="link.url"
+                            :href="link.url"
+                            class="rounded-lg px-3 py-1 text-slate-700 transition hover:bg-white"
+                            :class="link.active ? 'bg-talents-600 text-white hover:bg-talents-600' : ''"
+                            preserve-scroll
+                            v-html="link.label"
+                        />
+                        <span v-else class="cursor-not-allowed rounded-lg px-3 py-1 text-slate-400" v-html="link.label" />
+                    </template>
+                </div>
             </div>
         </div>
 

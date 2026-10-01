@@ -14,6 +14,7 @@ const props = defineProps({
     paymentMethods: { type: Object, default: () => ({}) },
     installmentMethodOptions: { type: Array, default: () => [] },
     installmentStatusOptions: { type: Array, default: () => [] },
+    bankAccounts: { type: Array, default: () => [] },
 });
 
 const localTodayDate = () => {
