@@ -1,5 +1,5 @@
-# Nginx de produção — reutiliza a imagem PHP já buildada (evita recompilar extensões no Coolify).
-# O contexto nomeado "app" vem de additional_contexts: service:app no docker-compose.prod.yml.
+# Legado. Coolify e docker-compose.prod.yml usam docker/Dockerfile (target nginx)
+# para não recompilar o PHP. Este arquivo fica só para builds manuais pontuais.
 # Build: docker compose -f docker-compose.prod.yml build nginx
 
 FROM nginx:1.27-alpine

@@ -47,9 +47,12 @@ RUN docker-php-ext-configure intl \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j2 gd zip
 
-RUN pecl install redis \
-    && docker-php-ext-enable redis \
-    && rm -rf /tmp/pear /root/.pearrc
+# pecl pergunta igbinary/lzf/etc. no TTY; no Coolify o EOF vira exit 1.
+# Versão fixa evita surpresa no PECL no meio do deploy.
+RUN set -eux; \
+    yes '' | pecl install -f redis-6.2.0; \
+    docker-php-ext-enable redis; \
+    rm -rf /tmp/pear /root/.pearrc
 
 RUN apk del $PHPIZE_DEPS linux-headers
 
@@ -88,4 +91,15 @@ EXPOSE 9000
 ENTRYPOINT ["/var/www/html/docker/entrypoint.sh"]
 CMD ["php-fpm", "-F"]
 
-# Stage nginx: ver docker/Dockerfile.nginx (reutiliza talents-php:prod; evita rebuild duplicado no Coolify).
+# Mesmo grafo do PHP: o Coolify não recompila extensões ao construir o nginx.
+FROM nginx:1.27-alpine AS nginx
+
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=php /var/www/html/public /var/www/html/public
+
+RUN rm -f /var/www/html/public/storage \
+    && ln -s /var/www/html/storage/app/public /var/www/html/public/storage
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

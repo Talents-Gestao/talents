@@ -1,9 +1,6 @@
 # Docker Compose para produção (Coolify / servidor).
-# Build (ordem recomendada — evita OOM recompilando PHP duas vezes):
-#   sh docker/build-prod.sh
-# ou: docker compose -f docker-compose.prod.yml build app && docker compose -f docker-compose.prod.yml build nginx
-# Coolify: defina o arquivo compose como docker-compose.prod.yml e o diretório base em talents/
-# Se o build falhar no stage PHP/pecl, use docker/build-prod.sh como comando de build customizado.
+# Build: um único Dockerfile (targets php e nginx) — o grafo do BuildKit
+# compila as extensões PHP uma vez só. Coolify: compose = docker-compose.prod.yml
 #
 # Variáveis: use o painel do Coolify ou um .env na raiz do projeto com DB_*, APP_KEY, APP_URL, etc.
 
@@ -43,9 +40,8 @@ services:
   nginx:
     build:
       context: .
-      dockerfile: docker/Dockerfile.nginx
-      additional_contexts:
-        app: service:app
+      dockerfile: docker/Dockerfile
+      target: nginx
     image: talents-nginx:prod
     restart: unless-stopped
     # Sem "ports:" no host: Coolify/Traefik já usa a :80 e encaminha pelo proxy.
