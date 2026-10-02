@@ -6,6 +6,7 @@ use App\Actions\Notices\PublishCommercialNotice;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
+use App\Models\FinanceBankAccount;
 use App\Models\User;
 use App\Services\Commercial\ProposalSaleConversionService;
 use App\Support\Commercial\CommercialCodeSearch;

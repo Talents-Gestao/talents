@@ -177,6 +177,7 @@ class ProposalToSaleFlowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Finance/Sales/Show')
+                ->has('bankAccounts')
                 ->where('sale.id', $sale->id)
                 ->where('sale.code', $sale->code)
                 ->where('sale.client_name', $clientName)
