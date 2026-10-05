@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin\Finance;
 
 use App\Enums\CommercialProductPricingType;
+use App\Enums\FinanceBankAccountType;
 use App\Models\CommercialProduct;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
+use App\Models\FinanceBankAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -171,13 +173,30 @@ class ProposalToSaleFlowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->has('sales.data', 0));
 
+        $activeAccount = FinanceBankAccount::query()->create([
+            'name' => 'Conta PIX Itaú',
+            'type' => FinanceBankAccountType::Checking,
+            'initial_balance_cents' => 0,
+            'is_active' => true,
+            'created_by' => $admin->id,
+        ]);
+        FinanceBankAccount::query()->create([
+            'name' => 'Conta inativa',
+            'type' => FinanceBankAccountType::Checking,
+            'initial_balance_cents' => 0,
+            'is_active' => false,
+            'created_by' => $admin->id,
+        ]);
+
         // 4) Detalhe da venda (tela que o CTA do modal abre).
         $this->actingAs($admin)
             ->get(route('admin.financeiro.vendas.show', $sale))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Finance/Sales/Show')
-                ->has('bankAccounts')
+                ->has('bankAccounts', 1)
+                ->where('bankAccounts.0.id', $activeAccount->id)
+                ->where('bankAccounts.0.name', 'Conta PIX Itaú')
                 ->where('sale.id', $sale->id)
                 ->where('sale.code', $sale->code)
                 ->where('sale.client_name', $clientName)

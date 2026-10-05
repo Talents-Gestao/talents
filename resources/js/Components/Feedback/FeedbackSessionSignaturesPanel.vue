@@ -3,6 +3,7 @@ import FeedbackStatusBadge from '@/Components/Feedback/FeedbackStatusBadge.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
+import { formatDateTime } from '@/utils/dateOnly';
 import { router } from '@inertiajs/vue3';
 import { CheckCircleIcon, ClipboardDocumentIcon, EnvelopeIcon } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
@@ -54,7 +55,7 @@ const sendInvites = () => {
     });
 };
 
-const formatDate = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR') : null);
+const formatDate = (iso) => (iso ? formatDateTime(iso) : null);
 
 const copyLink = async (sig) => {
     if (!sig.sign_url) return;

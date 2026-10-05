@@ -9,6 +9,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { ArrowDownTrayIcon, ClipboardDocumentIcon, LinkIcon, NoSymbolIcon } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
 import { confirmDialog } from '@/composables/useConfirmDialog';
+import { formatDateTime } from '@/utils/dateOnly';
 
 const props = defineProps({
     interview: Object,
@@ -166,7 +167,7 @@ const revokeLink = async () => {
                     </p>
                     <p v-else-if="interview.employee_submitted_at" class="text-xs text-slate-600">
                         Respondida pelo colaborador em
-                        {{ new Date(interview.employee_submitted_at).toLocaleString('pt-BR') }}.
+                        {{ formatDateTime(interview.employee_submitted_at) }}.
                     </p>
                 </div>
 

@@ -1,6 +1,7 @@
 <script setup>
 import PaginationBar from '@/Components/PaginationBar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import { formatDateTime } from '@/utils/dateOnly';
 import { Head, Link } from '@inertiajs/vue3';
 
 defineProps({
@@ -47,7 +48,7 @@ defineProps({
                             <td class="px-4 py-3 text-slate-700">{{ notice.company?.name ?? '—' }}</td>
                             <td class="px-4 py-3 font-medium text-slate-900">{{ notice.title }}</td>
                             <td class="px-4 py-3 text-slate-600">
-                                {{ notice.published_at ? new Date(notice.published_at).toLocaleString('pt-BR') : '—' }}
+                                {{ formatDateTime(notice.published_at) }}
                             </td>
                             <td class="px-4 py-3 text-slate-600">
                                 {{ notice.source_type === 'strategic_calendar_item' ? 'Calendário' : 'Manual' }}

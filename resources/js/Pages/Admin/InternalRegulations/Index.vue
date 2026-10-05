@@ -2,6 +2,7 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import { formatDateTime } from '@/utils/dateOnly';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { MagnifyingGlassIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { ref } from 'vue';
@@ -123,14 +124,7 @@ const remove = async (id) => {
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-slate-500">
-                                {{
-                                    row.updated_at
-                                        ? new Date(row.updated_at).toLocaleString('pt-BR', {
-                                              dateStyle: 'short',
-                                              timeStyle: 'short',
-                                          })
-                                        : '—'
-                                }}
+                                {{ formatDateTime(row.updated_at) }}
                             </td>
                             <td class="space-x-3 px-4 py-3 text-right">
                                 <Link

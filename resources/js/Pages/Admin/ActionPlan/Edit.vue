@@ -16,7 +16,7 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { DocumentTextIcon } from '@heroicons/vue/24/outline';
 import { marked } from 'marked';
 import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue';
-import { formatDateNumeric } from '@/utils/dateOnly';
+import { formatDateNumeric, formatDateTime } from '@/utils/dateOnly';
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -430,7 +430,7 @@ const submit = () => {
                 </div>
                 <div>
                     <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Última publicação</dt>
-                    <dd class="mt-1 text-slate-800">{{ plan?.admin_published_at || 'Ainda não publicada' }}</dd>
+                    <dd class="mt-1 text-slate-800">{{ plan?.admin_published_at ? formatDateTime(plan.admin_published_at) : 'Ainda não publicada' }}</dd>
                 </div>
             </dl>
         </section>
@@ -563,7 +563,7 @@ const submit = () => {
                             </a>
                             <span v-else class="font-medium">{{ existingExecutiveFileName }}</span>
                             <span v-if="nr1Reports?.executive?.published_at" class="text-xs text-gray-500">
-                                (publicado em {{ nr1Reports.executive.published_at }})
+                                (publicado em {{ formatDateTime(nr1Reports.executive.published_at) }})
                             </span>
                         </div>
                         <button
@@ -605,7 +605,7 @@ const submit = () => {
                             </a>
                             <span v-else class="font-medium">{{ existingReferralFileName }}</span>
                             <span v-if="nr1Reports?.technical_referral?.published_at" class="text-xs text-gray-500">
-                                (publicado em {{ nr1Reports.technical_referral.published_at }})
+                                (publicado em {{ formatDateTime(nr1Reports.technical_referral.published_at) }})
                             </span>
                         </div>
                         <button
@@ -804,7 +804,7 @@ const submit = () => {
                         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Status atual</p>
                         <p class="mt-2 text-base font-semibold text-slate-900">{{ publicationStatusLabel }}</p>
                         <p v-if="plan?.admin_published_at" class="mt-1 text-sm text-slate-600">
-                            Última publicação: {{ plan.admin_published_at }}
+                            Última publicação: {{ formatDateTime(plan.admin_published_at) }}
                         </p>
                     </div>
                     <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

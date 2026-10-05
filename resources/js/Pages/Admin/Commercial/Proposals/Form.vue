@@ -10,6 +10,7 @@ import {
     FLEXIBLE_RATE_DEFS,
 } from '@/composables/useCatalogProductPricing';
 import { formatCnpj, maskCnpj } from '@/utils/formatCnpj';
+import { formatDateTime } from '@/utils/dateOnly';
 import { centsToMoneyModel, moneyToCents, parseMoneyToNumber } from '@/utils/moneyMask';
 import MoneyInput from '@/Components/MoneyInput.vue';
 import { XMarkIcon } from '@heroicons/vue/24/outline';
@@ -660,7 +661,7 @@ const openContractPdf = (contractId) => {
     window.open(route('admin.comercial.contratos.pdf', contractId), '_blank');
 };
 
-const formatContractDate = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR') : '—');
+const formatContractDate = (iso) => formatDateTime(iso);
 
 const isEdit = computed(() => props.mode === 'edit');
 const hasLinkedSale = computed(() => Boolean(props.proposal?.has_sale));

@@ -7,6 +7,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { formatDateTime } from '@/utils/dateOnly';
 
 const props = defineProps({
     tab: { type: String, default: 'ia' },
@@ -421,7 +422,7 @@ const setTab = (name) => {
             >
                 <p>
                     <span class="font-medium">Último teste:</span>
-                    {{ solidesSettings.last_tested_at ? new Date(solidesSettings.last_tested_at).toLocaleString('pt-BR') : 'não realizado' }}
+                    {{ solidesSettings.last_tested_at ? formatDateTime(solidesSettings.last_tested_at) : 'não realizado' }}
                 </p>
                 <p>
                     <span class="font-medium">Status:</span>

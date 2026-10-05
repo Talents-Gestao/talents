@@ -44,6 +44,7 @@ const openEditInstallment = (inst) => {
         due_date: inst.due_date,
         method: inst.method,
         status: inst.status,
+        bank_account_id: inst.bank_account_id ?? '',
         notes: inst.notes ?? '',
     };
     editModalOpen.value = true;
@@ -368,6 +369,7 @@ const confirmDestroy = () => {
             :subtitle="sale.client_name"
             :method-options="installmentMethodOptions"
             :status-options="installmentStatusOptions"
+            :bank-accounts="bankAccounts"
             @close="closeEditInstallment"
         />
 
