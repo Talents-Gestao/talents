@@ -33,6 +33,34 @@ const statusLabel = (s) => {
     };
     return map[s] || s;
 };
+
+const categoryLabel = (c) => {
+    const map = {
+        assedio_moral: 'Assédio moral',
+        assedio_sexual: 'Assédio sexual',
+        discriminacao: 'Discriminação',
+        corrupcao: 'Corrupção ou fraude',
+        seguranca: 'Segurança',
+        outros: 'Outros',
+    };
+    return map[c] || c;
+};
+
+const auditActionLabel = (log) => {
+    const map = {
+        created: 'Denúncia registrada',
+        viewed_by_company: 'Visualizada pela empresa',
+        viewed_by_reporter: 'Visualizada pelo denunciante',
+        status_changed: 'Status alterado',
+        message_added_by_company: 'Resposta da empresa',
+        message_added_by_reporter: 'Mensagem do denunciante',
+    };
+    const label = map[log.action] || log.action;
+    if (log.action === 'status_changed' && log.meta?.from && log.meta?.to) {
+        return `${label}: ${statusLabel(log.meta.from)} → ${statusLabel(log.meta.to)}`;
+    }
+    return label;
+};
 </script>
 
 <template>
@@ -85,7 +113,7 @@ const statusLabel = (s) => {
                 <div class="surface-card p-6">
                     <h3 class="font-semibold text-gray-900">Relato</h3>
                     <p class="mt-2 text-sm text-gray-600">
-                        Tipo: {{ complaint.category }} · {{ statusLabel(complaint.status) }}
+                        Tipo: {{ categoryLabel(complaint.category) }} · {{ statusLabel(complaint.status) }}
                         <span v-if="complaint.department_name"> · Setor: {{ complaint.department_name }}</span>
                         <span v-else> · Setor: não informado</span>
                     </p>
@@ -130,7 +158,7 @@ const statusLabel = (s) => {
                 <h3 class="font-semibold text-gray-900">Trilha de auditoria</h3>
                 <ul class="mt-4 space-y-3 text-xs text-gray-600">
                     <li v-for="log in complaint.audit_logs" :key="log.id" class="border-b border-gray-100 pb-3">
-                        <p class="font-medium text-gray-800">{{ log.action }}</p>
+                        <p class="font-medium text-gray-800">{{ auditActionLabel(log) }}</p>
                         <p v-if="log.user">{{ log.user.name }}</p>
                         <p v-if="log.ip_address">IP: {{ log.ip_address }}</p>
                         <p class="text-gray-400">{{ formatDateTime(log.created_at) }}</p>
