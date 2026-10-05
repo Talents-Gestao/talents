@@ -1,6 +1,7 @@
 <script setup>
 import ComplaintCompanyPicker from '@/Components/Complaints/ComplaintCompanyPicker.vue';
 import ComplaintsLayout from '@/Components/Complaints/ComplaintsLayout.vue';
+import PaginationBar from '@/Components/PaginationBar.vue';
 import { complaintRoute } from '@/composables/useComplaintRoutes';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -94,6 +95,7 @@ const categoryLabel = (c) => {
                 <p v-if="!complaints.data?.length" class="px-4 py-8 text-center text-sm text-gray-500">
                     Nenhuma denúncia encontrada.
                 </p>
+                <PaginationBar :paginator="complaints" />
             </div>
         </template>
     </ComplaintsLayout>

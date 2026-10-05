@@ -1,4 +1,5 @@
 <script setup>
+import PaginationBar from '@/Components/PaginationBar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -100,7 +101,8 @@ const remove = async (id) => {
         </p>
 
         <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-            <div v-if="employees.data?.length" class="overflow-x-auto">
+            <template v-if="employees.data?.length">
+            <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead
                         class="border-b border-slate-100 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
@@ -163,6 +165,8 @@ const remove = async (id) => {
                     </tbody>
                 </table>
             </div>
+            <PaginationBar :paginator="employees" />
+            </template>
             <div v-else class="px-5 py-12 text-center text-sm text-slate-500">
                 Nenhum colaborador encontrado. Selecione uma empresa e cadastre a primeira ficha.
             </div>

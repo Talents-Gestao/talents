@@ -1,4 +1,5 @@
 <script setup>
+import PaginationBar from '@/Components/PaginationBar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 
@@ -58,6 +59,7 @@ defineProps({
             <p v-if="!notices.data?.length" class="px-4 py-8 text-center text-sm text-slate-500">
                 Nenhum aviso publicado.
             </p>
+            <PaginationBar :paginator="notices" />
         </div>
     </AdminLayout>
 </template>

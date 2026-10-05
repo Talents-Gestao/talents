@@ -1,4 +1,5 @@
 <script setup>
+import PaginationBar from '@/Components/PaginationBar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -158,6 +159,7 @@ onUnmounted(() => {
                     </tbody>
                 </table>
             </div>
+            <PaginationBar :paginator="meetings" />
         </div>
     </AdminLayout>
 </template>

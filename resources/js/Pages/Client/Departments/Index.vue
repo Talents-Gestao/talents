@@ -1,5 +1,6 @@
 <script setup>
 import ListEmptyState from '@/Components/ListEmptyState.vue';
+import PaginationBar from '@/Components/PaginationBar.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { confirmDialog } from '@/composables/useConfirmDialog';
@@ -65,12 +66,15 @@ const remove = async (id) => {
             </div>
         </div>
 
-        <ul class="divide-y divide-slate-200 surface-card overflow-hidden">
-            <li v-for="d in departments.data" :key="d.id" class="flex items-center justify-between px-4 py-3 text-sm">
-                <span>{{ d.name }}</span>
-                <button type="button" class="text-red-600 hover:underline" @click="remove(d.id)">Excluir</button>
-            </li>
+        <div class="surface-card overflow-hidden">
+            <ul class="divide-y divide-slate-200">
+                <li v-for="d in departments.data" :key="d.id" class="flex items-center justify-between px-4 py-3 text-sm">
+                    <span>{{ d.name }}</span>
+                    <button type="button" class="text-red-600 hover:underline" @click="remove(d.id)">Excluir</button>
+                </li>
+            </ul>
             <ListEmptyState v-if="!departments.data.length" message="Nenhum setor encontrado." />
-        </ul>
+            <PaginationBar :paginator="departments" />
+        </div>
     </ClientLayout>
 </template>
