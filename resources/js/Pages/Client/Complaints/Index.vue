@@ -3,6 +3,7 @@ import ComplaintCompanyPicker from '@/Components/Complaints/ComplaintCompanyPick
 import ComplaintsLayout from '@/Components/Complaints/ComplaintsLayout.vue';
 import PaginationBar from '@/Components/PaginationBar.vue';
 import { complaintRoute } from '@/composables/useComplaintRoutes';
+import { formatDateTime } from '@/utils/dateOnly';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
@@ -79,7 +80,7 @@ const categoryLabel = (c) => {
                                 <td class="px-4 py-3">{{ categoryLabel(c.category) }}</td>
                                 <td class="px-4 py-3 text-gray-600">{{ c.department_name || '—' }}</td>
                                 <td class="px-4 py-3">{{ statusLabel(c.status) }}</td>
-                                <td class="px-4 py-3 text-gray-600">{{ c.created_at }}</td>
+                                <td class="px-4 py-3 text-gray-600">{{ formatDateTime(c.created_at) }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <Link
                                         :href="complaintRoute('show', c.id)"

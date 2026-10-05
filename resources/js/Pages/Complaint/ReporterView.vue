@@ -1,4 +1,5 @@
 <script setup>
+import { formatDateTime } from '@/utils/dateOnly';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
@@ -78,7 +79,7 @@ const flashSuccess = computed(() => page.props.flash?.success);
                 >
                     <p class="text-xs font-medium text-talents-700">{{ authorLabel(m.author_type) }}</p>
                     <p class="mt-2 whitespace-pre-wrap text-slate-700">{{ m.content }}</p>
-                    <p class="mt-2 text-xs text-slate-400">{{ m.created_at }}</p>
+                    <p class="mt-2 text-xs text-slate-400">{{ formatDateTime(m.created_at) }}</p>
                 </div>
             </div>
 

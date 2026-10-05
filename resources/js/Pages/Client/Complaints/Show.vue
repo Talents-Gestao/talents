@@ -2,6 +2,7 @@
 import ComplaintsLayout from '@/Components/Complaints/ComplaintsLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import { complaintRoute } from '@/composables/useComplaintRoutes';
+import { formatDateTime } from '@/utils/dateOnly';
 import { Head, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -103,7 +104,7 @@ const statusLabel = (s) => {
                             <span v-if="m.user">({{ m.user.name }})</span>
                         </p>
                         <p class="mt-1 whitespace-pre-wrap text-sm text-gray-700">{{ m.content }}</p>
-                        <p class="mt-1 text-xs text-gray-400">{{ m.created_at }}</p>
+                        <p class="mt-1 text-xs text-gray-400">{{ formatDateTime(m.created_at) }}</p>
                     </div>
 
                     <form class="mt-6 border-t border-gray-200 pt-6" @submit.prevent="sendMessage">
@@ -132,7 +133,7 @@ const statusLabel = (s) => {
                         <p class="font-medium text-gray-800">{{ log.action }}</p>
                         <p v-if="log.user">{{ log.user.name }}</p>
                         <p v-if="log.ip_address">IP: {{ log.ip_address }}</p>
-                        <p class="text-gray-400">{{ log.created_at }}</p>
+                        <p class="text-gray-400">{{ formatDateTime(log.created_at) }}</p>
                     </li>
                 </ul>
             </div>

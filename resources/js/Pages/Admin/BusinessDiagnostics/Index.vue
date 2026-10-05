@@ -3,6 +3,7 @@ import PaginationBar from '@/Components/PaginationBar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import { formatDateTime } from '@/utils/dateOnly';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 import { ref } from 'vue';
@@ -97,14 +98,7 @@ const remove = async (id) => {
                     <tbody class="divide-y divide-slate-200">
                         <tr v-for="row in diagnostics.data" :key="row.id">
                             <td class="whitespace-nowrap px-4 py-3 text-slate-600">
-                                {{
-                                    row.created_at
-                                        ? new Date(row.created_at).toLocaleString('pt-BR', {
-                                              dateStyle: 'short',
-                                              timeStyle: 'short',
-                                          })
-                                        : '—'
-                                }}
+                                {{ formatDateTime(row.created_at) }}
                             </td>
                             <td class="px-4 py-3">
                                 <Link
