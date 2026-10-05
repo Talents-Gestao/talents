@@ -1,5 +1,6 @@
 <script setup>
 import Modal from '@/Components/Modal.vue';
+import PaginationBar from '@/Components/PaginationBar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
@@ -289,6 +290,7 @@ const confirmDestroy = () => {
                     </tbody>
                 </table>
             </div>
+            <PaginationBar :paginator="sales" />
         </div>
 
         <Modal :show="destroyModalOpen" max-width="lg" @close="closeDestroyModal">

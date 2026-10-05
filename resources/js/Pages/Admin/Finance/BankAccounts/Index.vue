@@ -1,5 +1,6 @@
 <script setup>
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
+import PaginationBar from '@/Components/PaginationBar.vue';
 import MoneyInput from '@/Components/MoneyInput.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -247,6 +248,7 @@ const destinationAccounts = computed(() =>
                     </tbody>
                 </table>
             </div>
+            <PaginationBar :paginator="accounts" />
         </div>
 
         <FullScreenOverlay :show="transferModalOpen" @close="closeTransferModal">

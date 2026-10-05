@@ -1,4 +1,5 @@
 <script setup>
+import PaginationBar from '@/Components/PaginationBar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -171,6 +172,7 @@ const remove = async (id) => {
                     </tbody>
                 </table>
             </div>
+            <PaginationBar :paginator="processes" />
         </div>
     </AdminLayout>
 </template>

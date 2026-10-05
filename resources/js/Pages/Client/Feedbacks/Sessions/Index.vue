@@ -1,6 +1,7 @@
 <script setup>
 import FeedbackSessionCard from '@/Components/Feedback/FeedbackSessionCard.vue';
 import FeedbacksLayout from '@/Components/Feedback/FeedbacksLayout.vue';
+import PaginationBar from '@/Components/PaginationBar.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
@@ -32,6 +33,7 @@ defineProps({ sessions: Object });
         <div v-if="sessions.data?.length" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <FeedbackSessionCard v-for="s in sessions.data" :key="s.id" :session="s" />
         </div>
+        <PaginationBar v-if="sessions.data?.length" :paginator="sessions" />
         <div
             v-else
             class="rounded-2xl border border-dashed border-talents-200 bg-talents-50/40 px-6 py-12 text-center"

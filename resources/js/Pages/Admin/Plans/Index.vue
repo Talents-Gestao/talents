@@ -1,4 +1,5 @@
 <script setup>
+import PaginationBar from '@/Components/PaginationBar.vue';
 import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
@@ -46,6 +47,7 @@ defineProps({ plans: Object });
                     </tbody>
                 </table>
             </div>
+            <PaginationBar :paginator="plans" />
         </div>
     </AdminLayout>
 </template>

@@ -1,5 +1,6 @@
 <script setup>
 import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
+import PaginationBar from '@/Components/PaginationBar.vue';
 import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
@@ -50,6 +51,7 @@ defineProps({ surveys: Object });
                     </tbody>
                 </table>
             </div>
+            <PaginationBar :paginator="surveys" />
         </div>
     </ClientLayout>
 </template>

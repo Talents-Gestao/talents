@@ -1,4 +1,5 @@
 <script setup>
+import PaginationBar from '@/Components/PaginationBar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -150,30 +151,7 @@ const remove = async (id) => {
                 </table>
             </div>
 
-            <div
-                v-if="diagnostics.prev_page_url || diagnostics.next_page_url"
-                class="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm"
-            >
-                <Link
-                    v-if="diagnostics.prev_page_url"
-                    :href="diagnostics.prev_page_url"
-                    class="font-medium text-talents-700 hover:underline"
-                >
-                    Anterior
-                </Link>
-                <span v-else />
-                <span class="text-slate-500">
-                    Página {{ diagnostics.current_page }} de {{ diagnostics.last_page }}
-                </span>
-                <Link
-                    v-if="diagnostics.next_page_url"
-                    :href="diagnostics.next_page_url"
-                    class="font-medium text-talents-700 hover:underline"
-                >
-                    Seguinte
-                </Link>
-                <span v-else />
-            </div>
+            <PaginationBar :paginator="diagnostics" />
         </div>
     </AdminLayout>
 </template>

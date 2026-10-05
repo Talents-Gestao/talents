@@ -57,4 +57,33 @@ class CompanyShowTabsTest extends TestCase
                 );
         }
     }
+
+    public function test_companies_index_paginates_after_first_page(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        for ($i = 1; $i <= 16; $i++) {
+            Company::query()->create([
+                'name' => sprintf('Empresa Lista %02d', $i),
+                'is_active' => true,
+            ]);
+        }
+
+        $this->actingAs($admin)
+            ->get(route('admin.companies.index'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Admin/Companies/Index')
+                ->has('companies.data', 15)
+                ->where('companies.total', 16)
+                ->where('companies.last_page', 2)
+            );
+
+        $this->actingAs($admin)
+            ->get(route('admin.companies.index', ['page' => 2]))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('companies.data', 1)
+            );
+    }
 }

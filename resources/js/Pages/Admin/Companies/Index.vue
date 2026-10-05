@@ -1,4 +1,5 @@
 <script setup>
+import PaginationBar from '@/Components/PaginationBar.vue';
 import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -181,6 +182,7 @@ const submit = () => {
                     </tbody>
                 </table>
             </div>
+            <PaginationBar :paginator="companies" />
         </div>
     </AdminLayout>
 </template>
