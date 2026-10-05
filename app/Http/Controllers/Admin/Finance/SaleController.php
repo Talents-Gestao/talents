@@ -101,6 +101,15 @@ class SaleController extends Controller
                 ['value' => 'pago', 'label' => 'Pago'],
                 ['value' => 'cancelado', 'label' => 'Cancelado'],
             ],
+            'bankAccounts' => $this->activeBankAccounts(
+                $sale->installments
+                    ->pluck('bank_account_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all()
+            ),
         ]);
     }
 
@@ -448,5 +457,31 @@ class SaleController extends Controller
             ->with('success', "Venda {$saleCode} criada a partir da proposta {$proposal->code}.")
             ->with('sale_id', $saleId)
             ->with('sale_code', $saleCode);
+    }
+
+    /**
+     * Mesma origem das opções em Contas a receber: contas ativas, mais as já
+     * ligadas às parcelas (para o select não ficar vazio se a conta foi inativada).
+     *
+     * @param  list<int>  $includeIds
+     * @return list<array{id: int, name: string}>
+     */
+    private function activeBankAccounts(array $includeIds = []): array
+    {
+        $includeIds = array_values(array_unique(array_filter($includeIds)));
+
+        return FinanceBankAccount::query()
+            ->where(function ($q) use ($includeIds) {
+                $q->where('is_active', true);
+                if ($includeIds !== []) {
+                    $q->orWhereIn('id', $includeIds);
+                }
+            })
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (FinanceBankAccount $a) => $a->only(['id', 'name']))
+            ->values()
+            ->all();
     }
 }
