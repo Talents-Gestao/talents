@@ -76,7 +76,7 @@ const categoryLabel = (c) => {
                         </thead>
                         <tbody class="divide-y divide-gray-200">
                             <tr v-for="c in complaints.data" :key="c.id">
-                                <td class="px-4 py-3 font-mono text-xs">{{ c.protocol }}</td>
+                                <td class="px-4 py-3 font-semibold tracking-wide text-slate-900">{{ c.protocol }}</td>
                                 <td class="px-4 py-3">{{ categoryLabel(c.category) }}</td>
                                 <td class="px-4 py-3 text-gray-600">{{ c.department_name || '—' }}</td>
                                 <td class="px-4 py-3">{{ statusLabel(c.status) }}</td>
