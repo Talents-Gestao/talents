@@ -28,6 +28,7 @@ class PublishCompanyNotice
         ?CompanyNoticeEventKind $eventKind = null,
         ?Carbon $publishedAt = null,
         ?int $dedupeWithinMinutes = null,
+        ?int $targetUserId = null,
     ): CompanyNotice {
         if ($dedupeWithinMinutes !== null && $sourceType !== null && $sourceId !== null) {
             $existing = $this->findRecentDuplicate(
@@ -54,6 +55,7 @@ class PublishCompanyNotice
             'event_kind' => $eventKind?->value,
             'published_at' => $publishedAt ?? now(),
             'created_by_user_id' => $actor?->id,
+            'target_user_id' => $targetUserId,
         ]);
     }
 

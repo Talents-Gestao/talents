@@ -19,6 +19,7 @@ class LandingInterestSubmission extends Model
         'is_qualified',
         'source',
         'created_by',
+        'assigned_to',
         'mail_sent_at',
         'mail_error',
     ];
@@ -35,6 +36,11 @@ class LandingInterestSubmission extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 
     public function sourceEnum(): LandingInterestSource

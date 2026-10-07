@@ -108,6 +108,9 @@ class HandleInertiaRequests extends Middleware
                 'unread_notices_count' => fn () => $user
                     ? app(UnreadNoticeCounter::class)->forUser($user)
                     : 0,
+                'unread_assigned_leads_count' => fn () => $user
+                    ? app(UnreadNoticeCounter::class)->unreadAssignedLeadsForUser($user)
+                    : 0,
                 'notices_context' => fn () => $user
                     ? (app(UnreadNoticeCounter::class)->contextFor($user)[0]->value ?? null)
                     : null,

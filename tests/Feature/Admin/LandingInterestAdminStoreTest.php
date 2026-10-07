@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\CompanyNoticeAudience;
+use App\Enums\CompanyNoticeEventKind;
 use App\Enums\LandingInterestSource;
 use App\Mail\LandingInterestMail;
 use App\Models\Company;
+use App\Models\CompanyNotice;
 use App\Models\LandingInterestSubmission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,6 +45,10 @@ class LandingInterestAdminStoreTest extends TestCase
         ]);
 
         Mail::assertSent(LandingInterestMail::class);
+
+        $notice = CompanyNotice::query()->latest('id')->first();
+        $this->assertNotNull($notice);
+        $this->assertNull($notice->target_user_id);
     }
 
     public function test_manual_lead_requires_source(): void
@@ -95,6 +102,7 @@ class LandingInterestAdminStoreTest extends TestCase
                 ->where('submissions.data.0.source_label', 'Evento')
                 ->where('submissions.data.0.admin_notes', null)
                 ->has('sourceOptions')
+                ->has('correspondentUsers')
                 ->where('filters.search', '')
                 ->where('filters.source', '')
                 ->where('filters.qualified', '')
@@ -214,5 +222,105 @@ class LandingInterestAdminStoreTest extends TestCase
             ->assertRedirect(route('admin.landing-interest.index'));
 
         $this->assertNull($lead->fresh()->is_qualified);
+    }
+
+    public function test_index_lists_active_commercial_users_and_current_admin(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true, 'name' => 'Admin Leads']);
+        $seller = User::factory()->superAdmin()->create([
+            'is_commercial' => true,
+            'name' => 'Vendedor Leads',
+        ]);
+        User::factory()->superAdmin()->create([
+            'is_commercial' => false,
+            'is_active' => false,
+            'name' => 'Inativo',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.landing-interest.index'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Admin/LandingInterest/Index')
+                ->has('correspondentUsers')
+                ->where('correspondentUsers', function ($users) use ($admin, $seller): bool {
+                    $ids = collect($users)->pluck('id')->all();
+
+                    return in_array($admin->id, $ids, true)
+                        && in_array($seller->id, $ids, true);
+                }));
+    }
+
+    public function test_admin_can_assign_lead_to_another_commercial_user_and_notifies_team(): void
+    {
+        Mail::fake();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true, 'name' => 'Admin Talents']);
+        $seller = User::factory()->superAdmin()->create([
+            'is_commercial' => true,
+            'is_active' => true,
+            'name' => 'Vendedor Destino',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.landing-interest.store'), [
+            'name' => 'Lead Delegado',
+            'email' => 'delegado@example.com',
+            'source' => LandingInterestSource::Phone->value,
+            'assigned_to' => $seller->id,
+        ]);
+
+        $response->assertRedirect(route('admin.landing-interest.index'));
+        $response->assertSessionHas(
+            'success',
+            fn ($value) => str_contains((string) $value, 'Vendedor Destino'),
+        );
+
+        $this->assertDatabaseHas('landing_interest_submissions', [
+            'email' => 'delegado@example.com',
+            'created_by' => $admin->id,
+            'assigned_to' => $seller->id,
+        ]);
+
+        $notice = CompanyNotice::query()
+            ->where('event_kind', CompanyNoticeEventKind::LeadReceived)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($notice);
+        $this->assertSame(CompanyNoticeAudience::Talents, $notice->audience);
+        $this->assertSame($seller->id, $notice->target_user_id);
+        $this->assertSame('Lead cadastrado para Vendedor Destino', $notice->title);
+        $this->assertStringContainsString('Admin Talents', (string) $notice->body);
+        $this->assertStringContainsString('Vendedor Destino', (string) $notice->body);
+
+        $this->actingAs($seller)
+            ->getJson(route('admin.notices.recent'))
+            ->assertOk()
+            ->assertJsonPath('unread_assigned_leads_count', 1);
+
+        $this->actingAs($admin)
+            ->getJson(route('admin.notices.recent'))
+            ->assertOk()
+            ->assertJsonPath('unread_assigned_leads_count', 0);
+    }
+
+    public function test_cannot_assign_lead_to_non_commercial_user(): void
+    {
+        Mail::fake();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $other = User::factory()->superAdmin()->create([
+            'is_commercial' => false,
+            'name' => 'Operações',
+        ]);
+
+        $this->actingAs($admin)->post(route('admin.landing-interest.store'), [
+            'name' => 'Lead Inválido',
+            'email' => 'invalido@example.com',
+            'source' => LandingInterestSource::Phone->value,
+            'assigned_to' => $other->id,
+        ])->assertSessionHasErrors('assigned_to');
+
+        Mail::assertNothingSent();
+        $this->assertDatabaseCount('landing_interest_submissions', 0);
     }
 }
