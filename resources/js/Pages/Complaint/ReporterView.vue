@@ -47,8 +47,7 @@ const flashSuccess = computed(() => page.props.flash?.success);
     <div class="app-shell min-h-screen px-4 py-8 text-slate-900">
         <div class="mx-auto max-w-2xl">
             <p class="text-xs uppercase text-talents-600">{{ companyName }}</p>
-            <h1 class="text-xl font-semibold text-slate-900">Protocolo</h1>
-            <p class="mt-1 break-all font-mono text-sm text-slate-600">{{ complaint.protocol }}</p>
+            <h1 class="text-xl font-semibold text-slate-900">Protocolo {{ complaint.protocol }}</h1>
             <p class="mt-2 text-sm">
                 Status:
                 <span class="font-semibold text-talents-800">{{ statusLabel(complaint.status) }}</span>

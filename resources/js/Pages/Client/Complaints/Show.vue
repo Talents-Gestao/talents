@@ -71,8 +71,7 @@ const auditActionLabel = (log) => {
             <FormPageHeader
                 :back-href="complaintRoute('index')"
                 back-label="Denúncias"
-                title="Denúncia"
-                :subtitle="complaint.protocol"
+                :title="`Denúncia ${complaint.protocol}`"
                 :prefer-history="true"
             >
                 <template #trailing>

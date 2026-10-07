@@ -16,7 +16,7 @@ defineProps({
             <h1 class="text-xl font-semibold text-emerald-800">Registro concluído</h1>
             <p class="mt-2 text-sm text-slate-600">{{ companyName }}</p>
             <p class="mt-6 text-sm text-slate-700">Guarde o número de protocolo:</p>
-            <p class="mt-2 break-all rounded-xl bg-emerald-50/80 p-3 font-mono text-sm font-semibold text-talents-900">{{ protocol }}</p>
+            <p class="mt-2 rounded-xl bg-emerald-50/80 px-4 py-3 text-center text-lg font-semibold tracking-wide text-talents-900">{{ protocol }}</p>
             <p class="mt-4 text-xs text-slate-500">
                 Use-o para acompanhar o andamento, sem precisar informar nome ou e-mail (se optou por anonimato).
             </p>
