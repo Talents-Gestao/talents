@@ -1,100 +1,36 @@
 <script setup>
 import { BellIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { formatRelativeDate } from '@/utils/dateOnly';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
 import axios from 'axios';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { confirmDialog } from '@/composables/useConfirmDialog';
+import { useUnreadNotices } from '@/composables/useUnreadNotices';
 
-const page = usePage();
+const {
+    unreadCount,
+    notices,
+    hasMore,
+    loading,
+    loadingMore,
+    open,
+    toast,
+    showNotices,
+    isPanelHost,
+    routes,
+    badgeLabel,
+    toggle,
+    close,
+    fetchNotices,
+    applyCountsFromPayload,
+} = useUnreadNotices({ panel: true });
 
-const POLL_INTERVAL_MS = 60000;
-
-const open = ref(false);
-const loading = ref(false);
-const notices = ref([]);
-const unreadCount = ref(Number(page.props.nav?.unread_notices_count ?? 0));
-const pageNumber = ref(1);
-const hasMore = ref(false);
-const loadingMore = ref(false);
 const deletingId = ref(null);
 const deletingAll = ref(false);
-
-let pollTimer = null;
-
-// 'company' → portal do cliente; 'talents' → portal admin; null → sem avisos.
-const noticesContext = computed(() => page.props.nav?.notices_context ?? null);
-const isTalentsContext = computed(() => noticesContext.value === 'talents');
-const showNotices = computed(() => noticesContext.value !== null);
-
-const routes = computed(() => {
-    const prefix = isTalentsContext.value ? 'admin.notices' : 'client.notices';
-    return {
-        recent: () => route(`${prefix}.recent`),
-        markAllRead: () => route(`${prefix}.mark-all-read`),
-        open: (id) => route(`${prefix}.open`, id),
-        destroy: (id) => route(`${prefix}.destroy`, id),
-        destroyAll: () => route(`${prefix}.destroy-all`),
-    };
-});
-
-const badgeLabel = computed(() => {
-    if (unreadCount.value <= 0) return null;
-    return unreadCount.value > 99 ? '99+' : String(unreadCount.value);
-});
-
-watch(
-    () => page.props.nav?.unread_notices_count,
-    (value) => {
-        unreadCount.value = Number(value ?? 0);
-    },
-);
 
 function formatPublished(iso) {
     if (!iso) return '';
     return formatRelativeDate(iso.slice(0, 10));
-}
-
-async function fetchNotices({ append = false } = {}) {
-    if (append) {
-        if (!hasMore.value || loadingMore.value || loading.value) {
-            return;
-        }
-        loadingMore.value = true;
-    } else {
-        loading.value = true;
-    }
-
-    const nextPage = append ? pageNumber.value + 1 : 1;
-
-    try {
-        const { data } = await axios.get(routes.value.recent(), {
-            params: { page: nextPage },
-        });
-        const incoming = data.notices ?? [];
-        notices.value = append ? [...notices.value, ...incoming] : incoming;
-        unreadCount.value = Number(data.unread_count ?? 0);
-        pageNumber.value = nextPage;
-        hasMore.value = Boolean(data.has_more);
-    } catch {
-        if (!append) {
-            notices.value = [];
-        }
-    } finally {
-        loading.value = false;
-        loadingMore.value = false;
-    }
-}
-
-async function refreshUnreadCount() {
-    if (!showNotices.value || open.value) return;
-
-    try {
-        const { data } = await axios.get(routes.value.recent(), { params: { page: 1 } });
-        unreadCount.value = Number(data.unread_count ?? unreadCount.value);
-    } catch {
-        // silencioso — o badge continua com o último valor conhecido
-    }
 }
 
 async function markAllRead() {
@@ -103,7 +39,7 @@ async function markAllRead() {
     try {
         const { data } = await axios.post(routes.value.markAllRead());
         notices.value = notices.value.map((notice) => ({ ...notice, read: true }));
-        unreadCount.value = Number(data.unread_count ?? 0);
+        applyCountsFromPayload(data);
     } catch {
         // silencioso
     }
@@ -121,7 +57,7 @@ async function destroyNotice(notice) {
     try {
         const { data } = await axios.delete(routes.value.destroy(notice.id));
         notices.value = notices.value.filter((item) => item.id !== notice.id);
-        unreadCount.value = Number(data.unread_count ?? unreadCount.value);
+        applyCountsFromPayload(data);
         if (!notices.value.length && hasMore.value) {
             await fetchNotices();
         }
@@ -145,21 +81,12 @@ async function destroyAll() {
         const { data } = await axios.post(routes.value.destroyAll());
         notices.value = [];
         hasMore.value = false;
-        pageNumber.value = 1;
-        unreadCount.value = Number(data.unread_count ?? 0);
+        applyCountsFromPayload(data);
     } catch {
         // silencioso
     } finally {
         deletingAll.value = false;
     }
-}
-
-function toggle() {
-    open.value = !open.value;
-}
-
-function close() {
-    open.value = false;
 }
 
 function closeOnEscape(event) {
@@ -169,7 +96,7 @@ function closeOnEscape(event) {
 }
 
 watch(open, (isOpen) => {
-    if (isOpen) {
+    if (isOpen && isPanelHost.value) {
         fetchNotices();
     }
 });
@@ -185,26 +112,12 @@ function onListScroll(event) {
     }
 }
 
-function startPolling() {
-    if (pollTimer || !showNotices.value) return;
-    pollTimer = window.setInterval(() => {
-        if (!document.hidden) {
-            refreshUnreadCount();
-        }
-    }, POLL_INTERVAL_MS);
-}
-
 onMounted(() => {
     document.addEventListener('keydown', closeOnEscape);
-    startPolling();
 });
 
 onUnmounted(() => {
     document.removeEventListener('keydown', closeOnEscape);
-    if (pollTimer) {
-        window.clearInterval(pollTimer);
-        pollTimer = null;
-    }
 });
 </script>
 
@@ -213,12 +126,13 @@ onUnmounted(() => {
         <button
             type="button"
             class="relative rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-talents-500/30"
+            :class="toast ? 'text-rose-700 ring-2 ring-rose-300/70' : ''"
             :aria-expanded="open"
             aria-haspopup="dialog"
             aria-label="Avisos"
             @click.stop="toggle"
         >
-            <BellIcon class="h-6 w-6" />
+            <BellIcon class="h-6 w-6" :class="toast ? 'animate-pulse' : ''" />
             <span
                 v-if="badgeLabel"
                 class="absolute right-1 top-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold leading-none text-white"
@@ -227,7 +141,7 @@ onUnmounted(() => {
             </span>
         </button>
 
-        <Teleport to="body">
+        <Teleport v-if="isPanelHost" to="body">
             <Transition
                 enter-active-class="transition-opacity duration-300 ease-out"
                 enter-from-class="opacity-0"

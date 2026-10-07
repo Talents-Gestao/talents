@@ -6,6 +6,7 @@ use App\Actions\Leads\CreateLandingInterestSubmission;
 use App\Enums\LandingInterestSource;
 use App\Http\Controllers\Controller;
 use App\Models\LandingInterestSubmission;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -35,7 +36,7 @@ class LandingInterestSubmissionController extends Controller
         ];
 
         $paginator = LandingInterestSubmission::query()
-            ->with('creator:id,name')
+            ->with(['creator:id,name', 'assignee:id,name'])
             ->filtered($filters)
             ->orderByDesc('id')
             ->paginate(30)
@@ -45,12 +46,14 @@ class LandingInterestSubmissionController extends Controller
         return Inertia::render('Admin/LandingInterest/Index', [
             'submissions' => self::scrubPaginatorArray($paginator->toArray()),
             'sourceOptions' => LandingInterestSource::options(),
+            'correspondentUsers' => $this->correspondentUsers($request->user()),
             'filters' => $filters,
         ]);
     }
 
     public function store(Request $request, CreateLandingInterestSubmission $create): RedirectResponse
     {
+        $actor = $request->user();
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
@@ -58,13 +61,36 @@ class LandingInterestSubmissionController extends Controller
             'company' => ['nullable', 'string', 'max:255'],
             'message' => ['nullable', 'string', 'max:5000'],
             'source' => ['required', 'string', Rule::enum(LandingInterestSource::class)],
+            'assigned_to' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(function ($query) use ($actor): void {
+                    $query->where('is_active', true)
+                        ->where(function ($inner) use ($actor): void {
+                            $inner->where('is_commercial', true);
+                            if ($actor !== null) {
+                                $inner->orWhere('id', $actor->id);
+                            }
+                        });
+                }),
+            ],
+        ], [
+            'assigned_to.exists' => 'Selecione um responsável comercial ativo.',
         ]);
 
-        $create->execute($data, $request->user());
+        $submission = $create->execute($data, $actor);
+        $assigneeName = $submission->assignee?->name;
+        $createdForOther = $submission->assigned_to !== null
+            && $actor !== null
+            && (int) $submission->assigned_to !== (int) $actor->id;
+
+        $success = $createdForOther && $assigneeName
+            ? "Lead cadastrado para {$assigneeName}. Administradores e os perfis comerciais foram avisados."
+            : 'Lead cadastrado com sucesso.';
 
         return redirect()
             ->route('admin.landing-interest.index')
-            ->with('success', 'Lead cadastrado com sucesso.');
+            ->with('success', $success);
     }
 
     public function update(Request $request, LandingInterestSubmission $submission): RedirectResponse
@@ -126,6 +152,8 @@ class LandingInterestSubmissionController extends Controller
             'source_label' => $source->label(),
             'created_by' => $s->created_by,
             'created_by_name' => self::asUtf8String($s->creator?->name),
+            'assigned_to' => $s->assigned_to,
+            'assigned_to_name' => self::asUtf8String($s->assignee?->name),
             'mail_sent_at' => $s->mail_sent_at?->toIso8601String(),
             'mail_error' => self::humanizeStoredMailError(self::asUtf8String($s->mail_error)),
             'created_at' => $s->created_at?->toIso8601String(),
@@ -201,5 +229,31 @@ class LandingInterestSubmissionController extends Controller
         }, $links));
 
         return $paginator;
+    }
+
+    /**
+     * Perfis comerciais ativos, mais o usuário atual (para cadastrar em nome próprio).
+     *
+     * @return list<array{id: int, name: string}>
+     */
+    private function correspondentUsers(?User $actor): array
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->where(function ($query) use ($actor): void {
+                $query->where('is_commercial', true);
+                if ($actor !== null) {
+                    $query->orWhere('id', $actor->id);
+                }
+            })
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->unique('id')
+            ->values()
+            ->map(fn (User $user) => [
+                'id' => (int) $user->id,
+                'name' => $user->name,
+            ])
+            ->all();
     }
 }

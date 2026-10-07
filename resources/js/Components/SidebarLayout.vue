@@ -1,6 +1,7 @@
 <script setup>
 import AppTopBar from '@/Components/AppTopBar.vue';
 import NewsFeedDrawer from '@/Components/NewsFeedDrawer.vue';
+import NoticeArrivalToast from '@/Components/NoticeArrivalToast.vue';
 import NoticeBellDropdown from '@/Components/NoticeBellDropdown.vue';
 import { Bars3Icon, ChevronDownIcon, ChevronUpIcon, MapPinIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import {
@@ -431,5 +432,6 @@ const pinButtonTitle = computed(() =>
                 </div>
             </div>
         </div>
+        <NoticeArrivalToast />
     </div>
 </template>

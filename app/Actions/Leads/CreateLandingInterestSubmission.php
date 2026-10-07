@@ -28,7 +28,8 @@ class CreateLandingInterestSubmission
      *     phone?: string|null,
      *     company?: string|null,
      *     message?: string|null,
-     *     source: string|LandingInterestSource
+     *     source: string|LandingInterestSource,
+     *     assigned_to?: int|null
      * }  $data
      */
     public function execute(array $data, ?User $createdBy = null): LandingInterestSubmission
@@ -46,6 +47,9 @@ class CreateLandingInterestSubmission
         $phone = isset($data['phone']) && $data['phone'] !== '' ? trim((string) $data['phone']) : null;
         $company = isset($data['company']) && $data['company'] !== '' ? trim((string) $data['company']) : null;
         $message = isset($data['message']) && $data['message'] !== '' ? trim((string) $data['message']) : null;
+        $assignedTo = isset($data['assigned_to']) && $data['assigned_to'] !== '' && $data['assigned_to'] !== null
+            ? (int) $data['assigned_to']
+            : null;
 
         $submission = LandingInterestSubmission::query()->create([
             'name' => $name,
@@ -55,12 +59,14 @@ class CreateLandingInterestSubmission
             'message' => $message,
             'source' => $source->value,
             'created_by' => $createdBy?->id,
+            'assigned_to' => $assignedTo,
         ]);
 
+        $submission->load(['creator:id,name', 'assignee:id,name']);
         $this->notices->received($submission);
         $this->sendNotificationMail($submission);
 
-        return $submission->fresh() ?? $submission;
+        return $submission->fresh(['creator:id,name', 'assignee:id,name']) ?? $submission;
     }
 
     private function sendNotificationMail(LandingInterestSubmission $submission): void

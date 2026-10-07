@@ -20,6 +20,7 @@ class CompanyNotice extends Model
         'event_kind',
         'published_at',
         'created_by_user_id',
+        'target_user_id',
     ];
 
     protected function casts(): array
@@ -39,6 +40,11 @@ class CompanyNotice extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function targetUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'target_user_id');
     }
 
     public function reads(): HasMany

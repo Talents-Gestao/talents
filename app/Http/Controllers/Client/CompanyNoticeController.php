@@ -50,6 +50,7 @@ class CompanyNoticeController extends Controller
                 ->map(fn (CompanyNotice $notice) => $this->serializeNotice($notice))
                 ->values(),
             'unread_count' => $unreadNoticeCounter->forUser($user),
+            'unread_assigned_leads_count' => 0,
             'page' => $result['page'],
             'has_more' => $result['has_more'],
         ]);
@@ -168,6 +169,7 @@ class CompanyNoticeController extends Controller
             'published_at' => $notice->published_at?->toIso8601String(),
             'event_kind' => $notice->event_kind?->value,
             'read' => $notice->reads->isNotEmpty(),
+            'target_user_id' => $notice->target_user_id,
             'url' => app(NoticeDestinationUrl::class)->url($notice, admin: false),
         ];
     }
