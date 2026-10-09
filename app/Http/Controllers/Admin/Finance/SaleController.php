@@ -34,6 +34,8 @@ class SaleController extends Controller
             ->withCount([
                 'installments as pending_installments_count' => fn ($query) => $query
                     ->where('status', 'pendente'),
+                'commissions as payable_commissions_count' => fn ($query) => $query
+                    ->where('amount_cents', '>', 0),
             ])
             ->orderByDesc('sold_at');
 
@@ -81,6 +83,7 @@ class SaleController extends Controller
             'proposal:id,code',
             'installments' => fn ($q) => $q->orderBy('number'),
             'commission.seller:id,name',
+            'commissions.seller:id,name',
         ]);
 
         return Inertia::render('Admin/Finance/Sales/Show', [
@@ -228,8 +231,9 @@ class SaleController extends Controller
 
         $installments = (int) ($sale->installments_count
             ?? $sale->installments()->count());
-        $hasCommission = $sale->commission !== null
-            && (int) $sale->commission->amount_cents > 0;
+        $hasCommission = $sale->commissions()
+            ->where('amount_cents', '>', 0)
+            ->exists();
         $hasProposal = $sale->proposal_id !== null && $sale->proposal !== null;
 
         $items = [

@@ -99,6 +99,13 @@ const paidTotalCents = computed(() =>
 );
 
 const saleIsQuitada = computed(() => props.sale.status === 'quitada');
+const saleCommissions = computed(() => {
+    if (Array.isArray(props.sale.commissions) && props.sale.commissions.length) {
+        return props.sale.commissions;
+    }
+
+    return props.sale.commission ? [props.sale.commission] : [];
+});
 const canMarkCommissionPaid = computed(
     () => saleIsQuitada.value || props.sale.commission?.status === 'paga',
 );
@@ -127,11 +134,14 @@ const destroyImpactItems = computed(() => {
         },
     ];
 
-    if (props.sale.commission && Number(props.sale.commission.amount_cents) > 0) {
+    if (saleCommissions.value.some((item) => Number(item.amount_cents) > 0)) {
         items.push({
             key: 'comissao',
             label: 'Financeiro · Comissões',
-            detail: 'A comissão desta venda também será removida.',
+            detail:
+                saleCommissions.value.length > 1
+                    ? 'As comissões desta venda também serão removidas.'
+                    : 'A comissão desta venda também será removida.',
             href: route('admin.financeiro.comissoes.index'),
         });
     }
@@ -233,13 +243,22 @@ const confirmDestroy = () => {
                 </div>
             </div>
 
-            <div v-if="sale.commission" class="surface-card p-6">
-                <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Comissão</h3>
-                <p class="mt-2 text-xl font-bold tabular-nums">{{ formatBRL(sale.commission.amount_cents) }}</p>
-                <p class="text-sm text-slate-600">
-                    {{ sale.commission.percent }}% sobre {{ formatBRL(sale.commission.base_cents) }}
-                </p>
-                <p class="mt-1 text-sm text-slate-600">Vendedora: {{ sale.commission.seller?.name ?? '—' }}</p>
+            <div v-if="saleCommissions.length" class="surface-card p-6">
+                <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                    {{ saleCommissions.length > 1 ? 'Comissões' : 'Comissão' }}
+                </h3>
+                <ul class="mt-3 space-y-3">
+                    <li v-for="item in saleCommissions" :key="item.id">
+                        <p class="text-xl font-bold tabular-nums">{{ formatBRL(item.amount_cents) }}</p>
+                        <p class="text-sm text-slate-600">
+                            {{ item.percent }}% sobre {{ formatBRL(item.base_cents) }}
+                        </p>
+                        <p class="mt-1 text-sm text-slate-600">
+                            {{ item.seller?.name ?? '—' }}
+                            <span class="text-slate-400"> · {{ statusLabel(item.status) }}</span>
+                        </p>
+                    </li>
+                </ul>
                 <Link
                     :href="route('admin.financeiro.comissoes.index', { search: sale.client_name })"
                     class="mt-2 inline-block text-xs font-medium text-talents-700 hover:underline"
@@ -247,7 +266,15 @@ const confirmDestroy = () => {
                     Ver no índice de comissões
                 </Link>
 
-                <form class="mt-4 space-y-3" @submit.prevent="submitCommission">
+                <p v-if="saleCommissions.length > 1" class="mt-3 text-xs text-slate-500">
+                    Para marcar cada comissão como paga, use o índice de comissões.
+                </p>
+
+                <form
+                    v-if="sale.commission && saleCommissions.length === 1"
+                    class="mt-4 space-y-3"
+                    @submit.prevent="submitCommission"
+                >
                     <div>
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
                         <select

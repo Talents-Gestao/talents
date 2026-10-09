@@ -31,6 +31,7 @@ class CommercialSellersSeeder extends Seeder
                     'company_id' => null,
                     'is_active' => true,
                     'is_commercial' => true,
+                    'commission_percent' => $data['email'] === 'karen@talents.local' ? 10 : 8,
                 ],
             );
         }
