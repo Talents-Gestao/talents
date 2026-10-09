@@ -77,7 +77,7 @@ const dismissExpiredNotice = () => {
 
 <template>
     <GuestLayout :portal="portal">
-        <Head :title="portal?.name ? `Entrar — ${portal.name}` : 'Entrar'" />
+        <Head title="Entrar" />
 
         <Modal
             :show="expiredModalVisible"
