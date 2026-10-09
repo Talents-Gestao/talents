@@ -4,6 +4,7 @@ use App\Http\Controllers\Client\AcompanhamentoController;
 use App\Http\Controllers\NewsFeedController;
 use App\Http\Controllers\Client\ActionPlanController;
 use App\Http\Controllers\Client\ComplaintController;
+use App\Http\Controllers\Client\SuggestionController;
 use App\Http\Controllers\Client\CompanyNoticeController as ClientCompanyNoticeController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\DepartmentController;
@@ -115,6 +116,12 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('complaints/{complaint}', [ComplaintController::class, 'show'])->name('complaints.show');
         Route::patch('complaints/{complaint}/status', [ComplaintController::class, 'updateStatus'])->name('complaints.status');
         Route::post('complaints/{complaint}/messages', [ComplaintController::class, 'storeMessage'])->name('complaints.messages.store');
+    });
+
+    Route::middleware('can.module:sugestoes')->prefix('sugestoes')->name('suggestions.')->group(function () {
+        Route::get('/', [SuggestionController::class, 'index'])->name('index');
+        Route::get('{suggestion}', [SuggestionController::class, 'show'])->name('show')->whereNumber('suggestion');
+        Route::patch('{suggestion}/status', [SuggestionController::class, 'updateStatus'])->name('status')->whereNumber('suggestion');
     });
 
     Route::middleware('can.module:rhid')->prefix('rhid')->name('rhid.')->group(function () {

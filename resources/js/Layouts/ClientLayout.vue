@@ -18,6 +18,7 @@ import {
     MapIcon,
     MegaphoneIcon,
     ChatBubbleLeftRightIcon,
+    LightBulbIcon,
     FlagIcon,
     ShieldExclamationIcon,
     SunIcon,
@@ -30,7 +31,7 @@ const page = usePage();
 const { can } = usePermissions();
 
 const showVozDoTime = computed(
-    () => can('pesquisas', 'view') || can('denuncias', 'view') || can('desligamento', 'view'),
+    () => can('pesquisas', 'view') || can('denuncias', 'view') || can('sugestoes', 'view') || can('desligamento', 'view'),
 );
 
 const dailyQuote = computed(() => page.props.dailyQuote ?? null);
@@ -122,6 +123,14 @@ const mapaPropositoActive = computed(() =>
                     :active="route().current('client.complaints.*')"
                     :icon="ShieldExclamationIcon"
                     label="Denúncias"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="can('sugestoes', 'view')"
+                    :href="route('client.suggestions.index')"
+                    :active="route().current('client.suggestions.*')"
+                    :icon="LightBulbIcon"
+                    label="Sugestões e dúvidas"
                     :collapsed="collapsed"
                 />
                 <SidebarNavItem

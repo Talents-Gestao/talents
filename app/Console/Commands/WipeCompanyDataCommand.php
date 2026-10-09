@@ -139,6 +139,10 @@ class WipeCompanyDataCommand extends Command
                 : 0;
         }
 
+        if (Schema::hasTable('team_suggestions')) {
+            $counts['Sugestões e dúvidas (team_suggestions)'] = DB::table('team_suggestions')->where('company_id', $companyId)->count();
+        }
+
         $counts['Denúncias (complaints)'] = $complaintIds->count();
         if ($complaintIds->isNotEmpty()) {
             $counts['  → mensagens (complaint_messages)'] = DB::table('complaint_messages')->whereIn('complaint_id', $complaintIds)->count();
@@ -180,6 +184,10 @@ class WipeCompanyDataCommand extends Command
         $surveyIds = DB::table('surveys')->where('company_id', $companyId)->pluck('id')->all();
         if (! empty($surveyIds)) {
             DB::table('surveys')->whereIn('id', $surveyIds)->delete();
+        }
+
+        if (Schema::hasTable('team_suggestions')) {
+            DB::table('team_suggestions')->where('company_id', $companyId)->delete();
         }
 
         $complaintIds = DB::table('complaints')->where('company_id', $companyId)->pluck('id')->all();

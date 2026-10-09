@@ -13,12 +13,14 @@ use App\Http\Controllers\Admin\FeedbackCompanySelectController;
 use App\Http\Controllers\Admin\FeriasCompanySelectController;
 use App\Http\Controllers\Admin\DesligamentoCompanySelectController;
 use App\Http\Controllers\Admin\ComplaintCompanySelectController;
+use App\Http\Controllers\Admin\SuggestionCompanySelectController;
 use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
 use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
 use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
 use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
 use App\Http\Controllers\Client\ComplaintController;
+use App\Http\Controllers\Client\SuggestionController;
 use App\Http\Controllers\Admin\Finance\BankAccountController as FinanceBankAccountController;
 use App\Http\Controllers\Admin\Finance\CommissionController as FinanceCommissionController;
 use App\Http\Controllers\Admin\Finance\FinanceDashboardController;
@@ -293,6 +295,16 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::get('{complaint}', [ComplaintController::class, 'show'])->name('show');
             Route::patch('{complaint}/status', [ComplaintController::class, 'updateStatus'])->name('status');
             Route::post('{complaint}/messages', [ComplaintController::class, 'storeMessage'])->name('messages.store');
+        });
+    });
+
+    Route::middleware('admin.can:sugestoes')->prefix('sugestoes')->name('suggestions.')->group(function () {
+        Route::get('/', [SuggestionController::class, 'index'])->name('index');
+        Route::post('company', [SuggestionCompanySelectController::class, 'store'])->name('company.store');
+
+        Route::middleware('suggestions.company')->group(function () {
+            Route::get('{suggestion}', [SuggestionController::class, 'show'])->name('show')->whereNumber('suggestion');
+            Route::patch('{suggestion}/status', [SuggestionController::class, 'updateStatus'])->name('status')->whereNumber('suggestion');
         });
     });
 
