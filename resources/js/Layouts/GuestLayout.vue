@@ -21,7 +21,7 @@ defineProps({
                     v-if="portal.logo_url"
                     :src="portal.logo_url"
                     :alt="portal.name"
-                    class="mx-auto h-20 max-w-[280px] object-contain sm:h-24 sm:max-w-[320px]"
+                    class="mx-auto h-36 w-auto max-w-[min(100%,28rem)] object-contain sm:h-44 sm:max-w-[32rem]"
                 />
                 <ApplicationLogo v-else class="mx-auto h-20 max-w-[280px] sm:h-24 sm:max-w-[320px]" />
                 <p
