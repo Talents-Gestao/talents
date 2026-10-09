@@ -1,14 +1,25 @@
+/** URL do portal quando a sessão entrou por /entrar/{slug}. */
+let portalLoginUrl = null;
+
+export function rememberPortalLoginUrl(url) {
+    portalLoginUrl = url || null;
+}
+
 /**
  * Redireciona para login com indicador de sessão expirada.
  * Evita reload em loop se já estiver na página de login.
  */
 export function redirectToLoginExpired() {
-    const path = window.location.pathname.replace(/\/$/, '') || '/';
-    const onLogin = path === '/login' || path.endsWith('/login');
+    const loginUrl = portalLoginUrl
+        ? new URL(portalLoginUrl, window.location.origin)
+        : new URL(route('login'), window.location.origin);
 
-    if (onLogin) {
-        const url = new URL(window.location.href);
-        if (url.searchParams.get('session_expired') !== '1') {
+    const path = window.location.pathname.replace(/\/$/, '') || '/';
+    const targetPath = loginUrl.pathname.replace(/\/$/, '') || '/';
+
+    if (path === targetPath) {
+        if (loginUrl.searchParams.get('session_expired') !== '1') {
+            const url = new URL(window.location.href);
             url.searchParams.set('session_expired', '1');
             window.history.replaceState({}, '', url.toString());
         }
@@ -16,7 +27,6 @@ export function redirectToLoginExpired() {
         return;
     }
 
-    const loginUrl = new URL(route('login'), window.location.origin);
     loginUrl.searchParams.set('session_expired', '1');
     window.location.assign(loginUrl.toString());
 }

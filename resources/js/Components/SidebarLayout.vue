@@ -36,6 +36,10 @@ defineProps({
         type: Boolean,
         default: true,
     },
+    shellStyle: {
+        type: Object,
+        default: null,
+    },
 });
 
 const slots = useSlots();
@@ -264,7 +268,7 @@ const pinButtonTitle = computed(() =>
 </script>
 
 <template>
-    <div :class="shellClass">
+    <div :class="shellClass" :style="shellStyle">
         <div
             v-show="mobileOpen"
             class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden"

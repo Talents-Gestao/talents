@@ -54,6 +54,10 @@ class Company extends Model
         'ferias_access',
         'desligamento_access',
         'acompanhamento_access',
+        'portal_slug',
+        'portal_enabled',
+        'brand_name',
+        'brand_primary_color',
     ];
 
     protected $appends = [
@@ -74,7 +78,23 @@ class Company extends Model
             'ferias_access' => 'boolean',
             'desligamento_access' => 'boolean',
             'acompanhamento_access' => 'boolean',
+            'portal_enabled' => 'boolean',
         ];
+    }
+
+    public function hasActivePortal(): bool
+    {
+        return $this->portal_enabled
+            && $this->is_active
+            && is_string($this->portal_slug)
+            && $this->portal_slug !== '';
+    }
+
+    public function portalBrandName(): string
+    {
+        $brand = is_string($this->brand_name) ? trim($this->brand_name) : '';
+
+        return $brand !== '' ? $brand : $this->name;
     }
 
     /**

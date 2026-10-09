@@ -308,6 +308,7 @@ class CompanyController extends Controller
     public function update(Request $request, Company $company): RedirectResponse
     {
         $request->merge($this->normalizeCompanyActivityFields($request->all()));
+        $request->merge($this->normalizeCompanyPortalFields($request->all()));
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -336,9 +337,24 @@ class CompanyController extends Controller
             'plan_id' => ['nullable', 'exists:plans,id'],
             'logo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'remove_logo' => ['sometimes', 'boolean'],
+            'portal_slug' => [
+                'nullable',
+                'string',
+                'max:40',
+                'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+                Rule::unique('companies', 'portal_slug')->ignore($company->id),
+                Rule::requiredIf($request->boolean('portal_enabled')),
+            ],
+            'portal_enabled' => ['sometimes', 'boolean'],
+            'brand_name' => ['nullable', 'string', 'max:255'],
+            'brand_primary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ], [
             'logo.mimes' => 'O logo deve ser JPG, PNG ou WebP.',
             'logo.max' => 'O logo deve ter no máximo 2 MB.',
+            'portal_slug.unique' => 'Este identificador de portal já está em uso.',
+            'portal_slug.regex' => 'Use apenas letras minúsculas, números e hífens.',
+            'portal_slug.required' => 'Informe o identificador para ativar o portal.',
+            'brand_primary_color.regex' => 'A cor deve estar no formato #RRGGBB.',
         ]);
 
         $logo = $request->file('logo');
@@ -497,6 +513,30 @@ class CompanyController extends Controller
         if (array_key_exists('activity_branch', $data)) {
             $branch = is_string($data['activity_branch']) ? trim($data['activity_branch']) : $data['activity_branch'];
             $data['activity_branch'] = $branch === '' ? null : $branch;
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function normalizeCompanyPortalFields(array $data): array
+    {
+        if (array_key_exists('portal_slug', $data)) {
+            $slug = is_string($data['portal_slug']) ? strtolower(trim($data['portal_slug'])) : $data['portal_slug'];
+            $data['portal_slug'] = $slug === '' ? null : $slug;
+        }
+
+        if (array_key_exists('brand_name', $data)) {
+            $name = is_string($data['brand_name']) ? trim($data['brand_name']) : $data['brand_name'];
+            $data['brand_name'] = $name === '' ? null : $name;
+        }
+
+        if (array_key_exists('brand_primary_color', $data)) {
+            $color = is_string($data['brand_primary_color']) ? trim($data['brand_primary_color']) : $data['brand_primary_color'];
+            $data['brand_primary_color'] = $color === '' ? null : $color;
         }
 
         return $data;

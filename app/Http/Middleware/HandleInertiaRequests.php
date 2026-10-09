@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Support\AdminHomeResolver;
+use App\Support\CompanyPortal;
 use App\Support\Hiring\ActiveHiringProcessCounter;
 use App\Support\MetamorfoseDailyQuote;
 use App\Support\Notices\UnreadNoticeCounter;
@@ -104,6 +105,7 @@ class HandleInertiaRequests extends Middleware
                 'suggest_updated_contract' => fn () => $request->session()->get('suggest_updated_contract'),
             ],
             'sessionExpiry' => Inertia::always(fn () => $this->sessionMetaForFrontend($request)),
+            'portal' => CompanyPortal::shareForRequest($request, $user),
             'nav' => [
                 'unread_notices_count' => fn () => $user
                     ? app(UnreadNoticeCounter::class)->forUser($user)
