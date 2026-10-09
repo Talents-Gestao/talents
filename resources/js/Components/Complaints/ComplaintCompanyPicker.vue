@@ -6,6 +6,11 @@ const props = defineProps({
     companies: { type: Array, required: true },
     activeCompanyId: { type: [Number, String], default: null },
     compact: { type: Boolean, default: false },
+    submitRoute: { type: String, default: '' },
+    description: {
+        type: String,
+        default: 'Escolha o cliente para gerenciar o canal de denúncias.',
+    },
 });
 
 const form = useForm({
@@ -13,7 +18,7 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post(route('admin.complaints.company.store'));
+    form.post(props.submitRoute || route('admin.complaints.company.store'));
 };
 </script>
 
@@ -27,7 +32,7 @@ const submit = () => {
                 <BuildingOffice2Icon class="h-6 w-6" />
             </div>
             <h3 class="mt-4 text-lg font-semibold text-talents-900">Selecione a empresa</h3>
-            <p class="mt-1 text-sm text-slate-600">Escolha o cliente para gerenciar o canal de denúncias.</p>
+            <p class="mt-1 text-sm text-slate-600">{{ description }}</p>
         </div>
 
         <form

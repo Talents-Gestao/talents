@@ -151,7 +151,7 @@ const contratacaoActive = computed(
 const showReunioes = computed(() => false);
 
 const showVozDoTime = computed(
-    () => canAdminAny(['survey_templates', 'desligamento', 'denuncias', 'companies']),
+    () => canAdminAny(['survey_templates', 'desligamento', 'denuncias', 'sugestoes', 'companies']),
 );
 
 const vozDoTimeFallbackHref = computed(() => {
@@ -160,6 +160,9 @@ const vozDoTimeFallbackHref = computed(() => {
     }
     if (canAdmin('denuncias')) {
         return route('admin.complaints.index');
+    }
+    if (canAdmin('sugestoes')) {
+        return route('admin.suggestions.index');
     }
     if (canAdmin('companies')) {
         return '/admin/mapa-proposito';
@@ -177,6 +180,7 @@ const vozDoTimeActive = computed(
         route().current('admin.survey-templates.*') ||
         route().current('admin.desligamento.*') ||
         route().current('admin.complaints.*') ||
+        route().current('admin.suggestions.*') ||
         mapaPropositoActive.value,
 );
 
@@ -497,6 +501,15 @@ const isComercialSettingsTab = (tab) => {
                     :href="route('admin.complaints.index')"
                     :active="route().current('admin.complaints.*')"
                     label="Canal de denúncias"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('sugestoes')"
+                    :href="route('admin.suggestions.index')"
+                    :active="route().current('admin.suggestions.*')"
+                    label="Sugestões e dúvidas"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"

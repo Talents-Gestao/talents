@@ -7,6 +7,7 @@ enum PermissionModule: string
     case Pesquisas = 'pesquisas';
     case PlanosAcao = 'planos_acao';
     case Denuncias = 'denuncias';
+    case Sugestoes = 'sugestoes';
     case Metodologia = 'metodologia';
     case CalendarioEstrategico = 'calendario_estrategico';
     case Rhid = 'rhid';
@@ -27,6 +28,7 @@ enum PermissionModule: string
             self::Pesquisas => 'Pesquisas NR1',
             self::PlanosAcao => 'Planos de ação',
             self::Denuncias => 'Denúncias',
+            self::Sugestoes => 'Canal de sugestões e dúvidas',
             self::Metodologia => 'Direcionamento Estratégico',
             self::CalendarioEstrategico => 'Calendário estratégico',
             self::Rhid => 'RHID / Ponto',
@@ -54,6 +56,7 @@ enum PermissionModule: string
             self::Pesquisas,
             self::PlanosAcao,
             self::Denuncias,
+            self::Sugestoes,
             self::Metodologia,
             self::CalendarioEstrategico,
             self::Rhid,

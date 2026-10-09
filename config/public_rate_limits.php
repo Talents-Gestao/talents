@@ -11,6 +11,9 @@ return [
     /** POST /denuncia/{token} (nova denúncia) */
     'complaint_store_per_minute' => 10,
 
+    /** POST /sugestoes/{token} */
+    'suggestion_store_per_minute' => 10,
+
     /** POST /denuncia/{token}/acompanhar */
     'complaint_track_lookup_per_minute' => 20,
 

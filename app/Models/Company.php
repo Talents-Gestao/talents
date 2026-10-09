@@ -347,6 +347,14 @@ class Company extends Model
         return $this->subscriptionHasModuleKey(Module::KEY_DENUNCIAS);
     }
 
+    /**
+     * Canal de sugestões e dúvidas: chave «sugestoes» no plano da assinatura ativa.
+     */
+    public function hasSuggestionsEnabled(): bool
+    {
+        return $this->subscriptionHasModuleKey(Module::KEY_SUGESTOES);
+    }
+
     public function hasFeedbacksEnabled(): bool
     {
         if ($this->feedbacks_access === false) {
@@ -461,6 +469,7 @@ class Company extends Model
             PermissionModule::Rhid => $this->hasRhidEnabled(),
             PermissionModule::Tarefas => $this->hasTasksEnabled(),
             PermissionModule::Denuncias => $this->hasComplaintsEnabled(),
+            PermissionModule::Sugestoes => $this->hasSuggestionsEnabled(),
             PermissionModule::Feedbacks => $this->hasFeedbacksEnabled(),
             PermissionModule::Ferias => $this->hasFeriasEnabled(),
             PermissionModule::Desligamento => $this->hasDesligamentoEnabled(),
