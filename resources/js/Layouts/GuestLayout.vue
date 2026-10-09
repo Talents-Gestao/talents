@@ -20,16 +20,10 @@ defineProps({
                 <img
                     v-if="portal.logo_url"
                     :src="portal.logo_url"
-                    :alt="portal.name"
+                    :alt="portal.name || 'Logo'"
                     class="mx-auto h-36 w-auto max-w-[min(100%,28rem)] object-contain sm:h-44 sm:max-w-[32rem]"
                 />
                 <ApplicationLogo v-else class="mx-auto h-20 max-w-[280px] sm:h-24 sm:max-w-[320px]" />
-                <p
-                    class="mt-3 text-lg font-semibold text-slate-800"
-                    :style="portal.primary_color ? { color: portal.primary_color } : undefined"
-                >
-                    {{ portal.name }}
-                </p>
             </div>
         </div>
 
