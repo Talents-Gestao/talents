@@ -19,6 +19,18 @@ defineProps({
         type: String,
         default: '/images/logo.png',
     },
+    brandTitle: {
+        type: String,
+        default: 'Talents',
+    },
+    brandSubtitle: {
+        type: String,
+        default: 'GESTÃO DE PESSOAS',
+    },
+    accentColor: {
+        type: String,
+        default: '',
+    },
 });
 
 const closeMobileSidebar = inject('closeMobileSidebar', null);
@@ -34,8 +46,8 @@ const onNavigate = () => {
     <Link
         :href="href"
         class="group flex h-10 w-full min-w-0 cursor-pointer items-center overflow-hidden rounded-xl transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/40"
-        :title="collapsed ? 'Ir para a home' : undefined"
-        aria-label="Ir para a home"
+        :title="collapsed ? brandTitle : undefined"
+        :aria-label="`Ir para a home de ${brandTitle}`"
         @click="onNavigate"
     >
         <span
@@ -55,11 +67,17 @@ const onNavigate = () => {
                 v-if="!collapsed"
                 class="ml-3 min-w-0 whitespace-nowrap leading-none"
             >
-                <span class="block truncate text-base font-semibold tracking-tight text-talents-800">
-                    Talents
+                <span
+                    class="block truncate text-base font-semibold tracking-tight text-talents-800"
+                    :style="accentColor ? { color: accentColor } : undefined"
+                >
+                    {{ brandTitle }}
                 </span>
-                <span class="mt-0.5 block truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                    GESTÃO DE PESSOAS
+                <span
+                    v-if="brandSubtitle"
+                    class="mt-0.5 block truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400"
+                >
+                    {{ brandSubtitle }}
                 </span>
             </span>
         </Transition>

@@ -91,6 +91,10 @@ const form = useForm({
     plan_id: props.activePlanId ?? null,
     logo: null,
     remove_logo: false,
+    portal_slug: props.company.portal_slug ?? '',
+    portal_enabled: Boolean(props.company.portal_enabled),
+    brand_name: props.company.brand_name ?? '',
+    brand_primary_color: props.company.brand_primary_color ?? '',
 });
 
 const onCnpjInput = (event) => {
@@ -367,6 +371,60 @@ const submit = () => {
                     <option value="enabled">Forçar habilitado</option>
                     <option value="disabled">Forçar desabilitado</option>
                 </select>
+            </div>
+            <div class="space-y-4 border-t border-slate-200 pt-4">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-900">Portal de entrada</h3>
+                    <p class="mt-1 text-xs text-gray-500">
+                        Login exclusivo desta empresa, no mesmo domínio. O logo exibido é o da empresa.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input
+                        id="portal_enabled"
+                        v-model="form.portal_enabled"
+                        type="checkbox"
+                        class="rounded border-gray-300 text-talents-600 focus:ring-talents-500"
+                    />
+                    <InputLabel for="portal_enabled" value="Portal ativo" class="!mb-0" />
+                </div>
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                        <InputLabel for="portal_slug" value="Identificador" />
+                        <TextInput
+                            id="portal_slug"
+                            v-model="form.portal_slug"
+                            class="mt-1 block w-full"
+                            placeholder="passeg"
+                            autocomplete="off"
+                        />
+                        <p v-if="form.portal_slug" class="mt-1 text-xs text-gray-500">
+                            Endereço: /entrar/{{ String(form.portal_slug).trim().toLowerCase() }}
+                        </p>
+                        <InputError class="mt-2" :message="form.errors.portal_slug" />
+                    </div>
+                    <div>
+                        <InputLabel for="brand_name" value="Nome da marca" />
+                        <TextInput
+                            id="brand_name"
+                            v-model="form.brand_name"
+                            class="mt-1 block w-full"
+                            placeholder="Usa o nome da empresa se ficar vazio"
+                        />
+                        <InputError class="mt-2" :message="form.errors.brand_name" />
+                    </div>
+                </div>
+                <div class="max-w-xs">
+                    <InputLabel for="brand_primary_color" value="Cor principal" />
+                    <TextInput
+                        id="brand_primary_color"
+                        v-model="form.brand_primary_color"
+                        class="mt-1 block w-full"
+                        placeholder="#0F766E"
+                        maxlength="7"
+                    />
+                    <InputError class="mt-2" :message="form.errors.brand_primary_color" />
+                </div>
             </div>
             <PrimaryButton :disabled="form.processing">Atualizar</PrimaryButton>
         </form>

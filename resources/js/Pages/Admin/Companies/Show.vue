@@ -390,6 +390,17 @@ const removeRegulation = async (id) => {
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Instagram</dt>
                             <dd class="mt-1 text-slate-800">{{ company.instagram || '—' }}</dd>
                         </div>
+                        <div class="sm:col-span-2">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Portal de entrada</dt>
+                            <dd class="mt-1 text-slate-800">
+                                <template v-if="company.portal_slug">
+                                    {{ company.portal_enabled ? 'Ativo' : 'Inativo' }}
+                                    — /entrar/{{ company.portal_slug }}
+                                    <span v-if="company.brand_name"> ({{ company.brand_name }})</span>
+                                </template>
+                                <template v-else>—</template>
+                            </dd>
+                        </div>
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Razão social</dt>
                             <dd class="mt-1 text-slate-800">{{ company.legal_name || '—' }}</dd>

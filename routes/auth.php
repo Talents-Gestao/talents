@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\CompanyPortalLoginController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\WorkspaceSelectionController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
@@ -17,6 +18,14 @@ Route::middleware('guest')->group(function () {
         ->name('login');
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
+
+    Route::get('entrar/{slug}', [CompanyPortalLoginController::class, 'create'])
+        ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')
+        ->name('portal.login');
+
+    Route::post('entrar/{slug}', [CompanyPortalLoginController::class, 'store'])
+        ->where('slug', '[a-z0-9]+(?:-[a-z0-9]+)*')
+        ->name('portal.login.store');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');

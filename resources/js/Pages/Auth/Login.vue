@@ -21,6 +21,10 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    portal: {
+        type: Object,
+        default: null,
+    },
 });
 
 /** Mantém o aviso mesmo depois de limpar o query param da URL. */
@@ -46,8 +50,17 @@ const form = useForm({
 
 const showPassword = ref(false);
 
+const loginRoute = () =>
+    props.portal?.slug
+        ? route('portal.login', { slug: props.portal.slug })
+        : route('login');
+
 const submit = () => {
-    form.post(route('login'), {
+    const url = props.portal?.slug
+        ? route('portal.login.store', { slug: props.portal.slug })
+        : route('login');
+
+    form.post(url, {
         onFinish: () => form.reset('password'),
     });
 };
@@ -57,14 +70,14 @@ const dismissExpiredNotice = () => {
     showExpiredNotice.value = false;
 
     if (window.location.search.includes('session_expired')) {
-        window.history.replaceState({}, '', route('login'));
+        window.history.replaceState({}, '', loginRoute());
     }
 };
 </script>
 
 <template>
-    <GuestLayout>
-        <Head title="Entrar" />
+    <GuestLayout :portal="portal">
+        <Head :title="portal?.name ? `Entrar — ${portal.name}` : 'Entrar'" />
 
         <Modal
             :show="expiredModalVisible"
@@ -162,6 +175,7 @@ const dismissExpiredNotice = () => {
                 <PrimaryButton
                     class="ms-4"
                     :class="{ 'opacity-25': form.processing }"
+                    :style="portal?.primary_color ? { backgroundColor: portal.primary_color } : undefined"
                     :disabled="form.processing"
                 >
                     Entrar

@@ -48,6 +48,18 @@ const showDailyQuote = computed(
     () => !!dailyQuote.value && route().current('client.dashboard'),
 );
 
+const portalBrand = computed(() => {
+    const portal = page.props.portal;
+
+    return portal?.name ? portal : null;
+});
+
+const portalShellStyle = computed(() => {
+    const color = portalBrand.value?.primary_color;
+
+    return color ? { '--portal-primary': color } : undefined;
+});
+
 /** Href estável — evita crash se o Ziggy da sessão ainda não tiver a rota nova. */
 const mapaPropositoHref = '/client/mapa-proposito';
 const mapaPropositoActive = computed(() =>
@@ -56,13 +68,19 @@ const mapaPropositoActive = computed(() =>
 </script>
 
 <template>
-    <SidebarLayout top-bar-title="Área do cliente">
+    <SidebarLayout
+        :top-bar-title="portalBrand?.name || 'Área do cliente'"
+        :shell-style="portalShellStyle"
+    >
         <template #logo="{ collapsed }">
             <SidebarBrandMark
                 :href="route('client.dashboard')"
                 :collapsed="collapsed"
                 isolated-icon
-                icon-src="/images/logo-icon.png"
+                :icon-src="portalBrand?.logo_url || '/images/logo-icon.png'"
+                :brand-title="portalBrand?.name || 'Talents'"
+                :brand-subtitle="portalBrand ? '' : 'GESTÃO DE PESSOAS'"
+                :accent-color="portalBrand?.primary_color || ''"
             />
         </template>
 
