@@ -140,6 +140,8 @@ class ProposalSaleConversionService
                 ]);
             }
 
+            $this->createExtraCommissions($sale, $locked, $totalCents);
+
             return $sale->load(['installments', 'commission', 'seller:id,name']);
         });
     }
@@ -359,5 +361,46 @@ class ProposalSaleConversionService
         }
 
         return $plan;
+    }
+
+    private function createExtraCommissions(CommercialSale $sale, CommercialProposal $proposal, int $totalCents): void
+    {
+        $proposal->loadMissing('extraCommissions');
+
+        foreach ($proposal->extraCommissions as $extra) {
+            $userId = (int) $extra->user_id;
+            if ($userId < 1) {
+                continue;
+            }
+
+            if ($proposal->seller_id !== null && (int) $proposal->seller_id === $userId) {
+                continue;
+            }
+
+            $already = CommercialCommission::query()
+                ->where('sale_id', $sale->id)
+                ->where('seller_id', $userId)
+                ->exists();
+
+            if ($already) {
+                continue;
+            }
+
+            $percent = (float) $extra->percent;
+            $amountCents = OptionalCommission::centsFromPercent($totalCents, $percent);
+            if ($amountCents < 1) {
+                continue;
+            }
+
+            CommercialCommission::query()->create([
+                'sale_id' => $sale->id,
+                'seller_id' => $userId,
+                'base_cents' => $totalCents,
+                'percent' => $percent,
+                'amount_cents' => $amountCents,
+                'status' => CommercialCommission::STATUS_A_PAGAR,
+                'notes' => $extra->notes,
+            ]);
+        }
     }
 }

@@ -27,6 +27,7 @@ const emit = defineEmits([
     'reopen',
     'convert',
     'contract',
+    'extra-commission',
     'destroy',
 ]);
 
@@ -266,6 +267,7 @@ function onCardDragEnd(columnKey, evt) {
                                 @reopen="emit('reopen', $event)"
                                 @convert="emit('convert', $event)"
                                 @contract="emit('contract', $event)"
+                                @extra-commission="emit('extra-commission', $event)"
                                 @destroy="emit('destroy', $event)"
                             />
                         </div>

@@ -61,7 +61,12 @@ class CommercialSale extends Model
 
     public function commission(): HasOne
     {
-        return $this->hasOne(CommercialCommission::class, 'sale_id');
+        return $this->hasOne(CommercialCommission::class, 'sale_id')->oldest('id');
+    }
+
+    public function commissions(): HasMany
+    {
+        return $this->hasMany(CommercialCommission::class, 'sale_id');
     }
 
     public function recalculateStatus(): void

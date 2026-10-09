@@ -1,6 +1,7 @@
 <script setup>
 import ProposalsKanbanBoard from '@/Components/Commercial/ProposalsKanbanBoard.vue';
 import ProposalBoardMetrics from '@/Components/Commercial/ProposalBoardMetrics.vue';
+import ExtraCommissionModal from '@/Components/Commercial/ExtraCommissionModal.vue';
 import ExpiringProposalsModal from '@/Components/Commercial/ExpiringProposalsModal.vue';
 import ProposalForm from '@/Pages/Admin/Commercial/Proposals/Form.vue';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
@@ -21,6 +22,7 @@ import {
     PlusIcon,
     Squares2X2Icon,
     TrashIcon,
+    UserPlusIcon,
     XMarkIcon,
 } from '@heroicons/vue/24/outline';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
@@ -33,6 +35,7 @@ const props = defineProps({
     kanban: { type: Object, default: null },
     view: { type: String, default: 'kanban' },
     sellers: { type: Array, default: () => [] },
+    commissionUsers: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
     statusCounts: {
         type: Object,
@@ -825,6 +828,19 @@ const convertModalOpen = ref(false);
 const convertProposal = ref(null);
 const convertClientErrors = ref([]);
 
+const extraCommissionModalOpen = ref(false);
+const extraCommissionProposal = ref(null);
+
+const openExtraCommissionModal = (proposal) => {
+    extraCommissionProposal.value = proposal;
+    extraCommissionModalOpen.value = true;
+};
+
+const closeExtraCommissionModal = () => {
+    extraCommissionModalOpen.value = false;
+    extraCommissionProposal.value = null;
+};
+
 const MIX_METHOD_OPTIONS = [
     { value: 'pix', label: 'PIX' },
     { value: 'boleto', label: 'Boleto' },
@@ -1387,6 +1403,7 @@ const submitConvert = () => {
                 @reopen="openReopenModal"
                 @convert="openConvertModal"
                 @contract="openContractModal"
+                @extra-commission="openExtraCommissionModal"
                 @destroy="destroy"
                 @edit="openProposalForm({ form: 'edit', proposal_id: $event.id })"
             />
@@ -1513,6 +1530,15 @@ const submitConvert = () => {
                                     >
                                         <BanknotesIcon class="h-4 w-4" />
                                     </span>
+                                    <button
+                                        type="button"
+                                        class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                                        title="Incluir comissão"
+                                        aria-label="Incluir comissão"
+                                        @click="openExtraCommissionModal(p)"
+                                    >
+                                        <UserPlusIcon class="h-4 w-4" />
+                                    </button>
                                     <button
                                         type="button"
                                         class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
@@ -1787,6 +1813,13 @@ const submitConvert = () => {
                 </template>
             </div>
         </FullScreenOverlay>
+
+        <ExtraCommissionModal
+            :show="extraCommissionModalOpen"
+            :proposal="extraCommissionProposal"
+            :users="commissionUsers"
+            @close="closeExtraCommissionModal"
+        />
 
         <FullScreenOverlay :show="convertModalOpen" @close="closeConvertModal">
             <div

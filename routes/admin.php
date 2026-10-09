@@ -358,6 +358,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
                 ->name('propostas.notes');
             Route::post('propostas/{proposal}/reabrir', [CommercialProposalController::class, 'reopen'])
                 ->name('propostas.reopen');
+            Route::post('propostas/{proposal}/comissoes-extra', [CommercialProposalController::class, 'storeExtraCommission'])
+                ->name('propostas.comissoes-extra');
             Route::get('contratos/{contract}/pdf', [CommercialContractController::class, 'pdf'])
                 ->name('contratos.pdf');
             Route::post('contratos/{contract}/zapsign', [CommercialContractController::class, 'sendZapSign'])
