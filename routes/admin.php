@@ -50,7 +50,6 @@ use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\PlatformCompanyController;
 use App\Http\Controllers\Admin\PontoPanelController;
 use App\Http\Controllers\Admin\RhidPortfolioController;
-use App\Http\Controllers\Admin\RhidPanelController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SolidesCurriculumController;
 use App\Http\Controllers\Admin\SolidesSettingsController;
@@ -88,8 +87,6 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
         Route::patch('/dashboard/meta-mensal', [AdminDashboardController::class, 'updateMonthlyGoal'])
             ->name('dashboard.monthly-goal.update');
-        Route::get('rhid/portfolio-metrics', [RhidPortfolioController::class, 'portfolioMetrics'])
-            ->name('rhid.portfolio-metrics');
     });
 
     Route::middleware('admin.can:empresa_talents')->group(function () {
@@ -212,11 +209,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('contratos-fechados.index');
     });
 
-    Route::middleware('admin.can:rhid')->prefix('rhid')->name('rhid.')->group(function () {
-        Route::get('/', [RhidPanelController::class, 'index'])->name('index');
-        Route::get('summary', [RhidPanelController::class, 'summary'])->name('summary');
-        Route::get('companies/{company}/metrics', [RhidPanelController::class, 'companyMetrics'])->name('companies.metrics');
-    });
+    Route::middleware('admin.can:rhid')->get('rhid/{path?}', function () {
+        return redirect()->route('admin.ponto.index');
+    })->where('path', '.*');
 
     Route::middleware('admin.can:rhid')->prefix('ponto')->name('ponto.')->group(function () {
         Route::get('/', [PontoPanelController::class, 'index'])->name('index');
@@ -237,6 +232,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('companies/{company}/justifications/{id}', [PontoPanelController::class, 'destroyJustification'])
             ->name('companies.justifications.destroy')
             ->whereNumber('id');
+        Route::put('companies/{company}/settings', [PontoPanelController::class, 'updateSettings'])
+            ->name('companies.settings.update');
+        Route::post('companies/{company}/settings/test', [PontoPanelController::class, 'testSettings'])
+            ->name('companies.settings.test');
     });
 
     Route::middleware('admin.can:feedbacks')->prefix('feedbacks')->name('feedbacks.')->group(function () {

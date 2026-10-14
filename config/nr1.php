@@ -9,7 +9,7 @@ return [
     |
     | Média ponderada das respostas Likert 1–5 (com inversão por item quando
     | reverse_score=true). Quanto maior a média, maior o risco psicossocial.
-    | Tercis: leve ≤ 2,33 · intermediário ≤ 3,66 · grave > 3,66.
+    | Tercis: leve ≤ 2,33 · moderado ≤ 3,66 · grave > 3,66.
     |
     */
 
@@ -30,7 +30,7 @@ return [
 
     'risk_labels' => [
         'green' => 'Leve',
-        'yellow' => 'Intermediário',
+        'yellow' => 'Moderado',
         'red' => 'Grave',
     ],
 

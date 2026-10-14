@@ -10,7 +10,7 @@ const props = defineProps({
 
 const label = computed(() => {
     if (props.riskLevel === 'green') return 'Leve';
-    if (props.riskLevel === 'yellow') return 'Intermediário';
+    if (props.riskLevel === 'yellow') return 'Moderado';
     if (props.riskLevel === 'red') return 'Grave';
     return '—';
 });

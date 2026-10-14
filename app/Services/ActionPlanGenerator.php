@@ -122,7 +122,7 @@ class ActionPlanGenerator
     {
         return match ($level) {
             'green' => 'leve',
-            'yellow' => 'intermediário',
+            'yellow' => 'moderado',
             'red' => 'grave',
             default => 'nível a confirmar',
         };

@@ -374,15 +374,6 @@ const pinButtonTitle = computed(() =>
                     <slot name="user" :collapsed="collapsed" :compact="compact" />
                 </div>
             </div>
-
-            <button
-                type="button"
-                class="absolute right-2 top-3 rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 lg:hidden"
-                @click="closeMobileSidebar"
-            >
-                <span class="sr-only">Fechar menu</span>
-                <XMarkIcon class="h-6 w-6" />
-            </button>
         </aside>
 
         <div :class="['flex min-h-screen flex-1 flex-col', mainTransitionClass, mainMarginClass]">

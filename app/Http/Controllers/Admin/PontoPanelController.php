@@ -9,10 +9,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Services\Rhid\EspelhoScheduleAdherenceService;
 use App\Services\Rhid\RhidAdminPortfolioMetricsService;
+use App\Services\Rhid\RhidCompanyCredentialsService;
 use App\Services\Rhid\RhidComplianceService;
 use App\Services\Rhid\RhidMonitoringService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -36,7 +38,6 @@ class PontoPanelController extends Controller
 
         return Inertia::render('Admin/TimeClock/Index', [
             'companies' => $companies,
-            'segments' => $companies->pluck('segment')->filter()->unique()->sort()->values(),
         ]);
     }
 
@@ -183,6 +184,34 @@ class PontoPanelController extends Controller
         return $this->rhidJsonOrError(
             fn () => $compliance->deleteJustification($company, $request->user(), $id),
         );
+    }
+
+    public function updateSettings(
+        Request $request,
+        Company $company,
+        RhidCompanyCredentialsService $credentials,
+    ): RedirectResponse {
+        abort_unless($company->is_active, 404);
+
+        $validated = $request->validate(RhidCompanyCredentialsService::validationRules());
+        $credentials->update($company, $validated);
+
+        return redirect()
+            ->route('admin.companies.show', ['company' => $company, 'tab' => 'ponto'])
+            ->with('success', 'Credenciais RHID salvas.');
+    }
+
+    public function testSettings(
+        Request $request,
+        Company $company,
+        RhidCompanyCredentialsService $credentials,
+    ): JsonResponse {
+        abort_unless($company->is_active, 404);
+
+        $result = $credentials->test($company);
+        $status = ($result['ok'] ?? false) === true ? 200 : 422;
+
+        return response()->json($result, $status);
     }
 
     private function assertCompanyRhidReady(Company $company): void

@@ -28,8 +28,22 @@
             font-size: 10px;
             font-weight: bold;
         }
-        .legend { margin: 6px 0 10px; font-size: 9px; color: #64748b; }
-        .legend span { margin-right: 10px; }
+        .legend { margin: 8px 0 12px; font-size: 10px; }
+        .legend-item {
+            display: inline-block;
+            margin: 0 6px 4px 0;
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid;
+            font-weight: 700;
+        }
+        .legend-item--leve { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+        .legend-item--moderado { color: #b45309; background: #fffbeb; border-color: #fde68a; }
+        .legend-item--grave { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+        .legend-range { font-weight: 600; }
+        .legend-item--leve .dot { background: #10b981; }
+        .legend-item--moderado .dot { background: #f59e0b; }
+        .legend-item--grave .dot { background: #ef4444; }
         .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
         .two-col { width: 100%; }
         .two-col td { vertical-align: top; }
@@ -105,7 +119,7 @@
             </span>
             <p class="muted" style="margin: 6px 0 0;">
                 Respondentes: {{ $overall['respondent_count'] }}
-                · Faixas: 1,00–2,33 leve · 2,34–3,66 intermediário · 3,67–5,00 grave
+                · Faixas: 1,00–2,33 leve · 2,34–3,66 moderado · 3,67–5,00 grave
             </p>
         </div>
     @else
@@ -114,11 +128,7 @@
 
     @if(count($bySection) > 0)
         <h2>Dimensões</h2>
-        <div class="legend">
-            <span><span class="dot" style="background:#10b981;"></span> Leve (1,00–2,33)</span>
-            <span><span class="dot" style="background:#f59e0b;"></span> Intermediário (2,34–3,66)</span>
-            <span><span class="dot" style="background:#ef4444;"></span> Grave (3,67–5,00)</span>
-        </div>
+        @include('reports.partials.nr1_risk_legend')
 
         <table class="two-col">
             <tr>
@@ -175,6 +185,7 @@
 
     @if(count($deptOveralls) > 0)
         <h2>Risco por setor (média geral)</h2>
+        @include('reports.partials.nr1_risk_legend')
         @foreach($deptOveralls as $row)
             @php
                 $pct = max(0, min(100, (($row['average_score'] - 1) / 4) * 100));
@@ -194,6 +205,7 @@
 
     @if(count($deptOveralls) > 0 && count($bySection) > 0 && count($deptSectionsByDepartment) > 0)
         <h2>Tabela de risco por setor e dimensão</h2>
+        @include('reports.partials.nr1_risk_legend')
         <table class="data heatmap">
             <thead>
                 <tr>

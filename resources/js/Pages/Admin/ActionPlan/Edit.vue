@@ -791,7 +791,7 @@ const submit = () => {
             </div>
 
             <!-- Etapa 03: Publicar -->
-            <div v-show="activeStep === 'publish'" class="space-y-6 pb-28">
+            <div v-show="activeStep === 'publish'" class="space-y-6">
                 <div>
                     <h3 class="text-lg font-semibold text-talents-900">03 · Revisar e publicar</h3>
                     <p class="mt-1 text-sm text-gray-600">
@@ -832,7 +832,12 @@ const submit = () => {
             <!-- Sticky actions -->
             <div
                 v-show="activeStep === 'opinion' || activeStep === 'publish'"
-                class="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-white/80"
+                class="z-30 border-t border-slate-200 bg-white px-4 py-3"
+                :class="
+                    activeStep === 'publish'
+                        ? 'relative mt-2 rounded-xl border border-slate-200 shadow-sm'
+                        : 'fixed inset-x-0 bottom-0 bg-white/95 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-white/80'
+                "
             >
                 <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
                     <p class="text-xs text-slate-500 sm:text-sm">

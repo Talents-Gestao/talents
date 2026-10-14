@@ -257,13 +257,23 @@ const destroyRow = async (row) => {
 
 watch(
     () => props.companyId,
-    async () => {
+    () => {
         cancelForm();
         rows.value = [];
-        await loadList();
+    },
+);
+
+watch(
+    () => [props.companyId, iniDate.value, fimDate.value],
+    () => {
+        loadList();
     },
     { immediate: true },
 );
+
+defineExpose({
+    refresh: loadList,
+});
 </script>
 
 <template>
@@ -293,12 +303,7 @@ watch(
                     class="mt-6 w-full max-w-xs rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500 sm:mt-0"
                 >
             </div>
-            <div class="flex flex-wrap gap-2">
-                <SecondaryButton type="button" :disabled="loading" @click="loadList">
-                    {{ loading ? 'Carregando…' : 'Atualizar lista' }}
-                </SecondaryButton>
-                <PrimaryButton type="button" @click="openCreate">Nova justificativa</PrimaryButton>
-            </div>
+            <PrimaryButton type="button" @click="openCreate">Nova justificativa</PrimaryButton>
         </div>
 
         <p v-if="error" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">{{ error }}</p>

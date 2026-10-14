@@ -119,7 +119,7 @@ const resolveRiskLevel = (row) => row?.risk_level || riskLevelFromScore(row?.ave
 
 const healthLevelLabel = (level) => {
     if (level === 'green') return 'Leve';
-    if (level === 'yellow') return 'Intermediário';
+    if (level === 'yellow') return 'Moderado';
     return 'Grave';
 };
 
@@ -610,11 +610,11 @@ const scrollToSection = (event, sectionId) => {
             tabindex="-1"
             class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h3 class="text-lg font-semibold text-talents-900">Dimensões — {{ selectedDepartmentName }}</h3>
+            <h3 class="text-lg font-semibold text-talents-900">Dimensões — {{ selectedDepartmentName }}</h3>
+            <div class="mt-3">
                 <Nr1RiskLevelLegend :with-ranges="false" />
             </div>
-            <div class="mt-6 grid gap-8 xl:grid-cols-5">
+            <div class="mt-4 grid gap-8 xl:grid-cols-5">
                 <div class="min-h-[34rem] xl:col-span-3">
                     <ApexChart height="540" :options="filteredDeptRadar" :series="filteredDeptRadarSeries" />
                 </div>
@@ -667,11 +667,11 @@ const scrollToSection = (event, sectionId) => {
             tabindex="-1"
             class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h3 class="text-lg font-semibold text-talents-900">Dimensões</h3>
+            <h3 class="text-lg font-semibold text-talents-900">Dimensões</h3>
+            <div class="mt-3">
                 <Nr1RiskLevelLegend />
             </div>
-            <div class="mt-6 grid gap-8 xl:grid-cols-5">
+            <div class="mt-4 grid gap-8 xl:grid-cols-5">
                 <div class="min-h-[34rem] xl:col-span-3">
                     <ApexChart height="540" :options="radar" :series="radarSeries" />
                 </div>
@@ -754,13 +754,11 @@ const scrollToSection = (event, sectionId) => {
             tabindex="-1"
             class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h3 class="text-lg font-semibold text-talents-900">Risco por setor (média geral)</h3>
-                    <p class="mt-1 text-sm text-gray-500">
-                        Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato). Cores conforme faixa de risco.
-                    </p>
-                </div>
+            <h3 class="text-lg font-semibold text-talents-900">Risco por setor (média geral)</h3>
+            <p class="mt-1 text-sm text-gray-500">
+                Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato). Cores conforme faixa de risco.
+            </p>
+            <div class="mt-3">
                 <Nr1RiskLevelLegend />
             </div>
             <div class="mt-4 min-h-[26rem]">
@@ -772,11 +770,9 @@ const scrollToSection = (event, sectionId) => {
             v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
             class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
         >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h3 class="text-lg font-semibold text-talents-900">Dimensões por setor</h3>
-                    <p class="mt-1 text-sm text-gray-500">Comparação lado a lado das dimensões em cada setor.</p>
-                </div>
+            <h3 class="text-lg font-semibold text-talents-900">Dimensões por setor</h3>
+            <p class="mt-1 text-sm text-gray-500">Comparação lado a lado das dimensões em cada setor.</p>
+            <div class="mt-3">
                 <Nr1RiskLevelLegend />
             </div>
             <div class="mt-4 min-h-[30rem]">
@@ -788,11 +784,9 @@ const scrollToSection = (event, sectionId) => {
             v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
             class="overflow-x-auto rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
         >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h3 class="text-lg font-semibold text-talents-900">Tabela de risco por setor e dimensão</h3>
-                    <p class="mt-1 text-sm text-gray-500">Valores numéricos complementares aos gráficos acima.</p>
-                </div>
+            <h3 class="text-lg font-semibold text-talents-900">Tabela de risco por setor e dimensão</h3>
+            <p class="mt-1 text-sm text-gray-500">Valores numéricos complementares aos gráficos acima.</p>
+            <div class="mt-3">
                 <Nr1RiskLevelLegend />
             </div>
             <table class="mt-4 min-w-full border-collapse text-sm">
@@ -858,7 +852,7 @@ const scrollToSection = (event, sectionId) => {
                 <div class="flex flex-wrap items-center gap-2">
                     <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
                         <input v-model="showCriticalQuestionsOnly" type="checkbox" class="rounded border-gray-300 text-talents-700 focus:ring-talents-500" />
-                        Só intermediário/grave
+                        Só moderado/grave
                     </label>
                     <button
                         type="button"
