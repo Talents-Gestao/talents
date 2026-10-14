@@ -99,6 +99,13 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(max(1, $max))->by($request->ip().':'.$token);
         });
 
+        RateLimiter::for('public-suggestion-store', function (Request $request) {
+            $max = (int) config('public_rate_limits.suggestion_store_per_minute', 10);
+            $token = (string) $request->route('token', '');
+
+            return Limit::perMinute(max(1, $max))->by($request->ip().':'.$token);
+        });
+
         RateLimiter::for('public-complaint-track-lookup', function (Request $request) {
             $max = (int) config('public_rate_limits.complaint_track_lookup_per_minute', 20);
             $token = (string) $request->route('token', '');

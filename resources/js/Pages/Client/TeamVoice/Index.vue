@@ -4,6 +4,7 @@ import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import {
     ClipboardDocumentListIcon,
+    LightBulbIcon,
     MapIcon,
     MegaphoneIcon,
     ShieldExclamationIcon,
@@ -14,9 +15,13 @@ defineProps({
     purposeMapCount: { type: Number, default: 0 },
     complaintsCount: { type: Number, default: 0 },
     openComplaintsCount: { type: Number, default: 0 },
+    suggestionsCount: { type: Number, default: 0 },
+    newSuggestionsCount: { type: Number, default: 0 },
     canSurveys: { type: Boolean, default: false },
     canComplaints: { type: Boolean, default: false },
+    canSuggestions: { type: Boolean, default: false },
     complaintsPublicUrl: { type: String, default: null },
+    suggestionsPublicUrl: { type: String, default: null },
 });
 </script>
 
@@ -28,7 +33,7 @@ defineProps({
             <div class="flex flex-col gap-1">
                 <h2 class="text-xl font-semibold leading-tight text-slate-900">Voz do Time</h2>
                 <p class="text-sm text-slate-500">
-                    Escuta estruturada: pesquisas, mapa de propósito e canal de denúncias.
+                    Escuta estruturada: pesquisas, mapa de propósito, denúncias e sugestões.
                 </p>
             </div>
         </template>
@@ -73,6 +78,30 @@ defineProps({
             </Link>
 
             <Link
+                v-if="canSuggestions"
+                :href="route('client.suggestions.index')"
+                class="surface-card group flex flex-col gap-3 p-5 transition hover:border-talents-200 hover:shadow-md"
+            >
+                <div class="flex items-start justify-between gap-3">
+                    <div class="rounded-xl bg-amber-50 p-2.5 text-amber-700 ring-1 ring-amber-100">
+                        <LightBulbIcon class="h-6 w-6" aria-hidden="true" />
+                    </div>
+                    <div class="text-right">
+                        <span class="text-2xl font-bold tabular-nums text-slate-900">{{ suggestionsCount }}</span>
+                        <p v-if="newSuggestionsCount" class="text-xs font-medium text-amber-700">
+                            {{ newSuggestionsCount === 1 ? '1 nova' : `${newSuggestionsCount} novas` }}
+                        </p>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-slate-900 group-hover:text-talents-700">Sugestões e dúvidas</h3>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Canal anônimo para sugestões, dúvidas e feedback, com link para o time.
+                    </p>
+                </div>
+            </Link>
+
+            <Link
                 v-if="canComplaints"
                 :href="route('client.complaints.index')"
                 class="surface-card group flex flex-col gap-3 p-5 transition hover:border-talents-200 hover:shadow-md"
@@ -98,13 +127,28 @@ defineProps({
         </div>
 
         <ComplaintsPublicLinkPanel
+            v-if="canSuggestions && suggestionsPublicUrl"
+            :url="suggestionsPublicUrl"
+            variant="card"
+            title="Link do canal de sugestões e dúvidas"
+        >
+            <template #description>
+                Os colaboradores acessam <span class="font-medium text-slate-800">sem login</span>,
+                pelo link abaixo. Partilhe este URL (e-mail, intranet ou QR).
+            </template>
+            <template #footnote>
+                Canal anônimo de sugestões e dúvidas. A leitura das mensagens no painel continua exigindo permissão.
+            </template>
+        </ComplaintsPublicLinkPanel>
+
+        <ComplaintsPublicLinkPanel
             v-if="canComplaints && complaintsPublicUrl"
             :url="complaintsPublicUrl"
             variant="card"
         />
 
         <div
-            v-if="!canSurveys && !canComplaints"
+            v-if="!canSurveys && !canComplaints && !canSuggestions"
             class="surface-card mt-4 flex items-center gap-3 p-6 text-sm text-slate-500"
         >
             <MegaphoneIcon class="h-8 w-8 shrink-0 text-slate-300" aria-hidden="true" />

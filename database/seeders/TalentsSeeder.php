@@ -67,6 +67,14 @@ class TalentsSeeder extends Seeder
             ]
         );
 
+        $sugestoes = Module::query()->firstOrCreate(
+            ['key' => Module::KEY_SUGESTOES],
+            [
+                'name' => 'Canal de sugestões e dúvidas',
+                'description' => 'Canal anônimo de sugestões, dúvidas e feedback, com link público por empresa.',
+            ]
+        );
+
         $feedbacks = Module::query()->firstOrCreate(
             ['key' => Module::KEY_FEEDBACKS],
             [
@@ -110,7 +118,7 @@ class TalentsSeeder extends Seeder
             ]
         );
 
-        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id, $rhid->id, $denuncias->id, $feedbacks->id, $ferias->id, $desligamento->id, $acompanhamento->id]);
+        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id, $rhid->id, $denuncias->id, $sugestoes->id, $feedbacks->id, $ferias->id, $desligamento->id, $acompanhamento->id]);
 
         $admin = User::query()->firstOrCreate(
             ['email' => 'admin@talents.local'],

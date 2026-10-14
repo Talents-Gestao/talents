@@ -34,6 +34,7 @@ const props = defineProps({
     calendarKindLabels: { type: Object, default: () => ({}) },
     actionPlanHref: { type: String, default: null },
     complaintsPublicUrl: { type: String, default: null },
+    suggestionsPublicUrl: { type: String, default: null },
     dashboardCalendar: { type: Object, default: null },
 });
 
@@ -385,6 +386,19 @@ const attentionHref = computed(() => {
         </div>
 
         <!-- Denúncias — link público para colaboradores -->
+        <div v-if="suggestionsPublicUrl && can('sugestoes', 'view')" class="dashboard-panel-compact mt-8">
+            <SectionHeader title="Canal de sugestões e dúvidas" subtitle="Partilhe o link com o time — formulário sem login" />
+            <ComplaintsPublicLinkPanel :url="suggestionsPublicUrl" variant="panel" title="Link público para colaboradores">
+                <template #description>
+                    Os colaboradores acessam <span class="font-medium text-slate-800">sem login</span>,
+                    pelo link abaixo. Partilhe este URL (e-mail, intranet ou QR).
+                </template>
+                <template #footnote>
+                    Canal anônimo de sugestões e dúvidas. A leitura das mensagens no painel continua exigindo permissão.
+                </template>
+            </ComplaintsPublicLinkPanel>
+        </div>
+
         <div v-if="complaintsPublicUrl && can('denuncias', 'view')" class="dashboard-panel-compact mt-8">
             <SectionHeader title="Canal de denúncias" subtitle="Partilhe o link com o time — formulário sem login" />
             <ComplaintsPublicLinkPanel :url="complaintsPublicUrl" variant="panel" />

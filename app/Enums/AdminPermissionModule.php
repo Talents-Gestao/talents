@@ -53,6 +53,7 @@ enum AdminPermissionModule: string
     case Ferias = 'ferias';
     case Desligamento = 'desligamento';
     case Denuncias = 'denuncias';
+    case Sugestoes = 'sugestoes';
 
     /**
      * Módulos legados (pré-granularidade). Mantidos para TryFrom / backfill;
@@ -102,6 +103,7 @@ enum AdminPermissionModule: string
             self::Ferias => 'Férias',
             self::Desligamento => 'Voz do Time · Desligamento',
             self::Denuncias => 'Voz do Time · Canal de denúncias',
+            self::Sugestoes => 'Voz do Time · Canal de sugestões e dúvidas',
             self::Financeiro => 'Financeiro (legado)',
             self::Comercial => 'Comercial (legado)',
             self::Solides => 'Sólides (legado)',
@@ -139,6 +141,7 @@ enum AdminPermissionModule: string
             self::SurveyTemplates,
             self::Desligamento,
             self::Denuncias,
+            self::Sugestoes,
             self::StrategicCalendar,
             self::Tarefas,
             self::Methodology,

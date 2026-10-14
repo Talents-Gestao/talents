@@ -77,6 +77,9 @@ class DashboardController extends Controller
         $complaintsPublicUrl = $company?->complaints_public_token
             ? url('/denuncia/'.$company->complaints_public_token)
             : null;
+        $suggestionsPublicUrl = $company?->complaints_public_token
+            ? url('/sugestoes/'.$company->complaints_public_token)
+            : null;
 
         $pendingComplaintsCount = Complaint::query()
             ->where('company_id', $companyId)
@@ -227,6 +230,7 @@ class DashboardController extends Controller
             'calendarKindLabels' => $calendarKindLabels,
             'actionPlanHref' => $actionPlanHref,
             'complaintsPublicUrl' => $complaintsPublicUrl,
+            'suggestionsPublicUrl' => $suggestionsPublicUrl,
             'dashboardCalendar' => $dashboardCalendar,
         ]);
     }

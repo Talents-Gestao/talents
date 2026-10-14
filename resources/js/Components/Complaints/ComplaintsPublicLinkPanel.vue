@@ -17,6 +17,10 @@ const props = defineProps({
         default: 'card',
         validator: (value) => ['panel', 'card', 'compact'].includes(value),
     },
+    title: {
+        type: String,
+        default: 'Link público para colaboradores',
+    },
 });
 
 const copied = ref(false);
@@ -71,17 +75,21 @@ const copyLink = async () => {
                 </div>
                 <div class="min-w-0">
                     <p class="text-sm font-semibold text-slate-900">
-                        Link público para colaboradores
+                        {{ title }}
                     </p>
                     <p class="mt-1 text-sm leading-relaxed text-slate-600">
-                        Os colaboradores acedem <span class="font-medium text-slate-800">sem login</span>,
-                        pelo link abaixo — não é pelo painel da empresa. Partilhe este URL (e-mail, intranet ou QR).
+                        <slot name="description">
+                            Os colaboradores acedem <span class="font-medium text-slate-800">sem login</span>,
+                            pelo link abaixo — não é pelo painel da empresa. Partilhe este URL (e-mail, intranet ou QR).
+                        </slot>
                     </p>
                     <p class="mt-2 break-all rounded-lg bg-white px-3 py-2 font-mono text-xs text-slate-700 ring-1 ring-slate-200/80">
                         {{ url }}
                     </p>
                     <p class="mt-2 text-xs text-slate-500">
-                        Lei 14.457/2022 — canal de denúncias. Acompanhar denúncias no painel continua a exigir permissão.
+                        <slot name="footnote">
+                            Lei 14.457/2022 — canal de denúncias. Acompanhar denúncias no painel continua a exigir permissão.
+                        </slot>
                     </p>
                 </div>
             </div>
