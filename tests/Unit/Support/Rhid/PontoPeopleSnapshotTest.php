@@ -76,7 +76,7 @@ class PontoPeopleSnapshotTest extends TestCase
         $this->assertCount(2, $snapshot['ranking_faltas']);
     }
 
-    public function test_limits_each_ranking_to_display_limit(): void
+    public function test_returns_full_rankings_without_display_cap(): void
     {
         $rows = [];
         for ($i = 1; $i <= 12; $i++) {
@@ -94,9 +94,9 @@ class PontoPeopleSnapshotTest extends TestCase
         $snapshot = PontoPeopleSnapshot::fromComplianceRanking($rows);
 
         $this->assertSame(12, $snapshot['evaluated_count']);
-        $this->assertCount(PontoPeopleSnapshot::DISPLAY_LIMIT, $snapshot['ranking_pontualidade']);
-        $this->assertCount(PontoPeopleSnapshot::DISPLAY_LIMIT, $snapshot['ranking_faltas']);
-        $this->assertCount(PontoPeopleSnapshot::DISPLAY_LIMIT, $snapshot['ranking_atestados']);
+        $this->assertCount(12, $snapshot['ranking_pontualidade']);
+        $this->assertCount(12, $snapshot['ranking_faltas']);
+        $this->assertCount(12, $snapshot['ranking_atestados']);
         $this->assertSame(1, $snapshot['ranking_pontualidade'][0]['id_person']);
         $this->assertSame(12, $snapshot['ranking_faltas'][0]['id_person']);
         $this->assertSame(12, $snapshot['ranking_atestados'][0]['id_person']);

@@ -1,6 +1,8 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { Link } from '@inertiajs/vue3';
+
+const RANKING_PREVIEW = 3;
 
 const props = defineProps({
     people: { type: Object, default: null },
@@ -48,6 +50,36 @@ const personHref = (row) => {
     }
     return route('client.rhid.collaborators.show', row.id_person);
 };
+
+const rankingExpanded = reactive({
+    pontualidade: false,
+    faltas: false,
+    atestados: false,
+});
+
+const visibleRanking = (rows, key) => {
+    if (!Array.isArray(rows) || rankingExpanded[key] || rows.length <= RANKING_PREVIEW) {
+        return rows;
+    }
+    return rows.slice(0, RANKING_PREVIEW);
+};
+
+const rankingToggleLabel = (rows, key) => {
+    if (rankingExpanded[key]) {
+        return 'Ver menos';
+    }
+    const hidden = Math.max(0, rows.length - RANKING_PREVIEW);
+    return hidden > 0 ? `Ver mais (${hidden})` : 'Ver mais';
+};
+
+watch(
+    () => props.people,
+    () => {
+        rankingExpanded.pontualidade = false;
+        rankingExpanded.faltas = false;
+        rankingExpanded.atestados = false;
+    },
+);
 </script>
 
 <template>
@@ -161,9 +193,12 @@ const personHref = (row) => {
                         <p class="text-sm font-semibold text-talents-800">Mais pontuais</p>
                         <p class="mt-0.5 text-[11px] text-slate-500">Do maior para o menor cumprimento</p>
                     </div>
-                    <ol class="space-y-2">
+                    <ol
+                        class="space-y-2"
+                        :class="rankingExpanded.pontualidade ? 'max-h-[28rem] overflow-auto pr-1' : ''"
+                    >
                         <li
-                            v-for="(row, idx) in snapshot.ranking_pontualidade"
+                            v-for="(row, idx) in visibleRanking(snapshot.ranking_pontualidade, 'pontualidade')"
                             :key="`pct-${row.id_person ?? idx}`"
                             class="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2 text-sm"
                         >
@@ -190,6 +225,14 @@ const personHref = (row) => {
                             </span>
                         </li>
                     </ol>
+                    <button
+                        v-if="snapshot.ranking_pontualidade.length > RANKING_PREVIEW"
+                        type="button"
+                        class="mt-3 w-full rounded-lg px-3 py-1.5 text-xs font-semibold text-talents-800 ring-1 ring-talents-200 transition hover:bg-talents-50"
+                        @click="rankingExpanded.pontualidade = !rankingExpanded.pontualidade"
+                    >
+                        {{ rankingToggleLabel(snapshot.ranking_pontualidade, 'pontualidade') }}
+                    </button>
                 </section>
 
                 <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -197,30 +240,43 @@ const personHref = (row) => {
                         <p class="text-sm font-semibold text-talents-800">Mais faltas não justificadas</p>
                         <p class="mt-0.5 text-[11px] text-slate-500">Dias esperados sem marcação completa</p>
                     </div>
-                    <ol v-if="snapshot.ranking_faltas.length" class="space-y-2">
-                        <li
-                            v-for="(row, idx) in snapshot.ranking_faltas"
-                            :key="`falt-${row.id_person ?? idx}`"
-                            class="flex items-center justify-between gap-2 rounded-xl border border-rose-50 bg-rose-50/40 px-3 py-2 text-sm"
+                    <template v-if="snapshot.ranking_faltas.length">
+                        <ol
+                            class="space-y-2"
+                            :class="rankingExpanded.faltas ? 'max-h-[28rem] overflow-auto pr-1' : ''"
                         >
-                            <span class="flex min-w-0 items-center gap-2">
-                                <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-100 text-[10px] font-bold text-rose-800">
-                                    {{ String(idx + 1).padStart(2, '0') }}
+                            <li
+                                v-for="(row, idx) in visibleRanking(snapshot.ranking_faltas, 'faltas')"
+                                :key="`falt-${row.id_person ?? idx}`"
+                                class="flex items-center justify-between gap-2 rounded-xl border border-rose-50 bg-rose-50/40 px-3 py-2 text-sm"
+                            >
+                                <span class="flex min-w-0 items-center gap-2">
+                                    <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-100 text-[10px] font-bold text-rose-800">
+                                        {{ String(idx + 1).padStart(2, '0') }}
+                                    </span>
+                                    <Link
+                                        v-if="personHref(row)"
+                                        :href="personHref(row)"
+                                        class="truncate font-medium text-talents-800 hover:underline"
+                                    >
+                                        {{ row.nome }}
+                                    </Link>
+                                    <span v-else class="truncate font-medium text-slate-800">{{ row.nome }}</span>
                                 </span>
-                                <Link
-                                    v-if="personHref(row)"
-                                    :href="personHref(row)"
-                                    class="truncate font-medium text-talents-800 hover:underline"
-                                >
-                                    {{ row.nome }}
-                                </Link>
-                                <span v-else class="truncate font-medium text-slate-800">{{ row.nome }}</span>
-                            </span>
-                            <span class="shrink-0 tabular-nums text-sm font-semibold text-rose-800">
-                                {{ row.dias_faltas_nao_justificadas }}
-                            </span>
-                        </li>
-                    </ol>
+                                <span class="shrink-0 tabular-nums text-sm font-semibold text-rose-800">
+                                    {{ row.dias_faltas_nao_justificadas }}
+                                </span>
+                            </li>
+                        </ol>
+                        <button
+                            v-if="snapshot.ranking_faltas.length > RANKING_PREVIEW"
+                            type="button"
+                            class="mt-3 w-full rounded-lg px-3 py-1.5 text-xs font-semibold text-talents-800 ring-1 ring-talents-200 transition hover:bg-talents-50"
+                            @click="rankingExpanded.faltas = !rankingExpanded.faltas"
+                        >
+                            {{ rankingToggleLabel(snapshot.ranking_faltas, 'faltas') }}
+                        </button>
+                    </template>
                     <p v-else class="rounded-xl bg-slate-50 px-3 py-6 text-center text-xs text-slate-500">
                         Nenhuma falta não justificada neste período.
                     </p>
@@ -231,30 +287,43 @@ const personHref = (row) => {
                         <p class="text-sm font-semibold text-talents-800">Mais atestados</p>
                         <p class="mt-0.5 text-[11px] text-slate-500">Dias úteis cobertos por atestado</p>
                     </div>
-                    <ol v-if="snapshot.ranking_atestados.length" class="space-y-2">
-                        <li
-                            v-for="(row, idx) in snapshot.ranking_atestados"
-                            :key="`atest-${row.id_person ?? idx}`"
-                            class="flex items-center justify-between gap-2 rounded-xl border border-amber-50 bg-amber-50/50 px-3 py-2 text-sm"
+                    <template v-if="snapshot.ranking_atestados.length">
+                        <ol
+                            class="space-y-2"
+                            :class="rankingExpanded.atestados ? 'max-h-[28rem] overflow-auto pr-1' : ''"
                         >
-                            <span class="flex min-w-0 items-center gap-2">
-                                <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-900">
-                                    {{ String(idx + 1).padStart(2, '0') }}
+                            <li
+                                v-for="(row, idx) in visibleRanking(snapshot.ranking_atestados, 'atestados')"
+                                :key="`atest-${row.id_person ?? idx}`"
+                                class="flex items-center justify-between gap-2 rounded-xl border border-amber-50 bg-amber-50/50 px-3 py-2 text-sm"
+                            >
+                                <span class="flex min-w-0 items-center gap-2">
+                                    <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[10px] font-bold text-amber-900">
+                                        {{ String(idx + 1).padStart(2, '0') }}
+                                    </span>
+                                    <Link
+                                        v-if="personHref(row)"
+                                        :href="personHref(row)"
+                                        class="truncate font-medium text-talents-800 hover:underline"
+                                    >
+                                        {{ row.nome }}
+                                    </Link>
+                                    <span v-else class="truncate font-medium text-slate-800">{{ row.nome }}</span>
                                 </span>
-                                <Link
-                                    v-if="personHref(row)"
-                                    :href="personHref(row)"
-                                    class="truncate font-medium text-talents-800 hover:underline"
-                                >
-                                    {{ row.nome }}
-                                </Link>
-                                <span v-else class="truncate font-medium text-slate-800">{{ row.nome }}</span>
-                            </span>
-                            <span class="shrink-0 tabular-nums text-sm font-semibold text-amber-900">
-                                {{ row.dias_atestado_excluidos }}
-                            </span>
-                        </li>
-                    </ol>
+                                <span class="shrink-0 tabular-nums text-sm font-semibold text-amber-900">
+                                    {{ row.dias_atestado_excluidos }}
+                                </span>
+                            </li>
+                        </ol>
+                        <button
+                            v-if="snapshot.ranking_atestados.length > RANKING_PREVIEW"
+                            type="button"
+                            class="mt-3 w-full rounded-lg px-3 py-1.5 text-xs font-semibold text-talents-800 ring-1 ring-talents-200 transition hover:bg-talents-50"
+                            @click="rankingExpanded.atestados = !rankingExpanded.atestados"
+                        >
+                            {{ rankingToggleLabel(snapshot.ranking_atestados, 'atestados') }}
+                        </button>
+                    </template>
                     <p v-else class="rounded-xl bg-slate-50 px-3 py-6 text-center text-xs text-slate-500">
                         Nenhum dia de atestado no período.
                     </p>

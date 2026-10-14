@@ -14,7 +14,6 @@ import {
     CalendarDaysIcon,
     ChatBubbleLeftRightIcon,
     Cog6ToothIcon,
-    FingerPrintIcon,
     HomeIcon,
     MegaphoneIcon,
     MicrophoneIcon,
@@ -111,6 +110,7 @@ const clientesFallbackHref = computed(() => {
 const clientesActive = computed(
     () =>
         route().current('admin.companies.*') ||
+        route().current('admin.ponto.*') ||
         route().current('admin.landing-interest.*') ||
         route().current('admin.diagnostico-empresarial.*') ||
         route().current('admin.contratos-fechados.*'),
@@ -370,7 +370,7 @@ const isComercialSettingsTab = (tab) => {
                 <SidebarNavItem
                     v-if="canAdmin('companies')"
                     :href="route('admin.companies.index')"
-                    :active="route().current('admin.companies.*')"
+                    :active="route().current('admin.companies.*') || route().current('admin.ponto.*')"
                     label="Clientes"
                     variant="nested"
                     :collapsed="collapsed"
@@ -395,16 +395,6 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
             </SidebarNavGroup>
-
-            <SidebarNavItem
-                v-if="canAdmin('rhid')"
-                :href="route('admin.ponto.index')"
-                :active="route().current('admin.ponto.*')"
-                :icon="FingerPrintIcon"
-                label="Gestão de ponto"
-                :collapsed="collapsed"
-                :compact="compact"
-            />
 
             <SidebarNavGroup
                 v-if="showContratacao"

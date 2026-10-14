@@ -18,8 +18,8 @@ const pageTitle = computed(() => `Configuração RHID — ${props.company.name}`
     <AdminLayout>
         <template #header>
             <FormPageHeader
-                :back-href="route('admin.ponto.index', { company: company.id })"
-                back-label="Gestão de ponto"
+                :back-href="route('admin.companies.show', { company: company.id, tab: 'ponto' })"
+                back-label="Voltar à empresa"
                 title="Integração RHID (Control iD)"
                 :subtitle="company.name"
             />
