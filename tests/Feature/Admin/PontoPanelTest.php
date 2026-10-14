@@ -39,7 +39,98 @@ class PontoPanelTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Admin/TimeClock/Index')
                 ->has('companies', 1)
-                ->where('companies.0.name', 'Empresa RHID'));
+                ->where('companies.0.name', 'Empresa RHID')
+                ->where('companies.0.rhid_configured', true));
+    }
+
+    public function test_hub_lists_company_with_rhid_module_even_without_credentials(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        Company::query()->create([
+            'name' => 'Módulo ligado sem senha',
+            'is_active' => true,
+            'rhid_access' => true,
+        ]);
+
+        Company::query()->create([
+            'name' => 'Sem módulo e sem credencial',
+            'is_active' => true,
+            'rhid_access' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.ponto.index'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Admin/TimeClock/Index')
+                ->has('companies', 1)
+                ->where('companies.0.name', 'Módulo ligado sem senha')
+                ->where('companies.0.rhid_configured', false));
+    }
+
+    public function test_super_admin_can_open_ponto_settings_page(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = Company::query()->create([
+            'name' => 'Configuração Ponto',
+            'is_active' => true,
+            'rhid_access' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.ponto.companies.settings.edit', $company))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Admin/TimeClock/Settings')
+                ->where('company.name', 'Configuração Ponto')
+                ->where('company.rhid_configured', false)
+                ->where('company.rhid_settings.has_password', false));
+    }
+
+    public function test_admin_can_read_and_save_punch_schedule_from_hub(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = Company::query()->create([
+            'name' => 'Horários Hub',
+            'is_active' => true,
+            'rhid_access' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->getJson(route('admin.ponto.companies.punch-schedule.show', $company))
+            ->assertOk()
+            ->assertJsonPath('settings.tolerancia_minutos', 10);
+
+        $payload = $this->actingAs($admin)
+            ->getJson(route('admin.ponto.companies.punch-schedule.show', $company))
+            ->json('settings');
+
+        $payload['tolerancia_minutos'] = 15;
+        $payload['dias']['seg']['ativo'] = true;
+        $payload['dias']['seg']['entrada'] = '08:00';
+        $payload['dias']['seg']['saida'] = '17:00';
+
+        $this->actingAs($admin)
+            ->putJson(route('admin.ponto.companies.punch-schedule.update', $company), $payload)
+            ->assertOk()
+            ->assertJsonPath('settings.tolerancia_minutos', 15)
+            ->assertJsonPath('settings.dias.seg.entrada', '08:00');
+    }
+
+    public function test_admin_can_list_espelho_imports_from_hub(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = Company::query()->create([
+            'name' => 'Imports Hub',
+            'is_active' => true,
+            'rhid_access' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->getJson(route('admin.ponto.companies.espelhos.imports.index', $company))
+            ->assertOk()
+            ->assertJsonPath('data', []);
     }
 
     public function test_legacy_rhid_portfolio_redirects_to_ponto_hub(): void
@@ -122,6 +213,7 @@ class PontoPanelTest extends TestCase
         ]);
 
         $this->actingAs($admin)
+            ->from(route('admin.companies.show', ['company' => $company, 'tab' => 'ponto']))
             ->put(route('admin.ponto.companies.settings.update', $company), [
                 'rhid_email' => 'rhid@example.com',
                 'rhid_password' => 'segredo-api',

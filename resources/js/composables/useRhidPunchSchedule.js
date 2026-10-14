@@ -54,8 +54,21 @@ const parseIdList = (raw) => {
 /**
  * @param {{ value: boolean }} configuredRef — ref ou objeto com .value indicando se RHID está configurado
  * @param {{ value: string|null }} errRef — opcional, para mensagens de erro (ex.: err do pai)
+ * @param {{
+ *   show?: () => string,
+ *   update?: () => string,
+ *   people?: () => string,
+ *   batchPrefs?: () => string,
+ * } | null} routeMap — rotas Admin; omissão usa as rotas do painel Cliente
  */
-export function useRhidPunchSchedule(configuredRef, errRef = null) {
+export function useRhidPunchSchedule(configuredRef, errRef = null, routeMap = null) {
+    const punchScheduleShowUrl = () =>
+        routeMap?.show?.() ?? route('client.rhid.api.punch-schedule-settings.show');
+    const punchScheduleUpdateUrl = () =>
+        routeMap?.update?.() ?? route('client.rhid.api.punch-schedule-settings.update');
+    const peopleIndexUrl = () => routeMap?.people?.() ?? route('client.rhid.api.people.index');
+    const schedulePrefsBatchUrl = () =>
+        routeMap?.batchPrefs?.() ?? route('client.rhid.api.people.schedule-preferences.batch');
     const scheduleForm = ref(defaultScheduleForm());
     const scheduleLoading = ref(false);
     const scheduleSaving = ref(false);
@@ -123,7 +136,7 @@ export function useRhidPunchSchedule(configuredRef, errRef = null) {
         scheduleLoading.value = true;
         clearErr();
         try {
-            const { data } = await axios.get(route('client.rhid.api.punch-schedule-settings.show'));
+            const { data } = await axios.get(punchScheduleShowUrl());
             const s = data?.settings;
             if (s && typeof s === 'object') {
                 const base = defaultScheduleForm();
@@ -156,10 +169,7 @@ export function useRhidPunchSchedule(configuredRef, errRef = null) {
         scheduleSaving.value = true;
         clearErr();
         try {
-            const { data } = await axios.put(
-                route('client.rhid.api.punch-schedule-settings.update'),
-                scheduleForm.value,
-            );
+            const { data } = await axios.put(punchScheduleUpdateUrl(), scheduleForm.value);
             const s = data?.settings;
             if (s && typeof s === 'object') {
                 const base = defaultScheduleForm();
@@ -190,7 +200,7 @@ export function useRhidPunchSchedule(configuredRef, errRef = null) {
         schedulePrefBatchMsg.value = null;
         clearErr();
         try {
-            const { data } = await axios.get(route('client.rhid.api.people.index'), {
+            const { data } = await axios.get(peopleIndexUrl(), {
                 params: { page: 0, maxSize: 500 },
             });
             schedulePeopleList.value = data;
@@ -218,7 +228,7 @@ export function useRhidPunchSchedule(configuredRef, errRef = null) {
         schedulePrefBatchMsg.value = null;
         clearErr();
         try {
-            const { data } = await axios.post(route('client.rhid.api.people.schedule-preferences.batch'), {
+            const { data } = await axios.post(schedulePrefsBatchUrl(), {
                 id_people: merged,
                 use_second_lunch_interval: schedulePrefBatchSecond.value,
             });

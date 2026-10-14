@@ -719,7 +719,7 @@ const removeRegulation = async (id) => {
                     accent="talents"
                     eyebrow="Integração Control iD"
                     title="Gestão de ponto"
-                    description="Indicadores, marcações e justificativas ficam no hub operacional."
+                    description="Indicadores, marcações e justificativas ficam no hub. Credenciais, horários e importação ficam na tela de configuração."
                 >
                     <template #icon>
                         <FingerPrintIcon class="h-6 w-6" aria-hidden="true" />
@@ -748,18 +748,19 @@ const removeRegulation = async (id) => {
                     </template>
                     <template #actions>
                         <Link
+                            v-if="rhidEnabled || rhidConfigured"
+                            :href="route('admin.ponto.companies.settings.edit', company.id)"
+                            class="inline-flex shrink-0 items-center justify-center rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-talents-800 ring-1 ring-talents-200 transition hover:bg-talents-50"
+                        >
+                            Configuração e importação
+                        </Link>
+                        <Link
                             v-if="rhidConfigured"
                             :href="route('admin.ponto.index', { company: company.id })"
                             class="inline-flex shrink-0 items-center justify-center rounded-full bg-talents-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800"
                         >
                             Abrir gestão de ponto
                         </Link>
-                        <span
-                            v-else
-                            class="inline-flex shrink-0 cursor-not-allowed items-center justify-center rounded-full bg-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-500"
-                        >
-                            Hub disponível após as credenciais
-                        </span>
                     </template>
                     <div class="space-y-4">
                         <p
@@ -779,8 +780,9 @@ const removeRegulation = async (id) => {
                             v-else-if="!rhidConfigured"
                             class="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900"
                         >
-                            O módulo está ligado, mas faltam e-mail e senha da API Control iD. Preencha abaixo —
-                            não é preciso esperar o cliente.
+                            O módulo está ligado, mas faltam e-mail e senha da API Control iD. Preencha abaixo ou
+                            abra <strong>Configuração RHID</strong> — horários e importação de espelho também
+                            ficam nessa tela.
                         </p>
 
                         <dl v-if="rhidConfigured" class="grid gap-3 sm:grid-cols-3">

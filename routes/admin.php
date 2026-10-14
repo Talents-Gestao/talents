@@ -48,6 +48,7 @@ use App\Http\Controllers\Admin\MethodologyController as AdminMethodologyControll
 use App\Http\Controllers\Admin\MethodologyFormTemplateController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\PlatformCompanyController;
+use App\Http\Controllers\Admin\PontoEspelhoController;
 use App\Http\Controllers\Admin\PontoPanelController;
 use App\Http\Controllers\Admin\RhidPortfolioController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -232,10 +233,48 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('companies/{company}/justifications/{id}', [PontoPanelController::class, 'destroyJustification'])
             ->name('companies.justifications.destroy')
             ->whereNumber('id');
+        Route::get('companies/{company}/configuracao', [PontoPanelController::class, 'settings'])
+            ->name('companies.settings.edit');
         Route::put('companies/{company}/settings', [PontoPanelController::class, 'updateSettings'])
             ->name('companies.settings.update');
         Route::post('companies/{company}/settings/test', [PontoPanelController::class, 'testSettings'])
             ->name('companies.settings.test');
+
+        Route::get('companies/{company}/punch-schedule', [PontoEspelhoController::class, 'punchScheduleShow'])
+            ->name('companies.punch-schedule.show');
+        Route::put('companies/{company}/punch-schedule', [PontoEspelhoController::class, 'punchScheduleUpdate'])
+            ->name('companies.punch-schedule.update');
+        Route::post('companies/{company}/schedule-preferences/batch', [PontoEspelhoController::class, 'batchSchedulePreferences'])
+            ->name('companies.schedule-preferences.batch');
+
+        Route::post('companies/{company}/reports/start', [PontoEspelhoController::class, 'startReport'])
+            ->name('companies.reports.start');
+        Route::get('companies/{company}/reports/status', [PontoEspelhoController::class, 'reportStatus'])
+            ->name('companies.reports.status');
+        Route::get('companies/{company}/reports/download', [PontoEspelhoController::class, 'downloadReport'])
+            ->name('companies.reports.download');
+
+        Route::post('companies/{company}/espelhos/store', [PontoEspelhoController::class, 'storeEspelhoPdf'])
+            ->name('companies.espelhos.store');
+        Route::post('companies/{company}/espelhos/batch', [PontoEspelhoController::class, 'startEspelhoBatch'])
+            ->name('companies.espelhos.batch.start');
+        Route::get('companies/{company}/espelhos/batch/{batch}', [PontoEspelhoController::class, 'showEspelhoBatch'])
+            ->name('companies.espelhos.batch.show')
+            ->whereNumber('batch');
+        Route::get('companies/{company}/espelhos/imports', [PontoEspelhoController::class, 'listEspelhoImports'])
+            ->name('companies.espelhos.imports.index');
+        Route::get('companies/{company}/espelhos/imports/{import}', [PontoEspelhoController::class, 'showEspelhoImport'])
+            ->name('companies.espelhos.imports.show')
+            ->whereNumber('import');
+        Route::post('companies/{company}/espelhos/imports/{import}/reparse', [PontoEspelhoController::class, 'reparseEspelhoImport'])
+            ->name('companies.espelhos.imports.reparse')
+            ->whereNumber('import');
+        Route::post('companies/{company}/espelhos/imports/{import}/parse-sync', [PontoEspelhoController::class, 'syncParseEspelhoImport'])
+            ->name('companies.espelhos.imports.parse-sync')
+            ->whereNumber('import');
+        Route::get('companies/{company}/espelhos/imports/{import}/file', [PontoEspelhoController::class, 'downloadEspelhoImportFile'])
+            ->name('companies.espelhos.imports.file')
+            ->whereNumber('import');
     });
 
     Route::middleware('admin.can:feedbacks')->prefix('feedbacks')->name('feedbacks.')->group(function () {

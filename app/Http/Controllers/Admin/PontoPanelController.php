@@ -27,17 +27,49 @@ class PontoPanelController extends Controller
 {
     use RespondsWithRhidJson;
 
-    public function index(): Response
+    public function index(RhidCompanyCredentialsService $credentials): Response
     {
         $companies = Company::query()
             ->where('is_active', true)
-            ->whereNotNull('rhid_email')
-            ->whereNotNull('rhid_password')
             ->orderBy('name')
-            ->get(['id', 'name', 'segment', 'rhid_base_url', 'rhid_email', 'rhid_domain']);
+            ->get([
+                'id',
+                'name',
+                'segment',
+                'rhid_access',
+                'rhid_base_url',
+                'rhid_email',
+                'rhid_domain',
+                'rhid_password',
+            ])
+            ->filter(fn (Company $company) => $company->hasRhidEnabled() || $company->rhidConfigured())
+            ->values()
+            ->map(fn (Company $company) => [
+                'id' => $company->id,
+                'name' => $company->name,
+                'segment' => $company->segment,
+                'rhid_configured' => $company->rhidConfigured(),
+                'rhid_enabled' => $company->hasRhidEnabled(),
+            ]);
 
         return Inertia::render('Admin/TimeClock/Index', [
             'companies' => $companies,
+        ]);
+    }
+
+    public function settings(Company $company, RhidCompanyCredentialsService $credentials): Response
+    {
+        abort_unless($company->is_active, 404);
+
+        return Inertia::render('Admin/TimeClock/Settings', [
+            'company' => [
+                'id' => $company->id,
+                'name' => $company->name,
+                'segment' => $company->segment,
+                'rhid_configured' => $company->rhidConfigured(),
+                'rhid_enabled' => $company->hasRhidEnabled(),
+                'rhid_settings' => $credentials->settingsPayload($company),
+            ],
         ]);
     }
 
@@ -197,7 +229,7 @@ class PontoPanelController extends Controller
         $credentials->update($company, $validated);
 
         return redirect()
-            ->route('admin.companies.show', ['company' => $company, 'tab' => 'ponto'])
+            ->back()
             ->with('success', 'Credenciais RHID salvas.');
     }
 
