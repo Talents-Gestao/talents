@@ -261,6 +261,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('companies/{company}/espelhos/batch/{batch}', [PontoEspelhoController::class, 'showEspelhoBatch'])
             ->name('companies.espelhos.batch.show')
             ->whereNumber('batch');
+        Route::get('companies/{company}/espelhos/auto-import', [PontoEspelhoController::class, 'autoImportStatus'])
+            ->name('companies.espelhos.auto-import');
         Route::get('companies/{company}/espelhos/imports', [PontoEspelhoController::class, 'listEspelhoImports'])
             ->name('companies.espelhos.imports.index');
         Route::get('companies/{company}/espelhos/imports/{import}', [PontoEspelhoController::class, 'showEspelhoImport'])

@@ -24,11 +24,12 @@ class RhidEspelhoService
      */
     public function storePdfFromGuid(
         Company $company,
-        User $user,
+        ?User $user,
         string $guid,
         int $idPerson,
         string $iniCompact,
         string $fimCompact,
+        string $source = RhidEspelhoImport::SOURCE_API,
     ): RhidEspelhoImport {
         $iniCompact = preg_replace('/\D/', '', $iniCompact) ?? '';
         $fimCompact = preg_replace('/\D/', '', $fimCompact) ?? '';
@@ -69,14 +70,16 @@ class RhidEspelhoService
 
         $import = RhidEspelhoImport::create([
             'company_id' => $company->id,
-            'user_id' => $user->id,
+            'user_id' => $user?->id,
             'id_person' => $idPerson,
             'period_ini' => $iniDate->toDateString(),
             'period_fim' => $fimDate->toDateString(),
             'guid' => $guid,
             'storage_path' => $relativePath,
             'file_hash' => $hash,
-            'source' => 'api',
+            'source' => $source === RhidEspelhoImport::SOURCE_AUTOMATIC
+                ? RhidEspelhoImport::SOURCE_AUTOMATIC
+                : RhidEspelhoImport::SOURCE_API,
             'parse_status' => 'pending',
             'parse_error' => null,
             'parsed_at' => null,

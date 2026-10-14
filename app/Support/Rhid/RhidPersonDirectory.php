@@ -34,44 +34,54 @@ class RhidPersonDirectory
         }
 
         try {
-            $byId = [];
-
-            for ($page = 0; $page < self::MAX_PAGES; $page++) {
-                $payload = $this->compliance->listPersons($company, $actor, [
-                    'page' => $page,
-                    'maxSize' => self::PAGE_SIZE,
-                    'status' => 1,
-                ]);
-
-                $rows = RhidJustificationAnalytics::extractListItems($payload);
-                if ($rows === []) {
-                    break;
-                }
-
-                foreach ($rows as $row) {
-                    if (! is_array($row)) {
-                        continue;
-                    }
-                    $normalized = $this->normalizeRow($row);
-                    if ($normalized === null) {
-                        continue;
-                    }
-                    $byId[$normalized['id']] = $normalized;
-                }
-
-                if (count($rows) < self::PAGE_SIZE) {
-                    break;
-                }
-            }
-
-            return collect(array_values($byId))
-                ->sortBy(fn (array $person) => mb_strtolower($person['name']))
-                ->values();
+            return $this->fetchActivePersons($company, $actor);
         } catch (Throwable $e) {
             report($e);
 
             return $this->demoPersonsIfEnabled();
         }
+    }
+
+    /**
+     * Colaboradores ativos na API RHID, sem fallback de demo.
+     *
+     * @return Collection<int, array{id: int, name: string, email: ?string}>
+     */
+    public function fetchActivePersons(Company $company, ?User $actor = null): Collection
+    {
+        $byId = [];
+
+        for ($page = 0; $page < self::MAX_PAGES; $page++) {
+            $payload = $this->compliance->listPersons($company, $actor, [
+                'page' => $page,
+                'maxSize' => self::PAGE_SIZE,
+                'status' => 1,
+            ]);
+
+            $rows = RhidJustificationAnalytics::extractListItems($payload);
+            if ($rows === []) {
+                break;
+            }
+
+            foreach ($rows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $normalized = $this->normalizeRow($row);
+                if ($normalized === null) {
+                    continue;
+                }
+                $byId[$normalized['id']] = $normalized;
+            }
+
+            if (count($rows) < self::PAGE_SIZE) {
+                break;
+            }
+        }
+
+        return collect(array_values($byId))
+            ->sortBy(fn (array $person) => mb_strtolower($person['name']))
+            ->values();
     }
 
     /**

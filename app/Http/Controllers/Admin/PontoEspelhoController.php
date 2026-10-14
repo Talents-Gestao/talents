@@ -208,6 +208,21 @@ class PontoEspelhoController extends Controller
         ]);
     }
 
+    public function autoImportStatus(Company $company): JsonResponse
+    {
+        $this->assertCompanyActive($company);
+
+        $row = RhidEspelhoBatch::query()
+            ->where('company_id', $company->id)
+            ->orderByDesc('id')
+            ->get()
+            ->first(fn (RhidEspelhoBatch $batch): bool => ($batch->meta_json['source'] ?? null) === RhidEspelhoBatch::SOURCE_AUTOMATIC);
+
+        return response()->json([
+            'batch' => $row ? $this->espelhoBatchPayload($row) : null,
+        ]);
+    }
+
     public function showEspelhoBatch(Company $company, int $batch): JsonResponse
     {
         $this->assertCompanyActive($company);
@@ -332,6 +347,8 @@ class PontoEspelhoController extends Controller
         $processed = max(0, (int) $b->processed);
         $remaining = max(0, $total - $processed);
 
+        $meta = is_array($b->meta_json) ? $b->meta_json : [];
+
         return [
             'id' => $b->id,
             'status' => $b->status,
@@ -343,6 +360,10 @@ class PontoEspelhoController extends Controller
             'current_id_person' => $b->current_id_person,
             'message' => $b->message,
             'skipped_person_ids' => $b->skipped_person_ids ?? [],
+            'source' => is_string($meta['source'] ?? null) ? $meta['source'] : null,
+            'closed_day' => is_string($meta['closed_day'] ?? null) ? $meta['closed_day'] : null,
+            'backfill' => (bool) ($meta['backfill'] ?? false),
+            'created_at' => $b->created_at?->toIso8601String(),
             'updated_at' => $b->updated_at?->toIso8601String(),
         ];
     }

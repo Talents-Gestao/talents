@@ -1,6 +1,6 @@
 <script setup>
 import CompanyRhidCredentialsForm from '@/Components/Admin/Rhid/CompanyRhidCredentialsForm.vue';
-import EspelhoImportPanel from '@/Components/Admin/TimeClock/EspelhoImportPanel.vue';
+import EspelhoAutoImportStatus from '@/Components/Admin/TimeClock/EspelhoAutoImportStatus.vue';
 import PunchScheduleSettingsForm from '@/Components/Rhid/PunchScheduleSettingsForm.vue';
 import { computed } from 'vue';
 
@@ -21,8 +21,8 @@ const punchScheduleRoutes = computed(() => ({
 <template>
     <div class="space-y-8">
         <p class="text-sm text-slate-600">
-            Credenciais da API, horários de aderência e importação de espelho desta empresa — o mesmo fluxo
-            de configuração do painel do cliente.
+            Credenciais da API e horários de aderência desta empresa. Os espelhos entram sozinhos após o
+            fechamento do dia.
         </p>
 
         <CompanyRhidCredentialsForm
@@ -38,7 +38,7 @@ const punchScheduleRoutes = computed(() => ({
         </div>
 
         <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <EspelhoImportPanel
+            <EspelhoAutoImportStatus
                 :company-id="company.id"
                 :configured="configured"
             />

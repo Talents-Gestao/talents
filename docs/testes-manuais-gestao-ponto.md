@@ -116,6 +116,14 @@ Caminho: `/admin/empresas/{id}` → aba **Gestão de ponto**.
 - [ ] Com credenciais ok, o formulário de e-mail/senha fica **recolhido** (“Alterar credenciais”).
 - [ ] Sem credenciais, o formulário aparece aberto para o admin preencher.
 
+## 2b. Configuração RHID
+
+Caminho: `/admin/ponto/companies/{id}/configuracao`.
+
+- [ ] Não há formulário para gerar/importar espelho (período, colunas, **Importar todos**).
+- [ ] Há o bloco **Importação automática**: após 00:30 importa o dia anterior (fechado às 23h59).
+- [ ] Sem lote ainda: “Ainda não houve lote automático nesta empresa.”
+
 ## 3. Painel Cliente — visão geral de ponto
 
 Caminho: `/client/rhid` (visão geral / compliance).
