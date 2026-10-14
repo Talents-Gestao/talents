@@ -2,10 +2,10 @@
 import CompanyMetricsView from '@/Components/Admin/Rhid/CompanyMetricsView.vue';
 import CompanyMetricsDetailTables from '@/Components/Admin/Rhid/CompanyMetricsDetailTables.vue';
 import JustificationsCrudPanel from '@/Components/Admin/TimeClock/JustificationsCrudPanel.vue';
+import BackLink from '@/Components/BackLink.vue';
 import EmptyState from '@/Components/Dashboard/EmptyState.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { formatRhidDotNetDate } from '@/utils/rhidDate';
 import { BuildingOffice2Icon } from '@heroicons/vue/24/outline';
 import axios from 'axios';
 import { Head, Link } from '@inertiajs/vue3';
@@ -15,10 +15,10 @@ const props = defineProps({
     companies: { type: Array, default: () => [] },
 });
 
-const TAB_IDS = ['hoje', 'banco', 'justificativas', 'equipe'];
+const TAB_IDS = ['aderencia', 'banco', 'justificativas', 'equipe'];
 
 const tabs = [
-    { id: 'hoje', label: 'Hoje' },
+    { id: 'aderencia', label: 'Aderência' },
     { id: 'banco', label: 'Banco de horas' },
     { id: 'justificativas', label: 'Justificativas' },
     { id: 'equipe', label: 'Equipe' },
@@ -26,7 +26,7 @@ const tabs = [
 
 const selectedCompanyId = ref(props.companies[0]?.id ?? null);
 const search = ref('');
-const activeTab = ref('hoje');
+const activeTab = ref('aderencia');
 
 (() => {
     try {
@@ -36,7 +36,9 @@ const activeTab = ref('hoje');
             selectedCompanyId.value = fromQuery;
         }
         const tabQuery = params.get('tab');
-        if (tabQuery && TAB_IDS.includes(tabQuery)) {
+        if (tabQuery === 'hoje') {
+            activeTab.value = 'aderencia';
+        } else if (tabQuery && TAB_IDS.includes(tabQuery)) {
             activeTab.value = tabQuery;
         }
     } catch {
@@ -49,10 +51,6 @@ const companyError = ref(null);
 const companyMetrics = ref(null);
 const companyLoadedAt = ref(null);
 
-const punchesLoading = ref(false);
-const punchesError = ref(null);
-const livePunches = ref([]);
-
 const peopleLoading = ref(false);
 const peopleError = ref(null);
 const peopleRows = ref([]);
@@ -64,7 +62,6 @@ const isRefreshing = computed(
     () =>
         pageRefreshing.value
         || companyLoading.value
-        || punchesLoading.value
         || peopleLoading.value,
 );
 
@@ -84,6 +81,12 @@ const pageTitle = computed(() =>
     selectedCompany.value
         ? `Gestão de ponto — ${selectedCompany.value.name}`
         : 'Gestão de ponto',
+);
+
+const companyShowHref = computed(() =>
+    selectedCompany.value
+        ? route('admin.companies.show', { company: selectedCompany.value.id, tab: 'ponto' })
+        : route('admin.companies.index'),
 );
 
 const syncHubQuery = (companyId, tab) => {
@@ -109,6 +112,10 @@ const isCompanyConfigured = (company) => Boolean(company?.rhid_configured);
 
 const showBankTable = computed(
     () => companyMetrics.value?.status === 'ok' && !companyLoading.value && activeTab.value === 'banco',
+);
+
+const showAdherenceTables = computed(
+    () => companyMetrics.value?.status === 'ok' && !companyLoading.value && activeTab.value === 'aderencia',
 );
 
 const filteredPeople = computed(() => {
@@ -145,14 +152,6 @@ const normalizePeoplePayload = (payload) => {
     });
 };
 
-const normalizePunchesPayload = (payload) => {
-    const list = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
-    return list.slice(0, 150).map((row) => ({
-        name: row.name ?? row.nome ?? row.personName ?? row.strName ?? '—',
-        datetime: row.data ?? row.dateTime ?? row.Data ?? row.date ?? null,
-    }));
-};
-
 const loadCompanyMetrics = async (refresh = false) => {
     if (!selectedCompanyId.value || !isCompanyConfigured(selectedCompany.value)) {
         companyMetrics.value = null;
@@ -184,26 +183,6 @@ const loadCompanyMetrics = async (refresh = false) => {
     }
 };
 
-const loadLivePunches = async () => {
-    if (!selectedCompanyId.value || !isCompanyConfigured(selectedCompany.value)) {
-        livePunches.value = [];
-        return;
-    }
-    punchesLoading.value = true;
-    punchesError.value = null;
-    try {
-        const { data } = await axios.get(route('admin.ponto.companies.last-punches', selectedCompanyId.value), {
-            timeout: 60000,
-        });
-        livePunches.value = normalizePunchesPayload(data);
-    } catch (e) {
-        livePunches.value = [];
-        punchesError.value = e?.response?.data?.message || 'Falha ao carregar últimas marcações.';
-    } finally {
-        punchesLoading.value = false;
-    }
-};
-
 const loadPeople = async () => {
     if (!selectedCompanyId.value || !isCompanyConfigured(selectedCompany.value)) {
         peopleRows.value = [];
@@ -227,12 +206,8 @@ const loadPeople = async () => {
 
 watch(selectedCompanyId, async (companyId) => {
     syncHubQuery(companyId, activeTab.value);
-    livePunches.value = [];
     peopleRows.value = [];
     await loadCompanyMetrics(false);
-    if (isCompanyConfigured(selectedCompany.value) && activeTab.value === 'hoje') {
-        await loadLivePunches();
-    }
     if (isCompanyConfigured(selectedCompany.value) && activeTab.value === 'equipe') {
         await loadPeople();
     }
@@ -242,9 +217,6 @@ watch(activeTab, async (tab) => {
     syncHubQuery(selectedCompanyId.value, tab);
     if (!isCompanyConfigured(selectedCompany.value)) {
         return;
-    }
-    if (tab === 'hoje' && selectedCompanyId.value && !livePunches.value.length && !punchesLoading.value) {
-        await loadLivePunches();
     }
     if (tab === 'equipe' && selectedCompanyId.value && !peopleRows.value.length && !peopleLoading.value) {
         await loadPeople();
@@ -260,7 +232,6 @@ const refreshAll = async () => {
     try {
         await Promise.all([
             loadCompanyMetrics(true),
-            loadLivePunches(),
             loadPeople(),
             justificationsPanel.value?.refresh?.() ?? Promise.resolve(),
         ]);
@@ -272,9 +243,6 @@ const refreshAll = async () => {
 onMounted(async () => {
     syncHubQuery(selectedCompanyId.value, activeTab.value);
     await loadCompanyMetrics(false);
-    if (isCompanyConfigured(selectedCompany.value) && selectedCompanyId.value) {
-        await loadLivePunches();
-    }
 });
 </script>
 
@@ -285,6 +253,11 @@ onMounted(async () => {
         <template #header>
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div class="min-w-0">
+                    <BackLink
+                        :href="companyShowHref"
+                        :label="selectedCompany ? 'Voltar à empresa' : 'Voltar às empresas'"
+                        :prefer-history="false"
+                    />
                     <h2 class="text-xl font-semibold leading-tight text-gray-900">Gestão de ponto</h2>
                     <p v-if="selectedCompany" class="mt-1 text-sm text-slate-600">
                         Empresa em visualização:
@@ -295,13 +268,6 @@ onMounted(async () => {
                     </p>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
-                    <Link
-                        v-if="selectedCompany"
-                        :href="route('admin.ponto.companies.settings.edit', selectedCompany.id)"
-                        class="text-sm font-medium text-talents-700 hover:underline"
-                    >
-                        Configuração RHID
-                    </Link>
                     <PrimaryButton
                         type="button"
                         :disabled="isRefreshing || !selectedCompanyId"
@@ -403,12 +369,6 @@ onMounted(async () => {
                             >
                                 Configuração RHID
                             </Link>
-                            <Link
-                                :href="route('admin.companies.show', { company: selectedCompany.id, tab: 'ponto' })"
-                                class="inline-flex items-center justify-center rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/30 transition hover:bg-white/25"
-                            >
-                                Ver ficha da empresa
-                            </Link>
                         </div>
                     </div>
                 </div>
@@ -459,43 +419,27 @@ onMounted(async () => {
                             >
                                 Configuração RHID
                             </Link>
-                            para ver indicadores, marcações e importação.
+                            para ver indicadores, aderência e importação.
                         </div>
 
-                        <div v-else-if="activeTab === 'hoje'" class="space-y-4">
+                        <div v-else-if="activeTab === 'aderencia'" class="space-y-4">
                             <p class="text-sm text-slate-600">
-                                Últimas marcações na RHID. Os indicadores da equipe estão no cartão acima.
+                                Atrasos na entrada, infrações de almoço e pior cumprimento no mês — a partir dos
+                                espelhos já importados (dias fechados).
                             </p>
-                            <p v-if="punchesError" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">
-                                {{ punchesError }}
+                            <CompanyMetricsDetailTables
+                                v-if="showAdherenceTables"
+                                class="!mt-0"
+                                :metrics="companyMetrics"
+                                :sections="['adherence']"
+                            />
+                            <p v-else-if="companyLoading" class="text-sm text-slate-500">
+                                Carregando aderência ao horário…
                             </p>
-                            <div class="max-h-[28rem] overflow-auto rounded-xl ring-1 ring-slate-100">
-                                <table class="min-w-full text-sm">
-                                    <thead class="sticky top-0 bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
-                                        <tr>
-                                            <th class="px-4 py-2">Colaborador</th>
-                                            <th class="px-4 py-2">Data/hora</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr
-                                            v-for="(row, idx) in livePunches"
-                                            :key="`live-punch-${idx}`"
-                                            class="border-t border-slate-50"
-                                        >
-                                            <td class="px-4 py-2 font-medium text-slate-800">{{ row.name }}</td>
-                                            <td class="px-4 py-2 text-slate-600">
-                                                {{ formatRhidDotNetDate(row.datetime, { withTime: true }) || '—' }}
-                                            </td>
-                                        </tr>
-                                        <tr v-if="!livePunches.length && !punchesLoading">
-                                            <td colspan="2" class="px-4 py-8 text-center text-slate-500">
-                                                Sem marcações retornadas. Atualize ou confira a integração RHID.
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                            <p v-else class="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                                Sem dados de aderência neste período. Importe os espelhos e configure os horários
+                                da empresa.
+                            </p>
                         </div>
 
                         <div v-else-if="activeTab === 'justificativas'">

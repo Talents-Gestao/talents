@@ -20,8 +20,6 @@ namespace App\Support\Rhid;
  */
 final class PontoPeopleSnapshot
 {
-    public const DISPLAY_LIMIT = 8;
-
     /**
      * @param  list<array<string, mixed>>  $ranking
      * @param  array<string, mixed>  $resumo
@@ -102,9 +100,9 @@ final class PontoPeopleSnapshot
             'punctuality_avg_percent' => $evaluated > 0 ? round($sumPct / $evaluated, 1) : null,
             'unjustified_absence_days' => $faltasTotal,
             'atestado_days' => $atestadoTotal,
-            'ranking_pontualidade' => array_slice($pontualidade, 0, self::DISPLAY_LIMIT),
-            'ranking_faltas' => array_slice($faltas, 0, self::DISPLAY_LIMIT),
-            'ranking_atestados' => array_slice($atestados, 0, self::DISPLAY_LIMIT),
+            'ranking_pontualidade' => array_values($pontualidade),
+            'ranking_faltas' => $faltas,
+            'ranking_atestados' => $atestados,
             'resumo' => $resumo,
         ];
     }

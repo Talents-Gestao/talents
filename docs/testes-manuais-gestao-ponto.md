@@ -53,7 +53,7 @@ Use estes itens primeiro. São o que deve (e o que não deve) aparecer.
 | # | Tela | Não deve existir |
 | --- | --- | --- |
 | V15 | `/admin/ponto` | Badge **NR-1**, **Risco duplo**, alerta operacional, os 4 cartões antigos (marcações / banco / aderência / justificativas) |
-| V16 | `/admin/ponto` | Abas **Resumo** ou **Aderência** |
+| V16 | `/admin/ponto` | Aba **Resumo** ou **Hoje** (marcações em tempo real) |
 | V17 | Aba Ponto da empresa | NR-1 / risco duplo no cartão de indicadores |
 | V18 | Cliente visão geral | Gráfico radial de cobertura, donut de banco, donut de justificativas, bloco **Top 5 — Cumprimento do mês completo** |
 | V19 | Cliente visão geral | Título `Compliance de Ponto · RHID` ou `Cobertura de aderência` |
@@ -64,8 +64,8 @@ Use estes itens primeiro. São o que deve (e o que não deve) aparecer.
 | --- | --- | --- |
 | V20 | Título da página | `Gestão de ponto` |
 | V21 | Botão no cabeçalho | Só `Atualizar` |
-| V22 | Abas sob o cartão | Só **Hoje** · **Banco de horas** · **Justificativas** · **Equipe** |
-| V23 | Aba Hoje | Tabela Colaborador + Data/hora com **Ana Pontual** e **Carla Atestado** (marcações de hoje; Bruno não aparece se estiver de falta) |
+| V22 | Abas sob o cartão | Só **Aderência** · **Banco de horas** · **Justificativas** · **Equipe** |
+| V23 | Aba Aderência | Tabelas de atrasos na entrada, infrações de almoço e pior aderência (espelhos do mês) |
 | V24 | Aba Equipe | Campo `Buscar colaborador...` e as três pessoas: Ana (matrícula 1001, Analista de RH), Bruno (1002, Auxiliar administrativo), Carla (1003, Assistente) |
 | V24b | Aba Banco de horas | Três linhas: **Bruno Faltas** `-8:00`, **Carla Atestado** `0:00`, **Ana Pontual** `2:00` |
 | V24c | Aba Justificativas | Pelo menos um atestado de **Carla Atestado** no mês corrente |
@@ -83,7 +83,7 @@ Use estes itens primeiro. São o que deve (e o que não deve) aparecer.
 
 | # | O que olhar | O que deve ver |
 | --- | --- | --- |
-| V29 | Menu lateral Admin | Item **Gestão de ponto** (sem grupo RHID / Ponto nem Portfólio RHID) |
+| V29 | Menu lateral Admin | Sem item **Gestão de ponto**; acesso só pela ficha da empresa (Clientes → empresa → aba) |
 
 ---
 
@@ -91,7 +91,7 @@ Use estes itens primeiro. São o que deve (e o que não deve) aparecer.
 
 ## 1. Hub Admin — `/admin/ponto`
 
-- [ ] O menu lateral **Gestão de ponto** abre esta página (item único, sem Portfólio RHID).
+- [ ] O menu lateral **não** tem item **Gestão de ponto**. O acesso é **Clientes → empresa → aba Gestão de ponto → Abrir gestão de ponto**.
 - [ ] Há **um** botão **Atualizar** no cabeçalho (não há “Atualizar empresa”, “Atualizar marcações” nem “Atualizar lista” nas abas).
 - [ ] `/admin/rhid` redireciona para `/admin/ponto`.
 - [ ] Ao selecionar uma empresa com RHID, o cartão superior mostra **três KPIs**: pontualidade média, faltas não justificadas e atestados.

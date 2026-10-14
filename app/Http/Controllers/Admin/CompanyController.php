@@ -52,12 +52,6 @@ class CompanyController extends Controller
 
         $companies = $q->paginate(15)->withQueryString();
 
-        $rhidConfiguredIds = Company::query()
-            ->whereNotNull('rhid_email')
-            ->whereNotNull('rhid_password')
-            ->pluck('id')
-            ->all();
-
         $pendingRegistrationIds = Company::query()
             ->where(function ($query) {
                 $query->whereHas('users', function ($q) {
@@ -74,7 +68,6 @@ class CompanyController extends Controller
         return Inertia::render('Admin/Companies/Index', [
             'companies' => $companies,
             'filters' => $request->only(['search']),
-            'rhidConfiguredIds' => $rhidConfiguredIds,
             'pendingRegistrationIds' => $pendingRegistrationIds,
         ]);
     }
