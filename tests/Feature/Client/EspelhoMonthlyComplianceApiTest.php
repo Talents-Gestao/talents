@@ -127,6 +127,7 @@ class EspelhoMonthlyComplianceApiTest extends TestCase
         $this->assertTrue($ana['completou_mes_todo']);
         $this->assertSame(1, $ana['dias_esperados']);
         $this->assertSame(1, $ana['dias_cumpridos']);
+        $this->assertSame(0, $ana['dias_faltas_nao_justificadas']);
         $this->assertSame(1, $ana['dias_feriado_excluidos']);
         $this->assertSame(1, $ana['dias_ferias_excluidos']);
         $this->assertSame(100.0, (float) $ana['percentual']);
@@ -134,8 +135,18 @@ class EspelhoMonthlyComplianceApiTest extends TestCase
         $this->assertTrue($bruno['completou_mes_todo']);
         $this->assertSame(1, $bruno['dias_esperados']);
         $this->assertSame(1, $bruno['dias_cumpridos']);
+        $this->assertSame(0, $bruno['dias_faltas_nao_justificadas']);
         $this->assertSame(1, $bruno['dias_atestado_excluidos']);
         $this->assertSame(100.0, (float) $bruno['percentual']);
+
+        $people = $payload['people'];
+        $this->assertTrue($people['has_data']);
+        $this->assertSame(2, $people['evaluated_count']);
+        $this->assertSame(100.0, (float) $people['punctuality_avg_percent']);
+        $this->assertSame(0, $people['unjustified_absence_days']);
+        $this->assertSame(1, $people['atestado_days']);
+        $this->assertSame([], $people['ranking_faltas']);
+        $this->assertSame([200], array_column($people['ranking_atestados'], 'id_person'));
     }
 
     public function test_ranking_orders_by_percentual_when_not_complete(): void
@@ -155,7 +166,7 @@ class EspelhoMonthlyComplianceApiTest extends TestCase
         $mock->shouldReceive('listJustifications')->never();
         $this->app->instance(RhidComplianceService::class, $mock);
 
-        $ranking = $this->actingAs($admin)
+        $payload = $this->actingAs($admin)
             ->getJson(route('client.rhid.api.espelhos.monthly-compliance', [
                 'ini' => '2026-04-06',
                 'fim' => '2026-04-13',
@@ -163,7 +174,9 @@ class EspelhoMonthlyComplianceApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('resumo.justificativas_carregadas', false)
             ->assertJsonPath('resumo.dias_uteis_no_periodo', 2)
-            ->json('ranking_cumprimento_mes');
+            ->json();
+
+        $ranking = $payload['ranking_cumprimento_mes'];
 
         $this->assertSame(
             [1, 2, 3],
@@ -174,6 +187,64 @@ class EspelhoMonthlyComplianceApiTest extends TestCase
         $this->assertSame(100.0, (float) $ranking[0]['percentual']);
         $this->assertSame(50.0, (float) $ranking[1]['percentual']);
         $this->assertSame(50.0, (float) $ranking[2]['percentual']);
+        $this->assertSame(0, $ranking[0]['dias_faltas_nao_justificadas']);
+        $this->assertSame(1, $ranking[1]['dias_faltas_nao_justificadas']);
+        $this->assertSame(1, $ranking[2]['dias_faltas_nao_justificadas']);
+
+        $people = $payload['people'];
+        $this->assertTrue($people['has_data']);
+        $this->assertSame(3, $people['evaluated_count']);
+        $this->assertSame(66.7, (float) $people['punctuality_avg_percent']);
+        $this->assertSame(2, $people['unjustified_absence_days']);
+        $this->assertSame([2, 3], array_column($people['ranking_faltas'], 'id_person'));
+        $this->assertSame([], $people['ranking_atestados']);
+    }
+
+    public function test_espelho_atestado_marker_feeds_atestado_ranking(): void
+    {
+        $company = Company::query()->create(['name' => 'Emp Atestado Local']);
+        $this->subscribeCompanyToNr1($company);
+        $admin = User::factory()->companyAdmin($company->id)->create();
+
+        $this->seedMondaySchedule($company);
+        $this->seedEspelhoDays($company, $admin, 1, 'Ana Pontual', ['2026-04-06', '2026-04-13']);
+        $this->seedEspelhoDay($company, $admin, 2, 'Carla Atestado', '2026-04-06');
+
+        $import = RhidEspelhoImport::query()
+            ->where('company_id', $company->id)
+            ->where('id_person', 2)
+            ->firstOrFail();
+        RhidEspelhoDay::query()->create([
+            'import_id' => $import->id,
+            'ref_date' => '2026-04-13',
+            'row_json' => [
+                'atestado' => true,
+                'colaboradores' => [[
+                    'nome' => 'Carla Atestado',
+                    'id_person' => 2,
+                    'atestado' => true,
+                ]],
+            ],
+        ]);
+
+        $mock = Mockery::mock(RhidComplianceService::class);
+        $mock->shouldReceive('listJustificationTypes')->never();
+        $mock->shouldReceive('listJustifications')->never();
+        $this->app->instance(RhidComplianceService::class, $mock);
+
+        $people = $this->actingAs($admin)
+            ->getJson(route('client.rhid.api.espelhos.monthly-compliance', [
+                'ini' => '2026-04-06',
+                'fim' => '2026-04-13',
+            ]))
+            ->assertOk()
+            ->json('people');
+
+        $this->assertTrue($people['has_data']);
+        $this->assertSame(1, $people['atestado_days']);
+        $this->assertSame([2], array_column($people['ranking_atestados'], 'id_person'));
+        $this->assertSame(1, $people['ranking_atestados'][0]['dias_atestado_excluidos']);
+        $this->assertSame(100.0, (float) collect($people['ranking_pontualidade'])->firstWhere('id_person', 2)['percentual']);
     }
 
     private function seedMondaySchedule(Company $company): void

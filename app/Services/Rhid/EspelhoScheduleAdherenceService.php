@@ -8,6 +8,7 @@ use App\Models\EmployeeLeave;
 use App\Models\RhidEspelhoDay;
 use App\Models\RhidEspelhoImport;
 use App\Models\User;
+use App\Support\Rhid\PontoPeopleSnapshot;
 use App\Support\RhidJustificationAnalytics;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -259,6 +260,7 @@ class EspelhoScheduleAdherenceService
         $feriasDatesByPerson = $this->loadFeriasDatesByPerson($company->id, $ini, $fim);
 
         $days = $this->loadDedupedDays($company->id, $ini, $fim, null);
+        $atestadoDatesByPerson = $this->mergeEspelhoAtestadoMarkers($days, $atestadoDatesByPerson);
 
         /** @var array<int, array<string, mixed>> $byPerson */
         $byPerson = [];
@@ -375,6 +377,7 @@ class EspelhoScheduleAdherenceService
                 'nome' => $agg['nome'],
                 'dias_esperados' => $diasEsperados,
                 'dias_cumpridos' => $diasCumpridos,
+                'dias_faltas_nao_justificadas' => max(0, $diasEsperados - $diasCumpridos),
                 'dias_feriado_excluidos' => $feriadoExcluidos,
                 'dias_atestado_excluidos' => $atestadoExcluidos,
                 'dias_ferias_excluidos' => $feriasExcluidos,
@@ -401,22 +404,26 @@ class EspelhoScheduleAdherenceService
             return strcasecmp($a['nome'], $b['nome']);
         });
 
-        $ranking = array_slice($ranking, 0, self::HIGHLIGHT_RANK);
         foreach ($ranking as &$row) {
             unset($row['total_atraso_entrada_minutos']);
         }
         unset($row);
 
+        $resumo = [
+            'ini' => $ini->toDateString(),
+            'fim' => $fim->toDateString(),
+            'dias_uteis_no_periodo' => count($workingDates),
+            'dias_feriado_no_periodo' => count(array_intersect_key($feriadoDates, $workingDates)),
+            'colaboradores_avaliados' => count($byPerson),
+            'justificativas_carregadas' => $justificationsLoaded,
+        ];
+
+        $rankingValues = array_values($ranking);
+
         return [
-            'resumo' => [
-                'ini' => $ini->toDateString(),
-                'fim' => $fim->toDateString(),
-                'dias_uteis_no_periodo' => count($workingDates),
-                'dias_feriado_no_periodo' => count(array_intersect_key($feriadoDates, $workingDates)),
-                'colaboradores_avaliados' => count($byPerson),
-                'justificativas_carregadas' => $justificationsLoaded,
-            ],
-            'ranking_cumprimento_mes' => array_values($ranking),
+            'resumo' => $resumo,
+            'ranking_cumprimento_mes' => $rankingValues,
+            'people' => PontoPeopleSnapshot::fromComplianceRanking($rankingValues, $resumo),
         ];
     }
 
@@ -463,7 +470,7 @@ class EspelhoScheduleAdherenceService
         $feriadoDates = [];
         $atestadoDatesByPerson = [];
 
-        if (! $company->rhidConfigured()) {
+        if (! $company->rhidConfigured() || $company->usesLocalPontoFixture()) {
             return [$feriadoDates, $atestadoDatesByPerson, false];
         }
 
@@ -1181,6 +1188,35 @@ class EspelhoScheduleAdherenceService
             'total_deficit_duracao_almoco_minutos' => 0,
             'total_excesso_duracao_almoco_minutos' => 0,
         ];
+    }
+
+    /**
+     * Dias marcados como atestado no próprio espelho (row_json.atestado).
+     *
+     * @param  list<array{day: RhidEspelhoDay, id_person: int}>  $days
+     * @param  array<int, array<string, true>>  $atestadoDatesByPerson
+     * @return array<int, array<string, true>>
+     */
+    private function mergeEspelhoAtestadoMarkers(array $days, array $atestadoDatesByPerson): array
+    {
+        foreach ($days as $item) {
+            if (! is_array($item) || ! isset($item['day'], $item['id_person'])) {
+                continue;
+            }
+            /** @var RhidEspelhoDay $day */
+            $day = $item['day'];
+            $idPerson = (int) $item['id_person'];
+            $rowJson = is_array($day->row_json) ? $day->row_json : [];
+            $fragment = $this->pickFragment($rowJson, $idPerson) ?? [];
+            $marked = $rowJson['atestado'] ?? $fragment['atestado'] ?? false;
+            if ($marked !== true && $marked !== 1 && $marked !== '1') {
+                continue;
+            }
+            $dateStr = Carbon::parse($day->ref_date)->toDateString();
+            $atestadoDatesByPerson[$idPerson][$dateStr] = true;
+        }
+
+        return $atestadoDatesByPerson;
     }
 
     /**

@@ -67,7 +67,6 @@ Abas **atuais** no `Companies/Show.vue`:
 
 ### 2.6 Módulos Admin que continuam (fora do detalhe da empresa)
 
-- Hub **RHID** (`/admin/rhid`) — portfólio / métricas  
 - **Destaques do mês** (`/admin/destaques-mes`)  
 - **Férias** Admin (`/admin/ferias`, com seleção de empresa)  
 - Demais módulos: Comercial, Contratação, Reuniões, Feedbacks, Voz do Time, Calendário, Tarefas, Financeiro, Configuração, etc. (ver `Talents-Structure.mdc`)
@@ -87,7 +86,8 @@ Distinção: **removido da superfície** (ainda pode existir hub/rota) vs **desc
 | Card “Pendências e alertas” na Home | Visível na linha principal | Removido | Removido da superfície; pendências via CTA header / notificações |
 | Props Home `recentLeads`, `upcomingCalendar`, `calendarKindLabels`, lista `alerts` | Enviadas ao Inertia | **Não** enviadas pelo `DashboardController` | Limpeza de payload (builder pode ainda calcular dados internos para `alertsCount`) |
 | Label “Operação · hoje” | Título do 3º card | **Calendário · hoje** | Renomeado |
-| Aba Portfólio RHID no detalhe da empresa | Tab no Show | Removida do detalhe | Removido da superfície; hub `/admin/rhid` mantém-se |
+| Aba Portfólio RHID no detalhe da empresa | Tab no Show | Removida do detalhe | Removido da superfície |
+| Hub Portfólio RHID (`/admin/rhid`) | Hub CS/NR-1 + ponto | Removido | Removido da superfície; `/admin/rhid` redireciona para Gestão de ponto |
 | Aba Destaques do mês no detalhe | Tab | Removida do detalhe | Removido da superfície; CRUD `/admin/destaques-mes` mantém-se |
 | Aba Férias no detalhe | Tab | Removida do detalhe | Removido da superfície; `/admin/ferias` + Client Férias mantêm-se |
 | Uniformes / “Controle da empresa” | Tab placeholder | Removida | Removido da superfície |

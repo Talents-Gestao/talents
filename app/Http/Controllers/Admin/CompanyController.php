@@ -229,6 +229,13 @@ class CompanyController extends Controller
             'company' => $company,
             'tab' => $tab,
             'rhidConfigured' => $company->rhidConfigured(),
+            'rhidEnabled' => $company->hasRhidEnabled(),
+            'rhidSettings' => [
+                'rhid_base_url' => $company->rhid_base_url,
+                'rhid_email' => $company->rhid_email,
+                'rhid_domain' => $company->rhid_domain,
+                'has_password' => filled($company->rhid_password),
+            ],
             'planIncludesMetodologia' => $company->hasMethodologyEnabled(),
             'pendingRegistration' => $company->hasPendingRegistration(),
             'registrationAdminEmail' => $company->registrationAdmin()?->email,

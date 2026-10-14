@@ -2588,15 +2588,21 @@ const justDeptBarChart = computed(() => {
             v-if="!configured"
             class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900"
         >
-            <p class="font-semibold">Integração não configurada</p>
-            <p class="mt-1">Cadastre e-mail e senha da API RHID para usar este módulo.</p>
+            <p class="font-semibold">Módulo ligado, credenciais em falta</p>
+            <p class="mt-1">
+                O RHID / Ponto está habilitado, mas esta empresa ainda não tem e-mail e senha da API Control iD.
+                Sem isso o painel permanece vazio — não é falha da API.
+            </p>
             <Link
                 v-if="isAdmin"
                 :href="route('client.rhid.settings.edit')"
                 class="mt-3 inline-block text-sm font-bold text-talents-800 underline"
             >
-                Abrir configurações
+                Cadastrar credenciais
             </Link>
+            <p v-else class="mt-3 text-sm text-amber-800">
+                Peça ao administrador da empresa para cadastrar as credenciais em Configuração RHID.
+            </p>
         </div>
 
         <div v-else class="space-y-6">
@@ -2882,7 +2888,13 @@ const justDeptBarChart = computed(() => {
                 </button>
             </div>
 
-            <p v-if="err" class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ err }}</p>
+            <div v-if="err" class="rounded-md bg-red-50 p-3 text-sm text-red-800">
+                <p>{{ err }}</p>
+                <p class="mt-1 text-red-700">
+                    Credenciais estão gravadas; isto é falha da API Control iD (token, domínio, indisponibilidade ou
+                    permissão). Teste a conexão em Configuração RHID.
+                </p>
+            </div>
             <p v-if="loading" class="text-sm text-slate-500">Carregando...</p>
 
             <OverviewSection

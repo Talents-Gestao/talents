@@ -37,14 +37,14 @@ onMounted(() => {
             :class="
                 tone === 'danger'
                     ? 'hover:bg-red-50/80'
-                    : 'bg-gradient-to-r from-slate-50/80 to-white hover:from-talents-50/50'
+                    : 'bg-gradient-to-r from-talents-50/40 to-white hover:from-talents-50/80'
             "
         >
             <div class="flex min-w-0 flex-1 items-start gap-3">
                 <div
                     v-if="$slots.icon"
                     class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
-                    :class="tone === 'danger' ? 'bg-red-100/80 text-red-700' : 'bg-slate-100 text-slate-600'"
+                    :class="tone === 'danger' ? 'bg-red-100/80 text-red-700' : 'bg-talents-100 text-talents-700'"
                     aria-hidden="true"
                 >
                     <slot name="icon" />

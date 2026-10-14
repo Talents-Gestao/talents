@@ -24,7 +24,7 @@ const filteredBankRows = computed(() => {
         return bankRows.value;
     }
     return bankRows.value.filter((row) =>
-        [row.name, row.department, row.role, row.registration]
+        [row.name, row.social_name, row.department, row.role, row.registration, row.cpf]
             .filter(Boolean)
             .some((v) => String(v).toLowerCase().includes(term)),
     );
@@ -66,46 +66,51 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                 <h4 class="text-sm font-semibold text-talents-800">
                     Banco de horas por colaborador
                 </h4>
-                <p class="mt-1 text-xs text-slate-500">
-                    Referência: {{ metrics.bank?.reference_date_label || 'dia anterior' }}
-                    <span v-if="metrics.bank?.mom_date_label">
-                        · comparação MoM: {{ metrics.bank.mom_date_label }}
-                    </span>
-                    · {{ bankRows.length }} colaborador(es) com saldo numérico
-                </p>
                 <input
                     v-model="bankSearch"
                     type="search"
-                    placeholder="Buscar por nome, departamento ou cargo..."
+                    placeholder="Buscar por nome, matrícula, CPF, departamento ou cargo..."
                     class="mt-3 w-full max-w-md rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
             </div>
             <div class="max-h-[28rem] overflow-auto">
-                <table class="min-w-full divide-y divide-slate-100 text-sm">
+                <table class="min-w-[64rem] divide-y divide-slate-100 text-sm">
                     <thead class="sticky top-0 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <tr>
-                            <th class="px-4 py-3">Colaborador</th>
-                            <th class="px-4 py-3">Departamento</th>
-                            <th class="px-4 py-3">Cargo</th>
-                            <th class="px-4 py-3">Matricula</th>
-                            <th class="px-4 py-3 text-right">Saldo</th>
+                            <th class="whitespace-nowrap px-4 py-3">Nome</th>
+                            <th class="whitespace-nowrap px-4 py-3">Nome social</th>
+                            <th class="whitespace-nowrap px-4 py-3">Matrícula</th>
+                            <th class="whitespace-nowrap px-4 py-3">CPF</th>
+                            <th class="whitespace-nowrap px-4 py-3">Departamento</th>
+                            <th class="whitespace-nowrap px-4 py-3">Cargo</th>
+                            <th class="whitespace-nowrap px-4 py-3 text-right">Saldo BH</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
-                        <tr v-for="(row, idx) in filteredBankRows" :key="`${row.name}-${idx}`" class="hover:bg-slate-50/80">
-                            <td class="px-4 py-2.5 font-medium text-slate-800">{{ row.name }}</td>
-                            <td class="px-4 py-2.5 text-slate-600">{{ row.department || '—' }}</td>
-                            <td class="px-4 py-2.5 text-slate-600">{{ row.role || '—' }}</td>
-                            <td class="px-4 py-2.5 text-slate-600">{{ row.registration || '—' }}</td>
+                        <tr v-for="(row, idx) in filteredBankRows" :key="`${row.person_id ?? row.name}-${idx}`" class="hover:bg-slate-50/80">
+                            <td class="max-w-[14rem] truncate px-4 py-2.5 font-medium text-slate-800" :title="row.name">
+                                {{ row.name }}
+                            </td>
+                            <td class="max-w-[10rem] truncate px-4 py-2.5 text-slate-600" :title="row.social_name || ''">
+                                {{ row.social_name || '—' }}
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-slate-600">{{ row.registration || '—' }}</td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-slate-600">{{ row.cpf || '—' }}</td>
+                            <td class="max-w-[12rem] truncate px-4 py-2.5 text-slate-600" :title="row.department || ''">
+                                {{ row.department || '—' }}
+                            </td>
+                            <td class="max-w-[12rem] truncate px-4 py-2.5 text-slate-600" :title="row.role || ''">
+                                {{ row.role || '—' }}
+                            </td>
                             <td
-                                class="px-4 py-2.5 text-right font-mono font-semibold"
+                                class="whitespace-nowrap px-4 py-2.5 text-right font-mono font-semibold"
                                 :class="row.minutes < 0 ? 'text-rose-700' : 'text-slate-800'"
                             >
                                 {{ row.balance_display }}
                             </td>
                         </tr>
                         <tr v-if="!filteredBankRows.length">
-                            <td colspan="5" class="px-4 py-8 text-center text-sm text-slate-500">
+                            <td colspan="7" class="px-4 py-8 text-center text-sm text-slate-500">
                                 Nenhum colaborador encontrado para os filtros atuais.
                             </td>
                         </tr>
@@ -113,6 +118,13 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                 </table>
             </div>
         </section>
+
+        <p
+            v-if="showSection('adherence') && metrics.adherence?.diagnostics_hint"
+            class="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-100"
+        >
+            {{ metrics.adherence.diagnostics_hint }}
+        </p>
 
         <div v-if="showSection('adherence')" class="grid gap-6 xl:grid-cols-2">
             <section class="surface-card overflow-hidden">

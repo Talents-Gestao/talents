@@ -92,7 +92,7 @@ class Nr1AuditScoringCommand extends Command
         $greenMax = config('nr1.risk_thresholds.green_max', 2.33);
         $yellowMax = config('nr1.risk_thresholds.yellow_max', 3.66);
         $this->line('  Verde  1,00–'.$greenMax.'  (leve)');
-        $this->line('  Amarelo '.number_format($greenMax + 0.01, 2, ',', '')."–{$yellowMax} (intermediário)");
+        $this->line('  Amarelo '.number_format($greenMax + 0.01, 2, ',', '')."–{$yellowMax} (moderado)");
         $this->line('  Vermelho '.number_format($yellowMax + 0.01, 2, ',', '').'–5,00 (grave)');
         $this->line('  Média ponderada das respostas Likert 1–5 (maior = maior risco psicossocial)');
 

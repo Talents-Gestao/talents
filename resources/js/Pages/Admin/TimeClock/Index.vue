@@ -6,28 +6,25 @@ import EmptyState from '@/Components/Dashboard/EmptyState.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatRhidDotNetDate } from '@/utils/rhidDate';
+import { BuildingOffice2Icon } from '@heroicons/vue/24/outline';
 import axios from 'axios';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
     companies: { type: Array, default: () => [] },
-    segments: { type: Array, default: () => [] },
 });
 
 const tabs = [
-    { id: 'resumo', label: 'Resumo' },
-    { id: 'marcacoes', label: 'Marcações' },
+    { id: 'hoje', label: 'Hoje' },
     { id: 'banco', label: 'Banco de horas' },
-    { id: 'aderencia', label: 'Aderência' },
     { id: 'justificativas', label: 'Justificativas' },
-    { id: 'colaboradores', label: 'Colaboradores' },
+    { id: 'equipe', label: 'Equipe' },
 ];
 
 const selectedCompanyId = ref(props.companies[0]?.id ?? null);
 const search = ref('');
-const selectedSegment = ref('');
-const activeTab = ref('resumo');
+const activeTab = ref('hoje');
 
 (() => {
     try {
@@ -53,39 +50,51 @@ const peopleLoading = ref(false);
 const peopleError = ref(null);
 const peopleRows = ref([]);
 const peopleSearch = ref('');
+const justificationsPanel = ref(null);
+const pageRefreshing = ref(false);
+
+const isRefreshing = computed(
+    () =>
+        pageRefreshing.value
+        || companyLoading.value
+        || punchesLoading.value
+        || peopleLoading.value,
+);
 
 const filteredCompanies = computed(() => {
     const term = search.value.trim().toLowerCase();
 
-    return props.companies.filter((company) => {
-        const bySegment = !selectedSegment.value || company.segment === selectedSegment.value;
-        const byTerm = !term || company.name?.toLowerCase().includes(term);
-        return bySegment && byTerm;
-    });
+    return props.companies.filter((company) => !term || company.name?.toLowerCase().includes(term));
 });
 
 const selectedCompany = computed(
     () => props.companies.find((company) => Number(company.id) === Number(selectedCompanyId.value)) ?? null,
 );
 
-const detailSections = computed(() => {
-    switch (activeTab.value) {
-        case 'marcacoes':
-            return ['punches'];
-        case 'banco':
-            return ['bank'];
-        case 'aderencia':
-            return ['adherence'];
-        default:
-            return null;
-    }
-});
+const isSelectedCompany = (company) => Number(company?.id) === Number(selectedCompanyId.value);
 
-const showMetricsTables = computed(
-    () =>
-        companyMetrics.value?.status === 'ok' &&
-        !companyLoading.value &&
-        ['resumo', 'marcacoes', 'banco', 'aderencia'].includes(activeTab.value),
+const pageTitle = computed(() =>
+    selectedCompany.value
+        ? `Gestão de ponto — ${selectedCompany.value.name}`
+        : 'Gestão de ponto',
+);
+
+const syncCompanyQuery = (companyId) => {
+    try {
+        const url = new URL(window.location.href);
+        if (companyId) {
+            url.searchParams.set('company', String(companyId));
+        } else {
+            url.searchParams.delete('company');
+        }
+        window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    } catch {
+        /* ignore */
+    }
+};
+
+const showBankTable = computed(
+    () => companyMetrics.value?.status === 'ok' && !companyLoading.value && activeTab.value === 'banco',
 );
 
 const filteredPeople = computed(() => {
@@ -202,68 +211,78 @@ const loadPeople = async () => {
     }
 };
 
-watch(selectedCompanyId, async () => {
+watch(selectedCompanyId, async (companyId) => {
+    syncCompanyQuery(companyId);
     livePunches.value = [];
     peopleRows.value = [];
     await loadCompanyMetrics(false);
-    if (activeTab.value === 'marcacoes') {
+    if (activeTab.value === 'hoje') {
         await loadLivePunches();
     }
-    if (activeTab.value === 'colaboradores') {
+    if (activeTab.value === 'equipe') {
         await loadPeople();
-    }
-});
-
-watch(selectedSegment, () => {
-    if (
-        selectedCompanyId.value &&
-        !filteredCompanies.value.some((company) => company.id === selectedCompanyId.value)
-    ) {
-        selectedCompanyId.value = filteredCompanies.value[0]?.id ?? null;
     }
 });
 
 watch(activeTab, async (tab) => {
-    if (tab === 'marcacoes' && selectedCompanyId.value && !livePunches.value.length && !punchesLoading.value) {
+    if (tab === 'hoje' && selectedCompanyId.value && !livePunches.value.length && !punchesLoading.value) {
         await loadLivePunches();
     }
-    if (tab === 'colaboradores' && selectedCompanyId.value && !peopleRows.value.length && !peopleLoading.value) {
+    if (tab === 'equipe' && selectedCompanyId.value && !peopleRows.value.length && !peopleLoading.value) {
         await loadPeople();
     }
 });
 
+const refreshAll = async () => {
+    if (!selectedCompanyId.value || isRefreshing.value) {
+        return;
+    }
+
+    pageRefreshing.value = true;
+    try {
+        await Promise.all([
+            loadCompanyMetrics(true),
+            loadLivePunches(),
+            loadPeople(),
+            justificationsPanel.value?.refresh?.() ?? Promise.resolve(),
+        ]);
+    } finally {
+        pageRefreshing.value = false;
+    }
+};
+
 onMounted(async () => {
+    syncCompanyQuery(selectedCompanyId.value);
     await loadCompanyMetrics(false);
+    if (selectedCompanyId.value) {
+        await loadLivePunches();
+    }
 });
 </script>
 
 <template>
-    <Head title="Gestão de ponto" />
+    <Head :title="pageTitle" />
 
     <AdminLayout>
         <template #header>
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
+                <div class="min-w-0">
                     <h2 class="text-xl font-semibold leading-tight text-gray-900">Gestão de ponto</h2>
-                    <p class="mt-1 text-sm text-slate-600">
-                        Operação por empresa sobre a API RHID (Control iD) — marcações, banco, aderência e colaboradores.
+                    <p v-if="selectedCompany" class="mt-1 text-sm text-slate-600">
+                        Empresa em visualização:
+                        <span class="font-semibold text-talents-800">{{ selectedCompany.name }}</span>
+                    </p>
+                    <p v-else class="mt-1 text-sm text-slate-600">
+                        Selecione uma empresa à esquerda para ver pontualidade, faltas e atestados.
                     </p>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                    <Link
-                        :href="route('admin.rhid.index')"
-                        class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium text-talents-700 ring-1 ring-talents-200 transition hover:bg-talents-50"
-                    >
-                        Portfólio RHID
-                    </Link>
-                    <PrimaryButton
-                        type="button"
-                        :disabled="companyLoading || !selectedCompanyId"
-                        @click="loadCompanyMetrics(true)"
-                    >
-                        Atualizar indicadores
-                    </PrimaryButton>
-                </div>
+                <PrimaryButton
+                    type="button"
+                    :disabled="isRefreshing || !selectedCompanyId"
+                    @click="refreshAll"
+                >
+                    {{ isRefreshing ? 'Atualizando…' : 'Atualizar' }}
+                </PrimaryButton>
             </div>
         </template>
 
@@ -277,32 +296,38 @@ onMounted(async () => {
                         placeholder="Buscar empresa..."
                         class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                     >
-                    <select
-                        v-model="selectedSegment"
-                        class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                    >
-                        <option value="">Todos os segmentos</option>
-                        <option v-for="segment in segments" :key="segment" :value="segment">
-                            {{ segment }}
-                        </option>
-                    </select>
                 </div>
 
                 <ul v-if="filteredCompanies.length" class="mt-4 max-h-[30rem] space-y-2 overflow-auto pr-1">
                     <li v-for="company in filteredCompanies" :key="company.id">
                         <button
                             type="button"
-                            class="w-full rounded-xl border px-3 py-2 text-left transition"
+                            class="w-full rounded-xl border px-3 py-2.5 text-left transition"
                             :class="
-                                company.id === selectedCompanyId
-                                    ? 'border-talents-300 bg-talents-50'
+                                isSelectedCompany(company)
+                                    ? 'border-talents-700 bg-talents-700 text-white shadow-md ring-2 ring-talents-300'
                                     : 'border-slate-200 bg-white hover:border-talents-200 hover:bg-slate-50'
                             "
+                            :aria-current="isSelectedCompany(company) ? 'true' : undefined"
                             @click="selectedCompanyId = company.id"
                         >
-                            <p class="truncate text-sm font-semibold text-slate-800">{{ company.name }}</p>
-                            <p class="mt-0.5 text-xs text-slate-500">
+                            <p
+                                class="truncate text-sm font-semibold"
+                                :class="isSelectedCompany(company) ? 'text-white' : 'text-slate-800'"
+                            >
+                                {{ company.name }}
+                            </p>
+                            <p
+                                class="mt-0.5 text-xs"
+                                :class="isSelectedCompany(company) ? 'text-white/80' : 'text-slate-500'"
+                            >
                                 {{ company.segment || 'Sem segmento' }}
+                            </p>
+                            <p
+                                v-if="isSelectedCompany(company)"
+                                class="mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/90"
+                            >
+                                Em visualização
                             </p>
                         </button>
                     </li>
@@ -311,25 +336,58 @@ onMounted(async () => {
                     v-else
                     class="mt-4 border-0 bg-transparent"
                     title="Nenhuma empresa encontrada"
-                    description="Configure credenciais RHID na ficha da empresa ou no portal do cliente."
+                    description="Só entram aqui empresas ativas com e-mail e senha RHID. Cadastre as credenciais na ficha da empresa, aba Gestão de ponto."
                 />
             </aside>
 
             <div class="space-y-5 xl:col-span-9">
+                <div
+                    v-if="selectedCompany"
+                    class="overflow-hidden rounded-2xl bg-gradient-to-r from-talents-800 via-talents-700 to-talents-600 p-5 text-white shadow-md"
+                >
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex min-w-0 items-start gap-3">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15">
+                                <BuildingOffice2Icon class="h-6 w-6" aria-hidden="true" />
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">
+                                    Empresa em visualização
+                                </p>
+                                <h3 class="mt-0.5 truncate text-2xl font-bold tracking-tight">
+                                    {{ selectedCompany.name }}
+                                </h3>
+                                <p class="mt-1 text-sm text-white/80">
+                                    {{ selectedCompany.segment || 'Sem segmento' }}
+                                </p>
+                            </div>
+                        </div>
+                        <Link
+                            :href="route('admin.companies.show', { company: selectedCompany.id, tab: 'ponto' })"
+                            class="inline-flex shrink-0 items-center justify-center rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/30 transition hover:bg-white/25"
+                        >
+                            Ver ficha da empresa
+                        </Link>
+                    </div>
+                </div>
+
                 <CompanyMetricsView
-                    :title="selectedCompany ? `Ponto — ${selectedCompany.name}` : 'Gestão de ponto'"
-                    description="Indicadores do mês corrente via RHID: banco de horas, aderência e justificativas."
+                    title="Indicadores da equipe"
+                    description="Pontualidade, faltas não justificadas e atestados do mês, a partir dos espelhos importados."
                     :rhid-configured="Boolean(selectedCompany)"
                     :loading="companyLoading"
                     :error="companyError"
                     :metrics="companyMetrics"
                     :loaded-at="companyLoadedAt"
-                    :show-refresh="Boolean(selectedCompany)"
-                    refresh-label="Atualizar empresa"
-                    @refresh="loadCompanyMetrics(true)"
                 />
 
                 <div v-if="selectedCompany" class="surface-card overflow-hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 sm:px-4">
+                        <p class="min-w-0 truncate text-xs font-medium text-slate-500">
+                            Operação de
+                            <span class="font-semibold text-talents-800">{{ selectedCompany.name }}</span>
+                        </p>
+                    </div>
                     <div class="flex flex-wrap gap-1 border-b border-slate-100 px-3 py-2 sm:px-4">
                         <button
                             v-for="tab in tabs"
@@ -348,27 +406,10 @@ onMounted(async () => {
                     </div>
 
                     <div class="p-4 sm:p-5">
-                        <template v-if="activeTab === 'resumo'">
-                            <p class="mb-4 text-sm text-slate-600">
-                                Use as abas para focar marcações, banco, aderência, justificativas ou a lista de
-                                colaboradores ativos na RHID. Os indicadores acima resumem o mês corrente.
+                        <div v-if="activeTab === 'hoje'" class="space-y-4">
+                            <p class="text-sm text-slate-600">
+                                Últimas marcações na RHID. Os indicadores da equipe estão no cartão acima.
                             </p>
-                            <CompanyMetricsDetailTables
-                                v-if="showMetricsTables"
-                                class="!mt-0"
-                                :metrics="companyMetrics"
-                            />
-                        </template>
-
-                        <div v-else-if="activeTab === 'marcacoes'" class="space-y-4">
-                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                <p class="text-sm text-slate-600">
-                                    Últimas marcações em tempo real na RHID.
-                                </p>
-                                <PrimaryButton type="button" :disabled="punchesLoading" @click="loadLivePunches">
-                                    {{ punchesLoading ? 'Atualizando…' : 'Atualizar marcações' }}
-                                </PrimaryButton>
-                            </div>
                             <p v-if="punchesError" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">
                                 {{ punchesError }}
                             </p>
@@ -399,30 +440,19 @@ onMounted(async () => {
                                     </tbody>
                                 </table>
                             </div>
-                            <CompanyMetricsDetailTables
-                                v-if="showMetricsTables"
-                                class="!mt-4"
-                                :metrics="companyMetrics"
-                                :sections="['punches']"
-                            />
                         </div>
 
                         <div v-else-if="activeTab === 'justificativas'">
-                            <JustificationsCrudPanel :company-id="selectedCompanyId" />
+                            <JustificationsCrudPanel ref="justificationsPanel" :company-id="selectedCompanyId" />
                         </div>
 
-                        <div v-else-if="activeTab === 'colaboradores'" class="space-y-4">
-                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                <input
-                                    v-model="peopleSearch"
-                                    type="search"
-                                    placeholder="Buscar colaborador..."
-                                    class="w-full max-w-md rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                >
-                                <PrimaryButton type="button" :disabled="peopleLoading" @click="loadPeople">
-                                    {{ peopleLoading ? 'Atualizando…' : 'Atualizar lista' }}
-                                </PrimaryButton>
-                            </div>
+                        <div v-else-if="activeTab === 'equipe'" class="space-y-4">
+                            <input
+                                v-model="peopleSearch"
+                                type="search"
+                                placeholder="Buscar colaborador..."
+                                class="w-full max-w-md rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            >
                             <p v-if="peopleError" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">
                                 {{ peopleError }}
                             </p>
@@ -458,10 +488,10 @@ onMounted(async () => {
                         </div>
 
                         <CompanyMetricsDetailTables
-                            v-else-if="showMetricsTables && detailSections"
+                            v-else-if="showBankTable"
                             class="!mt-0"
                             :metrics="companyMetrics"
-                            :sections="detailSections"
+                            :sections="['bank']"
                         />
                     </div>
                 </div>

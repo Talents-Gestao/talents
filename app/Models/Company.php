@@ -64,6 +64,10 @@ class Company extends Model
         'logo_url',
     ];
 
+    protected $hidden = [
+        'rhid_password',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -174,6 +178,13 @@ class Company extends Model
     public function rhidConfigured(): bool
     {
         return filled($this->rhid_email) && filled($this->rhid_password);
+    }
+
+    public function usesLocalPontoFixture(): bool
+    {
+        $email = (string) config('rhid.visual_qa_email', '');
+
+        return $email !== '' && $this->rhid_email === $email;
     }
 
     public function users(): HasMany

@@ -14,6 +14,7 @@ import {
     CalendarDaysIcon,
     ChatBubbleLeftRightIcon,
     Cog6ToothIcon,
+    FingerPrintIcon,
     HomeIcon,
     MegaphoneIcon,
     MicrophoneIcon,
@@ -394,6 +395,16 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
             </SidebarNavGroup>
+
+            <SidebarNavItem
+                v-if="canAdmin('rhid')"
+                :href="route('admin.ponto.index')"
+                :active="route().current('admin.ponto.*')"
+                :icon="FingerPrintIcon"
+                label="Gestão de ponto"
+                :collapsed="collapsed"
+                :compact="compact"
+            />
 
             <SidebarNavGroup
                 v-if="showContratacao"

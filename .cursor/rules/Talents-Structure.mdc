@@ -37,7 +37,7 @@ Contexto de sessão via workspaces (Talents | Company). Módulos do cliente depe
 - Tarefas: Kanban (templates/processos → quadros/cards)
 - Financeiro: vendas/conversão de propostas, comissões, contas a pagar, formas de pagamento; contas bancárias/a receber em breve
 - Configuração: Geral (Mia/IA, SMTP, Sólides), Equipe, Empresa Talents
-- Hubs que **continuam** fora do detalhe da empresa: Portfólio RHID (`/admin/rhid`), Destaques do mês (`/admin/destaques-mes`), Férias Admin (`/admin/ferias` com seleção de empresa)
+- Hubs que **continuam** fora do detalhe da empresa: Destaques do mês (`/admin/destaques-mes`), Férias Admin (`/admin/ferias` com seleção de empresa)
  
 ## Painel Cliente (principais módulos)
 - Painel (dashboard, inclusive Frase do dia)
@@ -57,7 +57,7 @@ Contexto de sessão via workspaces (Talents | Company). Módulos do cliente depe
 - Comercial: propostas → contratos → vendas/financeiro; assinaturas SaaS (módulos do plano)
 - Contratação + IA: Sólides, funil, entrevistas e reuniões com transcrição/ata
 - RH operacional: feedbacks, férias, calendário, avisos, tarefas, estrutura organizacional
-- RHID: conformidade de ponto integrada (hub Admin + Gestão de ponto no detalhe da empresa)
+- RHID: conformidade de ponto integrada (Gestão de ponto no Admin e no detalhe da empresa)
  
 ## Stack técnica
 - Backend: PHP 8.2+, Laravel 12, Sanctum, Breeze, PHPUnit

@@ -44,7 +44,7 @@ return [
                 'focus_intro' => 'O indicador geral requer atenção. Este relatório apresenta os pontos prioritários identificados na pesquisa e recomendações para mitigação dos riscos psicossociais.',
                 'recommendations_heading' => 'Recomendações prioritárias',
                 'recommendations' => [
-                    'Priorizar as dimensões classificadas como intermediário ou grave nas ações do plano.',
+                    'Priorizar as dimensões classificadas como moderado ou grave nas ações do plano.',
                     'Estabelecer acompanhamento obrigatório das medidas preventivas com responsáveis e prazos definidos.',
                     'Comunicar resultados à liderança e envolver trabalhadores no acompanhamento das ações.',
                 ],
