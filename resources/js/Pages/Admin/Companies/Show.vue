@@ -719,7 +719,7 @@ const removeRegulation = async (id) => {
                     accent="talents"
                     eyebrow="Integração Control iD"
                     title="Gestão de ponto"
-                    description="Indicadores, marcações e justificativas ficam no hub. Credenciais, horários e importação ficam na tela de configuração."
+                    description="Indicadores, marcações e justificativas ficam no hub. Credenciais e horários ficam na tela de configuração; os espelhos entram automaticamente após o fechamento do dia."
                 >
                     <template #icon>
                         <FingerPrintIcon class="h-6 w-6" aria-hidden="true" />
@@ -752,7 +752,7 @@ const removeRegulation = async (id) => {
                             :href="route('admin.ponto.companies.settings.edit', company.id)"
                             class="inline-flex shrink-0 items-center justify-center rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-talents-800 ring-1 ring-talents-200 transition hover:bg-talents-50"
                         >
-                            Configuração e importação
+                            Configuração RHID
                         </Link>
                         <Link
                             v-if="rhidConfigured"
@@ -781,8 +781,8 @@ const removeRegulation = async (id) => {
                             class="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900"
                         >
                             O módulo está ligado, mas faltam e-mail e senha da API Control iD. Preencha abaixo ou
-                            abra <strong>Configuração RHID</strong> — horários e importação de espelho também
-                            ficam nessa tela.
+                            abra <strong>Configuração RHID</strong> — horários também ficam nessa tela. Sem
+                            credenciais, a importação automática não roda.
                         </p>
 
                         <dl v-if="rhidConfigured" class="grid gap-3 sm:grid-cols-3">

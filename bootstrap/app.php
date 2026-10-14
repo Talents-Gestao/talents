@@ -71,5 +71,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->job(new RemindUpcomingTaskDueDatesJob)->dailyAt('08:00');
         $schedule->command('commercial:notify-overdue-installments')->dailyAt('08:15');
+        $schedule->command('rhid:import-closed-day')
+            ->dailyAt('00:30')
+            ->timezone('America/Sao_Paulo');
     })
     ->create();

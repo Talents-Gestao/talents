@@ -104,6 +104,26 @@ services:
       app:
         condition: service_healthy
 
+  scheduler:
+    image: talents-php:prod
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      CONTAINER_ROLE: scheduler
+    command: ["php", "artisan", "schedule:work"]
+    volumes:
+      - talents_storage:/var/www/html/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+
 volumes:
   talents_pgdata:
   talents_storage:

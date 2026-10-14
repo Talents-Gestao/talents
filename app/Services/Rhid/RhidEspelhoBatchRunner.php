@@ -5,6 +5,7 @@ namespace App\Services\Rhid;
 use App\Exceptions\RhidApiException;
 use App\Models\Company;
 use App\Models\RhidEspelhoBatch;
+use App\Models\RhidEspelhoImport;
 use App\Models\User;
 
 class RhidEspelhoBatchRunner
@@ -35,12 +36,19 @@ class RhidEspelhoBatchRunner
 
             return;
         }
-        if (! $batch->user_id) {
-            $this->failBatch($batch, 'Usuário do lote não informado.');
+        $user = null;
+        if ($batch->user_id) {
+            $user = User::query()->find($batch->user_id);
+            if (! $user) {
+                $this->failBatch($batch, 'Usuário do lote não encontrado.');
 
-            return;
+                return;
+            }
         }
-        $user = User::query()->findOrFail($batch->user_id);
+
+        $source = (($meta['source'] ?? null) === RhidEspelhoBatch::SOURCE_AUTOMATIC)
+            ? RhidEspelhoImport::SOURCE_AUTOMATIC
+            : RhidEspelhoImport::SOURCE_API;
 
         $batch->update([
             'status' => 'running',
@@ -74,6 +82,7 @@ class RhidEspelhoBatchRunner
                     $idPerson,
                     (string) $meta['ini'],
                     (string) $meta['fim'],
+                    $source,
                 );
                 $batch->increment('succeeded');
             } catch (RhidApiException $e) {
@@ -196,7 +205,7 @@ class RhidEspelhoBatchRunner
         return $body;
     }
 
-    private function waitUntilReportReady(Company $company, User $user, string $guid): void
+    private function waitUntilReportReady(Company $company, ?User $user, string $guid): void
     {
         for ($i = 0; $i < 120; $i++) {
             $json = $this->reports->guidStatus($company, $user, $guid);

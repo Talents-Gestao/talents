@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RhidEspelhoImport extends Model
 {
+    public const SOURCE_API = 'api';
+
+    public const SOURCE_AUTOMATIC = 'automatic';
+
     protected $fillable = [
         'company_id',
         'user_id',
