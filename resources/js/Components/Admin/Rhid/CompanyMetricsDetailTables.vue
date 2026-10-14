@@ -24,7 +24,7 @@ const filteredBankRows = computed(() => {
         return bankRows.value;
     }
     return bankRows.value.filter((row) =>
-        [row.name, row.social_name, row.department, row.role, row.registration, row.cpf]
+        [row.name, row.department, row.role]
             .filter(Boolean)
             .some((v) => String(v).toLowerCase().includes(term)),
     );
@@ -69,18 +69,15 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                 <input
                     v-model="bankSearch"
                     type="search"
-                    placeholder="Buscar por nome, matrícula, CPF, departamento ou cargo..."
+                    placeholder="Buscar por nome, departamento ou cargo..."
                     class="mt-3 w-full max-w-md rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
             </div>
             <div class="max-h-[28rem] overflow-auto">
-                <table class="min-w-[64rem] divide-y divide-slate-100 text-sm">
+                <table class="min-w-full divide-y divide-slate-100 text-sm">
                     <thead class="sticky top-0 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <tr>
                             <th class="whitespace-nowrap px-4 py-3">Nome</th>
-                            <th class="whitespace-nowrap px-4 py-3">Nome social</th>
-                            <th class="whitespace-nowrap px-4 py-3">Matrícula</th>
-                            <th class="whitespace-nowrap px-4 py-3">CPF</th>
                             <th class="whitespace-nowrap px-4 py-3">Departamento</th>
                             <th class="whitespace-nowrap px-4 py-3">Cargo</th>
                             <th class="whitespace-nowrap px-4 py-3 text-right">Saldo BH</th>
@@ -88,18 +85,13 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                     </thead>
                     <tbody class="divide-y divide-slate-50">
                         <tr v-for="(row, idx) in filteredBankRows" :key="`${row.person_id ?? row.name}-${idx}`" class="hover:bg-slate-50/80">
-                            <td class="max-w-[14rem] truncate px-4 py-2.5 font-medium text-slate-800" :title="row.name">
+                            <td class="max-w-[18rem] truncate px-4 py-2.5 font-medium text-slate-800" :title="row.name">
                                 {{ row.name }}
                             </td>
-                            <td class="max-w-[10rem] truncate px-4 py-2.5 text-slate-600" :title="row.social_name || ''">
-                                {{ row.social_name || '—' }}
-                            </td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-slate-600">{{ row.registration || '—' }}</td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-slate-600">{{ row.cpf || '—' }}</td>
-                            <td class="max-w-[12rem] truncate px-4 py-2.5 text-slate-600" :title="row.department || ''">
+                            <td class="max-w-[16rem] truncate px-4 py-2.5 text-slate-600" :title="row.department || ''">
                                 {{ row.department || '—' }}
                             </td>
-                            <td class="max-w-[12rem] truncate px-4 py-2.5 text-slate-600" :title="row.role || ''">
+                            <td class="max-w-[16rem] truncate px-4 py-2.5 text-slate-600" :title="row.role || ''">
                                 {{ row.role || '—' }}
                             </td>
                             <td
@@ -110,7 +102,7 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                             </td>
                         </tr>
                         <tr v-if="!filteredBankRows.length">
-                            <td colspan="7" class="px-4 py-8 text-center text-sm text-slate-500">
+                            <td colspan="4" class="px-4 py-8 text-center text-sm text-slate-500">
                                 Nenhum colaborador encontrado para os filtros atuais.
                             </td>
                         </tr>

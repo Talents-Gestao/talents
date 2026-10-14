@@ -15,6 +15,8 @@ const props = defineProps({
     companies: { type: Array, default: () => [] },
 });
 
+const TAB_IDS = ['hoje', 'banco', 'justificativas', 'equipe'];
+
 const tabs = [
     { id: 'hoje', label: 'Hoje' },
     { id: 'banco', label: 'Banco de horas' },
@@ -28,9 +30,14 @@ const activeTab = ref('hoje');
 
 (() => {
     try {
-        const fromQuery = Number(new URLSearchParams(window.location.search).get('company'));
+        const params = new URLSearchParams(window.location.search);
+        const fromQuery = Number(params.get('company'));
         if (fromQuery && props.companies.some((c) => Number(c.id) === fromQuery)) {
             selectedCompanyId.value = fromQuery;
+        }
+        const tabQuery = params.get('tab');
+        if (tabQuery && TAB_IDS.includes(tabQuery)) {
+            activeTab.value = tabQuery;
         }
     } catch {
         /* ignore */
@@ -79,7 +86,7 @@ const pageTitle = computed(() =>
         : 'Gestão de ponto',
 );
 
-const syncCompanyQuery = (companyId) => {
+const syncHubQuery = (companyId, tab) => {
     try {
         const url = new URL(window.location.href);
         if (companyId) {
@@ -87,11 +94,18 @@ const syncCompanyQuery = (companyId) => {
         } else {
             url.searchParams.delete('company');
         }
+        if (tab) {
+            url.searchParams.set('tab', tab);
+        } else {
+            url.searchParams.delete('tab');
+        }
         window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
     } catch {
         /* ignore */
     }
 };
+
+const isCompanyConfigured = (company) => Boolean(company?.rhid_configured);
 
 const showBankTable = computed(
     () => companyMetrics.value?.status === 'ok' && !companyLoading.value && activeTab.value === 'banco',
@@ -140,7 +154,7 @@ const normalizePunchesPayload = (payload) => {
 };
 
 const loadCompanyMetrics = async (refresh = false) => {
-    if (!selectedCompanyId.value) {
+    if (!selectedCompanyId.value || !isCompanyConfigured(selectedCompany.value)) {
         companyMetrics.value = null;
         companyError.value = null;
         return;
@@ -171,7 +185,7 @@ const loadCompanyMetrics = async (refresh = false) => {
 };
 
 const loadLivePunches = async () => {
-    if (!selectedCompanyId.value) {
+    if (!selectedCompanyId.value || !isCompanyConfigured(selectedCompany.value)) {
         livePunches.value = [];
         return;
     }
@@ -191,7 +205,7 @@ const loadLivePunches = async () => {
 };
 
 const loadPeople = async () => {
-    if (!selectedCompanyId.value) {
+    if (!selectedCompanyId.value || !isCompanyConfigured(selectedCompany.value)) {
         peopleRows.value = [];
         return;
     }
@@ -212,19 +226,23 @@ const loadPeople = async () => {
 };
 
 watch(selectedCompanyId, async (companyId) => {
-    syncCompanyQuery(companyId);
+    syncHubQuery(companyId, activeTab.value);
     livePunches.value = [];
     peopleRows.value = [];
     await loadCompanyMetrics(false);
-    if (activeTab.value === 'hoje') {
+    if (isCompanyConfigured(selectedCompany.value) && activeTab.value === 'hoje') {
         await loadLivePunches();
     }
-    if (activeTab.value === 'equipe') {
+    if (isCompanyConfigured(selectedCompany.value) && activeTab.value === 'equipe') {
         await loadPeople();
     }
 });
 
 watch(activeTab, async (tab) => {
+    syncHubQuery(selectedCompanyId.value, tab);
+    if (!isCompanyConfigured(selectedCompany.value)) {
+        return;
+    }
     if (tab === 'hoje' && selectedCompanyId.value && !livePunches.value.length && !punchesLoading.value) {
         await loadLivePunches();
     }
@@ -252,9 +270,9 @@ const refreshAll = async () => {
 };
 
 onMounted(async () => {
-    syncCompanyQuery(selectedCompanyId.value);
+    syncHubQuery(selectedCompanyId.value, activeTab.value);
     await loadCompanyMetrics(false);
-    if (selectedCompanyId.value) {
+    if (isCompanyConfigured(selectedCompany.value) && selectedCompanyId.value) {
         await loadLivePunches();
     }
 });
@@ -276,13 +294,22 @@ onMounted(async () => {
                         Selecione uma empresa à esquerda para ver pontualidade, faltas e atestados.
                     </p>
                 </div>
-                <PrimaryButton
-                    type="button"
-                    :disabled="isRefreshing || !selectedCompanyId"
-                    @click="refreshAll"
-                >
-                    {{ isRefreshing ? 'Atualizando…' : 'Atualizar' }}
-                </PrimaryButton>
+                <div class="flex flex-wrap items-center gap-3">
+                    <Link
+                        v-if="selectedCompany"
+                        :href="route('admin.ponto.companies.settings.edit', selectedCompany.id)"
+                        class="text-sm font-medium text-talents-700 hover:underline"
+                    >
+                        Configuração RHID
+                    </Link>
+                    <PrimaryButton
+                        type="button"
+                        :disabled="isRefreshing || !selectedCompanyId"
+                        @click="refreshAll"
+                    >
+                        {{ isRefreshing ? 'Atualizando…' : 'Atualizar' }}
+                    </PrimaryButton>
+                </div>
             </div>
         </template>
 
@@ -324,7 +351,14 @@ onMounted(async () => {
                                 {{ company.segment || 'Sem segmento' }}
                             </p>
                             <p
-                                v-if="isSelectedCompany(company)"
+                                v-if="!isCompanyConfigured(company)"
+                                class="mt-1.5 text-[11px] font-semibold uppercase tracking-wide"
+                                :class="isSelectedCompany(company) ? 'text-amber-100' : 'text-amber-800'"
+                            >
+                                Credenciais em falta
+                            </p>
+                            <p
+                                v-else-if="isSelectedCompany(company)"
                                 class="mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/90"
                             >
                                 Em visualização
@@ -336,7 +370,7 @@ onMounted(async () => {
                     v-else
                     class="mt-4 border-0 bg-transparent"
                     title="Nenhuma empresa encontrada"
-                    description="Só entram aqui empresas ativas com e-mail e senha RHID. Cadastre as credenciais na ficha da empresa, aba Gestão de ponto."
+                    description="Só entram empresas ativas com o módulo RHID ligado ou com credenciais já gravadas. Configure em Configuração RHID."
                 />
             </aside>
 
@@ -362,19 +396,27 @@ onMounted(async () => {
                                 </p>
                             </div>
                         </div>
-                        <Link
-                            :href="route('admin.companies.show', { company: selectedCompany.id, tab: 'ponto' })"
-                            class="inline-flex shrink-0 items-center justify-center rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/30 transition hover:bg-white/25"
-                        >
-                            Ver ficha da empresa
-                        </Link>
+                        <div class="flex shrink-0 flex-wrap gap-2">
+                            <Link
+                                :href="route('admin.ponto.companies.settings.edit', selectedCompany.id)"
+                                class="inline-flex items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-talents-800 transition hover:bg-white/90"
+                            >
+                                Configuração RHID
+                            </Link>
+                            <Link
+                                :href="route('admin.companies.show', { company: selectedCompany.id, tab: 'ponto' })"
+                                class="inline-flex items-center justify-center rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/30 transition hover:bg-white/25"
+                            >
+                                Ver ficha da empresa
+                            </Link>
+                        </div>
                     </div>
                 </div>
 
                 <CompanyMetricsView
                     title="Indicadores da equipe"
                     description="Pontualidade, faltas não justificadas e atestados do mês, a partir dos espelhos importados."
-                    :rhid-configured="Boolean(selectedCompany)"
+                    :rhid-configured="isCompanyConfigured(selectedCompany)"
                     :loading="companyLoading"
                     :error="companyError"
                     :metrics="companyMetrics"
@@ -406,7 +448,21 @@ onMounted(async () => {
                     </div>
 
                     <div class="p-4 sm:p-5">
-                        <div v-if="activeTab === 'hoje'" class="space-y-4">
+                        <div
+                            v-if="!isCompanyConfigured(selectedCompany)"
+                            class="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                        >
+                            Configure as credenciais em
+                            <Link
+                                :href="route('admin.ponto.companies.settings.edit', selectedCompany.id)"
+                                class="font-semibold underline"
+                            >
+                                Configuração RHID
+                            </Link>
+                            para ver indicadores, marcações e importação.
+                        </div>
+
+                        <div v-else-if="activeTab === 'hoje'" class="space-y-4">
                             <p class="text-sm text-slate-600">
                                 Últimas marcações na RHID. Os indicadores da equipe estão no cartão acima.
                             </p>
