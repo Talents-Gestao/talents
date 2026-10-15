@@ -1,4 +1,5 @@
 <script setup>
+import InfoTooltip from '@/Components/InfoTooltip.vue';
 import { formatRhidDotNetDate, formatRhidDotNetDateRange } from '@/utils/rhidDate';
 import { computed, ref } from 'vue';
 
@@ -63,8 +64,9 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
     <div class="mt-8 space-y-8">
         <section v-if="showSection('bank')" class="surface-card overflow-hidden">
             <div class="border-b border-slate-100 px-5 py-4">
-                <h4 class="text-sm font-semibold text-talents-800">
+                <h4 class="flex items-center gap-1.5 text-sm font-semibold text-talents-800">
                     Banco de horas por colaborador
+                    <InfoTooltip text="Saldo atual de banco de horas de cada pessoa (positivo ou negativo), vindo do RHID." />
                 </h4>
                 <input
                     v-model="bankSearch"
@@ -121,7 +123,10 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
         <div v-if="showSection('adherence')" class="grid gap-6 xl:grid-cols-2">
             <section class="surface-card overflow-hidden">
                 <div class="border-b border-slate-100 px-5 py-4">
-                    <h4 class="text-sm font-semibold text-talents-800">Maiores atrasos na entrada</h4>
+                    <h4 class="flex items-center gap-1.5 text-sm font-semibold text-talents-800">
+                        Maiores atrasos na entrada
+                        <InfoTooltip text="Quem mais atrasou na primeira marcação do dia, em relação ao horário de entrada cadastrado na empresa." />
+                    </h4>
                     <p class="mt-1 text-xs text-slate-500">Mês civil corrente · aderência ao horário</p>
                 </div>
                 <div class="max-h-80 overflow-auto">
@@ -153,7 +158,10 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
 
             <section class="surface-card overflow-hidden">
                 <div class="border-b border-slate-100 px-5 py-4">
-                    <h4 class="text-sm font-semibold text-talents-800">Infrações de almoço</h4>
+                    <h4 class="flex items-center gap-1.5 text-sm font-semibold text-talents-800">
+                        Infrações de almoço
+                        <InfoTooltip text="Dias em que a saída ou a volta do almoço saiu da janela permitida, já considerando a tolerância configurada." />
+                    </h4>
                 </div>
                 <div class="max-h-80 overflow-auto">
                     <table class="min-w-full text-sm">
@@ -182,7 +190,10 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
 
             <section class="surface-card overflow-hidden xl:col-span-2">
                 <div class="border-b border-slate-100 px-5 py-4">
-                    <h4 class="text-sm font-semibold text-talents-800">Pior aderência de marcações</h4>
+                    <h4 class="flex items-center gap-1.5 text-sm font-semibold text-talents-800">
+                        Pior aderência de marcações
+                        <InfoTooltip text="Quem acumulou mais penalidade no mês (atrasos de entrada + problemas de almoço), só nos dias de espelho já importados." />
+                    </h4>
                 </div>
                 <div class="max-h-80 overflow-auto">
                     <table class="min-w-full text-sm">
@@ -217,7 +228,10 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
         <div class="grid gap-6 xl:grid-cols-2">
             <section v-if="showSection('justifications')" class="surface-card overflow-hidden">
                 <div class="border-b border-slate-100 px-5 py-4">
-                    <h4 class="text-sm font-semibold text-talents-800">Justificativas (amostra)</h4>
+                    <h4 class="flex items-center gap-1.5 text-sm font-semibold text-talents-800">
+                        Justificativas (amostra)
+                        <InfoTooltip text="Amostra das justificativas retornadas pela API do RHID neste período (atestados, faltas e afins)." />
+                    </h4>
                     <p class="mt-1 text-xs text-slate-500">
                         Primeira página da API · {{ justificationItems.length }} registro(s) exibidos
                     </p>
@@ -266,7 +280,10 @@ const formatPunchDateTime = (val) => formatRhidDotNetDate(val, { withTime: true 
                 :class="{ 'xl:col-span-2': !showSection('justifications') }"
             >
                 <div class="border-b border-slate-100 px-5 py-4">
-                    <h4 class="text-sm font-semibold text-talents-800">Últimas marcações RHID</h4>
+                    <h4 class="flex items-center gap-1.5 text-sm font-semibold text-talents-800">
+                        Últimas marcações RHID
+                        <InfoTooltip text="Últimas batidas recebidas na API do RHID. Não substituem o espelho do dia fechado usado na aderência." />
+                    </h4>
                     <p class="mt-1 text-xs text-slate-500">
                         {{ metrics.punches?.count ?? 0 }} registro(s) · {{ metrics.punches?.distinct_collaborators ?? 0 }} colaborador(es)
                     </p>

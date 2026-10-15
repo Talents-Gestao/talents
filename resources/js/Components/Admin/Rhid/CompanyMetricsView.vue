@@ -1,4 +1,5 @@
 <script setup>
+import InfoTooltip from '@/Components/InfoTooltip.vue';
 import PontoPeopleSnapshot from '@/Components/Rhid/PontoPeopleSnapshot.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { computed } from 'vue';
@@ -47,7 +48,10 @@ const showLoadingSkeleton = computed(() => props.loading && !props.metrics);
     <div class="surface-card p-6 text-slate-900">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-                <h3 class="font-semibold text-talents-700">{{ title }}</h3>
+                <h3 class="flex items-center gap-1.5 font-semibold text-talents-700">
+                    {{ title }}
+                    <InfoTooltip text="Pontualidade média, faltas sem justificativa e atestados do mês, calculados só com os dias de espelho já importados." />
+                </h3>
                 <p class="mt-1 text-xs text-slate-500">
                     {{ periodHint }}
                 </p>

@@ -41,7 +41,7 @@ class PontoVisualQaSeeder extends Seeder
             [
                 'name' => 'QA Ponto Visual',
                 'legal_name' => 'QA Ponto Visual LTDA',
-                'segment' => 'servicos',
+                'segment' => 'Serviços',
                 'is_active' => true,
                 'rhid_access' => true,
                 'rhid_email' => $email,

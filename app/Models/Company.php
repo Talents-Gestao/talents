@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PermissionModule;
 use App\Enums\UserRole;
+use App\Support\PortugueseLabels;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -84,6 +85,14 @@ class Company extends Model
             'acompanhamento_access' => 'boolean',
             'portal_enabled' => 'boolean',
         ];
+    }
+
+    protected function segment(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value): ?string => PortugueseLabels::segment($value),
+            set: fn (?string $value): ?string => PortugueseLabels::segment($value),
+        );
     }
 
     public function hasActivePortal(): bool

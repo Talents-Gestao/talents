@@ -140,7 +140,7 @@ class TalentsSeeder extends Seeder
             [
                 'name' => 'Empresa Demo',
                 'legal_name' => 'Empresa Demo LTDA',
-                'segment' => 'tecnologia',
+                'segment' => 'Tecnologia',
                 'employee_count_estimate' => 120,
                 'is_active' => true,
                 'complaints_public_token' => (string) Str::uuid(),

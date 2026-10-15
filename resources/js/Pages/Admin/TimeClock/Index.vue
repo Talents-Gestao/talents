@@ -4,6 +4,7 @@ import CompanyMetricsDetailTables from '@/Components/Admin/Rhid/CompanyMetricsDe
 import JustificationsCrudPanel from '@/Components/Admin/TimeClock/JustificationsCrudPanel.vue';
 import BackLink from '@/Components/BackLink.vue';
 import EmptyState from '@/Components/Dashboard/EmptyState.vue';
+import InfoTooltip from '@/Components/InfoTooltip.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { BuildingOffice2Icon } from '@heroicons/vue/24/outline';
@@ -18,10 +19,26 @@ const props = defineProps({
 const TAB_IDS = ['aderencia', 'banco', 'justificativas', 'equipe'];
 
 const tabs = [
-    { id: 'aderencia', label: 'Aderência' },
-    { id: 'banco', label: 'Banco de horas' },
-    { id: 'justificativas', label: 'Justificativas' },
-    { id: 'equipe', label: 'Equipe' },
+    {
+        id: 'aderencia',
+        label: 'Aderência',
+        help: 'Compara as marcações do espelho importado com os horários da empresa (entrada, almoço e saída). Mostra atrasos, infrações de almoço e quem menos cumpriu a escala no mês.',
+    },
+    {
+        id: 'banco',
+        label: 'Banco de horas',
+        help: 'Saldo de horas extras e negativas de cada colaborador, conforme o RHID.',
+    },
+    {
+        id: 'justificativas',
+        label: 'Justificativas',
+        help: 'Atestados, faltas e outros afastamentos registrados no ponto. Dá para consultar e lançar justificativas.',
+    },
+    {
+        id: 'equipe',
+        label: 'Equipe',
+        help: 'Colaboradores ativos no RHID desta empresa, com matrícula, departamento e cargo.',
+    },
 ];
 
 const selectedCompanyId = ref(props.companies[0]?.id ?? null);
@@ -383,7 +400,7 @@ onMounted(async () => {
                     :loaded-at="companyLoadedAt"
                 />
 
-                <div v-if="selectedCompany" class="surface-card overflow-hidden">
+                <div v-if="selectedCompany" class="surface-card">
                     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 sm:px-4">
                         <p class="min-w-0 truncate text-xs font-medium text-slate-500">
                             Operação de
@@ -395,7 +412,7 @@ onMounted(async () => {
                             v-for="tab in tabs"
                             :key="tab.id"
                             type="button"
-                            class="rounded-lg px-3 py-1.5 text-sm font-medium transition"
+                            class="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium transition"
                             :class="
                                 activeTab === tab.id
                                     ? 'bg-talents-100 text-talents-800'
@@ -404,6 +421,7 @@ onMounted(async () => {
                             @click="activeTab = tab.id"
                         >
                             {{ tab.label }}
+                            <InfoTooltip :text="tab.help" />
                         </button>
                     </div>
 
