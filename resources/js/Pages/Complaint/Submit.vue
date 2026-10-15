@@ -32,7 +32,7 @@ const needsIdentity = computed(() => !form.is_anonymous);
     <Head title="Canal de denúncias" />
 
     <div class="app-shell min-h-screen text-slate-900">
-        <header class="border-b border-white/40 bg-white/80 px-4 py-4 shadow-sm backdrop-blur-md">
+        <header class="sticky top-0 z-20 border-b border-white/40 bg-white/80 px-4 py-4 shadow-sm backdrop-blur-md">
             <div class="mx-auto max-w-2xl">
                 <p class="text-xs uppercase tracking-widest text-talents-600">Canal sigiloso</p>
                 <h1 class="text-lg font-semibold text-slate-900">{{ companyName }}</h1>

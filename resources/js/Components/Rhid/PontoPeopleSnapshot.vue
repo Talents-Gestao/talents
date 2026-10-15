@@ -1,4 +1,5 @@
 <script setup>
+import InfoTooltip from '@/Components/InfoTooltip.vue';
 import { computed, reactive, watch } from 'vue';
 import { Link } from '@inertiajs/vue3';
 
@@ -121,10 +122,16 @@ watch(
 
         <template v-else>
             <div class="grid gap-3 sm:grid-cols-3">
-                <div class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-talents-700 via-talents-600 to-talents-500 p-4 text-left text-white shadow-md">
+                <div class="group relative overflow-visible rounded-2xl bg-gradient-to-br from-talents-700 via-talents-600 to-talents-500 p-4 text-left text-white shadow-md">
                     <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-xl" />
                     <div class="relative z-10">
-                        <p class="text-[11px] font-medium uppercase tracking-wider text-white/75">Pontualidade média</p>
+                        <p class="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-white/75">
+                            Pontualidade média
+                            <InfoTooltip
+                                tone="onDark"
+                                text="Percentual médio de dias em que a equipe cumpriu a jornada esperada, nos dias úteis com espelho importado."
+                            />
+                        </p>
                         <p class="mt-2 text-3xl font-bold tabular-nums">
                             {{ snapshot.has_data ? formatPct(snapshot.punctuality_avg_percent) : '—' }}
                         </p>
@@ -133,10 +140,16 @@ watch(
                         </p>
                     </div>
                 </div>
-                <div class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-talents-800 via-talents-700 to-talents-600 p-4 text-left text-white shadow-md">
+                <div class="group relative overflow-visible rounded-2xl bg-gradient-to-br from-talents-800 via-talents-700 to-talents-600 p-4 text-left text-white shadow-md">
                     <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-xl" />
                     <div class="relative z-10">
-                        <p class="text-[11px] font-medium uppercase tracking-wider text-white/75">Faltas não justificadas</p>
+                        <p class="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-white/75">
+                            Faltas não justificadas
+                            <InfoTooltip
+                                tone="onDark"
+                                text="Dias úteis sem jornada completa e sem atestado, férias ou feriado. Conta como falta no ponto."
+                            />
+                        </p>
                         <p class="mt-2 text-3xl font-bold tabular-nums">
                             {{ snapshot.has_data ? snapshot.unjustified_absence_days : '—' }}
                         </p>
@@ -145,10 +158,16 @@ watch(
                         </p>
                     </div>
                 </div>
-                <div class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-amber-400 to-yellow-400 p-4 text-left text-white shadow-md">
+                <div class="group relative overflow-visible rounded-2xl bg-gradient-to-br from-amber-500 via-amber-400 to-yellow-400 p-4 text-left text-white shadow-md">
                     <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/20 blur-xl" />
                     <div class="relative z-10">
-                        <p class="text-[11px] font-medium uppercase tracking-wider text-white/85">Atestados</p>
+                        <p class="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-white/85">
+                            Atestados
+                            <InfoTooltip
+                                tone="onDark"
+                                text="Dias úteis cobertos por atestado no ponto. Esses dias saem do cálculo de pontualidade e de falta."
+                            />
+                        </p>
                         <p class="mt-2 text-3xl font-bold tabular-nums">
                             {{ snapshot.has_data ? snapshot.atestado_days : '—' }}
                         </p>
@@ -190,7 +209,10 @@ watch(
             <div v-else class="grid gap-3 lg:grid-cols-3">
                 <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     <div class="mb-3">
-                        <p class="text-sm font-semibold text-talents-800">Mais pontuais</p>
+                        <p class="flex items-center gap-1.5 text-sm font-semibold text-talents-800">
+                            Mais pontuais
+                            <InfoTooltip text="Quem teve o maior percentual de dias cumpridos em relação aos dias úteis esperados no mês." />
+                        </p>
                         <p class="mt-0.5 text-[11px] text-slate-500">Do maior para o menor cumprimento</p>
                     </div>
                     <ol
@@ -237,7 +259,10 @@ watch(
 
                 <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     <div class="mb-3">
-                        <p class="text-sm font-semibold text-talents-800">Mais faltas não justificadas</p>
+                        <p class="flex items-center gap-1.5 text-sm font-semibold text-talents-800">
+                            Mais faltas não justificadas
+                            <InfoTooltip text="Quem acumulou mais dias úteis sem marcação completa e sem justificativa válida." />
+                        </p>
                         <p class="mt-0.5 text-[11px] text-slate-500">Dias esperados sem marcação completa</p>
                     </div>
                     <template v-if="snapshot.ranking_faltas.length">
@@ -284,7 +309,10 @@ watch(
 
                 <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     <div class="mb-3">
-                        <p class="text-sm font-semibold text-talents-800">Mais atestados</p>
+                        <p class="flex items-center gap-1.5 text-sm font-semibold text-talents-800">
+                            Mais atestados
+                            <InfoTooltip text="Quem teve mais dias úteis cobertos por atestado no período." />
+                        </p>
                         <p class="mt-0.5 text-[11px] text-slate-500">Dias úteis cobertos por atestado</p>
                     </div>
                     <template v-if="snapshot.ranking_atestados.length">

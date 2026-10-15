@@ -30,7 +30,7 @@ const submit = () => {
     <Head title="Canal de sugestões e dúvidas" />
 
     <div class="app-shell min-h-screen text-slate-900">
-        <header class="border-b border-white/40 bg-white/80 px-4 py-4 shadow-sm backdrop-blur-md">
+        <header class="sticky top-0 z-20 border-b border-white/40 bg-white/80 px-4 py-4 shadow-sm backdrop-blur-md">
             <div class="mx-auto max-w-2xl">
                 <p class="text-xs uppercase tracking-widest text-talents-600">Canal anônimo</p>
                 <h1 class="text-lg font-semibold text-slate-900">Canal de sugestões e dúvidas</h1>
