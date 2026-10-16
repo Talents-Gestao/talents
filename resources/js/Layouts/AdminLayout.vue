@@ -113,7 +113,8 @@ const clientesActive = computed(
         route().current('admin.ponto.*') ||
         route().current('admin.landing-interest.*') ||
         route().current('admin.diagnostico-empresarial.*') ||
-        route().current('admin.contratos-fechados.*'),
+        route().current('admin.contratos-fechados.*') ||
+        route().current('admin.client-evaluations.*'),
 );
 
 const showContratacao = computed(() =>
@@ -372,6 +373,15 @@ const isComercialSettingsTab = (tab) => {
                     :href="route('admin.companies.index')"
                     :active="route().current('admin.companies.*') || route().current('admin.ponto.*')"
                     label="Clientes"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('companies')"
+                    :href="route('admin.client-evaluations.index')"
+                    :active="route().current('admin.client-evaluations.*')"
+                    label="Avaliações"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"

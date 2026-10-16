@@ -24,6 +24,7 @@ import {
     LinkIcon,
     MapIcon,
     PencilSquareIcon,
+    StarIcon,
     SparklesIcon,
     UserGroupIcon,
 } from '@heroicons/vue/24/outline';
@@ -352,6 +353,13 @@ const removeRegulation = async (id) => {
                                       : 'Redefinir senha'
                             }}
                         </button>
+                        <Link
+                            :href="route('admin.client-evaluations.create', { company_id: company.id })"
+                            class="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-medium text-white ring-1 ring-white/25 transition hover:bg-white/25"
+                        >
+                            <StarIcon class="h-4 w-4" aria-hidden="true" />
+                            Avaliação
+                        </Link>
                         <Link
                             :href="route('admin.companies.edit', company.id)"
                             class="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-medium text-white ring-1 ring-white/25 transition hover:bg-white/25"
