@@ -61,11 +61,11 @@ const statusClass = (value) => {
                 :back-href="route('admin.companies.index')"
                 back-label="Clientes"
                 title="Avaliações de clientes"
-                subtitle="Convites com link único para o cliente avaliar o trabalho da Talents"
+                subtitle="Avaliações com link único para o cliente avaliar o trabalho da Talents"
             >
                 <template #trailing>
                     <Link :href="route('admin.client-evaluations.create')">
-                        <PrimaryButton type="button">Novo convite</PrimaryButton>
+                        <PrimaryButton type="button">Nova avaliação</PrimaryButton>
                     </Link>
                 </template>
             </FormPageHeader>
@@ -107,7 +107,7 @@ const statusClass = (value) => {
 
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div v-if="evaluations.data.length === 0" class="px-6 py-12 text-center text-sm text-slate-500">
-                Nenhum convite ainda. Gere o primeiro link para um cliente.
+                Nenhuma avaliação ainda. Gere o primeiro link para um cliente.
             </div>
             <table v-else class="min-w-full divide-y divide-slate-100 text-sm">
                 <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">

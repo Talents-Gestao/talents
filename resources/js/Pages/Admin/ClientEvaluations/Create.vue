@@ -49,14 +49,14 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Novo convite de avaliação" />
+    <Head title="Nova avaliação" />
 
     <AdminLayout>
         <template #header>
             <FormPageHeader
                 :back-href="route('admin.client-evaluations.index')"
                 back-label="Avaliações"
-                title="Novo convite"
+                title="Nova avaliação"
                 subtitle="O cliente recebe um link de uso único, válido até a data escolhida"
             />
         </template>

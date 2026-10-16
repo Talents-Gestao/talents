@@ -37,7 +37,7 @@ return new class extends Migration
         });
 
         // Uma resposta aberta (pendente ou respondida) por empresa e ciclo.
-        // Expirada e substituída liberam um novo convite.
+        // Expirada e substituída liberam uma nova avaliação.
         DB::statement(
             "CREATE UNIQUE INDEX client_evaluations_one_open_per_cycle
              ON client_evaluations (company_id, cycle_year, cycle_quarter)

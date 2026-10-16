@@ -100,7 +100,7 @@ class ClientEvaluationController extends Controller
 
         return redirect()
             ->route('admin.client-evaluations.show', $evaluation)
-            ->with('success', 'Convite criado. Envie o link para o cliente.');
+            ->with('success', 'Avaliação criada. Envie o link para o cliente.');
     }
 
     public function show(ClientEvaluation $evaluation): Response
@@ -120,7 +120,7 @@ class ClientEvaluationController extends Controller
         if (! $evaluation->isPendingOpen() || ! filled($evaluation->respondent_email)) {
             return redirect()
                 ->route('admin.client-evaluations.show', $evaluation)
-                ->with('error', 'Este convite não pode mais ser enviado por e-mail.');
+                ->with('error', 'Esta avaliação não pode mais ser enviada por e-mail.');
         }
 
         $evaluation->loadMissing('company:id,name');

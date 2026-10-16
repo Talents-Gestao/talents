@@ -26,7 +26,7 @@ enum ClientEvaluationStatus: string
         return match ($this) {
             self::Answered => 'Esta avaliação já foi enviada. Obrigado.',
             self::Expired => 'O prazo desta avaliação encerrou.',
-            self::Superseded => 'Este link foi substituído. Peça um novo convite à Talents.',
+            self::Superseded => 'Este link foi substituído. Peça uma nova avaliação à Talents.',
             self::Pending => 'Esta avaliação não está disponível.',
         };
     }

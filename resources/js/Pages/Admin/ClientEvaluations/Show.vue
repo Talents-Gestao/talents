@@ -49,7 +49,7 @@ const copyLink = async () => {
 
 const sendEmail = async () => {
     const confirmed = await confirmDialog(
-        `Enviar o convite por e-mail para ${props.evaluation.respondent_email}?`,
+        `Enviar a avaliação por e-mail para ${props.evaluation.respondent_email}?`,
     );
     if (!confirmed) {
         return;
@@ -101,7 +101,7 @@ const scores = [
 
         <div class="grid gap-4 lg:grid-cols-5">
             <section class="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-3">
-                <h3 class="text-sm font-semibold text-slate-900">Convite</h3>
+                <h3 class="text-sm font-semibold text-slate-900">Avaliação</h3>
                 <dl class="grid gap-3 text-sm sm:grid-cols-2">
                     <div>
                         <dt class="text-slate-500">Contato</dt>
@@ -127,7 +127,7 @@ const scores = [
 
                 <div v-if="evaluation.can_share" class="space-y-3 border-t border-slate-100 pt-4">
                     <p class="text-sm text-slate-600">
-                        Envie este link pelo canal que preferir. Cada convite aceita uma resposta.
+                        Envie este link pelo canal que preferir. Cada avaliação aceita uma resposta.
                     </p>
                     <label class="block text-xs font-medium uppercase tracking-wide text-slate-500" for="public-url">
                         Link público

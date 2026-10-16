@@ -38,14 +38,14 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Novo convite de avaliação" />
+    <Head title="Nova avaliação" />
 
     <ClientLayout>
         <template #header>
             <FormPageHeader
                 :back-href="route('client.avaliacoes.index')"
                 back-label="Avaliações"
-                title="Novo convite"
+                title="Nova avaliação"
                 :subtitle="`O link fica vinculado a ${company.name}`"
             />
         </template>
