@@ -1,4 +1,5 @@
 <script setup>
+import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -46,15 +47,15 @@ function submit() {
             </div>
             <div>
                 <InputLabel for="company_id" value="Empresa" />
-                <select
+                <CompanySearchSelect
                     id="company_id"
                     v-model="form.company_id"
+                    :companies="companies"
                     required
-                    class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
-                >
-                    <option disabled value="">Selecione…</option>
-                    <option v-for="c in companies" :key="c.id" :value="c.id">{{ c.name }}</option>
-                </select>
+                    placeholder="Selecione…"
+                    class="mt-1"
+                    input-class="block w-full rounded-md border border-slate-300 text-sm"
+                />
             </div>
             <div>
                 <InputLabel for="board_name" value="Nome do quadro (opcional)" />

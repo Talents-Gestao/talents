@@ -1,5 +1,6 @@
 <script setup>
 import ColorPresetPicker from '@/Components/Tasks/ColorPresetPicker.vue';
+import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import {
     BuildingOffice2Icon,
@@ -552,15 +553,15 @@ async function deleteBoard() {
                     </p>
                     <div class="mt-4">
                         <label class="text-xs font-medium text-slate-600">Empresa</label>
-                        <select
+                        <CompanySearchSelect
                             v-model="shareCompanyId"
-                            class="mt-1 w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        >
-                            <option value="" disabled>Selecione a empresa…</option>
-                            <option v-for="c in companies" :key="c.id" :value="String(c.id)">
-                                {{ c.name }}
-                            </option>
-                        </select>
+                            :companies="companies"
+                            as-string
+                            required
+                            placeholder="Selecione a empresa…"
+                            class="mt-1"
+                            input-class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
                     </div>
                     <div class="mt-5 flex justify-end gap-2">
                         <button

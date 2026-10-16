@@ -1,5 +1,6 @@
 <script setup>
 import DayModal from '@/Components/StrategicCalendar/DayModal.vue';
+import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import StrategicCalendar from '@/Components/StrategicCalendar.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -37,18 +38,8 @@ function audienceLabel(row) {
 
 const companyFilter = ref(props.filters?.company_id ? String(props.filters.company_id) : '');
 const kindFilter = ref(props.filters?.kind ?? '');
-const companySearch = ref('');
 const dayModalOpen = ref(false);
 const dayModalIso = ref(null);
-
-const filteredCompanies = computed(() => {
-    const list = props.companies ?? [];
-    const q = companySearch.value.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter((c) => c.name.toLowerCase().includes(q));
-});
-
-const showCompanySearch = computed(() => (props.companies?.length ?? 0) > 12);
 
 const navigateMonth = (delta) => {
     let y = props.calendarYear;
@@ -190,23 +181,13 @@ function closeDayModal() {
 
             <div class="flex min-w-[min(100%,20rem)] flex-col gap-2 sm:max-w-md">
                 <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Empresa</label>
-                <input
-                    v-if="showCompanySearch"
-                    v-model="companySearch"
-                    type="search"
-                    placeholder="Buscar empresa…"
-                    class="field-input mb-1 text-sm"
-                />
-                <select
+                <CompanySearchSelect
                     v-model="companyFilter"
-                    class="field-input rounded-xl border-slate-200 bg-white text-sm text-slate-900 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                >
-                    <option value="">Todas</option>
-                    <option v-for="c in filteredCompanies" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
-                </select>
-                <p v-if="showCompanySearch && !filteredCompanies.length" class="text-xs text-slate-500">
-                    Nenhuma empresa encontrada.
-                </p>
+                    :companies="companies"
+                    as-string
+                    empty-label="Todas"
+                    input-class="field-input rounded-xl border-slate-200 bg-white text-sm text-slate-900 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                />
             </div>
         </div>
 

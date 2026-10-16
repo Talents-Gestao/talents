@@ -1,4 +1,5 @@
 <script setup>
+import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import InputError from '@/Components/InputError.vue';
@@ -156,15 +157,15 @@ const submit = () => {
             <div class="grid gap-5 sm:grid-cols-2">
                 <div class="sm:col-span-2">
                     <InputLabel for="company_id" value="Empresa" />
-                    <select
+                    <CompanySearchSelect
                         id="company_id"
                         v-model="form.company_id"
-                        class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        :companies="companies"
                         required
-                    >
-                        <option value="" disabled>Selecione a empresa…</option>
-                        <option v-for="c in companies" :key="c.id" :value="c.id">{{ c.name }}</option>
-                    </select>
+                        placeholder="Selecione a empresa…"
+                        class="mt-1"
+                        input-class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    />
                     <InputError class="mt-1" :message="form.errors.company_id" />
                 </div>
 
