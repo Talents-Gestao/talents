@@ -39,7 +39,6 @@ const showComercial = computed(
     () =>
         canAdminAny([
             'comercial_propostas',
-            'comercial_processos',
             'comercial_valores_contratos',
         ]) || canCommercialSettings.value,
 );
@@ -50,9 +49,6 @@ const showAssinaturasMenu = false;
 const comercialFallbackHref = computed(() => {
     if (canAdmin('comercial_propostas')) {
         return route('admin.comercial.propostas.index');
-    }
-    if (canAdmin('comercial_processos')) {
-        return route('admin.comercial.processos.index');
     }
     if (canCommercialSettings.value) {
         return route('admin.comercial.settings.edit', { tab: 'produtos' });
@@ -65,7 +61,8 @@ const comercialFallbackHref = computed(() => {
 
 const comercialActive = computed(
     () =>
-        route().current('admin.comercial.*') ||
+        (route().current('admin.comercial.*') &&
+            !route().current('admin.comercial.processos.*')) ||
         route().current('admin.plans.*'),
 );
 
@@ -225,7 +222,7 @@ const financeiroFallbackHref = computed(() => {
 
 const financeiroActive = computed(() => route().current('admin.financeiro.*'));
 const showConfiguracao = computed(
-    () => canAdminAny(['settings', 'equipe', 'empresa_talents']),
+    () => canAdminAny(['settings', 'equipe', 'empresa_talents', 'comercial_processos']),
 );
 
 const configuracaoFallbackHref = computed(() => {
@@ -238,6 +235,9 @@ const configuracaoFallbackHref = computed(() => {
     if (canAdmin('empresa_talents')) {
         return route('admin.empresa-talents.edit');
     }
+    if (canAdmin('comercial_processos')) {
+        return route('admin.comercial.processos.index');
+    }
     return route('admin.dashboard');
 });
 
@@ -246,7 +246,8 @@ const configuracaoActive = computed(
         route().current('admin.settings.edit') ||
         route().current('admin.ai-settings.edit') ||
         route().current('admin.users.*') ||
-        route().current('admin.empresa-talents.*'),
+        route().current('admin.empresa-talents.*') ||
+        route().current('admin.comercial.processos.*'),
 );
 
 const comercialSettingsProdutosHref = computed(() =>
@@ -326,15 +327,6 @@ const isComercialSettingsTab = (tab) => {
                     :href="route('admin.comercial.propostas.index')"
                     :active="route().current('admin.comercial.propostas.*')"
                     label="Gestão"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                />
-                <SidebarNavItem
-                    v-if="canAdmin('comercial_processos')"
-                    :href="route('admin.comercial.processos.index')"
-                    :active="route().current('admin.comercial.processos.*')"
-                    label="Processos"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
@@ -655,6 +647,15 @@ const isComercialSettingsTab = (tab) => {
                     :href="route('admin.empresa-talents.edit')"
                     :active="route().current('admin.empresa-talents.*')"
                     label="Empresa Talents"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('comercial_processos')"
+                    :href="route('admin.comercial.processos.index')"
+                    :active="route().current('admin.comercial.processos.*')"
+                    label="Processos"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
