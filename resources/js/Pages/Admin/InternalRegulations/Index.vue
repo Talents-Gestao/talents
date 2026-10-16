@@ -1,4 +1,5 @@
 <script setup>
+import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -79,10 +80,15 @@ const remove = async (id) => {
                     @keydown.enter.prevent="applyFilters"
                 >
             </div>
-            <select v-model="companyId" :class="fieldClass" @change="applyFilters">
-                <option value="">Todas as empresas</option>
-                <option v-for="c in companies" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
-            </select>
+            <CompanySearchSelect
+                v-model="companyId"
+                :companies="companies"
+                as-string
+                empty-label="Todas as empresas"
+                class="w-full sm:w-72"
+                :input-class="fieldClass"
+                @change="applyFilters"
+            />
             <PrimaryButton type="button" @click="applyFilters">Filtrar</PrimaryButton>
         </div>
 

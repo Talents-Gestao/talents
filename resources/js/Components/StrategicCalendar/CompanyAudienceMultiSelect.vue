@@ -1,6 +1,6 @@
 <script setup>
 import InputLabel from '@/Components/InputLabel.vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     companies: { type: Array, default: () => [] },
@@ -9,6 +9,25 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue']);
+
+const companyQuery = ref('');
+
+const normalize = (value) =>
+    String(value ?? '')
+        .normalize('NFD')
+        .replace(/\p{M}/gu, '')
+        .toLowerCase()
+        .trim();
+
+const visibleCompanies = computed(() => {
+    const term = normalize(companyQuery.value);
+
+    if (term === '') {
+        return props.companies;
+    }
+
+    return props.companies.filter((company) => normalize(company.name).includes(term));
+});
 
 const isUniversal = computed(() => props.modelValue.length === 0);
 
@@ -69,6 +88,15 @@ function toggleCompany(companyId, checked) {
             aria-label="Seleção de empresas"
         >
             <div class="max-h-56 overflow-y-auto p-2">
+                <div class="sticky top-0 z-10 -mx-2 -mt-2 mb-2 border-b border-slate-100 bg-white p-2">
+                    <input
+                        v-model="companyQuery"
+                        type="search"
+                        placeholder="Pesquisar empresa"
+                        class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        @keydown.enter.prevent
+                    />
+                </div>
                 <label
                     class="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 transition"
                     :class="isUniversal ? 'bg-talents-50 ring-1 ring-talents-200' : 'hover:bg-slate-50'"
@@ -88,7 +116,7 @@ function toggleCompany(companyId, checked) {
                 <div class="my-2 border-t border-slate-100" role="separator" />
 
                 <label
-                    v-for="company in companies"
+                    v-for="company in visibleCompanies"
                     :key="company.id"
                     class="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 transition"
                     :class="[
@@ -106,6 +134,9 @@ function toggleCompany(companyId, checked) {
 
                 <p v-if="!companies.length" class="px-2.5 py-2 text-sm text-slate-500">
                     Nenhuma empresa cadastrada.
+                </p>
+                <p v-else-if="!visibleCompanies.length" class="px-2.5 py-2 text-sm text-slate-500">
+                    Nenhuma empresa encontrada.
                 </p>
             </div>
         </div>

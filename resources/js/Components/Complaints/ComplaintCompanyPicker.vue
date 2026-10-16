@@ -1,4 +1,5 @@
 <script setup>
+import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import { useForm } from '@inertiajs/vue3';
 import { BuildingOffice2Icon } from '@heroicons/vue/24/outline';
 
@@ -44,16 +45,14 @@ const submit = () => {
                 <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {{ compact ? 'Trocar empresa' : 'Empresa' }}
                 </label>
-                <select
+                <CompanySearchSelect
                     v-model="form.company_id"
+                    :companies="companies"
                     required
-                    class="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/60"
-                >
-                    <option value="" disabled>Selecione</option>
-                    <option v-for="company in companies" :key="company.id" :value="company.id">
-                        {{ company.name }}
-                    </option>
-                </select>
+                    placeholder="Selecione"
+                    class="mt-1"
+                    input-class="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/60"
+                />
             </div>
             <button
                 type="submit"

@@ -1,5 +1,6 @@
 <script setup>
 import TextInput from '@/Components/TextInput.vue';
+import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import TaskCardMeta from '@/Components/Tasks/TaskCardMeta.vue';
 import { router } from '@inertiajs/vue3';
 import {
@@ -839,19 +840,18 @@ function expandList(list) {
                                 companies.length
                             "
                         >
-                            <label class="block text-[11px] font-medium text-slate-600">
+                            <div class="block text-[11px] font-medium text-slate-600">
                                 Empresa (opcional)
                                 <span class="font-normal text-slate-500">— para exibir no portal do cliente</span>
-                                <select
+                                <CompanySearchSelect
                                     v-model="quickAddCompanyId"
-                                    class="mt-1 block w-full rounded-lg border-slate-300 bg-white text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                >
-                                    <option value="">Nenhuma / depois</option>
-                                    <option v-for="c in companies" :key="c.id" :value="String(c.id)">
-                                        {{ c.name }}
-                                    </option>
-                                </select>
-                            </label>
+                                    :companies="companies"
+                                    as-string
+                                    empty-label="Nenhuma / depois"
+                                    class="mt-1"
+                                    input-class="block w-full rounded-lg border-slate-300 bg-white text-sm font-normal shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                />
+                            </div>
                         </div>
                         <textarea
                             v-model="newCardTitles[list.id]"
