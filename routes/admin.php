@@ -29,6 +29,7 @@ use App\Http\Controllers\Admin\Finance\PayableController as FinancePayableContro
 use App\Http\Controllers\Admin\Finance\PaymentMethodController as FinancePaymentMethodController;
 use App\Http\Controllers\Admin\Finance\ReceivableController as FinanceReceivableController;
 use App\Http\Controllers\Admin\Finance\SaleController as FinanceSaleController;
+use App\Http\Controllers\Admin\ClientEvaluationController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\CompanySurveyController;
 use App\Http\Controllers\Admin\PurposeMapCampaignController;
@@ -143,6 +144,17 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::get('noticias', NewsFeedController::class)->name('news.feed');
 
     Route::middleware('admin.can:companies')->group(function () {
+        Route::get('avaliacoes-clientes', [ClientEvaluationController::class, 'index'])
+            ->name('client-evaluations.index');
+        Route::get('avaliacoes-clientes/criar', [ClientEvaluationController::class, 'create'])
+            ->name('client-evaluations.create');
+        Route::post('avaliacoes-clientes', [ClientEvaluationController::class, 'store'])
+            ->name('client-evaluations.store');
+        Route::get('avaliacoes-clientes/{evaluation}', [ClientEvaluationController::class, 'show'])
+            ->name('client-evaluations.show');
+        Route::post('avaliacoes-clientes/{evaluation}/email', [ClientEvaluationController::class, 'sendEmail'])
+            ->name('client-evaluations.email');
+
         Route::get('colaboradores/lookup-cep', [CompanyEmployeeController::class, 'lookupCep'])
             ->name('colaboradores.lookup-cep');
         Route::resource('colaboradores', CompanyEmployeeController::class)

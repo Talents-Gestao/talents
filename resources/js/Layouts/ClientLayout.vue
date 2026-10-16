@@ -21,6 +21,7 @@ import {
     LightBulbIcon,
     FlagIcon,
     ShieldExclamationIcon,
+    StarIcon,
     SunIcon,
     UsersIcon,
 } from '@heroicons/vue/24/outline';
@@ -215,6 +216,14 @@ const mapaPropositoActive = computed(() =>
                 :active="route().current('client.rhid.*')"
                 :icon="FingerPrintIcon"
                 label="RHID / Ponto"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                v-if="isCompanyAdmin"
+                :href="route('client.avaliacoes.index')"
+                :active="route().current('client.avaliacoes.*')"
+                :icon="StarIcon"
+                label="Avaliações"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Client\AcompanhamentoController;
 use App\Http\Controllers\NewsFeedController;
 use App\Http\Controllers\Client\ActionPlanController;
+use App\Http\Controllers\Client\ClientEvaluationController;
 use App\Http\Controllers\Client\ComplaintController;
 use App\Http\Controllers\Client\SuggestionController;
 use App\Http\Controllers\Client\CompanyNoticeController as ClientCompanyNoticeController;
@@ -50,6 +51,14 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
 
     Route::middleware(['company_admin', 'can.module:usuarios'])->group(function () {
         Route::resource('usuarios', UserController::class)->parameters(['usuarios' => 'user'])->except(['show']);
+    });
+
+    Route::middleware('company_admin')->group(function () {
+        Route::get('avaliacoes', [ClientEvaluationController::class, 'index'])->name('avaliacoes.index');
+        Route::get('avaliacoes/criar', [ClientEvaluationController::class, 'create'])->name('avaliacoes.create');
+        Route::post('avaliacoes', [ClientEvaluationController::class, 'store'])->name('avaliacoes.store');
+        Route::get('avaliacoes/{evaluation}', [ClientEvaluationController::class, 'show'])->name('avaliacoes.show');
+        Route::post('avaliacoes/{evaluation}/email', [ClientEvaluationController::class, 'sendEmail'])->name('avaliacoes.email');
     });
 
     Route::middleware('can.module:departamentos_cargos')->group(function () {

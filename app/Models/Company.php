@@ -285,6 +285,11 @@ class Company extends Model
         return $this->hasMany(MethodologySurvey::class);
     }
 
+    public function clientEvaluations(): HasMany
+    {
+        return $this->hasMany(ClientEvaluation::class);
+    }
+
     /**
      * Direcionamento Estratégico disponível quando a assinatura ativa inclui o módulo "metodologia" no plano.
      */

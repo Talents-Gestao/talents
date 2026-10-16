@@ -48,13 +48,13 @@ const remove = async (id) => {
 </script>
 
 <template>
-    <Head title="Comercial — Processos" />
+    <Head title="Configuração — Processos" />
 
     <AdminLayout>
         <template #header>
             <FormPageHeader
-                :back-href="route('admin.comercial.propostas.index')"
-                back-label="Comercial"
+                :back-href="route('admin.settings.edit')"
+                back-label="Configuração"
                 title="Processos"
                 subtitle="Documentos oficiais do processo comercial da Talents"
             >

@@ -36,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(base_path('routes/methodology.php'));
             Route::middleware('web')->group(base_path('routes/feedback.php'));
             Route::middleware('web')->group(base_path('routes/offboarding.php'));
+            Route::middleware('web')->group(base_path('routes/client-evaluation.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
