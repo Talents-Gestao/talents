@@ -1,6 +1,6 @@
 <script setup>
 import { BellIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline';
-import { formatRelativeDate } from '@/utils/dateOnly';
+import { formatRelativeDateTime } from '@/utils/dateOnly';
 import { Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
@@ -29,8 +29,7 @@ const deletingId = ref(null);
 const deletingAll = ref(false);
 
 function formatPublished(iso) {
-    if (!iso) return '';
-    return formatRelativeDate(iso.slice(0, 10));
+    return formatRelativeDateTime(iso);
 }
 
 async function markAllRead() {

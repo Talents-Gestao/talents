@@ -1,6 +1,6 @@
 <script setup>
 import ClientLayout from '@/Layouts/ClientLayout.vue';
-import { formatRelativeDate } from '@/utils/dateOnly';
+import { formatRelativeDateTime } from '@/utils/dateOnly';
 import { TrashIcon } from '@heroicons/vue/24/outline';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { confirmDialog } from '@/composables/useConfirmDialog';
@@ -28,9 +28,7 @@ async function destroyAll() {
 }
 
 function formatPublished(iso) {
-    if (!iso) return '';
-    const date = iso.slice(0, 10);
-    return formatRelativeDate(date);
+    return formatRelativeDateTime(iso);
 }
 </script>
 
