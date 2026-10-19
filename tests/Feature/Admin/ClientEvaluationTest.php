@@ -163,6 +163,52 @@ class ClientEvaluationTest extends TestCase
         $this->assertNotNull($evaluation->fresh()->sent_at);
     }
 
+    public function test_owner_can_delete_evaluation_and_free_the_cycle(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = $this->company('Cliente Teta');
+        $this->actingAs($admin)->post(route('admin.client-evaluations.store'), $this->payload($company));
+        $evaluation = ClientEvaluation::query()->firstOrFail();
+        $token = $evaluation->public_token;
+
+        $this->post(route('client-evaluation.public.submit', $token), [
+            'nps_score' => 8,
+            'service_score' => 4,
+            'delivery_score' => 4,
+            'communication_score' => 4,
+            'answered_name' => 'Ana Lima',
+        ])->assertRedirect();
+
+        $this->actingAs($admin)
+            ->delete(route('admin.client-evaluations.destroy', $evaluation))
+            ->assertRedirect(route('admin.client-evaluations.index'))
+            ->assertSessionHas('success', 'Avaliação excluída.');
+
+        $this->assertDatabaseMissing('client_evaluations', ['id' => $evaluation->id]);
+        $this->get(route('client-evaluation.public', $token))->assertNotFound();
+
+        $this->actingAs($admin)
+            ->post(route('admin.client-evaluations.store'), $this->payload($company))
+            ->assertRedirect();
+
+        $this->assertSame(1, ClientEvaluation::query()->where('status', ClientEvaluationStatus::Pending)->count());
+    }
+
+    public function test_company_user_cannot_delete_admin_evaluation(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = $this->company('Cliente Iota');
+        $this->actingAs($admin)->post(route('admin.client-evaluations.store'), $this->payload($company));
+        $evaluation = ClientEvaluation::query()->firstOrFail();
+        $user = User::factory()->companyUser($company->id)->create();
+
+        $this->actingAs($user)
+            ->delete(route('admin.client-evaluations.destroy', $evaluation))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('client_evaluations', ['id' => $evaluation->id]);
+    }
+
     public function test_company_user_cannot_open_admin_evaluations(): void
     {
         $company = $this->company('Cliente Eta');

@@ -141,4 +141,13 @@ class ClientEvaluationController extends Controller
             ->route('admin.client-evaluations.show', $evaluation)
             ->with('success', 'E-mail enviado para '.$evaluation->respondent_email.'.');
     }
+
+    public function destroy(ClientEvaluation $evaluation): RedirectResponse
+    {
+        $evaluation->delete();
+
+        return redirect()
+            ->route('admin.client-evaluations.index')
+            ->with('success', 'Avaliação excluída.');
+    }
 }

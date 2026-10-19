@@ -4,7 +4,7 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { confirmDialog } from '@/composables/useConfirmDialog';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 const props = defineProps({
@@ -55,6 +55,16 @@ const sendEmail = async () => {
         return;
     }
     emailForm.post(route('admin.client-evaluations.email', props.evaluation.id));
+};
+
+const remove = async () => {
+    const confirmed = await confirmDialog(
+        `Excluir a avaliação de ${props.evaluation.company_name}?\n\nO link público deixa de funcionar e a resposta, se existir, é removida.`,
+    );
+    if (!confirmed) {
+        return;
+    }
+    router.delete(route('admin.client-evaluations.destroy', props.evaluation.id));
 };
 
 const scores = [
@@ -161,8 +171,9 @@ const scores = [
                     Este link não aceita mais respostas.
                 </div>
 
-                <div v-if="evaluation.can_replace" class="border-t border-slate-100 pt-4">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
                     <Link
+                        v-if="evaluation.can_replace"
                         :href="route('admin.client-evaluations.create', {
                             company_id: evaluation.company_id,
                             cycle_year: evaluation.cycle_year,
@@ -172,6 +183,13 @@ const scores = [
                     >
                         Gerar um novo link para este ciclo
                     </Link>
+                    <button
+                        type="button"
+                        class="ml-auto text-sm font-semibold text-red-600 hover:underline"
+                        @click="remove"
+                    >
+                        Excluir avaliação
+                    </button>
                 </div>
             </section>
 
