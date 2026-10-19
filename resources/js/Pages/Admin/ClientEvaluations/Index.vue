@@ -3,8 +3,9 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PaginationBar from '@/Components/PaginationBar.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
+import { MagnifyingGlassIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { ref } from 'vue';
 
 const props = defineProps({
@@ -49,6 +50,16 @@ const statusClass = (value) => {
         return 'bg-amber-50 text-amber-800 ring-amber-200';
     }
     return 'bg-slate-100 text-slate-600 ring-slate-200';
+};
+
+const remove = async (item) => {
+    const confirmed = await confirmDialog(
+        `Excluir a avaliação de ${item.company_name}?\n\nO link público deixa de funcionar e a resposta, se existir, é removida.`,
+    );
+    if (!confirmed) {
+        return;
+    }
+    router.delete(route('admin.client-evaluations.destroy', item.id), { preserveScroll: true });
 };
 </script>
 
@@ -118,6 +129,7 @@ const statusClass = (value) => {
                         <th class="px-4 py-3">Status</th>
                         <th class="px-4 py-3">NPS</th>
                         <th class="px-4 py-3">Validade</th>
+                        <th class="px-4 py-3 text-right">Ações</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -148,6 +160,16 @@ const statusClass = (value) => {
                             <span v-else>—</span>
                         </td>
                         <td class="px-4 py-3 text-slate-600">{{ formatDate(item.expires_at) }}</td>
+                        <td class="px-4 py-3 text-right">
+                            <button
+                                type="button"
+                                class="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
+                                title="Excluir"
+                                @click="remove(item)"
+                            >
+                                <TrashIcon class="h-4 w-4" />
+                            </button>
+                        </td>
                     </tr>
                 </tbody>
             </table>

@@ -152,6 +152,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('client-evaluations.store');
         Route::get('avaliacoes-clientes/{evaluation}', [ClientEvaluationController::class, 'show'])
             ->name('client-evaluations.show');
+        Route::delete('avaliacoes-clientes/{evaluation}', [ClientEvaluationController::class, 'destroy'])
+            ->name('client-evaluations.destroy');
         Route::post('avaliacoes-clientes/{evaluation}/email', [ClientEvaluationController::class, 'sendEmail'])
             ->name('client-evaluations.email');
 
