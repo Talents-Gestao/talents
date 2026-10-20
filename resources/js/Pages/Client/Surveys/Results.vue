@@ -214,6 +214,12 @@ onUnmounted(() => {
                     >
                         Exportar CSV
                     </a>
+                    <Link
+                        :href="route('client.surveys.psychosocial-dashboard', survey.id)"
+                        class="rounded-md border border-talents-300 px-3 py-1 text-sm font-semibold text-talents-900"
+                    >
+                        Painel gerencial
+                    </Link>
                     <Link :href="route('client.surveys.show', survey.id)" class="text-sm text-talents-700 hover:underline">Voltar</Link>
                 </div>
             </div>

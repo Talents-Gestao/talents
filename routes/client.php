@@ -17,6 +17,7 @@ use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
 use App\Http\Controllers\Client\ExportController;
 use App\Http\Controllers\Client\ImportController;
 use App\Http\Controllers\Client\PositionController;
+use App\Http\Controllers\Client\PsychosocialDashboardController;
 use App\Http\Controllers\Client\ReportController;
 use App\Http\Controllers\Client\RhidApiController;
 use App\Http\Controllers\Client\RhidComplianceController;
@@ -96,6 +97,9 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('surveys/{survey}/reports/action-plan', [ReportController::class, 'actionPlan'])->name('surveys.reports.action-plan');
         Route::get('surveys/{survey}/export/json', [ExportController::class, 'json'])->name('surveys.export.json');
         Route::get('surveys/{survey}/export/csv', [ExportController::class, 'csv'])->name('surveys.export.csv');
+        Route::get('surveys/{survey}/painel-psicossocial', [PsychosocialDashboardController::class, 'show'])->name('surveys.psychosocial-dashboard');
+        Route::get('surveys/{survey}/painel-psicossocial/export/csv', [PsychosocialDashboardController::class, 'exportCsv'])->name('surveys.psychosocial-dashboard.export.csv');
+        Route::get('surveys/{survey}/painel-psicossocial/export/json', [PsychosocialDashboardController::class, 'exportJson'])->name('surveys.psychosocial-dashboard.export.json');
     });
 
     Route::middleware(['strategic_calendar', 'can.module:calendario_estrategico'])->group(function () {
