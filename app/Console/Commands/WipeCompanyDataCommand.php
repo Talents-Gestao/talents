@@ -128,6 +128,11 @@ class WipeCompanyDataCommand extends Command
                 ? DB::table('survey_answers')->whereIn('survey_response_id', $responseIds)->count()
                 : 0;
             $counts['  → resultados (survey_results)'] = DB::table('survey_results')->whereIn('survey_id', $surveyIds)->count();
+            if (Schema::hasTable('survey_campaign_registrations')) {
+                $counts['  → cadastro técnico (survey_campaign_registrations)'] = DB::table('survey_campaign_registrations')
+                    ->where('company_id', $companyId)
+                    ->count();
+            }
             $counts['  → insights (survey_insights)'] = DB::table('survey_insights')->whereIn('survey_id', $surveyIds)->count();
             if (Schema::hasTable('ai_analyses')) {
                 $counts['  → análises de IA (ai_analyses)'] = DB::table('ai_analyses')->whereIn('survey_id', $surveyIds)->count();
@@ -181,6 +186,10 @@ class WipeCompanyDataCommand extends Command
 
     private function wipe(int $companyId): void
     {
+        if (Schema::hasTable('survey_campaign_registrations')) {
+            DB::table('survey_campaign_registrations')->where('company_id', $companyId)->delete();
+        }
+
         $surveyIds = DB::table('surveys')->where('company_id', $companyId)->pluck('id')->all();
         if (! empty($surveyIds)) {
             DB::table('surveys')->whereIn('id', $surveyIds)->delete();

@@ -6,6 +6,7 @@ use App\Services\SurveyInstrumentVersionResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -75,6 +76,11 @@ class Survey extends Model
     public function instrumentVersion(): BelongsTo
     {
         return $this->belongsTo(SurveyInstrumentVersion::class, 'instrument_version_id');
+    }
+
+    public function campaignRegistration(): HasOne
+    {
+        return $this->hasOne(SurveyCampaignRegistration::class);
     }
 
     public function responses(): HasMany
