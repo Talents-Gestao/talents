@@ -140,6 +140,20 @@ class WipeCompanyDataCommand extends Command
                     ? DB::table('psychosocial_measure_events')->whereIn('measure_id', $measureIds)->count()
                     : 0;
             }
+            if (Schema::hasTable('psychosocial_documents')) {
+                $documentIds = DB::table('psychosocial_documents')->where('company_id', $companyId)->pluck('id');
+                $versionIds = $documentIds->isNotEmpty()
+                    ? DB::table('psychosocial_document_versions')->whereIn('document_id', $documentIds)->pluck('id')
+                    : collect();
+                $counts['  → documentos (psychosocial_documents)'] = $documentIds->count();
+                $counts['  → versões de documento (psychosocial_document_versions)'] = $versionIds->count();
+                $counts['  → validações de documento (psychosocial_document_validations)'] = $versionIds->isNotEmpty()
+                    ? DB::table('psychosocial_document_validations')->whereIn('version_id', $versionIds)->count()
+                    : 0;
+                $counts['  → anexos de documento (psychosocial_document_attachments)'] = $versionIds->isNotEmpty()
+                    ? DB::table('psychosocial_document_attachments')->whereIn('version_id', $versionIds)->count()
+                    : 0;
+            }
             $counts['  → insights (survey_insights)'] = DB::table('survey_insights')->whereIn('survey_id', $surveyIds)->count();
             if (Schema::hasTable('ai_analyses')) {
                 $counts['  → análises de IA (ai_analyses)'] = DB::table('ai_analyses')->whereIn('survey_id', $surveyIds)->count();
@@ -202,6 +216,22 @@ class WipeCompanyDataCommand extends Command
             if (! empty($measureIds)) {
                 DB::table('psychosocial_measure_events')->whereIn('measure_id', $measureIds)->delete();
                 DB::table('psychosocial_measures')->whereIn('id', $measureIds)->delete();
+            }
+        }
+
+        // Só linhas de banco; os arquivos de PDF, comprovantes e anexos ficam no disco.
+        if (Schema::hasTable('psychosocial_documents')) {
+            $documentIds = DB::table('psychosocial_documents')->where('company_id', $companyId)->pluck('id')->all();
+            if (! empty($documentIds)) {
+                $versionIds = DB::table('psychosocial_document_versions')->whereIn('document_id', $documentIds)->pluck('id')->all();
+                DB::table('psychosocial_documents')->whereIn('id', $documentIds)->update(['current_version_id' => null]);
+                if (! empty($versionIds)) {
+                    DB::table('psychosocial_document_attachments')->whereIn('version_id', $versionIds)->delete();
+                    DB::table('psychosocial_document_validations')->whereIn('version_id', $versionIds)->delete();
+                    DB::table('psychosocial_document_versions')->whereIn('id', $versionIds)->where('kind', 'validated')->delete();
+                    DB::table('psychosocial_document_versions')->whereIn('id', $versionIds)->delete();
+                }
+                DB::table('psychosocial_documents')->whereIn('id', $documentIds)->delete();
             }
         }
 
