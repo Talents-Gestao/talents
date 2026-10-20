@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Survey;
+use App\Models\SurveyMethodVersion;
 use App\Models\SurveyResult;
 use App\Models\SurveyTemplateQuestion;
 use App\Support\Nr1Scoring;
@@ -11,6 +12,9 @@ use Illuminate\Support\Facades\DB;
 
 class SurveyResultCalculator
 {
+    /** Este calculador implementa só production_v1; as linhas gravadas registram isso. */
+    private int $methodVersionId;
+
     public function recalculate(Survey $survey): void
     {
         $survey->load(['template.sections.questions', 'company.departments']);
@@ -19,6 +23,8 @@ class SurveyResultCalculator
         $questionsById = $survey->template->sections
             ->flatMap(fn ($s) => $s->questions)
             ->keyBy('id');
+
+        $this->methodVersionId = SurveyMethodVersion::idForCode(SurveyMethodVersion::CODE_PRODUCTION_V1);
 
         DB::transaction(function () use ($survey, $questionsById) {
             $survey->results()->delete();
@@ -118,6 +124,7 @@ class SurveyResultCalculator
             'average_score' => round($avg, 3),
             'risk_level' => Nr1Scoring::riskLevel($avg),
             'respondent_count' => count($scores),
+            'method_version_id' => $this->methodVersionId,
             'meta' => [
                 'section_title' => $sectionTitle,
             ],

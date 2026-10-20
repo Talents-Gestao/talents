@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SurveyInstrumentVersionResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,7 +25,23 @@ class Survey extends Model
         'answers_reconstructed_at',
         'deleted_by',
         'archive_path',
+        'method_version_id',
+        'instrument_version_id',
     ];
+
+    protected static function booted(): void
+    {
+        // Campanha sem método explícito nasce em production_v1; talents39_v1 só por escolha explícita.
+        static::creating(function (Survey $survey): void {
+            $survey->method_version_id ??= SurveyMethodVersion::idForCode(SurveyMethodVersion::CODE_PRODUCTION_V1);
+
+            if ($survey->instrument_version_id === null && $survey->survey_template_id !== null) {
+                $survey->instrument_version_id = app(SurveyInstrumentVersionResolver::class)
+                    ->resolveForTemplate((int) $survey->survey_template_id)
+                    ->id;
+            }
+        });
+    }
 
     protected function casts(): array
     {
@@ -48,6 +65,16 @@ class Survey extends Model
     public function template(): BelongsTo
     {
         return $this->belongsTo(SurveyTemplate::class, 'survey_template_id');
+    }
+
+    public function methodVersion(): BelongsTo
+    {
+        return $this->belongsTo(SurveyMethodVersion::class, 'method_version_id');
+    }
+
+    public function instrumentVersion(): BelongsTo
+    {
+        return $this->belongsTo(SurveyInstrumentVersion::class, 'instrument_version_id');
     }
 
     public function responses(): HasMany
