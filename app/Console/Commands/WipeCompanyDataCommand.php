@@ -133,6 +133,13 @@ class WipeCompanyDataCommand extends Command
                     ->where('company_id', $companyId)
                     ->count();
             }
+            if (Schema::hasTable('psychosocial_measures')) {
+                $measureIds = DB::table('psychosocial_measures')->where('company_id', $companyId)->pluck('id');
+                $counts['  → medidas (psychosocial_measures)'] = $measureIds->count();
+                $counts['  → histórico de medidas (psychosocial_measure_events)'] = $measureIds->isNotEmpty()
+                    ? DB::table('psychosocial_measure_events')->whereIn('measure_id', $measureIds)->count()
+                    : 0;
+            }
             $counts['  → insights (survey_insights)'] = DB::table('survey_insights')->whereIn('survey_id', $surveyIds)->count();
             if (Schema::hasTable('ai_analyses')) {
                 $counts['  → análises de IA (ai_analyses)'] = DB::table('ai_analyses')->whereIn('survey_id', $surveyIds)->count();
@@ -188,6 +195,14 @@ class WipeCompanyDataCommand extends Command
     {
         if (Schema::hasTable('survey_campaign_registrations')) {
             DB::table('survey_campaign_registrations')->where('company_id', $companyId)->delete();
+        }
+
+        if (Schema::hasTable('psychosocial_measures')) {
+            $measureIds = DB::table('psychosocial_measures')->where('company_id', $companyId)->pluck('id')->all();
+            if (! empty($measureIds)) {
+                DB::table('psychosocial_measure_events')->whereIn('measure_id', $measureIds)->delete();
+                DB::table('psychosocial_measures')->whereIn('id', $measureIds)->delete();
+            }
         }
 
         $surveyIds = DB::table('surveys')->where('company_id', $companyId)->pluck('id')->all();
