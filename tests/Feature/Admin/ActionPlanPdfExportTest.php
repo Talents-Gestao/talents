@@ -44,14 +44,26 @@ class ActionPlanPdfExportTest extends TestCase
             'deptOveralls' => [],
             'deptSectionsByDepartment' => [],
             'departmentParticipation' => [],
-            'questionDistributions' => [],
-            'insights' => collect(),
+            'questionDistributions' => [[
+                'section_title' => 'Demandas',
+                'questions' => [[
+                    'body' => 'Pergunta que não deve ir ao PDF',
+                    'total' => 2,
+                    'response_scale' => 'frequency',
+                    'counts' => [1 => 1, 2 => 1, 3 => 0, 4 => 0, 5 => 0],
+                ]],
+            ]],
+            'insights' => collect([(object) ['message' => 'Insight que não deve ir ao PDF']]),
             'radarSvg' => null,
             'heatmapCell' => fn () => null,
             'likertLabel' => fn () => '',
         ])->render();
 
         $this->assertStringNotContainsString('<h2>Ações</h2>', $html);
+        $this->assertStringNotContainsString('<h2>Detalhamento por pergunta</h2>', $html);
+        $this->assertStringNotContainsString('Pergunta que não deve ir ao PDF', $html);
+        $this->assertStringNotContainsString('<h2>Insights</h2>', $html);
+        $this->assertStringNotContainsString('Insight que não deve ir ao PDF', $html);
         $this->assertStringNotContainsString('Ação de teste PDF', $html);
         $this->assertStringNotContainsString('validado pela equipe de SST', $html);
         $this->assertStringContainsString('CNPJ: '.$fx->company->cnpj, $html);

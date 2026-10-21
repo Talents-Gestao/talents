@@ -243,54 +243,6 @@
         </table>
     @endif
 
-    @if(count($questionDistributions) > 0)
-        <div class="page-break"></div>
-        <h2>Detalhamento por pergunta</h2>
-        <p class="muted">Quantidade de votos por opção da escala, no total da campanha.</p>
-
-        @foreach($questionDistributions as $section)
-            <h3>{{ $section['section_title'] }}</h3>
-            @foreach($section['questions'] as $question)
-                <p style="margin: 10px 0 2px;"><strong>{{ $question['body'] }}</strong></p>
-                <p class="muted" style="margin: 0 0 6px;">
-                    {{ $question['total'] }} resposta{{ $question['total'] === 1 ? '' : 's' }}
-                    · Escala de {{ ($question['response_scale'] ?? 'frequency') === 'agreement' ? 'concordância' : 'frequência' }}
-                </p>
-                @if($question['total'] > 0)
-                    @foreach([1, 2, 3, 4, 5] as $value)
-                        @php
-                            $count = (int) ($question['counts'][$value] ?? 0);
-                            $pct = $question['total'] > 0 ? round(($count / $question['total']) * 100) : 0;
-                            $barPct = $question['total'] > 0
-                                ? max(($count / $question['total']) * 100, $count > 0 ? 2 : 0)
-                                : 0;
-                        @endphp
-                        <div style="margin: 3px 0;">
-                            <span style="display: inline-block; width: 28%; font-size: 9px; color: #475569;">
-                                {{ $likertLabel($question['response_scale'] ?? 'frequency', $value) }}
-                            </span>
-                            <span class="likert-track">
-                                <span class="likert-fill" style="display: inline-block; width: {{ number_format($barPct, 1, '.', '') }}%;"></span>
-                            </span>
-                            <span style="font-size: 9px; margin-left: 6px;">{{ $count }} ({{ $pct }}%)</span>
-                        </div>
-                    @endforeach
-                @else
-                    <p class="muted">Nenhuma resposta ainda.</p>
-                @endif
-            @endforeach
-        @endforeach
-    @endif
-
-    <h2>Insights</h2>
-    <ul>
-        @forelse($insights as $insight)
-            <li>{{ is_object($insight) ? ($insight->message ?? '') : ($insight['message'] ?? '') }}</li>
-        @empty
-            <li class="muted">Nenhum insight gerado ainda.</li>
-        @endforelse
-    </ul>
-
     @if(!empty($technicalOpinion))
         <h2>Parecer técnico</h2>
         <div class="opinion">
