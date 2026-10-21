@@ -1,0 +1,206 @@
+<script setup>
+import { useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
+import { formatDateTime } from '@/utils/dateOnly';
+
+const props = defineProps({
+    companyId: { type: Number, required: true },
+    surveyId: { type: Number, required: true },
+    documents: { type: Array, default: () => [] },
+});
+
+const sealLabels = {
+    pending_validation: 'Aguardando validação',
+    validated: 'Validado',
+};
+
+const pdfLabels = {
+    queued: 'PDF em geração',
+    ready: 'PDF pronto',
+    failed: 'PDF falhou',
+};
+
+const openFormType = ref(null);
+
+const form = useForm({
+    name: '',
+    role: '',
+    registry: '',
+    date: '',
+    proof: null,
+});
+
+const toggleForm = (type) => {
+    openFormType.value = openFormType.value === type ? null : type;
+    form.reset();
+    form.clearErrors();
+};
+
+const onProofChange = (event) => {
+    form.proof = event.target.files?.[0] ?? null;
+};
+
+const submitInformed = (type) => {
+    form.post(route('admin.companies.surveys.psychosocial-documents.validate-informed', [props.companyId, props.surveyId, type]), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            openFormType.value = null;
+            form.reset();
+        },
+    });
+};
+
+const dossierForm = useForm({
+    attachments: [],
+});
+
+const addDossierRow = () => {
+    dossierForm.attachments.push({ kind: 'aep', file: null });
+};
+
+const removeDossierRow = (index) => {
+    dossierForm.attachments.splice(index, 1);
+};
+
+const onDossierFile = (index, event) => {
+    dossierForm.attachments[index].file = event.target.files?.[0] ?? null;
+};
+
+const submitDossier = () => {
+    dossierForm.post(route('admin.companies.surveys.evidence-dossier.release', [props.companyId, props.surveyId]), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => dossierForm.reset(),
+    });
+};
+</script>
+
+<template>
+    <section class="mb-6 rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm sm:p-6">
+        <h2 class="text-base font-semibold text-slate-900">Documentos liberados</h2>
+        <p class="mt-1 text-sm text-slate-600">
+            O Admin Talents registra a validação informada pelo responsável técnico, com comprovante. A validação no sistema é feita pelo cliente.
+        </p>
+
+        <ul class="mt-4 divide-y divide-slate-100">
+            <li v-for="doc in documents" :key="doc.type" class="py-3">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-medium text-slate-900">{{ doc.label }}</p>
+                        <p v-if="doc.version_number" class="text-xs text-slate-500">
+                            Versão {{ doc.version_number }} · {{ sealLabels[doc.seal] ?? doc.seal }} · {{ pdfLabels[doc.pdf_status] ?? doc.pdf_status }}
+                            · registrada em {{ formatDateTime(doc.released_at) }}
+                        </p>
+                        <p v-else class="text-xs text-slate-500">Ainda não liberado.</p>
+                        <ul v-if="doc.attachments?.length" class="mt-1 space-y-1">
+                            <li v-for="attachment in doc.attachments" :key="attachment.id" class="text-xs text-slate-600">
+                                {{ attachment.kind_label }} —
+                                <a
+                                    :href="route('admin.companies.surveys.evidence-dossier.attachments.download', [companyId, surveyId, attachment.id])"
+                                    class="font-medium text-talents-700 hover:underline"
+                                >
+                                    {{ attachment.file_name }}
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <a
+                            v-if="doc.pdf_status === 'ready'"
+                            :href="route('admin.companies.surveys.psychosocial-documents.download', [companyId, surveyId, doc.type])"
+                            class="inline-flex items-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                            Baixar PDF
+                        </a>
+                        <button
+                            v-if="doc.validatable"
+                            type="button"
+                            class="inline-flex items-center rounded-full border border-talents-300 bg-white px-3 py-1.5 text-xs font-medium text-talents-900 hover:bg-talents-50"
+                            @click="toggleForm(doc.type)"
+                        >
+                            Registrar validação informada
+                        </button>
+                    </div>
+                </div>
+
+                <form
+                    v-if="openFormType === doc.type"
+                    class="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2"
+                    @submit.prevent="submitInformed(doc.type)"
+                >
+                    <label class="text-sm text-slate-700">
+                        Nome do responsável
+                        <input v-model="form.name" type="text" required class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
+                        <span v-if="form.errors.name" class="text-xs text-red-600">{{ form.errors.name }}</span>
+                    </label>
+                    <label class="text-sm text-slate-700">
+                        Função
+                        <input v-model="form.role" type="text" required class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
+                        <span v-if="form.errors.role" class="text-xs text-red-600">{{ form.errors.role }}</span>
+                    </label>
+                    <label class="text-sm text-slate-700">
+                        Registro profissional (opcional)
+                        <input v-model="form.registry" type="text" class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
+                        <span v-if="form.errors.registry" class="text-xs text-red-600">{{ form.errors.registry }}</span>
+                    </label>
+                    <label class="text-sm text-slate-700">
+                        Data da validação
+                        <input v-model="form.date" type="date" required class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
+                        <span v-if="form.errors.date" class="text-xs text-red-600">{{ form.errors.date }}</span>
+                    </label>
+                    <label class="text-sm text-slate-700 sm:col-span-2">
+                        Comprovante (PDF, JPG ou PNG)
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png" required class="mt-1 block w-full text-sm" @change="onProofChange" />
+                        <span v-if="form.errors.proof" class="text-xs text-red-600">{{ form.errors.proof }}</span>
+                    </label>
+                    <div class="flex justify-end gap-2 sm:col-span-2">
+                        <button type="button" class="rounded-full px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100" @click="toggleForm(doc.type)">
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="form.processing"
+                            class="rounded-full bg-talents-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-talents-800 disabled:opacity-60"
+                        >
+                            Registrar validação
+                        </button>
+                    </div>
+                </form>
+            </li>
+        </ul>
+
+        <form
+            class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4"
+            @submit.prevent="submitDossier"
+        >
+            <h3 class="text-sm font-semibold text-slate-900">Liberar dossiê de evidências</h3>
+            <p class="mt-1 text-xs text-slate-600">
+                Os anexos são opcionais. Sem arquivo, o dossiê registra «Nenhum anexo registrado». O PDF congela a lista desta liberação.
+            </p>
+            <div v-for="(row, index) in dossierForm.attachments" :key="index" class="mt-3 flex flex-wrap items-center gap-2">
+                <select v-model="row.kind" class="rounded-lg border-slate-300 text-sm">
+                    <option value="aep">AEP</option>
+                    <option value="observation">Observação</option>
+                    <option value="inventory">Inventário</option>
+                    <option value="other">Outro</option>
+                </select>
+                <input type="file" class="text-sm" @change="onDossierFile(index, $event)" />
+                <button type="button" class="text-sm text-red-700 hover:underline" @click="removeDossierRow(index)">Remover</button>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+                <button type="button" class="text-sm font-medium text-talents-700 hover:underline" @click="addDossierRow">
+                    Adicionar anexo
+                </button>
+                <button
+                    type="submit"
+                    :disabled="dossierForm.processing"
+                    class="rounded-full bg-talents-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-talents-800 disabled:opacity-60"
+                >
+                    Liberar dossiê
+                </button>
+            </div>
+            <p v-if="dossierForm.errors.attachments" class="mt-2 text-xs text-red-600">{{ dossierForm.errors.attachments }}</p>
+        </form>
+    </section>
+</template>

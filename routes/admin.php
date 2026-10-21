@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Admin\ActionPlanAdminController;
+use App\Http\Controllers\Admin\ExecutiveBriefAdminController;
+use App\Http\Controllers\Admin\PsychosocialDocumentAdminController;
+use App\Http\Controllers\Admin\SurveyCampaignRegistrationAdminController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AiSettingsController;
 use App\Http\Controllers\Admin\Commercial\ContractController as CommercialContractController;
@@ -175,6 +178,32 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');
         Route::get('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'edit'])
             ->name('companies.surveys.action-plan.edit');
+        Route::get('companies/{company}/surveys/{survey}/cadastro-tecnico', [SurveyCampaignRegistrationAdminController::class, 'edit'])
+            ->name('companies.surveys.registration.edit');
+        Route::put('companies/{company}/surveys/{survey}/cadastro-tecnico', [SurveyCampaignRegistrationAdminController::class, 'update'])
+            ->name('companies.surveys.registration.update');
+        Route::post('companies/{company}/surveys/{survey}/resumo-executivo/liberar', [ExecutiveBriefAdminController::class, 'release'])
+            ->name('companies.surveys.executive-brief.release');
+        Route::get('companies/{company}/surveys/{survey}/resumo-executivo/download', [ExecutiveBriefAdminController::class, 'download'])
+            ->name('companies.surveys.executive-brief.download');
+        Route::post('companies/{company}/surveys/{survey}/subsidio-pgr/liberar', [PsychosocialDocumentAdminController::class, 'releaseSubsidy'])
+            ->name('companies.surveys.pgr-subsidy.release');
+        Route::post('companies/{company}/surveys/{survey}/dossie/liberar', [PsychosocialDocumentAdminController::class, 'releaseDossier'])
+            ->name('companies.surveys.evidence-dossier.release');
+        Route::get('companies/{company}/surveys/{survey}/dossie/anexos/{attachment}', [PsychosocialDocumentAdminController::class, 'downloadAttachment'])
+            ->name('companies.surveys.evidence-dossier.attachments.download');
+        Route::get('companies/{company}/surveys/{survey}/medidas', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'edit'])
+            ->name('companies.surveys.measures.edit');
+        Route::post('companies/{company}/surveys/{survey}/medidas', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'store'])
+            ->name('companies.surveys.measures.store');
+        Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateStatus'])
+            ->name('companies.surveys.measures.status');
+        Route::get('companies/{company}/surveys/{survey}/documentos/{type}/download', [PsychosocialDocumentAdminController::class, 'download'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->name('companies.surveys.psychosocial-documents.download');
+        Route::post('companies/{company}/surveys/{survey}/documentos/{type}/validacao-informada', [PsychosocialDocumentAdminController::class, 'validateInformed'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->name('companies.surveys.psychosocial-documents.validate-informed');
         Route::get('companies/{company}/surveys/{survey}/action-plan/pdf', [ActionPlanAdminController::class, 'pdf'])
             ->name('companies.surveys.action-plan.pdf');
         Route::match(['get', 'post'], 'companies/{company}/surveys/{survey}/action-plan/document-pdf', [ActionPlanAdminController::class, 'documentPdf'])

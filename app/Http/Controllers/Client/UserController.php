@@ -267,10 +267,7 @@ class UserController extends Controller
             }
         }
 
-        $actions = [];
-        foreach (PermissionAction::all() as $a) {
-            $actions[] = ['value' => $a->value, 'label' => $a->label()];
-        }
+        $actions = array_map(fn (PermissionAction $a) => $a->toMatrixOption(), PermissionAction::forCompanyMatrix());
 
         return [
             'permissionModules' => $modules,

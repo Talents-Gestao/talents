@@ -15,6 +15,9 @@ class SurveyResult extends Model
         'risk_level',
         'respondent_count',
         'meta',
+        'method_version_id',
+        'score_numerator',
+        'score_denominator',
     ];
 
     protected function casts(): array
@@ -37,5 +40,10 @@ class SurveyResult extends Model
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function methodVersion(): BelongsTo
+    {
+        return $this->belongsTo(SurveyMethodVersion::class, 'method_version_id');
     }
 }
