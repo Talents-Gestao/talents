@@ -61,7 +61,7 @@ class ReportGenerator
         }
     }
 
-    private function applyDompdfOptions(\Barryvdh\DomPDF\PDF $pdf): \Barryvdh\DomPDF\PDF
+    public function applyDompdfOptions(\Barryvdh\DomPDF\PDF $pdf): \Barryvdh\DomPDF\PDF
     {
         $this->ensureDompdfWritableDirs();
 
