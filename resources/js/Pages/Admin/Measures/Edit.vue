@@ -1,5 +1,6 @@
 <script setup>
 import FormPageHeader from '@/Components/FormPageHeader.vue';
+import InfoTooltip from '@/Components/InfoTooltip.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -74,34 +75,49 @@ const saveStatus = (measure) => {
             <p class="mt-1 text-sm text-slate-600">A medida nasce como «A aprovar». Marcar «Implantada» exige o seu usuário, no status da lista.</p>
 
             <form class="mt-4 grid gap-4 sm:grid-cols-2" @submit.prevent="submit">
-                <label class="text-sm text-slate-700">
-                    Fator
-                    <input v-model="form.factor_label" type="text" required class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
+                <div>
+                    <div class="flex items-center gap-1">
+                        <label class="text-sm text-slate-700" for="factor_label">Fator</label>
+                        <InfoTooltip text="Fator psicossocial a que a medida se refere. Esse nome sai no subsídio AEP/PGR e no dossiê." />
+                    </div>
+                    <input id="factor_label" v-model="form.factor_label" type="text" required class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
                     <InputError class="mt-1" :message="form.errors.factor_label" />
-                </label>
-                <label class="text-sm text-slate-700">
-                    Base da evidência
-                    <select v-model="form.evidence_basis" class="mt-1 block w-full rounded-lg border-slate-300 text-sm">
+                </div>
+                <div>
+                    <div class="flex items-center gap-1">
+                        <label class="text-sm text-slate-700" for="evidence_basis">Base da evidência</label>
+                        <InfoTooltip text="Indício do questionário é só o que a pesquisa apontou. Fator validado é quando o responsável técnico já confirmou aquele fator." />
+                    </div>
+                    <select id="evidence_basis" v-model="form.evidence_basis" class="mt-1 block w-full rounded-lg border-slate-300 text-sm">
                         <option value="questionnaire_indication">Indício do questionário</option>
                         <option value="validated_factor">Fator validado</option>
                     </select>
                     <InputError class="mt-1" :message="form.errors.evidence_basis" />
-                </label>
-                <label class="text-sm text-slate-700 sm:col-span-2">
-                    Medida
-                    <textarea v-model="form.measure_description" required rows="3" class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
+                </div>
+                <div class="sm:col-span-2">
+                    <div class="flex items-center gap-1">
+                        <label class="text-sm text-slate-700" for="measure_description">Medida</label>
+                        <InfoTooltip text="Ação proposta para o fator. Entra no plano que acompanha o subsídio. Não preenche gravidade nem probabilidade do inventário." />
+                    </div>
+                    <textarea id="measure_description" v-model="form.measure_description" required rows="3" class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
                     <InputError class="mt-1" :message="form.errors.measure_description" />
-                </label>
-                <label class="text-sm text-slate-700">
-                    Responsável (texto)
-                    <input v-model="form.responsible_text" type="text" class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
+                </div>
+                <div>
+                    <div class="flex items-center gap-1">
+                        <label class="text-sm text-slate-700" for="responsible_text">Responsável (texto)</label>
+                        <InfoTooltip text="Nome ou área que vai executar a medida. É um texto livre e não vincula um usuário do sistema." />
+                    </div>
+                    <input id="responsible_text" v-model="form.responsible_text" type="text" class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
                     <InputError class="mt-1" :message="form.errors.responsible_text" />
-                </label>
-                <label class="text-sm text-slate-700">
-                    Prazo sugerido
-                    <input v-model="form.suggested_due_date" type="date" class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
+                </div>
+                <div>
+                    <div class="flex items-center gap-1">
+                        <label class="text-sm text-slate-700" for="suggested_due_date">Prazo sugerido</label>
+                        <InfoTooltip text="Data sugerida para a medida. Não é o prazo oficial do inventário do PGR." />
+                    </div>
+                    <input id="suggested_due_date" v-model="form.suggested_due_date" type="date" class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
                     <InputError class="mt-1" :message="form.errors.suggested_due_date" />
-                </label>
+                </div>
                 <div class="sm:col-span-2">
                     <PrimaryButton :disabled="form.processing">Registrar medida</PrimaryButton>
                 </div>
@@ -119,7 +135,8 @@ const saveStatus = (measure) => {
                         <p class="mt-1 text-xs text-slate-500">{{ measure.status_label }}</p>
                     </div>
                     <form class="flex items-center gap-2" @submit.prevent="saveStatus(measure)">
-                        <select v-model="selectedStatus[measure.id]" class="rounded-lg border-slate-300 text-sm">
+                        <InfoTooltip text="A aprovar ainda depende de decisão. Implantada só pode ser marcada por quem está logado e grava essa pessoa no registro." />
+                        <select v-model="selectedStatus[measure.id]" class="rounded-lg border-slate-300 text-sm" :aria-label="`Status de ${measure.factor_label}`">
                             <option v-for="(label, value) in statuses" :key="value" :value="value">{{ label }}</option>
                         </select>
                         <button
