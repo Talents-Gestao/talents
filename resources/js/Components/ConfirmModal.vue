@@ -21,6 +21,14 @@ const state = useConfirmDialogState();
             >
                 {{ state.message }}
             </p>
+            <input
+                v-if="state.mode === 'prompt'"
+                v-model="state.inputValue"
+                type="text"
+                autofocus
+                class="mt-4 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                @keydown.enter.prevent="acceptConfirmDialog"
+            />
             <div class="mt-6 flex justify-end gap-2">
                 <button
                     type="button"

@@ -9,6 +9,7 @@ import DangerButton from '@/Components/DangerButton.vue';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { confirmDialog } from '@/composables/useConfirmDialog';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
@@ -53,11 +54,18 @@ const releasingPgrSubsidy = ref(false);
 
 const pgrSubsidy = computed(() => props.psychosocialDocuments.find((doc) => doc.type === 'pgr_subsidy') ?? null);
 
-const releasePgrSubsidy = () => {
-    const message = pgrSubsidy.value?.version_number
-        ? `Liberar uma nova versão do subsídio AEP/PGR? A versão ${pgrSubsidy.value.version_number} continua registrada.`
-        : 'Liberar o subsídio AEP/PGR desta campanha? O conteúdo fica congelado nesta versão.';
-    if (!window.confirm(message)) {
+const releasePgrSubsidy = async () => {
+    const version = pgrSubsidy.value?.version_number;
+    const confirmed = await confirmDialog({
+        title: version ? 'Liberar nova versão do subsídio AEP/PGR?' : 'Liberar o subsídio AEP/PGR?',
+        message: version
+            ? `A versão ${version} continua registrada. O conteúdo novo fica congelado nesta versão.`
+            : 'O conteúdo fica congelado nesta versão.',
+        confirmLabel: 'Liberar',
+        cancelLabel: 'Cancelar',
+        variant: 'primary',
+    });
+    if (!confirmed) {
         return;
     }
     router.post(
@@ -71,11 +79,18 @@ const releasePgrSubsidy = () => {
     );
 };
 
-const releaseExecutiveBrief = () => {
-    const message = props.executiveBrief
-        ? `Liberar uma nova versão do resumo executivo? A versão ${props.executiveBrief.version_number} continua registrada.`
-        : 'Liberar o resumo executivo desta campanha? O conteúdo fica congelado nesta versão.';
-    if (!window.confirm(message)) {
+const releaseExecutiveBrief = async () => {
+    const version = props.executiveBrief?.version_number;
+    const confirmed = await confirmDialog({
+        title: version ? 'Liberar nova versão do resumo executivo?' : 'Liberar o resumo executivo?',
+        message: version
+            ? `A versão ${version} continua registrada. O conteúdo novo fica congelado nesta versão.`
+            : 'O conteúdo fica congelado nesta versão.',
+        confirmLabel: 'Liberar',
+        cancelLabel: 'Cancelar',
+        variant: 'primary',
+    });
+    if (!confirmed) {
         return;
     }
     router.post(
@@ -401,6 +416,7 @@ const submit = () => {
                 back-label="Voltar à empresa"
                 title="Parecer técnico e plano de ação (NR-1)"
                 :subtitle="`${company.name} — ${survey.title}`"
+                stack-actions
             >
                 <template #trailing>
                     <Link

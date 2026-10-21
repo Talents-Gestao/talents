@@ -8,11 +8,13 @@ import { reactive } from 'vue';
 /** @type {{ show: boolean } & ConfirmDialogOptions} */
 const state = reactive({
     show: false,
+    mode: /** @type {'confirm' | 'prompt'} */ ('confirm'),
     title: '',
     message: '',
     confirmLabel: 'Confirmar',
     cancelLabel: 'Cancelar',
     variant: /** @type {'danger' | 'primary'} */ ('danger'),
+    inputValue: '',
 });
 
 /** @type {((value: boolean) => void) | null} */
@@ -71,11 +73,18 @@ function splitMessage(raw) {
  * @param {string | Partial<ConfirmDialogOptions> & { message?: string }} messageOrOptions
  * @returns {Promise<boolean>}
  */
-export function confirmDialog(messageOrOptions) {
-    if (resolvePromise) {
-        resolvePromise(false);
-        resolvePromise = null;
+function dismissPending() {
+    if (!resolvePromise) {
+        return;
     }
+
+    const resolve = resolvePromise;
+    resolvePromise = null;
+    resolve(state.mode === 'prompt' ? null : false);
+}
+
+export function confirmDialog(messageOrOptions) {
+    dismissPending();
 
     /** @type {Partial<ConfirmDialogOptions> & { message?: string }} */
     let options;
@@ -103,11 +112,36 @@ export function confirmDialog(messageOrOptions) {
         };
     }
 
+    state.mode = 'confirm';
     state.title = options.title ?? '';
     state.message = options.message ?? '';
     state.confirmLabel = options.confirmLabel ?? 'Confirmar';
     state.cancelLabel = options.cancelLabel ?? 'Cancelar';
     state.variant = options.variant ?? 'danger';
+    state.inputValue = '';
+    state.show = true;
+
+    return new Promise((resolve) => {
+        resolvePromise = resolve;
+    });
+}
+
+/**
+ * Pede um texto no mesmo modal. Cancelar devolve null; confirmar devolve o texto, mesmo vazio.
+ *
+ * @param {{ title: string, message?: string, defaultValue?: string, confirmLabel?: string, cancelLabel?: string }} options
+ * @returns {Promise<string | null>}
+ */
+export function promptDialog(options) {
+    dismissPending();
+
+    state.mode = 'prompt';
+    state.title = options.title;
+    state.message = options.message ?? '';
+    state.confirmLabel = options.confirmLabel ?? 'Confirmar';
+    state.cancelLabel = options.cancelLabel ?? 'Cancelar';
+    state.variant = 'primary';
+    state.inputValue = options.defaultValue ?? '';
     state.show = true;
 
     return new Promise((resolve) => {
@@ -123,11 +157,11 @@ function finish(result) {
 }
 
 export function acceptConfirmDialog() {
-    finish(true);
+    finish(state.mode === 'prompt' ? state.inputValue : true);
 }
 
 export function cancelConfirmDialog() {
-    finish(false);
+    finish(state.mode === 'prompt' ? null : false);
 }
 
 export function useConfirmDialogState() {
