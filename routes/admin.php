@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ActionPlanAdminController;
+use App\Http\Controllers\Admin\SurveyCampaignRegistrationAdminController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AiSettingsController;
 use App\Http\Controllers\Admin\Commercial\ContractController as CommercialContractController;
@@ -175,6 +176,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');
         Route::get('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'edit'])
             ->name('companies.surveys.action-plan.edit');
+        Route::get('companies/{company}/surveys/{survey}/cadastro-tecnico', [SurveyCampaignRegistrationAdminController::class, 'edit'])
+            ->name('companies.surveys.registration.edit');
+        Route::put('companies/{company}/surveys/{survey}/cadastro-tecnico', [SurveyCampaignRegistrationAdminController::class, 'update'])
+            ->name('companies.surveys.registration.update');
         Route::get('companies/{company}/surveys/{survey}/action-plan/pdf', [ActionPlanAdminController::class, 'pdf'])
             ->name('companies.surveys.action-plan.pdf');
         Route::match(['get', 'post'], 'companies/{company}/surveys/{survey}/action-plan/document-pdf', [ActionPlanAdminController::class, 'documentPdf'])
