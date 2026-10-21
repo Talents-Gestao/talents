@@ -4,6 +4,7 @@ import { Head, Link } from '@inertiajs/vue3';
 
 defineProps({
     dashboard: { type: Object, required: true },
+    executiveBrief: { type: Object, default: null },
 });
 
 const bandClasses = {
@@ -27,6 +28,13 @@ const bandClass = (riskLevel) => bandClasses[riskLevel] ?? 'bg-gray-50 text-gray
                     <p class="text-sm text-gray-600">{{ dashboard.survey.title }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
+                    <a
+                        v-if="executiveBrief?.pdf_status === 'ready'"
+                        :href="route('client.surveys.executive-brief.download', dashboard.survey.id)"
+                        class="rounded-md bg-talents-700 px-3 py-1 text-sm font-semibold text-white"
+                    >
+                        Baixar resumo executivo
+                    </a>
                     <a
                         :href="route('client.surveys.psychosocial-dashboard.export.csv', dashboard.survey.id)"
                         class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"

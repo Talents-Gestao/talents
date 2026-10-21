@@ -93,6 +93,10 @@ class PsychosocialDocumentVersion extends Model
                 throw new LogicException('Versão de documento não pode ser alterada: '.implode(', ', $frozen).'.');
             }
 
+            if ($version->getOriginal('pdf_status') === self::PDF_READY && $version->isDirty(self::PDF_MUTABLE_FIELDS)) {
+                throw new LogicException('PDF pronto não pode ser substituído: arquivo e hash ficam congelados.');
+            }
+
             $version->assertPdfStatus();
         });
 

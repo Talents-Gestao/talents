@@ -14,6 +14,7 @@ use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
 use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
 use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
+use App\Http\Controllers\Client\ExecutiveBriefController;
 use App\Http\Controllers\Client\ExportController;
 use App\Http\Controllers\Client\ImportController;
 use App\Http\Controllers\Client\PositionController;
@@ -100,6 +101,7 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('surveys/{survey}/painel-psicossocial', [PsychosocialDashboardController::class, 'show'])->name('surveys.psychosocial-dashboard');
         Route::get('surveys/{survey}/painel-psicossocial/export/csv', [PsychosocialDashboardController::class, 'exportCsv'])->name('surveys.psychosocial-dashboard.export.csv');
         Route::get('surveys/{survey}/painel-psicossocial/export/json', [PsychosocialDashboardController::class, 'exportJson'])->name('surveys.psychosocial-dashboard.export.json');
+        Route::get('surveys/{survey}/resumo-executivo/download', [ExecutiveBriefController::class, 'download'])->name('surveys.executive-brief.download');
     });
 
     Route::middleware(['strategic_calendar', 'can.module:calendario_estrategico'])->group(function () {

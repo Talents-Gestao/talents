@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\PsychosocialAccessLog;
 use App\Models\Survey;
+use App\Services\ExecutiveBriefService;
 use App\Services\PsychosocialDashboardBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,13 +26,14 @@ class PsychosocialDashboardController extends Controller
     {
     }
 
-    public function show(Request $request, Survey $survey): Response
+    public function show(Request $request, Survey $survey, ExecutiveBriefService $executiveBriefService): Response
     {
         $this->authorizeSurvey($request, $survey);
         $this->logAccess($request, $survey, 'dashboard');
 
         return Inertia::render('Client/Surveys/PsychosocialDashboard', [
             'dashboard' => $this->builder->build($survey),
+            'executiveBrief' => $executiveBriefService->currentVersionSummary($survey),
         ]);
     }
 

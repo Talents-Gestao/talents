@@ -43,7 +43,28 @@ const props = defineProps({
     riskScenario: { type: String, default: null },
     riskScenarioLabel: { type: String, default: null },
     nr1Reports: { type: Object, default: () => ({ executive: null, technical_referral: null }) },
+    executiveBrief: { type: Object, default: null },
 });
+
+const releasingExecutiveBrief = ref(false);
+
+const releaseExecutiveBrief = () => {
+    const message = props.executiveBrief
+        ? `Liberar uma nova versão do resumo executivo? A versão ${props.executiveBrief.version_number} continua registrada.`
+        : 'Liberar o resumo executivo desta campanha? O conteúdo fica congelado nesta versão.';
+    if (!window.confirm(message)) {
+        return;
+    }
+    router.post(
+        route('admin.companies.surveys.executive-brief.release', [props.company.id, props.survey.id]),
+        {},
+        {
+            preserveScroll: true,
+            onStart: () => (releasingExecutiveBrief.value = true),
+            onFinish: () => (releasingExecutiveBrief.value = false),
+        },
+    );
+};
 
 const { canAdmin } = useAdminPermissions();
 const showDeleteSurveyModal = ref(false);
@@ -365,6 +386,21 @@ const submit = () => {
                     >
                         Cadastro técnico
                     </Link>
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-full border border-talents-300 bg-white px-4 py-2 text-sm font-medium text-talents-900 shadow-sm hover:bg-talents-50 disabled:opacity-60"
+                        :disabled="releasingExecutiveBrief"
+                        @click="releaseExecutiveBrief"
+                    >
+                        Liberar resumo executivo
+                    </button>
+                    <a
+                        v-if="executiveBrief?.pdf_status === 'ready'"
+                        :href="route('admin.companies.surveys.executive-brief.download', [company.id, survey.id])"
+                        class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                    >
+                        Baixar resumo executivo (v{{ executiveBrief.version_number }})
+                    </a>
                     <button
                         type="button"
                         class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"

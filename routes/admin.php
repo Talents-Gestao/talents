@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ActionPlanAdminController;
+use App\Http\Controllers\Admin\ExecutiveBriefAdminController;
 use App\Http\Controllers\Admin\SurveyCampaignRegistrationAdminController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AiSettingsController;
@@ -180,6 +181,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.registration.edit');
         Route::put('companies/{company}/surveys/{survey}/cadastro-tecnico', [SurveyCampaignRegistrationAdminController::class, 'update'])
             ->name('companies.surveys.registration.update');
+        Route::post('companies/{company}/surveys/{survey}/resumo-executivo/liberar', [ExecutiveBriefAdminController::class, 'release'])
+            ->name('companies.surveys.executive-brief.release');
+        Route::get('companies/{company}/surveys/{survey}/resumo-executivo/download', [ExecutiveBriefAdminController::class, 'download'])
+            ->name('companies.surveys.executive-brief.download');
         Route::get('companies/{company}/surveys/{survey}/action-plan/pdf', [ActionPlanAdminController::class, 'pdf'])
             ->name('companies.surveys.action-plan.pdf');
         Route::match(['get', 'post'], 'companies/{company}/surveys/{survey}/action-plan/document-pdf', [ActionPlanAdminController::class, 'documentPdf'])
