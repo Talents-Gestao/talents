@@ -1,4 +1,5 @@
 <script setup>
+import InfoTooltip from '@/Components/InfoTooltip.vue';
 import { formatDateTime } from '@/utils/dateOnly';
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { useForm } from '@inertiajs/vue3';
@@ -202,8 +203,12 @@ const submitDossier = () => {
                     :key="index"
                     class="grid items-end gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-[11rem_minmax(0,1fr)_auto] sm:p-4"
                 >
+                    <div>
+                        <span class="flex items-center gap-1 text-xs font-medium text-slate-500">
+                            Tipo
+                            <InfoTooltip text="AEP é o arquivo da avaliação ergonômica. Observação é o registro de campo. Inventário é o documento do PGR. Outro cobre a evidência restante." />
+                        </span>
                     <label class="block">
-                        <span class="text-xs font-medium text-slate-500">Tipo</span>
                         <select v-model="row.kind" class="mt-1 block w-full rounded-lg border-slate-300 text-sm shadow-sm">
                             <option value="aep">AEP</option>
                             <option value="observation">Observação</option>
@@ -211,6 +216,7 @@ const submitDossier = () => {
                             <option value="other">Outro</option>
                         </select>
                     </label>
+                    </div>
 
                     <label class="block min-w-0 cursor-pointer">
                         <span class="text-xs font-medium text-slate-500">Arquivo</span>
