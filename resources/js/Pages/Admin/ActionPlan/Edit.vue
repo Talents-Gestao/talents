@@ -15,7 +15,7 @@ import { EditorContent, useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { DocumentTextIcon } from '@heroicons/vue/24/outline';
+import { ArrowDownTrayIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
 import { marked } from 'marked';
 import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue';
 import { formatDateNumeric, formatDateTime } from '@/utils/dateOnly';
@@ -442,8 +442,9 @@ const submit = () => {
                     <a
                         v-if="executiveBrief?.pdf_status === 'ready'"
                         :href="route('admin.companies.surveys.executive-brief.download', [company.id, survey.id])"
-                        class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                        class="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
                     >
+                        <ArrowDownTrayIcon class="h-4 w-4" aria-hidden="true" />
                         Baixar resumo executivo (v{{ executiveBrief.version_number }})
                     </a>
                     <button
