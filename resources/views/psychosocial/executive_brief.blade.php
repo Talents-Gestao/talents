@@ -34,7 +34,10 @@
             a {{ $snapshot['survey']['ends_at'] ? \Illuminate\Support\Carbon::parse($snapshot['survey']['ends_at'])->format('d/m/Y') : '—' }}
         @endif
     </p>
-    <p class="muted">Liberado em {{ \Illuminate\Support\Carbon::parse($snapshot['released_at'])->format('d/m/Y H:i') }} &mdash; Aguardando validação do responsável técnico.</p>
+    <p class="muted">
+        Liberado em {{ \Illuminate\Support\Carbon::parse($snapshot['released_at'])->format('d/m/Y H:i') }} &mdash;
+        {{ empty($validation) ? 'Aguardando validação do responsável técnico.' : 'Versão validada; o conteúdo abaixo é o mesmo da versão liberada.' }}
+    </p>
 
     @if($snapshot['polarity_warning'])
         <div class="warning">{{ $snapshot['polarity_warning'] }}</div>
@@ -148,6 +151,8 @@
             <tr><th>Organização que aprova</th><td>{{ $orGap($registration['approving_organization_name']) }}</td></tr>
         </tbody>
     </table>
+
+    @include('psychosocial.partials.validation', ['validation' => $validation ?? null])
 
     <div class="footer">{{ $snapshot['reference'] }}</div>
 </body>

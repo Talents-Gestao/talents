@@ -3,6 +3,7 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import MiaNr1AdminPanel from '@/Components/MiaNr1AdminPanel.vue';
 import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
+import PsychosocialDocumentsAdminPanel from '@/Components/PsychosocialDocumentsAdminPanel.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import Modal from '@/Components/Modal.vue';
@@ -44,9 +45,31 @@ const props = defineProps({
     riskScenarioLabel: { type: String, default: null },
     nr1Reports: { type: Object, default: () => ({ executive: null, technical_referral: null }) },
     executiveBrief: { type: Object, default: null },
+    psychosocialDocuments: { type: Array, default: () => [] },
 });
 
 const releasingExecutiveBrief = ref(false);
+const releasingPgrSubsidy = ref(false);
+
+const pgrSubsidy = computed(() => props.psychosocialDocuments.find((doc) => doc.type === 'pgr_subsidy') ?? null);
+
+const releasePgrSubsidy = () => {
+    const message = pgrSubsidy.value?.version_number
+        ? `Liberar uma nova versão do subsídio AEP/PGR? A versão ${pgrSubsidy.value.version_number} continua registrada.`
+        : 'Liberar o subsídio AEP/PGR desta campanha? O conteúdo fica congelado nesta versão.';
+    if (!window.confirm(message)) {
+        return;
+    }
+    router.post(
+        route('admin.companies.surveys.pgr-subsidy.release', [props.company.id, props.survey.id]),
+        {},
+        {
+            preserveScroll: true,
+            onStart: () => (releasingPgrSubsidy.value = true),
+            onFinish: () => (releasingPgrSubsidy.value = false),
+        },
+    );
+};
 
 const releaseExecutiveBrief = () => {
     const message = props.executiveBrief
@@ -386,6 +409,12 @@ const submit = () => {
                     >
                         Cadastro técnico
                     </Link>
+                    <Link
+                        :href="route('admin.companies.surveys.measures.edit', [company.id, survey.id])"
+                        class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                    >
+                        Medidas
+                    </Link>
                     <button
                         type="button"
                         class="inline-flex items-center rounded-full border border-talents-300 bg-white px-4 py-2 text-sm font-medium text-talents-900 shadow-sm hover:bg-talents-50 disabled:opacity-60"
@@ -401,6 +430,14 @@ const submit = () => {
                     >
                         Baixar resumo executivo (v{{ executiveBrief.version_number }})
                     </a>
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-full border border-talents-300 bg-white px-4 py-2 text-sm font-medium text-talents-900 shadow-sm hover:bg-talents-50 disabled:opacity-60"
+                        :disabled="releasingPgrSubsidy"
+                        @click="releasePgrSubsidy"
+                    >
+                        Liberar subsídio AEP/PGR
+                    </button>
                     <button
                         type="button"
                         class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
@@ -430,6 +467,12 @@ const submit = () => {
         >
             {{ $page.props.flash.info }}
         </div>
+
+        <PsychosocialDocumentsAdminPanel
+            :company-id="company.id"
+            :survey-id="survey.id"
+            :documents="psychosocialDocuments"
+        />
 
         <!-- Cabeçalho de laudo -->
         <section class="mb-6 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm">

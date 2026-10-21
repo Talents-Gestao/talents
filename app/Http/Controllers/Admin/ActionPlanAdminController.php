@@ -15,6 +15,7 @@ use App\Support\Nr1RiskScenarioResolver;
 use App\Support\TechnicalOpinionDisclaimerStripper;
 use App\Services\ActionPlanGenerator;
 use App\Services\ExecutiveBriefService;
+use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\Nr1AiAnalyzer;
 use App\Services\ReportGenerator;
 use App\Services\SurveyResultsPresenter;
@@ -113,6 +114,7 @@ class ActionPlanAdminController extends Controller
             )['short_label'] ?? null,
             'nr1Reports' => $nr1Reports,
             'executiveBrief' => app(ExecutiveBriefService::class)->currentVersionSummary($survey),
+            'psychosocialDocuments' => app(PsychosocialDocumentService::class)->documentsSummary($survey),
             'plan' => $plan ? [
                 'id' => $plan->id,
                 'admin_published_at' => $plan->admin_published_at?->format('d/m/Y H:i'),

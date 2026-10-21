@@ -18,6 +18,13 @@ class PsychosocialDocumentAttachment extends Model
 
     public const KINDS = ['aep', 'observation', 'inventory', 'other'];
 
+    public const KIND_LABELS = [
+        'aep' => 'AEP',
+        'observation' => 'Observação',
+        'inventory' => 'Inventário',
+        'other' => 'Outro',
+    ];
+
     protected $fillable = [
         'version_id',
         'kind',

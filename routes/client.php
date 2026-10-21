@@ -19,6 +19,7 @@ use App\Http\Controllers\Client\ExportController;
 use App\Http\Controllers\Client\ImportController;
 use App\Http\Controllers\Client\PositionController;
 use App\Http\Controllers\Client\PsychosocialDashboardController;
+use App\Http\Controllers\Client\PsychosocialDocumentController;
 use App\Http\Controllers\Client\ReportController;
 use App\Http\Controllers\Client\RhidApiController;
 use App\Http\Controllers\Client\RhidComplianceController;
@@ -102,6 +103,15 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('surveys/{survey}/painel-psicossocial/export/csv', [PsychosocialDashboardController::class, 'exportCsv'])->name('surveys.psychosocial-dashboard.export.csv');
         Route::get('surveys/{survey}/painel-psicossocial/export/json', [PsychosocialDashboardController::class, 'exportJson'])->name('surveys.psychosocial-dashboard.export.json');
         Route::get('surveys/{survey}/resumo-executivo/download', [ExecutiveBriefController::class, 'download'])->name('surveys.executive-brief.download');
+        Route::get('surveys/{survey}/documentos/{type}/download', [PsychosocialDocumentController::class, 'download'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->name('surveys.psychosocial-documents.download');
+    });
+
+    Route::middleware('can.module:relatorios,validate')->group(function () {
+        Route::post('surveys/{survey}/documentos/{type}/validar', [PsychosocialDocumentController::class, 'validateInSystem'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->name('surveys.psychosocial-documents.validate');
     });
 
     Route::middleware(['strategic_calendar', 'can.module:calendario_estrategico'])->group(function () {

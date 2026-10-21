@@ -7,12 +7,13 @@ namespace App\Services;
 use App\Models\PsychosocialMeasure;
 use App\Models\Survey;
 use App\Models\SurveyCampaignRegistration;
+use App\Services\Psychosocial\DocumentSnapshotBuilder;
 
 /**
  * Snapshot congelado do resumo executivo. Tudo vem do painel gerencial (números gravados e cascata
  * já aplicada), do cadastro técnico e das medidas gravadas. Lacuna continua nula; nada é inferido.
  */
-class ExecutiveBriefSnapshotBuilder
+class ExecutiveBriefSnapshotBuilder implements DocumentSnapshotBuilder
 {
     public const SCHEMA = 'executive_brief.v1';
 
@@ -42,17 +43,36 @@ class ExecutiveBriefSnapshotBuilder
     {
     }
 
+    public function schema(): string
+    {
+        return self::SCHEMA;
+    }
+
+    public function assertReleasable(Survey $survey): void
+    {
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function build(Survey $survey): array
+    {
+        return $this->buildForSchema($survey, self::SCHEMA);
+    }
+
+    /**
+     * Base comum dos documentos novos: painel (cascata aplicada), cadastro técnico e medidas.
+     *
+     * @return array<string, mixed>
+     */
+    public function buildForSchema(Survey $survey, string $schema): array
     {
         $survey->loadMissing('company');
         $dashboard = $this->dashboardBuilder->build($survey);
         $registration = SurveyCampaignRegistration::query()->where('survey_id', $survey->id)->first();
 
         return [
-            'schema' => self::SCHEMA,
+            'schema' => $schema,
             'released_at' => now()->toIso8601String(),
             'company' => ['name' => $survey->company?->name],
             'survey' => [

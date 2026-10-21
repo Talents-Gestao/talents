@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Client;
 
+use App\Enums\PermissionAction;
+use App\Enums\PermissionModule;
 use App\Http\Controllers\Controller;
 use App\Models\PsychosocialAccessLog;
 use App\Models\Survey;
 use App\Services\ExecutiveBriefService;
+use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\PsychosocialDashboardBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,14 +29,26 @@ class PsychosocialDashboardController extends Controller
     {
     }
 
-    public function show(Request $request, Survey $survey, ExecutiveBriefService $executiveBriefService): Response
-    {
+    public function show(
+        Request $request,
+        Survey $survey,
+        ExecutiveBriefService $executiveBriefService,
+        PsychosocialDocumentService $documents,
+    ): Response {
         $this->authorizeSurvey($request, $survey);
         $this->logAccess($request, $survey, 'dashboard');
+
+        $user = $request->user();
+        $canValidate = $user->canAccess(PermissionModule::Relatorios, PermissionAction::Validate)
+            && ! $user->isSuperAdmin()
+            && ! $user->isOwner();
 
         return Inertia::render('Client/Surveys/PsychosocialDashboard', [
             'dashboard' => $this->builder->build($survey),
             'executiveBrief' => $executiveBriefService->currentVersionSummary($survey),
+            'psychosocialDocuments' => $documents->documentsSummary($survey),
+            'canValidate' => $canValidate,
+            'validationDeclaration' => PsychosocialDocumentService::IN_SYSTEM_DECLARATION,
         ]);
     }
 

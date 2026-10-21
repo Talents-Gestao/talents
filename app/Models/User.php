@@ -392,9 +392,15 @@ class User extends Authenticatable
 
         if ($this->isCompanyAdmin()) {
             $matrix = [];
-            $allActions = array_map(static fn (PermissionAction $a) => $a->value, PermissionAction::all());
             foreach ($active as $modVal) {
-                $matrix[$modVal] = $allActions;
+                $module = PermissionModule::from($modVal);
+                $matrix[$modVal] = array_values(array_map(
+                    static fn (PermissionAction $action) => $action->value,
+                    array_filter(
+                        PermissionAction::forCompanyMatrix(),
+                        static fn (PermissionAction $action) => $action->allowedFor($module),
+                    ),
+                ));
             }
 
             return $matrix;
