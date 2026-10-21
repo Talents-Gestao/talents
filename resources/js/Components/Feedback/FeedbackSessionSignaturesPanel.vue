@@ -2,6 +2,7 @@
 import FeedbackStatusBadge from '@/Components/Feedback/FeedbackStatusBadge.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { promptDialog } from '@/composables/useConfirmDialog';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { formatDateTime } from '@/utils/dateOnly';
 import { router } from '@inertiajs/vue3';
@@ -66,7 +67,12 @@ const copyLink = async (sig) => {
             copiedToken.value = null;
         }, 2000);
     } catch {
-        window.prompt('Copie o link de assinatura:', sig.sign_url);
+        await promptDialog({
+            title: 'Copie o link de assinatura',
+            message: 'A área de transferência não está disponível. Selecione o endereço abaixo.',
+            defaultValue: sig.sign_url,
+            confirmLabel: 'Fechar',
+        });
     }
 };
 </script>
