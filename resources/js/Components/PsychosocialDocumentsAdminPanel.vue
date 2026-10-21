@@ -1,7 +1,8 @@
 <script setup>
+import { formatDateTime } from '@/utils/dateOnly';
+import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import { formatDateTime } from '@/utils/dateOnly';
 
 const props = defineProps({
     companyId: { type: Number, required: true },
@@ -171,31 +172,76 @@ const submitDossier = () => {
         </ul>
 
         <form
-            class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4"
+            class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5"
             @submit.prevent="submitDossier"
         >
-            <h3 class="text-sm font-semibold text-slate-900">Liberar dossiê de evidências</h3>
-            <p class="mt-1 text-xs text-slate-600">
-                Os anexos são opcionais. Sem arquivo, o dossiê registra «Nenhum anexo registrado». O PDF congela a lista desta liberação.
-            </p>
-            <div v-for="(row, index) in dossierForm.attachments" :key="index" class="mt-3 flex flex-wrap items-center gap-2">
-                <select v-model="row.kind" class="rounded-lg border-slate-300 text-sm">
-                    <option value="aep">AEP</option>
-                    <option value="observation">Observação</option>
-                    <option value="inventory">Inventário</option>
-                    <option value="other">Outro</option>
-                </select>
-                <input type="file" class="text-sm" @change="onDossierFile(index, $event)" />
-                <button type="button" class="text-sm text-red-700 hover:underline" @click="removeDossierRow(index)">Remover</button>
-            </div>
-            <div class="mt-3 flex flex-wrap gap-2">
-                <button type="button" class="text-sm font-medium text-talents-700 hover:underline" @click="addDossierRow">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-900">Liberar dossiê de evidências</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-slate-600">
+                        Os anexos são opcionais. Sem arquivo, o PDF registra «Nenhum anexo registrado» e congela essa lista.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                    @click="addDossierRow"
+                >
+                    <PlusIcon class="h-4 w-4" aria-hidden="true" />
                     Adicionar anexo
                 </button>
+            </div>
+
+            <p v-if="dossierForm.attachments.length === 0" class="mt-4 rounded-lg border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-500">
+                Nenhum anexo nesta liberação.
+            </p>
+
+            <ul v-else class="mt-4 space-y-3">
+                <li
+                    v-for="(row, index) in dossierForm.attachments"
+                    :key="index"
+                    class="grid items-end gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-[11rem_minmax(0,1fr)_auto] sm:p-4"
+                >
+                    <label class="block">
+                        <span class="text-xs font-medium text-slate-500">Tipo</span>
+                        <select v-model="row.kind" class="mt-1 block w-full rounded-lg border-slate-300 text-sm shadow-sm">
+                            <option value="aep">AEP</option>
+                            <option value="observation">Observação</option>
+                            <option value="inventory">Inventário</option>
+                            <option value="other">Outro</option>
+                        </select>
+                    </label>
+
+                    <label class="block min-w-0 cursor-pointer">
+                        <span class="text-xs font-medium text-slate-500">Arquivo</span>
+                        <span class="mt-1 flex min-h-10 items-center gap-3 rounded-lg border border-slate-300 bg-white px-2 py-1.5 shadow-sm transition hover:border-slate-400">
+                            <span class="shrink-0 rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700">Escolher arquivo</span>
+                            <span class="truncate text-sm" :class="row.file ? 'font-medium text-slate-900' : 'text-slate-400'">
+                                {{ row.file?.name ?? 'Nenhum arquivo escolhido' }}
+                            </span>
+                            <input type="file" class="sr-only" @change="onDossierFile(index, $event)" />
+                        </span>
+                        <span v-if="dossierForm.errors[`attachments.${index}.file`]" class="mt-1 block text-xs text-red-600">
+                            {{ dossierForm.errors[`attachments.${index}.file`] }}
+                        </span>
+                    </label>
+
+                    <button
+                        type="button"
+                        class="inline-flex h-10 w-10 items-center justify-center justify-self-end rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-700"
+                        aria-label="Remover anexo"
+                        @click="removeDossierRow(index)"
+                    >
+                        <TrashIcon class="h-4 w-4" aria-hidden="true" />
+                    </button>
+                </li>
+            </ul>
+
+            <div class="mt-4 flex justify-end border-t border-slate-200/80 pt-4">
                 <button
                     type="submit"
                     :disabled="dossierForm.processing"
-                    class="rounded-full bg-talents-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-talents-800 disabled:opacity-60"
+                    class="rounded-full bg-talents-700 px-4 py-2 text-sm font-medium text-white hover:bg-talents-800 disabled:opacity-60"
                 >
                     Liberar dossiê
                 </button>

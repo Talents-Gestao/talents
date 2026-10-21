@@ -971,6 +971,7 @@ const submit = () => {
         <div
             v-if="canAdmin('companies', 'delete')"
             class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white"
+            :class="activeStep === 'opinion' ? 'mb-28' : ''"
         >
             <button
                 type="button"
