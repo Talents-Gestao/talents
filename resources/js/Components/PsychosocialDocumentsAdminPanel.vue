@@ -76,14 +76,23 @@ const submitDossier = () => {
         onSuccess: () => dossierForm.reset(),
     });
 };
+
+const unpublishedHint = (type) =>
+    ({
+        executive_brief: 'Libere no botão do topo. Vira uma página congelada para o cliente baixar.',
+        pgr_subsidy: 'Libere no botão do topo. Reúne o achado da pesquisa para a AEP e deixa o inventário do PGR em branco.',
+        evidence_dossier: 'Libere no formulário abaixo. Pode ir sem anexo.',
+    })[type] ?? '';
 </script>
 
 <template>
     <section class="mb-6 rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm sm:p-6">
         <h2 class="text-base font-semibold text-slate-900">Documentos liberados</h2>
-        <p class="mt-1 text-sm text-slate-600">
-            O Admin Talents registra a validação informada pelo responsável técnico, com comprovante. A validação no sistema é feita pelo cliente.
-        </p>
+        <ul class="mt-2 space-y-1 text-sm text-slate-600">
+            <li>Esta lista é a versão atual de cada documento. Liberar de novo cria outra versão; a anterior continua guardada.</li>
+            <li>«Baixar PDF» entrega o arquivo já gravado. O cliente vê o mesmo arquivo no Painel gerencial quando o PDF está pronto.</li>
+            <li>«Registrar validação informada» é o Admin lançando a validação feita fora, com comprovante. A validação dentro do sistema é o cliente, no Painel gerencial, com a declaração.</li>
+        </ul>
 
         <ul class="mt-4 divide-y divide-slate-100">
             <li v-for="doc in documents" :key="doc.type" class="py-3">
@@ -94,7 +103,10 @@ const submitDossier = () => {
                             Versão {{ doc.version_number }} · {{ sealLabels[doc.seal] ?? doc.seal }} · {{ pdfLabels[doc.pdf_status] ?? doc.pdf_status }}
                             · registrada em {{ formatDateTime(doc.released_at) }}
                         </p>
-                        <p v-else class="text-xs text-slate-500">Ainda não liberado.</p>
+                        <p v-else class="text-xs text-slate-500">
+                            Ainda não liberado.
+                            <span v-if="unpublishedHint(doc.type)" class="mt-0.5 block">{{ unpublishedHint(doc.type) }}</span>
+                        </p>
                         <ul v-if="doc.attachments?.length" class="mt-1 space-y-1">
                             <li v-for="attachment in doc.attachments" :key="attachment.id" class="text-xs text-slate-600">
                                 {{ attachment.kind_label }} —
@@ -179,9 +191,11 @@ const submitDossier = () => {
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <h3 class="text-sm font-semibold text-slate-900">Liberar dossiê de evidências</h3>
-                    <p class="mt-1 max-w-2xl text-sm text-slate-600">
-                        Os anexos são opcionais. Sem arquivo, o PDF registra «Nenhum anexo registrado» e congela essa lista.
-                    </p>
+                    <ul class="mt-1 max-w-2xl space-y-1 text-sm text-slate-600">
+                        <li>Sem anexo, o PDF registra «Nenhum anexo registrado».</li>
+                        <li>Com anexo, o PDF lista tipo e nome. O arquivo em si baixa por este parecer.</li>
+                        <li>O dossiê também aparece para o cliente no Painel gerencial, no botão «Baixar Dossiê de evidências».</li>
+                    </ul>
                 </div>
                 <button
                     type="button"
