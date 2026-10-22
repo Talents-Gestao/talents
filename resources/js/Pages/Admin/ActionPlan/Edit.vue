@@ -1,5 +1,6 @@
 <script setup>
 import FormPageHeader from '@/Components/FormPageHeader.vue';
+import InfoTooltip from '@/Components/InfoTooltip.vue';
 import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import MiaNr1AdminPanel from '@/Components/MiaNr1AdminPanel.vue';
 import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
@@ -419,26 +420,35 @@ const submit = () => {
                 stack-actions
             >
                 <template #trailing>
-                    <Link
-                        :href="route('admin.companies.surveys.registration.edit', [company.id, survey.id])"
-                        class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                    >
-                        Cadastro técnico
-                    </Link>
-                    <Link
-                        :href="route('admin.companies.surveys.measures.edit', [company.id, survey.id])"
-                        class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                    >
-                        Medidas
-                    </Link>
-                    <button
-                        type="button"
-                        class="inline-flex items-center rounded-full border border-talents-300 bg-white px-4 py-2 text-sm font-medium text-talents-900 shadow-sm hover:bg-talents-50 disabled:opacity-60"
-                        :disabled="releasingExecutiveBrief"
-                        @click="releaseExecutiveBrief"
-                    >
-                        Liberar resumo executivo
-                    </button>
+                    <span class="inline-flex items-center gap-1">
+                        <Link
+                            :href="route('admin.companies.surveys.registration.edit', [company.id, survey.id])"
+                            class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                        >
+                            Cadastro técnico
+                        </Link>
+                        <InfoTooltip text="Abre os dados que entram no PDF: unidade, elegíveis, resumo da AEP, controles e responsável. Campo vazio sai como «Não informado». Não altera a empresa." />
+                    </span>
+                    <span class="inline-flex items-center gap-1">
+                        <Link
+                            :href="route('admin.companies.surveys.measures.edit', [company.id, survey.id])"
+                            class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                        >
+                            Medidas
+                        </Link>
+                        <InfoTooltip text="A medida nasce «A aprovar». Ela entra no próximo documento liberado. Um PDF já emitido não muda. O plano de ação antigo continua separado." />
+                    </span>
+                    <span class="inline-flex items-center gap-1">
+                        <button
+                            type="button"
+                            class="inline-flex items-center rounded-full border border-talents-300 bg-white px-4 py-2 text-sm font-medium text-talents-900 shadow-sm hover:bg-talents-50 disabled:opacity-60"
+                            :disabled="releasingExecutiveBrief"
+                            @click="releaseExecutiveBrief"
+                        >
+                            Liberar resumo executivo
+                        </button>
+                        <InfoTooltip text="Congela uma página com o painel, o cadastro e as medidas. O cliente baixa em Resultados da campanha → Painel gerencial, no botão «Baixar Resumo executivo». Campanha HSE com polaridade pendente ainda pode sair, com o aviso." />
+                    </span>
                     <a
                         v-if="executiveBrief?.pdf_status === 'ready'"
                         :href="route('admin.companies.surveys.executive-brief.download', [company.id, survey.id])"
@@ -447,21 +457,27 @@ const submit = () => {
                         <ArrowDownTrayIcon class="h-4 w-4" aria-hidden="true" />
                         Baixar resumo executivo (v{{ executiveBrief.version_number }})
                     </a>
-                    <button
-                        type="button"
-                        class="inline-flex items-center rounded-full border border-talents-300 bg-white px-4 py-2 text-sm font-medium text-talents-900 shadow-sm hover:bg-talents-50 disabled:opacity-60"
-                        :disabled="releasingPgrSubsidy"
-                        @click="releasePgrSubsidy"
-                    >
-                        Liberar subsídio AEP/PGR
-                    </button>
-                    <button
-                        type="button"
-                        class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                        @click="openExportPdfModal"
-                    >
-                        Exportar resultados
-                    </button>
+                    <span class="inline-flex items-center gap-1">
+                        <button
+                            type="button"
+                            class="inline-flex items-center rounded-full border border-talents-300 bg-white px-4 py-2 text-sm font-medium text-talents-900 shadow-sm hover:bg-talents-50 disabled:opacity-60"
+                            :disabled="releasingPgrSubsidy"
+                            @click="releasePgrSubsidy"
+                        >
+                            Liberar subsídio AEP/PGR
+                        </button>
+                        <InfoTooltip text="O mesmo congelamento do resumo, mais a tabela do inventário em «Não informado». Não substitui a AEP oficial nem o PGR. O cliente baixa no mesmo Painel gerencial. HSE com polaridade pendente não libera." />
+                    </span>
+                    <span class="inline-flex items-center gap-1">
+                        <button
+                            type="button"
+                            class="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                            @click="openExportPdfModal"
+                        >
+                            Exportar resultados
+                        </button>
+                        <InfoTooltip text="É o PDF antigo do parecer, com indicadores e gráficos. É outro arquivo, diferente do resumo, do subsídio e do dossiê." />
+                    </span>
                 </template>
             </FormPageHeader>
         </template>
