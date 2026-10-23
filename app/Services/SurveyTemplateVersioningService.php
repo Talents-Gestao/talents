@@ -2,20 +2,17 @@
 
 namespace App\Services;
 
-use App\Models\Survey;
 use App\Models\SurveyTemplate;
 use App\Models\SurveyTemplateQuestion;
 use App\Models\SurveyTemplateSection;
+use App\Support\SurveyTemplateLock;
 use Illuminate\Support\Facades\Auth;
 
 class SurveyTemplateVersioningService
 {
     public function shouldFork(SurveyTemplate $template): bool
     {
-        return Survey::query()
-            ->where('survey_template_id', $template->id)
-            ->whereHas('completedResponses')
-            ->exists();
+        return SurveyTemplateLock::isLocked((int) $template->id);
     }
 
     /**

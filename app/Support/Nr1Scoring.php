@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\SurveyMethodVersion;
 use App\Models\SurveyTemplateQuestion;
 use Illuminate\Support\Str;
 
@@ -35,10 +36,15 @@ class Nr1Scoring
         return 'red';
     }
 
-    public static function riskLabel(?string $level): string
+    public static function riskLabel(?string $level, ?string $methodCode = null): string
     {
         if ($level === null || $level === '') {
             return '—';
+        }
+
+        // Campanhas V11 usam os rótulos de percepção; as demais seguem o config (Leve/Moderado/Grave).
+        if ($methodCode === SurveyMethodVersion::CODE_TALENTS39_V1) {
+            return Nr1BandLabels::label($level, $methodCode);
         }
 
         return (string) (config('nr1.risk_labels.'.$level) ?? strtoupper($level));

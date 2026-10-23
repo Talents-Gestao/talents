@@ -9,6 +9,7 @@ use App\Models\SurveyAnswer;
 use App\Models\SurveyCampaignRegistration;
 use App\Models\SurveyMethodVersion;
 use App\Models\SurveyResult;
+use App\Support\Nr1BandLabels;
 use App\Support\Nr1GroupPrivacy;
 use Illuminate\Support\Collection;
 
@@ -30,8 +31,11 @@ class PsychosocialDashboardBuilder
 
     public const LEGENDS = [
         SurveyMethodVersion::CODE_PRODUCTION_V1 => 'até 2,33 Leve · acima de 2,33 até 3,66 Moderado · acima de 3,66 Grave',
-        SurveyMethodVersion::CODE_TALENTS39_V1 => '1,00–2,33 Leve · 2,34–3,66 Moderado · 3,67–5,00 Grave',
+        SurveyMethodVersion::CODE_TALENTS39_V1 => '1,00–2,33 Menor sinalização · 2,34–3,66 Atenção · 3,67–5,00 Maior sinalização',
     ];
+
+    /** Método da campanha em montagem; define os rótulos de exibição das faixas. */
+    private string $methodCode = SurveyMethodVersion::CODE_PRODUCTION_V1;
 
     public const ELIGIBLE_MISSING = 'missing';
 
@@ -81,6 +85,7 @@ class PsychosocialDashboardBuilder
             ->all();
 
         $methodCode = (string) ($survey->methodVersion?->code ?? SurveyMethodVersion::CODE_PRODUCTION_V1);
+        $this->methodCode = $methodCode;
 
         return [
             'survey' => [
@@ -244,7 +249,7 @@ class PsychosocialDashboardBuilder
         return [
             'score' => (string) $result->getRawOriginal('average_score'),
             'risk_level' => (string) $result->risk_level,
-            'band_label' => self::BAND_LABELS[$result->risk_level] ?? (string) $result->risk_level,
+            'band_label' => Nr1BandLabels::label($result->risk_level, $this->methodCode),
             'n' => (int) $result->respondent_count,
         ];
     }

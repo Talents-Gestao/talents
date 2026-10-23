@@ -291,7 +291,7 @@ class Nr1Talents39CalculationPhaseSixTest extends TestCase
 
         $this->assertSame((float) $presented['overall']->average_score, (float) $dashboard['overall']['score']);
         $this->assertSame(2.6, (float) $dashboard['overall']['score']);
-        $this->assertSame('Moderado', $dashboard['overall']['band_label']);
+        $this->assertSame('Atenção', $dashboard['overall']['band_label']);
         $this->assertSame(PsychosocialDashboardBuilder::LEGENDS[SurveyMethodVersion::CODE_TALENTS39_V1], $dashboard['method']['legend']);
     }
 
