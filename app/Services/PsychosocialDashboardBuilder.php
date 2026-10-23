@@ -9,6 +9,7 @@ use App\Models\SurveyAnswer;
 use App\Models\SurveyCampaignRegistration;
 use App\Models\SurveyMethodVersion;
 use App\Models\SurveyResult;
+use App\Support\Nr1GroupPrivacy;
 use Illuminate\Support\Collection;
 
 /**
@@ -54,7 +55,7 @@ class PsychosocialDashboardBuilder
 
         $overallRow = $results->first(fn (SurveyResult $r) => $r->survey_template_section_id === null && $r->department_id === null);
         $respondents = (int) ($overallRow?->respondent_count ?? 0);
-        $minGroupSize = (int) ($survey->methodVersion?->min_group_size_new_outputs ?? 5);
+        $minGroupSize = Nr1GroupPrivacy::minFor($survey);
 
         $sectorRows = $results->filter(fn (SurveyResult $r) => $r->department_id !== null && $r->survey_template_section_id === null);
         $publishedIds = self::publishableSectorIds(
@@ -155,20 +156,7 @@ class PsychosocialDashboardBuilder
      */
     public static function publishableSectorIds(array $respondentsByDepartment, int $minGroupSize): array
     {
-        $ordered = collect($respondentsByDepartment)
-            ->map(fn (int $n, int $departmentId) => ['id' => $departmentId, 'n' => $n])
-            ->sort(fn (array $a, array $b) => [$a['n'], $a['id']] <=> [$b['n'], $b['id']])
-            ->values();
-
-        [$hidden, $visible] = $ordered->partition(fn (array $sector) => $sector['n'] < $minGroupSize);
-        $hiddenSum = $hidden->sum('n');
-        $visible = $visible->values();
-
-        while ($hiddenSum > 0 && $hiddenSum < $minGroupSize && $visible->isNotEmpty()) {
-            $hiddenSum += $visible->shift()['n'];
-        }
-
-        return $visible->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+        return Nr1GroupPrivacy::publishableDepartmentIds($respondentsByDepartment, $minGroupSize);
     }
 
     /**

@@ -7,6 +7,7 @@ const props = defineProps({
     agreementLabels: Object,
     ageRanges: Object,
     tenureRanges: Object,
+    collectDemographics: { type: Boolean, default: true },
 });
 
 const labelsForQuestion = (q) => {
@@ -97,7 +98,7 @@ const progress = () => {
                             </select>
                             <p v-if="form.errors.department_id" class="mt-1 text-xs text-red-600">{{ form.errors.department_id }}</p>
                         </div>
-                        <div>
+                        <div v-if="collectDemographics">
                             <label class="text-xs text-slate-600">Faixa etária</label>
                             <select
                                 v-model="form.age_range"
@@ -107,7 +108,7 @@ const progress = () => {
                                 <option v-for="(label, key) in ageRanges" :key="key" :value="key">{{ label }}</option>
                             </select>
                         </div>
-                        <div>
+                        <div v-if="collectDemographics">
                             <label class="text-xs text-slate-600">Tempo na empresa</label>
                             <select
                                 v-model="form.tenure_range"

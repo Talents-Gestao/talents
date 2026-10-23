@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Services\SurveyInstrumentVersionResolver;
+use App\Support\Nr1GroupPrivacy;
+use App\Support\Nr1InstrumentMatrix;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,6 +25,7 @@ class Survey extends Model
         'ends_at',
         'status',
         'min_responses_for_breakdown',
+        'min_group_size',
         'answers_reconstructed_at',
         'deleted_by',
         'archive_path',
@@ -33,6 +36,12 @@ class Survey extends Model
     protected static function booted(): void
     {
         // Campanha sem método explícito nasce em production_v1; talents39_v1 só por escolha explícita.
+        static::saving(function (Survey $survey): void {
+            if ($survey->min_group_size !== null && (int) $survey->min_group_size < Nr1GroupPrivacy::FLOOR) {
+                throw new \InvalidArgumentException('O mínimo de respondentes por grupo não pode ser menor que '.Nr1GroupPrivacy::FLOOR.'.');
+            }
+        });
+
         static::creating(function (Survey $survey): void {
             $survey->method_version_id ??= SurveyMethodVersion::idForCode(SurveyMethodVersion::CODE_PRODUCTION_V1);
 
@@ -51,6 +60,19 @@ class Survey extends Model
             'ends_at' => 'datetime',
             'answers_reconstructed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Campanhas V11 (talents39) não coletam faixa etária nem tempo de casa; as antigas mantêm o dado.
+     */
+    public function collectsDemographics(): bool
+    {
+        // Consulta direta: não carrega relações no model, que vai inteiro para a página pública.
+        $methodCode = SurveyMethodVersion::query()->whereKey($this->method_version_id)->value('code');
+        $instrumentCode = SurveyInstrumentVersion::query()->whereKey($this->instrument_version_id)->value('instrument_code');
+
+        return $methodCode !== SurveyMethodVersion::CODE_TALENTS39_V1
+            && $instrumentCode !== Nr1InstrumentMatrix::CODE_TALENTS39;
     }
 
     public function hasReconstructedAnswers(): bool

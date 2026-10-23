@@ -17,7 +17,7 @@ class PsychosocialAccessLog extends Model
 {
     public const UPDATED_AT = null;
 
-    public const RESOURCES = ['dashboard', 'document_download', 'export_csv', 'export_json'];
+    public const RESOURCES = ['dashboard', 'document_download', 'export_csv', 'export_json', 'raw_export'];
 
     protected $fillable = [
         'user_id',

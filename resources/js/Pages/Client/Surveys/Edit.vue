@@ -13,7 +13,7 @@ const form = useForm({
     starts_at: props.survey.starts_at?.slice(0, 16) ?? '',
     ends_at: props.survey.ends_at?.slice(0, 16) ?? '',
     status: props.survey.status,
-    min_responses_for_breakdown: props.survey.min_responses_for_breakdown,
+    min_group_size: props.survey.min_group_size ?? 5,
 });
 
 const submit = () => {
@@ -55,17 +55,18 @@ const submit = () => {
                 </select>
             </div>
             <div>
-                <InputLabel for="min" value="Mínimo de respondentes por setor (anonimato)" />
+                <InputLabel for="min" value="Mínimo de respondentes por grupo (anonimato)" />
                 <input
                     id="min"
+                    v-model.number="form.min_group_size"
                     type="number"
-                    value="1"
-                    min="1"
-                    max="1"
-                    readonly
-                    class="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+                    min="5"
+                    class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700"
                 />
-                <p class="mt-1 text-xs text-gray-500">Fixo em 1 respondente por setor para exibir gráficos detalhados.</p>
+                <p class="mt-1 text-xs text-gray-500">
+                    Setores com menos respondentes do que este número não aparecem isolados nos resultados. O mínimo é 5 e pode ser aumentado.
+                </p>
+                <p v-if="form.errors.min_group_size" class="mt-1 text-xs text-red-600">{{ form.errors.min_group_size }}</p>
             </div>
             <PrimaryButton :disabled="form.processing">Salvar</PrimaryButton>
         </form>

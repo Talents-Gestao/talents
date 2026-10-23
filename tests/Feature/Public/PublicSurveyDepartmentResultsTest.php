@@ -15,11 +15,9 @@ class PublicSurveyDepartmentResultsTest extends TestCase
     use CreatesSurveyFixtures;
     use RefreshDatabase;
 
-    public function test_submit_stores_department_and_results_include_sector_breakdown(): void
+    public function test_submit_stores_department_but_small_sector_is_not_shown(): void
     {
-        $fx = $this->createSurveyFixture([
-            'min_responses_for_breakdown' => 1,
-        ]);
+        $fx = $this->createSurveyFixture();
 
         $dept = Department::query()->create([
             'company_id' => $fx->company->id,
@@ -38,30 +36,32 @@ class PublicSurveyDepartmentResultsTest extends TestCase
 
         $presented = SurveyResultsPresenter::forSurvey($fx->survey->fresh());
 
-        $this->assertNotEmpty($presented['deptOveralls']);
-        $this->assertSame('Operações', $presented['deptOveralls'][0]['department_name']);
+        // 1 resposta < piso 5: o setor fica gravado, mas não é exibido.
+        $this->assertEmpty($presented['deptOveralls']);
+        $this->assertEmpty($presented['departmentParticipation']);
+        $this->assertNotNull($presented['overall']);
     }
 
-    public function test_department_participation_marks_sector_ready_with_one_response(): void
+    public function test_sector_at_the_floor_is_shown(): void
     {
-        $fx = $this->createSurveyFixture([
-            'min_responses_for_breakdown' => 60,
-        ]);
+        $fx = $this->createSurveyFixture();
 
         $dept = Department::query()->create([
             'company_id' => $fx->company->id,
             'name' => 'Operações',
         ]);
 
-        SurveyResponse::query()->create([
-            'survey_id' => $fx->survey->id,
-            'session_token' => 'abc',
-            'department_id' => $dept->id,
-            'completed_at' => now(),
-        ])->answers()->create([
-            'survey_template_question_id' => $fx->question->id,
-            'value' => 4,
-        ]);
+        for ($i = 0; $i < 5; $i++) {
+            SurveyResponse::query()->create([
+                'survey_id' => $fx->survey->id,
+                'session_token' => 'abc'.$i,
+                'department_id' => $dept->id,
+                'completed_at' => now(),
+            ])->answers()->create([
+                'survey_template_question_id' => $fx->question->id,
+                'value' => 4,
+            ]);
+        }
 
         app(SurveyResultCalculator::class)->recalculate($fx->survey->fresh());
 
@@ -69,14 +69,13 @@ class PublicSurveyDepartmentResultsTest extends TestCase
 
         $this->assertCount(1, $presented['departmentParticipation']);
         $this->assertTrue($presented['departmentParticipation'][0]['meets_minimum']);
-        $this->assertNotEmpty($presented['deptOveralls']);
+        $this->assertCount(1, $presented['deptOveralls']);
+        $this->assertSame($dept->id, $presented['deptOveralls'][0]['department_id']);
     }
 
-    public function test_calculator_groups_responses_by_department_from_response_data(): void
+    public function test_calculator_still_groups_every_response_by_department(): void
     {
-        $fx = $this->createSurveyFixture([
-            'min_responses_for_breakdown' => 1,
-        ]);
+        $fx = $this->createSurveyFixture();
 
         $dept = Department::query()->create([
             'company_id' => $fx->company->id,
@@ -95,9 +94,8 @@ class PublicSurveyDepartmentResultsTest extends TestCase
 
         app(SurveyResultCalculator::class)->recalculate($fx->survey->fresh());
 
-        $presented = SurveyResultsPresenter::forSurvey($fx->survey->fresh());
-
-        $this->assertCount(1, $presented['deptOveralls']);
-        $this->assertSame($dept->id, $presented['deptOveralls'][0]['department_id']);
+        // O cálculo não descarta resposta nenhuma; só a exibição é suprimida.
+        $this->assertSame(1, $fx->survey->results()->where('department_id', $dept->id)->whereNull('survey_template_section_id')->count());
+        $this->assertEmpty(SurveyResultsPresenter::forSurvey($fx->survey->fresh())['deptOveralls']);
     }
 }

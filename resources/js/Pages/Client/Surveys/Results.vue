@@ -205,14 +205,14 @@ onUnmounted(() => {
                         class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
                         target="_blank"
                     >
-                        Exportar JSON (BI)
+                        Exportar JSON (agregado)
                     </a>
                     <a
                         :href="route('client.surveys.export.csv', survey.id)"
                         class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
                         target="_blank"
                     >
-                        Exportar CSV
+                        Exportar CSV (agregado)
                     </a>
                     <Link
                         :href="route('client.surveys.psychosocial-dashboard', survey.id)"

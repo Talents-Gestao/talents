@@ -222,6 +222,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.technical-opinion-file.download');
         Route::get('companies/{company}/surveys/{survey}/nr1-reports/{type}', [ActionPlanAdminController::class, 'downloadNr1Report'])
             ->name('companies.surveys.nr1-reports.download');
+        Route::get('companies/{company}/surveys/{survey}/dados-brutos/csv', [\App\Http\Controllers\Admin\SurveyRawExportController::class, 'csv'])
+            ->middleware('admin.can:nr1_dados_brutos,view')
+            ->name('companies.surveys.raw-export.csv');
         Route::get('mapa-proposito', [PurposeMapCampaignController::class, 'index'])
             ->name('mapa-proposito.index');
         Route::get('mapa-proposito/resultados', [PurposeMapCampaignController::class, 'show'])

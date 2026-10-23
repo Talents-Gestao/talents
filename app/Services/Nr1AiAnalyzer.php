@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AiSetting;
 use App\Models\Survey;
 use App\Models\SurveyResult;
+use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1Scoring;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -119,8 +120,12 @@ PROMPT;
             ])
             ->all();
 
+        // Setor pequeno nunca vai ao provedor de IA: só os publicáveis pela política de grupo.
+        $visibleDepartments = Nr1GroupPrivacy::publishableDepartmentIdsForSurvey($survey);
+
         $deptOveralls = $results
-            ->filter(fn ($r) => $r->department_id !== null && $r->survey_template_section_id === null)
+            ->filter(fn ($r) => $r->department_id !== null && $r->survey_template_section_id === null
+                && in_array((int) $r->department_id, $visibleDepartments, true))
             ->map(fn ($r) => [
                 'department' => $r->department?->name ?? 'Setor',
                 'average_score' => round((float) $r->average_score, 2),
@@ -132,6 +137,7 @@ PROMPT;
 
         $deptSectionResults = $results->filter(
             fn ($r) => $r->department_id !== null && $r->survey_template_section_id !== null
+                && in_array((int) $r->department_id, $visibleDepartments, true)
         );
 
         $byDeptAndDimension = $deptSectionResults->map(fn ($r) => [
@@ -153,7 +159,7 @@ PROMPT;
                 'Moderado' => '2,34–3,66',
                 'Grave' => '3,67–5,00',
             ],
-            'min_responses_for_breakdown' => $survey->min_responses_for_breakdown,
+            'min_group_size' => Nr1GroupPrivacy::minFor($survey),
             'overall' => $overall ? [
                 'average_score' => round((float) $overall->average_score, 2),
                 'risk_level' => Nr1Scoring::riskLabel($overall->risk_level),
