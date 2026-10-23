@@ -1,3 +1,5 @@
+@import './tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -115,11 +117,11 @@
     }
 
     .btn-primary {
-        @apply inline-flex items-center justify-center rounded-full bg-talents-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700;
+        @apply inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-on shadow-sm transition hover:bg-primary-hover;
     }
 
     .btn-secondary {
-        @apply inline-flex items-center justify-center rounded-full border border-talents-300 bg-white px-6 py-3 text-sm font-semibold text-talents-700 shadow-sm transition hover:bg-talents-50;
+        @apply inline-flex items-center justify-center rounded-full border border-primary-border bg-white px-6 py-3 text-sm font-semibold text-primary-text shadow-sm transition hover:bg-primary-soft;
     }
 
     .btn-ghost {
@@ -127,7 +129,7 @@
     }
 
     .field-input {
-        @apply mt-1 w-full rounded-xl border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500;
+        @apply mt-1 w-full rounded-xl border-slate-200 shadow-sm focus:border-primary-ring focus:ring-primary-ring;
     }
 
     /**

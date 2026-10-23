@@ -27,6 +27,7 @@ import {
 } from '@heroicons/vue/24/outline';
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { brandThemeStyle } from '@/utils/brandTheme';
 
 const page = usePage();
 const { can } = usePermissions();
@@ -59,7 +60,7 @@ const portalBrand = computed(() => {
 const portalShellStyle = computed(() => {
     const color = portalBrand.value?.primary_color;
 
-    return color ? { '--portal-primary': color } : undefined;
+    return color ? { '--portal-primary': color, ...brandThemeStyle(color) } : undefined;
 });
 
 /** Href estável — evita crash se o Ziggy da sessão ainda não tiver a rota nova. */
