@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Exceptions\SurveyTemplateLockedException;
-use App\Models\Company;
-use App\Models\Survey;
-use App\Models\SurveyAnswer;
 use App\Models\SurveyInstrumentVersion;
 use App\Models\SurveyMethodVersion;
 use App\Models\SurveyResponse;
@@ -18,15 +15,14 @@ use App\Models\SurveyTemplateSection;
 use App\Models\User;
 use App\Services\Nr1AiAnalyzer;
 use App\Services\PsychosocialDashboardBuilder;
-use App\Services\SurveyResultCalculator;
 use App\Services\SurveyTemplateVersioningService;
 use App\Support\Nr1BandLabels;
 use App\Support\Nr1InstrumentMatrix;
 use App\Support\Nr1Scoring;
 use Database\Seeders\Talents39InstrumentData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Tests\Support\CreatesSurveyFixtures;
+use Tests\Support\CreatesV11Campaign;
 use Tests\Support\Nr1V11Dataset;
 use Tests\TestCase;
 
@@ -36,6 +32,7 @@ use Tests\TestCase;
 class Nr1V11InstrumentTest extends TestCase
 {
     use CreatesSurveyFixtures;
+    use CreatesV11Campaign;
     use RefreshDatabase;
 
     /** Dimensão => [numerador, denominador exatos do Apêndice A, índice gravado com 2 casas meio para cima]. */
@@ -48,80 +45,6 @@ class Nr1V11InstrumentTest extends TestCase
         'Esgotamento e Saúde Emocional' => [528, 200, 2.64],
         'Percepção Organizacional' => [488, 200, 2.44],
     ];
-
-    /**
-     * Campanha V11 completa: importa o instrumento e cria 40 respondentes a partir do Apêndice A.
-     *
-     * @return object{company: Company, template: SurveyTemplate, survey: Survey, questionIds: array<int, int>}
-     */
-    private function v11Campaign(bool $withResponses = true): object
-    {
-        $this->artisan('nr1:import-instrument-v11')->assertSuccessful();
-        $template = SurveyTemplate::query()->where('title', Talents39InstrumentData::TEMPLATE_TITLE)->firstOrFail();
-
-        $company = Company::query()->create([
-            'name' => 'Empresa V11',
-            'cnpj' => '22.222.222/0001-22',
-            'is_active' => true,
-            'complaints_public_token' => (string) Str::uuid(),
-        ]);
-        $this->subscribeCompanyToNr1($company);
-        $company->surveyTemplates()->attach($template->id);
-
-        $survey = Survey::query()->create([
-            'company_id' => $company->id,
-            'survey_template_id' => $template->id,
-            'title' => 'Campanha V11',
-            'public_token' => (string) Str::uuid(),
-            'starts_at' => now()->subDay(),
-            'ends_at' => now()->addMonth(),
-            'status' => 'active',
-            'method_version_id' => SurveyMethodVersion::idForCode(SurveyMethodVersion::CODE_TALENTS39_V1),
-        ]);
-
-        $questionIds = [];
-        foreach (Nr1InstrumentMatrix::forTemplate((int) $template->id) as $row) {
-            $questionIds[$row['item_number']] = $row['question_id'];
-        }
-
-        if ($withResponses) {
-            $this->seedAppendixResponses($survey, $questionIds);
-            app(SurveyResultCalculator::class)->recalculate($survey->fresh());
-        }
-
-        return (object) compact('company', 'template', 'survey', 'questionIds');
-    }
-
-    /**
-     * @param  array<int, int>  $questionIds  item => question_id
-     */
-    private function seedAppendixResponses(Survey $survey, array $questionIds): void
-    {
-        $values = [];
-        foreach (Nr1V11Dataset::COUNTS as $item => $counts) {
-            $list = [];
-            foreach ($counts as $index => $count) {
-                $list = array_merge($list, array_fill(0, $count, $index + 1));
-            }
-            $values[$item] = $list;
-        }
-
-        for ($respondent = 0; $respondent < Nr1V11Dataset::RESPONDENTS; $respondent++) {
-            $response = SurveyResponse::query()->create([
-                'survey_id' => $survey->id,
-                'session_token' => (string) Str::uuid(),
-                'completed_at' => now()->startOfMonth(),
-            ]);
-
-            SurveyAnswer::query()->insert(array_map(fn (int $item) => [
-                'survey_response_id' => $response->id,
-                'survey_template_question_id' => $questionIds[$item],
-                'value' => $values[$item][$respondent],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ], array_keys($questionIds)));
-        }
-    }
 
     public function test_instrument_data_matches_the_appendix_structure(): void
     {

@@ -115,6 +115,11 @@ class Survey extends Model
         return $this->hasMany(SurveyResult::class);
     }
 
+    public function groupResults(): HasMany
+    {
+        return $this->hasMany(SurveyGroupResult::class);
+    }
+
     public function insights(): HasMany
     {
         return $this->hasMany(SurveyInsight::class);

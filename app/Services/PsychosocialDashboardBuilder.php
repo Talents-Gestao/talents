@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Survey;
 use App\Models\SurveyAnswer;
 use App\Models\SurveyCampaignRegistration;
+use App\Models\SurveyGroupResult;
 use App\Models\SurveyMethodVersion;
 use App\Models\SurveyResult;
 use App\Support\Nr1BandLabels;
@@ -36,6 +37,8 @@ class PsychosocialDashboardBuilder
 
     /** Método da campanha em montagem; define os rótulos de exibição das faixas. */
     private string $methodCode = SurveyMethodVersion::CODE_PRODUCTION_V1;
+
+    public const OTHERS_LABEL = 'Outros Setores';
 
     public const ELIGIBLE_MISSING = 'missing';
 
@@ -110,6 +113,7 @@ class PsychosocialDashboardBuilder
                 ->values()
                 ->all(),
             'sectors' => $sectors,
+            'others' => $this->others($survey, $minGroupSize),
             'items' => $this->items($survey, $respondents),
         ];
     }
@@ -148,6 +152,12 @@ class PsychosocialDashboardBuilder
                 $rows[] = $row('setor_dimensao', $sector['department_name'], $dimension['title'], $dimension);
             }
         }
+        if (($dashboard['others'] ?? null) !== null) {
+            $rows[] = $row('outros_setores', self::OTHERS_LABEL, null, $dashboard['others']);
+            foreach ($dashboard['others']['dimensions'] as $dimension) {
+                $rows[] = $row('outros_setores_dimensao', self::OTHERS_LABEL, $dimension['title'], $dimension);
+            }
+        }
 
         return $rows;
     }
@@ -168,6 +178,24 @@ class PsychosocialDashboardBuilder
      * @return array{count: ?int, status: string, value_label: string, hint: ?string, respondents_hint: ?string, participation_label: ?string, alert: ?string}
      */
     private function eligibleCard(Survey $survey, int $respondents): array
+    {
+        $card = $this->eligibleBase($survey, $respondents);
+
+        // Adesão = respondentes válidos ÷ elegíveis × 100; sem elegíveis consistentes, fica sem percentual.
+        $rate = $card['status'] === self::ELIGIBLE_OK && (int) $card['count'] > 0
+            ? round($respondents / (int) $card['count'] * 100, 1)
+            : null;
+
+        return $card + [
+            'participation_percent' => $rate,
+            'participation_percent_label' => $rate === null ? null : number_format($rate, 1, ',', '.').'%',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function eligibleBase(Survey $survey, int $respondents): array
     {
         $eligible = SurveyCampaignRegistration::query()->where('survey_id', $survey->id)->value('eligible_count');
 
@@ -213,27 +241,45 @@ class PsychosocialDashboardBuilder
      */
     private function items(Survey $survey, int $respondents): array
     {
-        /** @var Collection<int, int> $answeredByQuestion */
-        $answeredByQuestion = SurveyAnswer::query()
-            ->selectRaw('survey_answers.survey_template_question_id as question_id, COUNT(*) as total')
+        // Contagens por pergunta e valor sobre a campanha inteira (nunca por setor).
+        /** @var Collection<int, Collection<int, int>> $countsByQuestion */
+        $countsByQuestion = SurveyAnswer::query()
+            ->selectRaw('survey_answers.survey_template_question_id as question_id, survey_answers.value as answer_value, COUNT(*) as total')
             ->join('survey_responses', 'survey_responses.id', '=', 'survey_answers.survey_response_id')
             ->where('survey_responses.survey_id', $survey->id)
             ->whereNotNull('survey_responses.completed_at')
             ->whereNotNull('survey_answers.value')
-            ->groupBy('survey_answers.survey_template_question_id')
-            ->pluck('total', 'question_id')
-            ->map(fn ($total) => (int) $total);
+            ->groupBy('survey_answers.survey_template_question_id', 'survey_answers.value')
+            ->get()
+            ->groupBy('question_id')
+            ->map(fn (Collection $rows) => $rows->mapWithKeys(fn ($row) => [(int) $row->answer_value => (int) $row->total]));
 
         $items = [];
         foreach ($survey->template?->sections ?? [] as $section) {
             foreach ($section->questions as $question) {
-                $n = (int) ($answeredByQuestion[$question->id] ?? 0);
+                $counts = [];
+                for ($value = 1; $value <= 5; $value++) {
+                    $counts[$value] = (int) ($countsByQuestion[$question->id][$value] ?? 0);
+                }
+                $n = array_sum($counts);
+
+                // Enunciado favorável (reverse_score): favorável = Frequentemente + Sempre.
+                // Enunciado desfavorável: favorável = Nunca + Raramente. Sempre sobre a base válida da pergunta.
+                $positive = $counts[4] + $counts[5];
+                $negative = $counts[1] + $counts[2];
+                $favorable = $question->reverse_score ? $positive : $negative;
+                $unfavorable = $question->reverse_score ? $negative : $positive;
+
                 $items[] = [
                     'id' => (int) $question->id,
                     'section_title' => (string) $section->title,
                     'body' => (string) $question->body,
                     'n' => $n,
                     'quality_alert' => $n !== $respondents,
+                    'counts' => $counts,
+                    'statement' => $question->reverse_score ? 'favorable' : 'unfavorable',
+                    'favorable_pct' => $n > 0 ? round($favorable / $n * 100, 1) : null,
+                    'unfavorable_pct' => $n > 0 ? round($unfavorable / $n * 100, 1) : null,
                 ];
             }
         }
@@ -242,9 +288,39 @@ class PsychosocialDashboardBuilder
     }
 
     /**
+     * "Outros Setores": só aparece com respondentes suficientes; abaixo do mínimo a exibição é suprimida
+     * (as respostas continuam no índice geral). Nunca traz a composição dos setores.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function others(Survey $survey, int $minGroupSize): ?array
+    {
+        $rows = SurveyGroupResult::query()
+            ->where('survey_id', $survey->id)
+            ->where('group_key', SurveyGroupResult::GROUP_OTHERS)
+            ->with('section')
+            ->get();
+
+        $overall = $rows->first(fn (SurveyGroupResult $r) => $r->survey_template_section_id === null);
+
+        if ($overall === null || (int) $overall->respondent_count < $minGroupSize) {
+            return null;
+        }
+
+        return array_merge($this->presentRow($overall), [
+            'name' => self::OTHERS_LABEL,
+            'dimensions' => $rows
+                ->filter(fn (SurveyGroupResult $r) => $r->survey_template_section_id !== null)
+                ->map(fn (SurveyGroupResult $r) => $this->presentDimension($r))
+                ->values()
+                ->all(),
+        ]);
+    }
+
+    /**
      * @return array{score: string, risk_level: string, band_label: string, n: int}
      */
-    private function presentRow(SurveyResult $result): array
+    private function presentRow(SurveyResult|SurveyGroupResult $result): array
     {
         return [
             'score' => (string) $result->getRawOriginal('average_score'),
@@ -257,7 +333,7 @@ class PsychosocialDashboardBuilder
     /**
      * @return array<string, mixed>
      */
-    private function presentDimension(SurveyResult $result): array
+    private function presentDimension(SurveyResult|SurveyGroupResult $result): array
     {
         return array_merge($this->presentRow($result), [
             'section_id' => (int) $result->survey_template_section_id,

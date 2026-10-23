@@ -3,9 +3,12 @@
 namespace App\Services;
 
 use App\Models\Survey;
+use App\Models\SurveyGroupResult;
 use App\Models\SurveyMethodVersion;
+use App\Models\SurveyResponse;
 use App\Models\SurveyResult;
 use App\Models\SurveyTemplateQuestion;
+use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1PooledItemScore;
 use App\Support\Nr1Scoring;
 use Illuminate\Support\Collection;
@@ -36,6 +39,7 @@ class SurveyResultCalculator
 
         DB::transaction(function () use ($survey, $questionsById) {
             $survey->results()->delete();
+            $survey->groupResults()->delete();
 
             $responses = $survey->completedResponses()->with(['answers'])->get();
 
@@ -74,13 +78,15 @@ class SurveyResultCalculator
                     $this->storeAggregate($survey, $deptResponses, $questionsById, $qids, $section->id, (int) $deptId);
                 }
             }
+
+            $this->storeOthersGroup($survey, $responses, $questionsById, $allQuestionIds);
         });
 
         app(InsightGenerator::class)->generateForSurvey($survey->fresh());
     }
 
     /**
-     * @param  Collection<int, \App\Models\SurveyResponse>  $responses
+     * @param  Collection<int, SurveyResponse>  $responses
      * @param  Collection<int|string, mixed>  $questionIds
      */
     private function storeAggregate(
@@ -89,10 +95,11 @@ class SurveyResultCalculator
         Collection $questionsById,
         Collection $questionIds,
         ?int $sectionId,
-        ?int $departmentId
+        ?int $departmentId,
+        ?string $groupKey = null
     ): void {
         if ($this->pooledMethod !== null) {
-            $this->storePooledAggregate($survey, $responses, $questionsById, $questionIds, $sectionId, $departmentId);
+            $this->storePooledAggregate($survey, $responses, $questionsById, $questionIds, $sectionId, $departmentId, $groupKey);
 
             return;
         }
@@ -131,7 +138,7 @@ class SurveyResultCalculator
             $sectionTitle = $survey->template->sections->firstWhere('id', $sectionId)?->title;
         }
 
-        SurveyResult::create([
+        $this->persistRow([
             'survey_id' => $survey->id,
             'survey_template_section_id' => $sectionId,
             'department_id' => $departmentId,
@@ -142,14 +149,14 @@ class SurveyResultCalculator
             'meta' => [
                 'section_title' => $sectionTitle,
             ],
-        ]);
+        ], $groupKey);
     }
 
     /**
      * talents39_v1: cada resposta válida do recorte pesa 1 (a coluna weight é ignorada).
      * respondent_count conta pessoas com ao menos uma resposta válida, não respostas.
      *
-     * @param  Collection<int, \App\Models\SurveyResponse>  $responses
+     * @param  Collection<int, SurveyResponse>  $responses
      * @param  Collection<int|string, mixed>  $questionIds
      */
     private function storePooledAggregate(
@@ -158,7 +165,8 @@ class SurveyResultCalculator
         Collection $questionsById,
         Collection $questionIds,
         ?int $sectionId,
-        ?int $departmentId
+        ?int $departmentId,
+        ?string $groupKey = null
     ): void {
         $cutQuestionIds = $questionIds->map(fn ($id) => (int) $id)->flip();
         $numerator = 0;
@@ -190,7 +198,7 @@ class SurveyResultCalculator
 
         $score = Nr1PooledItemScore::fromSums($numerator, $denominator, $this->pooledMethod);
 
-        SurveyResult::create([
+        $this->persistRow([
             'survey_id' => $survey->id,
             'survey_template_section_id' => $sectionId,
             'department_id' => $departmentId,
@@ -205,6 +213,70 @@ class SurveyResultCalculator
                     ? $survey->template->sections->firstWhere('id', $sectionId)?->title
                     : null,
             ],
-        ]);
+        ], $groupKey);
+    }
+
+    /**
+     * Grava a linha de um recorte: geral/seção/setor em survey_results; grupo agregado em
+     * survey_group_results (sem department_id).
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function persistRow(array $row, ?string $groupKey): void
+    {
+        if ($groupKey === null) {
+            SurveyResult::create($row);
+
+            return;
+        }
+
+        unset($row['department_id']);
+        SurveyGroupResult::create($row + ['group_key' => $groupKey]);
+    }
+
+    /**
+     * "Outros Setores": as respostas dos setores que a política de grupo não publica (menores que o mínimo
+     * ou absorvidos pela cascata) entram juntas e a média sai das respostas ORIGINAIS, nunca de média de
+     * médias. Nenhuma resposta é descartada; a exibição é suprimida na leitura se o agregado ficar abaixo do mínimo.
+     *
+     * @param  Collection<int, SurveyResponse>  $responses
+     * @param  Collection<int|string, mixed>  $allQuestionIds
+     */
+    private function storeOthersGroup(Survey $survey, Collection $responses, Collection $questionsById, Collection $allQuestionIds): void
+    {
+        $counts = SurveyResult::query()
+            ->where('survey_id', $survey->id)
+            ->whereNotNull('department_id')
+            ->whereNull('survey_template_section_id')
+            ->pluck('respondent_count', 'department_id')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+
+        if ($counts === []) {
+            return;
+        }
+
+        $visible = Nr1GroupPrivacy::publishableDepartmentIds($counts, Nr1GroupPrivacy::minFor($survey));
+        $hidden = array_values(array_diff(array_keys($counts), $visible));
+
+        if ($hidden === []) {
+            return;
+        }
+
+        $others = $responses->filter(fn ($response) => in_array((int) $response->department_id, $hidden, true));
+
+        if ($others->isEmpty()) {
+            return;
+        }
+
+        $group = SurveyGroupResult::GROUP_OTHERS;
+        $this->storeAggregate($survey, $others, $questionsById, $allQuestionIds, null, null, $group);
+
+        foreach ($survey->template->sections as $section) {
+            $qids = $section->questions->pluck('id');
+            if ($qids->isNotEmpty()) {
+                $this->storeAggregate($survey, $others, $questionsById, $qids, $section->id, null, $group);
+            }
+        }
     }
 }
