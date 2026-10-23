@@ -95,16 +95,6 @@ export default defineConfig(({ mode }) => {
                     // (ex.: ReferenceError por código já corrigido no repositório).
                     globPatterns: ['**/*.{css,ico,svg,woff2}', 'manifest.webmanifest'],
                     navigateFallback: null,
-                    runtimeCaching: [
-                        {
-                            urlPattern: /^https:\/\/fonts\.bunny\.net\/.*/i,
-                            handler: 'CacheFirst',
-                            options: {
-                                cacheName: 'bunny-fonts',
-                                expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 365 },
-                            },
-                        },
-                    ],
                 },
                 devOptions: {
                     enabled: false,

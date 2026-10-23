@@ -19,9 +19,8 @@
         <meta property="og:image" content="{{ rtrim(config('app.url'), '/') }}/images/logo.png">
         <meta name="twitter:card" content="summary_large_image">
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        <!-- Fonts (Figtree local; ver @font-face em resources/css/app.css) -->
+        <link rel="preload" href="{{ Vite::asset('resources/fonts/figtree-latin-400-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
 
         <!-- Scripts -->
         @routes
