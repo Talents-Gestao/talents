@@ -45,6 +45,26 @@ return [
         'default' => 2.80,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Coleta pública (questionário do colaborador)
+    |--------------------------------------------------------------------------
+    |
+    | Padrões conservadores: nada de novo é coletado. A política de envio duplicado e o rascunho
+    | dependem de decisão da responsável técnica e do jurídico/LGPD (ver docs de decisões pendentes).
+    |
+    | duplicate_policy:
+    |   none          — só limite de taxa (comportamento atual; nenhum dado novo)
+    |   device_cookie — marca o navegador após o envio; sem identificador no servidor (burlável)
+    |   one_time_token — convite de uso único (nr1:generate-invites); só o hash do código é guardado
+    |
+    | client_draft: rascunho só no navegador do respondente (localStorage); nada vai ao servidor.
+    */
+    'collection' => [
+        'duplicate_policy' => env('NR1_DUPLICATE_POLICY', 'none'),
+        'client_draft' => (bool) env('NR1_CLIENT_DRAFT', false),
+    ],
+
     'benchmark_alert_margin' => 0.20,
 
     'trend_change_threshold' => 0.25,

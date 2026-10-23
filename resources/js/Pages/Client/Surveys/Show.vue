@@ -3,13 +3,34 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { formatDateTime } from '@/utils/dateOnly';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { reactive } from 'vue';
 
-defineProps({
+const props = defineProps({
     survey: Object,
     publicUrl: String,
+    audienceLinks: { type: Array, default: () => [] },
     stats: Object,
 });
+
+const drafts = reactive(
+    Object.fromEntries(
+        props.audienceLinks.map((l) => [l.id, { enabled: l.enabled, opens_at: l.opens_at ?? '', closes_at: l.closes_at ?? '' }]),
+    ),
+);
+
+const createAudienceLinks = () => router.post(route('client.surveys.audiences.store', props.survey.id), {}, { preserveScroll: true });
+
+const saveAudienceLink = (link) =>
+    router.patch(
+        route('client.surveys.audiences.update', [props.survey.id, link.id]),
+        {
+            enabled: drafts[link.id].enabled,
+            opens_at: drafts[link.id].opens_at || null,
+            closes_at: drafts[link.id].closes_at || null,
+        },
+        { preserveScroll: true },
+    );
 </script>
 
 <template>
@@ -42,10 +63,58 @@ defineProps({
             <p class="mt-2 text-sm text-gray-600">
                 Período: {{ formatDateTime(survey.starts_at) }} — {{ formatDateTime(survey.ends_at) }}
             </p>
-            <div class="mt-4">
+            <div v-if="publicUrl" class="mt-4">
                 <p class="text-sm font-medium text-gray-800">Link anônimo para colaboradores</p>
                 <p class="mt-2 break-all rounded bg-gray-50 p-3 text-sm font-mono text-talents-800">{{ publicUrl }}</p>
+                <button
+                    type="button"
+                    class="mt-3 rounded-md border border-talents-300 px-3 py-2 text-sm font-semibold text-talents-900"
+                    @click="createAudienceLinks"
+                >
+                    Criar links separados para Time e Líderes
+                </button>
             </div>
+
+            <section v-if="audienceLinks.length" class="mt-4" aria-labelledby="audience-links-title">
+                <h2 id="audience-links-title" class="text-sm font-medium text-gray-800">Links anônimos por público</h2>
+                <p class="mt-1 text-xs text-gray-500">
+                    Cada público tem link e QR code próprios. O link só abre dentro do período definido e enquanto estiver habilitado.
+                </p>
+                <div class="mt-3 grid gap-4 md:grid-cols-2">
+                    <div v-for="link in audienceLinks" :key="link.id" class="rounded-lg border border-gray-200 p-4">
+                        <p class="text-sm font-semibold text-talents-900">{{ link.label }}</p>
+                        <p class="mt-2 break-all rounded bg-gray-50 p-2 font-mono text-xs text-talents-800">{{ link.url }}</p>
+                        <img
+                            :src="link.qr_url"
+                            :alt="'QR code do link do público ' + link.label"
+                            class="mt-3 h-32 w-32 rounded border border-gray-200 bg-white p-1"
+                            width="128"
+                            height="128"
+                        />
+                        <div class="mt-3 space-y-2 text-sm">
+                            <label class="flex items-center gap-2">
+                                <input v-model="drafts[link.id].enabled" type="checkbox" class="rounded border-gray-300 text-talents-600" />
+                                <span>Link habilitado</span>
+                            </label>
+                            <label class="block text-xs text-gray-600">
+                                Abre em
+                                <input v-model="drafts[link.id].opens_at" type="datetime-local" class="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1 text-sm" />
+                            </label>
+                            <label class="block text-xs text-gray-600">
+                                Fecha em
+                                <input v-model="drafts[link.id].closes_at" type="datetime-local" class="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1 text-sm" />
+                            </label>
+                            <button
+                                type="button"
+                                class="rounded-md bg-talents-700 px-3 py-2 text-sm font-semibold text-white"
+                                @click="saveAudienceLink(link)"
+                            >
+                                Salvar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
                 <div class="rounded-lg bg-talents-50 p-4">
                     <p class="text-xs text-talents-700">Iniciaram</p>

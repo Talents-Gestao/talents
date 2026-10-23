@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Survey;
 
 use App\Http\Controllers\Controller;
 use App\Models\Department;
-use App\Models\Survey;
 use App\Models\SurveyAnswer;
+use App\Models\SurveyAudienceLink;
 use App\Models\SurveyResponse;
+use App\Services\SurveyDuplicateGuard;
+use App\Services\SurveyPublicEntry;
 use App\Services\SurveyResultCalculator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -19,21 +22,23 @@ class PublicSurveyController extends Controller
 {
     public function thanks(string $token): InertiaResponse
     {
-        $survey = Survey::query()->where('public_token', $token)->firstOrFail();
+        $entry = SurveyPublicEntry::resolve($token);
+        abort_if($entry === null, 404);
 
         return Inertia::render('Survey/ThankYou', [
-            'surveyTitle' => $survey->title,
+            'surveyTitle' => $entry['survey']->title,
         ]);
     }
 
-    public function show(string $token): InertiaResponse|RedirectResponse
+    public function show(Request $request, string $token): InertiaResponse|RedirectResponse
     {
-        $survey = Survey::query()
-            ->where('public_token', $token)
-            ->with(['template.sections.questions', 'company.departments'])
-            ->firstOrFail();
+        $entry = SurveyPublicEntry::resolve($token, ['template.sections.questions', 'company.departments']);
+        abort_if($entry === null, 404);
 
-        $closedReason = $survey->publicParticipationClosureReason();
+        $survey = $entry['survey'];
+        $link = $entry['link'];
+
+        $closedReason = SurveyPublicEntry::closureReason($survey, $link);
         if ($closedReason !== null) {
             return Inertia::render('Survey/Closed', [
                 'message' => match ($closedReason) {
@@ -45,9 +50,20 @@ class PublicSurveyController extends Controller
             ]);
         }
 
+        $invitation = $request->query('convite');
+        $blocked = SurveyDuplicateGuard::blockReasonForView($request, $survey, $link, is_string($invitation) ? $invitation : null);
+        if ($blocked !== null) {
+            return Inertia::render('Survey/Closed', ['message' => SurveyDuplicateGuard::message($blocked)]);
+        }
+
         return Inertia::render('Survey/Take', [
             'survey' => $survey,
+            'entryToken' => $token,
+            'audience' => $link?->audience,
+            'audienceLabel' => $link?->label(),
+            'invitation' => is_string($invitation) ? $invitation : null,
             'collectDemographics' => $survey->collectsDemographics(),
+            'clientDraft' => (bool) config('nr1.collection.client_draft', false),
             'likertLabels' => [
                 1 => 'Nunca',
                 2 => 'Raramente',
@@ -80,12 +96,14 @@ class PublicSurveyController extends Controller
 
     public function submit(Request $request, string $token, SurveyResultCalculator $calculator): RedirectResponse
     {
-        $survey = Survey::query()
-            ->where('public_token', $token)
-            ->with(['template.sections.questions'])
-            ->firstOrFail();
+        $entry = SurveyPublicEntry::resolve($token, ['template.sections.questions']);
+        abort_if($entry === null, 404);
 
-        if (! $survey->acceptsPublicResponses()) {
+        $survey = $entry['survey'];
+        /** @var SurveyAudienceLink|null $link */
+        $link = $entry['link'];
+
+        if (SurveyPublicEntry::closureReason($survey, $link) !== null) {
             abort(403);
         }
 
@@ -101,6 +119,7 @@ class PublicSurveyController extends Controller
             ],
             'age_range' => ['nullable', 'string', 'max:32'],
             'tenure_range' => ['nullable', 'string', 'max:32'],
+            'invitation' => ['nullable', 'string', 'max:128'],
         ];
 
         foreach ($questionIds as $qid) {
@@ -116,25 +135,45 @@ class PublicSurveyController extends Controller
             );
         }
 
-        $response = SurveyResponse::create([
-            'survey_id' => $survey->id,
-            'session_token' => Str::random(40),
-            'department_id' => isset($data['department_id']) ? (int) $data['department_id'] : null,
-            // Campanhas V11 não coletam faixa etária nem tempo de casa; a conclusão é gravada só com o mês.
-            'age_range' => $survey->collectsDemographics() ? ($data['age_range'] ?? null) : null,
-            'tenure_range' => $survey->collectsDemographics() ? ($data['tenure_range'] ?? null) : null,
-            'completed_at' => now()->startOfMonth(),
-        ]);
+        $collectsDemographics = $survey->collectsDemographics();
+        $invitation = $data['invitation'] ?? null;
 
-        foreach ($data['answers'] as $qid => $value) {
-            SurveyAnswer::create([
-                'survey_response_id' => $response->id,
-                'survey_template_question_id' => $qid,
-                'value' => (int) $value,
+        // Convite consumido e resposta gravada na mesma transação: se algo falhar, o convite não se perde.
+        $blocked = DB::transaction(function () use ($request, $survey, $link, $invitation, $data, $collectsDemographics): ?string {
+            $blocked = SurveyDuplicateGuard::consume($request, $survey, $link, $invitation);
+            if ($blocked !== null) {
+                return $blocked;
+            }
+
+            $response = SurveyResponse::create([
+                'survey_id' => $survey->id,
+                'session_token' => Str::random(40),
+                'department_id' => isset($data['department_id']) ? (int) $data['department_id'] : null,
+                // Campanhas V11 não coletam faixa etária nem tempo de casa; a conclusão é gravada só com o mês.
+                'age_range' => $collectsDemographics ? ($data['age_range'] ?? null) : null,
+                'tenure_range' => $collectsDemographics ? ($data['tenure_range'] ?? null) : null,
+                'audience' => $link?->audience,
+                'completed_at' => now()->startOfMonth(),
             ]);
+
+            foreach ($data['answers'] as $qid => $value) {
+                SurveyAnswer::create([
+                    'survey_response_id' => $response->id,
+                    'survey_template_question_id' => $qid,
+                    'value' => (int) $value,
+                ]);
+            }
+
+            return null;
+        });
+
+        if ($blocked !== null) {
+            // A página pública mostra o aviso adequado (convite inválido ou dispositivo que já respondeu).
+            return redirect()->route('survey.public', array_filter(['token' => $token, 'convite' => $invitation]));
         }
 
         $calculator->recalculate($survey->fresh());
+        SurveyDuplicateGuard::markSent($survey);
 
         return redirect()->route('survey.public.thanks', ['token' => $token]);
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Survey;
+use App\Models\SurveyAudienceLink;
 use App\Models\SurveyTemplate;
 use App\Support\Nr1GroupPrivacy;
 use Illuminate\Http\RedirectResponse;
@@ -91,9 +92,21 @@ class SurveyController extends Controller
         $completed = $survey->completedResponses()->count();
         $started = $survey->responses()->count();
 
+        $audienceLinks = $survey->audienceLinks()->orderBy('audience')->get()->map(fn (SurveyAudienceLink $link) => [
+            'id' => $link->id,
+            'audience' => $link->audience,
+            'label' => $link->label(),
+            'url' => route('survey.public', ['token' => $link->token]),
+            'qr_url' => route('client.surveys.audiences.qr', [$survey, $link]),
+            'enabled' => $link->enabled,
+            'opens_at' => $link->opens_at?->format('Y-m-d\TH:i'),
+            'closes_at' => $link->closes_at?->format('Y-m-d\TH:i'),
+        ])->values();
+
         return Inertia::render('Client/Surveys/Show', [
             'survey' => $survey,
-            'publicUrl' => $publicUrl,
+            'publicUrl' => $audienceLinks->isEmpty() ? $publicUrl : null,
+            'audienceLinks' => $audienceLinks,
             'stats' => [
                 'started' => $started,
                 'completed' => $completed,
