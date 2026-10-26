@@ -89,6 +89,8 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::post('surveys/{survey}/recalculate', [SurveyResultsController::class, 'recalculate'])->name('surveys.recalculate');
         Route::post('surveys/{survey}/audiencias', [SurveyAudienceController::class, 'store'])->name('surveys.audiences.store');
         Route::patch('surveys/{survey}/audiencias/{link}', [SurveyAudienceController::class, 'update'])->name('surveys.audiences.update');
+        Route::post('surveys/{survey}/treinamentos/{modality}/{audience}/proposta', [\App\Http\Controllers\Client\CampaignTrainingController::class, 'requestProposal'])
+            ->whereIn('modality', ['online', 'presencial'])->whereIn('audience', ['time', 'lideres'])->name('surveys.trainings.request');
         Route::post('mapa-proposito/analisar', [PurposeMapCampaignController::class, 'analyze'])->name('mapa-proposito.analyze');
     });
 

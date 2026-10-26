@@ -32,6 +32,7 @@ defineProps({
                     </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
+                    <Link :href="links.campaign" class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800">Campanha NR-1</Link>
                     <Link :href="links.documents" class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800">Documentos</Link>
                     <Link :href="links.plan" class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800">Plano de ação</Link>
                 </div>

@@ -68,6 +68,9 @@ class SurveyAudienceController extends Controller
     {
         $link = $this->linkOf($request, $survey, $link);
 
+        // Campanha NR-1 V11: o QR só existe enquanto a campanha e o link estão abertos.
+        abort_if($survey->usesReviewFlow() && ($survey->publicParticipationClosureReason() !== null || $link->closureReason() !== null), 404);
+
         return $this->svg(route('survey.public', ['token' => $link->token]));
     }
 

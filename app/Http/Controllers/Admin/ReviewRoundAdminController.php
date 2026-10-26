@@ -48,6 +48,7 @@ class ReviewRoundAdminController extends Controller
                 'title' => $survey->title,
                 'published_at' => $survey->published_at?->format('d/m/Y H:i'),
             ],
+            'campaignUrl' => route('admin.companies.surveys.campaign.show', [$company->id, $survey->id]),
             'resultsUrl' => route('admin.companies.surveys.results.show', [$company->id, $survey->id]),
             'externalReviewEnabled' => DocumentShareService::enabled(),
             'requiresPassegReview' => (bool) $survey->requires_passeg_review,

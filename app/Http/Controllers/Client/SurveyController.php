@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Enums\PermissionAction;
+use App\Enums\PermissionModule;
 use App\Models\Survey;
+use App\Services\Nr1\Nr1CampaignOverview;
 use App\Models\SurveyAudienceLink;
 use App\Models\SurveyTemplate;
 use App\Support\Nr1GroupPrivacy;
@@ -87,7 +90,7 @@ class SurveyController extends Controller
         return redirect()->route('client.surveys.show', $survey)->with('success', 'Campanha criada.');
     }
 
-    public function show(Request $request, Survey $survey): Response
+    public function show(Request $request, Survey $survey, Nr1CampaignOverview $overview): Response
     {
         $survey = $this->findSurvey($request, $survey);
         $survey->load('template');
@@ -97,20 +100,30 @@ class SurveyController extends Controller
         $completed = $survey->completedResponses()->count();
         $started = $survey->responses()->count();
 
-        $audienceLinks = $survey->audienceLinks()->orderBy('audience')->get()->map(fn (SurveyAudienceLink $link) => [
-            'id' => $link->id,
-            'audience' => $link->audience,
-            'label' => $link->label(),
-            'url' => route('survey.public', ['token' => $link->token]),
-            'qr_url' => route('client.surveys.audiences.qr', [$survey, $link]),
-            'enabled' => $link->enabled,
-            'opens_at' => $link->opens_at?->format('Y-m-d\TH:i'),
-            'closes_at' => $link->closes_at?->format('Y-m-d\TH:i'),
-        ])->values();
+        $v11 = $survey->usesReviewFlow();
+
+        $audienceLinks = $survey->audienceLinks()->orderBy('audience')->get()->map(function (SurveyAudienceLink $link) use ($survey, $v11) {
+            // Campanha NR-1 V11: link e QR só existem para a empresa enquanto a campanha e o link estão abertos.
+            $open = ! $v11 || ($survey->publicParticipationClosureReason() === null && $link->closureReason() === null);
+
+            return [
+                'id' => $link->id,
+                'audience' => $link->audience,
+                'label' => $link->label(),
+                'url' => $open ? route('survey.public', ['token' => $link->token]) : null,
+                'qr_url' => $open ? route('client.surveys.audiences.qr', [$survey, $link]) : null,
+                'open' => $open,
+                'enabled' => $link->enabled,
+                'opens_at' => $link->opens_at?->format('Y-m-d\TH:i'),
+                'closes_at' => $link->closes_at?->format('Y-m-d\TH:i'),
+            ];
+        })->values();
 
         return Inertia::render('Client/Surveys/Show', [
             'survey' => $survey,
-            'publicUrl' => $audienceLinks->isEmpty() ? $publicUrl : null,
+            'publicUrl' => $audienceLinks->isEmpty() && (! $v11 || $survey->publicParticipationClosureReason() === null) ? $publicUrl : null,
+            'campaign' => $v11 ? $overview->build($survey, false) : null,
+            'canRequestProposal' => $v11 && $request->user()->canAccess(PermissionModule::Pesquisas, PermissionAction::Edit),
             'audienceLinks' => $audienceLinks,
             'resultsAvailable' => SurveyPublicationGate::allows($survey),
             'stats' => [

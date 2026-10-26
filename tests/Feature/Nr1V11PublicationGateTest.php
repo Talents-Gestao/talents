@@ -37,6 +37,7 @@ class Nr1V11PublicationGateTest extends TestCase
         'client.surveys.audiences.store',
         'client.surveys.audiences.update',
         'client.surveys.recalculate',
+        'client.surveys.trainings.request',
     ];
 
     private function unpublished(): object

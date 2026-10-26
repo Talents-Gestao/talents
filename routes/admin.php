@@ -209,6 +209,15 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('companies/{company}/surveys/{survey}/documentos/{type}/compartilhar', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'store'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
             ->name('companies.surveys.psychosocial-documents.share');
+        // Campanha NR-1 V11: treinamentos contratados por público e total de elegíveis (só a Talents).
+        Route::get('companies/{company}/surveys/{survey}/campanha-nr1', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'show'])
+            ->name('companies.surveys.campaign.show');
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/contratar', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'contract'])
+            ->name('companies.surveys.campaign.contract');
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/remover-contratacao', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'uncontract'])
+            ->name('companies.surveys.campaign.uncontract');
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/elegiveis', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'updateEligible'])
+            ->name('companies.surveys.campaign.eligible');
         // Painel de resultados V11 para a consultoria e Revisão interna (Caderno §9): nada disso chega à empresa.
         Route::get('companies/{company}/surveys/{survey}/resultados-psicossociais', [\App\Http\Controllers\Admin\PsychosocialResultsAdminController::class, 'show'])
             ->name('companies.surveys.results.show');

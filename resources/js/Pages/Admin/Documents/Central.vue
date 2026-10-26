@@ -9,6 +9,7 @@ const props = defineProps({
     company: { type: Object, required: true },
     survey: { type: Object, required: true },
     resultsUrl: { type: String, default: null },
+    campaignUrl: { type: String, default: null },
     externalReviewEnabled: { type: Boolean, default: false },
     requiresPassegReview: { type: Boolean, default: false },
     canChangeReviewRequirement: { type: Boolean, default: true },
@@ -63,6 +64,7 @@ const send = () => {
                     <p class="text-sm text-gray-600">{{ company.name }} · {{ survey.title }}</p>
                 </div>
                 <div class="flex flex-wrap gap-3">
+                    <Link v-if="campaignUrl" :href="campaignUrl" class="text-sm text-talents-700 underline">Campanha NR-1</Link>
                     <Link v-if="resultsUrl" :href="resultsUrl" class="text-sm text-talents-700 underline">Resultados e revisão interna</Link>
                     <Link :href="route('admin.companies.surveys.action-plan.edit', [company.id, survey.id])" class="text-sm text-talents-700 underline">
                         Voltar ao parecer

@@ -1,6 +1,9 @@
 <script setup>
 import FormPageHeader from '@/Components/FormPageHeader.vue';
+import OrientationCard from '@/Components/Nr1Campaign/OrientationCard.vue';
+import ParticipationCard from '@/Components/Nr1Campaign/ParticipationCard.vue';
 import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
+import TrainingCards from '@/Components/Nr1Campaign/TrainingCards.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { formatDateTime } from '@/utils/dateOnly';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -12,7 +15,11 @@ const props = defineProps({
     audienceLinks: { type: Array, default: () => [] },
     stats: Object,
     resultsAvailable: { type: Boolean, default: true },
+    campaign: { type: Object, default: null },
+    canRequestProposal: { type: Boolean, default: false },
 });
+
+const requestUrl = (modality, audience) => route('client.surveys.trainings.request', [props.survey.id, modality, audience]);
 
 const drafts = reactive(
     Object.fromEntries(
@@ -56,6 +63,16 @@ const saveAudienceLink = (link) =>
             </FormPageHeader>
         </template>
 
+        <div v-if="campaign" class="mb-6 space-y-4">
+            <div v-if="$page.props.flash?.success" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{{ $page.props.flash.success }}</div>
+            <div v-if="$page.props.flash?.error" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{{ $page.props.flash.error }}</div>
+            <div class="grid gap-4 lg:grid-cols-3">
+                <div class="lg:col-span-2"><OrientationCard :orientation="campaign.orientation" /></div>
+                <ParticipationCard :participation="campaign.participation" />
+            </div>
+            <TrainingCards :cards="campaign.trainings" :can-request="canRequestProposal" :request-url="requestUrl" />
+        </div>
+
         <div class="surface-card p-6">
             <p class="flex flex-wrap items-center gap-2 text-sm text-gray-600">
                 <span>Status:</span>
@@ -84,8 +101,12 @@ const saveAudienceLink = (link) =>
                 <div class="mt-3 grid gap-4 md:grid-cols-2">
                     <div v-for="link in audienceLinks" :key="link.id" class="rounded-lg border border-gray-200 p-4">
                         <p class="text-sm font-semibold text-talents-900">{{ link.label }}</p>
-                        <p class="mt-2 break-all rounded bg-gray-50 p-2 font-mono text-xs text-talents-800">{{ link.url }}</p>
+                        <p v-if="!link.open" class="mt-2 rounded bg-gray-50 p-2 text-xs text-gray-600">
+                            O link e o QR code ficam visíveis enquanto a campanha e o link estiverem abertos.
+                        </p>
+                        <p v-if="link.open" class="mt-2 break-all rounded bg-gray-50 p-2 font-mono text-xs text-talents-800">{{ link.url }}</p>
                         <img
+                            v-if="link.open"
                             :src="link.qr_url"
                             :alt="'QR code do link do público ' + link.label"
                             class="mt-3 h-32 w-32 rounded border border-gray-200 bg-white p-1"

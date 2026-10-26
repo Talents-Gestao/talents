@@ -45,6 +45,7 @@ class PsychosocialResultsAdminController extends Controller
             'links' => [
                 'plan' => route('admin.companies.surveys.measures.edit', [$company->id, $survey->id]),
                 'documents' => route('admin.companies.surveys.documents.index', [$company->id, $survey->id]),
+                'campaign' => route('admin.companies.surveys.campaign.show', [$company->id, $survey->id]),
             ],
             'published' => $survey->published_at?->format('d/m/Y H:i'),
             'internalReview' => [
