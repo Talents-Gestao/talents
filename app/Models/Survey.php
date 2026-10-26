@@ -28,6 +28,7 @@ class Survey extends Model
         'min_group_size',
         'show_others_composition',
         'requires_publication',
+        'requires_passeg_review',
         'answers_reconstructed_at',
         'deleted_by',
         'archive_path',
@@ -64,6 +65,7 @@ class Survey extends Model
             'commercial_released_at' => 'datetime',
             'show_others_composition' => 'boolean',
             'requires_publication' => 'boolean',
+            'requires_passeg_review' => 'boolean',
             'published_at' => 'datetime',
         ];
     }

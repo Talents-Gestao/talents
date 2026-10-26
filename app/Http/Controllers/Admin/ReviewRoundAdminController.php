@@ -48,6 +48,8 @@ class ReviewRoundAdminController extends Controller
                 'published_at' => $survey->published_at?->format('d/m/Y H:i'),
             ],
             'externalReviewEnabled' => DocumentShareService::enabled(),
+            'requiresPassegReview' => (bool) $survey->requires_passeg_review,
+            'canChangeReviewRequirement' => $current === null || in_array($current->status, [PsychosocialReviewRound::STATUS_DRAFT, PsychosocialReviewRound::STATUS_PUBLISHED], true),
             'round' => $current ? $this->present($company, $survey, $current, withActions: true) : null,
             // A empresa continua vendo a última rodada publicada enquanto uma nova revisão está em andamento.
             'publishedRound' => $published !== null && $published->id !== $current?->id
@@ -65,6 +67,21 @@ class ReviewRoundAdminController extends Controller
         $this->authorizeSurvey($company, $survey);
 
         return $this->act($company, $survey, 'Revisão iniciada. Gere os documentos para começar.', fn () => $this->rounds->start($survey, $request->user()));
+    }
+
+    public function updateReviewRequirement(Request $request, Company $company, Survey $survey): RedirectResponse
+    {
+        $this->authorizeSurvey($company, $survey);
+
+        $data = $request->validate(['requires_passeg_review' => ['required', 'boolean']]);
+        $required = (bool) $data['requires_passeg_review'];
+
+        return $this->act(
+            $company,
+            $survey,
+            $required ? 'Revisão PASSEG exigida nesta campanha.' : 'Revisão PASSEG não exigida: a Talents publica diretamente.',
+            fn () => $this->rounds->setPassegReviewRequired($survey, $request->user(), $required),
+        );
     }
 
     public function regenerate(Request $request, Company $company, Survey $survey, PsychosocialReviewRound $round): RedirectResponse
@@ -143,8 +160,9 @@ class ReviewRoundAdminController extends Controller
             'history' => $this->rounds->history($round),
             'actions' => $withActions ? [
                 'regenerate' => $editable,
-                'send' => $editable,
-                'publish' => $round->status === PsychosocialReviewRound::STATUS_APPROVED,
+                'send' => $editable && $survey->requires_passeg_review,
+                'publish' => $round->status === PsychosocialReviewRound::STATUS_APPROVED
+                    || ($round->status === PsychosocialReviewRound::STATUS_DRAFT && ! $survey->requires_passeg_review),
             ] : ['regenerate' => false, 'send' => false, 'publish' => false],
         ]);
     }

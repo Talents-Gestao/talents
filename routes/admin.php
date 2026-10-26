@@ -214,6 +214,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.documents.index');
         Route::post('companies/{company}/surveys/{survey}/documentos/revisao', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'start'])
             ->name('companies.surveys.documents.start');
+        Route::post('companies/{company}/surveys/{survey}/documentos/exigir-revisao', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'updateReviewRequirement'])
+            ->name('companies.surveys.documents.review-requirement');
         Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/gerar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'regenerate'])
             ->whereNumber('round')->name('companies.surveys.documents.regenerate');
         Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/enviar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'send'])

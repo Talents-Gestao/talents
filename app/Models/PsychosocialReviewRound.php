@@ -40,7 +40,7 @@ class PsychosocialReviewRound extends Model
      * @var array<string, list<string>>
      */
     public const TRANSITIONS = [
-        self::STATUS_DRAFT => [self::STATUS_IN_REVIEW],
+        self::STATUS_DRAFT => [self::STATUS_IN_REVIEW, self::STATUS_PUBLISHED],
         self::STATUS_IN_REVIEW => [self::STATUS_CHANGES_REQUESTED, self::STATUS_APPROVED],
         self::STATUS_CHANGES_REQUESTED => [self::STATUS_IN_REVIEW],
         self::STATUS_APPROVED => [self::STATUS_PUBLISHED],
@@ -62,12 +62,14 @@ class PsychosocialReviewRound extends Model
         'published_at',
         'published_by',
         'protocol',
+        'published_without_review',
     ];
 
     protected function casts(): array
     {
         return [
             'round_number' => 'integer',
+            'published_without_review' => 'boolean',
             'sent_at' => 'datetime',
             'approved_at' => 'datetime',
             'published_at' => 'datetime',

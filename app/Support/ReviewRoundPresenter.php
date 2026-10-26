@@ -64,6 +64,7 @@ final class ReviewRoundPresenter
             'published_at' => $round->published_at?->format('d/m/Y H:i'),
             'published_by' => $round->publishedByUser?->name,
             'protocol' => $round->protocol,
+            'published_without_review' => (bool) $round->published_without_review,
             'acknowledgement' => $round->acknowledgement ? [
                 'by' => $round->acknowledgement->user?->name,
                 'at' => $round->acknowledgement->acknowledged_at->format('d/m/Y H:i'),

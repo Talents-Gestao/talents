@@ -152,6 +152,10 @@ class ReviewRoundService
     {
         $this->assertTalents($actor);
 
+        if (! $round->survey->requires_passeg_review) {
+            throw new PsychosocialDocumentException('Esta campanha não exige revisão PASSEG: a Talents publica diretamente.');
+        }
+
         if (! in_array($round->status, [PsychosocialReviewRound::STATUS_DRAFT, PsychosocialReviewRound::STATUS_CHANGES_REQUESTED], true)) {
             $this->assertTransition($round, PsychosocialReviewRound::STATUS_IN_REVIEW);
         }
@@ -254,12 +258,18 @@ class ReviewRoundService
         $this->assertTalents($actor);
         $this->assertTransition($round, PsychosocialReviewRound::STATUS_PUBLISHED);
 
+        // Publicação direta (sem PASSEG) só quando a campanha não exige a revisão; com a revisão exigida só sai de «Aprovado».
+        $direct = $round->status === PsychosocialReviewRound::STATUS_DRAFT;
+        if ($direct && $round->survey->requires_passeg_review) {
+            throw new PsychosocialDocumentException('Esta campanha exige revisão PASSEG: envie à PASSEG e publique depois da aprovação.');
+        }
+
         $pending = $this->pending($round);
         if ($pending !== []) {
             throw new PsychosocialDocumentException('Não é possível publicar. Pendências: '.$this->describe($pending).'.');
         }
 
-        return DB::transaction(function () use ($round, $actor): PsychosocialReviewRound {
+        return DB::transaction(function () use ($round, $actor, $direct): PsychosocialReviewRound {
             $round = PsychosocialReviewRound::query()->lockForUpdate()->findOrFail($round->id);
             $survey = $round->survey;
 
@@ -271,16 +281,43 @@ class ReviewRoundService
                 'published_at' => now(),
                 'published_by' => $actor->id,
                 'protocol' => $protocol,
+                'published_without_review' => $direct,
             ])->save();
 
             if ($survey->published_at === null) {
                 $survey->forceFill(['published_at' => now(), 'published_by' => $actor->id])->save();
             }
 
-            $this->event($round, $actor, 'published', $from, $round->status, "Protocolo de encaminhamento {$protocol}.");
+            $this->event(
+                $round,
+                $actor,
+                'published',
+                $from,
+                $round->status,
+                ($direct ? 'Publicação direta pela Talents, sem revisão PASSEG (não exigida nesta campanha). ' : '')."Protocolo de encaminhamento {$protocol}.",
+            );
 
             return $round;
         });
+    }
+
+    /**
+     * "Exigir revisão PASSEG" da campanha. Só muda sem revisão em andamento com a PASSEG (enviada, com alteração
+     * solicitada ou aprovada), para não trocar o caminho no meio de uma revisão. Vale para as próximas publicações.
+     */
+    public function setPassegReviewRequired(Survey $survey, User $actor, bool $required): Survey
+    {
+        $this->assertTalents($actor);
+        $this->assertReviewFlow($survey);
+
+        $current = $this->currentRound($survey);
+        if ($current !== null && ! in_array($current->status, [PsychosocialReviewRound::STATUS_DRAFT, PsychosocialReviewRound::STATUS_PUBLISHED], true)) {
+            throw new PsychosocialDocumentException('Há uma revisão em andamento com a PASSEG: conclua a publicação antes de mudar essa configuração.');
+        }
+
+        $survey->forceFill(['requires_passeg_review' => $required])->save();
+
+        return $survey;
     }
 
     /** Ciência da empresa (Caderno §13): uma por publicação, os dois documentos juntos. */

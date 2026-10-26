@@ -9,6 +9,8 @@ const props = defineProps({
     company: { type: Object, required: true },
     survey: { type: Object, required: true },
     externalReviewEnabled: { type: Boolean, default: false },
+    requiresPassegReview: { type: Boolean, default: false },
+    canChangeReviewRequirement: { type: Boolean, default: true },
     round: { type: Object, default: null },
     publishedRound: { type: Object, default: null },
     canStart: { type: Boolean, default: false },
@@ -29,12 +31,18 @@ const helpText = computed(() => {
         case 'approved':
             return 'Revisão documental aprovada. A Talents pode publicar os documentos.';
         default:
-            return 'Documentos em edição pela Talents. Gere as versões, confira as pendências e envie à PASSEG.';
+            return props.requiresPassegReview
+                ? 'Documentos em edição pela Talents. Gere as versões, confira as pendências e envie à PASSEG.'
+                : 'Documentos em edição pela Talents. Gere as versões, confira as pendências e publique: esta campanha não exige revisão PASSEG.';
     }
 });
 
 const post = (name, params, data = {}) => router.post(route(`admin.companies.surveys.documents.${name}`, params), data, { preserveScroll: true });
 const base = computed(() => [props.company.id, props.survey.id]);
+
+const toggleRequirement = (event) => {
+    router.post(route('admin.companies.surveys.documents.review-requirement', base.value), { requires_passeg_review: event.target.checked }, { preserveScroll: true });
+};
 
 const send = () => {
     sendForm.post(route('admin.companies.surveys.documents.send', [props.company.id, props.survey.id, props.round.id]), { preserveScroll: true });
@@ -65,9 +73,30 @@ const send = () => {
             <div v-if="$page.props.flash?.error" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
                 {{ $page.props.flash.error }}
             </div>
-            <p v-if="!externalReviewEnabled" class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                A revisão externa está desligada neste ambiente: não é possível enviar à PASSEG nem, portanto, publicar.
-                Ela só deve ser ligada depois do MFA.
+            <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <label class="flex items-start gap-3 text-sm text-gray-900">
+                    <input
+                        type="checkbox"
+                        class="mt-1 rounded border-gray-300"
+                        :checked="requiresPassegReview"
+                        :disabled="!canChangeReviewRequirement"
+                        @change="toggleRequirement"
+                    />
+                    <span>
+                        <span class="font-semibold">Exigir revisão PASSEG</span>
+                        <span class="block text-xs text-gray-600">
+                            Desligada: a Talents publica diretamente, com data, responsável, protocolo e a mesma checagem de campos obrigatórios.
+                            Ligada: Em revisão PASSEG → Aprovado → Publicado. Vale para as próximas publicações.
+                        </span>
+                        <span v-if="!canChangeReviewRequirement" class="block text-xs text-amber-800">
+                            Há uma revisão em andamento com a PASSEG: conclua a publicação para mudar.
+                        </span>
+                    </span>
+                </label>
+            </section>
+            <p v-if="requiresPassegReview && !externalReviewEnabled" class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                A revisão externa está desligada neste ambiente: não é possível enviar à PASSEG nem, portanto, publicar com a revisão exigida.
+                Ela só deve ser ligada depois do MFA. Para publicar antes disso, desligue «Exigir revisão PASSEG».
             </p>
 
             <div class="grid gap-6 lg:grid-cols-2">
@@ -180,7 +209,10 @@ const send = () => {
                                 <dd v-else class="text-gray-600">Não confirmada (exige evidência de SST)</dd>
                             </div>
                         </dl>
-                        <p class="mt-3 text-xs text-gray-500">{{ approvalMeaning }}</p>
+                        <p v-if="round.published_without_review" class="mt-3 text-xs text-amber-800">
+                            Publicado diretamente pela Talents, sem revisão PASSEG (não exigida nesta campanha).
+                        </p>
+                        <p v-else class="mt-3 text-xs text-gray-500">{{ approvalMeaning }}</p>
                     </template>
 
                     <div v-if="canStart" class="mt-4">

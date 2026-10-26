@@ -25,6 +25,7 @@ use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\Psychosocial\ReviewRoundService;
 use App\Services\PsychosocialMeasureService;
 use App\Support\CanonicalJson;
+use App\Support\SurveyPublicationGate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -72,14 +73,15 @@ class Nr1V11DocumentsFlowTest extends TestCase
     }
 
     /**
-     * Campanha V11 que exige publicação, com cadastro técnico completo e uma medida no plano.
+     * Campanha V11 que exige publicação, com cadastro técnico completo e uma medida no plano. Nos testes ela exige a
+     * revisão PASSEG por padrão (o padrão da coluna é desligado); `requirePasseg: false` é a publicação direta da Talents.
      *
      * @return object{company: mixed, survey: Survey, talents: User, reviewer: User, admin: User, measure: ?PsychosocialMeasure}
      */
-    private function flow(bool $withRegistration = true, bool $withMeasure = true): object
+    private function flow(bool $withRegistration = true, bool $withMeasure = true, bool $requirePasseg = true): object
     {
         $campaign = $this->v11Campaign();
-        $campaign->survey->forceFill(['requires_publication' => true, 'published_at' => null])->save();
+        $campaign->survey->forceFill(['requires_publication' => true, 'published_at' => null, 'requires_passeg_review' => $requirePasseg])->save();
         $survey = $campaign->survey->fresh();
 
         $talents = User::factory()->superAdmin()->create(['is_owner' => true, 'name' => 'Talents Owner']);
@@ -734,5 +736,186 @@ class Nr1V11DocumentsFlowTest extends TestCase
 
         $this->assertSame(0, DocumentShare::query()->count());
         $this->assertNotNull($round->executive_version_id);
+    }
+
+    private function direct(object $flow): PsychosocialReviewRound
+    {
+        $round = $this->rounds->start($flow->survey, $flow->talents);
+        $round = $this->rounds->regenerate($round, $flow->talents);
+
+        return $this->rounds->publish($round, $flow->talents);
+    }
+
+    public function test_direct_publication_records_date_responsible_protocol_and_opens_the_gate_without_external_review(): void
+    {
+        // Revisão externa desligada (sem MFA): a publicação direta não depende dela.
+        config(['nr1.external_review.enabled' => false]);
+        $flow = $this->flow(requirePasseg: false);
+        $this->assertFalse(SurveyPublicationGate::allows($flow->survey));
+
+        $round = $this->direct($flow);
+
+        $this->assertSame(PsychosocialReviewRound::STATUS_PUBLISHED, $round->status);
+        $this->assertTrue($round->published_without_review);
+        $this->assertNull($round->sent_at);
+        $this->assertNull($round->approved_at);
+        $this->assertNotNull($round->published_at);
+        $this->assertSame($flow->talents->id, $round->published_by);
+        $this->assertMatchesRegularExpression('/^NR1-\d+-R01-\d{8}-[A-Z0-9]{6}$/', (string) $round->protocol);
+
+        $survey = $flow->survey->fresh();
+        $this->assertNotNull($survey->published_at);
+        $this->assertSame($flow->talents->id, $survey->published_by);
+        $this->assertTrue(SurveyPublicationGate::allows($survey));
+
+        $history = $this->rounds->history($round);
+        $this->assertSame(['created', 'regenerated', 'published'], array_column($history, 'action'));
+        $this->assertStringContainsString('sem revisão PASSEG', $history[2]['body']);
+        $this->assertSame(0, DocumentShare::query()->count());
+    }
+
+    public function test_direct_path_keeps_t02_the_company_sees_nothing_until_published(): void
+    {
+        $flow = $this->flow(requirePasseg: false);
+        $round = $this->rounds->regenerate($this->rounds->start($flow->survey, $flow->talents), $flow->talents);
+
+        $this->actingAs($flow->admin)->get(route('client.surveys.documents.index', $flow->survey))->assertNotFound();
+        $this->actingAs($flow->admin)->get(route('client.surveys.psychosocial-documents.download', [$flow->survey, 'technical_report']))->assertNotFound();
+
+        $this->rounds->publish($round, $flow->talents);
+
+        $this->actingAs($flow->admin)->get(route('client.surveys.documents.index', $flow->survey))->assertOk();
+        $this->actingAs($flow->admin)->get(route('client.surveys.psychosocial-documents.download', [$flow->survey, 'technical_report']))->assertOk();
+    }
+
+    public function test_direct_path_keeps_t19_pending_items_block_publication(): void
+    {
+        $flow = $this->flow(withRegistration: false, requirePasseg: false);
+        $round = $this->rounds->regenerate($this->rounds->start($flow->survey, $flow->talents), $flow->talents);
+
+        try {
+            $this->rounds->publish($round, $flow->talents);
+            $this->fail('Publicar direto com campos vazios deveria ser recusado.');
+        } catch (PsychosocialDocumentException $exception) {
+            $this->assertStringContainsString('Não é possível publicar', $exception->getMessage());
+            $this->assertStringContainsString('CNPJ', $exception->getMessage());
+        }
+        $this->assertSame(PsychosocialReviewRound::STATUS_DRAFT, $round->fresh()->status);
+        $this->assertNull($flow->survey->fresh()->published_at);
+
+        // Fictício também bloqueia, e só uma nova versão congelada libera.
+        $this->registration($flow->survey, ['cnpj_snapshot' => '11.111.111/0001-11', 'technical_responsible_name' => 'A confirmar']);
+        $round = $this->rounds->regenerate($round->fresh(), $flow->talents);
+        $problems = collect($this->rounds->pending($round))->pluck('problem', 'label');
+        $this->assertSame('inválido', $problems['CNPJ']);
+        $this->assertSame('fictício ou marcador de lugar', $problems['Responsável técnico (nome)']);
+
+        $this->registration($flow->survey);
+        $this->assertNotEmpty($this->rounds->pending($round->fresh()));
+        $round = $this->rounds->regenerate($round->fresh(), $flow->talents);
+        $this->assertSame(PsychosocialReviewRound::STATUS_PUBLISHED, $this->rounds->publish($round, $flow->talents)->status);
+    }
+
+    public function test_direct_path_keeps_t20_published_round_is_immutable_and_a_new_revision_is_a_new_round(): void
+    {
+        $flow = $this->flow(requirePasseg: false);
+        $round = $this->direct($flow);
+
+        foreach ([
+            fn () => $round->fresh()->fill(['published_without_review' => false])->save(),
+            fn () => $round->fresh()->fill(['protocol' => 'OUTRO'])->save(),
+            fn () => $round->fresh()->delete(),
+        ] as $mutation) {
+            try {
+                $mutation();
+                $this->fail('Rodada publicada foi alterada.');
+            } catch (LogicException) {
+            }
+        }
+
+        try {
+            $this->rounds->publish($round->fresh(), $flow->talents);
+            $this->fail('Republicar a mesma rodada.');
+        } catch (PsychosocialDocumentException) {
+        }
+
+        $second = $this->rounds->start($flow->survey->fresh(), $flow->talents);
+        $this->assertSame(2, $second->round_number);
+        $second = $this->rounds->publish($this->rounds->regenerate($second, $flow->talents), $flow->talents);
+        $this->assertSame(2, $second->executiveVersion->version_number);
+        $this->assertSame(1, $round->fresh()->executiveVersion->version_number);
+        $this->assertSame($second->id, $this->rounds->publishedRound($flow->survey)->id);
+    }
+
+    public function test_requirement_on_keeps_the_review_flow_and_refuses_direct_publication(): void
+    {
+        $flow = $this->flow(requirePasseg: true);
+        $round = $this->rounds->regenerate($this->rounds->start($flow->survey, $flow->talents), $flow->talents);
+
+        try {
+            $this->rounds->publish($round, $flow->talents);
+            $this->fail('Publicação direta com a revisão PASSEG exigida.');
+        } catch (PsychosocialDocumentException $exception) {
+            $this->assertStringContainsString('exige revisão PASSEG', $exception->getMessage());
+        }
+        $this->assertSame(PsychosocialReviewRound::STATUS_DRAFT, $round->fresh()->status);
+
+        $published = $this->rounds->publish($this->rounds->approve($this->rounds->send($round, $flow->talents, $flow->reviewer), $flow->reviewer), $flow->talents);
+        $this->assertFalse($published->published_without_review);
+    }
+
+    public function test_requirement_off_refuses_sending_to_passeg(): void
+    {
+        $flow = $this->flow(requirePasseg: false);
+        $round = $this->rounds->regenerate($this->rounds->start($flow->survey, $flow->talents), $flow->talents);
+
+        try {
+            $this->rounds->send($round, $flow->talents, $flow->reviewer);
+            $this->fail('Enviar à PASSEG com a revisão não exigida.');
+        } catch (PsychosocialDocumentException $exception) {
+            $this->assertStringContainsString('não exige revisão PASSEG', $exception->getMessage());
+        }
+        $this->assertSame(0, DocumentShare::query()->count());
+    }
+
+    public function test_requirement_switch_is_talents_only_and_locked_while_the_passeg_review_is_open(): void
+    {
+        $flow = $this->flow(requirePasseg: false);
+        $url = route('admin.companies.surveys.documents.review-requirement', [$flow->company->id, $flow->survey->id]);
+
+        // A empresa não mexe nessa configuração.
+        $this->actingAs($flow->admin)->post($url, ['requires_passeg_review' => true])->assertForbidden();
+        $this->assertFalse($flow->survey->fresh()->requires_passeg_review);
+
+        $this->actingAs($flow->talents)->post($url, ['requires_passeg_review' => true])->assertSessionHas('success');
+        $this->assertTrue($flow->survey->fresh()->requires_passeg_review);
+
+        // Com a revisão em andamento, a configuração fica travada.
+        $flow->survey = $flow->survey->fresh();
+        $round = $this->sent($flow);
+        $this->actingAs($flow->talents)->post($url, ['requires_passeg_review' => false])->assertSessionHas('error');
+        $this->assertTrue($flow->survey->fresh()->requires_passeg_review);
+
+        $this->rounds->publish($this->rounds->approve($round, $flow->reviewer), $flow->talents);
+        $this->actingAs($flow->talents)->post($url, ['requires_passeg_review' => false])->assertSessionHas('success');
+        $this->assertFalse($flow->survey->fresh()->requires_passeg_review);
+    }
+
+    public function test_central_props_follow_the_requirement(): void
+    {
+        $flow = $this->flow(requirePasseg: false);
+        $this->rounds->regenerate($this->rounds->start($flow->survey, $flow->talents), $flow->talents);
+        $url = route('admin.companies.surveys.documents.index', [$flow->company->id, $flow->survey->id]);
+
+        $this->actingAs($flow->talents)->get($url)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('requiresPassegReview', false)
+            ->where('round.actions.send', false)
+            ->where('round.actions.publish', true));
+
+        $flow->survey->forceFill(['requires_passeg_review' => true])->save();
+        $this->actingAs($flow->talents)->get($url)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('requiresPassegReview', true)
+            ->where('round.actions.send', true)
+            ->where('round.actions.publish', false));
     }
 }
