@@ -106,6 +106,8 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('surveys/{survey}/painel-psicossocial', [PsychosocialDashboardController::class, 'show'])->name('surveys.psychosocial-dashboard');
         Route::get('surveys/{survey}/painel-psicossocial/export/csv', [PsychosocialDashboardController::class, 'exportCsv'])->name('surveys.psychosocial-dashboard.export.csv');
         Route::get('surveys/{survey}/painel-psicossocial/export/json', [PsychosocialDashboardController::class, 'exportJson'])->name('surveys.psychosocial-dashboard.export.json');
+        Route::get('surveys/{survey}/painel-psicossocial/export/perguntas', [PsychosocialDashboardController::class, 'exportItemsCsv'])->name('surveys.psychosocial-dashboard.export.items');
+        Route::get('surveys/{survey}/painel-psicossocial/imprimir', [PsychosocialDashboardController::class, 'print'])->name('surveys.psychosocial-dashboard.print');
         Route::get('surveys/{survey}/resumo-executivo/download', [ExecutiveBriefController::class, 'download'])->name('surveys.executive-brief.download');
         Route::get('surveys/{survey}/documentos/{type}/download', [PsychosocialDocumentController::class, 'download'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
