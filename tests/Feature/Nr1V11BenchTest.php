@@ -145,12 +145,9 @@ class Nr1V11BenchTest extends TestCase
         $this->assertSame([], $leaks, 'Rota da empresa devolveu algo diferente de 403/404 para outra empresa.');
         $this->assertSame($measureBefore, json_encode($a->measure->fresh()), 'A medida da outra empresa foi alterada.');
         $this->assertSame(0, \App\Models\PsychosocialMeasureEvidence::query()->count());
-        // Achado da bancada: estas rotas validam o corpo ANTES de autorizar (302 com erro de validação para outra empresa).
-        // Sem efeito (o corpo válido dá 404), mas a ordem ideal é autorizar primeiro; ver NOTAS.md.
-        $this->assertEqualsCanonicalizing(
-            ['client.surveys.measures.confirm', 'client.surveys.measures.adjust', 'client.surveys.measures.replan', 'client.surveys.measures.evidences.store', 'client.surveys.measures.effectiveness'],
-            $validationOnly,
-        );
+        // Teste estrutural: nenhuma rota da empresa com {survey} valida o corpo antes de autorizar. Para outra empresa,
+        // mesmo sem corpo, a resposta é sempre 403/404 (nunca 302 com erro de validação).
+        $this->assertSame([], $validationOnly, 'Rota que valida antes de autorizar: '.implode(', ', $validationOnly));
 
         // Controle: o dono da campanha acessa a mesma tela (o teste não é vazio).
         $this->actingAs($a->admin)->get(route('client.surveys.show', $a->survey))->assertOk();

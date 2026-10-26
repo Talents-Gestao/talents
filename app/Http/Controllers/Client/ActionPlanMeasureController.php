@@ -68,6 +68,9 @@ class ActionPlanMeasureController extends Controller
 
     public function confirm(Request $request, Survey $survey, PsychosocialMeasure $measure): RedirectResponse
     {
+        // Autoriza ANTES de validar: quem não pode ver a medida recebe 403/404, nunca um erro de validação.
+        $this->authorizeMeasure($request, $survey, $measure);
+
         $data = $request->validate([
             'responsible_user_id' => ['nullable', 'integer'],
             'responsible_text' => ['nullable', 'string', 'max:255'],
@@ -87,6 +90,9 @@ class ActionPlanMeasureController extends Controller
 
     public function adjust(Request $request, Survey $survey, PsychosocialMeasure $measure): RedirectResponse
     {
+        // Autoriza ANTES de validar: quem não pode ver a medida recebe 403/404, nunca um erro de validação.
+        $this->authorizeMeasure($request, $survey, $measure);
+
         $data = $request->validate([
             'responsible_user_id' => ['nullable', 'integer'],
             'responsible_text' => ['nullable', 'string', 'max:255'],
@@ -116,6 +122,9 @@ class ActionPlanMeasureController extends Controller
 
     public function replan(Request $request, Survey $survey, PsychosocialMeasure $measure): RedirectResponse
     {
+        // Autoriza ANTES de validar: quem não pode ver a medida recebe 403/404, nunca um erro de validação.
+        $this->authorizeMeasure($request, $survey, $measure);
+
         $data = $request->validate([
             'due_date' => ['required', 'date'],
             'reason' => ['required', 'string', 'max:2000'],
@@ -131,6 +140,9 @@ class ActionPlanMeasureController extends Controller
 
     public function storeEvidence(Request $request, Survey $survey, PsychosocialMeasure $measure): RedirectResponse
     {
+        // Autoriza ANTES de validar: quem não pode ver a medida recebe 403/404, nunca um erro de validação.
+        $this->authorizeMeasure($request, $survey, $measure);
+
         $data = $request->validate([
             'description' => ['required', 'string', 'max:2000'],
             'file' => ['nullable', 'file', 'max:20480'],
@@ -148,6 +160,9 @@ class ActionPlanMeasureController extends Controller
 
     public function recordEffectiveness(Request $request, Survey $survey, PsychosocialMeasure $measure): RedirectResponse
     {
+        // Autoriza ANTES de validar: quem não pode ver a medida recebe 403/404, nunca um erro de validação.
+        $this->authorizeMeasure($request, $survey, $measure);
+
         $data = $request->validate([
             'note' => ['required', 'string', 'max:5000'],
             'result' => ['required', 'string', 'in:'.implode(',', array_keys(PsychosocialMeasure::EFFECTIVENESS_RESULTS))],
