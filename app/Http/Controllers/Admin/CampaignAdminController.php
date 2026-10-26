@@ -12,6 +12,7 @@ use App\Models\Survey;
 use App\Models\SurveyAudienceLink;
 use App\Models\SurveyCampaignRegistration;
 use App\Services\Nr1\Nr1CampaignOverview;
+use App\Services\Nr1\Nr1InvitationService;
 use App\Services\Nr1\Nr1TrainingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class CampaignAdminController extends Controller
     public function __construct(
         private readonly Nr1CampaignOverview $overview,
         private readonly Nr1TrainingService $trainings,
+        private readonly Nr1InvitationService $invitations,
     ) {}
 
     public function show(Company $company, Survey $survey): Response
@@ -51,7 +53,15 @@ class CampaignAdminController extends Controller
                 'source' => $registration?->eligible_source,
                 'min' => $survey->completedResponses()->count(),
             ],
+            'invitations' => [
+                'enabled' => (bool) $survey->uses_invitations,
+                'stats' => $this->invitations->stats($survey),
+                // Os códigos só existem em claro na resposta que os gera: lidos da sessão e esquecidos em seguida.
+                'generated' => session()->pull('invitation_urls', []),
+            ],
             'urls' => [
+                'invitation_option' => route('admin.companies.surveys.campaign.invitation-option', [$company->id, $survey->id]),
+                'invitations' => route('admin.companies.surveys.campaign.invitations', [$company->id, $survey->id]),
                 'contract' => route('admin.companies.surveys.campaign.contract', [$company->id, $survey->id]),
                 'uncontract' => route('admin.companies.surveys.campaign.uncontract', [$company->id, $survey->id]),
                 'eligible' => route('admin.companies.surveys.campaign.eligible', [$company->id, $survey->id]),
@@ -132,6 +142,39 @@ class CampaignAdminController extends Controller
         );
 
         return back()->with('success', 'Total de elegíveis atualizado.');
+    }
+
+    public function updateInvitationOption(Request $request, Company $company, Survey $survey): RedirectResponse
+    {
+        $this->authorizeSurvey($company, $survey);
+        $data = $request->validate(['enabled' => ['required', 'boolean']]);
+
+        try {
+            $this->invitations->setEnabled($survey, $request->user(), (bool) $data['enabled']);
+        } catch (Nr1CampaignException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('success', $data['enabled'] ? 'Convite único ligado para esta campanha.' : 'Convite único desligado para esta campanha.');
+    }
+
+    public function generateInvitations(Request $request, Company $company, Survey $survey): RedirectResponse
+    {
+        $this->authorizeSurvey($company, $survey);
+        $data = $request->validate([
+            'audience' => ['nullable', 'in:'.implode(',', SurveyAudienceLink::AUDIENCES)],
+            'count' => ['required', 'integer', 'min:1', 'max:'.Nr1InvitationService::MAX_PER_BATCH],
+        ]);
+
+        try {
+            $urls = $this->invitations->generate($survey, $request->user(), $data['audience'] ?? null, (int) $data['count']);
+        } catch (Nr1CampaignException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        session()->flash('invitation_urls', $urls);
+
+        return back()->with('success', count($urls).' convites gerados. Copie ou baixe agora: os códigos não ficam guardados.');
     }
 
     private function authorizeSurvey(Company $company, Survey $survey): void

@@ -218,6 +218,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.campaign.uncontract');
         Route::post('companies/{company}/surveys/{survey}/campanha-nr1/elegiveis', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'updateEligible'])
             ->name('companies.surveys.campaign.eligible');
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/convite-unico', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'updateInvitationOption'])
+            ->name('companies.surveys.campaign.invitation-option');
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/convites', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'generateInvitations'])
+            ->name('companies.surveys.campaign.invitations');
         // Painel de resultados V11 para a consultoria e Revisão interna (Caderno §9): nada disso chega à empresa.
         Route::get('companies/{company}/surveys/{survey}/resultados-psicossociais', [\App\Http\Controllers\Admin\PsychosocialResultsAdminController::class, 'show'])
             ->name('companies.surveys.results.show');
@@ -730,5 +734,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
         Route::match(['put', 'patch'], 'users/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::delete('users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
+        // Revisores externos (PASSEG): cadastro e convite pela Talents. Não liberam acesso com a revisão externa desligada.
+        Route::get('revisores-externos', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'index'])->name('external-reviewers.index');
+        Route::post('revisores-externos', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'store'])->name('external-reviewers.store');
+        Route::post('revisores-externos/{user}/reenviar-convite', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'resend'])->whereNumber('user')->name('external-reviewers.resend');
+        Route::post('revisores-externos/{user}/ativo', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'toggle'])->whereNumber('user')->name('external-reviewers.toggle');
     });
 });

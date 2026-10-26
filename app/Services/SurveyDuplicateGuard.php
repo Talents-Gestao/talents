@@ -36,6 +36,14 @@ final class SurveyDuplicateGuard
             : self::POLICY_NONE;
     }
 
+    /**
+     * Política efetiva da campanha: a opção «convite único» da campanha vale sobre o padrão global (que segue `none`).
+     */
+    public static function policyFor(Survey $survey): string
+    {
+        return $survey->uses_invitations ? self::POLICY_ONE_TIME_TOKEN : self::policy();
+    }
+
     public static function cookieName(Survey $survey): string
     {
         return 'nr1_sent_'.$survey->id;
@@ -48,7 +56,7 @@ final class SurveyDuplicateGuard
      */
     public static function blockReasonForView(Request $request, Survey $survey, ?SurveyAudienceLink $link, ?string $invitation): ?string
     {
-        return match (self::policy()) {
+        return match (self::policyFor($survey)) {
             self::POLICY_DEVICE_COOKIE => $request->cookies->has(self::cookieName($survey)) ? self::BLOCK_ALREADY_SENT : null,
             self::POLICY_ONE_TIME_TOKEN => self::findUsableInvitation($survey, $link, $invitation) === null ? self::BLOCK_INVITATION : null,
             default => null,
@@ -63,7 +71,7 @@ final class SurveyDuplicateGuard
      */
     public static function consume(Request $request, Survey $survey, ?SurveyAudienceLink $link, ?string $invitation): ?string
     {
-        switch (self::policy()) {
+        switch (self::policyFor($survey)) {
             case self::POLICY_DEVICE_COOKIE:
                 return $request->cookies->has(self::cookieName($survey)) ? self::BLOCK_ALREADY_SENT : null;
 
@@ -90,7 +98,7 @@ final class SurveyDuplicateGuard
      */
     public static function markSent(Survey $survey): void
     {
-        if (self::policy() === self::POLICY_DEVICE_COOKIE) {
+        if (self::policyFor($survey) === self::POLICY_DEVICE_COOKIE) {
             Cookie::queue(Cookie::make(self::cookieName($survey), '1', 60 * 24 * 365));
         }
     }

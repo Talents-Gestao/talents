@@ -29,6 +29,7 @@ class Survey extends Model
         'show_others_composition',
         'requires_publication',
         'requires_passeg_review',
+        'uses_invitations',
         'answers_reconstructed_at',
         'deleted_by',
         'archive_path',
@@ -66,6 +67,7 @@ class Survey extends Model
             'show_others_composition' => 'boolean',
             'requires_publication' => 'boolean',
             'requires_passeg_review' => 'boolean',
+            'uses_invitations' => 'boolean',
             'published_at' => 'datetime',
         ];
     }

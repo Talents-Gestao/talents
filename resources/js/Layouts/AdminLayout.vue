@@ -643,6 +643,15 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
                 <SidebarNavItem
+                    v-if="canAdmin('equipe')"
+                    :href="route('admin.external-reviewers.index')"
+                    :active="route().current('admin.external-reviewers.*')"
+                    label="Revisores externos"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
                     v-if="canAdmin('empresa_talents')"
                     :href="route('admin.empresa-talents.edit')"
                     :active="route().current('admin.empresa-talents.*')"
