@@ -4,15 +4,19 @@ namespace App\Http\Controllers\Survey;
 
 use App\Http\Controllers\Controller;
 use App\Models\Department;
+use App\Models\Nr1Training;
 use App\Models\SurveyAnswer;
 use App\Models\SurveyAudienceLink;
 use App\Models\SurveyResponse;
+use App\Services\Nr1\Nr1JourneyBuilder;
+use App\Services\Nr1\Nr1TrainingService;
 use App\Services\SurveyDuplicateGuard;
 use App\Services\SurveyPublicEntry;
 use App\Services\SurveyResultCalculator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -30,7 +34,7 @@ class PublicSurveyController extends Controller
         ]);
     }
 
-    public function show(Request $request, string $token): InertiaResponse|RedirectResponse
+    public function show(Request $request, string $token, Nr1JourneyBuilder $journey): InertiaResponse|RedirectResponse
     {
         $entry = SurveyPublicEntry::resolve($token, ['template.sections.questions', 'company.departments']);
         abort_if($entry === null, 404);
@@ -59,6 +63,8 @@ class PublicSurveyController extends Controller
         return Inertia::render('Survey/Take', [
             'survey' => $survey,
             'entryToken' => $token,
+            // Campanha V11: «Minha jornada» (orientação + só o treinamento contratado e liberado a este público).
+            'journey' => $journey->build($survey, $link, fn (Nr1Training $training) => route('survey.public.training-material', [$token, $training->id])),
             'audience' => $link?->audience,
             'audienceLabel' => $link?->label(),
             'invitation' => is_string($invitation) ? $invitation : null,
@@ -92,6 +98,29 @@ class PublicSurveyController extends Controller
                 '5+' => 'Mais de 5 anos',
             ],
         ]);
+    }
+
+    /**
+     * Arquivo de um treinamento, só para o público a que ele foi contratado e liberado, com a campanha aberta.
+     */
+    public function trainingMaterial(string $token, int $training)
+    {
+        $entry = SurveyPublicEntry::resolve($token);
+        abort_if($entry === null || $entry['link'] === null, 404);
+        abort_if(SurveyPublicEntry::closureReason($entry['survey'], $entry['link']) !== null, 404);
+        abort_unless($entry['survey']->usesReviewFlow(), 404);
+
+        $row = Nr1Training::query()
+            ->whereKey($training)
+            ->where('survey_id', $entry['survey']->id)
+            ->where('audience', $entry['link']->audience)
+            ->whereNotNull('contracted_at')
+            ->whereNotNull('released_at')
+            ->whereNotNull('material_path')
+            ->first();
+        abort_if($row === null || ! Storage::disk(Nr1TrainingService::DISK)->exists($row->material_path), 404);
+
+        return Storage::disk(Nr1TrainingService::DISK)->download($row->material_path, $row->material_name ?? 'material', ['Cache-Control' => 'private, no-store']);
     }
 
     public function submit(Request $request, string $token, SurveyResultCalculator $calculator): RedirectResponse

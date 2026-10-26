@@ -65,7 +65,7 @@ class Nr1V11CampaignTrainingsTest extends TestCase
         return array_merge([
             'modality' => 'online',
             'audience' => 'time',
-            'scope' => 'Trilha online de 4 módulos, R$ 4.800',
+            'scope' => 'Trilha online de 4 módulos sobre organização do trabalho',
             'price_cents' => 480000,
             'starts_on' => '2026-11-01',
             'ends_on' => '2026-11-30',

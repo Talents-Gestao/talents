@@ -47,7 +47,7 @@ const remove = () => {
 
         <form class="mt-3 grid gap-3 sm:grid-cols-2" @submit.prevent="submit">
             <div class="sm:col-span-2">
-                <label :for="id('scope')" class="text-xs font-semibold text-gray-600">Escopo e preço contratados</label>
+                <label :for="id('scope')" class="text-xs font-semibold text-gray-600">Escopo (descrição do treinamento; aparece ao colaborador quando liberado, sem preço)</label>
                 <textarea :id="id('scope')" v-model="form.scope" rows="2" required class="mt-1 w-full rounded-md border-gray-300 text-sm" />
                 <p v-if="form.errors.scope" class="text-xs text-red-600">{{ form.errors.scope }}</p>
             </div>

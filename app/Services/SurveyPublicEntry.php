@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\Survey;
 use App\Models\SurveyAudienceLink;
+use Illuminate\Support\Str;
 
 /**
  * Resolve o token da URL pública: link geral da campanha ou link de um público (Time/Líderes).
@@ -19,7 +20,8 @@ final class SurveyPublicEntry
      */
     public static function resolve(string $token, array $with = []): ?array
     {
-        $survey = Survey::query()->where('public_token', $token)->with($with)->first();
+        // `public_token` é uuid: no PostgreSQL um token de link por público (texto) quebraria a consulta (erro 500).
+        $survey = Str::isUuid($token) ? Survey::query()->where('public_token', $token)->with($with)->first() : null;
 
         if ($survey !== null) {
             return $survey->audienceLinks()->exists() ? null : ['survey' => $survey, 'link' => null];

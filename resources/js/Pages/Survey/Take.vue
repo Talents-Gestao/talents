@@ -1,10 +1,12 @@
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
+import { buildSteps, firstStepOfSection, unansweredIn as unansweredInStep } from '@/utils/nr1Journey';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
     survey: Object,
     entryToken: String,
+    journey: { type: Object, default: null },
     audience: { type: String, default: null },
     audienceLabel: { type: String, default: null },
     invitation: { type: String, default: null },
@@ -19,8 +21,12 @@ const props = defineProps({
 const sections = props.survey.template.sections.filter((s) => s.questions?.length);
 const hasDepartments = Boolean(props.survey.company?.departments?.length);
 
-// 0 = início, 1..N = uma dimensão por etapa, N+1 = revisão e envio.
-const reviewStep = sections.length + 1;
+// Campanha V11 («Minha jornada»): uma afirmação por etapa. Campanhas antigas: uma dimensão por etapa.
+const perQuestion = props.journey !== null;
+const steps = buildSteps(sections, perQuestion);
+
+// 0 = início, 1..N = etapas de pergunta, N+1 = revisão e envio.
+const reviewStep = steps.length + 1;
 const step = ref(0);
 const confirmed = ref(false);
 const stepError = ref('');
@@ -95,24 +101,26 @@ const totalQuestions = computed(() => Object.keys(form.answers).length);
 const progress = computed(() => (totalQuestions.value ? Math.round((answeredCount.value / totalQuestions.value) * 100) : 0));
 
 const stepTitle = computed(() => {
-    if (step.value === 0) return 'Antes de começar';
+    if (step.value === 0) return perQuestion ? 'Minha jornada' : 'Antes de começar';
     if (step.value === reviewStep) return 'Revisar e enviar';
-    return sections[step.value - 1].title;
+    const current = steps[step.value - 1];
+    return perQuestion ? `Afirmação ${current.ordinal} de ${totalQuestions.value}` : current.sectionTitle;
 });
 
-const unansweredIn = (section) => section.questions.filter((q) => form.answers[q.id] === null || form.answers[q.id] === '');
+// Anunciado aos leitores de tela a cada mudança de etapa.
+const liveMessage = computed(() => `${stepTitle.value}. ${progress.value}% respondido.`);
 
 const stepIsValid = (index) => {
     if (index === 0) {
         return !hasDepartments || (form.department_id !== null && form.department_id !== '');
     }
     if (index === reviewStep) return true;
-    return unansweredIn(sections[index - 1]).length === 0;
+    return unansweredInStep(steps[index - 1], form.answers).length === 0;
 };
 
 const errorFor = (index) => {
     if (index === 0) return 'Selecione o seu setor para continuar.';
-    return 'Responda todas as afirmações desta etapa para continuar.';
+    return perQuestion ? 'Escolha uma opção para continuar.' : 'Responda todas as afirmações desta etapa para continuar.';
 };
 
 const goTo = async (index) => {
@@ -187,6 +195,7 @@ const submit = () => {
             <p class="mt-2 text-xs text-slate-500">
                 {{ progress }}% respondido · Etapa {{ step + 1 }} de {{ reviewStep + 1 }}
             </p>
+            <p class="sr-only" role="status" aria-live="polite">{{ liveMessage }}</p>
 
             <form class="mt-6" @submit.prevent="submit">
                 <section class="surface-card p-5 sm:p-6" :aria-labelledby="'step-title'">
@@ -199,6 +208,28 @@ const submit = () => {
                         <p v-if="audienceLabel" class="inline-flex rounded-full bg-talents-50 px-3 py-1 text-xs font-semibold text-talents-800">
                             Você está respondendo pelo grupo: {{ audienceLabel }}
                         </p>
+
+                        <div v-if="journey" class="rounded-lg border border-talents-100 bg-talents-50/60 p-4" aria-labelledby="journey-orientation">
+                            <h2 id="journey-orientation" class="text-sm font-semibold text-talents-800">{{ journey.orientation.title }}</h2>
+                            <p v-for="(paragraph, index) in journey.orientation.paragraphs" :key="index" class="mt-1 text-sm text-slate-700">{{ paragraph }}</p>
+                        </div>
+
+                        <div v-if="journey && journey.trainings.length" aria-labelledby="journey-trainings">
+                            <h2 id="journey-trainings" class="text-sm font-semibold text-slate-900">Treinamentos para o seu grupo</h2>
+                            <ul class="mt-2 space-y-3">
+                                <li v-for="training in journey.trainings" :key="training.id" class="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">
+                                    <p class="font-semibold text-slate-900">{{ training.label }}</p>
+                                    <p v-if="training.scope" class="mt-1">{{ training.scope }}</p>
+                                    <p v-if="training.period" class="mt-1 text-xs text-slate-500">Período: {{ training.period }}</p>
+                                    <p v-if="training.location" class="mt-1 text-xs text-slate-500">Local: {{ training.location }}<span v-if="training.event_at"> · {{ training.event_at }}</span></p>
+                                    <p v-if="training.facilitator" class="mt-1 text-xs text-slate-500">Facilitador: {{ training.facilitator }}</p>
+                                    <p v-if="training.link_url || training.material_url" class="mt-2 flex flex-wrap gap-3">
+                                        <a v-if="training.link_url" :href="training.link_url" target="_blank" rel="noopener noreferrer" class="font-semibold text-talents-700 underline">Acessar o treinamento</a>
+                                        <a v-if="training.material_url" :href="training.material_url" class="font-semibold text-talents-700 underline">Baixar {{ training.material_name }}</a>
+                                    </p>
+                                </li>
+                            </ul>
+                        </div>
 
                         <div>
                             <h2 class="text-sm font-semibold text-slate-900">Objetivo</h2>
@@ -216,12 +247,12 @@ const submit = () => {
                         <div>
                             <h2 class="text-sm font-semibold text-slate-900">Como responder</h2>
                             <p class="mt-1 text-sm text-slate-600">
-                                São {{ totalQuestions }} afirmações em {{ sections.length }} etapas. Escolha a opção que melhor descreve a
+                                São {{ totalQuestions }} afirmações, {{ perQuestion ? 'uma por vez' : 'em ' + sections.length + ' etapas' }}. Escolha a opção que melhor descreve a
                                 sua experiência, de <strong>Nunca</strong> a <strong>Sempre</strong>. Use os botões
                                 <strong>Anterior</strong> e <strong>Próxima</strong> para navegar; no fim você confirma o envio.
                             </p>
                         </div>
-                        <div class="rounded-lg border border-talents-100 bg-talents-50/60 p-4">
+                        <div v-if="!journey" class="rounded-lg border border-talents-100 bg-talents-50/60 p-4">
                             <h2 class="text-sm font-semibold text-talents-800">Orientação NR-1</h2>
                             <p class="mt-1 text-sm text-slate-700">
                                 A NR-1 prevê a gestão dos fatores psicossociais relacionados ao trabalho. Esta pesquisa faz parte desse
@@ -269,11 +300,12 @@ const submit = () => {
                     </div>
 
                     <!-- Uma dimensão por etapa -->
-                    <div v-for="(section, index) in sections" v-show="step === index + 1" :key="section.id" class="mt-2">
-                        <p v-if="section.description" class="mt-2 text-sm text-slate-600">{{ section.description }}</p>
+                    <div v-for="(current, index) in steps" v-show="step === index + 1" :key="current.key" class="mt-2">
+                        <p v-if="perQuestion" class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ current.sectionTitle }}</p>
+                        <p v-else-if="current.description" class="mt-2 text-sm text-slate-600">{{ current.description }}</p>
 
                         <fieldset
-                            v-for="q in section.questions"
+                            v-for="q in current.questions"
                             :key="q.id"
                             class="mt-6 border-t border-slate-200/80 pt-4 first:border-t-0 first:pt-0"
                         >
@@ -306,9 +338,9 @@ const submit = () => {
                             Você respondeu {{ answeredCount }} de {{ totalQuestions }} afirmações. Depois do envio não é possível alterar as respostas.
                         </p>
                         <ul class="space-y-1 text-sm text-slate-700">
-                            <li v-for="(section, index) in sections" :key="section.id" class="flex items-center justify-between gap-3">
+                            <li v-for="section in sections" :key="section.id" class="flex items-center justify-between gap-3">
                                 <span>{{ section.title }}</span>
-                                <button type="button" class="text-xs font-semibold text-talents-700 underline" @click="goTo(index + 1)">Rever</button>
+                                <button type="button" class="text-xs font-semibold text-talents-700 underline" @click="goTo(firstStepOfSection(steps, section.id) + 1)">Rever</button>
                             </li>
                         </ul>
                         <label class="flex items-start gap-2 text-sm text-slate-800">
