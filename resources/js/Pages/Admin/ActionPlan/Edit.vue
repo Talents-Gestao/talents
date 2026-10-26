@@ -35,7 +35,7 @@ const props = defineProps({
     departmentParticipation: { type: Array, default: () => [] },
     questionDistributionsByDepartment: { type: Array, default: () => [] },
     plan: { type: Object, default: null },
-    publication: { type: Object, default: () => ({ requires_publication: false, published_at: null }) },
+    publication: { type: Object, default: () => ({ requires_publication: false, published_at: null, uses_review_flow: false, documents_url: null }) },
     technical_opinion: { type: String, default: '' },
     aiEnabled: { type: Boolean, default: false },
     aiAnalysis: { type: Object, default: null },
@@ -502,7 +502,21 @@ const submit = () => {
             {{ $page.props.flash.info }}
         </div>
 
+        <section
+            v-if="publication.uses_review_flow"
+            class="mb-6 rounded-xl border border-talents-200 bg-talents-50/50 p-5 text-sm text-talents-950"
+        >
+            <p class="font-semibold">Documentos desta campanha</p>
+            <p class="mt-1">
+                Os dois documentos finais (relatório executivo e relatório técnico + plano de ação) seguem o fluxo de revisão:
+                Em edição, Em revisão PASSEG, Alteração solicitada ou Aprovado pela PASSEG, e Publicado.
+            </p>
+            <Link :href="publication.documents_url" class="mt-3 inline-block rounded-md bg-talents-700 px-4 py-2 font-semibold text-white">
+                Abrir a Central de documentos
+            </Link>
+        </section>
         <PsychosocialDocumentsAdminPanel
+            v-else
             :company-id="company.id"
             :survey-id="survey.id"
             :documents="psychosocialDocuments"
@@ -922,6 +936,10 @@ const submit = () => {
                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Publicação dos resultados</p>
                     <p v-if="!publication.requires_publication" class="mt-2 text-sm text-slate-700">
                         Esta campanha é anterior ao controle de publicação: a empresa já vê os resultados.
+                    </p>
+                    <p v-else-if="publication.uses_review_flow" class="mt-2 text-sm text-slate-700">
+                        {{ publication.published_at ? `Publicado em ${publication.published_at}.` : 'Não publicado.' }}
+                        Nesta campanha a publicação é feita na Central de documentos, depois da revisão.
                     </p>
                     <template v-else>
                         <p class="mt-2 text-base font-semibold text-slate-900">

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Client\AcompanhamentoController;
 use App\Http\Controllers\Client\ActionPlanController;
 use App\Http\Controllers\Client\ActionPlanMeasureController;
+use App\Http\Controllers\Client\DocumentsController;
 use App\Http\Controllers\Client\ClientEvaluationController;
 use App\Http\Controllers\Client\CompanyNoticeController as ClientCompanyNoticeController;
 use App\Http\Controllers\Client\ComplaintController;
@@ -124,8 +125,9 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('surveys/{survey}/painel-psicossocial/export/perguntas', [PsychosocialDashboardController::class, 'exportItemsCsv'])->name('surveys.psychosocial-dashboard.export.items');
         Route::get('surveys/{survey}/painel-psicossocial/imprimir', [PsychosocialDashboardController::class, 'print'])->name('surveys.psychosocial-dashboard.print');
         Route::get('surveys/{survey}/resumo-executivo/download', [ExecutiveBriefController::class, 'download'])->name('surveys.executive-brief.download');
+        Route::get('surveys/{survey}/documentos', [DocumentsController::class, 'index'])->name('surveys.documents.index');
         Route::get('surveys/{survey}/documentos/{type}/download', [PsychosocialDocumentController::class, 'download'])
-            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier', 'technical_report'])
             ->name('surveys.psychosocial-documents.download');
     });
 
@@ -133,6 +135,9 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::post('surveys/{survey}/documentos/{type}/validar', [PsychosocialDocumentController::class, 'validateInSystem'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
             ->name('surveys.psychosocial-documents.validate');
+        // Campanha V11: ciência da publicação (uma por publicação) e integração ao PGR (campo separado, com evidência).
+        Route::post('surveys/{survey}/documentos/ciencia', [DocumentsController::class, 'acknowledge'])->name('surveys.documents.acknowledge');
+        Route::post('surveys/{survey}/documentos/integracao-pgr', [DocumentsController::class, 'confirmPgrIntegration'])->name('surveys.documents.pgr-integration');
     });
 
     Route::middleware(['strategic_calendar', 'can.module:calendario_estrategico'])->group(function () {

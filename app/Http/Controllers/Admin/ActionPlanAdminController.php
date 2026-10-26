@@ -116,6 +116,11 @@ class ActionPlanAdminController extends Controller
             'publication' => [
                 'requires_publication' => (bool) $survey->requires_publication,
                 'published_at' => $survey->published_at?->format('d/m/Y H:i'),
+                // Campanha V11: documentos e publicação vivem na Central de documentos (fluxo de revisão).
+                'uses_review_flow' => $survey->usesReviewFlow(),
+                'documents_url' => $survey->usesReviewFlow()
+                    ? route('admin.companies.surveys.documents.index', [$company->id, $survey->id])
+                    : null,
             ],
             'executiveBrief' => app(ExecutiveBriefService::class)->currentVersionSummary($survey),
             'psychosocialDocuments' => app(PsychosocialDocumentService::class)->documentsSummary($survey),

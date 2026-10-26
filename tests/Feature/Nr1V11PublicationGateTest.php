@@ -234,7 +234,8 @@ class Nr1V11PublicationGateTest extends TestCase
 
     public function test_talents_publishes_once_and_only_from_the_companys_own_campaign(): void
     {
-        $campaign = $this->unpublished();
+        // Campanha fora do fluxo V11 (método antigo): o botão direto de publicar continua valendo.
+        $campaign = $this->createSurveyFixture(['requires_publication' => true]);
         $owner = User::factory()->superAdmin()->create(['is_owner' => true]);
         $other = $this->createSurveyFixture();
         $url = route('admin.companies.surveys.publication.store', [$campaign->company->id, $campaign->survey->id]);
@@ -253,6 +254,37 @@ class Nr1V11PublicationGateTest extends TestCase
         $this->travel(2)->hours();
         $this->actingAs($owner)->post($url)->assertRedirect();
         $this->assertSame($first, $campaign->survey->fresh()->published_at->toIso8601String(), 'Publicar de novo não muda a data.');
+    }
+
+    public function test_v11_campaign_cannot_be_published_by_the_direct_button(): void
+    {
+        $campaign = $this->unpublished();
+        $owner = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $this->actingAs($owner)
+            ->post(route('admin.companies.surveys.publication.store', [$campaign->company->id, $campaign->survey->id]))
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertNull($campaign->survey->fresh()->published_at, 'Na V11 só a publicação dos documentos publica.');
+    }
+
+    public function test_collection_links_follow_the_publication_state(): void
+    {
+        $campaign = $this->unpublished();
+        $admin = User::factory()->companyAdmin($campaign->company->id)->create();
+
+        $this->actingAs($admin)->get(route('client.surveys.show', $campaign->survey))
+            ->assertInertia(fn ($page) => $page->where('resultsAvailable', false));
+        $this->actingAs($admin)->get(route('client.surveys.index'))
+            ->assertInertia(fn ($page) => $page->where('surveys.data.0.results_available', false));
+
+        $campaign->survey->forceFill(['published_at' => now()])->save();
+
+        $this->actingAs($admin)->get(route('client.surveys.show', $campaign->survey))
+            ->assertInertia(fn ($page) => $page->where('resultsAvailable', true));
+        $this->actingAs($admin)->get(route('client.surveys.index'))
+            ->assertInertia(fn ($page) => $page->where('surveys.data.0.results_available', true));
     }
 
     public function test_company_and_plain_admin_cannot_publish(): void

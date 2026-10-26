@@ -33,6 +33,11 @@ class DocumentShareAdminController extends Controller
         abort_unless(DocumentShareService::enabled(), SymfonyResponse::HTTP_NOT_FOUND);
         abort_unless((int) $survey->company_id === (int) $company->id, SymfonyResponse::HTTP_NOT_FOUND);
 
+        // Campanha V11: o envio ao revisor é feito pela rodada de revisão (Documentos), com os dois documentos juntos.
+        if ($survey->usesReviewFlow()) {
+            return back()->with('error', 'Nesta campanha o envio à PASSEG é feito em Documentos.');
+        }
+
         $data = $request->validate([
             'reviewer_id' => ['required', 'integer', 'exists:users,id'],
             'expires_at' => ['required', 'date', 'after:now'],

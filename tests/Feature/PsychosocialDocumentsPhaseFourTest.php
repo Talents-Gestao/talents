@@ -111,7 +111,8 @@ class PsychosocialDocumentsPhaseFourTest extends TestCase
         $this->assertSame(0, $document->versions()->count());
 
         try {
-            $this->createDocument($fx->survey, 'technical_report');
+            // «technical_report» virou tipo válido na Etapa 7 (relatório técnico + plano); o exemplo inválido é outro.
+            $this->createDocument($fx->survey, 'relatorio_inexistente');
             $this->fail('Tipo fora da lista deveria ser rejeitado.');
         } catch (PsychosocialDocumentException) {
         }

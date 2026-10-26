@@ -41,6 +41,11 @@ class ExecutiveBriefService
      */
     public function currentVersionSummary(Survey $survey): ?array
     {
+        // Campanha V11: o resumo executivo é um dos dois documentos do fluxo de revisão (Central de documentos).
+        if ($survey->usesReviewFlow()) {
+            return null;
+        }
+
         return $this->documents->currentVersionSummary($survey, self::TYPE);
     }
 

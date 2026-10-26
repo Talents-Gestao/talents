@@ -209,6 +209,19 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('companies/{company}/surveys/{survey}/documentos/{type}/compartilhar', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'store'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
             ->name('companies.surveys.psychosocial-documents.share');
+        // Fluxo de revisão dos dois documentos finais (campanha V11): Em edição → … → Publicado.
+        Route::get('companies/{company}/surveys/{survey}/documentos', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'index'])
+            ->name('companies.surveys.documents.index');
+        Route::post('companies/{company}/surveys/{survey}/documentos/revisao', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'start'])
+            ->name('companies.surveys.documents.start');
+        Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/gerar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'regenerate'])
+            ->whereNumber('round')->name('companies.surveys.documents.regenerate');
+        Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/enviar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'send'])
+            ->whereNumber('round')->name('companies.surveys.documents.send');
+        Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/publicar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'publish'])
+            ->whereNumber('round')->name('companies.surveys.documents.publish');
+        Route::get('companies/{company}/surveys/{survey}/documentos/versoes/{version}/download', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'download'])
+            ->whereNumber('version')->name('companies.surveys.documents.download');
         Route::post('companies/{company}/surveys/{survey}/publicar', [\App\Http\Controllers\Admin\SurveyPublicationAdminController::class, 'publish'])
             ->name('companies.surveys.publication.store');
         Route::post('companies/{company}/surveys/{survey}/liberar-comercial', [\App\Http\Controllers\Admin\Nr1CommercialReleaseController::class, 'release'])

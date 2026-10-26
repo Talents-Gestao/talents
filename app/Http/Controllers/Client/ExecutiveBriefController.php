@@ -6,8 +6,10 @@ namespace App\Http\Controllers\Client;
 
 use App\Exceptions\PsychosocialDocumentException;
 use App\Http\Controllers\Controller;
+use App\Models\PsychosocialDocument;
 use App\Models\Survey;
 use App\Services\ExecutiveBriefService;
+use App\Services\Psychosocial\ReviewRoundService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
@@ -17,7 +19,10 @@ class ExecutiveBriefController extends Controller
     {
         abort_unless((int) $survey->company_id === (int) $request->user()->company_id, 404);
 
-        $version = $service->currentVersion($survey);
+        // Campanha V11: a empresa só baixa a versão PUBLICADA, nunca um rascunho em revisão.
+        $version = $survey->usesReviewFlow()
+            ? app(ReviewRoundService::class)->publishedVersion($survey, PsychosocialDocument::TYPE_EXECUTIVE_BRIEF)
+            : $service->currentVersion($survey);
         abort_if($version === null, 404);
 
         try {

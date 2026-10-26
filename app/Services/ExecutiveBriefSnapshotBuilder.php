@@ -99,7 +99,7 @@ class ExecutiveBriefSnapshotBuilder implements DocumentSnapshotBuilder
             'measures' => $this->measures($survey),
             'measures_empty_text' => self::NO_MEASURES,
             'reference' => self::REFERENCE,
-        ];
+        ] + ($survey->usesReviewFlow() ? ['document_flow' => 'review_round'] : []);
     }
 
     /**
@@ -133,6 +133,9 @@ class ExecutiveBriefSnapshotBuilder implements DocumentSnapshotBuilder
      */
     private function measures(Survey $survey): array
     {
+        // Campanha V11: rótulos do plano (Proposta, Confirmada…) e responsável/prazo confirmados pela empresa.
+        $planLabels = $survey->usesReviewFlow();
+
         return PsychosocialMeasure::query()
             ->where('survey_id', $survey->id)
             ->orderBy('sort_order')
@@ -143,10 +146,15 @@ class ExecutiveBriefSnapshotBuilder implements DocumentSnapshotBuilder
                 'measure_description' => $measure->measure_description,
                 'evidence_basis' => $measure->evidence_basis,
                 'status' => $measure->status,
-                'status_label' => $measure->statusLabel(),
+                'status_label' => $planLabels ? $measure->planLabel() : $measure->statusLabel(),
                 'responsible_text' => $measure->responsible_text,
                 'suggested_due_date' => $measure->suggested_due_date?->toDateString(),
-            ])
+            ] + ($planLabels ? [
+                'confirmed_responsible' => $measure->hasConfirmedResponsible()
+                    ? collect([$measure->confirmedResponsibleUser?->name, $measure->confirmed_responsible_text])->filter()->implode(' · ')
+                    : null,
+                'confirmed_due_date' => $measure->confirmed_due_date?->toDateString(),
+            ] : []))
             ->values()
             ->all();
     }

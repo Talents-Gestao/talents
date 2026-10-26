@@ -20,6 +20,11 @@ class SurveyPublicationAdminController extends Controller
     {
         abort_unless((int) $survey->company_id === (int) $company->id, 404);
 
+        // Campanha V11: "Publicado" nasce da publicação dos documentos (fluxo de revisão), nunca de um botão avulso.
+        if ($survey->usesReviewFlow()) {
+            return back()->with('error', 'Nesta campanha a publicação é feita em Documentos, depois da revisão.');
+        }
+
         if ($survey->published_at !== null) {
             return back()->with('success', 'Esta campanha já estava publicada.');
         }

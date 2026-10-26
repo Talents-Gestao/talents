@@ -17,4 +17,6 @@ Route::middleware(['auth', 'verified', 'external_reviewer'])
             ->whereNumber('version')->name('comment');
         Route::post('documentos/{version}/aprovar', [DocumentReviewController::class, 'approve'])
             ->whereNumber('version')->name('approve');
+        Route::post('documentos/{version}/solicitar-alteracao', [DocumentReviewController::class, 'requestChanges'])
+            ->whereNumber('version')->name('request-changes');
     });

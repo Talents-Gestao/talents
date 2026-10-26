@@ -16,6 +16,7 @@ const props = defineProps({
     psychosocialDocuments: { type: Array, default: () => [] },
     canValidate: { type: Boolean, default: false },
     validationDeclaration: { type: String, default: '' },
+    documentsUrl: { type: String, default: null },
 });
 
 const activeTab = ref('overview');
@@ -69,6 +70,13 @@ const bandClass = (riskLevel) => bandClasses[riskLevel] ?? 'bg-gray-50 text-gray
                     >
                         Baixar resumo executivo
                     </a>
+                    <Link
+                        v-if="documentsUrl"
+                        :href="documentsUrl"
+                        class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
+                    >
+                        Documentos
+                    </Link>
                     <Link
                         :href="route('client.surveys.measures.index', dashboard.survey.id)"
                         class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"

@@ -21,7 +21,9 @@ class DocumentShareReview extends Model
 
     public const KIND_APPROVAL = 'approval';
 
-    public const KINDS = [self::KIND_COMMENT, self::KIND_APPROVAL];
+    public const KIND_CHANGE_REQUEST = 'change_request';
+
+    public const KINDS = [self::KIND_COMMENT, self::KIND_APPROVAL, self::KIND_CHANGE_REQUEST];
 
     protected $fillable = ['document_share_id', 'user_id', 'kind', 'body'];
 
@@ -34,6 +36,10 @@ class DocumentShareReview extends Model
 
             if ($review->kind === self::KIND_COMMENT && trim((string) $review->body) === '') {
                 throw new PsychosocialDocumentException('O comentário não pode ficar vazio.');
+            }
+
+            if ($review->kind === self::KIND_CHANGE_REQUEST && trim((string) $review->body) === '') {
+                throw new PsychosocialDocumentException('A solicitação de alteração exige o texto.');
             }
         });
 

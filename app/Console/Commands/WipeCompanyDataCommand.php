@@ -219,6 +219,17 @@ class WipeCompanyDataCommand extends Command
             }
         }
 
+        // Rodadas de revisão apontam para versões com FK restritiva: saem antes das versões.
+        if (Schema::hasTable('psychosocial_review_rounds')) {
+            $roundIds = DB::table('psychosocial_review_rounds')->where('company_id', $companyId)->pluck('id')->all();
+            if (! empty($roundIds)) {
+                DB::table('psychosocial_pgr_integrations')->whereIn('round_id', $roundIds)->delete();
+                DB::table('psychosocial_review_acknowledgements')->whereIn('round_id', $roundIds)->delete();
+                DB::table('psychosocial_review_events')->whereIn('round_id', $roundIds)->delete();
+                DB::table('psychosocial_review_rounds')->whereIn('id', $roundIds)->delete();
+            }
+        }
+
         // Só linhas de banco; os arquivos de PDF, comprovantes e anexos ficam no disco.
         if (Schema::hasTable('psychosocial_documents')) {
             $documentIds = DB::table('psychosocial_documents')->where('company_id', $companyId)->pluck('id')->all();

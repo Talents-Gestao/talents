@@ -7,6 +7,7 @@ use App\Models\Survey;
 use App\Models\SurveyAudienceLink;
 use App\Models\SurveyTemplate;
 use App\Support\Nr1GroupPrivacy;
+use App\Support\SurveyPublicationGate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -33,7 +34,9 @@ class SurveyController extends Controller
             ->where('company_id', $this->companyId($request))
             ->with('template')
             ->orderByDesc('id')
-            ->paginate(20);
+            ->paginate(20)
+            // Resultados e plano só existem para a empresa depois de "Publicado" (T02): o link some até lá.
+            ->through(fn (Survey $survey) => $survey->setAttribute('results_available', SurveyPublicationGate::allows($survey)));
 
         return Inertia::render('Client/Surveys/Index', [
             'surveys' => $surveys,
@@ -109,6 +112,7 @@ class SurveyController extends Controller
             'survey' => $survey,
             'publicUrl' => $audienceLinks->isEmpty() ? $publicUrl : null,
             'audienceLinks' => $audienceLinks,
+            'resultsAvailable' => SurveyPublicationGate::allows($survey),
             'stats' => [
                 'started' => $started,
                 'completed' => $completed,

@@ -11,6 +11,7 @@ const props = defineProps({
     publicUrl: String,
     audienceLinks: { type: Array, default: () => [] },
     stats: Object,
+    resultsAvailable: { type: Boolean, default: true },
 });
 
 const drafts = reactive(
@@ -125,7 +126,10 @@ const saveAudienceLink = (link) =>
                     <p class="text-2xl font-bold text-talents-900">{{ stats.completed }}</p>
                 </div>
             </div>
-            <div class="mt-6 flex flex-wrap gap-3">
+            <p v-if="!resultsAvailable" class="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Resultados, plano de ação e documentos ficam disponíveis depois que a Talents publicar a campanha.
+            </p>
+            <div v-else class="mt-6 flex flex-wrap gap-3">
                 <Link
                     :href="route('client.surveys.results', survey.id)"
                     class="rounded-md bg-talents-700 px-4 py-2 text-sm font-semibold text-white"

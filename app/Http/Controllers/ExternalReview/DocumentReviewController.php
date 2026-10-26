@@ -9,9 +9,11 @@ use App\Http\Controllers\Controller;
 use App\Models\DocumentShare;
 use App\Models\DocumentShareReview;
 use App\Models\PsychosocialDocumentVersion;
+use App\Models\PsychosocialReviewRound;
 use App\Policies\PsychosocialDocumentVersionPolicy;
 use App\Services\Psychosocial\DocumentShareService;
 use App\Services\Psychosocial\PsychosocialDocumentService;
+use App\Services\Psychosocial\ReviewRoundService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -28,6 +30,7 @@ class DocumentReviewController extends Controller
     public function __construct(
         private readonly DocumentShareService $shares,
         private readonly PsychosocialDocumentService $documents,
+        private readonly ReviewRoundService $rounds,
     ) {}
 
     public function index(Request $request): Response
@@ -58,6 +61,7 @@ class DocumentReviewController extends Controller
                     'created_at' => $review->created_at?->format('d/m/Y H:i'),
                 ])->values(),
                 'approved' => $share->reviews->contains('kind', DocumentShareReview::KIND_APPROVAL),
+                'round' => $this->roundPayload($model),
             ]),
         ]);
     }
@@ -86,15 +90,80 @@ class DocumentReviewController extends Controller
 
     public function approve(Request $request, int $version): RedirectResponse
     {
-        [, $share] = $this->resolve($request, $version, 'approve');
+        [$model, $share] = $this->resolve($request, $version, 'approve');
+        $round = $this->roundOf($model);
 
         try {
-            $this->shares->approve($share, $request->user());
+            // Versão de uma rodada de revisão: a aprovação é da rodada (os dois documentos). Fora dela, vale o registro simples.
+            $round !== null
+                ? $this->rounds->approve($round, $request->user())
+                : $this->shares->approve($share, $request->user());
         } catch (PsychosocialDocumentException $exception) {
             return back()->with('error', $exception->getMessage());
         }
 
-        return back()->with('success', 'Versão aprovada.');
+        return back()->with('success', $round !== null ? 'Relatório aprovado.' : 'Versão aprovada.');
+    }
+
+    public function requestChanges(Request $request, int $version): RedirectResponse
+    {
+        [$model] = $this->resolve($request, $version, 'comment');
+        $round = $this->roundOf($model);
+        abort_if($round === null, SymfonyResponse::HTTP_NOT_FOUND);
+
+        $data = $request->validate(
+            ['body' => ['required', 'string', 'min:'.ReviewRoundService::MIN_CHANGE_REQUEST_LENGTH, 'max:5000']],
+            ['body.required' => 'Descreva a alteração solicitada.', 'body.min' => 'Descreva a alteração solicitada (mínimo de '.ReviewRoundService::MIN_CHANGE_REQUEST_LENGTH.' caracteres).'],
+        );
+
+        try {
+            $this->rounds->requestChanges($round, $request->user(), $data['body']);
+        } catch (PsychosocialDocumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('success', 'Alteração solicitada: a revisão voltou para a Talents.');
+    }
+
+    private function roundOf(PsychosocialDocumentVersion $version): ?PsychosocialReviewRound
+    {
+        return PsychosocialReviewRound::query()
+            ->where(fn ($q) => $q->where('executive_version_id', $version->id)->orWhere('technical_version_id', $version->id))
+            ->orderByDesc('round_number')
+            ->first();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function roundPayload(PsychosocialDocumentVersion $version): ?array
+    {
+        $round = $this->roundOf($version);
+        if ($round === null) {
+            return null;
+        }
+
+        $round->loadMissing(['executiveVersion.document', 'technicalVersion.document']);
+
+        return [
+            'number' => $round->round_number,
+            'status' => $round->status,
+            'status_label' => $round->statusLabel(),
+            'can_decide' => $round->status === PsychosocialReviewRound::STATUS_IN_REVIEW,
+            'approval_meaning' => ReviewRoundService::APPROVAL_MEANING,
+            'documents' => collect([$round->executiveVersion, $round->technicalVersion])
+                ->filter()
+                ->map(fn (PsychosocialDocumentVersion $item) => [
+                    'version_id' => $item->id,
+                    'label' => PsychosocialDocumentService::label($item->document->type),
+                    'public_identifier' => $item->public_identifier,
+                    'url' => DocumentShare::query()->active()->where('reviewer_id', request()->user()->id)->where('document_version_id', $item->id)->exists()
+                        ? route('external-review.show', $item->id)
+                        : null,
+                ])
+                ->values()
+                ->all(),
+        ];
     }
 
     /**

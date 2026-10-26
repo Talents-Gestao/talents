@@ -35,8 +35,13 @@
         @endif
     </p>
     <p class="muted">
-        Liberado em {{ \Illuminate\Support\Carbon::parse($snapshot['released_at'])->format('d/m/Y H:i') }} &mdash;
-        {{ empty($validation) ? 'Aguardando validação do responsável técnico.' : 'Versão validada; o conteúdo abaixo é o mesmo da versão liberada.' }}
+        @if(($snapshot['document_flow'] ?? null) === 'review_round')
+            Gerado em {{ \Illuminate\Support\Carbon::parse($snapshot['released_at'])->format('d/m/Y H:i') }} &mdash;
+            a revisão documental, a publicação e a ciência da empresa são registradas no sistema, com protocolo de encaminhamento.
+        @else
+            Liberado em {{ \Illuminate\Support\Carbon::parse($snapshot['released_at'])->format('d/m/Y H:i') }} &mdash;
+            {{ empty($validation) ? 'Aguardando validação do responsável técnico.' : 'Versão validada; o conteúdo abaixo é o mesmo da versão liberada.' }}
+        @endif
     </p>
 
     @if($snapshot['polarity_warning'])

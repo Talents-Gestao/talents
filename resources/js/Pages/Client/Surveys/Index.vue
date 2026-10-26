@@ -44,7 +44,8 @@ defineProps({ surveys: Object });
                             </td>
                             <td class="px-4 py-3 text-right space-x-3">
                                 <Link :href="route('client.surveys.show', s.id)" class="text-talents-700 hover:underline">Abrir</Link>
-                                <Link :href="route('client.surveys.results', s.id)" class="text-talents-700 hover:underline">Resultados</Link>
+                                <Link v-if="s.results_available" :href="route('client.surveys.results', s.id)" class="text-talents-700 hover:underline">Resultados</Link>
+                                <span v-else class="text-xs text-gray-500">Resultados após publicação</span>
                             </td>
                         </tr>
                         <TableEmptyRow v-if="!surveys.data.length" :colspan="4" message="Nenhuma campanha encontrada." />

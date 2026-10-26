@@ -185,6 +185,16 @@ class Survey extends Model
         return null;
     }
 
+    /**
+     * Campanha V11 (método talents39_v1): usa o fluxo de revisão e os dois documentos finais
+     * (relatório executivo; relatório técnico + plano). As antigas mantêm os documentos que já têm.
+     */
+    public function usesReviewFlow(): bool
+    {
+        // Consulta direta: não carrega relações no model, que vai inteiro para páginas públicas.
+        return SurveyMethodVersion::query()->whereKey($this->method_version_id)->value('code') === SurveyMethodVersion::CODE_TALENTS39_V1;
+    }
+
     public function acceptsPublicResponses(?Carbon $at = null): bool
     {
         return $this->publicParticipationClosureReason($at) === null;
