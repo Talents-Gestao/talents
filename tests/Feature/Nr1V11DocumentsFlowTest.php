@@ -775,6 +775,27 @@ class Nr1V11DocumentsFlowTest extends TestCase
         $this->assertSame(0, DocumentShare::query()->count());
     }
 
+    public function test_publishing_creates_the_automatic_solution_suggestions_as_to_qualify_only(): void
+    {
+        $flow = $this->flow(requirePasseg: false);
+        $this->assertSame(0, \App\Models\Nr1Opportunity::query()->count());
+
+        $round = $this->direct($flow);
+
+        $suggestions = \App\Models\Nr1Opportunity::query()->get();
+        $this->assertGreaterThan(0, $suggestions->count());
+        foreach ($suggestions as $row) {
+            $this->assertSame(['solution_suggestion', 'to_qualify', null], [$row->origin, $row->status, $row->requested_by]);
+        }
+        $this->assertSame(PsychosocialReviewRound::STATUS_PUBLISHED, $round->fresh()->status);
+
+        // A publicação continua imutável (T20) e uma nova revisão não duplica as sugestões abertas.
+        $before = $suggestions->count();
+        $second = $this->rounds->publish($this->rounds->regenerate($this->rounds->start($flow->survey->fresh(), $flow->talents), $flow->talents), $flow->talents);
+        $this->assertSame(2, $second->round_number);
+        $this->assertSame($before, \App\Models\Nr1Opportunity::query()->count());
+    }
+
     public function test_direct_path_keeps_t02_the_company_sees_nothing_until_published(): void
     {
         $flow = $this->flow(requirePasseg: false);

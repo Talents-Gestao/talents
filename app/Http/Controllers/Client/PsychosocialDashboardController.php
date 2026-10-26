@@ -55,6 +55,7 @@ class PsychosocialDashboardController extends Controller
             'executiveBrief' => $executiveBriefService->currentVersionSummary($survey),
             'psychosocialDocuments' => $documents->documentsSummary($survey),
             'documentsUrl' => $survey->usesReviewFlow() ? route('client.surveys.documents.index', $survey) : null,
+            'solutionsUrl' => $survey->usesReviewFlow() && $user->canAccess(PermissionModule::Pesquisas, PermissionAction::View) ? route('client.surveys.solutions', $survey) : null,
             'canValidate' => $canValidate,
             'validationDeclaration' => PsychosocialDocumentService::IN_SYSTEM_DECLARATION,
         ]);

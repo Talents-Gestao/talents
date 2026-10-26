@@ -84,6 +84,18 @@ return [
         'max_share_days' => 90,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Soluções Talents (Caderno §14)
+    |--------------------------------------------------------------------------
+    |
+    | require_review: a empresa só vê uma regra «dimensão → serviço» depois que a Talents revisa o texto. Os textos
+    | iniciais vêm do HTML aprovado e a aprovação deles é a pergunta 11 da Suzane (ver docs/nr1-v11/NOTAS.md).
+    */
+    'solutions' => [
+        'require_review' => (bool) env('NR1_SOLUTIONS_REQUIRE_REVIEW', true),
+    ],
+
     'benchmark_alert_margin' => 0.20,
 
     'trend_change_threshold' => 0.25,

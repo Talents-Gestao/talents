@@ -485,6 +485,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     });
 
     Route::middleware('admin.can:methodology')->group(function () {
+        // Regras de recomendação das Soluções Talents (dimensão em atenção → serviço), revisadas pela Talents.
+        Route::get('solucoes-nr1', [\App\Http\Controllers\Admin\ServiceMatchAdminController::class, 'index'])->name('service-matches.index');
+        Route::patch('solucoes-nr1/{match}', [\App\Http\Controllers\Admin\ServiceMatchAdminController::class, 'update'])->whereNumber('match')->name('service-matches.update');
+        Route::post('solucoes-nr1/{match}/revisar', [\App\Http\Controllers\Admin\ServiceMatchAdminController::class, 'approve'])->whereNumber('match')->name('service-matches.approve');
         Route::get('metodologia', [AdminMethodologyController::class, 'index'])->name('metodologia.index');
         Route::resource('methodology-templates', MethodologyFormTemplateController::class)
             ->parameters(['methodology-templates' => 'template']);

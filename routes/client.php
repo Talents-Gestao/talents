@@ -94,6 +94,14 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::post('mapa-proposito/analisar', [PurposeMapCampaignController::class, 'analyze'])->name('mapa-proposito.analyze');
     });
 
+    // Soluções Talents: só depois de «Publicado»; pedir conversa exige edição em Pesquisas.
+    Route::middleware(['can.module:pesquisas', 'survey.published'])->group(function () {
+        Route::get('surveys/{survey}/solucoes', [\App\Http\Controllers\Client\SolutionsController::class, 'show'])->name('surveys.solutions');
+    });
+    Route::middleware(['can.module:pesquisas,edit', 'survey.published'])->group(function () {
+        Route::post('surveys/{survey}/solucoes/{match}/conversa', [\App\Http\Controllers\Client\SolutionsController::class, 'requestConversation'])->whereNumber('match')->name('surveys.solutions.request');
+    });
+
     Route::middleware(['can.module:planos_acao', 'survey.published'])->group(function () {
         Route::get('surveys/{survey}/action-plan', [ActionPlanController::class, 'show'])->name('surveys.action-plan');
         Route::get('surveys/{survey}/action-plan/technical-opinion-file', [ActionPlanController::class, 'downloadTechnicalOpinionFile'])->name('surveys.action-plan.technical-opinion-file');

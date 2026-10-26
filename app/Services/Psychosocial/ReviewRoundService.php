@@ -17,6 +17,7 @@ use App\Models\PsychosocialReviewRound;
 use App\Models\Survey;
 use App\Models\User;
 use App\Policies\PsychosocialDocumentVersionPolicy;
+use App\Services\Nr1\Nr1SolutionService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -270,7 +271,7 @@ class ReviewRoundService
             throw new PsychosocialDocumentException('Não é possível publicar. Pendências: '.$this->describe($pending).'.');
         }
 
-        return DB::transaction(function () use ($round, $actor, $direct): PsychosocialReviewRound {
+        $published = DB::transaction(function () use ($round, $actor, $direct): PsychosocialReviewRound {
             $round = PsychosocialReviewRound::query()->lockForUpdate()->findOrFail($round->id);
             $survey = $round->survey;
 
@@ -300,6 +301,16 @@ class ReviewRoundService
 
             return $round;
         });
+
+        // Publicado: as soluções sugeridas viram oportunidades «A qualificar» para o Comercial (nunca interesse declarado).
+        // Uma falha aqui não desfaz a publicação.
+        try {
+            app(Nr1SolutionService::class)->suggest($published->survey->fresh());
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
+        return $published;
     }
 
     /**

@@ -32,7 +32,10 @@ const statusClass = (row) => {
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-900">Oportunidades NR-1</h2>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-xl font-semibold leading-tight text-gray-900">Oportunidades NR-1</h2>
+                <Link :href="route('admin.service-matches.index')" class="text-sm text-talents-700 underline">Regras de recomendação das soluções</Link>
+            </div>
         </template>
 
         <div class="space-y-6">

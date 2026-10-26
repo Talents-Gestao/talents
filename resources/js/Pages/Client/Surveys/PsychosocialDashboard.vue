@@ -13,6 +13,7 @@ const props = defineProps({
     canValidate: { type: Boolean, default: false },
     validationDeclaration: { type: String, default: '' },
     documentsUrl: { type: String, default: null },
+    solutionsUrl: { type: String, default: null },
 });
 
 const validationForm = useForm({
@@ -62,6 +63,13 @@ const submitValidation = (type) => {
                         class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
                     >
                         Documentos
+                    </Link>
+                    <Link
+                        v-if="solutionsUrl"
+                        :href="solutionsUrl"
+                        class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
+                    >
+                        Soluções Talents
                     </Link>
                     <Link
                         :href="route('client.surveys.measures.index', dashboard.survey.id)"
