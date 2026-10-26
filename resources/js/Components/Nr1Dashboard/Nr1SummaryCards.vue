@@ -56,11 +56,12 @@ defineProps({
         <article class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Plano de ação</h2>
             <p class="mt-2 text-3xl font-bold text-talents-900">
-                {{ cards.plan.implemented }}<span class="ml-1 text-base font-medium text-gray-500">/ {{ cards.plan.total }}</span>
+                {{ cards.plan.confirmed }}<span class="ml-1 text-base font-medium text-gray-500">/ {{ cards.plan.total }}</span>
             </p>
             <p class="mt-2 text-sm text-gray-600">
-                {{ cards.plan.total === 0 ? 'Nenhuma medida cadastrada ainda.' : 'Medidas implantadas.' }}
+                {{ cards.plan.total === 0 ? 'Nenhuma medida cadastrada ainda.' : 'Medidas com responsável confirmado.' }}
             </p>
+            <p v-if="cards.plan.total > 0" class="mt-1 text-xs text-gray-500">{{ cards.plan.implemented }} concluídas.</p>
         </article>
     </section>
 </template>

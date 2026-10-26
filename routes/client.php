@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Client\AcompanhamentoController;
 use App\Http\Controllers\Client\ActionPlanController;
+use App\Http\Controllers\Client\ActionPlanMeasureController;
 use App\Http\Controllers\Client\ClientEvaluationController;
 use App\Http\Controllers\Client\CompanyNoticeController as ClientCompanyNoticeController;
 use App\Http\Controllers\Client\ComplaintController;
@@ -75,7 +76,7 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
 
     Route::middleware('can.module:pesquisas')->group(function () {
         Route::resource('surveys', SurveyController::class)->except(['destroy']);
-        Route::get('surveys/{survey}/results', [SurveyResultsController::class, 'show'])->name('surveys.results');
+        Route::get('surveys/{survey}/results', [SurveyResultsController::class, 'show'])->middleware('survey.published')->name('surveys.results');
         Route::get('surveys/{survey}/audiencias/{link}/qr', [SurveyAudienceController::class, 'qr'])->name('surveys.audiences.qr');
 
         Route::get('mapa-proposito', [PurposeMapCampaignController::class, 'index'])->name('mapa-proposito.index');
@@ -83,20 +84,34 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
     });
 
     Route::middleware('can.module:pesquisas,edit')->group(function () {
-        Route::post('surveys/{survey}/ai-analysis', [SurveyResultsController::class, 'generateAiAnalysis'])->name('surveys.ai-analysis');
+        Route::post('surveys/{survey}/ai-analysis', [SurveyResultsController::class, 'generateAiAnalysis'])->middleware('survey.published')->name('surveys.ai-analysis');
         Route::post('surveys/{survey}/recalculate', [SurveyResultsController::class, 'recalculate'])->name('surveys.recalculate');
         Route::post('surveys/{survey}/audiencias', [SurveyAudienceController::class, 'store'])->name('surveys.audiences.store');
         Route::patch('surveys/{survey}/audiencias/{link}', [SurveyAudienceController::class, 'update'])->name('surveys.audiences.update');
         Route::post('mapa-proposito/analisar', [PurposeMapCampaignController::class, 'analyze'])->name('mapa-proposito.analyze');
     });
 
-    Route::middleware('can.module:planos_acao')->group(function () {
+    Route::middleware(['can.module:planos_acao', 'survey.published'])->group(function () {
         Route::get('surveys/{survey}/action-plan', [ActionPlanController::class, 'show'])->name('surveys.action-plan');
         Route::get('surveys/{survey}/action-plan/technical-opinion-file', [ActionPlanController::class, 'downloadTechnicalOpinionFile'])->name('surveys.action-plan.technical-opinion-file');
         Route::patch('action-plan-items/{item}', [ActionPlanController::class, 'updateItem'])->name('action-plan-items.update');
+        Route::get('surveys/{survey}/plano-de-acao', [ActionPlanMeasureController::class, 'show'])->name('surveys.measures.index');
+        Route::get('surveys/{survey}/plano-de-acao/{measure}/evidencias/{evidence}', [ActionPlanMeasureController::class, 'downloadEvidence'])
+            ->whereNumber(['measure', 'evidence'])->name('surveys.measures.evidences.download');
     });
 
-    Route::middleware('can.module:relatorios')->group(function () {
+    // Plano de ação (Caderno §11): a empresa confirma, executa e mede só depois de "Publicado" e com a ação `edit`.
+    Route::middleware(['can.module:planos_acao,edit', 'survey.published'])->prefix('surveys/{survey}/plano-de-acao/{measure}')->whereNumber('measure')->group(function () {
+        Route::post('confirmar', [ActionPlanMeasureController::class, 'confirm'])->name('surveys.measures.confirm');
+        Route::post('ajustar', [ActionPlanMeasureController::class, 'adjust'])->name('surveys.measures.adjust');
+        Route::post('iniciar', [ActionPlanMeasureController::class, 'start'])->name('surveys.measures.start');
+        Route::post('concluir', [ActionPlanMeasureController::class, 'complete'])->name('surveys.measures.complete');
+        Route::post('replanejar', [ActionPlanMeasureController::class, 'replan'])->name('surveys.measures.replan');
+        Route::post('evidencias', [ActionPlanMeasureController::class, 'storeEvidence'])->name('surveys.measures.evidences.store');
+        Route::post('eficacia', [ActionPlanMeasureController::class, 'recordEffectiveness'])->name('surveys.measures.effectiveness');
+    });
+
+    Route::middleware(['can.module:relatorios', 'survey.published'])->group(function () {
         Route::get('surveys/{survey}/reports/executive', [ReportController::class, 'executive'])->name('surveys.reports.executive');
         Route::get('surveys/{survey}/reports/technical', [ReportController::class, 'technical'])->name('surveys.reports.technical');
         Route::get('surveys/{survey}/reports/referral', [ReportController::class, 'referral'])->name('surveys.reports.referral');
@@ -114,7 +129,7 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
             ->name('surveys.psychosocial-documents.download');
     });
 
-    Route::middleware('can.module:relatorios,validate')->group(function () {
+    Route::middleware(['can.module:relatorios,validate', 'survey.published'])->group(function () {
         Route::post('surveys/{survey}/documentos/{type}/validar', [PsychosocialDocumentController::class, 'validateInSystem'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
             ->name('surveys.psychosocial-documents.validate');

@@ -196,6 +196,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.measures.edit');
         Route::post('companies/{company}/surveys/{survey}/medidas', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'store'])
             ->name('companies.surveys.measures.store');
+        Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}/sugestao', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateSuggestion'])
+            ->name('companies.surveys.measures.suggestion');
         Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateStatus'])
             ->name('companies.surveys.measures.status');
         Route::get('companies/{company}/surveys/{survey}/documentos/{type}/download', [PsychosocialDocumentAdminController::class, 'download'])
@@ -207,6 +209,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('companies/{company}/surveys/{survey}/documentos/{type}/compartilhar', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'store'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
             ->name('companies.surveys.psychosocial-documents.share');
+        Route::post('companies/{company}/surveys/{survey}/publicar', [\App\Http\Controllers\Admin\SurveyPublicationAdminController::class, 'publish'])
+            ->name('companies.surveys.publication.store');
         Route::post('companies/{company}/surveys/{survey}/liberar-comercial', [\App\Http\Controllers\Admin\Nr1CommercialReleaseController::class, 'release'])
             ->name('companies.surveys.commercial-release.store');
         Route::delete('companies/{company}/surveys/{survey}/liberar-comercial', [\App\Http\Controllers\Admin\Nr1CommercialReleaseController::class, 'withdraw'])

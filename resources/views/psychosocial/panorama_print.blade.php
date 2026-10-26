@@ -106,8 +106,8 @@
         </div>
         <div class="card">
             <div class="label">Plano de ação</div>
-            <div class="value">{{ $cards['plan']['implemented'] }} <small>/ {{ $cards['plan']['total'] }}</small></div>
-            <div class="muted">Medidas implantadas</div>
+            <div class="value">{{ $cards['plan']['confirmed'] }} <small>/ {{ $cards['plan']['total'] }}</small></div>
+            <div class="muted">Medidas com responsável confirmado · {{ $cards['plan']['implemented'] }} concluídas</div>
         </div>
     </div>
     <p class="muted" style="margin-top:8px">{{ $dashboard['band_disclaimer'] }} {{ $dashboard['method']['legend'] }}</p>

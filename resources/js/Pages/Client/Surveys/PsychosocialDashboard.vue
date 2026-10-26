@@ -69,6 +69,12 @@ const bandClass = (riskLevel) => bandClasses[riskLevel] ?? 'bg-gray-50 text-gray
                     >
                         Baixar resumo executivo
                     </a>
+                    <Link
+                        :href="route('client.surveys.measures.index', dashboard.survey.id)"
+                        class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
+                    >
+                        Plano de ação
+                    </Link>
                     <a
                         :href="route('client.surveys.psychosocial-dashboard.print', dashboard.survey.id)"
                         target="_blank"

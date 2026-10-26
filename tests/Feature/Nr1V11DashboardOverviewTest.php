@@ -169,12 +169,12 @@ class Nr1V11DashboardOverviewTest extends TestCase
         $this->assertSame('inactive', $this->build($campaign->survey)['header']['status']['code']);
     }
 
-    public function test_plan_card_counts_implemented_measures_over_the_total(): void
+    public function test_plan_card_counts_confirmed_responsible_over_the_total(): void
     {
         $campaign = $this->v11Campaign();
         $user = User::factory()->companyAdmin($campaign->company->id)->create();
 
-        $this->assertSame(['implemented' => 0, 'total' => 0], $this->build($campaign->survey)['cards']['plan']);
+        $this->assertSame(['confirmed' => 0, 'implemented' => 0, 'total' => 0], $this->build($campaign->survey)['cards']['plan']);
 
         foreach ([PsychosocialMeasure::STATUS_TO_APPROVE, PsychosocialMeasure::STATUS_PENDING, PsychosocialMeasure::STATUS_IMPLEMENTED] as $status) {
             PsychosocialMeasure::query()->create([
@@ -187,10 +187,15 @@ class Nr1V11DashboardOverviewTest extends TestCase
                 'status' => $status,
                 'implemented_at' => $status === PsychosocialMeasure::STATUS_IMPLEMENTED ? now() : null,
                 'implemented_by' => $status === PsychosocialMeasure::STATUS_IMPLEMENTED ? $user->id : null,
+                // Proposta (to_approve) não tem responsável confirmado; as demais passaram pela confirmação da empresa.
+                'confirmed_at' => $status === PsychosocialMeasure::STATUS_TO_APPROVE ? null : now(),
+                'confirmed_by' => $status === PsychosocialMeasure::STATUS_TO_APPROVE ? null : $user->id,
+                'confirmed_due_date' => $status === PsychosocialMeasure::STATUS_TO_APPROVE ? null : now()->addDays(30)->toDateString(),
+                'confirmed_responsible_text' => $status === PsychosocialMeasure::STATUS_TO_APPROVE ? null : 'Coordenação de RH',
             ]);
         }
 
-        $this->assertSame(['implemented' => 1, 'total' => 3], $this->build($campaign->survey)['cards']['plan']);
+        $this->assertSame(['confirmed' => 2, 'implemented' => 1, 'total' => 3], $this->build($campaign->survey)['cards']['plan']);
     }
 
     public function test_t25_empty_campaign_shows_empty_state_without_zeroing_anything(): void
@@ -207,7 +212,7 @@ class Nr1V11DashboardOverviewTest extends TestCase
         $this->assertSame([], $dashboard['dimensions']);
         $this->assertSame([], $dashboard['attention']);
         $this->assertSame([], $dashboard['strengths']);
-        $this->assertSame(['implemented' => 0, 'total' => 0], $dashboard['cards']['plan']);
+        $this->assertSame(['confirmed' => 0, 'implemented' => 0, 'total' => 0], $dashboard['cards']['plan']);
     }
 
     public function test_page_receives_the_overview_blocks_and_stays_company_scoped(): void

@@ -487,6 +487,8 @@ class PsychosocialDashboardBuilder
                 'total' => count($dimensions),
             ],
             'plan' => [
+                // "Responsável confirmado": a empresa aprovou responsável e prazo (Caderno §11).
+                'confirmed' => (clone $measures)->whereNotNull('confirmed_at')->count(),
                 'implemented' => (clone $measures)->where('status', PsychosocialMeasure::STATUS_IMPLEMENTED)->count(),
                 'total' => (clone $measures)->count(),
             ],

@@ -35,6 +35,7 @@ const props = defineProps({
     departmentParticipation: { type: Array, default: () => [] },
     questionDistributionsByDepartment: { type: Array, default: () => [] },
     plan: { type: Object, default: null },
+    publication: { type: Object, default: () => ({ requires_publication: false, published_at: null }) },
     technical_opinion: { type: String, default: '' },
     aiEnabled: { type: Boolean, default: false },
     aiAnalysis: { type: Object, default: null },
@@ -915,6 +916,29 @@ const submit = () => {
                     <p class="mt-1 text-sm text-gray-600">
                         Ao salvar, você verá o PDF do parecer como a empresa receberá e poderá confirmar o envio.
                     </p>
+                </div>
+
+                <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Publicação dos resultados</p>
+                    <p v-if="!publication.requires_publication" class="mt-2 text-sm text-slate-700">
+                        Esta campanha é anterior ao controle de publicação: a empresa já vê os resultados.
+                    </p>
+                    <template v-else>
+                        <p class="mt-2 text-base font-semibold text-slate-900">
+                            {{ publication.published_at ? `Publicado em ${publication.published_at}` : 'Não publicado' }}
+                        </p>
+                        <p v-if="!publication.published_at" class="mt-1 text-sm text-slate-600">
+                            Enquanto não for publicado, a empresa não vê resultados, impressão, exportações, plano nem documentos desta campanha.
+                        </p>
+                        <PrimaryButton
+                            v-if="!publication.published_at"
+                            type="button"
+                            class="mt-3"
+                            @click="router.post(route('admin.companies.surveys.publication.store', [company.id, survey.id]), {}, { preserveScroll: true })"
+                        >
+                            Publicar resultados para a empresa
+                        </PrimaryButton>
+                    </template>
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">

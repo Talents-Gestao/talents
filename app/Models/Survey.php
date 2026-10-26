@@ -27,6 +27,7 @@ class Survey extends Model
         'min_responses_for_breakdown',
         'min_group_size',
         'show_others_composition',
+        'requires_publication',
         'answers_reconstructed_at',
         'deleted_by',
         'archive_path',
@@ -62,6 +63,8 @@ class Survey extends Model
             'answers_reconstructed_at' => 'datetime',
             'commercial_released_at' => 'datetime',
             'show_others_composition' => 'boolean',
+            'requires_publication' => 'boolean',
+            'published_at' => 'datetime',
         ];
     }
 

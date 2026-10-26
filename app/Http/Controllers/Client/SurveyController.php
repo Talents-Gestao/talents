@@ -77,6 +77,8 @@ class SurveyController extends Controller
             'ends_at' => $data['ends_at'] ?? now()->addMonth(),
             'status' => $data['status'] ?? 'active',
             'min_group_size' => $data['min_group_size'] ?? Nr1GroupPrivacy::FLOOR,
+            // Campanhas novas só mostram resultado à empresa depois de "Publicado" (T02).
+            'requires_publication' => true,
         ]);
 
         return redirect()->route('client.surveys.show', $survey)->with('success', 'Campanha criada.');

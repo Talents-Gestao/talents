@@ -11,11 +11,12 @@ use App\Models\Complaint;
 use App\Models\HiringProcess;
 use App\Models\StrategicCalendarItem;
 use App\Models\Survey;
+use App\Models\SurveyResult;
+use App\Models\TaskCard;
 use App\Support\StrategicCalendarClientEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Support\StrategicCalendarPeriod;
-use App\Models\SurveyResult;
-use App\Models\TaskCard;
+use App\Support\SurveyPublicationGate;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -42,18 +43,23 @@ class DashboardController extends Controller
         $overall = null;
         $completionRate = null;
         $sectionResults = [];
+        // T02: resultado de campanha que exige publicação só aparece depois de "Publicado".
+        $resultsVisible = $lastSurvey !== null && SurveyPublicationGate::allows($lastSurvey);
+
         if ($lastSurvey) {
-            $overall = SurveyResult::query()
-                ->where('survey_id', $lastSurvey->id)
-                ->whereNull('survey_template_section_id')
-                ->whereNull('department_id')
-                ->first();
+            $overall = $resultsVisible
+                ? SurveyResult::query()
+                    ->where('survey_id', $lastSurvey->id)
+                    ->whereNull('survey_template_section_id')
+                    ->whereNull('department_id')
+                    ->first()
+                : null;
 
             $responsesTotal = $lastSurvey->responses()->count();
             $responsesDone = $lastSurvey->completedResponses()->count();
             $completionRate = $responsesTotal > 0 ? round(100 * $responsesDone / $responsesTotal, 1) : null;
 
-            $sectionResults = SurveyResult::query()
+            $sectionResults = ! $resultsVisible ? [] : SurveyResult::query()
                 ->where('survey_id', $lastSurvey->id)
                 ->whereNotNull('survey_template_section_id')
                 ->whereNull('department_id')
@@ -88,12 +94,14 @@ class DashboardController extends Controller
 
         $openActionPlanCount = ActionPlanItem::query()
             ->whereIn('status', ['pending', 'in_progress'])
-            ->whereHas('actionPlan', fn ($q) => $q->where('company_id', $companyId))
+            ->whereHas('actionPlan', fn ($q) => $q->where('company_id', $companyId)
+                ->whereHas('survey', fn ($s) => SurveyPublicationGate::scopeVisible($s)))
             ->count();
 
         $openActionPlanItems = ActionPlanItem::query()
             ->whereIn('status', ['pending', 'in_progress'])
-            ->whereHas('actionPlan', fn ($q) => $q->where('company_id', $companyId))
+            ->whereHas('actionPlan', fn ($q) => $q->where('company_id', $companyId)
+                ->whereHas('survey', fn ($s) => SurveyPublicationGate::scopeVisible($s)))
             ->with(['actionPlan' => fn ($q) => $q->select('id', 'survey_id', 'company_id')->with('survey:id,title')])
             ->orderByRaw("CASE WHEN action_plan_items.status = 'in_progress' THEN 0 ELSE 1 END")
             ->orderBy('due_date')
@@ -202,7 +210,7 @@ class DashboardController extends Controller
             ];
         }
 
-        $actionPlanHref = $lastSurvey ? route('client.surveys.action-plan', $lastSurvey->id) : null;
+        $actionPlanHref = $resultsVisible ? route('client.surveys.action-plan', $lastSurvey->id) : null;
 
         $activeHiringProcessesCount = 0;
         $user = $request->user();
