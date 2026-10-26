@@ -158,6 +158,26 @@ class UserFactory extends Factory
         });
     }
 
+    public function externalReviewer(?int $organizationId = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::ExternalReviewer,
+            'company_id' => null,
+        ])->afterCreating(function (User $user) use ($organizationId): void {
+            UserWorkspace::create([
+                'user_id' => $user->id,
+                'workspace_type' => WorkspaceType::ExternalReview,
+                'company_id' => null,
+                'approver_organization_id' => $organizationId,
+                'role' => UserRole::ExternalReviewer,
+                'is_owner' => false,
+                'is_active' => (bool) $user->is_active,
+            ]);
+
+            app(WorkspaceManager::class)->syncLegacyUserColumns($user);
+        });
+    }
+
     public function pendingRegistration(): static
     {
         return $this->state(fn (array $attributes) => [

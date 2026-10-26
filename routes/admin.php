@@ -204,6 +204,11 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('companies/{company}/surveys/{survey}/documentos/{type}/validacao-informada', [PsychosocialDocumentAdminController::class, 'validateInformed'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
             ->name('companies.surveys.psychosocial-documents.validate-informed');
+        Route::post('companies/{company}/surveys/{survey}/documentos/{type}/compartilhar', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'store'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->name('companies.surveys.psychosocial-documents.share');
+        Route::delete('companies/{company}/document-shares/{share}', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'revoke'])
+            ->name('companies.document-shares.revoke');
         Route::get('companies/{company}/surveys/{survey}/action-plan/pdf', [ActionPlanAdminController::class, 'pdf'])
             ->name('companies.surveys.action-plan.pdf');
         Route::match(['get', 'post'], 'companies/{company}/surveys/{survey}/action-plan/document-pdf', [ActionPlanAdminController::class, 'documentPdf'])

@@ -226,6 +226,11 @@ class WipeCompanyDataCommand extends Command
                 $versionIds = DB::table('psychosocial_document_versions')->whereIn('document_id', $documentIds)->pluck('id')->all();
                 DB::table('psychosocial_documents')->whereIn('id', $documentIds)->update(['current_version_id' => null]);
                 if (! empty($versionIds)) {
+                    if (Schema::hasTable('document_shares')) {
+                        $shareIds = DB::table('document_shares')->whereIn('document_version_id', $versionIds)->pluck('id')->all();
+                        DB::table('document_share_reviews')->whereIn('document_share_id', $shareIds)->delete();
+                        DB::table('document_shares')->whereIn('id', $shareIds)->delete();
+                    }
                     DB::table('psychosocial_document_attachments')->whereIn('version_id', $versionIds)->delete();
                     DB::table('psychosocial_document_validations')->whereIn('version_id', $versionIds)->delete();
                     DB::table('psychosocial_document_versions')->whereIn('id', $versionIds)->where('kind', 'validated')->delete();

@@ -14,6 +14,7 @@ class UserWorkspace extends Model
         'user_id',
         'workspace_type',
         'company_id',
+        'approver_organization_id',
         'role',
         'is_owner',
         'is_active',
@@ -57,6 +58,21 @@ class UserWorkspace extends Model
     public function isCompany(): bool
     {
         return $this->workspace_type === WorkspaceType::Company;
+    }
+
+    public function isExternalReview(): bool
+    {
+        return $this->workspace_type === WorkspaceType::ExternalReview;
+    }
+
+    public function isExternalReviewer(): bool
+    {
+        return $this->role === UserRole::ExternalReviewer;
+    }
+
+    public function approverOrganization(): BelongsTo
+    {
+        return $this->belongsTo(ApproverOrganization::class);
     }
 
     public function isSuperAdmin(): bool

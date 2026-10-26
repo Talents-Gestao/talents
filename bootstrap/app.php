@@ -37,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(base_path('routes/feedback.php'));
             Route::middleware('web')->group(base_path('routes/offboarding.php'));
             Route::middleware('web')->group(base_path('routes/client-evaluation.php'));
+            Route::middleware('web')->group(base_path('routes/external-review.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -54,6 +55,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'super_admin' => EnsureSuperAdmin::class,
+            'external_reviewer' => \App\Http\Middleware\EnsureExternalReviewer::class,
             'admin.can' => EnsureAdminPermission::class,
             'company' => EnsureCompanyAccess::class,
             'company_admin' => EnsureCompanyAdmin::class,
