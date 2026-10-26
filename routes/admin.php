@@ -240,10 +240,6 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->whereNumber('version')->name('companies.surveys.documents.download');
         Route::post('companies/{company}/surveys/{survey}/publicar', [\App\Http\Controllers\Admin\SurveyPublicationAdminController::class, 'publish'])
             ->name('companies.surveys.publication.store');
-        Route::post('companies/{company}/surveys/{survey}/liberar-comercial', [\App\Http\Controllers\Admin\Nr1CommercialReleaseController::class, 'release'])
-            ->name('companies.surveys.commercial-release.store');
-        Route::delete('companies/{company}/surveys/{survey}/liberar-comercial', [\App\Http\Controllers\Admin\Nr1CommercialReleaseController::class, 'withdraw'])
-            ->name('companies.surveys.commercial-release.destroy');
         Route::delete('companies/{company}/document-shares/{share}', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'revoke'])
             ->name('companies.document-shares.revoke');
         Route::get('companies/{company}/surveys/{survey}/action-plan/pdf', [ActionPlanAdminController::class, 'pdf'])
@@ -300,8 +296,17 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
     Route::middleware('admin.can:nr1_oportunidades,view')->prefix('oportunidades-nr1')->name('nr1-opportunities.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'index'])->name('index');
+        Route::get('fila/{opportunity}', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'showOpportunity'])
+            ->whereNumber('opportunity')->name('opportunity');
         Route::get('{survey}', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'show'])
             ->whereNumber('survey')->name('show');
+    });
+
+    // Trabalhar a fila (assumir, estado, próxima ação) exige edição no módulo; só ver não basta.
+    Route::middleware('admin.can:nr1_oportunidades,edit')->prefix('oportunidades-nr1/fila')->name('nr1-opportunities.')->group(function () {
+        Route::post('{opportunity}/assumir', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'assume'])->whereNumber('opportunity')->name('assume');
+        Route::post('{opportunity}/estado', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'changeStatus'])->whereNumber('opportunity')->name('status');
+        Route::post('{opportunity}/proxima-acao', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'nextAction'])->whereNumber('opportunity')->name('next-action');
     });
 
     Route::middleware('admin.can:rhid')->get('rhid/{path?}', function () {

@@ -71,9 +71,8 @@ class Nr1V11CommercialTest extends TestCase
 
         app(SurveyResultCalculator::class)->recalculate($fx->survey->fresh());
 
-        if ($released) {
-            $fx->survey->forceFill(['commercial_released_at' => now()])->save();
-        }
+        // «Publicado» (Etapa 7) é o critério de visibilidade do Comercial; a liberação manual antiga saiu.
+        $fx->survey->forceFill(['requires_publication' => true, 'published_at' => $released ? now() : null])->save();
 
         return $fx;
     }
@@ -122,7 +121,7 @@ class Nr1V11CommercialTest extends TestCase
         $detail = app(Nr1CommercialSerializer::class)->detail(Survey::query()->with('company')->findOrFail($fx->survey->id));
 
         $this->assertSame(
-            ['id', 'title', 'company_name', 'status', 'starts_at', 'ends_at', 'released_at', 'min_group_size', 'respondents', 'method_label', 'overall', 'dimensions', 'sectors', 'others'],
+            ['id', 'title', 'company_name', 'status', 'starts_at', 'ends_at', 'published_at', 'min_group_size', 'respondents', 'method_label', 'overall', 'dimensions', 'sectors', 'others'],
             array_keys($detail),
         );
         $this->assertSame(['n', 'score', 'band_label'], array_keys($detail['overall']));
@@ -142,8 +141,6 @@ class Nr1V11CommercialTest extends TestCase
         $blocked = [
             ['get', route('admin.companies.surveys.raw-export.csv', [$fx->company->id, $fx->survey->id])],
             ['get', route('admin.companies.index')],
-            ['post', route('admin.companies.surveys.commercial-release.store', [$fx->company->id, $fx->survey->id])],
-            ['delete', route('admin.companies.surveys.commercial-release.destroy', [$fx->company->id, $fx->survey->id])],
             ['get', route('admin.companies.surveys.psychosocial-documents.download', [$fx->company->id, $fx->survey->id, 'pgr_subsidy'])],
             ['get', route('admin.survey-templates.index')],
         ];
@@ -152,7 +149,7 @@ class Nr1V11CommercialTest extends TestCase
             $this->actingAs($user)->{$method}($url)->assertForbidden();
         }
 
-        $this->assertNotNull($fx->survey->fresh()->commercial_released_at, 'Nada foi retirado pelo Comercial.');
+        $this->assertNotNull($fx->survey->fresh()->published_at, 'Nada foi alterado pelo Comercial.');
     }
 
     public function test_user_without_the_module_is_forbidden(): void
@@ -164,7 +161,7 @@ class Nr1V11CommercialTest extends TestCase
         $this->actingAs($plain)->get(route('admin.nr1-opportunities.show', $fx->survey->id))->assertForbidden();
     }
 
-    public function test_the_module_exposes_exactly_two_read_only_routes(): void
+    public function test_the_module_exposes_only_read_routes_and_the_queue_actions_that_need_edit(): void
     {
         $routes = collect(Route::getRoutes()->getRoutes())->filter(
             fn (LaravelRoute $route) => collect($route->gatherMiddleware())
@@ -172,33 +169,38 @@ class Nr1V11CommercialTest extends TestCase
         );
 
         $this->assertSame(
-            ['admin.nr1-opportunities.index', 'admin.nr1-opportunities.show'],
+            [
+                'admin.nr1-opportunities.assume',
+                'admin.nr1-opportunities.index',
+                'admin.nr1-opportunities.next-action',
+                'admin.nr1-opportunities.opportunity',
+                'admin.nr1-opportunities.show',
+                'admin.nr1-opportunities.status',
+            ],
             $routes->map(fn (LaravelRoute $route) => $route->getName())->sort()->values()->all(),
         );
+
         foreach ($routes as $route) {
-            $this->assertSame(['GET', 'HEAD'], $route->methods(), $route->getName().' precisa ser só leitura.');
+            $writes = in_array($route->getName(), ['admin.nr1-opportunities.assume', 'admin.nr1-opportunities.status', 'admin.nr1-opportunities.next-action'], true);
+            $this->assertSame($writes ? ['POST'] : ['GET', 'HEAD'], $route->methods(), $route->getName());
+            if ($writes) {
+                $this->assertTrue(collect($route->gatherMiddleware())->contains('admin.can:nr1_oportunidades,edit'), $route->getName().' exige edição.');
+            }
         }
     }
 
-    public function test_release_and_withdraw_are_done_by_talents_not_commercial(): void
+    public function test_publication_not_a_manual_release_decides_what_the_commercial_sees(): void
     {
         $fx = $this->campaign(released: false);
-        $owner = User::factory()->superAdmin()->create(['is_owner' => true]);
-        $other = $this->createSurveyFixture();
+        $user = $this->commercial();
 
-        $this->actingAs($owner)
-            ->post(route('admin.companies.surveys.commercial-release.store', [$other->company->id, $fx->survey->id]))
-            ->assertNotFound();
+        $this->actingAs($user)->get(route('admin.nr1-opportunities.show', $fx->survey->id))->assertNotFound();
 
-        $this->actingAs($owner)
-            ->post(route('admin.companies.surveys.commercial-release.store', [$fx->company->id, $fx->survey->id]))
-            ->assertRedirect();
-        $this->assertNotNull($fx->survey->fresh()->commercial_released_at);
-        $this->assertSame($owner->id, (int) $fx->survey->fresh()->commercial_released_by);
+        $fx->survey->forceFill(['published_at' => now()])->save();
+        $this->actingAs($user)->get(route('admin.nr1-opportunities.show', $fx->survey->id))->assertOk();
 
-        $this->actingAs($owner)
-            ->delete(route('admin.companies.surveys.commercial-release.destroy', [$fx->company->id, $fx->survey->id]))
-            ->assertRedirect();
-        $this->assertNull($fx->survey->fresh()->commercial_released_at);
+        $fx->survey->forceFill(['published_at' => null])->save();
+        $this->actingAs($user)->get(route('admin.nr1-opportunities.show', $fx->survey->id))->assertNotFound();
+        $this->assertFalse(Route::has('admin.companies.surveys.commercial-release.store'), 'A liberação manual saiu.');
     }
 }
