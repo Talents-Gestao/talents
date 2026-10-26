@@ -92,7 +92,7 @@ class CompanyNoticeTest extends TestCase
     public function test_calendar_item_create_publishes_notice_for_company(): void
     {
         $company = $this->companyWithCalendar();
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $this->actingAs($admin)
             ->post(route('admin.strategic-calendar.store'), [
@@ -115,7 +115,7 @@ class CompanyNoticeTest extends TestCase
     public function test_calendar_item_delete_publishes_notice(): void
     {
         $company = $this->companyWithCalendar();
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $item = StrategicCalendarItem::query()->create([
             'title' => 'Evento teste',
@@ -139,7 +139,7 @@ class CompanyNoticeTest extends TestCase
     public function test_admin_can_publish_manual_notice(): void
     {
         $company = $this->companyWithCalendar();
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $this->actingAs($admin)
             ->post(route('admin.notices.store'), [

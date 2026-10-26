@@ -25,7 +25,7 @@ class InternalRegulationTest extends TestCase
 
     public function test_super_admin_can_open_index(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $company = Company::query()->create(['name' => 'Empresa Reg', 'is_active' => true]);
 
         CompanyInternalRegulation::query()->create([
@@ -47,7 +47,7 @@ class InternalRegulationTest extends TestCase
 
     public function test_admin_can_create_regulation_with_sanitized_html(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $company = Company::query()->create(['name' => 'Empresa HTML', 'is_active' => true]);
 
         $this->actingAs($admin)
@@ -70,7 +70,7 @@ class InternalRegulationTest extends TestCase
     {
         Storage::fake('local');
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $company = Company::query()->create(['name' => 'Empresa Anexo', 'is_active' => true]);
         $file = UploadedFile::fake()->create('regulamento.pdf', 120, 'application/pdf');
 
@@ -99,7 +99,7 @@ class InternalRegulationTest extends TestCase
     {
         Storage::fake('local');
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $company = Company::query()->create(['name' => 'Empresa Remove Anexo', 'is_active' => true]);
         $path = 'internal-regulations/1/old.pdf';
         Storage::disk('local')->put($path, 'conteudo');
@@ -142,7 +142,7 @@ class InternalRegulationTest extends TestCase
     {
         Storage::fake('local');
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $company = Company::query()->create(['name' => 'Empresa Del', 'is_active' => true]);
         $path = 'internal-regulations/99/doc.pdf';
         Storage::disk('local')->put($path, 'pdf');

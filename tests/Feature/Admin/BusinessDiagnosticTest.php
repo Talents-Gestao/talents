@@ -22,7 +22,7 @@ class BusinessDiagnosticTest extends TestCase
 
     public function test_admin_can_list_and_create_business_diagnostic(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $this->actingAs($admin)
             ->get(route('admin.diagnostico-empresarial.index'))

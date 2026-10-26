@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Actions\SyncAdminUserPermissions;
+use App\Enums\AdminPermissionModule;
 use App\Enums\HiringProcessStage;
+use App\Enums\PermissionAction;
 use App\Models\Company;
 use App\Models\HiringProcess;
 use App\Models\User;
@@ -60,10 +63,22 @@ class HiringProcessAdminTest extends TestCase
         $this->assertSame(2, $first->fresh()->sort_order);
     }
 
-    public function test_admin_talents_can_access_acompanhamento_without_granular_grants(): void
+    public function test_admin_talents_needs_the_matrix_permission_to_access_acompanhamento(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => false]);
 
+        // Sem permissão na matriz: 403 (regra vigente desde a matriz granular).
+        $this->actingAs($admin)
+            ->get(route('admin.acompanhamento.index'))
+            ->assertForbidden();
+
+        $workspace = $admin->talentsWorkspace();
+        app(SyncAdminUserPermissions::class)->execute($workspace, [
+            ['module' => AdminPermissionModule::SolidesAcompanhamento->value, 'action' => PermissionAction::View->value],
+            ['module' => AdminPermissionModule::Dashboard->value, 'action' => PermissionAction::View->value],
+        ]);
+
+        $admin = User::query()->findOrFail($admin->id);
         $this->actingAs($admin)
             ->get(route('admin.acompanhamento.index'))
             ->assertOk();

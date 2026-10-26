@@ -79,6 +79,15 @@ class UserFactory extends Factory
         ]);
     }
 
+    /**
+     * Super admin Talents proprietário (acesso master, sem depender da matriz de permissões). O padrão de
+     * superAdmin() continua sem permissão alguma, para os testes de recusa (403).
+     */
+    public function talentsOwner(): static
+    {
+        return $this->state(fn (array $attributes) => ['is_owner' => true])->superAdmin();
+    }
+
     public function superAdmin(): static
     {
         return $this->state(fn (array $attributes) => [

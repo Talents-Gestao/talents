@@ -26,7 +26,7 @@ class CompanyUserManagementTest extends TestCase
             'complaints_public_token' => (string) Str::uuid(),
         ]);
 
-        $super = User::factory()->superAdmin()->create();
+        $super = User::factory()->talentsOwner()->create();
 
         $this->actingAs($super)
             ->get(route('admin.companies.users.index', $company))
@@ -61,7 +61,7 @@ class CompanyUserManagementTest extends TestCase
             'complaints_public_token' => (string) Str::uuid(),
         ]);
 
-        $super = User::factory()->superAdmin()->create();
+        $super = User::factory()->talentsOwner()->create();
 
         $pending = User::factory()->companyUser($company->id)->pendingRegistration()->create();
 
@@ -83,7 +83,7 @@ class CompanyUserManagementTest extends TestCase
             'complaints_public_token' => (string) Str::uuid(),
         ]);
 
-        $super = User::factory()->superAdmin()->create();
+        $super = User::factory()->talentsOwner()->create();
         $registered = User::factory()->companyUser($company->id)->create();
 
         $this->actingAs($super)

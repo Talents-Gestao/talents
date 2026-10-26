@@ -28,9 +28,18 @@ class SettingsPageTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_super_admin_without_permission_cannot_access_admin_settings(): void
+    {
+        $user = User::factory()->superAdmin()->create(['is_owner' => false]);
+
+        $this->actingAs($user)
+            ->get('/admin/settings')
+            ->assertForbidden();
+    }
+
     public function test_super_admin_can_view_admin_settings(): void
     {
-        $user = User::factory()->superAdmin()->create();
+        $user = User::factory()->talentsOwner()->create();
 
         $this->actingAs($user)
             ->get('/admin/settings')
@@ -43,7 +52,7 @@ class SettingsPageTest extends TestCase
      */
     public function test_admin_settings_loads_when_stored_encrypted_columns_are_unreadable(): void
     {
-        $user = User::factory()->superAdmin()->create();
+        $user = User::factory()->talentsOwner()->create();
 
         AiSetting::query()->create([
             'provider' => 'openai',
@@ -68,7 +77,7 @@ class SettingsPageTest extends TestCase
 
     public function test_admin_settings_marks_api_key_and_password_unreadable_when_ciphertext_invalid(): void
     {
-        $user = User::factory()->superAdmin()->create();
+        $user = User::factory()->talentsOwner()->create();
 
         AiSetting::query()->create([
             'provider' => 'openai',

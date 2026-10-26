@@ -78,7 +78,7 @@ class FeedbackVisibilityTest extends TestCase
     {
         $companyA = $this->createFeedbackCompany(['name' => 'A']);
         $companyB = $this->createFeedbackCompany(['name' => 'B']);
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $leader = User::factory()->companyAdmin($companyA->id)->create();
         $employee = $this->createFeedbackEmployee($companyA, $leader);
         $sessionA = $this->createFeedbackSession($companyA, $leader, $employee);
@@ -93,6 +93,19 @@ class FeedbackVisibilityTest extends TestCase
 
         $this->withSession([FeedbackCompanyContext::SESSION_KEY => $companyA->id]);
         $this->get(route('admin.feedbacks.sessions.show', $sessionB))->assertForbidden();
+    }
+
+    public function test_super_admin_without_permission_cannot_open_a_session_even_of_the_selected_company(): void
+    {
+        $company = $this->createFeedbackCompany(['name' => 'A']);
+        $admin = User::factory()->superAdmin()->create(['is_owner' => false]);
+        $leader = User::factory()->companyAdmin($company->id)->create();
+        $employee = $this->createFeedbackEmployee($company, $leader);
+        $session = $this->createFeedbackSession($company, $leader, $employee);
+
+        $this->actingAs($admin);
+        $this->withSession([FeedbackCompanyContext::SESSION_KEY => $company->id]);
+        $this->get(route('admin.feedbacks.sessions.show', $session))->assertForbidden();
     }
 
     public function test_acts_as_company_admin_includes_super_admin(): void

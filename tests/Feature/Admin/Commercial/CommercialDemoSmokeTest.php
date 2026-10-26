@@ -199,7 +199,8 @@ class CommercialDemoSmokeTest extends TestCase
         $props = $response->original->getData()['page']['props'];
 
         $overdueSaleCodes = collect($props['overdueInstallments'])
-            ->pluck('sale.code')
+            ->each(fn (array $row) => $this->assertNotNull($row['sale_id']))
+            ->map(fn (array $row): string => explode(' — ', $row['label'])[0])
             ->unique()
             ->values()
             ->all();
@@ -207,7 +208,8 @@ class CommercialDemoSmokeTest extends TestCase
         $this->assertContains('VENDA-DEMO-0003', $overdueSaleCodes);
 
         $upcomingSaleCodes = collect($props['upcomingInstallments'])
-            ->pluck('sale.code')
+            ->filter(fn (array $row) => $row['sale_id'] !== null)
+            ->map(fn (array $row): string => explode(' — ', $row['label'])[0])
             ->unique()
             ->values()
             ->all();

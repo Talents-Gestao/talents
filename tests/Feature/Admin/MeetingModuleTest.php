@@ -30,7 +30,7 @@ class MeetingModuleTest extends TestCase
 
     public function test_super_admin_can_access_meetings_index(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $this->actingAs($admin)
             ->get(route('admin.reunioes.index'))
@@ -39,7 +39,7 @@ class MeetingModuleTest extends TestCase
 
     public function test_admin_can_create_meeting(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $company = Company::query()->create(['name' => 'Empresa Reunião', 'is_active' => true]);
 
         $this->actingAs($admin)
@@ -62,7 +62,7 @@ class MeetingModuleTest extends TestCase
         Storage::fake('local');
         Queue::fake();
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $meeting = Meeting::query()->create([
             'title' => 'Kickoff',
             'status' => MeetingStatus::Draft,
@@ -155,7 +155,7 @@ class MeetingModuleTest extends TestCase
 
     public function test_admin_can_update_minutes(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $meeting = Meeting::query()->create([
             'title' => 'Ata editável',
             'status' => MeetingStatus::Completed,
@@ -179,7 +179,7 @@ class MeetingModuleTest extends TestCase
     {
         Storage::fake('local');
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $meeting = Meeting::query()->create([
             'title' => 'Para excluir',
             'status' => MeetingStatus::Draft,
