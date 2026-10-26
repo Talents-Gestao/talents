@@ -207,6 +207,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('companies/{company}/surveys/{survey}/documentos/{type}/compartilhar', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'store'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
             ->name('companies.surveys.psychosocial-documents.share');
+        Route::post('companies/{company}/surveys/{survey}/liberar-comercial', [\App\Http\Controllers\Admin\Nr1CommercialReleaseController::class, 'release'])
+            ->name('companies.surveys.commercial-release.store');
+        Route::delete('companies/{company}/surveys/{survey}/liberar-comercial', [\App\Http\Controllers\Admin\Nr1CommercialReleaseController::class, 'withdraw'])
+            ->name('companies.surveys.commercial-release.destroy');
         Route::delete('companies/{company}/document-shares/{share}', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'revoke'])
             ->name('companies.document-shares.revoke');
         Route::get('companies/{company}/surveys/{survey}/action-plan/pdf', [ActionPlanAdminController::class, 'pdf'])
@@ -259,6 +263,12 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::middleware('admin.can:companies_contratos_fechados')->group(function () {
         Route::get('contratos-fechados', [ClosedContractsController::class, 'index'])
             ->name('contratos-fechados.index');
+    });
+
+    Route::middleware('admin.can:nr1_oportunidades,view')->prefix('oportunidades-nr1')->name('nr1-opportunities.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'index'])->name('index');
+        Route::get('{survey}', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'show'])
+            ->whereNumber('survey')->name('show');
     });
 
     Route::middleware('admin.can:rhid')->get('rhid/{path?}', function () {

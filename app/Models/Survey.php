@@ -59,6 +59,7 @@ class Survey extends Model
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'answers_reconstructed_at' => 'datetime',
+            'commercial_released_at' => 'datetime',
         ];
     }
 
