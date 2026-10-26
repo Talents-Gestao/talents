@@ -9,6 +9,7 @@ use App\Exceptions\PsychosocialDocumentException;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\PsychosocialDocumentVersion;
+use App\Models\PsychosocialPassegOptionChange;
 use App\Models\PsychosocialReviewRound;
 use App\Models\Survey;
 use App\Models\User;
@@ -49,6 +50,14 @@ class ReviewRoundAdminController extends Controller
             ],
             'externalReviewEnabled' => DocumentShareService::enabled(),
             'requiresPassegReview' => (bool) $survey->requires_passeg_review,
+            'requirementChanges' => PsychosocialPassegOptionChange::query()->where('survey_id', $survey->id)->with('user:id,name')->orderByDesc('id')->get()
+                ->map(fn (PsychosocialPassegOptionChange $change) => [
+                    'id' => $change->id,
+                    'by' => $change->user?->name ?? 'Sistema',
+                    'at' => $change->changed_at->format('d/m/Y H:i'),
+                    'previous' => $change->previous_value,
+                    'new' => $change->new_value,
+                ])->all(),
             'canChangeReviewRequirement' => $current === null || in_array($current->status, [PsychosocialReviewRound::STATUS_DRAFT, PsychosocialReviewRound::STATUS_PUBLISHED], true),
             'round' => $current ? $this->present($company, $survey, $current, withActions: true) : null,
             // A empresa continua vendo a última rodada publicada enquanto uma nova revisão está em andamento.

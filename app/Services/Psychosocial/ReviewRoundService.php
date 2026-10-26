@@ -9,6 +9,7 @@ use App\Models\DocumentShare;
 use App\Models\DocumentShareReview;
 use App\Models\PsychosocialDocument;
 use App\Models\PsychosocialDocumentVersion;
+use App\Models\PsychosocialPassegOptionChange;
 use App\Models\PsychosocialPgrIntegration;
 use App\Models\PsychosocialReviewAcknowledgement;
 use App\Models\PsychosocialReviewEvent;
@@ -315,7 +316,22 @@ class ReviewRoundService
             throw new PsychosocialDocumentException('Há uma revisão em andamento com a PASSEG: conclua a publicação antes de mudar essa configuração.');
         }
 
-        $survey->forceFill(['requires_passeg_review' => $required])->save();
+        $previous = (bool) $survey->requires_passeg_review;
+        if ($previous === $required) {
+            return $survey;
+        }
+
+        DB::transaction(function () use ($survey, $actor, $previous, $required): void {
+            $survey->forceFill(['requires_passeg_review' => $required])->save();
+
+            PsychosocialPassegOptionChange::query()->create([
+                'survey_id' => $survey->id,
+                'user_id' => $actor->id,
+                'previous_value' => $previous,
+                'new_value' => $required,
+                'changed_at' => now(),
+            ]);
+        });
 
         return $survey;
     }

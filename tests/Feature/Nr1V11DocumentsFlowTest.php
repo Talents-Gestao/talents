@@ -15,6 +15,7 @@ use App\Models\PsychosocialDocumentVersion;
 use App\Models\PsychosocialMeasure;
 use App\Models\PsychosocialReviewAcknowledgement;
 use App\Models\PsychosocialReviewEvent;
+use App\Models\PsychosocialPassegOptionChange;
 use App\Models\PsychosocialReviewRound;
 use App\Models\Survey;
 use App\Models\SurveyCampaignRegistration;
@@ -917,5 +918,53 @@ class Nr1V11DocumentsFlowTest extends TestCase
             ->where('requiresPassegReview', true)
             ->where('round.actions.send', true)
             ->where('round.actions.publish', false));
+    }
+
+    public function test_requirement_changes_are_audited_with_actor_date_previous_and_new_value(): void
+    {
+        $flow = $this->flow(requirePasseg: false);
+        $url = route('admin.companies.surveys.documents.review-requirement', [$flow->company->id, $flow->survey->id]);
+
+        $this->travelTo(now()->setDate(2026, 11, 3)->setTime(10, 30));
+        $this->actingAs($flow->talents)->post($url, ['requires_passeg_review' => true])->assertSessionHas('success');
+
+        // Mesmo valor: nada muda e nada é registrado.
+        $this->actingAs($flow->talents)->post($url, ['requires_passeg_review' => true])->assertSessionHas('success');
+        $this->assertSame(1, PsychosocialPassegOptionChange::query()->count());
+
+        $this->travelTo(now()->addDay());
+        $this->actingAs($flow->talents)->post($url, ['requires_passeg_review' => false])->assertSessionHas('success');
+
+        $changes = PsychosocialPassegOptionChange::query()->orderBy('id')->get();
+        $this->assertCount(2, $changes);
+        $this->assertSame([$flow->survey->id, $flow->talents->id, false, true], [$changes[0]->survey_id, $changes[0]->user_id, $changes[0]->previous_value, $changes[0]->new_value]);
+        $this->assertSame('2026-11-03 10:30:00', $changes[0]->changed_at->format('Y-m-d H:i:s'));
+        $this->assertSame([$flow->talents->id, true, false], [$changes[1]->user_id, $changes[1]->previous_value, $changes[1]->new_value]);
+
+        // Recusa (empresa, ou revisão em andamento) não deixa rastro de mudança.
+        $this->actingAs($flow->admin)->post($url, ['requires_passeg_review' => true])->assertForbidden();
+        $this->assertSame(2, PsychosocialPassegOptionChange::query()->count());
+
+        // Só inserção.
+        foreach ([
+            fn () => $changes[0]->fill(['new_value' => false])->save(),
+            fn () => $changes[0]->delete(),
+        ] as $mutation) {
+            try {
+                $mutation();
+                $this->fail('Registro de auditoria foi alterado.');
+            } catch (LogicException) {
+            }
+        }
+
+        // A tela da Talents mostra o histórico, do mais recente para o mais antigo.
+        $this->actingAs($flow->talents)
+            ->get(route('admin.companies.surveys.documents.index', [$flow->company->id, $flow->survey->id]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('requirementChanges', 2)
+                ->where('requirementChanges.0.by', 'Talents Owner')
+                ->where('requirementChanges.0.previous', true)
+                ->where('requirementChanges.0.new', false)
+                ->where('requirementChanges.1.at', '03/11/2026 10:30'));
     }
 }

@@ -11,6 +11,7 @@ const props = defineProps({
     externalReviewEnabled: { type: Boolean, default: false },
     requiresPassegReview: { type: Boolean, default: false },
     canChangeReviewRequirement: { type: Boolean, default: true },
+    requirementChanges: { type: Array, default: () => [] },
     round: { type: Object, default: null },
     publishedRound: { type: Object, default: null },
     canStart: { type: Boolean, default: false },
@@ -93,6 +94,11 @@ const send = () => {
                         </span>
                     </span>
                 </label>
+                <ul v-if="requirementChanges.length" class="mt-3 space-y-0.5 border-t border-gray-100 pt-2 text-xs text-gray-600" aria-label="Histórico da opção">
+                    <li v-for="change in requirementChanges" :key="change.id">
+                        {{ change.at }} · {{ change.by }}: {{ change.previous ? 'exigida' : 'não exigida' }} → {{ change.new ? 'exigida' : 'não exigida' }}
+                    </li>
+                </ul>
             </section>
             <p v-if="requiresPassegReview && !externalReviewEnabled" class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                 A revisão externa está desligada neste ambiente: não é possível enviar à PASSEG nem, portanto, publicar com a revisão exigida.
