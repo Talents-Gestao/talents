@@ -209,6 +209,11 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('companies/{company}/surveys/{survey}/documentos/{type}/compartilhar', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'store'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
             ->name('companies.surveys.psychosocial-documents.share');
+        // Painel de resultados V11 para a consultoria e Revisão interna (Caderno §9): nada disso chega à empresa.
+        Route::get('companies/{company}/surveys/{survey}/resultados-psicossociais', [\App\Http\Controllers\Admin\PsychosocialResultsAdminController::class, 'show'])
+            ->name('companies.surveys.results.show');
+        Route::post('companies/{company}/surveys/{survey}/revisao-interna', [\App\Http\Controllers\Admin\PsychosocialResultsAdminController::class, 'storeInternalReview'])
+            ->name('companies.surveys.internal-review.store');
         // Fluxo de revisão dos dois documentos finais (campanha V11): Em edição → … → Publicado.
         Route::get('companies/{company}/surveys/{survey}/documentos', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'index'])
             ->name('companies.surveys.documents.index');

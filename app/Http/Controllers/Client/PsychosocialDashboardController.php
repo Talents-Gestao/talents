@@ -12,6 +12,7 @@ use App\Models\Survey;
 use App\Services\ExecutiveBriefService;
 use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\PsychosocialDashboardBuilder;
+use App\Services\PsychosocialDashboardExtras;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -28,7 +29,10 @@ class PsychosocialDashboardController extends Controller
 
     private const CSV_COLUMNS = ['recorte', 'setor', 'dimensao', 'n', 'indice_gravado', 'faixa_gravada', 'faixa', 'metodo', 'observacao'];
 
-    public function __construct(private readonly PsychosocialDashboardBuilder $builder) {}
+    public function __construct(
+        private readonly PsychosocialDashboardBuilder $builder,
+        private readonly PsychosocialDashboardExtras $extras,
+    ) {}
 
     public function show(
         Request $request,
@@ -46,6 +50,8 @@ class PsychosocialDashboardController extends Controller
 
         return Inertia::render('Client/Surveys/PsychosocialDashboard', [
             'dashboard' => $this->builder->build($survey),
+            'nextActions' => $this->extras->nextActions($survey),
+            'campaigns' => $this->extras->campaigns($survey, true, fn (Survey $s) => route('client.surveys.psychosocial-dashboard', $s)),
             'executiveBrief' => $executiveBriefService->currentVersionSummary($survey),
             'psychosocialDocuments' => $documents->documentsSummary($survey),
             'documentsUrl' => $survey->usesReviewFlow() ? route('client.surveys.documents.index', $survey) : null,
