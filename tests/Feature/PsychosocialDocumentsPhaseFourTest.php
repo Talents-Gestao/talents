@@ -252,6 +252,19 @@ class PsychosocialDocumentsPhaseFourTest extends TestCase
         ]);
         $resultsBefore = DB::table('survey_results')->count();
 
+        // Este `down` é o da fase 4. Migrations posteriores têm FK para as versões (revisão externa e rodadas de revisão);
+        // no PostgreSQL elas precisam sair antes, como sairiam num rollback em ordem.
+        foreach ([
+            'psychosocial_pgr_integrations',
+            'psychosocial_review_acknowledgements',
+            'psychosocial_review_events',
+            'psychosocial_review_rounds',
+            'document_share_reviews',
+            'document_shares',
+        ] as $dependent) {
+            Schema::dropIfExists($dependent);
+        }
+
         $this->migration()->down();
 
         foreach (self::TABLES as $table) {
