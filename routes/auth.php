@@ -65,6 +65,17 @@ Route::middleware('auth')->group(function () {
 
     Route::put('password', [PasswordController::class, 'update'])->name('password.update');
 
+    // Verificação em duas etapas (TOTP): inscrição, desafio, recuperação e gestão da própria conta.
+    Route::get('mfa/inscricao', [\App\Http\Controllers\Auth\MfaController::class, 'enroll'])->name('mfa.enroll');
+    Route::post('mfa/inscricao', [\App\Http\Controllers\Auth\MfaController::class, 'confirm'])->middleware('throttle:20,1')->name('mfa.enroll.confirm');
+    Route::get('mfa/codigos', [\App\Http\Controllers\Auth\MfaController::class, 'codes'])->name('mfa.codes');
+    Route::get('mfa/desafio', [\App\Http\Controllers\Auth\MfaController::class, 'challenge'])->name('mfa.challenge');
+    Route::post('mfa/desafio', [\App\Http\Controllers\Auth\MfaController::class, 'verify'])->middleware('throttle:20,1')->name('mfa.verify');
+    Route::post('mfa/recuperacao', [\App\Http\Controllers\Auth\MfaController::class, 'recovery'])->middleware('throttle:20,1')->name('mfa.recovery');
+    Route::get('mfa', [\App\Http\Controllers\Auth\MfaController::class, 'settings'])->name('mfa.settings');
+    Route::post('mfa/codigos/gerar', [\App\Http\Controllers\Auth\MfaController::class, 'regenerateCodes'])->name('mfa.codes.regenerate');
+    Route::post('mfa/desativar', [\App\Http\Controllers\Auth\MfaController::class, 'disable'])->name('mfa.disable');
+
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
 });

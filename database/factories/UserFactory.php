@@ -187,6 +187,19 @@ class UserFactory extends Factory
         });
     }
 
+    /**
+     * Usuário com verificação em duas etapas ATIVA (segredo confirmado). Não muda o padrão da fábrica; a sessão verificada
+     * vem de `actingAsMfa()` nos testes.
+     */
+    public function mfaVerified(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $credential = new \App\Models\UserMfaCredential(['user_id' => $user->id, 'confirmed_at' => now()]);
+            $credential->setPlainSecret((new \PragmaRX\Google2FA\Google2FA)->generateSecretKey(32));
+            $credential->save();
+        });
+    }
+
     public function pendingRegistration(): static
     {
         return $this->state(fn (array $attributes) => [

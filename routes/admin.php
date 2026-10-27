@@ -226,7 +226,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('companies/{company}/surveys/{survey}/resultados-psicossociais', [\App\Http\Controllers\Admin\PsychosocialResultsAdminController::class, 'show'])
             ->name('companies.surveys.results.show');
         Route::post('companies/{company}/surveys/{survey}/revisao-interna', [\App\Http\Controllers\Admin\PsychosocialResultsAdminController::class, 'storeInternalReview'])
-            ->name('companies.surveys.internal-review.store');
+            ->middleware('mfa:stepup')->name('companies.surveys.internal-review.store');
         // Fluxo de revisão dos dois documentos finais (campanha V11): Em edição → … → Publicado.
         Route::get('companies/{company}/surveys/{survey}/documentos', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'index'])
             ->name('companies.surveys.documents.index');
@@ -239,7 +239,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/enviar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'send'])
             ->whereNumber('round')->name('companies.surveys.documents.send');
         Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/publicar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'publish'])
-            ->whereNumber('round')->name('companies.surveys.documents.publish');
+            ->whereNumber('round')->middleware('mfa:stepup')->name('companies.surveys.documents.publish');
         Route::get('companies/{company}/surveys/{survey}/documentos/versoes/{version}/download', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'download'])
             ->whereNumber('version')->name('companies.surveys.documents.download');
         Route::post('companies/{company}/surveys/{survey}/publicar', [\App\Http\Controllers\Admin\SurveyPublicationAdminController::class, 'publish'])
@@ -265,7 +265,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('companies/{company}/surveys/{survey}/nr1-reports/{type}', [ActionPlanAdminController::class, 'downloadNr1Report'])
             ->name('companies.surveys.nr1-reports.download');
         Route::get('companies/{company}/surveys/{survey}/dados-brutos/csv', [\App\Http\Controllers\Admin\SurveyRawExportController::class, 'csv'])
-            ->middleware('admin.can:nr1_dados_brutos,view')
+            ->middleware(['admin.can:nr1_dados_brutos,view', 'mfa:stepup'])
             ->name('companies.surveys.raw-export.csv');
         Route::get('mapa-proposito', [PurposeMapCampaignController::class, 'index'])
             ->name('mapa-proposito.index');
@@ -734,6 +734,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
         Route::match(['put', 'patch'], 'users/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::delete('users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
+        Route::post('users/{user}/mfa/reset', [\App\Http\Controllers\Admin\MfaResetController::class, 'store'])->whereNumber('user')->name('users.mfa.reset');
         // Revisores externos (PASSEG): cadastro e convite pela Talents. Não liberam acesso com a revisão externa desligada.
         Route::get('revisores-externos', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'index'])->name('external-reviewers.index');
         Route::post('revisores-externos', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'store'])->name('external-reviewers.store');

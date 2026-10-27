@@ -43,7 +43,7 @@ class Nr1V11OverviewResultsTest extends TestCase
             'published_at' => $published ? now() : null,
         ])->save();
 
-        $talents = User::factory()->talentsOwner()->create(['name' => 'Talents Owner']);
+        $talents = User::factory()->talentsOwner()->mfaVerified()->create(['name' => 'Talents Owner']);
         $admin = User::factory()->companyAdmin($campaign->company->id)->create();
 
         return (object) ['company' => $campaign->company, 'survey' => $campaign->survey->fresh(), 'talents' => $talents, 'admin' => $admin];
@@ -172,13 +172,13 @@ class Nr1V11OverviewResultsTest extends TestCase
                 ->where('internalReview.decisions.entrevistas', 'Sugerir avaliação complementar')
                 ->where('internalReview.decisions.suficiente', 'Informações suficientes para esta etapa'));
 
-        $this->actingAs($c->talents)->post($this->reviewUrl($c), [
+        $this->actingAsMfa($c->talents)->post($this->reviewUrl($c), [
             'decision' => 'documental',
             'note' => self::INTERNAL_NOTE,
             'checked_items' => ['work_demands', 'item-inexistente'],
         ])->assertSessionHas('success');
 
-        $this->actingAs($c->talents)->post($this->reviewUrl($c), ['decision' => 'suficiente', 'note' => '', 'checked_items' => []])
+        $this->actingAsMfa($c->talents)->post($this->reviewUrl($c), ['decision' => 'suficiente', 'note' => '', 'checked_items' => []])
             ->assertSessionHas('success');
 
         $rows = PsychosocialInternalReview::query()->orderBy('id')->get();
@@ -211,14 +211,14 @@ class Nr1V11OverviewResultsTest extends TestCase
     {
         $c = $this->campaign();
 
-        $this->actingAs($c->talents)->post($this->reviewUrl($c), ['decision' => 'qualquer', 'note' => 'x'])->assertSessionHasErrors('decision');
-        $this->actingAs($c->talents)->post($this->reviewUrl($c), ['note' => 'x'])->assertSessionHasErrors('decision');
+        $this->actingAsMfa($c->talents)->post($this->reviewUrl($c), ['decision' => 'qualquer', 'note' => 'x'])->assertSessionHasErrors('decision');
+        $this->actingAsMfa($c->talents)->post($this->reviewUrl($c), ['note' => 'x'])->assertSessionHasErrors('decision');
 
-        $this->actingAs($c->talents)->post($this->reviewUrl($c), ['decision' => 'entrevistas', 'note' => ''])->assertSessionHas('error');
-        $this->actingAs($c->talents)->post($this->reviewUrl($c), ['decision' => 'documental', 'note' => 'ok'])->assertSessionHas('error');
+        $this->actingAsMfa($c->talents)->post($this->reviewUrl($c), ['decision' => 'entrevistas', 'note' => ''])->assertSessionHas('error');
+        $this->actingAsMfa($c->talents)->post($this->reviewUrl($c), ['decision' => 'documental', 'note' => 'ok'])->assertSessionHas('error');
         $this->assertSame(0, PsychosocialInternalReview::query()->count());
 
-        $this->actingAs($c->talents)->post($this->reviewUrl($c), ['decision' => 'entrevistas', 'note' => 'Sugerir avaliação complementar com o setor.'])->assertSessionHas('success');
+        $this->actingAsMfa($c->talents)->post($this->reviewUrl($c), ['decision' => 'entrevistas', 'note' => 'Sugerir avaliação complementar com o setor.'])->assertSessionHas('success');
         $this->assertSame(1, PsychosocialInternalReview::query()->count());
     }
 
@@ -239,7 +239,7 @@ class Nr1V11OverviewResultsTest extends TestCase
     public function test_internal_review_never_reaches_the_company_the_reviewer_or_commercial(): void
     {
         $c = $this->campaign();
-        $this->actingAs($c->talents)->post($this->reviewUrl($c), ['decision' => 'documental', 'note' => self::INTERNAL_NOTE])->assertSessionHas('success');
+        $this->actingAsMfa($c->talents)->post($this->reviewUrl($c), ['decision' => 'documental', 'note' => self::INTERNAL_NOTE])->assertSessionHas('success');
 
         // Empresa: o painel não carrega nada da revisão interna, nem o texto.
         $response = $this->actingAs($c->admin)->get(route('client.surveys.psychosocial-dashboard', $c->survey))->assertOk();

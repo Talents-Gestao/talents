@@ -118,17 +118,22 @@ class Nr1V11ExternalReviewTest extends TestCase
         $this->assertNotNull($version);
     }
 
-    public function test_mfa_extension_point_blocks_the_area_until_implemented(): void
+    public function test_mfa_flag_blocks_the_area_until_mfa_is_verified(): void
     {
         $organization = $this->organization();
-        $reviewer = $this->reviewer($organization);
+        $reviewer = User::factory()->externalReviewer($organization->id)->mfaVerified()->create();
         $version = $this->version();
         $this->share($version, $reviewer);
 
         config(['nr1.external_review.mfa_required' => true]);
 
-        $this->actingAs($reviewer)->get(route('external-review.index'))->assertForbidden();
-        $this->actingAs($reviewer)->get(route('external-review.show', $version->id))->assertForbidden();
+        // Sem a marca de MFA nesta sessão: o desafio (nunca o documento).
+        $this->actingAs($reviewer)->get(route('external-review.index'))->assertRedirect(route('mfa.challenge'));
+        $this->actingAs($reviewer)->get(route('external-review.show', $version->id))->assertRedirect(route('mfa.challenge'));
+
+        // Com MFA verificado, abre.
+        $this->actingAsMfa($reviewer)->get(route('external-review.index'))->assertOk();
+        $this->actingAsMfa($reviewer)->get(route('external-review.show', $version->id))->assertOk();
     }
 
     public function test_reviewer_reads_comments_and_approves_the_shared_version(): void

@@ -43,6 +43,15 @@ abstract class TestCase extends BaseTestCase
         return $app;
     }
 
+    /**
+     * Age como o usuário com a sessão de MFA já verificada agora (para as ações sensíveis do NR-1 e a área do revisor).
+     * Use com `User::factory()->...->mfaVerified()`.
+     */
+    protected function actingAsMfa(\App\Models\User $user): static
+    {
+        return $this->actingAs($user)->withSession([\App\Services\Mfa\MfaService::SESSION_VERIFIED_AT => now()->getTimestamp()]);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

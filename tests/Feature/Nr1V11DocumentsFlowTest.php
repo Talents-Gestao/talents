@@ -85,7 +85,7 @@ class Nr1V11DocumentsFlowTest extends TestCase
         $campaign->survey->forceFill(['requires_publication' => true, 'published_at' => null, 'requires_passeg_review' => $requirePasseg])->save();
         $survey = $campaign->survey->fresh();
 
-        $talents = User::factory()->superAdmin()->create(['is_owner' => true, 'name' => 'Talents Owner']);
+        $talents = User::factory()->superAdmin()->mfaVerified()->create(['is_owner' => true, 'name' => 'Talents Owner']);
         $organization = ApproverOrganization::query()->create(['name' => 'Organização aprovadora', 'is_active' => true]);
         $reviewer = User::factory()->externalReviewer($organization->id)->create(['name' => 'Revisora PASSEG']);
         $admin = User::factory()->companyAdmin($campaign->company->id)->create(['name' => 'Ana Admin']);
@@ -713,10 +713,10 @@ class Nr1V11DocumentsFlowTest extends TestCase
         $this->assertSame('in_review', $round->fresh()->status);
 
         // Publicar antes de aprovar: recusado.
-        $this->actingAs($flow->talents)->post(route('admin.companies.surveys.documents.publish', [$company, $survey, $round->id]))->assertSessionHas('error');
+        $this->actingAsMfa($flow->talents)->post(route('admin.companies.surveys.documents.publish', [$company, $survey, $round->id]))->assertSessionHas('error');
 
         $this->actingAs($flow->reviewer)->post(route('external-review.approve', $round->fresh()->technical_version_id))->assertSessionHas('success');
-        $this->actingAs($flow->talents)->post(route('admin.companies.surveys.documents.publish', [$company, $survey, $round->id]))->assertSessionHas('success');
+        $this->actingAsMfa($flow->talents)->post(route('admin.companies.surveys.documents.publish', [$company, $survey, $round->id]))->assertSessionHas('success');
         $this->assertSame('published', $round->fresh()->status);
 
         // Download pela Talents da versão exata (com registro de acesso) e hash conferido.

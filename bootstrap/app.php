@@ -56,6 +56,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'super_admin' => EnsureSuperAdmin::class,
             'external_reviewer' => \App\Http\Middleware\EnsureExternalReviewer::class,
+            'mfa' => \App\Http\Middleware\EnsureMfa::class,
             'survey.published' => \App\Http\Middleware\EnsureSurveyPublished::class,
             'admin.can' => EnsureAdminPermission::class,
             'company' => EnsureCompanyAccess::class,

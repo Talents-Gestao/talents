@@ -35,19 +35,11 @@ class EnsureExternalReviewer
             abort(Response::HTTP_FORBIDDEN);
         }
 
-        // Ponto de extensão do MFA (D14): sem verificador implementado, a revisão externa não abre.
-        if (config('nr1.external_review.mfa_required') && ! $this->mfaSatisfied($request)) {
-            abort(Response::HTTP_FORBIDDEN, 'Verificação em duas etapas obrigatória para revisão externa.');
+        // MFA (D14): com `nr1.external_review.mfa_required`, o revisor só entra com MFA verificado nesta sessão.
+        if (config('nr1.external_review.mfa_required')) {
+            return app(EnsureMfa::class)->handle($request, $next, 'login');
         }
 
         return $next($request);
-    }
-
-    /**
-     * Troque pela checagem do desafio MFA quando o D14 for implementado.
-     */
-    protected function mfaSatisfied(Request $request): bool
-    {
-        return false;
     }
 }

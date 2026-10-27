@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\Mfa\MfaService;
 use App\Support\CompanyPortal;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\RedirectResponse;
@@ -40,7 +41,14 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Cada login começa sem a marca de MFA; o revisor externo precisa concluir a inscrição ou o desafio.
+        app(MfaService::class)->clearVerified($request);
+
         $user = $request->user();
+
+        if (config('nr1.external_review.mfa_required') && app(MfaService::class)->isReviewer($user)) {
+            return redirect()->route(app(MfaService::class)->isActive($user) ? 'mfa.challenge' : 'mfa.enroll');
+        }
 
         return $this->workspaceManager->redirectAfterLogin($user, $request);
     }

@@ -190,10 +190,10 @@ class Nr1Stage0PrivacyTest extends TestCase
     public function test_raw_export_is_internal_audited_and_without_demographics(): void
     {
         $campaign = $this->seedCampaign();
-        $owner = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $owner = User::factory()->superAdmin()->mfaVerified()->create(['is_owner' => true]);
         $url = route('admin.companies.surveys.raw-export.csv', [$campaign->fx->company->id, $campaign->fx->survey->id]);
 
-        $body = $this->actingAs($owner)->get($url)->assertOk()->streamedContent();
+        $body = $this->actingAsMfa($owner)->get($url)->assertOk()->streamedContent();
 
         $this->assertStringContainsString('Setor C', $body);
         $this->assertStringContainsString('2026-10', $body);
@@ -219,7 +219,7 @@ class Nr1Stage0PrivacyTest extends TestCase
         $plain = User::factory()->superAdmin()->create();
         $this->actingAs($plain)->get($url)->assertForbidden();
 
-        $granted = User::factory()->superAdmin()->create();
+        $granted = User::factory()->superAdmin()->mfaVerified()->create();
         AdminUserPermission::query()->create([
             'user_workspace_id' => $granted->workspaces()->firstOrFail()->id,
             'module' => AdminPermissionModule::Nr1DadosBrutos,
@@ -232,7 +232,7 @@ class Nr1Stage0PrivacyTest extends TestCase
                 'action' => PermissionAction::View,
             ]);
         }
-        $this->actingAs($granted)->get($url)->assertOk();
+        $this->actingAsMfa($granted)->get($url)->assertOk();
         $this->assertSame(1, PsychosocialAccessLog::query()->where('resource', 'raw_export')->count());
     }
 
@@ -240,9 +240,9 @@ class Nr1Stage0PrivacyTest extends TestCase
     {
         $campaign = $this->seedCampaign();
         $other = $this->createSurveyFixture();
-        $owner = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $owner = User::factory()->superAdmin()->mfaVerified()->create(['is_owner' => true]);
 
-        $this->actingAs($owner)
+        $this->actingAsMfa($owner)
             ->get(route('admin.companies.surveys.raw-export.csv', [$other->company->id, $campaign->fx->survey->id]))
             ->assertNotFound();
     }
