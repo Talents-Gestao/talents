@@ -7,6 +7,7 @@ namespace App\Services\Mfa;
 use App\Enums\UserRole;
 use App\Exceptions\MfaException;
 use App\Mail\MfaResetMail;
+use App\Mail\MfaSecurityMail;
 use App\Models\MfaAuditEvent;
 use App\Models\User;
 use App\Models\UserMfaCredential;
@@ -159,6 +160,7 @@ class MfaService
         $credential->forceFill(['confirmed_at' => now()])->save();
         $codes = $this->issueRecoveryCodes($user);
         $this->audit('enrolled', $user, $user, $request->ip());
+        $this->notifySecurity($user, 'enrolled', $request->ip());
         $this->markVerified($request);
 
         return $codes;
@@ -215,6 +217,7 @@ class MfaService
 
         $this->succeed($user);
         $this->audit('recovery_used', $user, $user, $request->ip());
+        $this->notifySecurity($user, 'recovery_used', $request->ip());
         $this->markVerified($request);
 
         return self::RESULT_OK;
@@ -238,6 +241,7 @@ class MfaService
 
         $codes = $this->issueRecoveryCodes($user);
         $this->audit('codes_regenerated', $user, $user, $request->ip());
+        $this->notifySecurity($user, 'codes_regenerated', $request->ip());
 
         return $codes;
     }
@@ -332,12 +336,23 @@ class MfaService
     {
         $max = (int) config('mfa.max_attempts');
 
-        return RateLimiter::tooManyAttempts($this->userKey($user), $max) || RateLimiter::tooManyAttempts($this->ipKey($request), $max);
+        // Falha fechada: se o cache (Redis) do limitador estiver indisponível, trata como bloqueado e nega.
+        try {
+            return RateLimiter::tooManyAttempts($this->userKey($user), $max) || RateLimiter::tooManyAttempts($this->ipKey($request), $max);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return true;
+        }
     }
 
     public function lockedMessage(User $user, Request $request): string
     {
-        $seconds = max(RateLimiter::availableIn($this->userKey($user)), RateLimiter::availableIn($this->ipKey($request)));
+        try {
+            $seconds = max(RateLimiter::availableIn($this->userKey($user)), RateLimiter::availableIn($this->ipKey($request)));
+        } catch (\Throwable) {
+            return 'Não foi possível verificar agora. Tente de novo em alguns minutos.';
+        }
 
         return 'Muitas tentativas. Tente de novo em '.max(1, (int) ceil($seconds / 60)).' minuto(s).';
     }
@@ -345,13 +360,21 @@ class MfaService
     private function fail(User $user, Request $request): void
     {
         $decay = (int) config('mfa.lockout_minutes') * 60;
-        RateLimiter::hit($this->userKey($user), $decay);
-        RateLimiter::hit($this->ipKey($request), $decay);
+        try {
+            RateLimiter::hit($this->userKey($user), $decay);
+            RateLimiter::hit($this->ipKey($request), $decay);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     private function succeed(User $user): void
     {
-        RateLimiter::clear($this->userKey($user));
+        try {
+            RateLimiter::clear($this->userKey($user));
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     /**
@@ -380,12 +403,21 @@ class MfaService
             UserMfaRecoveryCode::query()->where('user_id', $user->id)->delete();
             UserMfaCredential::query()->where('user_id', $user->id)->delete();
         });
-        RateLimiter::clear($this->userKey($user));
+        $this->succeed($user);
     }
 
     private function audit(string $action, ?User $actor, ?User $target, ?string $ip): void
     {
         MfaAuditEvent::query()->create(['actor_id' => $actor?->id, 'target_id' => $target?->id, 'action' => $action, 'ip' => $ip]);
+    }
+
+    private function notifySecurity(User $user, string $event, ?string $ip): void
+    {
+        try {
+            Mail::to($user->email)->send(new MfaSecurityMail($user, $event, $ip, now()->format('d/m/Y H:i')));
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     private function notifyReset(User $target, string $by): void

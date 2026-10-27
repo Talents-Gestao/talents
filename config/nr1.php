@@ -70,13 +70,13 @@ return [
     | Revisão externa de documentos (organização aprovadora)
     |--------------------------------------------------------------------------
     |
-    | DESLIGADO por padrão. Só ligar em produção depois que o MFA (D14) estiver decidido e
-    | implementado para o perfil de revisor externo (ver docs/nr1-v11/NOTAS.md).
+    | DESLIGADO por padrão. Só ligar em produção depois do teste manual do MFA com um aplicativo
+    | autenticador real e do OK do responsável (ver docs/nr1-v11/NOTAS.md).
     | Desligado: compartilhar é recusado, o revisor recebe 404 e nenhum compartilhamento vale.
     |
-    | mfa_required é o ponto de extensão do MFA: com a revisão ligada e este flag true, o
-    | middleware EnsureExternalReviewer exige MFA concluído. Como o verificador ainda não existe,
-    | ele bloqueia (403) até ser implementado.
+    | mfa_required: com a revisão ligada e este flag true, o middleware EnsureExternalReviewer exige
+    | o MFA (TOTP) verificado na sessão (marca mfa_verified_at); sem ele o revisor vai para o desafio
+    | ou para a inscrição.
     */
     'external_review' => [
         'enabled' => (bool) env('NR1_EXTERNAL_REVIEW_ENABLED', false),

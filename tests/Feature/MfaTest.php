@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Exceptions\MfaException;
 use App\Mail\MfaResetMail;
+use App\Mail\MfaSecurityMail;
 use App\Models\ApproverOrganization;
 use App\Models\MfaAuditEvent;
 use App\Models\User;
 use App\Models\UserMfaCredential;
 use App\Models\UserMfaRecoveryCode;
 use App\Services\Mfa\MfaService;
+use App\Services\Psychosocial\ReviewRoundService;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\Facades\Mail;
 use LogicException;
 use PragmaRX\Google2FA\Google2FA;
@@ -42,8 +47,8 @@ class MfaTest extends TestCase
         config(['cache.default' => 'array']);
         app()->forgetInstance('cache');
         app()->forgetInstance('cache.store');
-        app()->forgetInstance(\Illuminate\Cache\RateLimiter::class);
-        \Illuminate\Support\Facades\Facade::clearResolvedInstances();
+        app()->forgetInstance(RateLimiter::class);
+        Facade::clearResolvedInstances();
         Cache::flush();
         $this->totp = new Google2FA;
     }
@@ -105,7 +110,7 @@ class MfaTest extends TestCase
         try {
             $this->service()->confirmEnrollment($user, '000000', $this->request());
             $this->fail('Código errado confirmou a inscrição.');
-        } catch (\App\Exceptions\MfaException) {
+        } catch (MfaException) {
         }
         $this->assertSame('pending', $this->service()->status($user));
 
@@ -272,6 +277,98 @@ class MfaTest extends TestCase
         $this->assertTrue(session()->has(MfaService::SESSION_VERIFIED_AT));
     }
 
+    public function test_security_events_mail_the_user_without_leaking_codes(): void
+    {
+        Mail::fake();
+        $user = User::factory()->talentsOwner()->create();
+
+        $codes = $this->enroll($user);
+        Mail::assertSent(MfaSecurityMail::class, fn ($mail) => $mail->event === 'enrolled' && $mail->hasTo($user->email));
+
+        $this->service()->attemptRecovery($user, $codes[0], $this->request('10.1.1.1'));
+        Mail::assertSent(MfaSecurityMail::class, fn ($mail) => $mail->event === 'recovery_used' && $mail->hasTo($user->email) && $mail->ip === '10.1.1.1');
+
+        $new = $this->service()->regenerateRecoveryCodes($user, $this->request());
+        Mail::assertSent(MfaSecurityMail::class, fn ($mail) => $mail->event === 'codes_regenerated' && $mail->hasTo($user->email));
+        Mail::assertSent(MfaSecurityMail::class, 3);
+
+        $body = (new MfaSecurityMail($user, 'recovery_used', '10.1.1.1', '01/01/2026 10:00'))->render();
+        $this->assertStringContainsString('10.1.1.1', $body);
+        $this->assertStringNotContainsString($codes[1], $body);
+        $this->assertStringNotContainsString($new[0], $body);
+
+        // Falha de envio não derruba a operação.
+        Mail::shouldReceive('to')->andThrow(new \RuntimeException('smtp fora'));
+        $this->assertCount(10, $this->service()->regenerateRecoveryCodes($user, $this->request()));
+    }
+
+    public function test_a_wrong_recovery_code_and_a_failed_check_send_no_security_mail(): void
+    {
+        $user = User::factory()->talentsOwner()->create();
+        $this->enroll($user);
+        Mail::fake();
+
+        $this->service()->attemptRecovery($user, 'ZZZZZ-ZZZZZ', $this->request());
+        $this->service()->attempt($user, '000000', $this->request());
+
+        Mail::assertNothingSent();
+    }
+
+    public function test_the_limiter_fails_closed_when_the_cache_is_unavailable(): void
+    {
+        $user = User::factory()->talentsOwner()->create();
+        $codes = $this->enroll($user);
+        $valid = $this->otp($user, 1);
+        session()->forget(MfaService::SESSION_VERIFIED_AT); // a inscrição acima já marcou a sessão
+
+        // Cache indisponível: toda operação do limitador lança, como o Redis fora do ar.
+        $broken = new class(Cache::store()) extends RateLimiter
+        {
+            public function tooManyAttempts($key, $maxAttempts)
+            {
+                throw new \RuntimeException('Connection refused');
+            }
+
+            public function hit($key, $decaySeconds = 60)
+            {
+                throw new \RuntimeException('Connection refused');
+            }
+
+            public function availableIn($key)
+            {
+                throw new \RuntimeException('Connection refused');
+            }
+
+            public function clear($key)
+            {
+                throw new \RuntimeException('Connection refused');
+            }
+        };
+        app()->instance(RateLimiter::class, $broken);
+        Facade::clearResolvedInstances();
+
+        // Código certo e código de recuperação certo: negados (nem liberados, nem sem limite).
+        $this->assertSame(MfaService::RESULT_LOCKED, $this->service()->attempt($user, $valid, $this->request()));
+        $this->assertSame(MfaService::RESULT_LOCKED, $this->service()->attemptRecovery($user, $codes[0], $this->request()));
+        $this->assertSame(10, $this->service()->remainingRecoveryCodes($user), 'O código de recuperação não foi consumido.');
+        $this->assertNotNull($this->service()->lockedMessage($user, $this->request()));
+
+        // Pela web: o desafio com o código certo não marca a sessão como verificada (o próprio throttle da rota também falha).
+        $response = $this->actingAs($user)->post(route('mfa.verify'), ['code' => $valid]);
+        $this->assertTrue($response->status() >= 500 || $response->getSession()->has('errors'));
+        $this->assertFalse(session()->has(MfaService::SESSION_VERIFIED_AT));
+
+        // Inscrição nova também não confirma.
+        $other = User::factory()->talentsOwner()->create();
+        $this->service()->beginEnrollment($other);
+        try {
+            $this->service()->confirmEnrollment($other, $this->otp($other), $this->request());
+            $this->fail('A inscrição não pode confirmar com o limitador fora do ar.');
+        } catch (MfaException) {
+        }
+        $this->assertSame('pending', $this->service()->status($other));
+    }
+
     public function test_only_the_owner_resets_another_users_mfa_and_it_is_audited_and_mailed(): void
     {
         Mail::fake();
@@ -285,10 +382,10 @@ class MfaTest extends TestCase
         try {
             $this->service()->resetByOwner($other, $target, '127.0.0.1');
             $this->fail('Reset sem is_owner.');
-        } catch (\App\Exceptions\MfaException) {
+        } catch (MfaException) {
         }
         $this->assertSame('active', $this->service()->status($target));
-        Mail::assertNothingSent();
+        Mail::assertNotSent(MfaResetMail::class);
 
         // Proprietário não reseta o próprio.
         $this->actingAs($owner)->post(route('admin.users.mfa.reset', $owner->id))->assertSessionHas('error');
@@ -350,7 +447,7 @@ class MfaTest extends TestCase
         try {
             $this->service()->disable($reviewer, $this->request());
             $this->fail('O revisor desativou o MFA.');
-        } catch (\App\Exceptions\MfaException) {
+        } catch (MfaException) {
         }
         $this->assertSame('active', $this->service()->status($reviewer));
     }
@@ -362,7 +459,7 @@ class MfaTest extends TestCase
         $company = $campaign->company->id;
         $survey = $campaign->survey->id;
         $owner = User::factory()->talentsOwner()->create();
-        $round = app(\App\Services\Psychosocial\ReviewRoundService::class)->start($campaign->survey->fresh(), $owner);
+        $round = app(ReviewRoundService::class)->start($campaign->survey->fresh(), $owner);
         $sensitive = [
             ['post', route('admin.companies.surveys.internal-review.store', [$company, $survey]), ['decision' => 'suficiente']],
             ['get', route('admin.companies.surveys.raw-export.csv', [$company, $survey]), []],
