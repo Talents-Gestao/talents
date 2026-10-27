@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Psychosocial;
 
+use App\Actions\Notices\PublishNr1Notice;
 use App\Exceptions\PsychosocialDocumentException;
 use App\Models\DocumentShare;
 use App\Models\DocumentShareReview;
@@ -309,6 +310,9 @@ class ReviewRoundService
         } catch (\Throwable $exception) {
             report($exception);
         }
+
+        // Aviso «relatório publicado» à empresa (sino e, com SMTP configurado, e-mail). Nunca desfaz a publicação.
+        app(PublishNr1Notice::class)->reportPublished($published);
 
         return $published;
     }

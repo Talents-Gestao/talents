@@ -6,6 +6,7 @@ namespace App\Services\Nr1;
 
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
+use App\Actions\Notices\PublishNr1Notice;
 use App\Exceptions\Nr1CampaignException;
 use App\Models\Nr1Opportunity;
 use App\Models\Nr1OpportunityEvent;
@@ -66,7 +67,7 @@ class Nr1OpportunityService
         $key = Nr1Opportunity::openKey($survey->id, Nr1Opportunity::ORIGIN_TRAINING, $modality, $audience);
 
         try {
-            return DB::transaction(function () use ($survey, $requester, $modality, $audience, $key): Nr1Opportunity {
+            $created = DB::transaction(function () use ($survey, $requester, $modality, $audience, $key): Nr1Opportunity {
                 if (Nr1Opportunity::query()->where('open_key', $key)->lockForUpdate()->exists()) {
                     throw new Nr1CampaignException('Já existe um pedido de proposta em aberto para este treinamento e público.');
                 }
@@ -87,6 +88,12 @@ class Nr1OpportunityService
 
                 return $opportunity;
             });
+
+            // Avisos: nova oportunidade (Comercial) e nova solicitação de proposta (Talents).
+            app(PublishNr1Notice::class)->opportunityCreated($created);
+            app(PublishNr1Notice::class)->proposalRequested($created);
+
+            return $created;
         } catch (QueryException) {
             // Duas requisições simultâneas: o índice único de open_key segura a segunda.
             throw new Nr1CampaignException('Já existe um pedido de proposta em aberto para este treinamento e público.');
@@ -219,7 +226,7 @@ class Nr1OpportunityService
         }
 
         try {
-            return DB::transaction(function () use ($survey, $origin, $serviceKey, $need, $requester, $key): Nr1Opportunity {
+            $created = DB::transaction(function () use ($survey, $origin, $serviceKey, $need, $requester, $key): Nr1Opportunity {
                 $opportunity = Nr1Opportunity::query()->create([
                     'company_id' => $survey->company_id,
                     'survey_id' => $survey->id,
@@ -243,6 +250,14 @@ class Nr1OpportunityService
 
                 return $opportunity;
             });
+
+            // Sugestão automática: só «nova oportunidade» (Comercial). Conversa pedida: também «nova solicitação» (Talents).
+            app(PublishNr1Notice::class)->opportunityCreated($created);
+            if ($origin === Nr1Opportunity::ORIGIN_SOLUTION_REQUEST) {
+                app(PublishNr1Notice::class)->proposalRequested($created);
+            }
+
+            return $created;
         } catch (QueryException) {
             return null;
         }

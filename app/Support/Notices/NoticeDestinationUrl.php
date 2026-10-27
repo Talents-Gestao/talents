@@ -11,6 +11,8 @@ use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
 use App\Models\CompanyNotice;
 use App\Models\Complaint;
+use App\Models\Nr1Opportunity;
+use App\Models\PsychosocialReviewRound;
 use App\Models\FeedbackSession;
 use App\Models\StrategicCalendarItem;
 
@@ -51,6 +53,8 @@ class NoticeDestinationUrl
             CompanyNoticeEventKind::FeedbackCompleted => $this->adminFeedbackUrl($sourceId),
             CompanyNoticeEventKind::ComplaintCreated,
             CompanyNoticeEventKind::ComplaintUpdated => $this->adminComplaintUrl($sourceId),
+            CompanyNoticeEventKind::Nr1OpportunityCreated => $this->opportunityUrl($sourceId),
+            CompanyNoticeEventKind::Nr1ProposalRequested => $this->campaignUrl($sourceId),
             default => null,
         };
     }
@@ -66,8 +70,32 @@ class NoticeDestinationUrl
             CompanyNoticeEventKind::FeedbackCompleted => $this->clientFeedbackUrl($sourceId),
             CompanyNoticeEventKind::ComplaintCreated,
             CompanyNoticeEventKind::ComplaintUpdated => $this->clientComplaintUrl($sourceId),
+            CompanyNoticeEventKind::Nr1ReportPublished => $this->documentsUrl($sourceId),
             default => null,
         };
+    }
+
+    private function opportunityUrl(int $opportunityId): ?string
+    {
+        return $opportunityId > 0 && Nr1Opportunity::query()->whereKey($opportunityId)->exists()
+            ? route('admin.nr1-opportunities.opportunity', $opportunityId)
+            : null;
+    }
+
+    private function campaignUrl(int $opportunityId): ?string
+    {
+        $opportunity = Nr1Opportunity::query()->find($opportunityId);
+
+        return $opportunity !== null
+            ? route('admin.companies.surveys.campaign.show', [$opportunity->company_id, $opportunity->survey_id])
+            : null;
+    }
+
+    private function documentsUrl(int $roundId): ?string
+    {
+        $surveyId = (int) PsychosocialReviewRound::query()->whereKey($roundId)->value('survey_id');
+
+        return $surveyId > 0 ? route('client.surveys.documents.index', $surveyId) : null;
     }
 
     private function proposalUrl(int $sourceId): string

@@ -7,6 +7,7 @@ use App\Actions\Notices\MarkNoticeRead;
 use App\Http\Controllers\Controller;
 use App\Models\CompanyNotice;
 use App\Support\Notices\NoticeDestinationUrl;
+use App\Support\Notices\NoticeVisibility;
 use App\Support\Notices\UnreadNoticeCounter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -26,6 +27,7 @@ class CompanyNoticeController extends Controller
         $notices = CompanyNotice::query()
             ->where('company_id', $companyId)
             ->where('published_at', '<=', now())
+            ->tap(fn ($query) => NoticeVisibility::restrict($query, $user))
             ->with(['reads' => fn ($query) => $query->where('user_id', $user->id)])
             ->orderByDesc('published_at')
             ->orderByDesc('id')

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Nr1;
 
+use App\Actions\Notices\PublishNr1Notice;
 use App\Exceptions\Nr1CampaignException;
 use App\Models\Nr1Opportunity;
 use App\Models\Nr1OpportunityEvent;
@@ -135,7 +136,7 @@ class Nr1SolutionService
             ->first();
 
         if ($suggestion !== null) {
-            return DB::transaction(function () use ($suggestion, $requester, $need, $requestKey): Nr1Opportunity {
+            $converted = DB::transaction(function () use ($suggestion, $requester, $need, $requestKey): Nr1Opportunity {
                 $from = $suggestion->status;
                 $suggestion->forceFill([
                     'origin' => Nr1Opportunity::ORIGIN_SOLUTION_REQUEST,
@@ -157,6 +158,11 @@ class Nr1SolutionService
 
                 return $suggestion;
             });
+
+            // A empresa pediu conversa sobre uma sugestão que já estava na fila: aviso à Talents.
+            app(PublishNr1Notice::class)->proposalRequested($converted);
+
+            return $converted;
         }
 
         $opportunity = $this->opportunities->openSolution($survey, Nr1Opportunity::ORIGIN_SOLUTION_REQUEST, $service, $need, $requester);
