@@ -135,12 +135,18 @@ class Nr1SolutionService
                 $recommendation['service_name'],
                 $recommendation['factor'].' em atenção ('.$recommendation['score_label'].').',
                 null,
+                notify: false,
             );
 
             if ($opportunity !== null) {
                 $this->applyDefaultOwner($opportunity, (int) $recommendation['id']);
                 $created++;
             }
+        }
+
+        // Um único aviso por publicação: «N novas oportunidades da campanha X» (Comercial).
+        if ($created > 0) {
+            app(PublishNr1Notice::class)->opportunitiesSuggested($survey, $created);
         }
 
         return $created;

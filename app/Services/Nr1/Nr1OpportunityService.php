@@ -217,7 +217,7 @@ class Nr1OpportunityService
      * Oportunidade nascida de solução (sugestão automática ou conversa pedida), sem duplicar uma aberta do mesmo serviço.
      * Sugestão automática entra como «A qualificar», nunca como interesse declarado; conversa pedida entra como «Novo».
      */
-    public function openSolution(Survey $survey, string $origin, string $serviceKey, ?string $need, ?User $requester, ?string $dimension = null): ?Nr1Opportunity
+    public function openSolution(Survey $survey, string $origin, string $serviceKey, ?string $need, ?User $requester, ?string $dimension = null, bool $notify = true): ?Nr1Opportunity
     {
         $key = Nr1Opportunity::openKey($survey->id, $origin, null, null, $serviceKey);
 
@@ -251,8 +251,11 @@ class Nr1OpportunityService
                 return $opportunity;
             });
 
-            // Sugestão automática: só «nova oportunidade» (Comercial). Conversa pedida: também «nova solicitação» (Talents).
-            app(PublishNr1Notice::class)->opportunityCreated($created);
+            // Sugestão automática: o chamador agrupa o aviso (um por publicação, `notify: false`). Conversa pedida: «nova
+            // oportunidade» (Comercial) e também «nova solicitação» (Talents).
+            if ($notify) {
+                app(PublishNr1Notice::class)->opportunityCreated($created);
+            }
             if ($origin === Nr1Opportunity::ORIGIN_SOLUTION_REQUEST) {
                 app(PublishNr1Notice::class)->proposalRequested($created);
             }

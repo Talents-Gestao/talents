@@ -31,11 +31,11 @@ class NoticeDestinationUrl
         }
 
         return $admin
-            ? $this->adminUrl($kind, $sourceId)
+            ? $this->adminUrl($kind, $sourceId, (string) $notice->source_type)
             : $this->clientUrl($kind, $sourceId);
     }
 
-    private function adminUrl(?CompanyNoticeEventKind $kind, int $sourceId): ?string
+    private function adminUrl(?CompanyNoticeEventKind $kind, int $sourceId, string $sourceType = ''): ?string
     {
         return match ($kind) {
             CompanyNoticeEventKind::ProposalCreated,
@@ -53,7 +53,7 @@ class NoticeDestinationUrl
             CompanyNoticeEventKind::FeedbackCompleted => $this->adminFeedbackUrl($sourceId),
             CompanyNoticeEventKind::ComplaintCreated,
             CompanyNoticeEventKind::ComplaintUpdated => $this->adminComplaintUrl($sourceId),
-            CompanyNoticeEventKind::Nr1OpportunityCreated => $this->opportunityUrl($sourceId),
+            CompanyNoticeEventKind::Nr1OpportunityCreated => $sourceType === 'nr1_survey' ? route('admin.nr1-opportunities.index') : $this->opportunityUrl($sourceId),
             CompanyNoticeEventKind::Nr1ProposalRequested => $this->campaignUrl($sourceId),
             default => null,
         };

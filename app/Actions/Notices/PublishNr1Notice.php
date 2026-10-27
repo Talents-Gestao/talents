@@ -14,6 +14,7 @@ use App\Models\MailSetting;
 use App\Models\Nr1Opportunity;
 use App\Models\Nr1Training;
 use App\Models\PsychosocialReviewRound;
+use App\Models\Survey;
 use App\Models\User;
 use App\Support\Notices\NoticeVisibility;
 use Illuminate\Support\Facades\Mail;
@@ -41,6 +42,33 @@ class PublishNr1Notice
             "{$opportunity->company?->name}: {$what} (campanha «{$opportunity->survey?->title}»). Origem: ".(Nr1Opportunity::ORIGIN_LABELS[$opportunity->origin] ?? $opportunity->origin).'.',
             $opportunity,
         );
+    }
+
+    /**
+     * Publicação gerou sugestões automáticas: UM aviso para o Comercial, não um por oportunidade.
+     */
+    public function opportunitiesSuggested(Survey $survey, int $count): void
+    {
+        $survey->loadMissing('company:id,name');
+        $kind = CompanyNoticeEventKind::Nr1OpportunityCreated;
+        $title = $count === 1 ? 'Nova oportunidade NR-1' : "{$count} novas oportunidades NR-1";
+        $body = ($count === 1 ? '1 nova oportunidade' : "{$count} novas oportunidades")." da campanha «{$survey->title}» ({$survey->company?->name}), sugeridas a partir da publicação. Estão em «A qualificar».";
+
+        $notice = $this->safely(fn () => $this->publish->handle(
+            companyId: null,
+            title: $title,
+            body: $body,
+            audience: CompanyNoticeAudience::Talents,
+            actor: null,
+            sourceType: 'nr1_survey',
+            sourceId: (int) $survey->id,
+            eventKind: $kind,
+            dedupeWithinMinutes: self::DEDUPE_MINUTES,
+        ));
+
+        if ($notice !== null) {
+            $this->email($this->talentsRecipients($kind), $title, $body);
+        }
     }
 
     /** A empresa pediu proposta de treinamento ou conversa sobre uma solução. */
@@ -105,14 +133,20 @@ class PublishNr1Notice
             return;
         }
 
-        $recipients = User::query()
+        $this->email($this->talentsRecipients($kind), $title, $body);
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    private function talentsRecipients(CompanyNoticeEventKind $kind)
+    {
+        return User::query()
             ->where('is_active', true)
             ->where('role', UserRole::SuperAdmin)
             ->whereHas('workspaces', fn ($q) => $q->where('workspace_type', WorkspaceType::Talents)->where('is_active', true))
             ->get()
             ->filter(fn (User $user) => NoticeVisibility::canSee($user, $kind));
-
-        $this->email($recipients, $title, $body);
     }
 
     private function canReceiveCompany(User $user, int $companyId): bool

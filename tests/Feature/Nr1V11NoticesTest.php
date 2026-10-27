@@ -244,6 +244,42 @@ class Nr1V11NoticesTest extends TestCase
         $this->actingAs($commercial)->post(route('admin.notices.mark-read', $hidden->id))->assertRedirect();
     }
 
+    public function test_publication_groups_the_suggested_opportunities_in_one_commercial_notice(): void
+    {
+        Mail::fake();
+        $this->smtp();
+        $c = $this->campaign(published: false);
+        $commercial = $this->adminWith(AdminPermissionModule::Nr1Oportunidades);
+        $this->registration($c);
+        $rounds = app(ReviewRoundService::class);
+        $rounds->publish($rounds->regenerate($rounds->start($c->survey, $c->talents), $c->talents), $c->talents);
+
+        $suggested = Nr1Opportunity::query()->where('origin', Nr1Opportunity::ORIGIN_SOLUTION_SUGGESTION)->count();
+        $this->assertGreaterThan(1, $suggested, 'A publicação sugere mais de uma oportunidade.');
+
+        // Um único aviso «nova oportunidade» por publicação, com a contagem e a campanha.
+        $notice = CompanyNotice::query()->where('event_kind', 'nr1_opportunity_created')->sole();
+        $this->assertSame('nr1_survey', $notice->source_type);
+        $this->assertSame($c->survey->id, (int) $notice->source_id);
+        $this->assertSame("{$suggested} novas oportunidades NR-1", $notice->title);
+        $this->assertStringContainsString("{$suggested} novas oportunidades da campanha «{$c->survey->title}»", $notice->body);
+        $this->assertSame(route('admin.nr1-opportunities.index'), app(NoticeDestinationUrl::class)->url($notice, admin: true));
+
+        // Um único e-mail por destinatário (Comercial e proprietário), nunca um por oportunidade.
+        Mail::assertSent(Nr1NoticeMail::class, fn ($mail) => $mail->hasTo($commercial->email) && $mail->noticeTitle === "{$suggested} novas oportunidades NR-1");
+        $this->assertCount(1, Mail::sent(Nr1NoticeMail::class, fn ($mail) => $mail->hasTo($commercial->email)));
+
+        // A regra por perfil continua: sem permissão, não vê.
+        $plain = $this->adminWith();
+        $kinds = fn (User $user): array => collect($this->actingAs($user)->get(route('admin.notices.recent'))->json('notices'))->pluck('event_kind')->all();
+        $this->assertSame(['nr1_opportunity_created'], $kinds($commercial));
+        $this->assertSame([], $kinds($plain));
+
+        // Sem sugestão nova, não há novo aviso.
+        $this->assertSame(0, app(\App\Services\Nr1\Nr1SolutionService::class)->suggest($c->survey->fresh()));
+        $this->assertSame(1, CompanyNotice::query()->where('event_kind', 'nr1_opportunity_created')->count());
+    }
+
     public function test_the_company_sees_the_report_notice_only_with_reports_access_and_never_talents_notices(): void
     {
         $c = $this->campaign(published: false);
@@ -336,7 +372,7 @@ class Nr1V11NoticesTest extends TestCase
         $round = $rounds->publish($rounds->regenerate($rounds->start($c->survey, $c->talents), $c->talents), $c->talents);
 
         $url = app(NoticeDestinationUrl::class);
-        $created = CompanyNotice::query()->where('event_kind', 'nr1_opportunity_created')->where('source_id', $opportunity->id)->sole();
+        $created = CompanyNotice::query()->where('event_kind', 'nr1_opportunity_created')->where('source_type', 'nr1_opportunity')->where('source_id', $opportunity->id)->sole();
         $requested = CompanyNotice::query()->where('event_kind', 'nr1_proposal_requested')->where('source_id', $opportunity->id)->sole();
         $published = CompanyNotice::query()->where('event_kind', 'nr1_report_published')->sole();
 
