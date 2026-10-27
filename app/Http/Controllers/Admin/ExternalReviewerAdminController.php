@@ -40,9 +40,11 @@ class ExternalReviewerAdminController extends Controller
                 'organization' => $user->workspaces->first()?->approverOrganization?->name,
                 'status' => ! $user->is_active ? 'inactive' : ($user->hasCompletedRegistration() ? 'active' : 'pending'),
                 'status_label' => ! $user->is_active ? 'Inativo' : ($user->hasCompletedRegistration() ? 'Senha definida' : 'Convite pendente'),
+                'mfa_active' => app(\App\Services\Mfa\MfaService::class)->isActive($user),
             ])->values(),
             'organizations' => ApproverOrganization::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'externalReviewEnabled' => DocumentShareService::enabled(),
+            'canResetMfa' => (bool) auth()->user()?->isOwner(),
         ]);
     }
 

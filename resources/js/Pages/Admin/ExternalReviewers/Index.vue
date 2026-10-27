@@ -6,6 +6,7 @@ defineProps({
     reviewers: { type: Array, default: () => [] },
     organizations: { type: Array, default: () => [] },
     externalReviewEnabled: { type: Boolean, default: false },
+    canResetMfa: { type: Boolean, default: false },
 });
 
 const form = useForm({ name: '', email: '', organization_id: '', new_organization: '' });
@@ -18,6 +19,11 @@ const submit = () => {
 };
 
 const resend = (user) => router.post(route('admin.external-reviewers.resend', user.id), {}, { preserveScroll: true });
+const resetMfa = (user) => {
+    if (window.confirm('Resetar a verificação em duas etapas deste revisor? Ele será avisado por e-mail e fará nova inscrição.')) {
+        router.post(route('admin.users.mfa.reset', user.id), {}, { preserveScroll: true });
+    }
+};
 const toggle = (user, active) => router.post(route('admin.external-reviewers.toggle', user.id), { active }, { preserveScroll: true });
 </script>
 
@@ -78,10 +84,11 @@ const toggle = (user, active) => router.post(route('admin.external-reviewers.tog
                     <li v-for="reviewer in reviewers" :key="reviewer.id" class="flex flex-wrap items-center justify-between gap-3 py-3">
                         <div>
                             <p class="text-sm font-medium text-gray-900">{{ reviewer.name }} <span class="text-xs text-gray-500">· {{ reviewer.email }}</span></p>
-                            <p class="text-xs text-gray-600">{{ reviewer.organization ?? 'Sem organização' }} · {{ reviewer.status_label }}</p>
+                            <p class="text-xs text-gray-600">{{ reviewer.organization ?? 'Sem organização' }} · {{ reviewer.status_label }} · {{ reviewer.mfa_active ? 'MFA ativo' : 'MFA não ativado' }}</p>
                         </div>
                         <div class="flex gap-2">
                             <button v-if="reviewer.status === 'pending'" type="button" class="rounded-md border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-800" @click="resend(reviewer)">Reenviar convite</button>
+                            <button v-if="canResetMfa && reviewer.mfa_active" type="button" class="rounded-md border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-800" @click="resetMfa(reviewer)">Resetar MFA</button>
                             <button v-if="reviewer.status !== 'inactive'" type="button" class="rounded-md border border-red-300 px-3 py-1 text-xs font-semibold text-red-800" @click="toggle(reviewer, false)">Desativar</button>
                             <button v-else type="button" class="rounded-md border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-800" @click="toggle(reviewer, true)">Reativar</button>
                         </div>

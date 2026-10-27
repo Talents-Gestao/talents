@@ -38,9 +38,6 @@ class MfaTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
-        // As telas (Vue) entram no commit das telas; aqui só se testa o back-end.
-        config(['inertia.testing.ensure_pages_exist' => false]);
-
         // O limitador de tentativas usa o cache; aqui ele roda em memória (o tempo do teste avança com `travel`, o Redis não).
         config(['cache.default' => 'array']);
         app()->forgetInstance('cache');

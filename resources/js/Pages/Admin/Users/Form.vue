@@ -8,7 +8,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 
 const props = defineProps({
@@ -17,7 +17,14 @@ const props = defineProps({
     permissionModules: { type: Array, default: () => [] },
     permissionActions: { type: Array, default: () => [] },
     defaultPermissions: { type: Array, default: () => [] },
+    mfa: { type: Object, default: () => ({ active: false, can_reset: false }) },
 });
+
+const resetMfa = () => {
+    if (window.confirm('Resetar a verificação em duas etapas deste usuário? Ele será avisado por e-mail e fará nova inscrição.')) {
+        router.post(route('admin.users.mfa.reset', props.user.id), {}, { preserveScroll: true });
+    }
+};
 
 const isOwner = props.user?.is_owner === true;
 
@@ -179,6 +186,15 @@ const submit = () => {
                     />
                 </div>
                 <InputError class="mt-1" :message="form.errors.permissions" />
+            </div>
+
+            <div v-if="mode === 'edit' && mfa.can_reset" class="rounded-lg border border-gray-200 p-4">
+                <p class="text-sm font-semibold text-gray-900">Verificação em duas etapas</p>
+                <p class="mt-1 text-xs text-gray-600">
+                    {{ mfa.active ? 'Ativa neste usuário.' : 'Este usuário não tem verificação em duas etapas ativa.' }}
+                    Só o proprietário Talents reseta; o reset é registrado e o usuário é avisado por e-mail.
+                </p>
+                <button v-if="mfa.active" type="button" class="mt-2 rounded-md border border-red-300 px-3 py-1.5 text-sm font-semibold text-red-800" @click="resetMfa">Resetar verificação em duas etapas</button>
             </div>
 
             <div class="flex gap-2">
