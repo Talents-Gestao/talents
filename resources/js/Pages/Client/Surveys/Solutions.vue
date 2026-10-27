@@ -7,6 +7,7 @@ const props = defineProps({
     survey: { type: Object, required: true },
     cards: { type: Array, default: () => [] },
     recommendations: { type: Array, default: () => [] },
+    requests: { type: Array, default: () => [] },
     canRequest: { type: Boolean, default: false },
 });
 
@@ -84,6 +85,26 @@ const request = (recommendation) => {
                         </div>
                     </article>
                 </div>
+            </section>
+
+            <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-labelledby="requests-title">
+                <h3 id="requests-title" class="text-base font-semibold text-talents-900">Meus pedidos</h3>
+                <p class="mt-1 text-xs text-gray-500">Andamento dos pedidos de conversa e de proposta desta campanha.</p>
+                <p v-if="!requests.length" class="mt-3 text-sm text-gray-600">Você ainda não fez nenhum pedido.</p>
+                <ul v-else class="mt-3 divide-y divide-gray-100">
+                    <li v-for="item in requests" :key="item.id" class="flex flex-wrap items-center justify-between gap-2 py-3">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">{{ item.subject }}</p>
+                            <p class="text-xs text-gray-500">{{ item.kind }} · pedido em {{ item.requested_at }} · atualizado em {{ item.updated_at }}</p>
+                        </div>
+                        <span
+                            class="rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                            :class="item.status === 'closed' ? 'bg-gray-100 text-gray-700' : item.status === 'requested' ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'"
+                        >
+                            {{ item.status_label }}
+                        </span>
+                    </li>
+                </ul>
             </section>
         </div>
     </ClientLayout>

@@ -32,6 +32,7 @@ class SolutionsController extends Controller
             'survey' => ['id' => $survey->id, 'title' => $survey->title],
             'cards' => Nr1ServiceCards::all(),
             'recommendations' => $this->solutions->recommendations($survey, forCompany: true),
+            'requests' => $this->solutions->companyRequests($survey),
             'canRequest' => $request->user()->canAccess(PermissionModule::Pesquisas, PermissionAction::Edit),
         ]);
     }

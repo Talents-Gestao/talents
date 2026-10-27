@@ -80,6 +80,47 @@ class Nr1SolutionService
     }
 
     /**
+     * Estado dos pedidos da empresa visto por ela: Solicitado, Em contato, Proposta enviada, Encerrado. Só pedidos feitos
+     * pela empresa (proposta de treinamento e conversa sobre solução); a sugestão automática nunca aparece, porque não é
+     * interesse declarado. Nada interno do Comercial sai daqui: sem anotações, responsável, próxima ação, motivo de recusa
+     * nem histórico, e «Ganho» e «Perdido» viram o mesmo «Encerrado».
+     *
+     * @return list<array{id: int, kind: string, subject: string, status: string, status_label: string, requested_at: string, updated_at: string}>
+     */
+    public function companyRequests(Survey $survey): array
+    {
+        return Nr1Opportunity::query()
+            ->where('company_id', $survey->company_id)
+            ->where('survey_id', $survey->id)
+            ->whereIn('origin', [Nr1Opportunity::ORIGIN_TRAINING, Nr1Opportunity::ORIGIN_SOLUTION_REQUEST])
+            ->orderByDesc('id')
+            ->get(['id', 'origin', 'modality', 'audience', 'service_key', 'status', 'created_at', 'last_activity_at'])
+            ->map(function (Nr1Opportunity $opportunity): array {
+                $status = match ($opportunity->status) {
+                    Nr1Opportunity::STATUS_IN_CONTACT => ['in_contact', 'Em contato'],
+                    Nr1Opportunity::STATUS_PROPOSAL_SENT => ['proposal_sent', 'Proposta enviada'],
+                    Nr1Opportunity::STATUS_WON, Nr1Opportunity::STATUS_LOST => ['closed', 'Encerrado'],
+                    default => ['requested', 'Solicitado'],
+                };
+
+                $training = $opportunity->origin === Nr1Opportunity::ORIGIN_TRAINING;
+
+                return [
+                    'id' => $opportunity->id,
+                    'kind' => $training ? 'Proposta de treinamento' : 'Conversa sobre solução',
+                    'subject' => $training
+                        ? ($opportunity->modality === 'presencial' ? 'Treinamento presencial' : 'Treinamento online').' · '.($opportunity->audience === 'lideres' ? 'Líderes' : 'Time')
+                        : (string) $opportunity->service_key,
+                    'status' => $status[0],
+                    'status_label' => $status[1],
+                    'requested_at' => $opportunity->created_at?->format('d/m/Y') ?? '',
+                    'updated_at' => ($opportunity->last_activity_at ?? $opportunity->created_at)?->format('d/m/Y') ?? '',
+                ];
+            })
+            ->all();
+    }
+
+    /**
      * Sugestão automática ao publicar: uma oportunidade «A qualificar» por regra ativa que casa com uma dimensão em
      * atenção. Não depende de clique da empresa e não registra interesse declarado.
      */
