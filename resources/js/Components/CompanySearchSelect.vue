@@ -290,7 +290,7 @@ const defaultClass =
             <ul
                 v-if="open"
                 ref="menuEl"
-                class="fixed z-[80] max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white py-1 text-sm shadow-lg"
+                class="fixed z-[120] max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white py-1 text-sm shadow-lg"
                 :style="menuStyle"
                 role="listbox"
             >
