@@ -571,6 +571,7 @@ function submitNewList() {
 
 const composing = ref({});
 const newCardTitles = ref({});
+const newCardErrors = ref({});
 
 function startComposing(listId) {
     composing.value[listId] = true;
@@ -582,12 +583,17 @@ function startComposing(listId) {
 function cancelComposing(listId) {
     composing.value[listId] = false;
     newCardTitles.value[listId] = '';
+    newCardErrors.value[listId] = '';
 }
 
 function submitNewCard(list) {
     const key = list.id;
     const title = (newCardTitles.value[key] || '').trim();
-    if (!title) return;
+    if (!title) {
+        newCardErrors.value[key] = 'Informe um título para o cartão';
+        return;
+    }
+    newCardErrors.value[key] = '';
 
     const payload = {
         title,
@@ -608,6 +614,10 @@ function submitNewCard(list) {
                 newCardTitles.value[key] = '';
                 quickAddCompanyId.value = '';
                 reload();
+            },
+            onError: (errors) => {
+                newCardErrors.value[key] =
+                    Object.values(errors)[0] || 'Não foi possível criar o cartão.';
             },
         },
     );
@@ -646,8 +656,8 @@ function expandList(list) {
                 direction="horizontal"
                 :disabled="!isAdmin"
                 handle=".list-column-drag-handle"
-                filter="button, input, a, textarea"
-                :prevent-on-filter="true"
+                filter="button, a"
+                :prevent-on-filter="false"
                 :animation="150"
                 ghost-class="opacity-40"
                 @end="onListDragEnd"
@@ -858,8 +868,12 @@ function expandList(list) {
                             rows="2"
                             class="block w-full resize-none rounded-lg border-slate-300 bg-white text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             placeholder="Digite um título ou cole um link"
+                            @input="newCardErrors[list.id] = ''"
                             @keydown.enter.prevent="submitNewCard(list)"
                         />
+                        <p v-if="newCardErrors[list.id]" class="text-xs text-red-600" role="alert">
+                            {{ newCardErrors[list.id] }}
+                        </p>
                         <div class="flex items-center gap-2">
                             <button
                                 type="button"
