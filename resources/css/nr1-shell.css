@@ -1,0 +1,261 @@
+/*
+ * Shell NR-1 (/nr1): tokens extraídos do HTML aprovado (Talents_NR1_V11_Aprovacao_Final.html).
+ * Tudo fica sob .nr1-shell: não altera o tema do resto do sistema.
+ */
+.nr1-shell {
+    --n1-ink: #282334;
+    --n1-mut: #786d83;
+    --n1-purple: #623277;
+    --n1-purple2: #9661b3;
+    --n1-deep: #281733;
+    --n1-lav: #f5ecfa;
+    --n1-bg: #f7f6fb;
+    --n1-line: #eae6f1;
+    --n1-teal: #168a80;
+    --n1-gold: #bc791f;
+    --n1-rose: #ce567d;
+    --n1-blue: #3662b5;
+    --n1-shadow: 0 12px 35px rgba(53, 25, 86, 0.045);
+    --n1-sidebar: linear-gradient(165deg, #25162f 0%, #3d204b 70%, #29233d 100%);
+    --n1-nav-active: linear-gradient(95deg, #8146a5, #a563aa);
+    --n1-hero: linear-gradient(115deg, #51256b, #7d3b94 62%, #9c599f);
+    --n1-primary: linear-gradient(105deg, #63347f, #9455ae);
+
+    min-height: 100vh;
+    display: flex;
+    background: var(--n1-bg);
+    color: var(--n1-ink);
+    font-family: Inter, 'Figtree', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+}
+
+.nr1-shell button:focus-visible,
+.nr1-shell a:focus-visible,
+.nr1-shell select:focus-visible,
+.nr1-shell input:focus-visible {
+    outline: 3px solid #bd9ace;
+    outline-offset: 2px;
+}
+
+/* Barra lateral */
+.nr1-shell .n1-sidebar {
+    width: 245px;
+    flex: 0 0 245px;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    padding: 24px 13px;
+    color: #f6effa;
+    background: var(--n1-sidebar);
+}
+.nr1-shell .n1-logo {
+    padding: 5px 13px 19px;
+    border-bottom: 1px solid #ffffff20;
+    margin-bottom: 19px;
+}
+.nr1-shell .n1-logo strong {
+    font-size: 32px;
+    letter-spacing: -0.075em;
+    font-weight: 850;
+}
+.nr1-shell .n1-logo strong span {
+    color: #caa5dc;
+}
+.nr1-shell .n1-logo small {
+    display: block;
+    color: #b6aac1;
+    font-size: 10px;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    margin-top: 5px;
+}
+.nr1-shell .n1-navcap {
+    font-size: 10px;
+    color: #a69aaa;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 10px 14px;
+}
+.nr1-shell .n1-nav {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #e2dbe9;
+    padding: 11px 13px;
+    border-radius: 10px;
+    font-size: 12.5px;
+    font-weight: 700;
+    margin: 2px 0;
+    white-space: nowrap;
+    text-decoration: none;
+}
+.nr1-shell .n1-nav i {
+    font-style: normal;
+    font-size: 17px;
+    min-width: 22px;
+    text-align: center;
+}
+.nr1-shell .n1-nav:hover {
+    background: #ffffff20;
+}
+.nr1-shell .n1-nav[aria-current='page'] {
+    background: var(--n1-nav-active);
+    color: #fff;
+    box-shadow: 0 6px 15px #12092130;
+}
+.nr1-shell .n1-sidebar-bottom {
+    border-top: 1px solid #ffffff20;
+    margin-top: 22px;
+    padding: 17px 12px 8px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #b9aec5;
+}
+
+/* Cabeçalho e conteúdo */
+.nr1-shell .n1-main {
+    flex: 1;
+    min-width: 0;
+}
+.nr1-shell .n1-top {
+    padding: 16px 29px;
+    min-height: 74px;
+    background: #fffffff2;
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--n1-line);
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+.nr1-shell .n1-top small {
+    display: block;
+    font-size: 11px;
+    color: var(--n1-mut);
+    margin-top: 4px;
+}
+.nr1-shell .n1-top strong {
+    font-size: 14px;
+}
+.nr1-shell .n1-content {
+    max-width: 1460px;
+    margin: auto;
+    padding: 29px 30px 60px;
+}
+.nr1-shell .n1-select {
+    border: 1px solid var(--n1-line);
+    background: #fff;
+    padding: 9px 10px;
+    border-radius: 9px;
+    color: var(--n1-ink);
+    font-size: 12px;
+    max-width: 240px;
+}
+.nr1-shell .n1-pill {
+    display: inline-block;
+    border-radius: 99px;
+    background: var(--n1-lav);
+    color: var(--n1-purple);
+    font-size: 10.5px;
+    font-weight: 750;
+    padding: 6px 10px;
+    white-space: nowrap;
+}
+.nr1-shell .n1-pill.ok {
+    background: #e4f4ee;
+    color: #166b54;
+}
+.nr1-shell .n1-pill.warn {
+    background: #fff1d7;
+    color: #925d0c;
+}
+
+/* Cartões e botões */
+.nr1-shell .n1-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--n1-purple);
+    font-weight: 850;
+    font-size: 11px;
+}
+.nr1-shell .n1-card {
+    background: #fff;
+    border: 1px solid #e7e0ed;
+    border-radius: 17px;
+    padding: 19px;
+    box-shadow: var(--n1-shadow);
+    min-width: 0;
+}
+.nr1-shell .n1-hero {
+    background: var(--n1-hero);
+    color: #fff;
+    border: 0;
+    padding: 27px 29px;
+    border-radius: 17px;
+}
+.nr1-shell .n1-hero .n1-eyebrow {
+    color: #e4c7ef;
+}
+.nr1-shell .n1-cap {
+    color: var(--n1-mut);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.055em;
+    font-size: 10px;
+}
+.nr1-shell .n1-big {
+    font-size: 32px;
+    font-weight: 850;
+    letter-spacing: -0.055em;
+    margin: 9px 0 2px;
+}
+.nr1-shell .n1-tiny {
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--n1-mut);
+}
+.nr1-shell .n1-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 15px;
+}
+
+@media (max-width: 1110px) {
+    .nr1-shell .n1-sidebar {
+        width: 218px;
+        flex-basis: 218px;
+    }
+    .nr1-shell .n1-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 780px) {
+    .nr1-shell {
+        display: block;
+    }
+    .nr1-shell .n1-sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        padding: 9px;
+        display: none;
+    }
+    .nr1-shell .n1-sidebar.open {
+        display: block;
+    }
+    .nr1-shell .n1-top {
+        position: relative;
+        padding: 13px 15px;
+        flex-wrap: wrap;
+    }
+    .nr1-shell .n1-content {
+        padding: 22px 15px;
+    }
+    .nr1-shell .n1-grid {
+        grid-template-columns: 1fr;
+    }
+}

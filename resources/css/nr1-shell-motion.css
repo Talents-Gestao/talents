@@ -1,0 +1,117 @@
+/*
+ * Shell NR-1: cor, movimento e interação (diretriz criativa). Escopado em .nr1-shell.
+ * Paleta (a) níveis: verde / âmbar / vermelho suave, sempre com texto e ícone. Paleta (b) dimensões e grupos: família da marca.
+ * prefers-reduced-motion desliga animações e transições (bloco final).
+ */
+.nr1-shell {
+    --n1-lv-ok: #2f8f6f;
+    --n1-lv-ok-bg: #e4f4ee;
+    --n1-lv-ok-fg: #166b54;
+    --n1-lv-warn: #b97a14;
+    --n1-lv-warn-bg: #fff1d7;
+    --n1-lv-warn-fg: #8a560a;
+    --n1-lv-high: #c2475f;
+    --n1-lv-high-bg: #fbe9ed;
+    --n1-lv-high-fg: #a6334b;
+}
+
+/* Chips de faixa: ícone + texto */
+.nr1-shell .n1-level { display: inline-flex; align-items: center; gap: 5px; }
+.nr1-shell .n1-level-icon { width: 13px; height: 13px; flex: 0 0 13px; }
+.nr1-shell .n1-pill.n1-level.ok { background: var(--n1-lv-ok-bg); color: var(--n1-lv-ok-fg); }
+.nr1-shell .n1-pill.n1-level.warn { background: var(--n1-lv-warn-bg); color: var(--n1-lv-warn-fg); }
+.nr1-shell .n1-pill.n1-level.red { background: var(--n1-lv-high-bg); color: var(--n1-lv-high-fg); }
+
+/* KPIs */
+.nr1-shell .n1-stat-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; position: relative; z-index: 1; }
+.nr1-shell .n1-gauge { margin: 0; text-align: center; }
+.nr1-shell .n1-gauge svg { width: 112px; height: auto; display: block; }
+.nr1-shell .n1-gauge-dot { filter: drop-shadow(0 1px 2px rgba(40, 23, 51, 0.3)); }
+.nr1-shell .n1-gauge figcaption { font-size: 9px; margin-top: -2px; }
+.nr1-shell .n1-ring-arc { transition: stroke-dashoffset 1s cubic-bezier(0.22, 1, 0.36, 1); }
+.nr1-shell .n1-dots { display: flex; gap: 5px; margin: 6px 0 8px; position: relative; z-index: 1; }
+.nr1-shell .n1-dots i { width: 14px; height: 14px; border-radius: 50%; background: #efe3bd; }
+.nr1-shell .n1-dots i.on { background: #e3a53a; box-shadow: 0 0 0 3px #f6dfaa; }
+
+/* Elevação no hover */
+.nr1-shell .n1-lift { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+.nr1-shell .n1-lift:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(53, 25, 86, 0.1); }
+.nr1-shell .n1-priority.n1-lift, .nr1-shell .n1-highlight.n1-lift { border-left: 3px solid var(--dim, transparent); padding-left: 10px; border-radius: 10px; }
+.nr1-shell .n1-priority.n1-lift:hover { background: #faf7fc; }
+.nr1-shell .n1-tile { border-top: 4px solid var(--dim, #bce8d8); }
+
+/* Hero */
+.nr1-shell .n1-hero-art { position: absolute; right: 0; top: 0; height: 100%; width: auto; max-width: 48%; pointer-events: none; }
+.nr1-shell .n1-hero > *:not(.n1-hero-art) { position: relative; z-index: 1; }
+
+/* Dimensões */
+.nr1-shell .n1-dim-badge { display: inline-grid; place-items: center; border-radius: 9px; flex: 0 0 auto; }
+.nr1-shell .n1-dimname { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; }
+.nr1-shell .n1-dimlist { display: flex; flex-direction: column; gap: 4px; }
+.nr1-shell .n1-dimrow { border-radius: 12px; transition: background 0.15s ease; }
+.nr1-shell .n1-dimrow.open { background: #fbf8fd; }
+.nr1-shell .n1-dimhead { width: 100%; display: grid; grid-template-columns: minmax(150px, 215px) 1fr 42px 124px 14px; gap: 10px; align-items: center; padding: 9px 8px; border: 0; background: none; cursor: pointer; text-align: left; border-radius: 12px; font-size: 12px; }
+.nr1-shell .n1-dimhead:hover { background: #f8f3fb; }
+.nr1-shell .n1-track { display: block; background: #eeeaf3; border-radius: 20px; height: 11px; overflow: hidden; }
+.nr1-shell .n1-fill { display: block; height: 100%; border-radius: 20px; transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1); }
+.nr1-shell .n1-fill.ok { background: linear-gradient(90deg, #9cceb7, #3b937c); }
+.nr1-shell .n1-fill.warn { background: linear-gradient(90deg, #f3c676, #bd7b22); }
+.nr1-shell .n1-fill.high { background: linear-gradient(90deg, #eea1ae, #c2475f); }
+.nr1-shell .n1-score { font-size: 12px; text-align: right; }
+.nr1-shell .n1-chev { color: #907398; font-size: 11px; }
+.nr1-shell .n1-dimbody { padding: 4px 12px 14px; display: flex; flex-direction: column; gap: 14px; animation: n1-expand 0.22s ease; }
+.nr1-shell .n1-q-top { display: flex; gap: 9px; align-items: flex-start; margin-bottom: 7px; }
+.nr1-shell .n1-q-num { font-size: 10px; font-weight: 850; border-radius: 7px; padding: 3px 7px; flex: 0 0 auto; }
+.nr1-shell .n1-q-text { font-size: 12.5px; font-weight: 700; line-height: 1.4; }
+.nr1-shell .n1-stack { height: 15px; display: flex; border-radius: 99px; overflow: hidden; background: #f1edf4; }
+.nr1-shell .n1-stack span { display: block; height: 100%; min-width: 0; }
+.nr1-shell .n1-q-bottom { display: flex; justify-content: space-between; font-size: 11px; margin-top: 6px; }
+.nr1-shell .n1-q-unfav { color: #8a5a8f; font-weight: 700; }
+.nr1-shell .n1-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 10.5px; color: var(--n1-mut); }
+.nr1-shell .n1-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+/* Rosca e legenda */
+.nr1-shell .n1-donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; }
+.nr1-shell .n1-donut { width: 128px; height: 128px; flex: 0 0 128px; }
+.nr1-shell .n1-donut-seg { transition: opacity 0.15s ease, stroke-width 0.15s ease; }
+.nr1-shell .n1-donut-seg.dim { opacity: 0.25; }
+.nr1-shell .n1-donut-n { font-size: 17px; font-weight: 850; fill: var(--n1-ink); }
+.nr1-shell .n1-donut-l { font-size: 7px; fill: var(--n1-mut); }
+.nr1-shell .n1-donut-legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 170px; display: flex; flex-direction: column; gap: 6px; }
+.nr1-shell .n1-donut-legend li { display: grid; grid-template-columns: 12px 1fr; column-gap: 8px; padding: 7px 9px; border-radius: 10px; cursor: default; transition: background 0.15s ease; }
+.nr1-shell .n1-donut-legend li span { grid-column: 2; font-size: 11px; color: var(--n1-mut); }
+.nr1-shell .n1-donut-legend li b { font-size: 12px; }
+.nr1-shell .n1-donut-legend li i { width: 12px; height: 12px; border-radius: 4px; margin-top: 3px; grid-row: span 2; }
+.nr1-shell .n1-donut-legend li:hover, .nr1-shell .n1-donut-legend li.on { background: #f6f0fa; }
+.nr1-shell .n1-protect { display: flex; gap: 10px; align-items: flex-start; }
+
+/* Estado vazio, toasts, carregamento, entrada */
+.nr1-shell .n1-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 26px 16px; border: 1px dashed #dccbe9; border-radius: 16px; background: #fcfaff; }
+.nr1-shell .n1-empty b { font-size: 14px; }
+.nr1-shell .n1-empty p { max-width: 380px; margin: 0; }
+.nr1-shell .n1-toasts { position: fixed; right: 18px; bottom: 18px; z-index: 50; display: flex; flex-direction: column; gap: 8px; }
+.nr1-shell .n1-toast { background: #281733; color: #fff; padding: 11px 15px; border-radius: 11px; font-size: 12px; font-weight: 700; box-shadow: 0 10px 30px rgba(40, 23, 51, 0.3); animation: n1-pop 0.22s ease; }
+.nr1-shell .n1-toast.ok span { color: #7fe0c0; margin-right: 6px; }
+.nr1-shell .n1-loading { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 60; background: linear-gradient(90deg, #8146a5, #56aa93, #8146a5); background-size: 200% 100%; animation: n1-load 1s linear infinite; }
+.nr1-shell .n1-content > * { animation: n1-enter 0.32s ease both; }
+
+@keyframes n1-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes n1-expand { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes n1-pop { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes n1-load { from { background-position: 0 0; } to { background-position: 200% 0; } }
+
+@media (max-width: 780px) {
+    .nr1-shell .n1-dimhead { grid-template-columns: 1fr 40px 14px; row-gap: 6px; }
+    .nr1-shell .n1-dimhead .n1-track { grid-column: 1 / -1; grid-row: 2; }
+    .nr1-shell .n1-dimhead .n1-level { grid-column: 1; grid-row: 3; justify-self: start; }
+    .nr1-shell .n1-stat-row { flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nr1-shell *, .nr1-shell *::before, .nr1-shell *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+    .nr1-shell .n1-lift:hover { transform: none; }
+}

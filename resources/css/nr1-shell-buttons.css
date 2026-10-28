@@ -1,0 +1,98 @@
+/*
+ * Botões do shell NR-1: ÚNICO conjunto de estilos de botão (componente Nr1Button).
+ *
+ * Causa do bug anterior: as regras genéricas `.n1-btn:hover` / `.n1-btn.primary:hover:not(:disabled)` tinham especificidade
+ * MAIOR que as sobrescritas do hero (`.n1-hero .n1-btn.primary`, `.soft`), então no hover o fundo mudava para um tom
+ * que não combinava com a cor do texto definida só no hero (roxo escuro sobre roxo escuro; branco sobre lavanda).
+ * Agora cada variante define fundo, texto, borda e anel em TODOS os estados com a mesma especificidade (uma classe de
+ * variante + pseudo-classe), sem sobrescritas por contexto. Contraste de texto AA (>= 4,5:1) em cada fundo de uso.
+ */
+.nr1-shell .n1b {
+    --b-bg: #fff;
+    --b-fg: #5b2a73;
+    --b-bd: #d9cfe2;
+    --b-ring: #7a3f94;
+    --b-bg-h: #f5ecfa;
+    --b-fg-h: #4a2160;
+    --b-bd-h: #c4b3d2;
+    --b-bg-a: #ebdcf5;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    position: relative;
+    padding: 10px 14px;
+    border-radius: 9px;
+    border: 1px solid var(--b-bd);
+    background: var(--b-bg);
+    color: var(--b-fg);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+.nr1-shell .n1b:hover { background: var(--b-bg-h); color: var(--b-fg-h); border-color: var(--b-bd-h); }
+.nr1-shell .n1b:active { background: var(--b-bg-a); color: var(--b-fg-h); transform: translateY(1px); }
+.nr1-shell .n1b:focus-visible { outline: 3px solid var(--b-ring); outline-offset: 2px; }
+.nr1-shell .n1b:disabled,
+.nr1-shell .n1b[aria-disabled='true'] { opacity: 0.55; cursor: not-allowed; transform: none; background: var(--b-bg); color: var(--b-fg); border-color: var(--b-bd); }
+.nr1-shell .n1b.is-loading { cursor: progress; }
+.nr1-shell .n1b.is-loading::after {
+    content: '';
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    animation: n1b-spin 0.7s linear infinite;
+}
+@keyframes n1b-spin { to { transform: rotate(360deg); } }
+
+.nr1-shell .n1b--sm { padding: 7px 10px; font-size: 11px; }
+.nr1-shell .n1b--block { width: 100%; }
+
+/* primary: fundo roxo escuro, texto branco (>= 5,5:1 no ponto mais claro do gradiente) */
+.nr1-shell .n1b--primary { --b-bg: linear-gradient(105deg, #5a2d75, #8a4fa6); --b-fg: #fff; --b-bd: transparent; --b-bg-h: linear-gradient(105deg, #4b2262, #7a4094); --b-fg-h: #fff; --b-bd-h: transparent; --b-bg-a: #3f1b55; box-shadow: 0 5px 13px #61367d22; }
+.nr1-shell .n1b--primary:hover { box-shadow: 0 8px 18px #61367d38; }
+
+/* secondary: branco com texto roxo (sobre fundo claro e cartões) */
+.nr1-shell .n1b--secondary { }
+
+/* inverse: branco sobre fundo escuro (hero) */
+.nr1-shell .n1b--inverse { --b-bg: #fff; --b-fg: #5b2a73; --b-bd: #fff; --b-ring: #fff; --b-bg-h: #f5ecfa; --b-fg-h: #4a2160; --b-bd-h: #f5ecfa; --b-bg-a: #e7d4f3; }
+
+/* ghost-on-dark: translúcido ESCURO sobre fundo escuro, texto branco (nunca clareia o fundo no hover) */
+.nr1-shell .n1b--ghost-on-dark { --b-bg: rgba(40, 23, 51, 0.32); --b-fg: #fff; --b-bd: rgba(255, 255, 255, 0.55); --b-ring: #fff; --b-bg-h: rgba(40, 23, 51, 0.52); --b-fg-h: #fff; --b-bd-h: #fff; --b-bg-a: rgba(40, 23, 51, 0.66); }
+
+/* ghost-on-light: sem fundo, texto roxo escuro sobre fundo claro */
+.nr1-shell .n1b--ghost-on-light { --b-bg: transparent; --b-fg: #5b2a73; --b-bd: transparent; --b-bg-h: #f5ecfa; --b-fg-h: #4a2160; --b-bd-h: transparent; --b-bg-a: #ebdcf5; }
+
+/* link: texto sublinhado no hover */
+.nr1-shell .n1b--link { --b-bg: transparent; --b-fg: #5b2a73; --b-bd: transparent; --b-bg-h: transparent; --b-fg-h: #3f1b55; --b-bd-h: transparent; --b-bg-a: transparent; padding: 2px 3px; font-weight: 700; border-radius: 4px; }
+.nr1-shell .n1b--link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* icon: botão quadrado só com ícone/glifo (use aria-label) */
+.nr1-shell .n1b--icon { width: 34px; height: 34px; padding: 0; }
+
+/* chip: pílula pequena, com estado selecionado */
+.nr1-shell .n1b--chip { --b-bg: #f5ecfa; --b-fg: #5b2a73; --b-bd: #e3d3ee; --b-bg-h: #ebdcf5; --b-fg-h: #4a2160; --b-bd-h: #d3bde4; border-radius: 99px; padding: 5px 11px; font-size: 11px; }
+.nr1-shell .n1b--chip.is-selected { --b-bg: #5b2a73; --b-fg: #fff; --b-bd: #5b2a73; --b-bg-h: #4a2160; --b-fg-h: #fff; --b-bd-h: #4a2160; --b-bg-a: #3a1750; }
+
+/* Menu lateral (sobre fundo escuro): botão «Voltar ao Talents» usa ghost-on-dark; itens do menu têm estados próprios abaixo */
+.nr1-shell .n1-nav:focus-visible { outline: 3px solid #fff; outline-offset: -3px; }
+.nr1-shell .n1-nav:active { background: #ffffff30; }
+
+@media (prefers-reduced-motion: reduce) {
+    .nr1-shell .n1b, .nr1-shell .n1b.is-loading::after { transition: none !important; animation: none !important; transform: none !important; }
+}
+
+/* Botão do menu recolhível: só aparece no mobile */
+.nr1-shell .n1b.n1-menu-toggle { display: none; }
+@media (max-width: 780px) {
+    .nr1-shell .n1b.n1-menu-toggle { display: inline-flex; }
+}
