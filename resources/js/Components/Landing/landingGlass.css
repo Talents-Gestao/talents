@@ -37,6 +37,9 @@
         radial-gradient(48% 42% at 10% 18%, rgba(179, 136, 217, 0.26), transparent 70%),
         radial-gradient(42% 40% at 92% 62%, rgba(212, 184, 228, 0.55), transparent 70%),
         radial-gradient(30% 28% at 55% 100%, rgba(123, 79, 162, 0.12), transparent 70%);
+    /* As manchas se dissolvem no topo e na base: sem borda entre seções vizinhas. */
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
 }
 
 .lg-lift {

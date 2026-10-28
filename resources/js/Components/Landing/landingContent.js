@@ -45,3 +45,26 @@ export const PILARES_INTRO = {
     lead: 'Contratar certo é o ponto de partida. Os outros pilares sustentam retenção, cultura e saúde do time.',
     text: 'A metamorfose empresarial começa com bons talentos no time — e continua com comportamento, direcionamento e proteção psicossocial.',
 };
+
+export const RECRUTAMENTO_INTRO = {
+    label: 'Contratação de talentos',
+    title: 'Recrutamento estratégico',
+    text: 'Contratar errado custa tempo, clima e resultado. Em quatro fases — preparar, selecionar, contratar e acompanhar — unimos análise comportamental, critério técnico e pós-contratação para mais aderência e menos risco de turnover.',
+};
+
+export const ALEM_INTRO = {
+    label: 'Amplitude da consultoria',
+    title: 'Além de contratar: o que sustenta o talento no time',
+    text: 'Contratar é o centro. As demais frentes da Talents existem para que o hire não fique órfão — com liderança, cultura, desenvolvimento e proteção psicossocial.',
+    featured: 'NR-1 e Riscos Psicossociais',
+};
+
+/** Rota de cada cartão de "Além de contratar" (página correspondente do site). */
+export const ALEM_ROUTES = {
+    Comportamento: 'landing.diagnostico',
+    Liderança: 'landing.direcionamento',
+    'Cultura Organizacional': 'landing.direcionamento',
+    'Desenvolvimento Humano': 'landing.empresas',
+    'Gestão Estratégica de Pessoas': 'landing.direcionamento',
+    'NR-1 e Riscos Psicossociais': 'landing.nr1',
+};

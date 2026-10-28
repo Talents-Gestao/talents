@@ -15,8 +15,10 @@ import {
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import HeroGlass from '@/Components/Landing/HeroGlass.vue';
+import LandingAlem from '@/Components/Landing/LandingAlem.vue';
 import LandingFrentes from '@/Components/Landing/LandingFrentes.vue';
 import LandingPilaresBento from '@/Components/Landing/LandingPilaresBento.vue';
+import LandingRecrutamento from '@/Components/Landing/LandingRecrutamento.vue';
 import LandingButterflyPillars from '@/Components/Landing/LandingButterflyPillars.vue';
 import LandingCardGrid from '@/Components/Landing/LandingCardGrid.vue';
 import LandingHeroTypewriter from '@/Components/Landing/LandingHeroTypewriter.vue';
@@ -271,9 +273,12 @@ const organizationJsonLd = computed(() =>
         <template v-if="redesign">
             <LandingFrentes />
             <LandingPilaresBento :pillars="methodologyPillars" />
+            <LandingRecrutamento :phases="recruitmentPhases" />
+            <LandingAlem :items="pillars" />
         </template>
 
-        <section v-else class="border-t border-white/20 bg-white/40 py-12 backdrop-blur-sm md:py-16">
+        <template v-else>
+        <section class="border-t border-white/20 bg-white/40 py-12 backdrop-blur-sm md:py-16">
             <div class="mx-auto max-w-6xl px-4">
                 <div class="max-w-3xl">
                     <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">
@@ -354,6 +359,8 @@ const organizationJsonLd = computed(() =>
                 </div>
             </div>
         </section>
+
+        </template>
 
         <section class="py-16">
             <div class="mx-auto max-w-6xl px-4">
