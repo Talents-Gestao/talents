@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\CreatesSurveyFixtures;
+use Tests\Support\CreatesV11Campaign;
 use Tests\TestCase;
 
 /**
@@ -25,6 +26,7 @@ use Tests\TestCase;
 class Nr1ShellLegacyTest extends TestCase
 {
     use CreatesSurveyFixtures;
+    use CreatesV11Campaign;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -32,6 +34,8 @@ class Nr1ShellLegacyTest extends TestCase
         parent::setUp();
         $this->withoutVite();
         config(['nr1.shell_enabled' => true]);
+        // Os testes da Etapa L valem com o Laudo embutido LIGADO; o modo padrão (desligado) tem os testes do fim do arquivo.
+        config(['nr1.shell_legacy_embed' => true]);
     }
 
     /** @return object{company: Company, survey: Survey, owner: User, admin: User} */
@@ -88,8 +92,11 @@ class Nr1ShellLegacyTest extends TestCase
         $this->actingAs($c->owner)->get(route('nr1.campanha', $q))->assertInertia(fn (Assert $p) => $p
             ->where('section.legacy.campaign.completed', 6)->has('section.legacy.campaign.period')->missing('section.campaign'));
 
+        // Oportunidades é a fila comercial global: não depende do modelo da campanha em foco.
+        $this->actingAs($c->owner)->get('/nr1/oportunidades?'.http_build_query($q))->assertOk()->assertInertia(fn (Assert $p) => $p->has('section.opportunities.queue')->missing('section.legacy'));
+
         // Seções que só existem na V11: aviso, sem dado inventado e sem erro.
-        foreach (['plano-de-acao', 'solucoes', 'oportunidades'] as $section) {
+        foreach (['plano-de-acao', 'solucoes'] as $section) {
             $this->actingAs($c->owner)->get('/nr1/'.$section.'?'.http_build_query($q))->assertOk()->assertInertia(fn (Assert $p) => $p
                 ->where('section.legacy.notice', 'Pesquisa no modelo anterior')->missing('section.plan')->missing('section.results'));
         }
@@ -155,6 +162,68 @@ class Nr1ShellLegacyTest extends TestCase
         config(['nr1.shell_enabled' => false]);
         $this->actingAs($c->owner)->get(route('nr1.documentos', ['campanha' => $c->survey->id]))->assertNotFound();
         $this->actingAs($c->admin)->get(route('nr1.resultados'))->assertNotFound();
+    }
+
+    public function test_the_embed_switch_is_off_by_default_in_every_environment(): void
+    {
+        $this->assertSame(false, (require base_path('config/nr1.php'))['shell_legacy_embed']);
+        $this->assertStringContainsString("env('NR1_SHELL_LEGACY_EMBED', false)", (string) file_get_contents(config_path('nr1.php')));
+    }
+
+    public function test_with_the_switch_off_the_shell_shows_only_the_notice_and_the_button_to_the_old_screen(): void
+    {
+        config(['nr1.shell_legacy_embed' => false]);
+        $c = $this->legacy();
+        $q = ['empresa' => $c->company->id, 'campanha' => $c->survey->id];
+
+        foreach (['visao-geral', 'campanha', 'resultados', 'documentos', 'plano-de-acao'] as $section) {
+            $this->actingAs($c->owner)->get('/nr1/'.$section.'?'.http_build_query($q))->assertOk()->assertInertia(fn (Assert $p) => $p
+                ->where('section.legacy.notice', 'Pesquisa no modelo anterior')->where('section.legacy.embedded', false)
+                ->where('section.legacy.openUrl', route('admin.companies.surveys.action-plan.edit', [$c->company->id, $c->survey->id]))
+                ->where('section.legacy.openLabel', 'Abrir Laudo NR-1')
+                ->missing('section.legacy.overview')->missing('section.legacy.results')->missing('section.legacy.documents')->missing('section.legacy.campaign')
+                ->missing('section.overview')->missing('section.results')->where('section.kpis', []));
+        }
+
+        // Empresa: a tela antiga de Resultados; nada do legado (painel, Mia, props do laudo) chega pelo shell.
+        $page = $this->actingAs($c->admin)->get(route('nr1.documentos'))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('section.legacy.embedded', false)->where('section.legacy.openUrl', route('client.surveys.results', $c->survey->id)));
+        $json = (string) json_encode($page->viewData('page')['props']['section']);
+        foreach (['technicalOpinionGeneratePostUrl', 'aiGeneratePostUrl', 'questionDistributions', 'deptSectionsByDepartment', 'actionPlanLocked'] as $leak) {
+            $this->assertStringNotContainsString($leak, $json);
+        }
+
+        // O seletor de campanha marca as antigas (para não levar a uma tela vazia).
+        $this->actingAs($c->owner)->get(route('nr1.visao-geral', $q))->assertInertia(fn (Assert $p) => $p
+            ->where('context.surveys.0.id', $c->survey->id)->where('context.surveys.0.legacy', true));
+
+        // As telas antigas seguem intactas por URL.
+        $this->actingAs($c->owner)->get(route('admin.companies.surveys.action-plan.edit', [$c->company->id, $c->survey->id]))->assertOk()
+            ->assertInertia(fn (Assert $p) => $p->component('Admin/ActionPlan/Edit'));
+    }
+
+    public function test_the_entry_buttons_and_the_company_menu_follow_the_switch_for_legacy_surveys(): void
+    {
+        $c = $this->legacy();
+        $v11 = $this->v11Campaign(true);
+        $v11->survey->forceFill(['requires_publication' => true, 'published_at' => now()])->save();
+        $company = $v11->company;
+        $legacySame = Survey::query()->create(['company_id' => $company->id, 'survey_template_id' => $v11->template->id, 'title' => 'Antiga da mesma empresa', 'public_token' => (string) Str::uuid(), 'starts_at' => now()->subYear(), 'ends_at' => now()->subMonths(11), 'status' => 'closed']);
+
+        // Desligado (padrão): V11 com «Abrir painel NR-1»; antiga sem o botão (volta o «Parecer e plano»).
+        config(['nr1.shell_legacy_embed' => false]);
+        $this->actingAs($c->owner)->get(route('admin.companies.show', $company))->assertInertia(fn (Assert $p) => $p
+            ->where('nr1ShellUrls.'.$v11->survey->id, '/nr1/visao-geral?empresa='.$company->id.'&campanha='.$v11->survey->id)->missing('nr1ShellUrls.'.$legacySame->id));
+
+        // Empresa só com pesquisa antiga: «Pesquisas NR1» volta à lista antiga; com V11, abre o shell.
+        $this->actingAs($c->admin)->get(route('client.dashboard'))->assertInertia(fn (Assert $p) => $p->where('nr1Shell.url', null));
+        $this->actingAs(User::factory()->companyAdmin($company->id)->create())->get(route('client.dashboard'))->assertInertia(fn (Assert $p) => $p->where('nr1Shell.url', '/nr1'));
+
+        // Ligado: toda pesquisa ganha «Abrir painel NR-1» e a empresa só com legado também abre o shell.
+        config(['nr1.shell_legacy_embed' => true]);
+        $this->actingAs($c->owner)->get(route('admin.companies.show', $company))->assertInertia(fn (Assert $p) => $p
+            ->has('nr1ShellUrls.'.$v11->survey->id)->has('nr1ShellUrls.'.$legacySame->id));
+        $this->actingAs($c->admin)->get(route('client.dashboard'))->assertInertia(fn (Assert $p) => $p->where('nr1Shell.url', '/nr1'));
     }
 
     public function test_the_legacy_pages_were_split_into_layout_free_bodies_without_changing_their_pages(): void

@@ -98,6 +98,14 @@ return [
     'shell_enabled' => (bool) env('NR1_SHELL_ENABLED', env('APP_ENV') === 'local'),
 
     /*
+    | Laudo do modelo anterior DENTRO do shell (Etapa L). Desligado (padrão em TODOS os ambientes): as pesquisas do
+    | modelo anterior mantêm «Parecer e plano» e a tela antiga; o shell só mostra o aviso «Pesquisa no modelo anterior» com
+    | o botão «Abrir Laudo NR-1». Ligado: Resultados, Documentos e Visão geral do legado são renderizados no shell
+    | (Components/Nr1Legacy, tema .nr1-theme). A decisão de como o Laudo entra no fluxo está pendente (ver NOTAS.md).
+    */
+    'shell_legacy_embed' => (bool) env('NR1_SHELL_LEGACY_EMBED', false),
+
+    /*
     |--------------------------------------------------------------------------
     | Soluções Talents (Caderno §14)
     |--------------------------------------------------------------------------

@@ -8,8 +8,11 @@ use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Enums\PermissionModule;
 use App\Enums\UserRole;
+use App\Models\Survey;
+use App\Models\SurveyMethodVersion;
 use App\Models\User;
 use App\Services\Psychosocial\DocumentShareService;
+use App\Support\SurveyPublicationGate;
 
 /**
  * Shell NR-1 (/nr1): perfis, matriz de seções por perfil (contrato do HTML aprovado) e a decisão de acesso.
@@ -54,6 +57,12 @@ final class Nr1Shell
     public static function enabled(): bool
     {
         return (bool) config('nr1.shell_enabled');
+    }
+
+    /** Laudo do modelo anterior renderizado dentro do shell (padrão: desligado). */
+    public static function legacyEmbedded(): bool
+    {
+        return (bool) config('nr1.shell_legacy_embed');
     }
 
     /** Perfil do usuário autenticado no shell (colaborador não tem login: entra pelo link da campanha). */
@@ -162,6 +171,20 @@ final class Nr1Shell
             return null;
         }
 
+        // Sem o Laudo embutido, a empresa que só tem pesquisas do modelo anterior continua usando a lista antiga.
+        if (! self::legacyEmbedded() && self::profileFor($user) === self::PROFILE_EMPRESA && ! self::hasV11Survey($user)) {
+            return null;
+        }
+
         return route('nr1.index', absolute: false);
+    }
+
+    private static function hasV11Survey(User $user): bool
+    {
+        $companyId = $user->contextCompanyId();
+
+        return $companyId !== null && SurveyPublicationGate::scopeVisible(Survey::query()->where('company_id', $companyId))
+            ->where('method_version_id', SurveyMethodVersion::idForCode(SurveyMethodVersion::CODE_TALENTS39_V1))
+            ->exists();
     }
 }

@@ -55,7 +55,17 @@ final class Nr1ShellLegacy
     public function section(Request $request, User $user, string $profile, string $section, Survey $survey, ?Company $company): array
     {
         $forTalents = $profile === Nr1Shell::PROFILE_TALENTS;
-        $base = ['notice' => self::NOTICE, 'minPerSector' => (int) $survey->min_responses_for_breakdown, 'forTalents' => $forTalents];
+        $base = ['notice' => self::NOTICE, 'minPerSector' => (int) $survey->min_responses_for_breakdown, 'forTalents' => $forTalents, 'embedded' => Nr1Shell::legacyEmbedded()];
+
+        // Sem o Laudo embutido: só o aviso e o botão para a tela antiga (nada do legado é renderizado nem consultado aqui).
+        if (! Nr1Shell::legacyEmbedded()) {
+            return $base + [
+                'openUrl' => $forTalents && $company !== null
+                    ? route('admin.companies.surveys.action-plan.edit', [$company->id, $survey->id])
+                    : route('client.surveys.results', $survey->id),
+                'openLabel' => $forTalents ? 'Abrir Laudo NR-1' : 'Abrir resultados da pesquisa',
+            ];
+        }
 
         // A empresa precisa dos mesmos módulos das rotas antigas (Resultados: pesquisas; Plano/Parecer: planos_acao).
         if (! $forTalents) {

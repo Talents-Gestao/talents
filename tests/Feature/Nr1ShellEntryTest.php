@@ -43,7 +43,7 @@ class Nr1ShellEntryTest extends TestCase
         $this->actingAs($owner)->get(route('admin.companies.show', $c->company))->assertOk()
             ->assertInertia(fn (Assert $p) => $p->where('nr1ShellUrls', []));
 
-        config(['nr1.shell_enabled' => true]);
+        config(['nr1.shell_enabled' => true, 'nr1.shell_legacy_embed' => true]);
         $this->actingAs($owner)->get(route('admin.companies.show', $c->company))->assertOk()
             ->assertInertia(fn (Assert $p) => $p
                 ->where('nr1ShellUrls.'.$c->survey->id, '/nr1/visao-geral?empresa='.$c->company->id.'&campanha='.$c->survey->id)

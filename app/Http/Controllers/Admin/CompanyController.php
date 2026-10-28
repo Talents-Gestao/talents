@@ -239,6 +239,7 @@ class CompanyController extends Controller
             // Entrada do shell NR-1 por pesquisa V11 (vazio com a flag desligada: a página fica como antes).
             'nr1ShellUrls' => Nr1Shell::enabled()
                 ? $company->surveys
+                    ->filter(fn ($survey) => Nr1Shell::legacyEmbedded() || $survey->usesReviewFlow())
                     ->mapWithKeys(fn ($survey) => [$survey->id => route('nr1.visao-geral', ['empresa' => $company->id, 'campanha' => $survey->id], false)])
                     ->all()
                 : [],

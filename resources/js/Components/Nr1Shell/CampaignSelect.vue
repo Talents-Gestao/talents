@@ -100,7 +100,7 @@ onBeforeUnmount(() => document.removeEventListener('click', outside));
                 @click="choose(survey)"
                 @mouseenter="highlighted = index"
             >
-                <span class="n1-campsel-opt" :title="survey.title">{{ survey.title }}<small v-if="survey.year && !survey.title.includes(String(survey.year))"> · {{ survey.year }}</small></span>
+                <span class="n1-campsel-opt" :title="survey.title">{{ survey.title }}<small v-if="survey.year && !survey.title.includes(String(survey.year))"> · {{ survey.year }}</small><small v-if="survey.legacy" class="n1-campsel-legacy"> · modelo anterior</small></span>
                 <CheckIcon v-if="survey.id === current?.id" class="n1-campsel-check" aria-hidden="true" />
             </li>
         </ul>
