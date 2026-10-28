@@ -15,7 +15,8 @@ import {
     homographyToMatrix3d,
     insetPolygon,
     keepoutRects,
-    polygonCentroid,
+    boxCenter,
+    calmNear,
     roundedCorners,
     solveHomography,
     springStep,
@@ -429,7 +430,8 @@ const init = async () => {
     const buildPiece = (p, cellN) => {
         const pts = cellN.map(([nx, ny]) => [(nx - 0.5) * g.pw, (0.5 - ny) * g.ph]);
         const inset = insetPolygon(pts, (GAP / 2 + BEVEL) * g.Sg);
-        const [cx, cy] = polygonCentroid(inset);
+        // Pivô da inclinação = centro da peça (caixa envolvente), para não deslocar o impresso lateralmente.
+        const [cx, cy] = boxCenter(inset);
         const local = inset.map(([x, y]) => [x - cx, y - cy]);
         const shapeOf = (pts2, radius) => {
             const corners = roundedCorners(pts2, radius);
@@ -485,12 +487,15 @@ const init = async () => {
     };
 
     // Estado do ponteiro (px relativos ao Hero).
-    const ptr = { px: 0, py: 0, inside: false };
+    const ptr = { px: 0, py: 0, inside: false, overUi: false };
     const canHover = window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? true;
     const tilt = { x: 0, y: 0, rx: 0, ry: 0 };
-    const sm = { glow: 0 };
+    const sm = { glow: 0, calm: 0 };
     let hoverIdx = -1;
     let panelPtr = null; // coordenadas normalizadas do painel
+    // Sobre CTA/texto (DOM interativo): âncoras do ponto de entrada, para nada "fugir" do cursor.
+    let tiltAnchor = null;
+    let localAnchor = null;
     let local = new THREE.Vector3();
     let visible = true;
     let raf = 0;
@@ -599,6 +604,14 @@ const init = async () => {
         if (active) {
             tx = ndc.x;
             ty = -ndc.y;
+            // Sobre CTA/texto o conjunto responde só ~30% ao movimento, a partir de onde estava ao entrar.
+            if (ptr.overUi) {
+                tiltAnchor ??= { x: tilt.x, y: tilt.y };
+                tx = tiltAnchor.x + (tx - tiltAnchor.x) * 0.3;
+                ty = tiltAnchor.y + (ty - tiltAnchor.y) * 0.3;
+            } else {
+                tiltAnchor = null;
+            }
         } else if (!canHover) {
             tx = Math.sin(time * 0.45) * 0.5;
             ty = Math.sin(time * 0.31 + 1) * 0.35;
@@ -629,12 +642,21 @@ const init = async () => {
         sm.glow += ((panelPtr ? 1 : 0) - sm.glow) * (1 - Math.exp(-dt / 0.18));
         glow.uGlowAmt.value = sm.glow;
 
+        // Calma: 1 sobre CTA/texto, crescendo já na aproximação dos CTAs (sem salto ao chegar).
+        let calmT = 0;
+        if (panelPtr && layout.value) {
+            calmT = ptr.overUi ? 1 : calmNear(panelPtr.x * g.pw, panelPtr.y * g.ph, layout.value.ctas);
+        }
+        sm.calm += (calmT - sm.calm) * (1 - Math.exp(-dt / 0.2));
+        if (ptr.overUi && panelPtr) localAnchor ??= local.clone();
+        else if (!ptr.overUi) localAnchor = null;
+
         // Padrão de corte vivo (~45×/s).
         rebuildAcc += dt;
         if (rebuildAcc >= 1 / 45) {
             rebuildAcc = 0;
             const pp = panelPtr ? (g.portrait ? { x: panelPtr.y, y: panelPtr.x } : panelPtr) : null;
-            heroCells(time, pp, g.portrait, g.keep).forEach((cell, i) => buildPiece(pieces[i], cell));
+            heroCells(time, pp, g.portrait, g.keep, 1 - 0.7 * sm.calm).forEach((cell, i) => buildPiece(pieces[i], cell));
         }
 
         pieces.forEach((p, i) => {
@@ -642,10 +664,14 @@ const init = async () => {
             let rxT = 0;
             let ryT = 0;
             if (isHover && panelPtr) {
-                ryT = clamp((local.x - p.c.x) / p.half.x, -1, 1) * 0.24;
-                rxT = clamp((p.c.y - local.y) / p.half.y, -1, 1) * 0.24;
+                // Inclinação máx. 0,24 rad; sobre CTA/texto cai para ~0,05 e usa o ponto de entrada.
+                const amp = 0.24 + (0.05 - 0.24) * sm.calm;
+                const lp = localAnchor ?? local;
+                ryT = clamp((lp.x - p.c.x) / p.half.x, -1, 1) * amp;
+                rxT = clamp((p.c.y - lp.y) / p.half.y, -1, 1) * amp;
             }
-            springStep(p.z, isHover ? 50 * g.Sg : 0, dt);
+            // Elevação de 50·S; sobre CTA/texto cai para ~25%.
+            springStep(p.z, isHover ? 50 * g.Sg * (1 - 0.75 * sm.calm) : 0, dt);
             springStep(p.rx, rxT, dt);
             springStep(p.ry, ryT, dt);
             p.hover += ((isHover ? 1 : 0) - p.hover) * (1 - Math.exp(-dt / 0.12));
@@ -671,17 +697,20 @@ const init = async () => {
             });
         });
 
-        // Camada de texto DOM mapeada ao painel inclinado (homografia).
+        // Camada de texto DOM mapeada à face da peça A (homografia): todo o texto/CTA está nela (keepout),
+        // então o texto selecionável e os alvos de clique acompanham o impresso mesmo com a peça erguida.
         if (layerEl.value) {
             const hw = g.pw / 2;
             const hh = g.ph / 2;
+            const pa = pieces[0];
+            pa.group.updateMatrixWorld(true);
             const dst = [
                 [-hw, hh],
                 [hw, hh],
                 [hw, -hh],
                 [-hw, -hh],
             ].map(([x, y]) => {
-                const v = block.localToWorld(tmpV.set(x, y, g.frontZ)).project(camera);
+                const v = pa.group.localToWorld(tmpV.set(x - pa.c.x, y - pa.c.y, g.frontZ + 0.5)).project(camera);
                 return [(v.x * 0.5 + 0.5) * g.W, (1 - (v.y * 0.5 + 0.5)) * g.H];
             });
             const h = solveHomography(
@@ -717,9 +746,11 @@ const init = async () => {
         ptr.px = e.clientX - r.left;
         ptr.py = e.clientY - r.top;
         ptr.inside = true;
+        ptr.overUi = !!e.target?.closest?.('.hg-cta, .hg-text');
     };
     const onLeave = () => {
         ptr.inside = false;
+        ptr.overUi = false;
     };
     const onLost = (e) => {
         e.preventDefault();
@@ -908,10 +939,13 @@ onBeforeUnmount(teardown);
     white-space: nowrap;
     color: transparent;
     font-weight: 400;
+    /* Texto selecionável (a camada em si não captura o ponteiro). */
+    pointer-events: auto;
+    cursor: text;
 }
 
 .hg-eyebrow {
-    font-weight: 500;
+    font-weight: 600;
     text-transform: uppercase;
 }
 

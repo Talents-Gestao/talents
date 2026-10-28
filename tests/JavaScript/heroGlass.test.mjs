@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     applyHomography,
+    boxCenter,
+    calmNear,
     easeOutBack,
     heroCells,
     heroLayout,
@@ -143,6 +145,7 @@ describe('keepout: texto e CTAs ficam inteiros na célula A', () => {
     const cases = [
         { name: 'desktop 1440', pw: 1281, ph: 598, S: 1281 / 1730, portrait: false },
         { name: 'desktop 1024', pw: 907, ph: 520, S: 907 / 1730, portrait: false },
+        { name: 'tablet 768', pw: 684, ph: 515, S: 684 / 1730, portrait: false },
         { name: 'mobile 390', pw: 358, ph: 700, S: 358 / 1730, portrait: true },
         { name: 'mobile 360', pw: 328, ph: 700, S: 328 / 1730, portrait: true },
     ];
@@ -158,7 +161,7 @@ describe('keepout: texto e CTAs ficam inteiros na célula A', () => {
             for (let t = 0; t < 60; t += 2.3) {
                 pointers.forEach((ptr) => {
                     const pp = ptr && portrait ? { x: ptr.y, y: ptr.x } : ptr;
-                    const cells = heroCells(t, pp, portrait, keep);
+                    const cells = heroCells(t, pp, portrait, keep, t % 2 < 1 ? 1 : 0.3);
                     cells.forEach((c) => assert.ok(Math.abs(polygonArea(c)) > 0.01, 'célula degenerada'));
                     const A = cells[0].map(([x, y]) => [x * pw, y * ph]);
                     const edges = [[A[1], A[2]], [A[2], A[3]]];
@@ -175,5 +178,68 @@ describe('keepout: texto e CTAs ficam inteiros na célula A', () => {
                 });
             }
         });
+    });
+});
+
+describe('CTAs alinhados à direita do bloco de texto', () => {
+    const content = {
+        eyebrow: 'Consultoria estratégica em gestão de pessoas',
+        title: 'O resultado que você espera está nas pessoas!',
+        subtitle: 'Potencialize resultados com gestão de pessoas, ciência e estratégia.',
+        ctas: [{ label: 'Para Empresas' }, { label: 'Para Pessoas' }, { label: 'Falar com Especialista' }],
+    };
+    const measure = (t, size, w, tr = 0) => t.length * (size * 0.52 + tr);
+    const right = (c) => c.x + c.w;
+
+    [
+        ['desktop 1440', 1281, 598, false],
+        ['tablet 768', 684, 515, false],
+    ].forEach(([name, pw, ph, portrait]) => {
+        it(`${name}: a linha de CTAs termina na borda direita do bloco, na mesma ordem e sem sair dele`, () => {
+            const L = heroLayout({ pw, ph, S: pw / 1730, portrait, content, measure });
+            assert.deepEqual(L.ctas.map((c) => c.label), content.ctas.map((c) => c.label));
+            const lastPerRow = new Map();
+            L.ctas.forEach((c) => lastPerRow.set(c.y, c));
+            lastPerRow.forEach((c) => assert.ok(Math.abs(right(c) - L.blockRight) < 0.5, `${name}: ${right(c)} ≠ ${L.blockRight}`));
+            L.ctas.forEach((c) => assert.ok(c.x >= L.padX - 0.01 && right(c) <= L.blockRight + 0.5));
+        });
+    });
+
+    it('mobile 390: primário na largura do bloco e links nas pontas, sem estourar', () => {
+        const pw = 358;
+        const L = heroLayout({ pw, ph: 700, S: pw / 1730, portrait: true, content, measure });
+        const [primary, ...links] = L.ctas;
+        assert.equal(primary.x, L.padX);
+        assert.ok(Math.abs(right(primary) - L.blockRight) < 0.5);
+        links.forEach((c) => assert.ok(c.x >= L.padX - 0.01 && right(c) <= pw - L.padX + 0.5));
+        assert.ok(links.every((c) => c.y > primary.y));
+    });
+});
+
+describe('amortecimento sobre os CTAs', () => {
+    const box = [{ x: 100, y: 100, w: 120, h: 40 }];
+
+    it('calma é 1 sobre/perto do CTA e 0 longe dele', () => {
+        assert.equal(calmNear(150, 120, box), 1);
+        assert.equal(calmNear(110, 80, box), 1);
+        assert.equal(calmNear(600, 600, box), 0);
+        const mid = calmNear(220 + 60, 120, box);
+        assert.ok(mid > 0 && mid < 1);
+    });
+
+    it('empurrão dos cortes escala com pushScale', () => {
+        const base = heroCells(3);
+        const full = heroCells(3, { x: 0.62, y: 0.6 });
+        const calm = heroCells(3, { x: 0.62, y: 0.6 }, false, [], 0.3);
+        // J1 (C[3]) é empurrado; em y (sem a restrição de ordem do eixo x) o deslocamento cai para ~30%
+        const shift = (a, b) => Math.abs(a[1] - b[1]);
+        const dFull = shift(full[2][3], base[2][3]);
+        const dCalm = shift(calm[2][3], base[2][3]);
+        assert.ok(dFull > 0);
+        assert.ok(dCalm < dFull * 0.35 + 1e-9);
+    });
+
+    it('pivô da peça é o centro da caixa envolvente', () => {
+        assert.deepEqual(boxCenter([[0, 0], [10, 0], [10, 4], [2, 8]]), [5, 4]);
     });
 });

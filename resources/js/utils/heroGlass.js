@@ -118,7 +118,7 @@ export const keepoutRects = (boxes, pw, ph, clearance, portrait) =>
  * `pointer` em coordenadas normalizadas do painel (ou null). `portrait` transpõe (x↔y).
  * `keepout` vem de keepoutRects().
  */
-export const heroPoints = (t, pointer = null, portrait = false, keepout = []) => {
+export const heroPoints = (t, pointer = null, portrait = false, keepout = [], pushScale = 1) => {
     const p = {};
     Object.entries(POINTS).forEach(([name, def]) => {
         let [x, y] = def.p;
@@ -134,7 +134,7 @@ export const heroPoints = (t, pointer = null, portrait = false, keepout = []) =>
                 const dy = y - pointer.y;
                 const d = Math.hypot(dx, dy);
                 if (d < 0.6 && d > 1e-6) {
-                    const push = 0.05 * (1 - smoothstep(0, 0.6, d));
+                    const push = 0.05 * pushScale * (1 - smoothstep(0, 0.6, d));
                     const px = (dx / d) * push;
                     x += def.rightOnly ? Math.max(0, px) : px;
                     if (!def.edge) {
@@ -154,8 +154,8 @@ export const heroPoints = (t, pointer = null, portrait = false, keepout = []) =>
     return out;
 };
 
-export const heroCells = (t, pointer = null, portrait = false, keepout = []) => {
-    const p = heroPoints(t, pointer, portrait, keepout);
+export const heroCells = (t, pointer = null, portrait = false, keepout = [], pushScale = 1) => {
+    const p = heroPoints(t, pointer, portrait, keepout, pushScale);
     return CELL_DEFS.map((names) => names.map((n) => p[n]));
 };
 
@@ -316,7 +316,7 @@ export const heroLayout = ({ pw, ph, S, portrait, content, measure }) => {
     const eyebrowSize = Math.max(11 * S, 10);
     const eyebrowTracking = 0.2 * eyebrowSize;
     const eyebrowLines = wrapLines(content.eyebrow.toUpperCase(), textW, (t) =>
-        measure(t, eyebrowSize, 500, eyebrowTracking),
+        measure(t, eyebrowSize, 600, eyebrowTracking),
     );
     const eyebrowLh = eyebrowSize * 1.5;
     const eyebrow = {
@@ -352,34 +352,101 @@ export const heroLayout = ({ pw, ph, S, portrait, content, measure }) => {
         y: headline.y + lines.length * lh + subSize * 1.1,
     };
 
+    const widest = (arr, sz, weight, tracking) => Math.max(...arr.map((l) => measure(l, sz, weight, tracking)));
+    const headlineW = widest(lines, size, 600, -0.045 * size);
+    const subtitleW = widest(subLines, subSize, 400, 0);
+    // Borda direita do bloco de texto (título/subtítulo): a linha de CTAs termina nela.
+    const blockRight = padX + Math.min(textW, Math.max(headlineW, subtitleW));
+
     const ctaH = Math.max(40 * S, 40);
     const ctaSize = Math.max(14 * u, 13);
-    const ctaY = Math.min(subtitle.y + subLines.length * subtitle.lh + ctaH * 0.7, ph * (portrait ? 0.62 : 0.86) - ctaH);
+    const gap = 26;
     const primaryW = Math.max(116 * Math.max(S, 1), measure(content.ctas[0].label, ctaSize, 600, 0) + 44);
-    const ctas = [{ ...content.ctas[0], kind: 'primary', x: padX, y: ctaY, w: primaryW, h: ctaH, size: ctaSize }];
-    let cx = padX + primaryW + 26;
-    let cy = ctaY;
-    content.ctas.slice(1).forEach((c) => {
-        const w = measure(c.label, ctaSize, 500, 0);
-        if (cx + w > padX + textW + (portrait ? 0 : pw * 0.02) && cx > padX) {
-            cx = padX;
-            cy += ctaH + 6;
+    const items = [
+        { ...content.ctas[0], kind: 'primary', w: primaryW },
+        ...content.ctas.slice(1).map((c) => ({ ...c, kind: 'link', w: measure(c.label, ctaSize, 500, 0) })),
+    ];
+    // Linhas: no retrato o primário ocupa a largura do bloco e os links vêm abaixo, um em cada ponta;
+    // no desktop/tablet, quebra gulosa com cada linha alinhada à direita do bloco.
+    const rows = [];
+    if (portrait) {
+        items[0].w = blockRight - padX;
+        rows.push([items[0]]);
+        const rest = items.slice(1);
+        const restW = rest.reduce((acc, c) => acc + c.w, 0) + gap * (rest.length - 1);
+        if (restW <= blockRight - padX) rows.push(rest);
+        else rest.forEach((c) => rows.push([c]));
+    } else {
+        items.forEach((c) => {
+            const row = rows[rows.length - 1];
+            const rowW = row ? row.reduce((acc, r) => acc + r.w, 0) + gap * row.length : Infinity;
+            if (row && rowW + c.w <= blockRight - padX) row.push(c);
+            else rows.push([c]);
+        });
+    }
+    const rowGap = 6;
+    const ctaY = Math.min(
+        subtitle.y + subLines.length * subtitle.lh + ctaH * 0.7,
+        ph * (portrait ? 0.62 : 0.86) - ctaH - (rows.length - 1) * (ctaH + rowGap),
+    );
+    const ctas = [];
+    rows.forEach((row, ri) => {
+        const y = ctaY + ri * (ctaH + rowGap);
+        if (portrait && row.length > 1) {
+            // dois links: um na borda esquerda, outro na direita do bloco
+            row.forEach((c, ci) => {
+                const x = ci === 0 ? padX : blockRight - c.w;
+                ctas.push({ ...c, x, y, h: ctaH, size: ctaSize });
+            });
+            return;
         }
-        ctas.push({ ...c, kind: 'link', x: cx, y: cy, w, h: ctaH, size: ctaSize });
-        cx += w + 26;
+        const rowW = row.reduce((acc, c) => acc + c.w, 0) + gap * (row.length - 1);
+        let x = Math.max(padX, blockRight - rowW);
+        row.forEach((c) => {
+            ctas.push({ ...c, x, y, h: ctaH, size: ctaSize });
+            x += c.w + gap;
+        });
     });
 
     const image = portrait
         ? { x: 0, y: ph * 0.5, w: pw, h: ph * 0.5 }
         : { x: pw * 0.5, y: 0, w: pw * 0.5, h: ph };
 
-    const widest = (arr, size, weight, tracking) => Math.max(...arr.map((l) => measure(l, size, weight, tracking)));
     const keepout = [
-        { x: eyebrow.x, y: eyebrow.y, w: widest(eyebrowLines, eyebrowSize, 500, eyebrowTracking), h: eyebrowLines.length * eyebrowLh },
-        { x: headline.x, y: headline.y, w: widest(lines, size, 600, headline.tracking), h: lines.length * lh },
-        { x: subtitle.x, y: subtitle.y, w: widest(subLines, subSize, 400, 0), h: subLines.length * subtitle.lh },
+        { x: eyebrow.x, y: eyebrow.y, w: widest(eyebrowLines, eyebrowSize, 600, eyebrowTracking), h: eyebrowLines.length * eyebrowLh },
+        { x: headline.x, y: headline.y, w: headlineW, h: lines.length * lh },
+        { x: subtitle.x, y: subtitle.y, w: subtitleW, h: subLines.length * subtitle.lh },
         ...ctas.map((c) => ({ x: c.x, y: c.y, w: c.w, h: c.h })),
     ];
 
-    return { eyebrow, headline, subtitle, ctas, image, padX, keepout };
+    return { eyebrow, headline, subtitle, ctas, image, padX, blockRight, keepout };
+};
+
+/** Centro da caixa envolvente (pivô de inclinação de cada peça). */
+export const boxCenter = (pts) => {
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    pts.forEach(([x, y]) => {
+        x0 = Math.min(x0, x);
+        y0 = Math.min(y0, y);
+        x1 = Math.max(x1, x);
+        y1 = Math.max(y1, y);
+    });
+    return [(x0 + x1) / 2, (y0 + y1) / 2];
+};
+
+/**
+ * "Calma" (0..1) perto dos CTAs: 1 dentro de `inner` px da caixa mais próxima, 0 além de `outer` px.
+ * Usada para amortecer o efeito do vidro antes de o cursor chegar ao botão (o alvo não foge do mouse).
+ */
+export const calmNear = (px, py, boxes, inner = 24, outer = 110) => {
+    let d = Infinity;
+    boxes.forEach((b) => {
+        const dx = Math.max(b.x - px, 0, px - (b.x + b.w));
+        const dy = Math.max(b.y - py, 0, py - (b.y + b.h));
+        d = Math.min(d, Math.hypot(dx, dy));
+    });
+    return 1 - smoothstep(inner, outer, d);
 };
