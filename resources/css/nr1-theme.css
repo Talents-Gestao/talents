@@ -1,0 +1,116 @@
+/*
+ * .nr1-theme: aplica o padrão visual do shell NR-1 ao CONTEÚDO LEGADO embutido (laudo, resultados antigos, parecer).
+ * Só vale dentro de `.nr1-shell .nr1-theme`; as telas antigas fora do shell ficam exatamente como são.
+ * Estratégia: sobrescrever tokens e propriedades de superfície (cartão, raio, sombra, linha, foco, transição), nunca
+ * reescrever os gráficos. As cores semânticas de faixa (verde / âmbar / vermelho) dos gráficos permanecem.
+ */
+.nr1-shell .nr1-theme {
+    /* Escala de marca do shell (roxo do protótipo) no lugar da escala do sistema, só aqui dentro */
+    --talents-50: 245 236 250;
+    --talents-100: 236 222 245;
+    --talents-200: 217 192 234;
+    --talents-300: 187 150 214;
+    --talents-400: 150 97 179;
+    --talents-500: 129 70 165;
+    --talents-600: 98 50 119;
+    --talents-700: 91 42 115;
+    --talents-800: 74 33 96;
+    --talents-900: 40 23 51;
+    color: var(--n1-ink);
+    font-family: inherit;
+}
+
+/* Cartões: raio, borda e sombra do shell */
+.nr1-shell .nr1-theme :where(.rounded-xl, .rounded-2xl, .surface-card) {
+    border-radius: 17px;
+}
+.nr1-shell .nr1-theme :where(.shadow-sm, .shadow-md, .surface-card) {
+    box-shadow: var(--n1-shadow);
+}
+.nr1-shell .nr1-theme :where(.border-gray-200, .border-slate-200, .border-gray-100, .border-slate-100) {
+    border-color: #e7e0ed;
+}
+.nr1-shell .nr1-theme :where(section.rounded-xl, section.rounded-2xl, div.rounded-2xl.border, .surface-card) {
+    transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+.nr1-shell .nr1-theme :where(section.rounded-xl, div.rounded-2xl.border, .surface-card):hover {
+    box-shadow: 0 16px 34px rgba(53, 25, 86, 0.1);
+}
+
+/* Botões e links do legado: transição curta e foco visível (o desenho de cada botão não muda) */
+.nr1-shell .nr1-theme :where(button, a) {
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.nr1-shell .nr1-theme :where(button, a, input, select, textarea, summary):focus-visible {
+    outline: 3px solid #7a3f94;
+    outline-offset: 2px;
+}
+.nr1-shell .nr1-theme :where(button.rounded-md, button.rounded-full, a.rounded-md, a.rounded-full):hover:not(:disabled) {
+    box-shadow: 0 6px 14px rgba(97, 54, 125, 0.16);
+}
+
+/* Títulos e texto de apoio no tom do shell */
+.nr1-shell .nr1-theme :where(h2, h3) {
+    letter-spacing: -0.015em;
+}
+.nr1-shell .nr1-theme :where(.text-gray-600, .text-slate-600) {
+    color: #5f566a;
+}
+
+/* Tabelas (calor, setores): linhas com destaque suave ao passar o mouse */
+.nr1-shell .nr1-theme tbody tr {
+    transition: background-color 0.15s ease;
+}
+.nr1-shell .nr1-theme tbody tr:hover {
+    background-color: rgba(245, 236, 250, 0.55);
+}
+
+/* Barra de ações do laudo e relatórios (componentes novos do shell) */
+.nr1-shell .n1-legacybar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.nr1-shell .n1-legacy-notice {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 99px;
+    background: #fff1d7;
+    color: #8a560a;
+    border: 1px solid #f0d9a8;
+    padding: 5px 11px;
+    font-size: 11px;
+    font-weight: 750;
+}
+.nr1-shell .n1-legacy-privacy {
+    margin: 0 0 14px;
+    padding: 10px 13px;
+    border-radius: 11px;
+    background: #fbf8fd;
+    border: 1px solid #ece3f1;
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: #62586b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nr1-shell .nr1-theme *,
+    .nr1-shell .nr1-theme *::before,
+    .nr1-shell .nr1-theme *::after {
+        transition: none !important;
+        animation-duration: 0.001ms !important;
+    }
+}
+@media print {
+    .nr1-shell .n1-legacybar {
+        display: none !important;
+    }
+}
+
+.nr1-shell .n1-laudo-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin: 0; }
+.nr1-shell .n1-laudo-grid dd { margin: 4px 0 0; font-size: 13px; font-weight: 700; }
+@media (max-width: 1110px) {
+    .nr1-shell .n1-laudo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

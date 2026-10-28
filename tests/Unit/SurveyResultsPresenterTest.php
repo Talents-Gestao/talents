@@ -6,6 +6,7 @@ use App\Models\Department;
 use App\Models\SurveyAnswer;
 use App\Models\SurveyResponse;
 use App\Models\SurveyTemplateQuestion;
+use App\Services\SurveyResultCalculator;
 use App\Services\SurveyResultsPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesSurveyFixtures;
@@ -123,31 +124,22 @@ class SurveyResultsPresenterTest extends TestCase
             'name' => 'Financeiro',
         ]);
 
-        $responseA = SurveyResponse::query()->create([
-            'survey_id' => $fx->survey->id,
-            'session_token' => 'token-a',
-            'department_id' => $deptA->id,
-            'completed_at' => now(),
-        ]);
+        // Cada setor tem 5 respondentes (o piso): A vota 5 e B vota 2.
+        foreach ([[$deptA, 5], [$deptB, 2]] as [$dept, $value]) {
+            for ($i = 0; $i < 5; $i++) {
+                SurveyResponse::query()->create([
+                    'survey_id' => $fx->survey->id,
+                    'session_token' => "token-{$dept->id}-{$i}",
+                    'department_id' => $dept->id,
+                    'completed_at' => now(),
+                ])->answers()->create([
+                    'survey_template_question_id' => $fx->question->id,
+                    'value' => $value,
+                ]);
+            }
+        }
 
-        $responseB = SurveyResponse::query()->create([
-            'survey_id' => $fx->survey->id,
-            'session_token' => 'token-b',
-            'department_id' => $deptB->id,
-            'completed_at' => now(),
-        ]);
-
-        SurveyAnswer::query()->create([
-            'survey_response_id' => $responseA->id,
-            'survey_template_question_id' => $fx->question->id,
-            'value' => 5,
-        ]);
-
-        SurveyAnswer::query()->create([
-            'survey_response_id' => $responseB->id,
-            'survey_template_question_id' => $fx->question->id,
-            'value' => 2,
-        ]);
+        app(SurveyResultCalculator::class)->recalculate($fx->survey->fresh());
 
         $presented = SurveyResultsPresenter::forSurvey($fx->survey->fresh());
 
@@ -156,9 +148,32 @@ class SurveyResultsPresenterTest extends TestCase
         $ops = collect($presented['questionDistributionsByDepartment'])->firstWhere('department_id', $deptA->id);
         $fin = collect($presented['questionDistributionsByDepartment'])->firstWhere('department_id', $deptB->id);
 
-        $this->assertSame(1, $ops['sections'][0]['questions'][0]['counts'][5]);
+        $this->assertSame(5, $ops['sections'][0]['questions'][0]['counts'][5]);
         $this->assertSame(0, $ops['sections'][0]['questions'][0]['counts'][2]);
-        $this->assertSame(1, $fin['sections'][0]['questions'][0]['counts'][2]);
+        $this->assertSame(5, $fin['sections'][0]['questions'][0]['counts'][2]);
         $this->assertSame(0, $fin['sections'][0]['questions'][0]['counts'][5]);
+    }
+
+    public function test_question_distributions_by_department_hide_sectors_below_the_floor(): void
+    {
+        $fx = $this->createSurveyFixture();
+        $small = Department::query()->create(['company_id' => $fx->company->id, 'name' => 'Pequeno']);
+
+        for ($i = 0; $i < 2; $i++) {
+            SurveyResponse::query()->create([
+                'survey_id' => $fx->survey->id,
+                'session_token' => "small-{$i}",
+                'department_id' => $small->id,
+                'completed_at' => now(),
+            ])->answers()->create(['survey_template_question_id' => $fx->question->id, 'value' => 5]);
+        }
+
+        app(SurveyResultCalculator::class)->recalculate($fx->survey->fresh());
+        $presented = SurveyResultsPresenter::forSurvey($fx->survey->fresh());
+
+        $this->assertSame([], $presented['questionDistributionsByDepartment']);
+        $this->assertSame([], $presented['departmentParticipation']);
+        // As respostas do setor pequeno continuam no geral.
+        $this->assertSame(2, $presented['questionDistributions'][0]['questions'][0]['counts'][5]);
     }
 }

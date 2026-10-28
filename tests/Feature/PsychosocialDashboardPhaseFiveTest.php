@@ -134,20 +134,24 @@ class PsychosocialDashboardPhaseFiveTest extends TestCase
         $this->assertNotContains(10, array_column($json['rows'], 'n'));
     }
 
-    public function test_current_screen_and_presenter_still_show_sector_below_five(): void
+    public function test_current_screen_and_presenter_suppress_sectors_below_the_floor(): void
     {
         $campaign = $this->seedCascadeCampaign();
 
         $presented = SurveyResultsPresenter::forSurvey($campaign->fx->survey);
-        $this->assertContains(4, $presented['deptOveralls']->pluck('respondent_count')->all());
-        $this->assertContains('Setor C', array_column($presented['departmentParticipation'], 'department_name'));
+        $this->assertSame([19], $presented['deptOveralls']->pluck('respondent_count')->all());
+        $this->assertSame(['Setor A'], array_column($presented['departmentParticipation'], 'department_name'));
+        $this->assertSame(['Setor A'], array_column($presented['questionDistributionsByDepartment'], 'department_name'));
+        $this->assertSame(['Setor A'], array_column($presented['deptSectionsByDepartment']->all(), 'department_name'));
+        // Só a exibição é suprimida: o índice geral continua com as 29 respostas.
+        $this->assertSame(29, $presented['overall']->respondent_count);
 
         $this->actingAs($campaign->user)
             ->get(route('client.surveys.results', $campaign->fx->survey))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Client/Surveys/Results')
-                ->has('deptOveralls', 3));
+                ->has('deptOveralls', 1));
     }
 
     public function test_missing_eligible_shows_placeholders_without_rate(): void

@@ -219,6 +219,17 @@ class WipeCompanyDataCommand extends Command
             }
         }
 
+        // Rodadas de revisão apontam para versões com FK restritiva: saem antes das versões.
+        if (Schema::hasTable('psychosocial_review_rounds')) {
+            $roundIds = DB::table('psychosocial_review_rounds')->where('company_id', $companyId)->pluck('id')->all();
+            if (! empty($roundIds)) {
+                DB::table('psychosocial_pgr_integrations')->whereIn('round_id', $roundIds)->delete();
+                DB::table('psychosocial_review_acknowledgements')->whereIn('round_id', $roundIds)->delete();
+                DB::table('psychosocial_review_events')->whereIn('round_id', $roundIds)->delete();
+                DB::table('psychosocial_review_rounds')->whereIn('id', $roundIds)->delete();
+            }
+        }
+
         // Só linhas de banco; os arquivos de PDF, comprovantes e anexos ficam no disco.
         if (Schema::hasTable('psychosocial_documents')) {
             $documentIds = DB::table('psychosocial_documents')->where('company_id', $companyId)->pluck('id')->all();
@@ -226,6 +237,11 @@ class WipeCompanyDataCommand extends Command
                 $versionIds = DB::table('psychosocial_document_versions')->whereIn('document_id', $documentIds)->pluck('id')->all();
                 DB::table('psychosocial_documents')->whereIn('id', $documentIds)->update(['current_version_id' => null]);
                 if (! empty($versionIds)) {
+                    if (Schema::hasTable('document_shares')) {
+                        $shareIds = DB::table('document_shares')->whereIn('document_version_id', $versionIds)->pluck('id')->all();
+                        DB::table('document_share_reviews')->whereIn('document_share_id', $shareIds)->delete();
+                        DB::table('document_shares')->whereIn('id', $shareIds)->delete();
+                    }
                     DB::table('psychosocial_document_attachments')->whereIn('version_id', $versionIds)->delete();
                     DB::table('psychosocial_document_validations')->whereIn('version_id', $versionIds)->delete();
                     DB::table('psychosocial_document_versions')->whereIn('id', $versionIds)->where('kind', 'validated')->delete();

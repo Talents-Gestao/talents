@@ -59,6 +59,19 @@ class PsychosocialDocumentService
             'file' => 'dossie-evidencias',
             'label' => 'Dossiê de evidências',
         ],
+        PsychosocialDocument::TYPE_TECHNICAL_REPORT => [
+            'builder' => TechnicalReportSnapshotBuilder::class,
+            'view' => 'psychosocial.technical_report',
+            'prefix' => 'RT',
+            'file' => 'relatorio-tecnico-plano-de-acao',
+            'label' => 'Relatório técnico e plano de ação',
+        ],
+    ];
+
+    /** Documentos finais do fluxo V11 (Caderno §12). Subsídio AEP/PGR e dossiê ficam só nas campanhas antigas. */
+    public const FINAL_TYPES = [
+        PsychosocialDocument::TYPE_EXECUTIVE_BRIEF,
+        PsychosocialDocument::TYPE_TECHNICAL_REPORT,
     ];
 
     public function __construct(private readonly ReportGenerator $reportGenerator)
@@ -317,6 +330,12 @@ class PsychosocialDocumentService
      */
     public function documentsSummary(Survey $survey): array
     {
+        // Campanha V11: os documentos vivem na Central de documentos (fluxo de revisão); estas telas antigas
+        // não listam nada. Nas antigas, só os três documentos de sempre (o relatório técnico é do fluxo V11).
+        if ($survey->usesReviewFlow()) {
+            return [];
+        }
+
         return array_map(
             fn (string $type): array => $this->currentVersionSummary($survey, $type) ?? [
                 'type' => $type,
@@ -329,7 +348,7 @@ class PsychosocialDocumentService
                 'validatable' => false,
                 'attachments' => [],
             ],
-            self::supportedTypes(),
+            array_values(array_diff(self::supportedTypes(), [PsychosocialDocument::TYPE_TECHNICAL_REPORT])),
         );
     }
 
@@ -474,6 +493,11 @@ class PsychosocialDocumentService
             $pdf = Pdf::loadView($this->config($type)['view'], [
                 'snapshot' => $version->snapshot,
                 'validation' => $version->validation_block,
+                // Identificação da versão no rodapé; não entra no hash do conteúdo (que é só o snapshot).
+                'meta' => [
+                    'version_number' => $version->version_number,
+                    'public_identifier' => $version->public_identifier,
+                ],
             ])->setPaper('a4');
             $bytes = $this->reportGenerator->applyDompdfOptions($pdf)->output();
 

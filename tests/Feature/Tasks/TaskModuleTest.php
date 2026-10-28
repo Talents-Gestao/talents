@@ -116,7 +116,7 @@ class TaskModuleTest extends TestCase
     public function test_super_admin_activate_process_creates_board_lists_and_cards(): void
     {
         $company = $this->baseCompany();
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $template = TaskProcessTemplate::query()->create([
             'name' => 'Onboarding',
@@ -158,8 +158,8 @@ class TaskModuleTest extends TestCase
     public function test_admin_can_assign_company_and_talents_team_members_to_card(): void
     {
         $company = $this->baseCompany();
-        $admin = User::factory()->superAdmin()->create();
-        $teamMember = User::factory()->superAdmin()->create([
+        $admin = User::factory()->talentsOwner()->create();
+        $teamMember = User::factory()->talentsOwner()->create([
             'email' => 'equipe@talents.test',
         ]);
         $companyUser = User::factory()->companyAdmin($company->id)->create([
@@ -309,8 +309,8 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_invite_talents_team_member_to_internal_board_as_viewer(): void
     {
-        $admin = User::factory()->superAdmin()->create();
-        $teamMember = User::factory()->superAdmin()->create([
+        $admin = User::factory()->talentsOwner()->create();
+        $teamMember = User::factory()->talentsOwner()->create([
             'email' => 'viewer@talents.test',
         ]);
 
@@ -336,7 +336,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_delete_checklist_item(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -384,7 +384,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_reorder_checklist_items(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -442,7 +442,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_reorder_checklists_on_card(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -621,7 +621,7 @@ class TaskModuleTest extends TestCase
     public function test_admin_assigning_company_coerces_internal_card_visibility(): void
     {
         $company = $this->baseCompany();
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -666,7 +666,7 @@ class TaskModuleTest extends TestCase
     public function test_admin_can_create_company_list_card_on_global_board_without_company(): void
     {
         $company = $this->baseCompany();
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -703,7 +703,7 @@ class TaskModuleTest extends TestCase
     public function test_admin_creates_company_list_card_on_global_board_with_company_visible_to_client(): void
     {
         $company = $this->baseCompany();
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -826,7 +826,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_set_board_list_color(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -858,7 +858,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_rename_board_list(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -884,7 +884,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_create_internal_board(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $this->actingAs($admin)
             ->post('/admin/tarefas/quadros', [
@@ -901,7 +901,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_update_board_cover_color(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -928,7 +928,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_boards_index_lists_boards(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         TaskBoard::query()->create([
             'company_id' => null,
@@ -1143,7 +1143,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_delete_board_list_and_its_cards(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1324,7 +1324,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_board_show_page_exposes_checklist_meta_on_cards(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1383,7 +1383,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_create_checklist_with_multiple_items_at_once(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1426,7 +1426,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_complete_card_and_move_to_concluido_list(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1472,7 +1472,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_reopen_card_without_moving(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1509,7 +1509,7 @@ class TaskModuleTest extends TestCase
 
     public function test_complete_without_concluido_list_only_sets_timestamp(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1546,7 +1546,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_archive_and_restore_card(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1595,7 +1595,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_archive_list_and_restore_with_cards(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1641,7 +1641,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_reorder_lists(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1680,7 +1680,7 @@ class TaskModuleTest extends TestCase
 
     public function test_recurring_card_completion_spawns_copy_in_origin_list(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1738,7 +1738,7 @@ class TaskModuleTest extends TestCase
 
     public function test_recurring_card_does_not_spawn_after_recurrence_end(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1779,7 +1779,7 @@ class TaskModuleTest extends TestCase
 
     public function test_recurrence_requires_due_date_on_update(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1814,7 +1814,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_create_checklist_item_with_description(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -1867,7 +1867,7 @@ class TaskModuleTest extends TestCase
 
     public function test_admin_can_update_checklist_item_description(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $board = TaskBoard::query()->create([
             'company_id' => null,

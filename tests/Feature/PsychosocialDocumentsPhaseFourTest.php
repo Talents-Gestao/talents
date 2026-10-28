@@ -111,7 +111,8 @@ class PsychosocialDocumentsPhaseFourTest extends TestCase
         $this->assertSame(0, $document->versions()->count());
 
         try {
-            $this->createDocument($fx->survey, 'technical_report');
+            // «technical_report» virou tipo válido na Etapa 7 (relatório técnico + plano); o exemplo inválido é outro.
+            $this->createDocument($fx->survey, 'relatorio_inexistente');
             $this->fail('Tipo fora da lista deveria ser rejeitado.');
         } catch (PsychosocialDocumentException) {
         }
@@ -250,6 +251,19 @@ class PsychosocialDocumentsPhaseFourTest extends TestCase
             'updated_at' => now(),
         ]);
         $resultsBefore = DB::table('survey_results')->count();
+
+        // Este `down` é o da fase 4. Migrations posteriores têm FK para as versões (revisão externa e rodadas de revisão);
+        // no PostgreSQL elas precisam sair antes, como sairiam num rollback em ordem.
+        foreach ([
+            'psychosocial_pgr_integrations',
+            'psychosocial_review_acknowledgements',
+            'psychosocial_review_events',
+            'psychosocial_review_rounds',
+            'document_share_reviews',
+            'document_shares',
+        ] as $dependent) {
+            Schema::dropIfExists($dependent);
+        }
 
         $this->migration()->down();
 

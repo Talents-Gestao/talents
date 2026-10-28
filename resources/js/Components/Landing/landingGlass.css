@@ -1,0 +1,137 @@
+/* Linguagem de vidro claro da landing redesenhada (tokens: tailwind.config.js talents-*, .app-shell #faf8fc). */
+
+.lg-glass {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.5));
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    backdrop-filter: blur(16px) saturate(1.2);
+    border: 1px solid rgba(255, 255, 255, 0.92);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        0 0 0 1px rgba(99, 42, 126, 0.07),
+        0 24px 48px -28px rgba(74, 32, 112, 0.38);
+    border-radius: 1.5rem;
+}
+
+.lg-glass--soft {
+    background: rgba(255, 255, 255, 0.55);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        0 0 0 1px rgba(99, 42, 126, 0.06),
+        0 12px 28px -20px rgba(74, 32, 112, 0.3);
+    border-radius: 1.1rem;
+}
+
+/* Palco claro com manchas da marca atrás das superfícies de vidro. */
+.lg-stage {
+    position: relative;
+    isolation: isolate;
+}
+
+.lg-stage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(48% 42% at 10% 18%, rgba(179, 136, 217, 0.26), transparent 70%),
+        radial-gradient(42% 40% at 92% 62%, rgba(212, 184, 228, 0.55), transparent 70%),
+        radial-gradient(30% 28% at 55% 100%, rgba(123, 79, 162, 0.12), transparent 70%);
+    /* As manchas se dissolvem no topo e na base: sem borda entre seções vizinhas. */
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+}
+
+.lg-lift {
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+@media (hover: hover) {
+    .lg-lift:hover {
+        transform: translateY(-3px);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.95),
+            0 0 0 1px rgba(99, 42, 126, 0.14),
+            0 28px 52px -26px rgba(74, 32, 112, 0.46);
+    }
+}
+
+.lg-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.65rem 1.5rem;
+    border-radius: 999px;
+    background: #632a7e;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 8px 18px -8px rgba(74, 32, 112, 0.6);
+    transition:
+        background-color 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.lg-btn:hover {
+    background: #7b4fa2;
+    transform: translateY(-1px);
+}
+
+.lg-link {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #4a2070;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 4px;
+    transition: text-decoration-color 0.2s ease;
+}
+
+.lg-link:hover {
+    text-decoration-color: currentColor;
+}
+
+.lg-btn:focus-visible,
+.lg-link:focus-visible,
+.lg-tab:focus-visible {
+    outline: 2px solid #7b4fa2;
+    outline-offset: 3px;
+}
+
+/* Entrada ao rolar: só quando há JS e movimento permitido; sem JS o conteúdo fica visível. */
+.lg-reveal-ready .lg-reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+        opacity 0.6s ease,
+        transform 0.6s ease;
+    transition-delay: var(--lg-delay, 0ms);
+}
+
+.lg-reveal-ready .lg-reveal.is-in {
+    opacity: 1;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lg-reveal-ready .lg-reveal,
+    .lg-lift,
+    .lg-btn {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .lg-glass,
+    .lg-glass--soft {
+        background: #fff;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}

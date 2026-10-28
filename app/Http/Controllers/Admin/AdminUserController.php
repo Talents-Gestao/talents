@@ -172,6 +172,11 @@ class AdminUserController extends Controller
                 'commission_percent' => (float) ($user->commission_percent ?? 0),
                 'permissions' => $permissions,
             ],
+            // Reset da verificação em duas etapas: só o proprietário Talents, e não sobre si mesmo.
+            'mfa' => [
+                'active' => app(\App\Services\Mfa\MfaService::class)->isActive($user),
+                'can_reset' => (bool) (auth()->user()?->isOwner() && auth()->id() !== $user->id),
+            ],
             'permissionModules' => $this->permissionModulesPayload(),
             'permissionActions' => $this->permissionActionsPayload(),
             'defaultPermissions' => SyncAdminUserPermissions::defaultNewCollaboratorGrants(),

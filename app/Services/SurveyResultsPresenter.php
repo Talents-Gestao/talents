@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Survey;
 use App\Models\SurveyAnswer;
 use App\Models\SurveyResult;
+use App\Support\Nr1GroupPrivacy;
 
 class SurveyResultsPresenter
 {
@@ -26,14 +27,19 @@ class SurveyResultsPresenter
 
         $overall = $results->first(fn ($r) => $r->survey_template_section_id === null && $r->department_id === null);
 
+        // Só a exibição é suprimida: o índice geral e as dimensões continuam usando todas as respostas.
+        $visibleDepartments = Nr1GroupPrivacy::publishableDepartmentIdsForSurvey($survey);
+
         $bySection = $results->filter(fn ($r) => $r->survey_template_section_id !== null && $r->department_id === null)->values();
 
         $deptOveralls = $results
-            ->filter(fn ($r) => $r->department_id !== null && $r->survey_template_section_id === null)
+            ->filter(fn ($r) => $r->department_id !== null && $r->survey_template_section_id === null
+                && in_array((int) $r->department_id, $visibleDepartments, true))
             ->values();
 
         $deptSectionResults = $results
-            ->filter(fn ($r) => $r->department_id !== null && $r->survey_template_section_id !== null);
+            ->filter(fn ($r) => $r->department_id !== null && $r->survey_template_section_id !== null
+                && in_array((int) $r->department_id, $visibleDepartments, true));
 
         $deptSectionsByDepartment = $deptSectionResults
             ->groupBy('department_id')
@@ -57,7 +63,10 @@ class SurveyResultsPresenter
             })
             ->values();
 
-        $departmentParticipation = self::buildDepartmentParticipation($survey);
+        $departmentParticipation = array_values(array_filter(
+            self::buildDepartmentParticipation($survey),
+            fn (array $participation) => in_array($participation['department_id'], $visibleDepartments, true),
+        ));
 
         $questionDistributionsByDepartment = array_map(
             fn (array $participation) => [

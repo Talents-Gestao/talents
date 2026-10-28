@@ -14,6 +14,7 @@ class SurveyResponse extends Model
         'department_id',
         'age_range',
         'tenure_range',
+        'audience',
         'completed_at',
     ];
 

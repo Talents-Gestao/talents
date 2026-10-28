@@ -18,14 +18,14 @@ class AttachExistingEmailTest extends TestCase
     {
         $this->withoutVite();
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $company = Company::query()->create([
             'name' => 'Empresa Teste',
             'cnpj' => '98.765.432/0001-10',
             'is_active' => true,
         ]);
 
-        $talentsUser = User::factory()->superAdmin()->create([
+        $talentsUser = User::factory()->talentsOwner()->create([
             'email' => 'dual@example.com',
         ]);
 
@@ -55,7 +55,7 @@ class AttachExistingEmailTest extends TestCase
     {
         $this->withoutVite();
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $company = Company::query()->create([
             'name' => 'Empresa Teste',
             'cnpj' => '98.765.432/0001-10',

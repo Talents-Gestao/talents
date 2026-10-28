@@ -1,0 +1,154 @@
+/*
+ * Shell NR-1, Etapa B: classes do HTML aprovado usadas por Visão geral, Campanha NR-1 e Minha jornada.
+ * Escopado em .nr1-shell (não altera o resto do sistema). Tokens em nr1-shell.css.
+ */
+.nr1-shell h1,
+.nr1-shell h2,
+.nr1-shell h3 {
+    font-weight: 700;
+}
+.nr1-shell .n1-g12 {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 15px;
+}
+.nr1-shell .c3 { grid-column: span 3; }
+.nr1-shell .c4 { grid-column: span 4; }
+.nr1-shell .c5 { grid-column: span 5; }
+.nr1-shell .c6 { grid-column: span 6; }
+.nr1-shell .c7 { grid-column: span 7; }
+.nr1-shell .c8 { grid-column: span 8; }
+.nr1-shell .c12 { grid-column: span 12; }
+.nr1-shell .n1-card h2 { font-size: 15px; letter-spacing: -0.015em; margin: 0 0 14px; }
+.nr1-shell .n1-card h3 { font-size: 13px; margin: 0 0 7px; }
+.nr1-shell .n1-hero { position: relative; overflow: hidden; }
+.nr1-shell .n1-hero::after {
+    content: '✦';
+    position: absolute;
+    right: 45px;
+    top: -54px;
+    font-size: 235px;
+    color: #ffffff0c;
+    pointer-events: none;
+}
+.nr1-shell .n1-hero h1 { font-size: 35px; margin: 8px 0; letter-spacing: -0.03em; line-height: 1.12; }
+.nr1-shell .n1-hero p { max-width: 700px; line-height: 1.6; color: #f2e1fa; font-size: 13px; }
+.nr1-shell .n1-tools { display: flex; gap: 9px; flex-wrap: wrap; }
+.nr1-shell .n1-stat { padding: 20px; min-height: 136px; position: relative; overflow: hidden; }
+.nr1-shell .n1-stat::after {
+    content: '';
+    position: absolute;
+    right: -27px;
+    top: -24px;
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+    background: #ffffff55;
+}
+.nr1-shell .n1-stat .n1-big { position: relative; z-index: 1; }
+.nr1-shell .n1-stat.purple { background: linear-gradient(125deg, #eee1f9, #faf6ff); border-color: #e8d2f3; }
+.nr1-shell .n1-stat.teal { background: linear-gradient(125deg, #d9f5ee, #effcfa); border-color: #d5eee9; }
+.nr1-shell .n1-stat.rose { background: linear-gradient(125deg, #fce2eb, #fff4f8); border-color: #f3dbe5; }
+.nr1-shell .n1-stat.gold { background: linear-gradient(125deg, #fff0cd, #fffaf0); border-color: #f5e7c3; }
+.nr1-shell .n1-big small { font-size: 15px; font-weight: 700; letter-spacing: 0; }
+.nr1-shell .n1-sectiontop { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.nr1-shell .n1-sectiontop h2 { margin: 0; }
+.nr1-shell .n1-pill.red { background: #fae8ec; color: #ad3d50; }
+.nr1-shell .n1-pill.gray { background: #efedf2; color: #6b6675; }
+.nr1-shell .n1-pill.blue { background: #e9effc; color: #3d6096; }
+.nr1-shell .n1-positive { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.nr1-shell .n1-tile { border-radius: 16px; padding: 17px 18px; background: linear-gradient(132deg, #e8faf2, #f7fffc); border: 1px solid #bce8d8; }
+.nr1-shell .n1-tile:nth-child(2) { background: linear-gradient(132deg, #f2e8ff, #fdf9ff); border-color: #e5d0f5; }
+.nr1-shell .n1-tile:nth-child(3) { background: linear-gradient(132deg, #eaf3ff, #fafcff); border-color: #cedffa; }
+.nr1-shell .n1-tile strong { font-size: 29px; font-weight: 880; letter-spacing: -0.045em; color: #17765f; }
+.nr1-shell .n1-tile:nth-child(2) strong { color: #794c9c; }
+.nr1-shell .n1-tile:nth-child(3) strong { color: #3569a8; }
+.nr1-shell .n1-tile p { font-size: 12px; color: #4e5d65; line-height: 1.55; min-height: 52px; margin: 6px 0 9px; }
+.nr1-shell .n1-tile small { color: #75838b; font-size: 10px; }
+.nr1-shell .n1-overline { text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; font-weight: 800; color: #6f8089; }
+.nr1-shell .n1-metricbar { display: grid; grid-template-columns: 185px 1fr 45px 118px; gap: 10px; align-items: center; margin: 14px 0; font-size: 12px; }
+.nr1-shell .n1-metricbar b { font-size: 12px; }
+.nr1-shell .n1-track { background: #eeeaf3; border-radius: 20px; height: 11px; overflow: hidden; }
+.nr1-shell .n1-fill { height: 100%; border-radius: 20px; background: linear-gradient(90deg, #bca0d0, #683983); }
+.nr1-shell .n1-fill.warn { background: linear-gradient(90deg, #f3c676, #bd7b22); }
+.nr1-shell .n1-fill.ok { background: linear-gradient(90deg, #9cceb7, #3b937c); }
+.nr1-shell .n1-badge-proj { background: #ebf7f5; color: #197b71; border-radius: 99px; padding: 6px 11px; font-size: 10px; font-weight: 800; }
+.nr1-shell .n1-badge-total { font-size: 11px; font-weight: 750; color: #907398; }
+.nr1-shell .n1-priority { display: grid; grid-template-columns: 32px 1fr auto; align-items: start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--n1-line); }
+.nr1-shell .n1-priority:last-child { border: 0; }
+.nr1-shell .n1-priority-n { border-radius: 11px; width: 30px; height: 30px; display: grid; place-items: center; background: #f2e5f7; color: #3c2f4a; font-size: 12px; font-weight: 850; }
+.nr1-shell .n1-priority b { font-size: 12px; }
+.nr1-shell .n1-priority p { margin: 4px 0; color: var(--n1-mut); line-height: 1.4; font-size: 11px; }
+.nr1-shell .n1-highlight { background: #faf5fd; border-radius: 12px; padding: 12px; border: 1px solid #ede1f1; margin-bottom: 9px; }
+.nr1-shell .n1-highlight:last-child { margin-bottom: 0; }
+.nr1-shell .n1-highlight strong { font-size: 12px; }
+.nr1-shell .n1-highlight p { margin: 4px 0 0; font-size: 11px; line-height: 1.5; color: #77677d; }
+.nr1-shell .n1-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.nr1-shell .n1-chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 99px; padding: 5px 9px; font-weight: 750; font-size: 10.5px; background: #faf0da; color: #8e6115; white-space: nowrap; }
+.nr1-shell .n1-chip.done { background: #e4f7ed; color: #107552; }
+.nr1-shell .n1-statrow { display: flex; align-items: center; justify-content: space-between; gap: 7px; margin: 11px 0; }
+.nr1-shell .n1-progress { height: 8px; border-radius: 10px; background: #eeeaf1; overflow: hidden; }
+.nr1-shell .n1-progress span { display: block; background: var(--n1-purple2); height: 100%; border-radius: 10px; }
+.nr1-shell .n1-smallbox { background: #fcfafd; border: 1px solid #ede7f0; border-radius: 12px; padding: 12px; }
+.nr1-shell .n1-mini-head { font-size: 12px; font-weight: 750; }
+.nr1-shell .n1-bodycopy { font-size: 12.5px; line-height: 1.65; color: #62586b; }
+.nr1-shell .n1-divider { height: 1px; background: var(--n1-line); margin: 16px 0; }
+.nr1-shell .n1-intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; margin-bottom: 20px; }
+.nr1-shell .n1-intro h1 { font-size: 31px; letter-spacing: -0.045em; margin: 7px 0; }
+.nr1-shell .n1-intro p { font-size: 13px; line-height: 1.55; color: var(--n1-mut); max-width: 800px; margin: 0; }
+.nr1-shell .n1-label { display: block; font-size: 11px; color: #6a5d71; font-weight: 750; margin-bottom: 6px; }
+.nr1-shell .n1-field { padding: 10px 11px; background: #fff; border-radius: 9px; border: 1px solid #ded7e4; width: 100%; color: var(--n1-ink); font-size: 12px; }
+.nr1-shell .n1-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+/* Campanha NR-1 e Minha jornada */
+.nr1-shell .n1-course { height: 100%; border-radius: 20px; padding: 22px; background: #fff; border: 1px solid #e7e1ed; box-shadow: var(--n1-shadow); display: flex; flex-direction: column; gap: 14px; }
+.nr1-shell .n1-course.included { background: linear-gradient(145deg, #e9f8f1, #fff 68%); border-color: #cdebdc; }
+.nr1-shell .n1-course.subscribed { background: linear-gradient(145deg, #f3e6fd, #fff 67%); border-color: #d8bce6; }
+.nr1-shell .n1-course.optional { background: linear-gradient(145deg, #f7f5f9, #fff 76%); border-color: #e9e5ec; }
+.nr1-shell .n1-course.optional > .n1-course-head,
+.nr1-shell .n1-course.optional > .n1-course-desc { opacity: 0.78; }
+.nr1-shell .n1-camptitle { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.nr1-shell .n1-camptitle .n1-pill { margin-left: auto; }
+.nr1-shell .n1-course-head { display: flex; align-items: flex-start; gap: 11px; }
+.nr1-shell .n1-course-icon { font-size: 24px; display: grid; place-items: center; flex: 0 0 48px; width: 48px; height: 48px; border-radius: 14px; background: #f0e2f8; color: #623277; }
+.nr1-shell .n1-course.included .n1-course-icon { background: #ddf4e8; color: #157e66; }
+.nr1-shell .n1-course.optional .n1-course-icon { background: #f1edf4; color: #907c9d; }
+.nr1-shell .n1-course-title { font-size: 17px; font-weight: 840; letter-spacing: -0.035em; line-height: 1.23; margin: 0 0 5px; }
+.nr1-shell .n1-course-desc { font-size: 12px; line-height: 1.65; color: #756b7a; margin: 0; }
+.nr1-shell .n1-course-rows { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+.nr1-shell .n1-variant { padding: 11px 12px; border-radius: 12px; background: #ffffffd9; border: 1px solid #ebe5ef; display: flex; gap: 10px; justify-content: space-between; align-items: center; }
+.nr1-shell .n1-variant.active { background: #f8efff; border-color: #d6b9e6; }
+.nr1-shell .n1-variant.optional { background: #fbfafc; color: #908a95; }
+.nr1-shell .n1-variant b { font-size: 12px; display: block; }
+.nr1-shell .n1-variant small { display: block; font-size: 10px; color: #837988; margin-top: 2px; }
+.nr1-shell .n1-setting { border-radius: 12px; background: #fbf8fd; border: 1px solid #ece3f1; padding: 13px 15px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.nr1-shell .n1-setting p { margin: 4px 0 0; color: #847a89; font-size: 11px; }
+.nr1-shell .n1-view-intro { background: linear-gradient(118deg, #583072, #874c9f 69%, #bc789e); border-radius: 20px; padding: 24px; color: #fff; position: relative; overflow: hidden; }
+.nr1-shell .n1-view-intro h1 { font-size: 30px; margin: 6px 0 10px; letter-spacing: -0.04em; }
+.nr1-shell .n1-view-intro p { font-size: 13px; color: #f4e6fa; line-height: 1.65; max-width: 700px; margin: 0 0 14px; }
+.nr1-shell .n1-view-intro .n1-eyebrow { color: #e6c8ee; }
+.nr1-shell .n1-emp-card { border-radius: 17px; border: 1px solid #e9e3ee; background: #fff; box-shadow: var(--n1-shadow); padding: 19px; height: 100%; }
+.nr1-shell .n1-emp-step { width: 37px; height: 37px; flex: 0 0 37px; display: grid; place-items: center; border-radius: 12px; background: #efe1f7; color: #694080; font-size: 18px; }
+.nr1-shell .n1-emp-card h2 { font-size: 15px; margin: 0 0 8px; }
+.nr1-shell .n1-emp-card p { color: #776c80; font-size: 12px; line-height: 1.65; margin: 14px 0; }
+.nr1-shell .n1-banner { background: #eaf8f2; color: #1e745d; border: 1px solid #ceeadd; border-radius: 11px; padding: 12px 15px; font-size: 12px; line-height: 1.55; }
+
+@media (max-width: 1110px) {
+    .nr1-shell .c3, .nr1-shell .c4 { grid-column: span 6; }
+    .nr1-shell .c5, .nr1-shell .c7, .nr1-shell .c8 { grid-column: span 12; }
+    .nr1-shell .n1-metricbar { grid-template-columns: 160px 1fr 44px 104px; }
+}
+@media (max-width: 780px) {
+    .nr1-shell .c3, .nr1-shell .c4, .nr1-shell .c5, .nr1-shell .c6, .nr1-shell .c7, .nr1-shell .c8 { grid-column: span 12; }
+    .nr1-shell .n1-hero h1 { font-size: 25px; }
+    .nr1-shell .n1-hero { padding: 22px 20px; }
+    .nr1-shell .n1-positive { grid-template-columns: 1fr; }
+    .nr1-shell .n1-metricbar { grid-template-columns: 130px 1fr 37px 64px; font-size: 10px; gap: 6px; }
+    .nr1-shell .n1-fields { grid-template-columns: 1fr; }
+    .nr1-shell .n1-priority { grid-template-columns: 28px 1fr; }
+    .nr1-shell .n1-priority .n1-pill { grid-column: 2; justify-self: start; }
+    .nr1-shell .n1-intro h1 { font-size: 25px; }
+}
+@media print {
+    .nr1-shell .n1-sidebar, .nr1-shell .n1-top, .nr1-shell .no-print { display: none !important; }
+}

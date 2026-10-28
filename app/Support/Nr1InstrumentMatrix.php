@@ -32,10 +32,13 @@ final class Nr1InstrumentMatrix
 
     public const SOURCE_CAMPAIGN_START = 'campaign_start';
 
+    public const SOURCE_IMPORT = 'import';
+
     /** Títulos semeados em TalentsSeeder; a identificação é por igualdade exata. */
     private const SEEDED_TITLES = [
         'NR-1 / COPSOQ (modelo Talents)' => self::CODE_COPSOQ_TALENTS,
         'HSE-IT / Management Standards (NR-1)' => self::CODE_HSE_IT,
+        'Talents NR-1 V11 (39 itens)' => self::CODE_TALENTS39,
     ];
 
     public static function instrumentCodeForTitle(string $title): string
@@ -45,11 +48,14 @@ final class Nr1InstrumentMatrix
 
     /**
      * A polaridade semeada do HSE-IT segue a convenção «maior = melhor», oposta a Nr1Scoring;
-     * até a auditoria ser aceita, o instrumento fica marcado como pendente.
+     * a do Talents 39 depende de homologação da responsável técnica. Até a auditoria ser aceita
+     * (nr1:accept-polarity), o instrumento fica pendente e os documentos AEP/PGR não são liberados.
      */
     public static function initialAuditStatus(string $instrumentCode): string
     {
-        return $instrumentCode === self::CODE_HSE_IT ? self::AUDIT_PENDING : self::AUDIT_NOT_FLAGGED;
+        return in_array($instrumentCode, [self::CODE_HSE_IT, self::CODE_TALENTS39], true)
+            ? self::AUDIT_PENDING
+            : self::AUDIT_NOT_FLAGGED;
     }
 
     /**

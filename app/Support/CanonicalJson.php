@@ -28,6 +28,12 @@ final class CanonicalJson
 
     private static function normalize(mixed $value): mixed
     {
+        // Decimal sem parte fracionária (39.0) vira inteiro (39): o JSON gravado no banco não guarda o ".0", então sem
+        // isso o hash calculado na emissão não se reproduziria a partir do snapshot relido (T20: hash estável).
+        if (is_float($value) && is_finite($value) && floor($value) === $value && abs($value) < 1.0e15) {
+            return (int) $value;
+        }
+
         if (! is_array($value)) {
             return $value;
         }

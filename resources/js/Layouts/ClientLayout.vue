@@ -27,8 +27,11 @@ import {
 } from '@heroicons/vue/24/outline';
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { brandThemeStyle } from '@/utils/brandTheme';
 
 const page = usePage();
+/** Com o shell NR-1 ligado, «Pesquisas NR1» abre o shell NR-1 (a lista antiga segue valendo por URL direta). */
+const nr1ShellUrl = computed(() => page.props.nr1Shell?.url ?? null);
 const { can } = usePermissions();
 
 const showVozDoTime = computed(
@@ -59,7 +62,7 @@ const portalBrand = computed(() => {
 const portalShellStyle = computed(() => {
     const color = portalBrand.value?.primary_color;
 
-    return color ? { '--portal-primary': color } : undefined;
+    return color ? { '--portal-primary': color, ...brandThemeStyle(color) } : undefined;
 });
 
 /** Href estável — evita crash se o Ziggy da sessão ainda não tiver a rota nova. */
@@ -104,8 +107,8 @@ const mapaPropositoActive = computed(() =>
                 />
                 <SidebarNavItem
                     v-if="can('pesquisas', 'view')"
-                    :href="route('client.surveys.index')"
-                    :active="route().current('client.surveys.*')"
+                    :href="nr1ShellUrl ?? route('client.surveys.index')"
+                    :active="route().current('client.surveys.*') || String(page.url ?? '').startsWith('/nr1')"
                     :icon="ClipboardDocumentListIcon"
                     label="Pesquisas NR1"
                     :collapsed="collapsed"

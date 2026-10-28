@@ -24,6 +24,12 @@ class ExecutiveBriefAdminController extends Controller
     {
         $this->assertSurveyBelongsToCompany($company, $survey);
 
+        if ($survey->usesReviewFlow()) {
+            return redirect()
+                ->route('admin.companies.surveys.action-plan.edit', [$company->id, $survey->id])
+                ->with('error', 'Nesta campanha os documentos seguem o fluxo de revisão, em Documentos.');
+        }
+
         $version = $this->service->release($survey);
 
         $redirect = redirect()->route('admin.companies.surveys.action-plan.edit', [$company->id, $survey->id]);

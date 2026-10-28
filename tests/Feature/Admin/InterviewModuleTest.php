@@ -19,7 +19,7 @@ class InterviewModuleTest extends TestCase
 
     public function test_super_admin_can_access_interviews_index(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $this->actingAs($admin)
             ->get(route('admin.entrevistas.index'))

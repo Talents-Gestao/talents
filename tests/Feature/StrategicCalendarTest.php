@@ -124,7 +124,7 @@ class StrategicCalendarTest extends TestCase
 
     public function test_super_admin_can_create_strategic_calendar_item(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $this->actingAs($admin)
             ->post('/admin/calendario-estrategico', [
@@ -375,7 +375,7 @@ class StrategicCalendarTest extends TestCase
 
     public function test_super_admin_can_create_item_with_date_range(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $this->actingAs($admin)
             ->post('/admin/calendario-estrategico', [
@@ -396,7 +396,7 @@ class StrategicCalendarTest extends TestCase
 
     public function test_date_range_and_recurrence_are_mutually_exclusive(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $this->actingAs($admin)
             ->post('/admin/calendario-estrategico', [
@@ -418,7 +418,7 @@ class StrategicCalendarTest extends TestCase
             'is_active' => true,
             'complaints_public_token' => (string) Str::uuid(),
         ]);
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $this->actingAs($admin)
             ->post('/admin/calendario-estrategico', [
@@ -669,7 +669,7 @@ class StrategicCalendarTest extends TestCase
     {
         Storage::fake('public');
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $item = StrategicCalendarItem::query()->create([
             'title' => 'Com material',
@@ -698,7 +698,7 @@ class StrategicCalendarTest extends TestCase
     {
         Storage::fake('public');
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $item = StrategicCalendarItem::query()->create([
             'title' => 'Com vídeo',
@@ -727,7 +727,7 @@ class StrategicCalendarTest extends TestCase
         Storage::fake('public');
         config(['strategic_calendar.max_attachment_kb' => 100]);
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $item = StrategicCalendarItem::query()->create([
             'title' => 'Com anexo grande',
@@ -825,7 +825,7 @@ class StrategicCalendarTest extends TestCase
         $company = $this->baseCompany();
         $company->update(['strategic_calendar_access' => true]);
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
 
         $this->actingAs($admin)
             ->post('/admin/calendario-estrategico', [

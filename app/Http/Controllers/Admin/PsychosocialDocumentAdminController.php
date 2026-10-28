@@ -33,6 +33,10 @@ class PsychosocialDocumentAdminController extends Controller
     {
         $this->assertSurveyBelongsToCompany($company, $survey);
 
+        if ($survey->usesReviewFlow()) {
+            return $this->backToPlan($company, $survey)->with('error', 'Nesta campanha os documentos seguem o fluxo de revisão, em Documentos.');
+        }
+
         try {
             $version = $this->documents->release($survey, PsychosocialDocument::TYPE_PGR_SUBSIDY);
         } catch (PsychosocialDocumentException $exception) {
@@ -47,6 +51,10 @@ class PsychosocialDocumentAdminController extends Controller
     public function releaseDossier(Request $request, Company $company, Survey $survey): RedirectResponse
     {
         $this->assertSurveyBelongsToCompany($company, $survey);
+
+        if ($survey->usesReviewFlow()) {
+            return $this->backToPlan($company, $survey)->with('error', 'Nesta campanha os documentos seguem o fluxo de revisão, em Documentos.');
+        }
 
         $data = $request->validate([
             'attachments' => ['nullable', 'array', 'max:20'],
@@ -130,6 +138,10 @@ class PsychosocialDocumentAdminController extends Controller
     public function validateInformed(Request $request, Company $company, Survey $survey, string $type): RedirectResponse
     {
         $this->assertSurveyBelongsToCompany($company, $survey);
+
+        if ($survey->usesReviewFlow()) {
+            return $this->backToPlan($company, $survey)->with('error', 'Nesta campanha os documentos seguem o fluxo de revisão, em Documentos.');
+        }
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],

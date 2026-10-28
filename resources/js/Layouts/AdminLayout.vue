@@ -24,6 +24,8 @@ import {
 
 const { canAdmin, canAdminAny } = useAdminPermissions();
 const page = usePage();
+/** «Oportunidades NR-1» (Comercial): só com o shell NR-1 ligado e a permissão nr1_oportunidades:view. */
+const nr1OpportunitiesUrl = computed(() => page.props.nr1Shell?.opportunitiesUrl ?? null);
 
 const activeHiringProcessesCount = computed(
     () => Number(page.props.nav?.active_hiring_processes_count ?? 0) || 0,
@@ -40,7 +42,9 @@ const showComercial = computed(
         canAdminAny([
             'comercial_propostas',
             'comercial_valores_contratos',
-        ]) || canCommercialSettings.value,
+        ]) ||
+        canCommercialSettings.value ||
+        nr1OpportunitiesUrl.value !== null,
 );
 
 /** Menu Assinaturas oculto temporariamente (rotas /admin/plans continuam ativas). */
@@ -55,6 +59,9 @@ const comercialFallbackHref = computed(() => {
     }
     if (showAssinaturasMenu && canAdmin('plans')) {
         return route('admin.plans.index');
+    }
+    if (nr1OpportunitiesUrl.value) {
+        return nr1OpportunitiesUrl.value;
     }
     return route('admin.dashboard');
 });
@@ -336,6 +343,15 @@ const isComercialSettingsTab = (tab) => {
                     :href="comercialSettingsContratosHref"
                     :active="isComercialSettingsTab('contratos')"
                     label="Contrato"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
+                    v-if="nr1OpportunitiesUrl"
+                    :href="nr1OpportunitiesUrl"
+                    :active="String(page.url ?? '').startsWith('/nr1/oportunidades')"
+                    label="Oportunidades NR-1"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"
@@ -638,6 +654,15 @@ const isComercialSettingsTab = (tab) => {
                     :href="route('admin.users.index')"
                     :active="route().current('admin.users.*')"
                     label="Equipe"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('equipe')"
+                    :href="route('admin.external-reviewers.index')"
+                    :active="route().current('admin.external-reviewers.*')"
+                    label="Revisores externos"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"

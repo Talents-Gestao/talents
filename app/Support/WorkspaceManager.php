@@ -102,6 +102,10 @@ class WorkspaceManager
             return redirect()->intended(app(AdminHomeResolver::class)->urlFor($user));
         }
 
+        if ($workspace->isExternalReview()) {
+            return redirect()->intended(route('external-review.index', absolute: false));
+        }
+
         return redirect()->intended(route('client.dashboard', absolute: false));
     }
 

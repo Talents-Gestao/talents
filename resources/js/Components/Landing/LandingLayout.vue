@@ -3,6 +3,7 @@ import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ContactForm from './ContactForm.vue';
+import LandingHeaderGlass from './LandingHeaderGlass.vue';
 
 const props = defineProps({
     title: { type: String, required: true },
@@ -10,6 +11,7 @@ const props = defineProps({
     canonical: { type: String, default: null },
     canLogin: Boolean,
     canRegister: Boolean,
+    redesign: Boolean,
 });
 
 const mobileOpen = ref(false);
@@ -79,7 +81,15 @@ defineExpose({ openContact });
     </Head>
 
     <div class="app-shell min-h-screen scroll-smooth text-slate-900">
-        <header class="landing-header">
+        <LandingHeaderGlass
+            v-if="redesign"
+            v-model:open="mobileOpen"
+            :nav-links="navLinks"
+            :can-login="canLogin"
+            :can-register="canRegister"
+            @contact="openContact"
+        />
+        <header v-else class="landing-header">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
                 <Link href="/" class="inline-flex shrink-0 items-center">
                     <img src="/images/logo.png" alt="Talents — Gestão de Pessoas" class="h-14 w-auto md:h-16" />

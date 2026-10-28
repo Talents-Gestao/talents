@@ -2,6 +2,8 @@
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import InfoTooltip from '@/Components/InfoTooltip.vue';
 import InputError from '@/Components/InputError.vue';
+import MeasureHistory from '@/Components/Nr1Plan/MeasureHistory.vue';
+import MeasureSuggestionForm from '@/Components/Nr1Plan/MeasureSuggestionForm.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
@@ -12,6 +14,8 @@ const props = defineProps({
     survey: { type: Object, required: true },
     measures: { type: Array, default: () => [] },
     statuses: { type: Object, required: true },
+    canEditSuggestion: { type: Boolean, default: true },
+    dueOrigins: { type: Object, default: () => ({}) },
 });
 
 const page = usePage();
@@ -146,6 +150,26 @@ const saveStatus = (measure) => {
                             Atualizar status
                         </button>
                     </form>
+
+                    <div class="w-full text-sm">
+                        <p class="text-xs text-slate-600">
+                            Plano: <span class="font-medium">{{ measure.plan.status_label }}</span>
+                            <template v-if="measure.plan.suggested.responsible"> · Responsável sugerido: {{ measure.plan.suggested.responsible }}</template>
+                            <template v-if="measure.plan.suggested.due_date"> · Prazo sugerido: {{ measure.plan.suggested.due_date }}</template>
+                        </p>
+                        <p v-if="measure.plan.confirmed" class="mt-1 text-xs text-emerald-800">
+                            Confirmado pela empresa em {{ measure.plan.confirmed.approved_at }}: {{ measure.plan.confirmed.responsible }}, prazo {{ measure.plan.confirmed.due_date }}.
+                        </p>
+                        <p v-else class="mt-1 text-xs text-slate-500">Responsável e prazo ainda não confirmados pela empresa.</p>
+
+                        <details v-if="canEditSuggestion" class="mt-2">
+                            <summary class="cursor-pointer text-xs font-medium text-slate-700">Editar sugestão</summary>
+                            <MeasureSuggestionForm :company-id="company.id" :survey-id="survey.id" :measure="measure" :due-origins="dueOrigins" />
+                        </details>
+                        <p v-else class="mt-2 text-xs text-slate-500">Campanha publicada: a sugestão não é mais editada pela Talents.</p>
+
+                        <MeasureHistory :history="measure.plan.history" />
+                    </div>
                 </li>
             </ul>
         </section>

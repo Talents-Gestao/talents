@@ -21,7 +21,7 @@ class CompanyActivityFieldsTest extends TestCase
             'complaints_public_token' => (string) Str::uuid(),
         ]);
 
-        $super = User::factory()->superAdmin()->create();
+        $super = User::factory()->talentsOwner()->create();
 
         $this->actingAs($super)
             ->put(route('admin.companies.update', $company), [
@@ -33,6 +33,9 @@ class CompanyActivityFieldsTest extends TestCase
                 'tasks_access_mode' => 'inherit',
                 'rhid_access_mode' => 'inherit',
                 'denuncias_access_mode' => 'inherit',
+                'ferias_access_mode' => 'inherit',
+                'desligamento_access_mode' => 'inherit',
+                'acompanhamento_access_mode' => 'inherit',
             ])
             ->assertRedirect(route('admin.companies.show', $company));
 
@@ -51,7 +54,7 @@ class CompanyActivityFieldsTest extends TestCase
             'complaints_public_token' => (string) Str::uuid(),
         ]);
 
-        $super = User::factory()->superAdmin()->create();
+        $super = User::factory()->talentsOwner()->create();
 
         $this->actingAs($super)
             ->put(route('admin.companies.update', $company), [

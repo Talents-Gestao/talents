@@ -1,34 +1,35 @@
 <?php
 
 use App\Http\Controllers\Client\AcompanhamentoController;
-use App\Http\Controllers\NewsFeedController;
 use App\Http\Controllers\Client\ActionPlanController;
+use App\Http\Controllers\Client\ActionPlanMeasureController;
+use App\Http\Controllers\Client\DocumentsController;
 use App\Http\Controllers\Client\ClientEvaluationController;
-use App\Http\Controllers\Client\ComplaintController;
-use App\Http\Controllers\Client\SuggestionController;
 use App\Http\Controllers\Client\CompanyNoticeController as ClientCompanyNoticeController;
+use App\Http\Controllers\Client\ComplaintController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\DepartmentController;
+use App\Http\Controllers\Client\ExecutiveBriefController;
+use App\Http\Controllers\Client\ExportController;
 use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
 use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
+use App\Http\Controllers\Client\ImportController;
 use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
 use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
-use App\Http\Controllers\Client\ExecutiveBriefController;
-use App\Http\Controllers\Client\ExportController;
-use App\Http\Controllers\Client\ImportController;
 use App\Http\Controllers\Client\PositionController;
 use App\Http\Controllers\Client\PsychosocialDashboardController;
 use App\Http\Controllers\Client\PsychosocialDocumentController;
+use App\Http\Controllers\Client\PurposeMapCampaignController;
 use App\Http\Controllers\Client\ReportController;
 use App\Http\Controllers\Client\RhidApiController;
 use App\Http\Controllers\Client\RhidComplianceController;
 use App\Http\Controllers\Client\RhidSettingsController;
 use App\Http\Controllers\Client\StrategicCalendarController as ClientStrategicCalendarController;
-use App\Http\Controllers\Client\PurposeMapCampaignController;
+use App\Http\Controllers\Client\SuggestionController;
+use App\Http\Controllers\Client\SurveyAudienceController;
 use App\Http\Controllers\Client\SurveyController;
 use App\Http\Controllers\Client\SurveyResultsController;
-use App\Http\Controllers\Client\VozDoTimeController;
 use App\Http\Controllers\Client\Tasks\BoardController as ClientTasksBoardController;
 use App\Http\Controllers\Client\Tasks\BoardFavoriteController as ClientTasksBoardFavoriteController;
 use App\Http\Controllers\Client\Tasks\CardAttachmentController as ClientTasksCardAttachmentController;
@@ -37,6 +38,8 @@ use App\Http\Controllers\Client\Tasks\CardCommentController as ClientTasksCardCo
 use App\Http\Controllers\Client\Tasks\CardController as ClientTasksCardController;
 use App\Http\Controllers\Client\Tasks\CardMoveController as ClientTasksCardMoveController;
 use App\Http\Controllers\Client\UserController;
+use App\Http\Controllers\Client\VozDoTimeController;
+use App\Http\Controllers\NewsFeedController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('client.')->group(function () {
@@ -74,25 +77,52 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
 
     Route::middleware('can.module:pesquisas')->group(function () {
         Route::resource('surveys', SurveyController::class)->except(['destroy']);
-        Route::get('surveys/{survey}/results', [SurveyResultsController::class, 'show'])->name('surveys.results');
+        Route::get('surveys/{survey}/results', [SurveyResultsController::class, 'show'])->middleware('survey.published')->name('surveys.results');
+        Route::get('surveys/{survey}/audiencias/{link}/qr', [SurveyAudienceController::class, 'qr'])->name('surveys.audiences.qr');
 
         Route::get('mapa-proposito', [PurposeMapCampaignController::class, 'index'])->name('mapa-proposito.index');
         Route::get('mapa-proposito/resultados', [PurposeMapCampaignController::class, 'show'])->name('mapa-proposito.dashboard');
     });
 
     Route::middleware('can.module:pesquisas,edit')->group(function () {
-        Route::post('surveys/{survey}/ai-analysis', [SurveyResultsController::class, 'generateAiAnalysis'])->name('surveys.ai-analysis');
+        Route::post('surveys/{survey}/ai-analysis', [SurveyResultsController::class, 'generateAiAnalysis'])->middleware('survey.published')->name('surveys.ai-analysis');
         Route::post('surveys/{survey}/recalculate', [SurveyResultsController::class, 'recalculate'])->name('surveys.recalculate');
+        Route::post('surveys/{survey}/audiencias', [SurveyAudienceController::class, 'store'])->name('surveys.audiences.store');
+        Route::patch('surveys/{survey}/audiencias/{link}', [SurveyAudienceController::class, 'update'])->name('surveys.audiences.update');
+        Route::post('surveys/{survey}/treinamentos/{modality}/{audience}/proposta', [\App\Http\Controllers\Client\CampaignTrainingController::class, 'requestProposal'])
+            ->whereIn('modality', ['online', 'presencial'])->whereIn('audience', ['time', 'lideres'])->name('surveys.trainings.request');
         Route::post('mapa-proposito/analisar', [PurposeMapCampaignController::class, 'analyze'])->name('mapa-proposito.analyze');
     });
 
-    Route::middleware('can.module:planos_acao')->group(function () {
+    // Soluções Talents: só depois de «Publicado»; pedir conversa exige edição em Pesquisas.
+    Route::middleware(['can.module:pesquisas', 'survey.published'])->group(function () {
+        Route::get('surveys/{survey}/solucoes', [\App\Http\Controllers\Client\SolutionsController::class, 'show'])->name('surveys.solutions');
+    });
+    Route::middleware(['can.module:pesquisas,edit', 'survey.published'])->group(function () {
+        Route::post('surveys/{survey}/solucoes/{match}/conversa', [\App\Http\Controllers\Client\SolutionsController::class, 'requestConversation'])->whereNumber('match')->name('surveys.solutions.request');
+    });
+
+    Route::middleware(['can.module:planos_acao', 'survey.published'])->group(function () {
         Route::get('surveys/{survey}/action-plan', [ActionPlanController::class, 'show'])->name('surveys.action-plan');
         Route::get('surveys/{survey}/action-plan/technical-opinion-file', [ActionPlanController::class, 'downloadTechnicalOpinionFile'])->name('surveys.action-plan.technical-opinion-file');
         Route::patch('action-plan-items/{item}', [ActionPlanController::class, 'updateItem'])->name('action-plan-items.update');
+        Route::get('surveys/{survey}/plano-de-acao', [ActionPlanMeasureController::class, 'show'])->name('surveys.measures.index');
+        Route::get('surveys/{survey}/plano-de-acao/{measure}/evidencias/{evidence}', [ActionPlanMeasureController::class, 'downloadEvidence'])
+            ->whereNumber(['measure', 'evidence'])->name('surveys.measures.evidences.download');
     });
 
-    Route::middleware('can.module:relatorios')->group(function () {
+    // Plano de ação (Caderno §11): a empresa confirma, executa e mede só depois de "Publicado" e com a ação `edit`.
+    Route::middleware(['can.module:planos_acao,edit', 'survey.published'])->prefix('surveys/{survey}/plano-de-acao/{measure}')->whereNumber('measure')->group(function () {
+        Route::post('confirmar', [ActionPlanMeasureController::class, 'confirm'])->name('surveys.measures.confirm');
+        Route::post('ajustar', [ActionPlanMeasureController::class, 'adjust'])->name('surveys.measures.adjust');
+        Route::post('iniciar', [ActionPlanMeasureController::class, 'start'])->name('surveys.measures.start');
+        Route::post('concluir', [ActionPlanMeasureController::class, 'complete'])->name('surveys.measures.complete');
+        Route::post('replanejar', [ActionPlanMeasureController::class, 'replan'])->name('surveys.measures.replan');
+        Route::post('evidencias', [ActionPlanMeasureController::class, 'storeEvidence'])->name('surveys.measures.evidences.store');
+        Route::post('eficacia', [ActionPlanMeasureController::class, 'recordEffectiveness'])->name('surveys.measures.effectiveness');
+    });
+
+    Route::middleware(['can.module:relatorios', 'survey.published'])->group(function () {
         Route::get('surveys/{survey}/reports/executive', [ReportController::class, 'executive'])->name('surveys.reports.executive');
         Route::get('surveys/{survey}/reports/technical', [ReportController::class, 'technical'])->name('surveys.reports.technical');
         Route::get('surveys/{survey}/reports/referral', [ReportController::class, 'referral'])->name('surveys.reports.referral');
@@ -102,16 +132,22 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('surveys/{survey}/painel-psicossocial', [PsychosocialDashboardController::class, 'show'])->name('surveys.psychosocial-dashboard');
         Route::get('surveys/{survey}/painel-psicossocial/export/csv', [PsychosocialDashboardController::class, 'exportCsv'])->name('surveys.psychosocial-dashboard.export.csv');
         Route::get('surveys/{survey}/painel-psicossocial/export/json', [PsychosocialDashboardController::class, 'exportJson'])->name('surveys.psychosocial-dashboard.export.json');
+        Route::get('surveys/{survey}/painel-psicossocial/export/perguntas', [PsychosocialDashboardController::class, 'exportItemsCsv'])->name('surveys.psychosocial-dashboard.export.items');
+        Route::get('surveys/{survey}/painel-psicossocial/imprimir', [PsychosocialDashboardController::class, 'print'])->name('surveys.psychosocial-dashboard.print');
         Route::get('surveys/{survey}/resumo-executivo/download', [ExecutiveBriefController::class, 'download'])->name('surveys.executive-brief.download');
+        Route::get('surveys/{survey}/documentos', [DocumentsController::class, 'index'])->name('surveys.documents.index');
         Route::get('surveys/{survey}/documentos/{type}/download', [PsychosocialDocumentController::class, 'download'])
-            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier', 'technical_report'])
             ->name('surveys.psychosocial-documents.download');
     });
 
-    Route::middleware('can.module:relatorios,validate')->group(function () {
+    Route::middleware(['can.module:relatorios,validate', 'survey.published'])->group(function () {
         Route::post('surveys/{survey}/documentos/{type}/validar', [PsychosocialDocumentController::class, 'validateInSystem'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
             ->name('surveys.psychosocial-documents.validate');
+        // Campanha V11: ciência da publicação (uma por publicação) e integração ao PGR (campo separado, com evidência).
+        Route::post('surveys/{survey}/documentos/ciencia', [DocumentsController::class, 'acknowledge'])->name('surveys.documents.acknowledge');
+        Route::post('surveys/{survey}/documentos/integracao-pgr', [DocumentsController::class, 'confirmPgrIntegration'])->name('surveys.documents.pgr-integration');
     });
 
     Route::middleware(['strategic_calendar', 'can.module:calendario_estrategico'])->group(function () {

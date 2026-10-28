@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Support\Complaints\ComplaintCompanyContext;
 use App\Support\Feedback\FeedbackCompanyContext;
 use App\Support\Notices\NoticeDestinationUrl;
+use App\Support\Notices\NoticeVisibility;
 use App\Support\Notices\UnreadNoticeCounter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -30,6 +31,8 @@ class CompanyNoticeController extends Controller
             ->with(['company:id,name', 'creator:id,name'])
             ->orderByDesc('published_at')
             ->orderByDesc('id');
+
+        NoticeVisibility::restrict($query, $request->user());
 
         if ($request->filled('company_id')) {
             $query->where('company_id', (int) $request->input('company_id'));

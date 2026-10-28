@@ -20,10 +20,14 @@ class PsychosocialDocument extends Model
 
     public const TYPE_EVIDENCE_DOSSIER = 'evidence_dossier';
 
+    /** Relatório técnico + plano de ação: o segundo documento final do fluxo V11 (Caderno §12). */
+    public const TYPE_TECHNICAL_REPORT = 'technical_report';
+
     public const TYPES = [
         self::TYPE_EXECUTIVE_BRIEF,
         self::TYPE_PGR_SUBSIDY,
         self::TYPE_EVIDENCE_DOSSIER,
+        self::TYPE_TECHNICAL_REPORT,
     ];
 
     protected $fillable = [

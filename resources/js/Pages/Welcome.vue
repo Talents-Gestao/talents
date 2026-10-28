@@ -13,16 +13,33 @@ import {
     UserPlusIcon,
 } from '@heroicons/vue/24/outline';
 import { Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, defineAsyncComponent } from 'vue';
+import HeroGlass from '@/Components/Landing/HeroGlass.vue';
+import HeroStagePlaceholder from '@/Components/Landing/hero/HeroStagePlaceholder.vue';
+import LandingAlem from '@/Components/Landing/LandingAlem.vue';
+import LandingFrentes from '@/Components/Landing/LandingFrentes.vue';
+import LandingPilaresBento from '@/Components/Landing/LandingPilaresBento.vue';
+import LandingRecrutamento from '@/Components/Landing/LandingRecrutamento.vue';
 import LandingButterflyPillars from '@/Components/Landing/LandingButterflyPillars.vue';
 import LandingCardGrid from '@/Components/Landing/LandingCardGrid.vue';
 import LandingHeroTypewriter from '@/Components/Landing/LandingHeroTypewriter.vue';
 import LandingLayout from '@/Components/Landing/LandingLayout.vue';
 import LandingRecruitmentPhaseCard from '@/Components/Landing/LandingRecruitmentPhaseCard.vue';
 
+// Direções da Hero (só em ambiente local): chunk próprio, carregado sob demanda.
+const HeroStage = defineAsyncComponent({
+    loader: () => import('@/Components/Landing/hero/HeroStage.vue'),
+    loadingComponent: HeroStagePlaceholder,
+    delay: 0,
+});
+
 defineProps({
     canLogin: Boolean,
     canRegister: Boolean,
+    heroGlass: Boolean,
+    heroDirection: { type: String, default: null },
+    heroPerf: Boolean,
+    redesign: Boolean,
 });
 
 const title = 'Talents — Contratação de Talentos e Consultoria em Gestão de Pessoas';
@@ -230,6 +247,7 @@ const organizationJsonLd = computed(() =>
         :description="description"
         :can-login="canLogin"
         :can-register="canRegister"
+        :redesign="redesign"
     >
         <template #head>
             <component :is="'script'" type="application/ld+json" head-key="jsonld-org">
@@ -237,6 +255,8 @@ const organizationJsonLd = computed(() =>
             </component>
         </template>
 
+        <HeroStage v-if="heroDirection" :direction="heroDirection" :perf="heroPerf" />
+        <HeroGlass v-else :enabled="heroGlass">
         <section class="relative overflow-hidden lg:min-h-[560px]">
             <div class="relative z-10 mx-auto max-w-6xl px-4 py-10 md:py-24 lg:py-28">
                 <div class="lg:max-w-[46%]">
@@ -259,7 +279,16 @@ const organizationJsonLd = computed(() =>
                 fetchpriority="high"
             />
         </section>
+        </HeroGlass>
 
+        <template v-if="redesign">
+            <LandingFrentes />
+            <LandingPilaresBento :pillars="methodologyPillars" />
+            <LandingRecrutamento :phases="recruitmentPhases" />
+            <LandingAlem :items="pillars" />
+        </template>
+
+        <template v-else>
         <section class="border-t border-white/20 bg-white/40 py-12 backdrop-blur-sm md:py-16">
             <div class="mx-auto max-w-6xl px-4">
                 <div class="max-w-3xl">
@@ -341,6 +370,8 @@ const organizationJsonLd = computed(() =>
                 </div>
             </div>
         </section>
+
+        </template>
 
         <section class="py-16">
             <div class="mx-auto max-w-6xl px-4">

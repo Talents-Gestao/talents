@@ -16,6 +16,7 @@ use App\Models\SurveyTemplate;
 use App\Models\User;
 use App\Services\ReceitaWsService;
 use App\Support\InvitationPassword;
+use App\Support\Nr1Shell\Nr1Shell;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -235,6 +236,13 @@ class CompanyController extends Controller
             'complaintsPublicUrl' => $company->complaints_public_token
                 ? url('/denuncia/'.$company->complaints_public_token)
                 : null,
+            // Entrada do shell NR-1 por pesquisa V11 (vazio com a flag desligada: a página fica como antes).
+            'nr1ShellUrls' => Nr1Shell::enabled()
+                ? $company->surveys
+                    ->filter(fn ($survey) => Nr1Shell::legacyEmbedded() || $survey->usesReviewFlow())
+                    ->mapWithKeys(fn ($survey) => [$survey->id => route('nr1.visao-geral', ['empresa' => $company->id, 'campanha' => $survey->id], false)])
+                    ->all()
+                : [],
             'plans' => Plan::query()->where('is_active', true)->get(),
             'templates' => SurveyTemplate::query()->where('is_active', true)->get(['id', 'title']),
             'methodologyTemplates' => MethodologyFormTemplate::query()->where('is_active', true)->orderBy('title')->get(['id', 'title']),

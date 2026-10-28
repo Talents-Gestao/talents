@@ -3,8 +3,14 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Enums\PermissionAction;
+use App\Enums\PermissionModule;
 use App\Models\Survey;
+use App\Services\Nr1\Nr1CampaignOverview;
+use App\Models\SurveyAudienceLink;
 use App\Models\SurveyTemplate;
+use App\Support\Nr1GroupPrivacy;
+use App\Support\SurveyPublicationGate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -31,7 +37,9 @@ class SurveyController extends Controller
             ->where('company_id', $this->companyId($request))
             ->with('template')
             ->orderByDesc('id')
-            ->paginate(20);
+            ->paginate(20)
+            // Resultados e plano só existem para a empresa depois de "Publicado" (T02): o link some até lá.
+            ->through(fn (Survey $survey) => $survey->setAttribute('results_available', SurveyPublicationGate::allows($survey)));
 
         return Inertia::render('Client/Surveys/Index', [
             'surveys' => $surveys,
@@ -58,7 +66,7 @@ class SurveyController extends Controller
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'status' => ['nullable', 'string', 'in:draft,active,closed'],
-            'min_responses_for_breakdown' => ['nullable', 'integer', 'min:1', 'max:1'],
+            'min_group_size' => ['nullable', 'integer', 'min:'.Nr1GroupPrivacy::FLOOR, 'max:1000'],
         ]);
 
         $template = SurveyTemplate::query()
@@ -74,13 +82,15 @@ class SurveyController extends Controller
             'starts_at' => $data['starts_at'] ?? now(),
             'ends_at' => $data['ends_at'] ?? now()->addMonth(),
             'status' => $data['status'] ?? 'active',
-            'min_responses_for_breakdown' => 1,
+            'min_group_size' => $data['min_group_size'] ?? Nr1GroupPrivacy::FLOOR,
+            // Campanhas novas só mostram resultado à empresa depois de "Publicado" (T02).
+            'requires_publication' => true,
         ]);
 
         return redirect()->route('client.surveys.show', $survey)->with('success', 'Campanha criada.');
     }
 
-    public function show(Request $request, Survey $survey): Response
+    public function show(Request $request, Survey $survey, Nr1CampaignOverview $overview): Response
     {
         $survey = $this->findSurvey($request, $survey);
         $survey->load('template');
@@ -90,9 +100,32 @@ class SurveyController extends Controller
         $completed = $survey->completedResponses()->count();
         $started = $survey->responses()->count();
 
+        $v11 = $survey->usesReviewFlow();
+
+        $audienceLinks = $survey->audienceLinks()->orderBy('audience')->get()->map(function (SurveyAudienceLink $link) use ($survey, $v11) {
+            // Campanha NR-1 V11: link e QR só existem para a empresa enquanto a campanha e o link estão abertos.
+            $open = ! $v11 || ($survey->publicParticipationClosureReason() === null && $link->closureReason() === null);
+
+            return [
+                'id' => $link->id,
+                'audience' => $link->audience,
+                'label' => $link->label(),
+                'url' => $open ? route('survey.public', ['token' => $link->token]) : null,
+                'qr_url' => $open ? route('client.surveys.audiences.qr', [$survey, $link]) : null,
+                'open' => $open,
+                'enabled' => $link->enabled,
+                'opens_at' => $link->opens_at?->format('Y-m-d\TH:i'),
+                'closes_at' => $link->closes_at?->format('Y-m-d\TH:i'),
+            ];
+        })->values();
+
         return Inertia::render('Client/Surveys/Show', [
             'survey' => $survey,
-            'publicUrl' => $publicUrl,
+            'publicUrl' => $audienceLinks->isEmpty() && (! $v11 || $survey->publicParticipationClosureReason() === null) ? $publicUrl : null,
+            'campaign' => $v11 ? $overview->build($survey, false) : null,
+            'canRequestProposal' => $v11 && $request->user()->canAccess(PermissionModule::Pesquisas, PermissionAction::Edit),
+            'audienceLinks' => $audienceLinks,
+            'resultsAvailable' => SurveyPublicationGate::allows($survey),
             'stats' => [
                 'started' => $started,
                 'completed' => $completed,
@@ -118,10 +151,11 @@ class SurveyController extends Controller
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'status' => ['required', 'in:draft,active,closed'],
-            'min_responses_for_breakdown' => ['nullable', 'integer', 'min:1', 'max:1'],
+            'min_group_size' => ['nullable', 'integer', 'min:'.Nr1GroupPrivacy::FLOOR, 'max:1000'],
         ]);
 
-        $data['min_responses_for_breakdown'] = 1;
+        // Piso 5: a campanha só pode subir o mínimo, nunca descer (nem por omissão do campo).
+        $data['min_group_size'] = max(Nr1GroupPrivacy::FLOOR, (int) ($data['min_group_size'] ?? $survey->min_group_size));
 
         $survey->update($data);
 

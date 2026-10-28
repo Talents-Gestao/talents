@@ -8,6 +8,7 @@ use App\Exceptions\PsychosocialDocumentException;
 use App\Http\Controllers\Controller;
 use App\Models\Survey;
 use App\Services\Psychosocial\PsychosocialDocumentService;
+use App\Services\Psychosocial\ReviewRoundService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -22,7 +23,10 @@ class PsychosocialDocumentController extends Controller
     {
         $this->authorizeSurvey($request, $survey);
 
-        $version = $this->documents->currentVersion($survey, $type);
+        // Campanha V11: só os dois documentos finais, e só a versão PUBLICADA (subsídio e dossiê ficam ocultos).
+        $version = $survey->usesReviewFlow()
+            ? app(ReviewRoundService::class)->publishedVersion($survey, $type)
+            : $this->documents->currentVersion($survey, $type);
         abort_if($version === null, 404);
 
         try {
@@ -40,6 +44,11 @@ class PsychosocialDocumentController extends Controller
         $this->authorizeSurvey($request, $survey);
         $user = $request->user();
         abort_if($user->isSuperAdmin() || $user->isOwner(), SymfonyResponse::HTTP_FORBIDDEN);
+
+        // Campanha V11: no lugar da validação, a empresa registra a CIÊNCIA da publicação (Documentos).
+        if ($survey->usesReviewFlow()) {
+            return back()->with('error', 'Nesta campanha a empresa registra a ciência da publicação, em Documentos.');
+        }
 
         $request->validate(
             ['declaration_accepted' => ['accepted']],

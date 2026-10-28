@@ -1,13 +1,19 @@
 <script setup>
+import Nr1DashboardHeader from '@/Components/Nr1Dashboard/Nr1DashboardHeader.vue';
+import Nr1PanelTabs from '@/Components/Nr1Dashboard/Nr1PanelTabs.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
     dashboard: { type: Object, required: true },
+    nextActions: { type: Array, default: () => [] },
+    campaigns: { type: Array, default: () => [] },
     executiveBrief: { type: Object, default: null },
     psychosocialDocuments: { type: Array, default: () => [] },
     canValidate: { type: Boolean, default: false },
     validationDeclaration: { type: String, default: '' },
+    documentsUrl: { type: String, default: null },
+    solutionsUrl: { type: String, default: null },
 });
 
 const validationForm = useForm({
@@ -23,15 +29,6 @@ const submitValidation = (type) => {
         onSuccess: () => validationForm.reset(),
     });
 };
-
-const bandClasses = {
-    green: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    yellow: 'bg-amber-50 text-amber-800 border-amber-200',
-    red: 'bg-red-50 text-red-800 border-red-200',
-};
-
-const formatScore = (score) => (score === null || score === undefined ? '—' : String(score).replace('.', ','));
-const bandClass = (riskLevel) => bandClasses[riskLevel] ?? 'bg-gray-50 text-gray-700 border-gray-200';
 </script>
 
 <template>
@@ -59,6 +56,40 @@ const bandClass = (riskLevel) => bandClasses[riskLevel] ?? 'bg-gray-50 text-gray
                         class="rounded-md bg-talents-700 px-3 py-1 text-sm font-semibold text-white"
                     >
                         Baixar resumo executivo
+                    </a>
+                    <Link
+                        v-if="documentsUrl"
+                        :href="documentsUrl"
+                        class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
+                    >
+                        Documentos
+                    </Link>
+                    <Link
+                        v-if="solutionsUrl"
+                        :href="solutionsUrl"
+                        class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
+                    >
+                        Soluções Talents
+                    </Link>
+                    <Link
+                        :href="route('client.surveys.measures.index', dashboard.survey.id)"
+                        class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
+                    >
+                        Plano de ação
+                    </Link>
+                    <a
+                        :href="route('client.surveys.psychosocial-dashboard.print', dashboard.survey.id)"
+                        target="_blank"
+                        rel="noopener"
+                        class="rounded-md bg-talents-700 px-3 py-1 text-sm font-semibold text-white"
+                    >
+                        Imprimir panorama
+                    </a>
+                    <a
+                        :href="route('client.surveys.psychosocial-dashboard.export.items', dashboard.survey.id)"
+                        class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
+                    >
+                        Exportar perguntas (CSV)
                     </a>
                     <a
                         :href="route('client.surveys.psychosocial-dashboard.export.csv', dashboard.survey.id)"
@@ -135,128 +166,15 @@ const bandClass = (riskLevel) => bandClasses[riskLevel] ?? 'bg-gray-50 text-gray
                 Os resultados desta campanha ainda não foram calculados.
             </div>
 
-            <div class="grid gap-4 md:grid-cols-3">
-                <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Índice geral</p>
-                    <template v-if="dashboard.overall">
-                        <p class="mt-2 text-3xl font-bold text-talents-900">{{ formatScore(dashboard.overall.score) }}</p>
-                        <span
-                            class="mt-2 inline-flex rounded-md border px-2 py-0.5 text-xs font-semibold"
-                            :class="bandClass(dashboard.overall.risk_level)"
-                        >
-                            {{ dashboard.overall.band_label }}
-                        </span>
-                        <p class="mt-2 text-xs text-gray-500">{{ dashboard.band_disclaimer }}</p>
-                    </template>
-                    <p v-else class="mt-2 text-3xl font-bold text-gray-400">—</p>
-                </div>
+            <Nr1DashboardHeader :header="dashboard.header" />
 
-                <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Respondentes</p>
-                    <p class="mt-2 text-3xl font-bold text-talents-900">{{ dashboard.respondents }}</p>
-                    <p v-if="dashboard.eligible.participation_label" class="mt-2 text-sm text-gray-700">
-                        {{ dashboard.eligible.participation_label }}
-                    </p>
-                    <p v-if="dashboard.eligible.respondents_hint" class="mt-2 text-sm text-gray-500">
-                        {{ dashboard.eligible.respondents_hint }}
-                    </p>
-                </div>
-
-                <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Elegíveis</p>
-                    <p class="mt-2 text-3xl font-bold text-talents-900">{{ dashboard.eligible.value_label }}</p>
-                    <p v-if="dashboard.eligible.hint" class="mt-2 text-sm text-gray-500">{{ dashboard.eligible.hint }}</p>
-                </div>
-            </div>
-
-            <p class="text-xs text-gray-600">
-                <span class="font-semibold">Legenda ({{ dashboard.method.code }}):</span> {{ dashboard.method.legend }}
-            </p>
-
-            <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <h3 class="text-base font-semibold text-talents-900">Dimensões</h3>
-                <table class="mt-3 w-full text-sm">
-                    <thead>
-                        <tr class="border-b text-left text-xs uppercase text-gray-500">
-                            <th class="py-2">Dimensão</th>
-                            <th class="py-2">n</th>
-                            <th class="py-2">Índice</th>
-                            <th class="py-2">Faixa</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="dimension in dashboard.dimensions" :key="dimension.section_id" class="border-b last:border-0">
-                            <td class="py-2">{{ dimension.title }}</td>
-                            <td class="py-2">{{ dimension.n }}</td>
-                            <td class="py-2 font-semibold">{{ formatScore(dimension.score) }}</td>
-                            <td class="py-2">
-                                <span class="inline-flex rounded-md border px-2 py-0.5 text-xs font-semibold" :class="bandClass(dimension.risk_level)">
-                                    {{ dimension.band_label }}
-                                </span>
-                                <span class="ml-2 text-xs text-gray-500">{{ dashboard.band_disclaimer }}</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </section>
-
-            <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <h3 class="text-base font-semibold text-talents-900">Setores</h3>
-                <p class="mt-1 text-xs text-gray-500">
-                    Setores com menos de {{ dashboard.min_group_size }} respondentes não são exibidos, e outros setores pequenos podem ser
-                    ocultados para impedir a identificação por subtração.
-                </p>
-                <p v-if="dashboard.sectors.length === 0" class="mt-3 text-sm text-gray-600">Nenhum setor pode ser exibido nesta campanha.</p>
-                <div v-for="sector in dashboard.sectors" :key="sector.department_id" class="mt-4 rounded-lg border border-gray-100 p-4">
-                    <div class="flex flex-wrap items-center gap-3">
-                        <p class="font-semibold text-talents-900">{{ sector.department_name }}</p>
-                        <span class="text-xs text-gray-500">n = {{ sector.n }}</span>
-                        <span class="font-semibold">{{ formatScore(sector.score) }}</span>
-                        <span class="inline-flex rounded-md border px-2 py-0.5 text-xs font-semibold" :class="bandClass(sector.risk_level)">
-                            {{ sector.band_label }}
-                        </span>
-                        <span class="text-xs text-gray-500">{{ dashboard.band_disclaimer }}</span>
-                    </div>
-                    <ul class="mt-2 space-y-1 text-sm">
-                        <li v-for="dimension in sector.dimensions" :key="dimension.section_id" class="flex flex-wrap items-center gap-2">
-                            <span class="text-gray-700">{{ dimension.title }}</span>
-                            <span class="font-semibold">{{ formatScore(dimension.score) }}</span>
-                            <span class="inline-flex rounded-md border px-2 py-0.5 text-xs font-semibold" :class="bandClass(dimension.risk_level)">
-                                {{ dimension.band_label }}
-                            </span>
-                            <span class="text-xs text-gray-500">{{ dashboard.band_disclaimer }}</span>
-                        </li>
-                    </ul>
-                </div>
-            </section>
-
-            <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <h3 class="text-base font-semibold text-talents-900">Itens</h3>
-                <table class="mt-3 w-full text-sm">
-                    <thead>
-                        <tr class="border-b text-left text-xs uppercase text-gray-500">
-                            <th class="py-2">Dimensão</th>
-                            <th class="py-2">Item</th>
-                            <th class="py-2">n</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="item in dashboard.items" :key="item.id" class="border-b last:border-0">
-                            <td class="py-2 text-gray-600">{{ item.section_title }}</td>
-                            <td class="py-2">{{ item.body }}</td>
-                            <td class="py-2">
-                                {{ item.n }}
-                                <span
-                                    v-if="item.quality_alert"
-                                    class="ml-2 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800"
-                                >
-                                    Alerta de qualidade: n diferente dos {{ dashboard.respondents }} respondentes
-                                </span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </section>
+            <Nr1PanelTabs
+                :dashboard="dashboard"
+                :next-actions="nextActions"
+                :campaigns="campaigns"
+                :plan-url="route('client.surveys.measures.index', dashboard.survey.id)"
+                :print-url="route('client.surveys.psychosocial-dashboard.print', dashboard.survey.id)"
+            />
         </div>
     </ClientLayout>
 </template>

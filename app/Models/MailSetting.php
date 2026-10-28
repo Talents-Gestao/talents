@@ -52,6 +52,20 @@ class MailSetting extends Model
         return ($password !== null && $password !== '') ? $password : null;
     }
 
+    /**
+     * SMTP configurado e ligado no painel (com senha legível): só então os avisos do NR-1 também saem por e-mail.
+     */
+    public static function smtpConfigured(): bool
+    {
+        if (! Schema::hasTable('mail_settings')) {
+            return false;
+        }
+
+        $row = static::current();
+
+        return $row !== null && $row->is_enabled && ! empty($row->host) && $row->safePassword() !== null;
+    }
+
     public static function applyToRuntimeConfig(): void
     {
         if (! Schema::hasTable('mail_settings')) {

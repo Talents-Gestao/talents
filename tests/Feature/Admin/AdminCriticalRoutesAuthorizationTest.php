@@ -38,7 +38,7 @@ class AdminCriticalRoutesAuthorizationTest extends TestCase
 
     public function test_super_admin_can_access_admin_companies_index(): void
     {
-        $this->actingAs(User::factory()->superAdmin()->create())
+        $this->actingAs(User::factory()->talentsOwner()->create())
             ->get('/admin/companies')
             ->assertOk();
     }
@@ -52,7 +52,7 @@ class AdminCriticalRoutesAuthorizationTest extends TestCase
 
     public function test_super_admin_can_access_admin_plans_index(): void
     {
-        $this->actingAs(User::factory()->superAdmin()->create())
+        $this->actingAs(User::factory()->talentsOwner()->create())
             ->get('/admin/plans')
             ->assertOk();
     }
@@ -66,7 +66,7 @@ class AdminCriticalRoutesAuthorizationTest extends TestCase
 
     public function test_super_admin_can_access_admin_survey_templates_index(): void
     {
-        $this->actingAs(User::factory()->superAdmin()->create())
+        $this->actingAs(User::factory()->talentsOwner()->create())
             ->get('/admin/survey-templates')
             ->assertOk();
     }
@@ -87,7 +87,7 @@ class AdminCriticalRoutesAuthorizationTest extends TestCase
 
     public function test_super_admin_can_access_admin_landing_interest_index(): void
     {
-        $this->actingAs(User::factory()->superAdmin()->create())
+        $this->actingAs(User::factory()->talentsOwner()->create())
             ->get('/admin/interessados-landing')
             ->assertOk();
     }

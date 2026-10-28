@@ -61,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(TaskBoard::class, TaskBoardPolicy::class);
         Gate::policy(TaskCard::class, TaskCardPolicy::class);
         Gate::policy(TaskComment::class, TaskCommentPolicy::class);
+        Gate::policy(\App\Models\PsychosocialDocumentVersion::class, \App\Policies\PsychosocialDocumentVersionPolicy::class);
 
         Vite::prefetch(concurrency: 3);
 

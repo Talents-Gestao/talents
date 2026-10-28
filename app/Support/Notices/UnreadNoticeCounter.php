@@ -40,6 +40,8 @@ class UnreadNoticeCounter
                         ->where('company_id', $companyId);
                 }
 
+                NoticeVisibility::restrict($query, $user);
+
                 return (int) $query
                     ->whereNotExists(function ($sub) use ($user): void {
                         $sub->selectRaw('1')
@@ -113,12 +115,12 @@ class UnreadNoticeCounter
 
         // Admin Talents: talents + company de qualquer empresa.
         if ($audience === CompanyNoticeAudience::Talents) {
-            return $query;
+            return NoticeVisibility::restrict($query, $user);
         }
 
-        return $query
+        return NoticeVisibility::restrict($query
             ->where('audience', $audience->value)
-            ->where('company_id', $companyId);
+            ->where('company_id', $companyId), $user);
     }
 
     /**

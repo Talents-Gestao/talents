@@ -196,6 +196,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.measures.edit');
         Route::post('companies/{company}/surveys/{survey}/medidas', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'store'])
             ->name('companies.surveys.measures.store');
+        Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}/sugestao', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateSuggestion'])
+            ->name('companies.surveys.measures.suggestion');
         Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateStatus'])
             ->name('companies.surveys.measures.status');
         Route::get('companies/{company}/surveys/{survey}/documentos/{type}/download', [PsychosocialDocumentAdminController::class, 'download'])
@@ -204,6 +206,46 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('companies/{company}/surveys/{survey}/documentos/{type}/validacao-informada', [PsychosocialDocumentAdminController::class, 'validateInformed'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
             ->name('companies.surveys.psychosocial-documents.validate-informed');
+        Route::post('companies/{company}/surveys/{survey}/documentos/{type}/compartilhar', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'store'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->name('companies.surveys.psychosocial-documents.share');
+        // Campanha NR-1 V11: treinamentos contratados por público e total de elegíveis (só a Talents).
+        Route::get('companies/{company}/surveys/{survey}/campanha-nr1', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'show'])
+            ->name('companies.surveys.campaign.show');
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/contratar', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'contract'])
+            ->name('companies.surveys.campaign.contract');
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/remover-contratacao', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'uncontract'])
+            ->name('companies.surveys.campaign.uncontract');
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/elegiveis', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'updateEligible'])
+            ->name('companies.surveys.campaign.eligible');
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/convite-unico', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'updateInvitationOption'])
+            ->name('companies.surveys.campaign.invitation-option');
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/convites', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'generateInvitations'])
+            ->name('companies.surveys.campaign.invitations');
+        // Painel de resultados V11 para a consultoria e Revisão interna (Caderno §9): nada disso chega à empresa.
+        Route::get('companies/{company}/surveys/{survey}/resultados-psicossociais', [\App\Http\Controllers\Admin\PsychosocialResultsAdminController::class, 'show'])
+            ->name('companies.surveys.results.show');
+        Route::post('companies/{company}/surveys/{survey}/revisao-interna', [\App\Http\Controllers\Admin\PsychosocialResultsAdminController::class, 'storeInternalReview'])
+            ->middleware('mfa:stepup')->name('companies.surveys.internal-review.store');
+        // Fluxo de revisão dos dois documentos finais (campanha V11): Em edição → … → Publicado.
+        Route::get('companies/{company}/surveys/{survey}/documentos', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'index'])
+            ->name('companies.surveys.documents.index');
+        Route::post('companies/{company}/surveys/{survey}/documentos/revisao', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'start'])
+            ->name('companies.surveys.documents.start');
+        Route::post('companies/{company}/surveys/{survey}/documentos/exigir-revisao', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'updateReviewRequirement'])
+            ->name('companies.surveys.documents.review-requirement');
+        Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/gerar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'regenerate'])
+            ->whereNumber('round')->name('companies.surveys.documents.regenerate');
+        Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/enviar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'send'])
+            ->whereNumber('round')->name('companies.surveys.documents.send');
+        Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/publicar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'publish'])
+            ->whereNumber('round')->middleware('mfa:stepup')->name('companies.surveys.documents.publish');
+        Route::get('companies/{company}/surveys/{survey}/documentos/versoes/{version}/download', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'download'])
+            ->whereNumber('version')->name('companies.surveys.documents.download');
+        Route::post('companies/{company}/surveys/{survey}/publicar', [\App\Http\Controllers\Admin\SurveyPublicationAdminController::class, 'publish'])
+            ->name('companies.surveys.publication.store');
+        Route::delete('companies/{company}/document-shares/{share}', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'revoke'])
+            ->name('companies.document-shares.revoke');
         Route::get('companies/{company}/surveys/{survey}/action-plan/pdf', [ActionPlanAdminController::class, 'pdf'])
             ->name('companies.surveys.action-plan.pdf');
         Route::match(['get', 'post'], 'companies/{company}/surveys/{survey}/action-plan/document-pdf', [ActionPlanAdminController::class, 'documentPdf'])
@@ -222,6 +264,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.technical-opinion-file.download');
         Route::get('companies/{company}/surveys/{survey}/nr1-reports/{type}', [ActionPlanAdminController::class, 'downloadNr1Report'])
             ->name('companies.surveys.nr1-reports.download');
+        Route::get('companies/{company}/surveys/{survey}/dados-brutos/csv', [\App\Http\Controllers\Admin\SurveyRawExportController::class, 'csv'])
+            ->middleware(['admin.can:nr1_dados_brutos,view', 'mfa:stepup'])
+            ->name('companies.surveys.raw-export.csv');
         Route::get('mapa-proposito', [PurposeMapCampaignController::class, 'index'])
             ->name('mapa-proposito.index');
         Route::get('mapa-proposito/resultados', [PurposeMapCampaignController::class, 'show'])
@@ -251,6 +296,21 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::middleware('admin.can:companies_contratos_fechados')->group(function () {
         Route::get('contratos-fechados', [ClosedContractsController::class, 'index'])
             ->name('contratos-fechados.index');
+    });
+
+    Route::middleware('admin.can:nr1_oportunidades,view')->prefix('oportunidades-nr1')->name('nr1-opportunities.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'index'])->name('index');
+        Route::get('fila/{opportunity}', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'showOpportunity'])
+            ->whereNumber('opportunity')->name('opportunity');
+        Route::get('{survey}', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'show'])
+            ->whereNumber('survey')->name('show');
+    });
+
+    // Trabalhar a fila (assumir, estado, próxima ação) exige edição no módulo; só ver não basta.
+    Route::middleware('admin.can:nr1_oportunidades,edit')->prefix('oportunidades-nr1/fila')->name('nr1-opportunities.')->group(function () {
+        Route::post('{opportunity}/assumir', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'assume'])->whereNumber('opportunity')->name('assume');
+        Route::post('{opportunity}/estado', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'changeStatus'])->whereNumber('opportunity')->name('status');
+        Route::post('{opportunity}/proxima-acao', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'nextAction'])->whereNumber('opportunity')->name('next-action');
     });
 
     Route::middleware('admin.can:rhid')->get('rhid/{path?}', function () {
@@ -429,6 +489,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     });
 
     Route::middleware('admin.can:methodology')->group(function () {
+        // Regras de recomendação das Soluções Talents (dimensão em atenção → serviço), revisadas pela Talents.
+        Route::get('solucoes-nr1', [\App\Http\Controllers\Admin\ServiceMatchAdminController::class, 'index'])->name('service-matches.index');
+        Route::patch('solucoes-nr1/{match}', [\App\Http\Controllers\Admin\ServiceMatchAdminController::class, 'update'])->whereNumber('match')->name('service-matches.update');
+        Route::post('solucoes-nr1/{match}/revisar', [\App\Http\Controllers\Admin\ServiceMatchAdminController::class, 'approve'])->whereNumber('match')->name('service-matches.approve');
         Route::get('metodologia', [AdminMethodologyController::class, 'index'])->name('metodologia.index');
         Route::resource('methodology-templates', MethodologyFormTemplateController::class)
             ->parameters(['methodology-templates' => 'template']);
@@ -670,5 +734,11 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
         Route::match(['put', 'patch'], 'users/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::delete('users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
+        Route::post('users/{user}/mfa/reset', [\App\Http\Controllers\Admin\MfaResetController::class, 'store'])->whereNumber('user')->name('users.mfa.reset');
+        // Revisores externos (PASSEG): cadastro e convite pela Talents. Não liberam acesso com a revisão externa desligada.
+        Route::get('revisores-externos', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'index'])->name('external-reviewers.index');
+        Route::post('revisores-externos', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'store'])->name('external-reviewers.store');
+        Route::post('revisores-externos/{user}/reenviar-convite', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'resend'])->whereNumber('user')->name('external-reviewers.resend');
+        Route::post('revisores-externos/{user}/ativo', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'toggle'])->whereNumber('user')->name('external-reviewers.toggle');
     });
 });

@@ -4,7 +4,10 @@ namespace App\Services;
 
 use App\Models\AiSetting;
 use App\Models\Survey;
+use App\Models\SurveyMethodVersion;
 use App\Models\SurveyResult;
+use App\Support\Nr1BandLabels;
+use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1Scoring;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -86,6 +89,15 @@ PROMPT;
         $userContent = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         $systemPrompt = $this->systemPromptForType($type);
 
+        // Campanhas V11: o parecer usa os rótulos de percepção, não Leve/Moderado/Grave.
+        if (SurveyMethodVersion::query()->whereKey($survey->method_version_id)->value('code') === SurveyMethodVersion::CODE_TALENTS39_V1) {
+            $systemPrompt = str_replace(
+                '**Leve**, **Moderado** e **Grave**',
+                '**Menor sinalização**, **Atenção** e **Maior sinalização** (faixas de percepção do questionário, não classificação de risco ocupacional)',
+                $systemPrompt,
+            );
+        }
+
         return match ($setting->provider) {
             'anthropic' => $this->callAnthropic($setting, $userContent, $systemPrompt),
             default => $this->callOpenAi($setting, $userContent, $systemPrompt),
@@ -98,6 +110,7 @@ PROMPT;
     public function buildAggregatedPayload(Survey $survey): array
     {
         $survey->load(['template.sections', 'company']);
+        $methodCode = SurveyMethodVersion::query()->whereKey($survey->method_version_id)->value('code');
 
         $results = SurveyResult::query()
             ->where('survey_id', $survey->id)
@@ -114,17 +127,21 @@ PROMPT;
             ->map(fn ($r) => [
                 'dimension' => data_get($r->meta, 'section_title') ?? $r->section?->title ?? 'Dimensão',
                 'average_score' => round((float) $r->average_score, 2),
-                'risk_level' => Nr1Scoring::riskLabel($r->risk_level),
+                'risk_level' => Nr1Scoring::riskLabel($r->risk_level, $methodCode),
                 'respondent_count' => $r->respondent_count,
             ])
             ->all();
 
+        // Setor pequeno nunca vai ao provedor de IA: só os publicáveis pela política de grupo.
+        $visibleDepartments = Nr1GroupPrivacy::publishableDepartmentIdsForSurvey($survey);
+
         $deptOveralls = $results
-            ->filter(fn ($r) => $r->department_id !== null && $r->survey_template_section_id === null)
+            ->filter(fn ($r) => $r->department_id !== null && $r->survey_template_section_id === null
+                && in_array((int) $r->department_id, $visibleDepartments, true))
             ->map(fn ($r) => [
                 'department' => $r->department?->name ?? 'Setor',
                 'average_score' => round((float) $r->average_score, 2),
-                'risk_level' => Nr1Scoring::riskLabel($r->risk_level),
+                'risk_level' => Nr1Scoring::riskLabel($r->risk_level, $methodCode),
                 'respondent_count' => $r->respondent_count,
             ])
             ->values()
@@ -132,13 +149,14 @@ PROMPT;
 
         $deptSectionResults = $results->filter(
             fn ($r) => $r->department_id !== null && $r->survey_template_section_id !== null
+                && in_array((int) $r->department_id, $visibleDepartments, true)
         );
 
         $byDeptAndDimension = $deptSectionResults->map(fn ($r) => [
             'department' => $r->department?->name ?? 'Setor',
             'dimension' => data_get($r->meta, 'section_title') ?? $r->section?->title ?? 'Dimensão',
             'average_score' => round((float) $r->average_score, 2),
-            'risk_level' => Nr1Scoring::riskLabel($r->risk_level),
+            'risk_level' => Nr1Scoring::riskLabel($r->risk_level, $methodCode),
             'respondent_count' => $r->respondent_count,
         ])->values()->all();
 
@@ -147,16 +165,17 @@ PROMPT;
             'company' => $survey->company?->name ?? 'Empresa',
             'methodology' => config('nr1.methodology'),
             'scale' => config('nr1.scale'),
-            'score_interpretation' => 'Média Likert 1–5: quanto maior, maior o risco. Faixas oficiais: 1,00–2,33 Leve; 2,34–3,66 Moderado; 3,67–5,00 Grave. Nunca use nomes de cores.',
-            'risk_level_names' => [
-                'Leve' => '1,00–2,33',
-                'Moderado' => '2,34–3,66',
-                'Grave' => '3,67–5,00',
-            ],
-            'min_responses_for_breakdown' => $survey->min_responses_for_breakdown,
+            'score_interpretation' => $methodCode === SurveyMethodVersion::CODE_TALENTS39_V1
+                ? 'Média 1–5 de sinalização: quanto maior, maior a sinalização de atenção. Faixas do questionário (percepção, não classificação de risco ocupacional): 1,00–2,33 Menor sinalização; 2,34–3,66 Atenção; 3,67–5,00 Maior sinalização. Nunca use nomes de cores.'
+                : 'Média Likert 1–5: quanto maior, maior o risco. Faixas oficiais: 1,00–2,33 Leve; 2,34–3,66 Moderado; 3,67–5,00 Grave. Nunca use nomes de cores.',
+            'risk_level_names' => array_combine(
+                array_values(Nr1BandLabels::labels($methodCode)),
+                ['1,00–2,33', '2,34–3,66', '3,67–5,00'],
+            ),
+            'min_group_size' => Nr1GroupPrivacy::minFor($survey),
             'overall' => $overall ? [
                 'average_score' => round((float) $overall->average_score, 2),
-                'risk_level' => Nr1Scoring::riskLabel($overall->risk_level),
+                'risk_level' => Nr1Scoring::riskLabel($overall->risk_level, $methodCode),
                 'respondent_count' => $overall->respondent_count,
             ] : null,
             'by_dimension' => $bySection,

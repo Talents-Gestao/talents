@@ -26,7 +26,7 @@ class MonthlyHighlightTest extends TestCase
 
     public function test_super_admin_can_open_index(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $company = Company::query()->create(['name' => 'Empresa Destaque', 'is_active' => true]);
 
         CompanyMonthlyHighlight::query()->create([
@@ -52,7 +52,7 @@ class MonthlyHighlightTest extends TestCase
     {
         Storage::fake('public');
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $company = Company::query()->create(['name' => 'Empresa Foto', 'is_active' => true]);
 
         $this->actingAs($admin)
@@ -89,7 +89,7 @@ class MonthlyHighlightTest extends TestCase
     {
         Storage::fake('public');
 
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $company = Company::query()->create(['name' => 'Empresa Del', 'is_active' => true]);
 
         $path = UploadedFile::fake()->image('x.jpg')->store('monthly-highlights/1', 'public');

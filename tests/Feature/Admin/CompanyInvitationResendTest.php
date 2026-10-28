@@ -16,6 +16,28 @@ class CompanyInvitationResendTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_super_admin_without_permission_cannot_resend_invitation(): void
+    {
+        Mail::fake();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Pendente',
+            'contact_email' => 'admin@empresa.test',
+            'cnpj' => '22.222.222/0001-22',
+            'is_active' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+        ]);
+        User::factory()->companyAdmin($company->id)->pendingRegistration()->create(['email' => 'admin@empresa.test']);
+
+        $super = User::factory()->superAdmin()->create(['is_owner' => false]);
+
+        $this->actingAs($super)
+            ->post(route('admin.companies.resend-invitation', $company))
+            ->assertForbidden();
+
+        Mail::assertNothingSent();
+    }
+
     public function test_super_admin_can_resend_company_registration_invitation(): void
     {
         Mail::fake();
@@ -32,7 +54,7 @@ class CompanyInvitationResendTest extends TestCase
             'email' => 'admin@empresa.test',
         ]);
 
-        $super = User::factory()->superAdmin()->create();
+        $super = User::factory()->talentsOwner()->create();
 
         $this->actingAs($super)
             ->post(route('admin.companies.resend-invitation', $company))
@@ -58,7 +80,7 @@ class CompanyInvitationResendTest extends TestCase
             'email' => 'ok@empresa.test',
         ]);
 
-        $super = User::factory()->superAdmin()->create();
+        $super = User::factory()->talentsOwner()->create();
 
         $this->actingAs($super)
             ->post(route('admin.companies.resend-invitation', $company))
@@ -82,7 +104,7 @@ class CompanyInvitationResendTest extends TestCase
             'email' => 'ok@empresa.test',
         ]);
 
-        $super = User::factory()->superAdmin()->create();
+        $super = User::factory()->talentsOwner()->create();
 
         $this->actingAs($super)
             ->post(route('admin.companies.resend-invitation', $company))
@@ -115,7 +137,7 @@ class CompanyInvitationResendTest extends TestCase
             'complaints_public_token' => (string) Str::uuid(),
         ]);
 
-        $super = User::factory()->superAdmin()->create();
+        $super = User::factory()->talentsOwner()->create();
 
         $pendingAdmin = User::factory()->companyAdmin($company->id)->pendingRegistration()->create([
             'email' => 'admin@empresa.test',

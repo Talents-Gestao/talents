@@ -3,28 +3,35 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Models\PsychosocialAccessLog;
 use App\Models\Survey;
 use App\Services\Nr1AiAnalyzer;
+use App\Services\PsychosocialDashboardBuilder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * Exportações da empresa: somente dados agregados, já filtrados pela política de grupo.
+ * A exportação linha a linha não existe para a empresa; o dado bruto é interno da Talents
+ * (Admin\SurveyRawExportController, com permissão específica e registro de auditoria).
+ */
 class ExportController extends Controller
 {
+    private const CSV_COLUMNS = ['recorte', 'setor', 'dimensao', 'n', 'indice_gravado', 'faixa_gravada', 'faixa', 'metodo', 'observacao'];
+
     private function companyId(Request $request): int
     {
         return (int) $request->user()->company_id;
     }
 
-    public function json(Request $request, Survey $survey, Nr1AiAnalyzer $analyzer): Response
+    public function json(Request $request, Survey $survey, Nr1AiAnalyzer $analyzer): JsonResponse
     {
         abort_unless($survey->company_id === $this->companyId($request), 404);
 
         $survey->load(['template.sections.questions', 'company']);
 
-        $aggregated = $analyzer->buildAggregatedPayload($survey);
-
-        $raw = $this->buildRawRows($survey);
+        $this->logAccess($request, $survey, 'export_json');
 
         return response()->json([
             'exported_at' => now()->toIso8601String(),
@@ -34,121 +41,39 @@ class ExportController extends Controller
                 'company' => $survey->company?->name,
                 'template_title' => $survey->template?->title,
             ],
-            'aggregated' => $aggregated,
-            'responses_anonymized' => $raw,
+            'aggregated' => $analyzer->buildAggregatedPayload($survey),
         ], 200, [], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
 
-    public function csv(Request $request, Survey $survey): StreamedResponse
+    public function csv(Request $request, Survey $survey, PsychosocialDashboardBuilder $builder): StreamedResponse
     {
         abort_unless($survey->company_id === $this->companyId($request), 404);
 
-        $survey->load([
-            'template.sections.questions',
-            'company.departments',
-            'completedResponses.answers',
-        ]);
+        $rows = $builder->exportRows($builder->build($survey));
+        $this->logAccess($request, $survey, 'export_csv');
 
-        $deptNames = $survey->company?->departments->keyBy('id') ?? collect();
-
-        $questionMeta = [];
-        foreach ($survey->template?->sections ?? [] as $section) {
-            foreach ($section->questions as $q) {
-                $questionMeta[$q->id] = [
-                    'dimension' => $section->title,
-                    'body' => $q->body,
-                ];
-            }
-        }
-
-        $filename = 'talents-export-'.$survey->id.'-'.now()->format('Y-m-d').'.csv';
-
-        return response()->streamDownload(function () use ($survey, $deptNames, $questionMeta) {
+        return response()->streamDownload(function () use ($rows): void {
             $out = fopen('php://output', 'w');
             fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
-            fputcsv($out, [
-                'linha_resposta',
-                'setor',
-                'faixa_etaria',
-                'tempo_empresa',
-                'dimensao',
-                'pergunta',
-                'valor_likert_1_a_5',
-            ], ';');
-
-            $rowNum = 0;
-            foreach ($survey->completedResponses as $response) {
-                $rowNum++;
-                $dept = $response->department_id
-                    ? ($deptNames->get((int) $response->department_id)?->name ?? '')
-                    : '';
-                foreach ($response->answers as $answer) {
-                    $meta = $questionMeta[$answer->survey_template_question_id] ?? ['dimension' => '', 'body' => ''];
-                    fputcsv($out, [
-                        $rowNum,
-                        $dept,
-                        $response->age_range ?? '',
-                        $response->tenure_range ?? '',
-                        $meta['dimension'],
-                        $meta['body'],
-                        $answer->value,
-                    ], ';');
-                }
+            fputcsv($out, self::CSV_COLUMNS, ';');
+            foreach ($rows as $row) {
+                fputcsv($out, array_map(fn (string $column) => $row[$column], self::CSV_COLUMNS), ';');
             }
             fclose($out);
-        }, $filename, [
+        }, 'talents-export-'.$survey->id.'-'.now()->format('Y-m-d').'.csv', [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private function buildRawRows(Survey $survey): array
+    private function logAccess(Request $request, Survey $survey, string $resource): void
     {
-        $survey->load([
-            'template.sections.questions',
-            'completedResponses.answers',
-            'company.departments',
+        PsychosocialAccessLog::query()->create([
+            'user_id' => $request->user()->id,
+            'company_id' => $survey->company_id,
+            'survey_id' => $survey->id,
+            'resource' => $resource,
+            'document_version_id' => null,
+            'ip' => $request->ip(),
         ]);
-
-        $deptNames = $survey->company?->departments->keyBy('id') ?? collect();
-
-        $questionMeta = [];
-        foreach ($survey->template?->sections ?? [] as $section) {
-            foreach ($section->questions as $q) {
-                $questionMeta[$q->id] = [
-                    'dimension' => $section->title,
-                    'question' => $q->body,
-                ];
-            }
-        }
-
-        $out = [];
-        $i = 0;
-        foreach ($survey->completedResponses as $response) {
-            $i++;
-            $answers = [];
-            foreach ($response->answers as $a) {
-                $meta = $questionMeta[$a->survey_template_question_id] ?? null;
-                $answers[] = [
-                    'question_id' => $a->survey_template_question_id,
-                    'dimension' => $meta['dimension'] ?? null,
-                    'question' => $meta['question'] ?? null,
-                    'value' => $a->value,
-                ];
-            }
-            $out[] = [
-                'anonymous_row' => $i,
-                'department' => $response->department_id
-                    ? ($deptNames->get($response->department_id)?->name ?? null)
-                    : null,
-                'age_range' => $response->age_range,
-                'tenure_range' => $response->tenure_range,
-                'answers' => $answers,
-            ];
-        }
-
-        return $out;
     }
 }

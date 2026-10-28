@@ -36,6 +36,11 @@ class EnsureSuperAdmin
             abort(Response::HTTP_FORBIDDEN);
         }
 
+        // Obrigatoriedade geral de MFA no login: atrás de configuração, desligada por padrão.
+        if (config('mfa.required_at_login')) {
+            return app(EnsureMfa::class)->handle($request, $next, 'login');
+        }
+
         return $next($request);
     }
 }

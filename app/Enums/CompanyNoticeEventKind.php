@@ -25,6 +25,11 @@ enum CompanyNoticeEventKind: string
     case ComplaintCreated = 'complaint_created';
     case ComplaintUpdated = 'complaint_updated';
 
+    // NR-1 V11: oportunidade (Comercial), solicitação de proposta ou conversa (Talents), relatório publicado (empresa)
+    case Nr1OpportunityCreated = 'nr1_opportunity_created';
+    case Nr1ProposalRequested = 'nr1_proposal_requested';
+    case Nr1ReportPublished = 'nr1_report_published';
+
     public function label(): string
     {
         return match ($this) {
@@ -44,6 +49,9 @@ enum CompanyNoticeEventKind: string
             self::FeedbackCompleted => 'feedback concluído',
             self::ComplaintCreated => 'nova denúncia',
             self::ComplaintUpdated => 'denúncia atualizada',
+            self::Nr1OpportunityCreated => 'nova oportunidade NR-1',
+            self::Nr1ProposalRequested => 'nova solicitação de proposta ou conversa',
+            self::Nr1ReportPublished => 'relatório publicado',
         };
     }
 }

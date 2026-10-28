@@ -22,7 +22,7 @@ class PlanCrudTest extends TestCase
 
     public function test_admin_can_create_subscription_without_price_or_max_employees(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $module = Module::query()->create([
             'key' => 'surveys_test',
             'name' => 'Pesquisas',
@@ -47,7 +47,7 @@ class PlanCrudTest extends TestCase
 
     public function test_admin_can_update_subscription_without_price_or_max_employees(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->talentsOwner()->create();
         $plan = Plan::query()->create([
             'name' => 'Plano Antigo',
             'slug' => 'plano-antigo',

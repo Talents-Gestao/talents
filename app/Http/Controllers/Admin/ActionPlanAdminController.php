@@ -10,25 +10,25 @@ use App\Models\AiSetting;
 use App\Models\Company;
 use App\Models\Survey;
 use App\Models\SurveyNr1Report;
+use App\Services\ActionPlanGenerator;
+use App\Services\ExecutiveBriefService;
+use App\Services\Nr1AiAnalyzer;
+use App\Services\Psychosocial\PsychosocialDocumentService;
+use App\Services\ReportGenerator;
+use App\Services\SurveyResultsPresenter;
 use App\Support\HtmlSanitizer;
 use App\Support\Nr1RiskScenarioResolver;
 use App\Support\TechnicalOpinionDisclaimerStripper;
-use App\Services\ActionPlanGenerator;
-use App\Services\ExecutiveBriefService;
-use App\Services\Psychosocial\PsychosocialDocumentService;
-use App\Services\Nr1AiAnalyzer;
-use App\Services\ReportGenerator;
-use App\Services\SurveyResultsPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ActionPlanAdminController extends Controller
 {
@@ -113,6 +113,15 @@ class ActionPlanAdminController extends Controller
                 Nr1RiskScenarioResolver::forSurvey($survey) ?? 'green'
             )['short_label'] ?? null,
             'nr1Reports' => $nr1Reports,
+            'publication' => [
+                'requires_publication' => (bool) $survey->requires_publication,
+                'published_at' => $survey->published_at?->format('d/m/Y H:i'),
+                // Campanha V11: documentos e publicação vivem na Central de documentos (fluxo de revisão).
+                'uses_review_flow' => $survey->usesReviewFlow(),
+                'documents_url' => $survey->usesReviewFlow()
+                    ? route('admin.companies.surveys.documents.index', [$company->id, $survey->id])
+                    : null,
+            ],
             'executiveBrief' => app(ExecutiveBriefService::class)->currentVersionSummary($survey),
             'psychosocialDocuments' => app(PsychosocialDocumentService::class)->documentsSummary($survey),
             'plan' => $plan ? [

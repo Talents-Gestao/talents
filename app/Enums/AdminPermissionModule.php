@@ -41,6 +41,12 @@ enum AdminPermissionModule: string
     case SolidesAcompanhamento = 'solides_acompanhamento';
     case SolidesProfiler = 'solides_profiler';
 
+    /** Dado bruto das pesquisas NR-1 (exportação linha a linha, uso interno, sempre auditada). */
+    case Nr1DadosBrutos = 'nr1_dados_brutos';
+
+    /** Comercial limitado: só metadados e resultados agregados de campanhas liberadas. Nunca resposta bruta. */
+    case Nr1Oportunidades = 'nr1_oportunidades';
+
     case Settings = 'settings';
     case Training = 'training';
     case Equipe = 'equipe';
@@ -93,6 +99,8 @@ enum AdminPermissionModule: string
             self::SolidesBancoTalentos => 'Contratação · Banco de talentos',
             self::SolidesAcompanhamento => 'Contratação · Acompanhamento',
             self::SolidesProfiler => 'Contratação · Profiler',
+            self::Nr1DadosBrutos => 'Pesquisas NR-1 · Dados brutos (interno)',
+            self::Nr1Oportunidades => 'Comercial · Oportunidades NR-1 (agregado)',
             self::Settings => 'Configuração · Geral',
             self::Training => 'Capacitação',
             self::Equipe => 'Configuração · Equipe',
@@ -152,6 +160,8 @@ enum AdminPermissionModule: string
             self::FinanceiroContasAPagar,
             self::FinanceiroContasAReceber,
             self::FinanceiroFormasPagamento,
+            self::Nr1DadosBrutos,
+            self::Nr1Oportunidades,
             self::Settings,
             self::Equipe,
             self::EmpresaTalents,

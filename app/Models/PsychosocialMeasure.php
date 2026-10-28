@@ -22,18 +22,51 @@ class PsychosocialMeasure extends Model
 
     public const STATUS_IMPLEMENTED = 'implemented';
 
+    public const STATUS_REPLANNED = 'replanned';
+
     public const STATUSES = [
         self::STATUS_TO_APPROVE,
         self::STATUS_PENDING,
         self::STATUS_IN_PROGRESS,
         self::STATUS_IMPLEMENTED,
+        self::STATUS_REPLANNED,
     ];
 
+    /** Rótulos do acompanhamento antigo (telas e documentos já emitidos). Não mudam. */
     public const STATUS_LABELS = [
         self::STATUS_TO_APPROVE => 'A aprovar',
         self::STATUS_PENDING => 'Pendente',
         self::STATUS_IN_PROGRESS => 'Em andamento',
         self::STATUS_IMPLEMENTED => 'Implantada',
+        self::STATUS_REPLANNED => 'Replanejada',
+    ];
+
+    /** Rótulos do plano de ação (Caderno §11): Proposta → Confirmada → Em andamento → Concluída / Replanejada. */
+    public const PLAN_LABELS = [
+        self::STATUS_TO_APPROVE => 'Proposta',
+        self::STATUS_PENDING => 'Confirmada',
+        self::STATUS_IN_PROGRESS => 'Em andamento',
+        self::STATUS_IMPLEMENTED => 'Concluída',
+        self::STATUS_REPLANNED => 'Replanejada',
+    ];
+
+    /**
+     * Transições do plano (empresa). O acompanhamento antigo do Admin segue livre; estas valem para o plano.
+     *
+     * @var array<string, list<string>>
+     */
+    public const PLAN_TRANSITIONS = [
+        self::STATUS_TO_APPROVE => [self::STATUS_PENDING],
+        self::STATUS_PENDING => [self::STATUS_IN_PROGRESS, self::STATUS_REPLANNED],
+        self::STATUS_IN_PROGRESS => [self::STATUS_IMPLEMENTED, self::STATUS_REPLANNED],
+        self::STATUS_REPLANNED => [self::STATUS_IN_PROGRESS],
+        self::STATUS_IMPLEMENTED => [],
+    ];
+
+    public const EFFECTIVENESS_RESULTS = [
+        'effective' => 'Eficaz',
+        'partial' => 'Parcialmente eficaz',
+        'ineffective' => 'Não eficaz',
     ];
 
     public const ORIGIN_MANUAL = 'manual';
@@ -65,6 +98,17 @@ class PsychosocialMeasure extends Model
         'effectiveness_checked_at',
         'origin',
         'sort_order',
+        'objective',
+        'expected_result',
+        'suggested_due_origin',
+        'suggested_due_note',
+        'indicator',
+        'confirmed_responsible_user_id',
+        'confirmed_responsible_text',
+        'confirmed_due_date',
+        'confirmed_at',
+        'confirmed_by',
+        'effectiveness_result',
     ];
 
     protected $attributes = [
@@ -78,6 +122,8 @@ class PsychosocialMeasure extends Model
             'suggested_due_date' => 'date',
             'implemented_at' => 'datetime',
             'effectiveness_checked_at' => 'datetime',
+            'confirmed_due_date' => 'date',
+            'confirmed_at' => 'datetime',
             'sort_order' => 'integer',
         ];
     }
@@ -102,7 +148,43 @@ class PsychosocialMeasure extends Model
                 && ($measure->implemented_at === null || $measure->implemented_by === null)) {
                 throw new PsychosocialMeasureException('Medida implantada exige data e usuário responsável pelo registro.');
             }
+
+            if ($measure->confirmed_at !== null
+                && ($measure->confirmed_due_date === null
+                    || ($measure->confirmed_responsible_user_id === null && blank($measure->confirmed_responsible_text)))) {
+                throw new PsychosocialMeasureException('Confirmação exige responsável e prazo confirmados.');
+            }
+
+            if ($measure->effectiveness_result !== null && ! array_key_exists($measure->effectiveness_result, self::EFFECTIVENESS_RESULTS)) {
+                throw new PsychosocialMeasureException("Resultado de eficácia inválido: «{$measure->effectiveness_result}».");
+            }
         });
+    }
+
+    public function planLabel(): string
+    {
+        return self::PLAN_LABELS[$this->status] ?? $this->status;
+    }
+
+    /** "Responsável confirmado": a empresa aprovou responsável e prazo (Caderno §11). */
+    public function hasConfirmedResponsible(): bool
+    {
+        return $this->confirmed_at !== null;
+    }
+
+    public function confirmedResponsibleUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'confirmed_responsible_user_id');
+    }
+
+    public function confirmedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    public function evidences(): HasMany
+    {
+        return $this->hasMany(PsychosocialMeasureEvidence::class, 'measure_id')->orderBy('id');
     }
 
     public function statusLabel(): string

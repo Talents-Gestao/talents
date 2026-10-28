@@ -79,6 +79,15 @@ class UserFactory extends Factory
         ]);
     }
 
+    /**
+     * Super admin Talents proprietário (acesso master, sem depender da matriz de permissões). O padrão de
+     * superAdmin() continua sem permissão alguma, para os testes de recusa (403).
+     */
+    public function talentsOwner(): static
+    {
+        return $this->state(fn (array $attributes) => ['is_owner' => true])->superAdmin();
+    }
+
     public function superAdmin(): static
     {
         return $this->state(fn (array $attributes) => [
@@ -155,6 +164,39 @@ class UserFactory extends Factory
             ]);
 
             app(WorkspaceManager::class)->syncLegacyUserColumns($user);
+        });
+    }
+
+    public function externalReviewer(?int $organizationId = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::ExternalReviewer,
+            'company_id' => null,
+        ])->afterCreating(function (User $user) use ($organizationId): void {
+            UserWorkspace::create([
+                'user_id' => $user->id,
+                'workspace_type' => WorkspaceType::ExternalReview,
+                'company_id' => null,
+                'approver_organization_id' => $organizationId,
+                'role' => UserRole::ExternalReviewer,
+                'is_owner' => false,
+                'is_active' => (bool) $user->is_active,
+            ]);
+
+            app(WorkspaceManager::class)->syncLegacyUserColumns($user);
+        });
+    }
+
+    /**
+     * Usuário com verificação em duas etapas ATIVA (segredo confirmado). Não muda o padrão da fábrica; a sessão verificada
+     * vem de `actingAsMfa()` nos testes.
+     */
+    public function mfaVerified(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $credential = new \App\Models\UserMfaCredential(['user_id' => $user->id, 'confirmed_at' => now()]);
+            $credential->setPlainSecret((new \PragmaRX\Google2FA\Google2FA)->generateSecretKey(32));
+            $credential->save();
         });
     }
 
