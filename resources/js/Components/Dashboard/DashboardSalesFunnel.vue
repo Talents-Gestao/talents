@@ -2,6 +2,7 @@
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import { Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { FUNNEL_OVER_PREVIOUS_HINT, buildFunnelRows } from '@/utils/salesFunnelMetrics';
 
 const FUNNEL_LABELS = {
     leads: 'Leads',
@@ -9,12 +10,6 @@ const FUNNEL_LABELS = {
     proposal: 'Proposta',
     closed: 'Fechada',
 };
-
-/**
- * Geometria fixa do funil (contínua). Independente da % — evita faixas
- * desconectadas quando alguma etapa está a 0.
- */
-const EDGE_WIDTHS = [100, 82, 64, 48, 34];
 
 const BAND_COLORS = [
     'from-talents-700 to-talents-600',
@@ -48,44 +43,22 @@ const scopePhrase = computed(() => (props.scope === 'all' ? 'no total' : 'neste 
 const scopeShort = computed(() => (props.scope === 'all' ? 'no total' : 'no mês'));
 
 /**
- * % = conversão acumulada a partir do topo (produto das taxas entre etapas).
- * Assim a % só diminui ou estabiliza. O count exibido é o volume real do período.
+ * Contagens independentes por etapa. Leitura principal: % dos leads (contagem ÷ leads);
+ * secundária: % da etapa anterior. Cálculo em `utils/salesFunnelMetrics`.
  */
-const rows = computed(() => {
-    const list = props.funnel || [];
-    const counts = list.map((row) => Number(row.count || 0));
-
-    let cumulativeRate = 1;
-    const pcts = counts.map((count, index) => {
-        if (index === 0) {
-            return counts[0] > 0 ? 100 : 0;
-        }
-
-        const prev = counts[index - 1];
-        const stageRate = prev > 0 ? Math.min(1, count / prev) : 0;
-        cumulativeRate *= stageRate;
-
-        return Math.round(100 * cumulativeRate);
-    });
-
-    return list.map((row, index) => {
-        const count = counts[index];
-        const pct = pcts[index];
-        const top = EDGE_WIDTHS[Math.min(index, EDGE_WIDTHS.length - 2)];
-        const bottom = EDGE_WIDTHS[Math.min(index + 1, EDGE_WIDTHS.length - 1)];
-
-        return {
-            key: row.key,
-            label: FUNNEL_LABELS[row.key] ?? row.label ?? row.key,
-            count,
-            pct,
-            topWidth: top,
-            bottomWidth: bottom,
-            colorClass: BAND_COLORS[Math.min(index, BAND_COLORS.length - 1)],
-            href: row.href || null,
-        };
-    });
-});
+const rows = computed(() =>
+    buildFunnelRows(props.funnel).map((row, index) => ({
+        ...row,
+        label: FUNNEL_LABELS[row.key] ?? row.label,
+        colorClass: BAND_COLORS[Math.min(index, BAND_COLORS.length - 1)],
+        tooltip: [
+            `${FUNNEL_LABELS[row.key] ?? row.label}: ${row.count} ${scopeShort.value}`,
+            `${row.pctOfLeads} dos leads`,
+            row.pctOfPrevious !== null ? `${row.pctOfPrevious} da etapa anterior` : null,
+            row.overPrevious ? FUNNEL_OVER_PREVIOUS_HINT : null,
+        ].filter(Boolean).join(' · '),
+    })),
+);
 
 const lostCount = computed(() => Number(props.lost?.count || 0));
 const lostHref = computed(() => props.lost?.href || null);
@@ -136,7 +109,7 @@ function formatLostDate(iso) {
                     'dashboard-sales-funnel__row--link': !!row.href,
                     'dashboard-sales-funnel__row--last': index === rows.length - 1,
                 }"
-                :title="`${row.label}: ${row.count} ${scopeShort} · ${row.pct}% de conversão acumulada`"
+                :title="row.tooltip"
             >
                 <div class="dashboard-sales-funnel__label">
                     {{ row.label }}
@@ -154,9 +127,18 @@ function formatLostDate(iso) {
                 </div>
 
                 <div class="dashboard-sales-funnel__metrics">
-                    <span class="tabular-nums font-semibold text-slate-800">{{ row.count }}</span>
-                    <span class="text-slate-300" aria-hidden="true">|</span>
-                    <span class="tabular-nums text-slate-500">{{ row.pct }}%</span>
+                    <div class="flex items-center justify-end gap-1.5">
+                        <span class="tabular-nums font-semibold text-slate-800">{{ row.count }}</span>
+                        <span class="text-slate-300" aria-hidden="true">|</span>
+                        <span class="tabular-nums text-slate-600">{{ row.pctOfLeads }}</span>
+                    </div>
+                    <div
+                        v-if="row.pctOfPrevious !== null"
+                        class="dashboard-sales-funnel__prev tabular-nums"
+                        :title="row.overPrevious ? FUNNEL_OVER_PREVIOUS_HINT : 'Em relação à etapa anterior'"
+                    >
+                        {{ row.pctOfPrevious }} da anterior<span v-if="row.overPrevious" aria-hidden="true"> ›</span>
+                    </div>
                 </div>
             </component>
         </div>
@@ -283,7 +265,7 @@ function formatLostDate(iso) {
 
 .dashboard-sales-funnel__row {
     display: grid;
-    grid-template-columns: minmax(5.5rem, 7.25rem) minmax(0, 1fr) minmax(4.75rem, 5.5rem);
+    grid-template-columns: minmax(5.5rem, 7.25rem) minmax(0, 1fr) minmax(7.5rem, 8.5rem);
     align-items: center;
     gap: 0.75rem;
     min-height: 2.5rem;
@@ -340,16 +322,22 @@ function formatLostDate(iso) {
 
 .dashboard-sales-funnel__metrics {
     display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 0.35rem;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.05rem;
     font-size: 0.875rem;
     white-space: nowrap;
 }
 
+.dashboard-sales-funnel__prev {
+    font-size: 0.6875rem;
+    line-height: 1.1;
+    color: rgb(100 116 139);
+}
+
 @media (max-width: 639px) {
     .dashboard-sales-funnel__row {
-        grid-template-columns: minmax(4.75rem, 6rem) minmax(0, 1fr) minmax(4.5rem, 5.25rem);
+        grid-template-columns: minmax(4.5rem, 5.5rem) minmax(0, 1fr) minmax(6.5rem, 7.5rem);
         gap: 0.5rem;
     }
 

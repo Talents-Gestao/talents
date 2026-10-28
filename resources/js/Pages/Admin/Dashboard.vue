@@ -79,9 +79,12 @@ const activeFunnelLost = computed(() =>
 
 const funnelScopeLabel = computed(() =>
     funnelScope.value === 'all'
-        ? 'Todas as propostas (histórico)'
-        : 'Propostas criadas neste mês',
+        ? 'Volume por etapa · contagens independentes, criados no total'
+        : 'Volume por etapa · contagens independentes, criados neste mês',
 );
+
+const funnelInfoText =
+    'Leads, qualificação, propostas e vendas são contagens independentes do período: não acompanham o mesmo lead.';
 
 const { layout, resetLayout, dragAnimationMs, prefersReducedMotion } = useAdminDashboardLayout(userId);
 
@@ -680,7 +683,16 @@ const submitGoal = () => {
                                         <div class="flex flex-wrap items-start justify-between gap-2">
                                             <div class="min-w-0">
                                                 <h3 class="dashboard-panel-title">Funil comercial</h3>
-                                                <p class="mt-0.5 text-xs text-slate-500">{{ funnelScopeLabel }}</p>
+                                                <p class="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
+                                                    <span>{{ funnelScopeLabel }}</span>
+                                                    <span
+                                                        class="inline-flex h-4 w-4 shrink-0 cursor-help items-center justify-center rounded-full border border-slate-300 text-[10px] font-semibold leading-none text-slate-500"
+                                                        role="img"
+                                                        tabindex="0"
+                                                        :title="funnelInfoText"
+                                                        :aria-label="funnelInfoText"
+                                                    >i</span>
+                                                </p>
                                             </div>
                                             <div
                                                 class="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5"
