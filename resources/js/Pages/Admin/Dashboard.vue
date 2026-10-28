@@ -1,6 +1,8 @@
 <script setup>
-import ApexChart from '@/Components/Charts/ApexChart.vue';
-import DailyQuoteCard from '@/Components/Dashboard/DailyQuoteCard.vue';
+import '../../../css/admin-home.css';
+import AdminQuoteBanner from '@/Components/AdminHome/AdminQuoteBanner.vue';
+import LeadsSourceDonut from '@/Components/AdminHome/LeadsSourceDonut.vue';
+import MonthlyGoalGauge from '@/Components/AdminHome/MonthlyGoalGauge.vue';
 import DashboardSalesFunnel from '@/Components/Dashboard/DashboardSalesFunnel.vue';
 import EmptyState from '@/Components/Dashboard/EmptyState.vue';
 import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
@@ -23,9 +25,12 @@ import {
     BuildingOffice2Icon,
     CalendarDaysIcon,
     ChartBarIcon,
+    ChartPieIcon,
     ClockIcon,
     CurrencyDollarIcon,
+    FlagIcon,
     FolderOpenIcon,
+    FunnelIcon,
     UserPlusIcon,
     ViewColumnsIcon,
 } from '@heroicons/vue/24/outline';
@@ -86,7 +91,7 @@ const funnelScopeLabel = computed(() =>
 const funnelInfoText =
     'Leads, qualificação, propostas e vendas são contagens independentes do período: não acompanham o mesmo lead.';
 
-const { layout, resetLayout, dragAnimationMs, prefersReducedMotion } = useAdminDashboardLayout(userId);
+const { layout, resetLayout, dragAnimationMs } = useAdminDashboardLayout(userId);
 
 /**
  * Auto-scroll do Sortable aponta ao `<main class="app-shell-main-scroll">`
@@ -151,40 +156,7 @@ const leadsSourceTotal = computed(() =>
     (props.leadsBySource || []).reduce((sum, row) => sum + Number(row.count || 0), 0),
 );
 
-const leadsSourceSeries = computed(() => (props.leadsBySource || []).map((row) => Number(row.count || 0)));
-
-const leadsSourceLabels = computed(() => (props.leadsBySource || []).map((row) => row.label));
-
 const sourceColors = ['#7c3aed', '#2563eb', '#10b981', '#f59e0b', '#ec4899', '#64748b'];
-
-const leadsDonutOptions = computed(() => ({
-    chart: {
-        type: 'donut',
-        toolbar: { show: false },
-        animations: { enabled: !prefersReducedMotion.value, speed: 400 },
-    },
-    labels: leadsSourceLabels.value,
-    colors: sourceColors,
-    stroke: { width: 0 },
-    legend: { show: false },
-    plotOptions: {
-        pie: {
-            donut: {
-                size: '72%',
-                labels: {
-                    show: leadsSourceTotal.value > 0,
-                    total: {
-                        show: true,
-                        label: 'Total',
-                        formatter: () => String(leadsSourceTotal.value),
-                    },
-                },
-            },
-        },
-    },
-    dataLabels: { enabled: false },
-    tooltip: { y: { formatter: (val) => `${val} leads` } },
-}));
 
 const goalPercent = computed(() => Math.min(100, Number(props.monthlyGoal?.percent || 0)));
 
@@ -198,34 +170,7 @@ const formatGoalShare = (percent) => {
     return `${rounded}% da meta`;
 };
 
-const goalGaugeOptions = computed(() => ({
-    chart: {
-        type: 'radialBar',
-        sparkline: { enabled: true },
-        animations: { enabled: !prefersReducedMotion.value },
-    },
-    plotOptions: {
-        radialBar: {
-            startAngle: -90,
-            endAngle: 90,
-            hollow: { size: '62%' },
-            track: { background: '#e2e8f0', margin: 4 },
-            dataLabels: {
-                name: { show: true, offsetY: 24, color: '#64748b', fontSize: '12px' },
-                value: {
-                    show: true,
-                    offsetY: -8,
-                    fontSize: '28px',
-                    fontWeight: 700,
-                    color: '#5b21b6',
-                    formatter: () => `${Math.round(goalPercent.value)}%`,
-                },
-            },
-        },
-    },
-    fill: { colors: ['#7c3aed'] },
-    labels: ['da meta'],
-}));
+const sellerInitial = (name) => String(name || '?').trim().charAt(0).toUpperCase();
 
 const kpiById = computed(() => ({
     active_clients: {
@@ -324,22 +269,22 @@ const submitGoal = () => {
     <Head title="Home" />
 
     <AdminLayout>
-        <div class="space-y-6">
+        <div class="admin-home space-y-6">
             <header class="min-w-0">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div class="min-w-0">
-                        <p class="dashboard-section-label">Home</p>
-                        <h1 class="dashboard-section-title mt-1 text-xl sm:text-2xl">
+                        <p class="home-eyebrow"><span class="home-eyebrow__dot" aria-hidden="true" />Home</p>
+                        <h1 class="home-title">
                             Painel operacional
                         </h1>
-                        <p class="mt-1.5 text-sm font-medium text-slate-800">
+                        <p class="home-greeting">
                             {{ greeting.prefix }}, {{ greeting.first }}
                         </p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <button
                             type="button"
-                            class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                            class="home-btn"
                             title="Repor a ordem padrão das seções e dos cards"
                             @click="resetLayout"
                         >
@@ -349,7 +294,7 @@ const submitGoal = () => {
                         <Link
                             v-if="adminTasksOpen > 0"
                             :href="route('admin.tarefas.quadros.index')"
-                            class="dashboard-header-cta group"
+                            class="dashboard-header-cta home-cta group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-ring"
                         >
                             <span class="dashboard-header-cta-badge">{{ adminTasksOpen }}</span>
                             Tarefas ADM abertas
@@ -359,7 +304,7 @@ const submitGoal = () => {
             </header>
 
             <!-- Frase do dia: fixa no topo do painel (não entra no layout arrastável) -->
-            <DailyQuoteCard
+            <AdminQuoteBanner
                 v-if="dailyQuote"
                 :quote="dailyQuote"
                 :date-label="todayDateLabel"
@@ -398,7 +343,7 @@ const submitGoal = () => {
                         </div>
                         <button
                             type="button"
-                            class="dashboard-section-drag-handle mt-1 inline-flex shrink-0 cursor-grab items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-700 active:cursor-grabbing"
+                            class="dashboard-section-drag-handle home-handle mt-1 inline-flex shrink-0 cursor-grab items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-semibold active:cursor-grabbing"
                             title="Arrastar seção"
                             aria-label="Arrastar seção"
                         >
@@ -625,173 +570,150 @@ const submitGoal = () => {
 
                             <section
                                 v-else-if="widgetId === 'leads_source'"
-                                class="dashboard-panel dashboard-reveal h-full"
+                                class="home-card home-card--leads dashboard-reveal h-full"
                             >
-                                    <div class="dashboard-panel-heading mb-1 pr-10">
-                                        <h3 class="dashboard-panel-title">Leads por origem (mês)</h3>
+                                <div class="home-card__head">
+                                    <span class="home-chip" aria-hidden="true">
+                                        <ChartPieIcon class="h-5 w-5" />
+                                    </span>
+                                    <div class="min-w-0">
+                                        <h3 class="home-card__title">Leads por origem (mês)</h3>
+                                        <p class="home-card__sub">De onde vieram os leads deste mês</p>
                                     </div>
-                                    <div class="mt-4 flex flex-col gap-4">
-                                        <div class="flex min-h-[200px] w-full justify-center">
-                                            <ApexChart
-                                                v-if="leadsSourceTotal > 0"
-                                                type="donut"
-                                                height="200"
-                                                :options="leadsDonutOptions"
-                                                :series="leadsSourceSeries"
-                                            />
-                                            <EmptyState
-                                                v-else
-                                                class="dashboard-empty-trust py-8"
-                                                title="Sem leads neste mês"
-                                                description="Quando houver envios da landing ou cadastros manuais, as origens aparecem aqui."
-                                            />
-                                        </div>
-                                        <ul
-                                            v-if="leadsSourceTotal > 0"
-                                            class="grid w-full grid-cols-1 gap-2 text-sm sm:grid-cols-2"
-                                        >
-                                            <li
-                                                v-for="(row, idx) in leadsBySource"
-                                                :key="row.key"
-                                                class="flex items-center justify-between gap-3 rounded-xl border border-violet-100/50 bg-white/80 px-3 py-2"
-                                            >
-                                                <span class="flex min-w-0 items-center gap-2 text-slate-700">
-                                                    <span
-                                                        class="h-2.5 w-2.5 shrink-0 rounded-full"
-                                                        :style="{ backgroundColor: sourceColors[idx % sourceColors.length] }"
-                                                    />
-                                                    <span class="whitespace-nowrap">{{ row.label }}</span>
-                                                </span>
-                                                <span class="shrink-0 tabular-nums font-bold text-slate-900">{{ row.count }}</span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                    <Link
-                                        :href="route('admin.landing-interest.index')"
-                                        class="dashboard-panel-link group/link mt-4"
-                                    >
-                                        Ver leads
-                                        <span class="dashboard-panel-link-arrow" aria-hidden="true">→</span>
-                                    </Link>
-                                </section>
-
-                                <section
-                                    v-else-if="widgetId === 'funnel'"
-                                    class="dashboard-panel dashboard-reveal h-full"
+                                </div>
+                                <LeadsSourceDonut
+                                    v-if="leadsSourceTotal > 0"
+                                    :rows="leadsBySource"
+                                    :colors="sourceColors"
+                                />
+                                <EmptyState
+                                    v-else
+                                    class="dashboard-empty-trust mt-4 py-8"
+                                    title="Sem leads neste mês"
+                                    description="Quando houver envios da landing ou cadastros manuais, as origens aparecem aqui."
+                                />
+                                <Link
+                                    :href="route('admin.landing-interest.index')"
+                                    class="home-link group/link"
                                 >
-                                    <div class="dashboard-panel-heading mb-1 pr-10">
-                                        <div class="flex flex-wrap items-start justify-between gap-2">
-                                            <div class="min-w-0">
-                                                <h3 class="dashboard-panel-title">Funil comercial</h3>
-                                                <p class="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
-                                                    <span>{{ funnelScopeLabel }}</span>
-                                                    <span
-                                                        class="inline-flex h-4 w-4 shrink-0 cursor-help items-center justify-center rounded-full border border-slate-300 text-[10px] font-semibold leading-none text-slate-500"
-                                                        role="img"
-                                                        tabindex="0"
-                                                        :title="funnelInfoText"
-                                                        :aria-label="funnelInfoText"
-                                                    >i</span>
-                                                </p>
+                                    Ver leads
+                                    <span class="dashboard-panel-link-arrow" aria-hidden="true">→</span>
+                                </Link>
+                            </section>
+
+                            <section
+                                v-else-if="widgetId === 'funnel'"
+                                class="home-card home-card--funnel dashboard-reveal h-full"
+                            >
+                                <div class="home-card__head">
+                                    <span class="home-chip" aria-hidden="true">
+                                        <FunnelIcon class="h-5 w-5" />
+                                    </span>
+                                    <div class="min-w-0">
+                                        <h3 class="home-card__title">Funil comercial</h3>
+                                        <p class="home-card__sub flex items-start gap-1">
+                                            <span>{{ funnelScopeLabel }}</span>
+                                            <span
+                                                class="mt-px inline-flex h-4 w-4 shrink-0 cursor-help items-center justify-center rounded-full border border-ink-subtle text-[10px] font-semibold leading-none text-ink-muted"
+                                                role="img"
+                                                tabindex="0"
+                                                :title="funnelInfoText"
+                                                :aria-label="funnelInfoText"
+                                            >i</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <div class="home-seg" role="group" aria-label="Período do funil">
+                                        <button
+                                            type="button"
+                                            :aria-pressed="funnelScope === 'month'"
+                                            @click="funnelScope = 'month'"
+                                        >
+                                            Neste mês
+                                        </button>
+                                        <button
+                                            type="button"
+                                            :aria-pressed="funnelScope === 'all'"
+                                            @click="funnelScope = 'all'"
+                                        >
+                                            Total
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <DashboardSalesFunnel
+                                        :funnel="activeFunnel"
+                                        :lost="activeFunnelLost"
+                                        :scope="funnelScope"
+                                    />
+                                </div>
+                            </section>
+
+                            <section
+                                v-else-if="widgetId === 'monthly_goal'"
+                                role="button"
+                                tabindex="0"
+                                title="Editar meta mensal"
+                                aria-label="Editar meta mensal"
+                                class="home-card home-card--goal dashboard-reveal h-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-ring"
+                                @click="openGoalModal"
+                                @keydown.enter.prevent="openGoalModal"
+                                @keydown.space.prevent="openGoalModal"
+                            >
+                                <div class="home-card__head">
+                                    <span class="home-chip" aria-hidden="true">
+                                        <FlagIcon class="h-5 w-5" />
+                                    </span>
+                                    <div class="min-w-0">
+                                        <h3 class="home-card__title">Meta mensal</h3>
+                                        <p class="home-card__sub">Clique para editar a meta</p>
+                                    </div>
+                                </div>
+                                <MonthlyGoalGauge :percent="goalPercent" />
+                                <div class="home-goal-total">
+                                    <p class="home-goal-total__label">Venda geral</p>
+                                    <p class="home-goal-total__value">
+                                        {{ formatMoney(monthlyGoal.current_cents) }}
+                                    </p>
+                                    <p class="home-goal-total__hint">
+                                        de {{ formatMoney(monthlyGoal.goal_cents) }} (parcelas pagas de comerciais neste mês)
+                                    </p>
+                                </div>
+                                <div class="home-sellers" @click.stop>
+                                    <p class="home-goal-total__label">Por vendedor</p>
+                                    <ul
+                                        v-if="goalSellers.length"
+                                        class="mt-3 max-h-44 space-y-3 overflow-y-auto pr-0.5"
+                                    >
+                                        <li v-for="seller in goalSellers" :key="seller.id" class="home-seller">
+                                            <div class="home-seller__row">
+                                                <span class="home-seller__avatar" aria-hidden="true">{{ sellerInitial(seller.name) }}</span>
+                                                <span class="home-seller__name">{{ seller.name }}</span>
+                                                <span class="home-seller__value">
+                                                    {{ formatMoney(seller.current_cents) }} · {{ formatGoalShare(seller.percent) }}
+                                                </span>
                                             </div>
                                             <div
-                                                class="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5"
-                                                role="group"
-                                                aria-label="Período do funil"
+                                                class="home-seller__bar"
+                                                role="progressbar"
+                                                :aria-label="`${seller.name}: ${formatGoalShare(seller.percent)}`"
+                                                aria-valuemin="0"
+                                                aria-valuemax="100"
+                                                :aria-valuenow="Math.round(Math.min(100, Math.max(0, Number(seller.percent) || 0)))"
                                             >
-                                                <button
-                                                    type="button"
-                                                    class="rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
-                                                    :class="
-                                                        funnelScope === 'month'
-                                                            ? 'bg-white text-talents-800 shadow-sm'
-                                                            : 'text-slate-500 hover:text-slate-700'
-                                                    "
-                                                    :aria-pressed="funnelScope === 'month'"
-                                                    @click="funnelScope = 'month'"
-                                                >
-                                                    Neste mês
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
-                                                    :class="
-                                                        funnelScope === 'all'
-                                                            ? 'bg-white text-talents-800 shadow-sm'
-                                                            : 'text-slate-500 hover:text-slate-700'
-                                                    "
-                                                    :aria-pressed="funnelScope === 'all'"
-                                                    @click="funnelScope = 'all'"
-                                                >
-                                                    Total
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-4">
-                                        <DashboardSalesFunnel
-                                            :funnel="activeFunnel"
-                                            :lost="activeFunnelLost"
-                                            :scope="funnelScope"
-                                        />
-                                    </div>
-                                </section>
-
-                                <section
-                                    v-else-if="widgetId === 'monthly_goal'"
-                                    role="button"
-                                    tabindex="0"
-                                    title="Editar meta mensal"
-                                    aria-label="Editar meta mensal"
-                                    class="dashboard-panel dashboard-reveal h-full cursor-pointer transition hover:border-violet-200/80 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-talents-600"
-                                    @click="openGoalModal"
-                                    @keydown.enter.prevent="openGoalModal"
-                                    @keydown.space.prevent="openGoalModal"
-                                >
-                                    <div class="dashboard-panel-heading mb-1 pr-10">
-                                        <h3 class="dashboard-panel-title">Meta mensal</h3>
-                                    </div>
-                                    <div class="mt-2 flex min-h-[180px] justify-center">
-                                        <ApexChart
-                                            type="radialBar"
-                                            height="220"
-                                            :options="goalGaugeOptions"
-                                            :series="[goalPercent]"
-                                        />
-                                    </div>
-                                    <div class="text-center">
-                                        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                                            Venda geral
-                                        </p>
-                                        <p class="mt-1 text-xl font-bold tabular-nums tracking-tight text-slate-900">
-                                            {{ formatMoney(monthlyGoal.current_cents) }}
-                                        </p>
-                                        <p class="mt-1 text-xs text-slate-600">
-                                            de {{ formatMoney(monthlyGoal.goal_cents) }} (parcelas pagas de comerciais neste mês)
-                                        </p>
-                                    </div>
-                                    <div class="mt-4 border-t border-slate-100 pt-3" @click.stop>
-                                        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                                            Por vendedor
-                                        </p>
-                                        <ul
-                                            v-if="goalSellers.length"
-                                            class="mt-3 max-h-44 space-y-3 overflow-y-auto pr-0.5"
-                                        >
-                                            <li v-for="seller in goalSellers" :key="seller.id">
-                                                <ProgressBar
-                                                    :label="seller.name"
-                                                    :value="seller.percent"
-                                                    :display-value="`${formatMoney(seller.current_cents)} · ${formatGoalShare(seller.percent)}`"
-                                                    bar-class="bg-violet-600"
+                                                <div
+                                                    class="home-seller__fill"
+                                                    :style="{ transform: `scaleX(${Math.min(100, Math.max(0, Number(seller.percent) || 0)) / 100})` }"
                                                 />
-                                            </li>
-                                        </ul>
-                                        <p v-else class="mt-2 text-xs text-slate-500">
-                                            Nenhum vendedor comercial para exibir neste mês.
-                                        </p>
-                                    </div>
-                                </section>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                    <p v-else class="mt-2 text-xs text-ink-muted">
+                                        Nenhum vendedor comercial para exibir neste mês.
+                                    </p>
+                                </div>
+                            </section>
                         </div>
                     </VueDraggable>
                 </section>
