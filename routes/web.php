@@ -11,6 +11,14 @@ Route::get('/', function () {
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'heroGlass' => (bool) config('landing.hero_glass'),
+        // `?hero=a|b|c` mostra uma direção da Hero em vidro, só em APP_ENV=local e com a Hero em vidro ligada.
+        'heroDirection' => app()->environment('local')
+            && config('landing.hero_glass')
+            && in_array(request()->query('hero'), ['a', 'b', 'c'], true)
+                ? request()->query('hero')
+                : null,
+        // `?perf=1` mostra o indicador de desempenho das direções, só em APP_ENV=local.
+        'heroPerf' => app()->environment('local') && request()->query('perf') === '1',
         // `?landing=classic` mostra a Home sem o redesenho, só em APP_ENV=local (comparação de desempenho).
         'redesign' => (bool) config('landing.redesign')
             && ! (app()->environment('local') && request()->query('landing') === 'classic'),

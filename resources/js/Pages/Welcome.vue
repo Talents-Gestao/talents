@@ -13,8 +13,9 @@ import {
     UserPlusIcon,
 } from '@heroicons/vue/24/outline';
 import { Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, defineAsyncComponent } from 'vue';
 import HeroGlass from '@/Components/Landing/HeroGlass.vue';
+import HeroStagePlaceholder from '@/Components/Landing/hero/HeroStagePlaceholder.vue';
 import LandingAlem from '@/Components/Landing/LandingAlem.vue';
 import LandingFrentes from '@/Components/Landing/LandingFrentes.vue';
 import LandingPilaresBento from '@/Components/Landing/LandingPilaresBento.vue';
@@ -25,10 +26,19 @@ import LandingHeroTypewriter from '@/Components/Landing/LandingHeroTypewriter.vu
 import LandingLayout from '@/Components/Landing/LandingLayout.vue';
 import LandingRecruitmentPhaseCard from '@/Components/Landing/LandingRecruitmentPhaseCard.vue';
 
+// Direções da Hero (só em ambiente local): chunk próprio, carregado sob demanda.
+const HeroStage = defineAsyncComponent({
+    loader: () => import('@/Components/Landing/hero/HeroStage.vue'),
+    loadingComponent: HeroStagePlaceholder,
+    delay: 0,
+});
+
 defineProps({
     canLogin: Boolean,
     canRegister: Boolean,
     heroGlass: Boolean,
+    heroDirection: { type: String, default: null },
+    heroPerf: Boolean,
     redesign: Boolean,
 });
 
@@ -245,7 +255,8 @@ const organizationJsonLd = computed(() =>
             </component>
         </template>
 
-        <HeroGlass :enabled="heroGlass">
+        <HeroStage v-if="heroDirection" :direction="heroDirection" :perf="heroPerf" />
+        <HeroGlass v-else :enabled="heroGlass">
         <section class="relative overflow-hidden lg:min-h-[560px]">
             <div class="relative z-10 mx-auto max-w-6xl px-4 py-10 md:py-24 lg:py-28">
                 <div class="lg:max-w-[46%]">
