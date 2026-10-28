@@ -1,0 +1,769 @@
+/**
+ * Home do admin ("Painel operacional"): camada visual escopada em `.admin-home`.
+ *
+ * Só cores via tokens semânticos (tokens.css + tema da empresa); nada aqui altera telas fora da
+ * Home. Cada domínio tem um par de cores (--home-a → --home-b) usado no filete, no chip de ícone e
+ * no brilho do hover:
+ *   Comercial/Leads → primary → info · Meta → primary → success · Financeiro → success
+ *   Tarefas → primary · Calendário → info/turquesa.
+ * Animações só em transform/opacity (exceção documentada: o traço do medidor da meta).
+ */
+.admin-home {
+    --home-teal: 15 118 110;
+    --home-teal-soft: 240 253 250;
+    --home-a: var(--primary);
+    --home-b: var(--info);
+    --home-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    position: relative;
+    isolation: isolate;
+}
+
+/* Brilho de marca por trás do conteúdo: dá o que o vidro dos cartões refratar. */
+.admin-home::before {
+    content: '';
+    position: absolute;
+    inset: -2rem -1rem auto -1rem;
+    height: 34rem;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 42% 60% at 8% 0%, rgb(var(--primary) / 0.13), transparent 70%),
+        radial-gradient(ellipse 38% 55% at 96% 6%, rgb(var(--info) / 0.1), transparent 70%);
+}
+
+/* ---------- Cabeçalho ---------- */
+
+.admin-home .home-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgb(var(--primary-text));
+}
+
+.admin-home .home-eyebrow__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgb(var(--home-a)), rgb(var(--home-b)));
+    box-shadow: 0 0 0 3px rgb(var(--primary) / 0.14);
+}
+
+.admin-home .home-title {
+    margin-top: 0.25rem;
+    font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.375rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: rgb(var(--ink));
+}
+
+.admin-home .home-greeting {
+    margin-top: 0.4rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: rgb(var(--ink-muted));
+}
+
+.admin-home .home-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 0.875rem;
+    border: 1px solid rgb(var(--primary) / 0.18);
+    background: rgb(var(--surface) / 0.75);
+    padding: 0.5rem 0.85rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgb(var(--primary-text));
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05), inset 0 1px 0 rgb(255 255 255 / 0.8);
+    transition: background-color 0.2s, border-color 0.2s, translate 0.2s var(--home-ease);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+.admin-home .home-btn:hover {
+    background: rgb(var(--surface));
+    border-color: rgb(var(--primary) / 0.4);
+    translate: 0 -1px;
+}
+
+.admin-home .home-cta {
+    border-radius: 0.875rem;
+    background: linear-gradient(135deg, rgb(var(--talents-700)), rgb(var(--primary)) 60%, rgb(var(--talents-500)));
+    box-shadow: 0 8px 20px -8px rgb(var(--primary) / 0.55);
+    transition: box-shadow 0.2s, translate 0.2s var(--home-ease);
+}
+
+.admin-home .home-cta:hover {
+    background: linear-gradient(135deg, rgb(var(--talents-800)), rgb(var(--talents-700)) 60%, rgb(var(--primary)));
+    box-shadow: 0 12px 26px -8px rgb(var(--primary) / 0.65);
+    translate: 0 -1px;
+}
+
+.admin-home .home-btn:focus-visible,
+.admin-home .home-cta:focus-visible,
+.admin-home .home-handle:focus-visible,
+.admin-home .home-pill:focus-visible,
+.admin-home .home-seg button:focus-visible,
+.admin-home .home-funnel-row:focus-visible {
+    outline: 2px solid rgb(var(--primary-ring));
+    outline-offset: 2px;
+}
+
+/* ---------- Títulos de seção ---------- */
+
+.admin-home .dashboard-section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: rgb(var(--ink-muted));
+}
+
+.admin-home .dashboard-section-title {
+    font-weight: 700;
+    color: rgb(var(--ink));
+}
+
+/* Alça "Mover seção": continua um botão visível e com alvo ≥ 32px. */
+.admin-home .home-handle {
+    border-color: rgb(var(--primary) / 0.18);
+    background: rgb(var(--surface) / 0.8);
+    color: rgb(var(--ink-muted));
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+    transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+}
+
+.admin-home .home-handle:hover {
+    border-color: rgb(var(--primary) / 0.45);
+    background: rgb(var(--primary-soft));
+    color: rgb(var(--primary-text));
+}
+
+/* ---------- Frase do dia ---------- */
+
+.admin-home .home-quote {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    border-radius: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    color: #fff;
+    background:
+        radial-gradient(ellipse 50% 140% at 100% 0%, rgb(var(--info) / 0.55), transparent 70%),
+        linear-gradient(115deg, rgb(var(--talents-900)) 0%, rgb(var(--talents-700)) 45%, rgb(var(--talents-500)) 100%);
+    box-shadow:
+        0 18px 40px -18px rgb(var(--talents-700) / 0.65),
+        inset 0 1px 0 rgb(255 255 255 / 0.18),
+        0 0 0 1px rgb(var(--talents-300) / 0.25);
+}
+
+@media (min-width: 640px) {
+    .admin-home .home-quote {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding: 1.35rem 1.75rem;
+    }
+}
+
+.admin-home .home-quote__aurora {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 6% 50%, rgb(255 255 255 / 0.22), transparent 28%),
+        linear-gradient(100deg, transparent 40%, rgb(255 255 255 / 0.07) 50%, transparent 60%);
+}
+
+.admin-home .home-quote__body {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 1rem;
+}
+
+.admin-home .home-quote__mark {
+    position: relative;
+    display: flex;
+    height: 3.25rem;
+    width: 3.25rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    background: rgb(255 255 255 / 0.14);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.28), 0 0 28px 2px rgb(var(--talents-300) / 0.55);
+}
+
+.admin-home .home-quote__butterfly {
+    height: 2rem;
+    width: 2rem;
+    object-fit: contain;
+    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 8px rgb(255 255 255 / 0.65));
+}
+
+.admin-home .home-quote__eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.86);
+}
+
+.admin-home .home-quote__word {
+    margin-top: 0.125rem;
+    font-size: 1.375rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.15;
+}
+
+.admin-home .home-quote__phrase {
+    margin-top: 0.25rem;
+    max-width: 52ch;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    color: rgb(255 255 255 / 0.94);
+}
+
+.admin-home .home-quote__date {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0.5rem;
+    align-self: flex-start;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.12);
+    padding: 0.4rem 0.85rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgb(255 255 255 / 0.95);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.22);
+}
+
+@media (min-width: 640px) {
+    .admin-home .home-quote__date {
+        align-self: center;
+    }
+}
+
+/* ---------- Cartão de vidro ---------- */
+
+.admin-home .home-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 1.5rem;
+    padding: 1.25rem 1.35rem 1.35rem;
+    border: 1px solid rgb(255 255 255 / 0.85);
+    background:
+        radial-gradient(ellipse 85% 55% at 100% 0%, rgb(var(--home-a) / 0.09), transparent 60%),
+        radial-gradient(ellipse 60% 40% at 0% 100%, rgb(var(--home-b) / 0.07), transparent 60%),
+        linear-gradient(165deg, rgb(var(--surface) / 0.9), rgb(var(--surface-muted) / 0.78));
+    box-shadow:
+        0 0 0 1px rgb(var(--home-a) / 0.1),
+        0 10px 28px -14px rgb(var(--home-a) / 0.25),
+        inset 0 1px 0 rgb(255 255 255 / 0.95);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    backdrop-filter: blur(14px) saturate(1.2);
+    transition: box-shadow 0.3s var(--home-ease), translate 0.3s var(--home-ease);
+}
+
+/* Filete superior na cor do domínio; não captura cliques (alças e links ficam livres). */
+.admin-home .home-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    pointer-events: none;
+    background: linear-gradient(90deg, rgb(var(--home-a)), rgb(var(--home-b)));
+}
+
+.admin-home .home-card:hover {
+    translate: 0 -2px;
+    box-shadow:
+        0 0 0 1px rgb(var(--home-a) / 0.22),
+        0 18px 38px -14px rgb(var(--home-a) / 0.38),
+        inset 0 1px 0 rgb(255 255 255 / 0.95);
+}
+
+.admin-home .home-card--leads,
+.admin-home .home-card--funnel {
+    --home-a: var(--primary);
+    --home-b: var(--info);
+}
+
+.admin-home .home-card--goal {
+    --home-a: var(--primary);
+    --home-b: var(--success);
+}
+
+.admin-home .home-card__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding-right: 2.25rem; /* espaço da alça de arrastar */
+}
+
+.admin-home .home-chip {
+    display: inline-flex;
+    height: 2.25rem;
+    width: 2.25rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    color: #fff;
+    background: linear-gradient(135deg, rgb(var(--home-a)), rgb(var(--home-b)));
+    box-shadow: 0 6px 14px -6px rgb(var(--home-a) / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.35);
+}
+
+.admin-home .home-card__title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgb(var(--ink));
+}
+
+.admin-home .home-card__sub {
+    margin-top: 0.15rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: rgb(var(--ink-muted));
+}
+
+.admin-home .home-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: auto;
+    padding-top: 1rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: rgb(var(--primary-text));
+    transition: gap 0.2s var(--home-ease);
+}
+
+.admin-home .home-link:hover {
+    gap: 0.6rem;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+/* ---------- Contagem animada ---------- */
+
+.admin-home .home-countup {
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Leads por origem ---------- */
+
+.admin-home .home-donut {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+.admin-home .home-donut__chart {
+    position: relative;
+    margin-inline: auto;
+    width: min(100%, 12.5rem);
+    aspect-ratio: 1;
+}
+
+.admin-home .home-donut__svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.admin-home .home-donut__track {
+    stroke: rgb(var(--line) / 0.8);
+    stroke-width: 4.4;
+}
+
+.admin-home .home-donut__slice {
+    stroke-width: 4.4;
+    transform-box: fill-box;
+    transform-origin: center;
+    cursor: pointer;
+    transition: transform 0.25s var(--home-ease), opacity 0.2s;
+}
+
+.admin-home .home-donut__slice.is-active {
+    transform: scale(1.06);
+}
+
+.admin-home .home-donut__slice.is-dim {
+    opacity: 0.35;
+}
+
+.admin-home .home-donut__center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    pointer-events: none;
+}
+
+.admin-home .home-donut__value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: rgb(var(--ink));
+}
+
+.admin-home .home-donut__caption {
+    margin-top: 0.3rem;
+    max-width: 6.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgb(var(--ink-muted));
+}
+
+.admin-home .home-donut__share {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: rgb(var(--primary-text));
+}
+
+.admin-home .home-donut__legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.admin-home .home-pill {
+    --pill: rgb(var(--primary));
+    display: inline-flex;
+    cursor: default;
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: 9999px;
+    padding: 0.3rem 0.4rem 0.3rem 0.7rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgb(var(--ink));
+    background: color-mix(in srgb, var(--pill) 12%, rgb(var(--surface)));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pill) 30%, transparent);
+    transition: opacity 0.2s, transform 0.2s var(--home-ease), box-shadow 0.2s;
+}
+
+.admin-home .home-pill.is-active {
+    transform: translateY(-1px);
+    box-shadow:
+        inset 0 0 0 1.5px var(--pill),
+        0 6px 14px -8px var(--pill);
+}
+
+.admin-home .home-pill.is-dim {
+    opacity: 0.55;
+}
+
+.admin-home .home-pill__dot {
+    height: 0.625rem;
+    width: 0.625rem;
+    flex: none;
+    border-radius: 9999px;
+    background: var(--pill);
+}
+
+.admin-home .home-pill__count {
+    min-width: 1.5rem;
+    border-radius: 9999px;
+    background: rgb(var(--surface) / 0.9);
+    padding: 0.05rem 0.4rem;
+    text-align: center;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Seletor Neste mês / Total ---------- */
+
+.admin-home .home-seg {
+    display: inline-flex;
+    flex: none;
+    border-radius: 0.75rem;
+    background: rgb(var(--primary) / 0.08);
+    padding: 0.2rem;
+    box-shadow: inset 0 0 0 1px rgb(var(--primary) / 0.12);
+}
+
+.admin-home .home-seg button {
+    border-radius: 0.55rem;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: rgb(var(--ink-muted));
+    transition: color 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+.admin-home .home-seg button:hover {
+    color: rgb(var(--primary-text));
+}
+
+.admin-home .home-seg button[aria-pressed='true'] {
+    background: rgb(var(--surface));
+    color: rgb(var(--primary-text));
+    box-shadow: 0 1px 3px rgb(15 23 42 / 0.12);
+}
+
+/* ---------- Meta mensal ---------- */
+
+.admin-home .home-card--goal {
+    cursor: pointer;
+}
+
+.admin-home .home-gauge {
+    position: relative;
+    margin: 0.75rem auto 0;
+    width: min(100%, 15rem);
+}
+
+.admin-home .home-gauge__svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.admin-home .home-gauge__track {
+    stroke: rgb(var(--line));
+    stroke-width: 16;
+    stroke-linecap: round;
+}
+
+.admin-home .home-gauge__fill {
+    stroke-width: 16;
+    stroke-linecap: round;
+}
+
+.admin-home .home-gauge__fill.is-intro {
+    animation: home-gauge-draw 1.1s var(--home-ease) both;
+}
+
+@keyframes home-gauge-draw {
+    from {
+        stroke-dasharray: 0 var(--gauge-total);
+    }
+    to {
+        stroke-dasharray: var(--gauge-len) var(--gauge-total);
+    }
+}
+
+.admin-home .home-gauge__tick {
+    font-size: 10px;
+    font-weight: 600;
+    fill: rgb(var(--ink-muted));
+}
+
+.admin-home .home-gauge__center {
+    position: absolute;
+    inset: auto 0 18% 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+}
+
+.admin-home .home-gauge__value {
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: rgb(var(--ink));
+}
+
+.admin-home .home-gauge__caption {
+    margin-top: 0.2rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgb(var(--ink-muted));
+}
+
+.admin-home .home-goal-total {
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+.admin-home .home-goal-total__label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgb(var(--ink-muted));
+}
+
+.admin-home .home-goal-total__value {
+    margin-top: 0.15rem;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: rgb(var(--ink));
+}
+
+.admin-home .home-goal-total__hint {
+    margin-top: 0.2rem;
+    font-size: 0.8125rem;
+    color: rgb(var(--ink-muted));
+}
+
+.admin-home .home-sellers {
+    margin-top: 1rem;
+    border-top: 1px solid rgb(var(--line));
+    padding-top: 0.85rem;
+}
+
+.admin-home .home-seller {
+    --seller: var(--primary);
+}
+
+.admin-home .home-seller:nth-child(4n + 2) {
+    --seller: var(--info);
+}
+
+.admin-home .home-seller:nth-child(4n + 3) {
+    --seller: var(--home-teal);
+}
+
+.admin-home .home-seller:nth-child(4n + 4) {
+    --seller: var(--talents-400);
+}
+
+.admin-home .home-seller__row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.admin-home .home-seller__avatar {
+    display: inline-flex;
+    height: 1.75rem;
+    width: 1.75rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: rgb(var(--seller) / 0.14);
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: rgb(var(--ink));
+    box-shadow: inset 0 0 0 1.5px rgb(var(--seller) / 0.55);
+}
+
+.admin-home .home-seller__name {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: rgb(var(--ink));
+}
+
+.admin-home .home-seller__value {
+    flex: none;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: rgb(var(--ink-muted));
+}
+
+.admin-home .home-seller__bar {
+    margin-top: 0.4rem;
+    height: 0.4375rem;
+    overflow: hidden;
+    border-radius: 9999px;
+    background: rgb(var(--line));
+}
+
+.admin-home .home-seller__fill {
+    height: 100%;
+    width: 100%;
+    transform-origin: left;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, rgb(var(--seller) / 0.75), rgb(var(--seller)));
+    transition: transform 0.6s var(--home-ease);
+}
+
+/* ---------- Entrada em sequência (só na primeira renderização) ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+    .admin-home .is-intro-seq {
+        animation: home-seq-in 0.6s var(--home-ease) both;
+        animation-delay: calc(var(--seq, 0) * 90ms);
+    }
+}
+
+@keyframes home-seq-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scaleY(0.92);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ---------- Movimento reduzido ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-home .home-card,
+    .admin-home .home-btn,
+    .admin-home .home-cta,
+    .admin-home .home-pill,
+    .admin-home .home-donut__slice,
+    .admin-home .home-seller__fill,
+    .admin-home .home-link {
+        transition: none;
+    }
+
+    .admin-home .home-card:hover,
+    .admin-home .home-btn:hover,
+    .admin-home .home-cta:hover {
+        translate: none;
+    }
+
+    .admin-home .home-gauge__fill.is-intro {
+        animation: none;
+    }
+}
+
+/* Sem suporte a backdrop-filter, o cartão fica um pouco mais opaco para manter a leitura. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .admin-home .home-card {
+        background:
+            radial-gradient(ellipse 85% 55% at 100% 0%, rgb(var(--home-a) / 0.09), transparent 60%),
+            rgb(var(--surface));
+    }
+}
