@@ -32,7 +32,7 @@
 .nr1-shell a:focus-visible,
 .nr1-shell select:focus-visible,
 .nr1-shell input:focus-visible {
-    outline: 3px solid #bd9ace;
+    outline: 3px solid #7a3f94;
     outline-offset: 2px;
 }
 

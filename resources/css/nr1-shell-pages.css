@@ -76,7 +76,7 @@
 .nr1-shell .n1-badge-total { font-size: 11px; font-weight: 750; color: #907398; }
 .nr1-shell .n1-priority { display: grid; grid-template-columns: 32px 1fr auto; align-items: start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--n1-line); }
 .nr1-shell .n1-priority:last-child { border: 0; }
-.nr1-shell .n1-priority-n { border-radius: 11px; width: 30px; height: 30px; display: grid; place-items: center; background: #f2e5f7; color: #754392; font-size: 12px; font-weight: 850; }
+.nr1-shell .n1-priority-n { border-radius: 11px; width: 30px; height: 30px; display: grid; place-items: center; background: #f2e5f7; color: #3c2f4a; font-size: 12px; font-weight: 850; }
 .nr1-shell .n1-priority b { font-size: 12px; }
 .nr1-shell .n1-priority p { margin: 4px 0; color: var(--n1-mut); line-height: 1.4; font-size: 11px; }
 .nr1-shell .n1-highlight { background: #faf5fd; border-radius: 12px; padding: 12px; border: 1px solid #ede1f1; margin-bottom: 9px; }

@@ -134,7 +134,7 @@ const planProgress = computed(() => {
                 </div>
                 <EmptyState v-if="!overview.attention.length" title="Nenhuma dimensão em atenção" text="Quando houver prioridades, elas aparecem aqui em ordem de índice." />
                 <div v-for="(item, index) in overview.attention" :key="item.title" class="n1-priority n1-lift" :style="{ '--dim': dimensionMeta(item.title).color }">
-                    <span class="n1-priority-n" :style="{ background: dimensionMeta(item.title).tint, color: dimensionMeta(item.title).color }">{{ index + 1 }}</span>
+                    <span class="n1-priority-n" :style="{ background: dimensionMeta(item.title).tint }">{{ index + 1 }}</span>
                     <div>
                         <b class="n1-dimname"><DimensionBadge :title="item.title" :size="22" />{{ item.title }}</b>
                         <p>Índice {{ item.score_label }} / 5</p>

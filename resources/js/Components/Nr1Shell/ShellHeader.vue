@@ -45,7 +45,7 @@ const title = computed(() => (props.context.collaborator ? 'Campanha NR-1' : (pr
             <CompanyAvatar v-else name="NR" />
             <div class="n1-header-titles">
                 <div class="n1-header-eyebrow">NR-1 · Pesquisa psicossocial</div>
-                <h1 class="n1-header-title" :title="title">{{ title }}</h1>
+                <div class="n1-header-title" :title="title">{{ title }}</div>
                 <div v-if="contextLine" class="n1-header-context" :title="contextLine">{{ contextLine }}</div>
             </div>
         </div>

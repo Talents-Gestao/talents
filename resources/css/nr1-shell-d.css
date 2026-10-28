@@ -109,3 +109,21 @@
 @media (prefers-reduced-motion: reduce) {
     .nr1-shell .n1-step-dot { transition: none !important; transform: none !important; }
 }
+
+/* Fechamento (Etapa E): contraste AA (4,5:1 no texto pequeno) e foco visível em campos de formulário. */
+.nr1-shell .n1-chev,
+.nr1-shell .n1-badge-total { color: #7a5f83; }
+.nr1-shell .n1-timeline li { color: #70667a; }
+.nr1-shell .n1-variant small,
+.nr1-shell .n1-setting p,
+.nr1-shell .n1-variant.optional,
+.nr1-shell .n1-passeg-note,
+.nr1-shell .n1-passeg-note .n1-tiny { color: #6b6178; }
+.nr1-shell .n1-passeg-note code { color: #4a3d57; }
+.nr1-shell .n1-svc-num { color: #a283b5; }
+.nr1-shell .n1-stepper li.done .n1-step-dot { background: #11766d; }
+.nr1-shell input.n1-field:focus-visible,
+.nr1-shell select.n1-field:focus-visible,
+.nr1-shell textarea:focus-visible,
+.nr1-shell input[type='checkbox']:focus-visible,
+.nr1-shell input[type='radio']:focus-visible { outline: 3px solid #7a3f94; outline-offset: 2px; }
