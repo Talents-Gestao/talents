@@ -23,7 +23,7 @@ class PsychosocialDashboardExtras
      *
      * @return list<array{id: int, factor: string, description: string, status: string, status_label: string, chip: string, confirmed: bool, due_date: ?string, responsible: ?string}>
      */
-    public function nextActions(Survey $survey): array
+    public function nextActions(Survey $survey, ?int $limit = null): array
     {
         return PsychosocialMeasure::query()
             ->where('survey_id', $survey->id)
@@ -31,7 +31,7 @@ class PsychosocialDashboardExtras
             ->with('confirmedResponsibleUser:id,name')
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->limit(self::NEXT_ACTIONS)
+            ->limit($limit ?? self::NEXT_ACTIONS)
             ->get()
             ->map(function (PsychosocialMeasure $measure): array {
                 $confirmed = $measure->confirmed_at !== null;

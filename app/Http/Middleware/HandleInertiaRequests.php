@@ -4,11 +4,13 @@ namespace App\Http\Middleware;
 
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
+use App\Models\User;
 use App\Support\AdminHomeResolver;
 use App\Support\CompanyPortal;
 use App\Support\Hiring\ActiveHiringProcessCounter;
 use App\Support\MetamorfoseDailyQuote;
 use App\Support\Notices\UnreadNoticeCounter;
+use App\Support\Nr1Shell\Nr1Shell;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -104,6 +106,11 @@ class HandleInertiaRequests extends Middleware
                 'sale_code' => fn () => $request->session()->get('sale_code'),
                 'suggest_updated_contract' => fn () => $request->session()->get('suggest_updated_contract'),
             ],
+            // Item único «NR-1» do menu principal: null com a flag desligada ou sem acesso (o menu não muda).
+            'nr1Shell' => [
+                'url' => fn () => Nr1Shell::menuUrl($user),
+                'opportunitiesUrl' => fn () => Nr1Shell::opportunitiesMenuUrl($user),
+            ],
             'sessionExpiry' => Inertia::always(fn () => $this->sessionMetaForFrontend($request)),
             'portal' => CompanyPortal::shareForRequest($request, $user),
             'nav' => [
@@ -135,7 +142,7 @@ class HandleInertiaRequests extends Middleware
         return $shared;
     }
 
-    private function adminHomeUrlFor(\App\Models\User $user): ?string
+    private function adminHomeUrlFor(User $user): ?string
     {
         $routeName = app(AdminHomeResolver::class)->routeNameFor($user);
 

@@ -86,6 +86,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Shell NR-1 (navegação própria em /nr1)
+    |--------------------------------------------------------------------------
+    |
+    | Desligado por padrão em produção e ligado no ambiente local. Ligado: aparece UM item «NR-1» no menu
+    | principal (e some o item antigo «Pesquisas NR1» da empresa) e as rotas /nr1/* respondem. Desligado: o
+    | sistema se comporta exatamente como antes e /nr1/* responde 404. As rotas antigas (admin e client)
+    | nunca saem do ar: continuam valendo por URL direta nos dois casos. Ligar em produção só depois da
+    | aprovação do visual pela Suzane.
+    */
+    'shell_enabled' => (bool) env('NR1_SHELL_ENABLED', env('APP_ENV') === 'local'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Soluções Talents (Caderno §14)
     |--------------------------------------------------------------------------
     |

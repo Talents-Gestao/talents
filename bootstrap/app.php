@@ -2,19 +2,24 @@
 
 use App\Http\Middleware\EnsureAdminPermission;
 use App\Http\Middleware\EnsureCompanyAccess;
+use App\Http\Middleware\EnsureCompanyAdmin;
+use App\Http\Middleware\EnsureComplaintCompanySelected;
+use App\Http\Middleware\EnsureDesligamentoCompanySelected;
+use App\Http\Middleware\EnsureExternalReviewer;
 use App\Http\Middleware\EnsureFeedbackCompanySelected;
 use App\Http\Middleware\EnsureFeriasCompanySelected;
-use App\Http\Middleware\EnsureDesligamentoCompanySelected;
-use App\Http\Middleware\EnsureComplaintCompanySelected;
-use App\Http\Middleware\EnsureSuggestionCompanySelected;
-use App\Http\Middleware\EnsureCompanyAdmin;
+use App\Http\Middleware\EnsureMfa;
 use App\Http\Middleware\EnsureModulePermission;
+use App\Http\Middleware\EnsureNr1Shell;
 use App\Http\Middleware\EnsureStrategicCalendarAccess;
+use App\Http\Middleware\EnsureSuggestionCompanySelected;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\EnsureSurveyPublished;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\LogInertiaRequestTiming;
 use App\Jobs\RemindUpcomingTaskDueDatesJob;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -38,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(base_path('routes/offboarding.php'));
             Route::middleware('web')->group(base_path('routes/client-evaluation.php'));
             Route::middleware('web')->group(base_path('routes/external-review.php'));
+            Route::group([], base_path('routes/nr1.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -48,6 +54,9 @@ return Application::configure(basePath: dirname(__DIR__))
             LogInertiaRequestTiming::class,
         ]);
 
+        // Flag do shell NR-1 desligada: /nr1 responde 404 também para visitante (antes do redirecionamento de login).
+        $middleware->prependToPriorityList(before: AuthenticatesRequests::class, prepend: EnsureNr1Shell::class);
+
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
@@ -55,9 +64,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'super_admin' => EnsureSuperAdmin::class,
-            'external_reviewer' => \App\Http\Middleware\EnsureExternalReviewer::class,
-            'mfa' => \App\Http\Middleware\EnsureMfa::class,
-            'survey.published' => \App\Http\Middleware\EnsureSurveyPublished::class,
+            'external_reviewer' => EnsureExternalReviewer::class,
+            'mfa' => EnsureMfa::class,
+            'nr1.shell' => EnsureNr1Shell::class,
+            'survey.published' => EnsureSurveyPublished::class,
             'admin.can' => EnsureAdminPermission::class,
             'company' => EnsureCompanyAccess::class,
             'company_admin' => EnsureCompanyAdmin::class,
