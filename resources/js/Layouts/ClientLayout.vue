@@ -15,10 +15,13 @@ import {
     ClipboardDocumentListIcon,
     FingerPrintIcon,
     HomeIcon,
+    MapIcon,
     MegaphoneIcon,
     ChatBubbleLeftRightIcon,
+    LightBulbIcon,
     FlagIcon,
     ShieldExclamationIcon,
+    StarIcon,
     SunIcon,
     UsersIcon,
 } from '@heroicons/vue/24/outline';
@@ -29,7 +32,7 @@ const page = usePage();
 const { can } = usePermissions();
 
 const showVozDoTime = computed(
-    () => can('pesquisas', 'view') || can('denuncias', 'view') || can('desligamento', 'view'),
+    () => can('pesquisas', 'view') || can('denuncias', 'view') || can('sugestoes', 'view') || can('desligamento', 'view'),
 );
 
 const dailyQuote = computed(() => page.props.dailyQuote ?? null);
@@ -46,16 +49,40 @@ const activeHiringProcessesCount = computed(() => {
 const showDailyQuote = computed(
     () => !!dailyQuote.value && route().current('client.dashboard'),
 );
+
+const portalBrand = computed(() => {
+    const portal = page.props.portal;
+
+    return portal?.name ? portal : null;
+});
+
+const portalShellStyle = computed(() => {
+    const color = portalBrand.value?.primary_color;
+
+    return color ? { '--portal-primary': color } : undefined;
+});
+
+/** Href estável — evita crash se o Ziggy da sessão ainda não tiver a rota nova. */
+const mapaPropositoHref = '/client/mapa-proposito';
+const mapaPropositoActive = computed(() =>
+    String(page.url ?? '').startsWith('/client/mapa-proposito'),
+);
 </script>
 
 <template>
-    <SidebarLayout top-bar-title="Área do cliente">
+    <SidebarLayout
+        :top-bar-title="portalBrand?.name || 'Área do cliente'"
+        :shell-style="portalShellStyle"
+    >
         <template #logo="{ collapsed }">
             <SidebarBrandMark
                 :href="route('client.dashboard')"
                 :collapsed="collapsed"
                 isolated-icon
-                icon-src="/images/logo-icon.png"
+                :icon-src="portalBrand?.logo_url || '/images/logo-icon.png'"
+                :brand-title="portalBrand?.name || 'Talents'"
+                :brand-subtitle="portalBrand ? '' : 'GESTÃO DE PESSOAS'"
+                :accent-color="portalBrand?.primary_color || ''"
             />
         </template>
 
@@ -84,11 +111,27 @@ const showDailyQuote = computed(
                     :collapsed="collapsed"
                 />
                 <SidebarNavItem
+                    v-if="can('pesquisas', 'view')"
+                    :href="mapaPropositoHref"
+                    :active="mapaPropositoActive"
+                    :icon="MapIcon"
+                    label="Mapa de Propósito"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
                     v-if="can('denuncias', 'view')"
                     :href="route('client.complaints.index')"
                     :active="route().current('client.complaints.*')"
                     :icon="ShieldExclamationIcon"
                     label="Denúncias"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="can('sugestoes', 'view')"
+                    :href="route('client.suggestions.index')"
+                    :active="route().current('client.suggestions.*')"
+                    :icon="LightBulbIcon"
+                    label="Sugestões e dúvidas"
                     :collapsed="collapsed"
                 />
                 <SidebarNavItem
@@ -173,6 +216,14 @@ const showDailyQuote = computed(
                 :active="route().current('client.rhid.*')"
                 :icon="FingerPrintIcon"
                 label="RHID / Ponto"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                v-if="isCompanyAdmin"
+                :href="route('client.avaliacoes.index')"
+                :active="route().current('client.avaliacoes.*')"
+                :icon="StarIcon"
+                label="Avaliações"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

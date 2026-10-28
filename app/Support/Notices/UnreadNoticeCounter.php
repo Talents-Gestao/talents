@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Notices;
 
 use App\Enums\CompanyNoticeAudience;
+use App\Enums\CompanyNoticeEventKind;
 use App\Models\CompanyNotice;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -40,6 +41,45 @@ class UnreadNoticeCounter
                 }
 
                 return (int) $query
+                    ->whereNotExists(function ($sub) use ($user): void {
+                        $sub->selectRaw('1')
+                            ->from('company_notice_reads')
+                            ->whereColumn('company_notice_reads.company_notice_id', 'company_notices.id')
+                            ->where('company_notice_reads.user_id', $user->id);
+                    })
+                    ->count();
+            },
+        );
+    }
+
+    /**
+     * Leads atribuídos ao utilizador atual e ainda não lidos.
+     * Usado pelo badge flutuante (não pelo sino, que continua a contar todos os avisos).
+     */
+    public function unreadAssignedLeadsForUser(?User $user): int
+    {
+        if (! $user) {
+            return 0;
+        }
+
+        $context = $this->contextFor($user);
+        if ($context === null) {
+            return 0;
+        }
+
+        [$audience] = $context;
+        if ($audience !== CompanyNoticeAudience::Talents) {
+            return 0;
+        }
+
+        return (int) Cache::remember(
+            $this->assignedLeadsCacheKey((int) $user->id),
+            now()->addSeconds(20),
+            function () use ($user): int {
+                return (int) CompanyNotice::query()
+                    ->where('published_at', '<=', now())
+                    ->where('event_kind', CompanyNoticeEventKind::LeadReceived)
+                    ->where('target_user_id', $user->id)
                     ->whereNotExists(function ($sub) use ($user): void {
                         $sub->selectRaw('1')
                             ->from('company_notice_reads')
@@ -145,6 +185,8 @@ class UnreadNoticeCounter
 
     public function forget(User $user): void
     {
+        $this->forgetForUserId((int) $user->id);
+
         $context = $this->contextFor($user);
         if ($context === null) {
             return;
@@ -152,6 +194,20 @@ class UnreadNoticeCounter
 
         [$audience, $companyId] = $context;
         Cache::forget($this->cacheKey($user, $audience, $companyId));
+    }
+
+    /**
+     * Invalida o cache do badge de leads atribuídos sem depender do workspace da sessão.
+     * Usado ao publicar um lead para outro comercial.
+     */
+    public function forgetForUserId(int $userId): void
+    {
+        Cache::forget($this->assignedLeadsCacheKey($userId));
+        Cache::forget(sprintf(
+            'nav.unread_notices.%d.%s.all',
+            $userId,
+            CompanyNoticeAudience::Talents->value,
+        ));
     }
 
     private function cacheKey(User $user, CompanyNoticeAudience $audience, ?int $companyId): string
@@ -162,5 +218,10 @@ class UnreadNoticeCounter
             $audience->value,
             $companyId ?? 'all',
         );
+    }
+
+    private function assignedLeadsCacheKey(int $userId): string
+    {
+        return sprintf('nav.unread_assigned_leads.%d', $userId);
     }
 }

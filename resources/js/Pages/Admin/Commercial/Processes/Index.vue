@@ -1,4 +1,5 @@
 <script setup>
+import PaginationBar from '@/Components/PaginationBar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -47,13 +48,13 @@ const remove = async (id) => {
 </script>
 
 <template>
-    <Head title="Comercial — Processos" />
+    <Head title="Configuração — Processos" />
 
     <AdminLayout>
         <template #header>
             <FormPageHeader
-                :back-href="route('admin.comercial.propostas.index')"
-                back-label="Comercial"
+                :back-href="route('admin.settings.edit')"
+                back-label="Configuração"
                 title="Processos"
                 subtitle="Documentos oficiais do processo comercial da Talents"
             >
@@ -171,6 +172,7 @@ const remove = async (id) => {
                     </tbody>
                 </table>
             </div>
+            <PaginationBar :paginator="processes" />
         </div>
     </AdminLayout>
 </template>

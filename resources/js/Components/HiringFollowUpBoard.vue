@@ -1,5 +1,6 @@
 <script setup>
 import HiringProcessObservations from '@/Components/HiringProcessObservations.vue';
+import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import HiringProcessStepper from '@/Components/HiringProcessStepper.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -451,15 +452,15 @@ watch(
                                 @keyup.enter="applyFilters"
                             />
                         </div>
-                        <select
+                        <CompanySearchSelect
                             v-if="show_company_filter"
                             v-model="companyId"
-                            :class="fieldClass + ' sm:w-56'"
-                            class="!mt-0"
-                        >
-                            <option value="">Todas as empresas</option>
-                            <option v-for="c in companies" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
-                        </select>
+                            :companies="companies"
+                            as-string
+                            empty-label="Todas as empresas"
+                            class="w-full sm:w-56"
+                            input-class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
+                        />
                         <button
                             type="button"
                             class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
@@ -487,10 +488,15 @@ watch(
                     <form class="mt-3 grid gap-3 sm:grid-cols-2" @submit.prevent="submitCreate">
                         <div v-if="show_company_on_create">
                             <InputLabel for="create_company" value="Empresa" />
-                            <select id="create_company" v-model="createForm.company_id" :class="fieldClass" required>
-                                <option value="" disabled>Selecione</option>
-                                <option v-for="c in companies" :key="c.id" :value="c.id">{{ c.name }}</option>
-                            </select>
+                            <CompanySearchSelect
+                                id="create_company"
+                                v-model="createForm.company_id"
+                                :companies="companies"
+                                required
+                                placeholder="Selecione"
+                                class="mt-1"
+                                input-class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/70"
+                            />
                             <InputError class="mt-1" :message="createForm.errors.company_id" />
                         </div>
                         <div :class="show_company_on_create ? '' : 'sm:col-span-2'">

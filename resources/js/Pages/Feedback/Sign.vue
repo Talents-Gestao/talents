@@ -1,6 +1,7 @@
 <script setup>
 import SignaturePad from '@/Components/Feedback/SignaturePad.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
+import { formatDateTime } from '@/utils/dateOnly';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { CheckCircleIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
 import { computed } from 'vue';
@@ -120,7 +121,7 @@ const submit = () => {
                 <div>
                     <p class="font-semibold">Documento assinado com sucesso</p>
                     <p class="mt-1 text-emerald-800/90">
-                        Em {{ new Date(signature.signed_at).toLocaleString('pt-BR') }}.
+                        Em {{ formatDateTime(signature.signed_at) }}.
                     </p>
                 </div>
             </div>

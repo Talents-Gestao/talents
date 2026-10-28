@@ -188,4 +188,10 @@ return [
     'demo_persons' => filter_var(env('RHID_DEMO_PERSONS', false), FILTER_VALIDATE_BOOL)
         || env('APP_ENV') === 'local',
 
+    /*
+    | Empresa local só com espelhos (sem chamar a API Control iD).
+    | Usada pelo seeder PontoVisualQaSeeder para testes visuais.
+    */
+    'visual_qa_email' => env('RHID_VISUAL_QA_EMAIL', 'qa-ponto@talents.local'),
+
 ];

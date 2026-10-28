@@ -128,6 +128,32 @@ class WipeCompanyDataCommand extends Command
                 ? DB::table('survey_answers')->whereIn('survey_response_id', $responseIds)->count()
                 : 0;
             $counts['  → resultados (survey_results)'] = DB::table('survey_results')->whereIn('survey_id', $surveyIds)->count();
+            if (Schema::hasTable('survey_campaign_registrations')) {
+                $counts['  → cadastro técnico (survey_campaign_registrations)'] = DB::table('survey_campaign_registrations')
+                    ->where('company_id', $companyId)
+                    ->count();
+            }
+            if (Schema::hasTable('psychosocial_measures')) {
+                $measureIds = DB::table('psychosocial_measures')->where('company_id', $companyId)->pluck('id');
+                $counts['  → medidas (psychosocial_measures)'] = $measureIds->count();
+                $counts['  → histórico de medidas (psychosocial_measure_events)'] = $measureIds->isNotEmpty()
+                    ? DB::table('psychosocial_measure_events')->whereIn('measure_id', $measureIds)->count()
+                    : 0;
+            }
+            if (Schema::hasTable('psychosocial_documents')) {
+                $documentIds = DB::table('psychosocial_documents')->where('company_id', $companyId)->pluck('id');
+                $versionIds = $documentIds->isNotEmpty()
+                    ? DB::table('psychosocial_document_versions')->whereIn('document_id', $documentIds)->pluck('id')
+                    : collect();
+                $counts['  → documentos (psychosocial_documents)'] = $documentIds->count();
+                $counts['  → versões de documento (psychosocial_document_versions)'] = $versionIds->count();
+                $counts['  → validações de documento (psychosocial_document_validations)'] = $versionIds->isNotEmpty()
+                    ? DB::table('psychosocial_document_validations')->whereIn('version_id', $versionIds)->count()
+                    : 0;
+                $counts['  → anexos de documento (psychosocial_document_attachments)'] = $versionIds->isNotEmpty()
+                    ? DB::table('psychosocial_document_attachments')->whereIn('version_id', $versionIds)->count()
+                    : 0;
+            }
             $counts['  → insights (survey_insights)'] = DB::table('survey_insights')->whereIn('survey_id', $surveyIds)->count();
             if (Schema::hasTable('ai_analyses')) {
                 $counts['  → análises de IA (ai_analyses)'] = DB::table('ai_analyses')->whereIn('survey_id', $surveyIds)->count();
@@ -137,6 +163,10 @@ class WipeCompanyDataCommand extends Command
             $counts['  → itens de plano (action_plan_items)'] = $apIds->isNotEmpty()
                 ? DB::table('action_plan_items')->whereIn('action_plan_id', $apIds)->count()
                 : 0;
+        }
+
+        if (Schema::hasTable('team_suggestions')) {
+            $counts['Sugestões e dúvidas (team_suggestions)'] = DB::table('team_suggestions')->where('company_id', $companyId)->count();
         }
 
         $counts['Denúncias (complaints)'] = $complaintIds->count();
@@ -177,9 +207,41 @@ class WipeCompanyDataCommand extends Command
 
     private function wipe(int $companyId): void
     {
+        if (Schema::hasTable('survey_campaign_registrations')) {
+            DB::table('survey_campaign_registrations')->where('company_id', $companyId)->delete();
+        }
+
+        if (Schema::hasTable('psychosocial_measures')) {
+            $measureIds = DB::table('psychosocial_measures')->where('company_id', $companyId)->pluck('id')->all();
+            if (! empty($measureIds)) {
+                DB::table('psychosocial_measure_events')->whereIn('measure_id', $measureIds)->delete();
+                DB::table('psychosocial_measures')->whereIn('id', $measureIds)->delete();
+            }
+        }
+
+        // Só linhas de banco; os arquivos de PDF, comprovantes e anexos ficam no disco.
+        if (Schema::hasTable('psychosocial_documents')) {
+            $documentIds = DB::table('psychosocial_documents')->where('company_id', $companyId)->pluck('id')->all();
+            if (! empty($documentIds)) {
+                $versionIds = DB::table('psychosocial_document_versions')->whereIn('document_id', $documentIds)->pluck('id')->all();
+                DB::table('psychosocial_documents')->whereIn('id', $documentIds)->update(['current_version_id' => null]);
+                if (! empty($versionIds)) {
+                    DB::table('psychosocial_document_attachments')->whereIn('version_id', $versionIds)->delete();
+                    DB::table('psychosocial_document_validations')->whereIn('version_id', $versionIds)->delete();
+                    DB::table('psychosocial_document_versions')->whereIn('id', $versionIds)->where('kind', 'validated')->delete();
+                    DB::table('psychosocial_document_versions')->whereIn('id', $versionIds)->delete();
+                }
+                DB::table('psychosocial_documents')->whereIn('id', $documentIds)->delete();
+            }
+        }
+
         $surveyIds = DB::table('surveys')->where('company_id', $companyId)->pluck('id')->all();
         if (! empty($surveyIds)) {
             DB::table('surveys')->whereIn('id', $surveyIds)->delete();
+        }
+
+        if (Schema::hasTable('team_suggestions')) {
+            DB::table('team_suggestions')->where('company_id', $companyId)->delete();
         }
 
         $complaintIds = DB::table('complaints')->where('company_id', $companyId)->pluck('id')->all();

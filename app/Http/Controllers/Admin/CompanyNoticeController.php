@@ -9,6 +9,7 @@ use App\Enums\CompanyNoticeEventKind;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\CompanyNotice;
+use App\Models\User;
 use App\Support\Complaints\ComplaintCompanyContext;
 use App\Support\Feedback\FeedbackCompanyContext;
 use App\Support\Notices\NoticeDestinationUrl;
@@ -87,7 +88,7 @@ class CompanyNoticeController extends Controller
             'notices' => $result['notices']
                 ->map(fn (CompanyNotice $notice) => $this->serializeNotice($notice))
                 ->values(),
-            'unread_count' => $unreadNoticeCounter->forUser($user),
+            ...$this->noticeCounts($user, $unreadNoticeCounter),
             'page' => $result['page'],
             'has_more' => $result['has_more'],
         ]);
@@ -111,7 +112,7 @@ class CompanyNoticeController extends Controller
         if ($request->wantsJson()) {
             return response()->json([
                 'ok' => true,
-                'unread_count' => $unreadNoticeCounter->forUser($user),
+                ...$this->noticeCounts($user, $unreadNoticeCounter),
             ]);
         }
 
@@ -130,7 +131,7 @@ class CompanyNoticeController extends Controller
             return response()->json([
                 'ok' => true,
                 'marked' => $count,
-                'unread_count' => $unreadNoticeCounter->forUser($user),
+                ...$this->noticeCounts($user, $unreadNoticeCounter),
             ]);
         }
 
@@ -157,7 +158,7 @@ class CompanyNoticeController extends Controller
         if ($request->wantsJson()) {
             return response()->json([
                 'ok' => true,
-                'unread_count' => $unreadNoticeCounter->forUser($user),
+                ...$this->noticeCounts($user, $unreadNoticeCounter),
             ]);
         }
 
@@ -176,7 +177,7 @@ class CompanyNoticeController extends Controller
             return response()->json([
                 'ok' => true,
                 'deleted' => $count,
-                'unread_count' => $unreadNoticeCounter->forUser($user),
+                ...$this->noticeCounts($user, $unreadNoticeCounter),
             ]);
         }
 
@@ -222,7 +223,19 @@ class CompanyNoticeController extends Controller
             'company_id' => $notice->company_id,
             'company_name' => $notice->company?->name,
             'read' => $notice->reads->isNotEmpty(),
+            'target_user_id' => $notice->target_user_id,
             'url' => app(NoticeDestinationUrl::class)->url($notice, admin: true),
+        ];
+    }
+
+    /**
+     * @return array{unread_count: int, unread_assigned_leads_count: int}
+     */
+    private function noticeCounts(User $user, UnreadNoticeCounter $unreadNoticeCounter): array
+    {
+        return [
+            'unread_count' => $unreadNoticeCounter->forUser($user),
+            'unread_assigned_leads_count' => $unreadNoticeCounter->unreadAssignedLeadsForUser($user),
         ];
     }
 

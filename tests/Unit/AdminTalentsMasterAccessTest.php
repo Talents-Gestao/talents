@@ -22,7 +22,10 @@ class AdminTalentsMasterAccessTest extends TestCase
 
         $this->assertFalse($admin->canAccessAdmin(AdminPermissionModule::FinanceiroVendas, PermissionAction::View));
         $this->assertFalse($admin->hasAllAdminPermissions());
-        $this->assertSame([], $admin->adminPermissionMatrixForFrontend());
+        $this->assertSame(
+            [AdminPermissionModule::Dashboard->value => [PermissionAction::View->value]],
+            $admin->adminPermissionMatrixForFrontend(),
+        );
         $this->assertSame('admin.dashboard', app(AdminHomeResolver::class)->routeNameFor($admin));
     }
 

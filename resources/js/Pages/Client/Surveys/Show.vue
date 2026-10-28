@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { formatDateTime } from '@/utils/dateOnly';
@@ -16,10 +17,21 @@ defineProps({
 
     <ClientLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <h2 class="text-xl font-semibold leading-tight text-talents-900">{{ survey.title }}</h2>
-                <Link :href="route('client.surveys.edit', survey.id)" class="text-sm font-semibold text-talents-700 hover:underline">Editar</Link>
-            </div>
+            <FormPageHeader
+                :back-href="route('client.surveys.index')"
+                back-label="Campanhas"
+                :title="survey.title"
+                :prefer-history="true"
+            >
+                <template #trailing>
+                    <Link
+                        :href="route('client.surveys.edit', survey.id)"
+                        class="text-sm font-semibold text-talents-700 hover:underline"
+                    >
+                        Editar
+                    </Link>
+                </template>
+            </FormPageHeader>
         </template>
 
         <div class="surface-card p-6">

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Commercial;
 
+use App\Actions\Commercial\AttachProposalExtraCommission;
 use App\Actions\Hiring\CreateHiringProcessFromClosedProposal;
 use App\Actions\Notices\PublishCommercialNotice;
 use App\Enums\ProposalLostReason;
@@ -144,6 +145,7 @@ class ProposalController extends Controller
             'kanban' => $kanban,
             'view' => $view,
             'sellers' => $this->sellersOptions(),
+            'commissionUsers' => $this->commissionEligibleUsers(),
             'filters' => $filters,
             'statusCounts' => $statusCounts,
             'lostReasonOptions' => ProposalLostReason::options(),
@@ -452,6 +454,31 @@ class ProposalController extends Controller
         return back()->with('success', 'Observação atualizada.');
     }
 
+    public function storeExtraCommission(
+        Request $request,
+        CommercialProposal $proposal,
+        AttachProposalExtraCommission $attach,
+    ): RedirectResponse {
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ], [
+            'user_id.required' => 'Selecione a pessoa que receberá a comissão extra.',
+            'user_id.exists' => 'Utilizador inválido.',
+        ]);
+
+        $beneficiary = User::query()->findOrFail((int) $data['user_id']);
+        $notes = isset($data['notes']) ? trim((string) $data['notes']) : null;
+
+        $attach->handle($proposal, $beneficiary, $notes !== '' ? $notes : null);
+
+        $message = $proposal->sale()->exists()
+            ? "Comissão de {$beneficiary->name} registrada nesta venda."
+            : "Comissão de {$beneficiary->name} fica reservada e entra ao converter a proposta em venda.";
+
+        return back()->with('success', $message);
+    }
+
     /**
      * Formulário de proposta aberto como modal sobre a lista (create/edit).
      *
@@ -598,8 +625,9 @@ class ProposalController extends Controller
     {
         return [
             'seller:id,name',
+            'extraCommissions.user:id,name',
             'sale' => function ($saleQuery): void {
-                $saleQuery->select('id', 'proposal_id', 'code', 'status', 'installments_count')
+                $saleQuery->select('id', 'proposal_id', 'code', 'status', 'installments_count', 'total_cents')
                     ->withCount([
                         'installments as paid_installments_count' => fn ($iq) => $iq
                             ->where('status', CommercialSaleInstallment::STATUS_PAGO),
@@ -648,6 +676,14 @@ class ProposalController extends Controller
         $arr['closed_without_sale'] = $listStatus === ProposalListStatus::CLOSED && ! $hasSale;
         $arr['contract_signed'] = $contractSigned;
         $arr['zapsign_pending'] = $zapsignPending;
+        $arr['extra_commissions'] = $proposal->extraCommissions
+            ->map(fn ($extra) => [
+                'id' => $extra->id,
+                'user_id' => $extra->user_id,
+                'name' => $extra->user?->name,
+            ])
+            ->values()
+            ->all();
 
         return $arr;
     }
@@ -924,6 +960,25 @@ class ProposalController extends Controller
     }
 
     /**
+     * Equipe com percentual de comissão já definido (exceção Fernanda/Isa).
+     *
+     * @return array<int, array{id:int,name:string}>
+     */
+    private function commissionEligibleUsers(): array
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->where('commission_percent', '>', 0)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+            ])
+            ->all();
+    }
+
+    /**
      * Settings expostos ao frontend para o cálculo ao vivo.
      */
     private function publicSettings(): array
@@ -1157,7 +1212,7 @@ class ProposalController extends Controller
                 'href' => route('admin.financeiro.contas-a-receber.index'),
             ];
 
-            if ($sale->commission && (int) $sale->commission->amount_cents > 0) {
+            if ($sale->commissions()->where('amount_cents', '>', 0)->exists()) {
                 $items[] = [
                     'key' => 'comissao',
                     'label' => 'Financeiro · Comissões',

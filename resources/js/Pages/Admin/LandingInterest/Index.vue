@@ -13,6 +13,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    correspondentUsers: {
+        type: Array,
+        default: () => [],
+    },
     filters: {
         type: Object,
         default: () => ({
@@ -37,6 +41,27 @@ const form = useForm({
     company: '',
     message: '',
     source: '',
+    assigned_to: '',
+});
+
+const currentUserId = computed(() => Number(page.props.auth?.user?.id ?? 0));
+
+const defaultAssignedTo = () => {
+    const me = currentUserId.value;
+    if (me > 0 && props.correspondentUsers.some((user) => Number(user.id) === me)) {
+        return me;
+    }
+    return '';
+};
+
+const assignedCorrespondent = computed(() =>
+    props.correspondentUsers.find((user) => Number(user.id) === Number(form.assigned_to)) ?? null,
+);
+
+const assigningToSomeoneElse = computed(() => {
+    const to = Number(form.assigned_to);
+    const me = currentUserId.value;
+    return Number.isFinite(to) && to > 0 && me > 0 && to !== me;
 });
 
 const notesForm = useForm({
@@ -226,6 +251,7 @@ function openCreateModal() {
     form.clearErrors();
     form.reset();
     form.source = '';
+    form.assigned_to = defaultAssignedTo();
     showCreateModal.value = true;
 }
 
@@ -277,6 +303,7 @@ function submitLead() {
             closeCreateModal();
             form.reset();
             form.source = '';
+            form.assigned_to = defaultAssignedTo();
         },
     });
 }
@@ -476,6 +503,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Telefone</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Empresa</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Origem</th>
+                            <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Responsável</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Qualificado</th>
                             <th class="min-w-[12rem] px-4 py-3 text-left font-medium text-gray-700">Mensagem</th>
                             <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">E-mail aviso</th>
@@ -510,6 +538,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 >
                                     {{ s.source_label || '—' }}
                                 </span>
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-3 align-middle text-gray-700">
+                                {{ s.assigned_to_name || s.created_by_name || '—' }}
                             </td>
                             <td class="whitespace-nowrap px-4 py-3 align-middle">
                                 <span
@@ -625,6 +656,40 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         :error="form.errors.source"
                     />
                     <div>
+                        <label class="block text-sm font-medium text-gray-700" for="lead-assigned-to">
+                            Responsável comercial
+                        </label>
+                        <p class="mt-0.5 text-xs text-gray-500">
+                            Quem deve acompanhar este lead. Pode ser você ou outra pessoa da equipe.
+                        </p>
+                        <select
+                            id="lead-assigned-to"
+                            v-model="form.assigned_to"
+                            class="field-input mt-2"
+                        >
+                            <option value="">Selecione o responsável</option>
+                            <option
+                                v-for="user in correspondentUsers"
+                                :key="user.id"
+                                :value="user.id"
+                            >
+                                {{ user.name }}{{ Number(user.id) === currentUserId ? ' (você)' : '' }}
+                            </option>
+                        </select>
+                        <p v-if="form.errors.assigned_to" class="mt-1 text-sm text-red-600">
+                            {{ form.errors.assigned_to }}
+                        </p>
+                        <p
+                            v-if="assigningToSomeoneElse && assignedCorrespondent"
+                            class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+                        >
+                            Este lead será atribuído a
+                            <span class="font-semibold">{{ assignedCorrespondent.name }}</span>.
+                            Administradores e os perfis comerciais receberão um aviso de que
+                            {{ page.props.auth?.user?.name || 'você' }} fez o cadastro.
+                        </p>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-gray-700" for="lead-message">
                             Mensagem <span class="font-normal text-gray-500">(opcional)</span>
                         </label>
@@ -702,6 +767,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Mensagem</dt>
                         <dd class="mt-1 whitespace-pre-wrap text-sm text-slate-900">
                             {{ selectedLead.message || '—' }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Responsável</dt>
+                        <dd class="mt-1 text-sm text-slate-900">
+                            {{ selectedLead.assigned_to_name || '—' }}
                         </dd>
                     </div>
                     <div>

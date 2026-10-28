@@ -3,7 +3,9 @@
 use App\Http\Controllers\Client\AcompanhamentoController;
 use App\Http\Controllers\NewsFeedController;
 use App\Http\Controllers\Client\ActionPlanController;
+use App\Http\Controllers\Client\ClientEvaluationController;
 use App\Http\Controllers\Client\ComplaintController;
+use App\Http\Controllers\Client\SuggestionController;
 use App\Http\Controllers\Client\CompanyNoticeController as ClientCompanyNoticeController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\DepartmentController;
@@ -12,14 +14,18 @@ use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
 use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
 use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
+use App\Http\Controllers\Client\ExecutiveBriefController;
 use App\Http\Controllers\Client\ExportController;
 use App\Http\Controllers\Client\ImportController;
 use App\Http\Controllers\Client\PositionController;
+use App\Http\Controllers\Client\PsychosocialDashboardController;
+use App\Http\Controllers\Client\PsychosocialDocumentController;
 use App\Http\Controllers\Client\ReportController;
 use App\Http\Controllers\Client\RhidApiController;
 use App\Http\Controllers\Client\RhidComplianceController;
 use App\Http\Controllers\Client\RhidSettingsController;
 use App\Http\Controllers\Client\StrategicCalendarController as ClientStrategicCalendarController;
+use App\Http\Controllers\Client\PurposeMapCampaignController;
 use App\Http\Controllers\Client\SurveyController;
 use App\Http\Controllers\Client\SurveyResultsController;
 use App\Http\Controllers\Client\VozDoTimeController;
@@ -50,6 +56,14 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::resource('usuarios', UserController::class)->parameters(['usuarios' => 'user'])->except(['show']);
     });
 
+    Route::middleware('company_admin')->group(function () {
+        Route::get('avaliacoes', [ClientEvaluationController::class, 'index'])->name('avaliacoes.index');
+        Route::get('avaliacoes/criar', [ClientEvaluationController::class, 'create'])->name('avaliacoes.create');
+        Route::post('avaliacoes', [ClientEvaluationController::class, 'store'])->name('avaliacoes.store');
+        Route::get('avaliacoes/{evaluation}', [ClientEvaluationController::class, 'show'])->name('avaliacoes.show');
+        Route::post('avaliacoes/{evaluation}/email', [ClientEvaluationController::class, 'sendEmail'])->name('avaliacoes.email');
+    });
+
     Route::middleware('can.module:departamentos_cargos')->group(function () {
         Route::resource('departments', DepartmentController::class)->except(['show']);
         Route::post('import/departments', [ImportController::class, 'departments'])->name('import.departments');
@@ -61,11 +75,15 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
     Route::middleware('can.module:pesquisas')->group(function () {
         Route::resource('surveys', SurveyController::class)->except(['destroy']);
         Route::get('surveys/{survey}/results', [SurveyResultsController::class, 'show'])->name('surveys.results');
+
+        Route::get('mapa-proposito', [PurposeMapCampaignController::class, 'index'])->name('mapa-proposito.index');
+        Route::get('mapa-proposito/resultados', [PurposeMapCampaignController::class, 'show'])->name('mapa-proposito.dashboard');
     });
 
     Route::middleware('can.module:pesquisas,edit')->group(function () {
         Route::post('surveys/{survey}/ai-analysis', [SurveyResultsController::class, 'generateAiAnalysis'])->name('surveys.ai-analysis');
         Route::post('surveys/{survey}/recalculate', [SurveyResultsController::class, 'recalculate'])->name('surveys.recalculate');
+        Route::post('mapa-proposito/analisar', [PurposeMapCampaignController::class, 'analyze'])->name('mapa-proposito.analyze');
     });
 
     Route::middleware('can.module:planos_acao')->group(function () {
@@ -81,6 +99,19 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('surveys/{survey}/reports/action-plan', [ReportController::class, 'actionPlan'])->name('surveys.reports.action-plan');
         Route::get('surveys/{survey}/export/json', [ExportController::class, 'json'])->name('surveys.export.json');
         Route::get('surveys/{survey}/export/csv', [ExportController::class, 'csv'])->name('surveys.export.csv');
+        Route::get('surveys/{survey}/painel-psicossocial', [PsychosocialDashboardController::class, 'show'])->name('surveys.psychosocial-dashboard');
+        Route::get('surveys/{survey}/painel-psicossocial/export/csv', [PsychosocialDashboardController::class, 'exportCsv'])->name('surveys.psychosocial-dashboard.export.csv');
+        Route::get('surveys/{survey}/painel-psicossocial/export/json', [PsychosocialDashboardController::class, 'exportJson'])->name('surveys.psychosocial-dashboard.export.json');
+        Route::get('surveys/{survey}/resumo-executivo/download', [ExecutiveBriefController::class, 'download'])->name('surveys.executive-brief.download');
+        Route::get('surveys/{survey}/documentos/{type}/download', [PsychosocialDocumentController::class, 'download'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->name('surveys.psychosocial-documents.download');
+    });
+
+    Route::middleware('can.module:relatorios,validate')->group(function () {
+        Route::post('surveys/{survey}/documentos/{type}/validar', [PsychosocialDocumentController::class, 'validateInSystem'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->name('surveys.psychosocial-documents.validate');
     });
 
     Route::middleware(['strategic_calendar', 'can.module:calendario_estrategico'])->group(function () {
@@ -110,6 +141,12 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('complaints/{complaint}', [ComplaintController::class, 'show'])->name('complaints.show');
         Route::patch('complaints/{complaint}/status', [ComplaintController::class, 'updateStatus'])->name('complaints.status');
         Route::post('complaints/{complaint}/messages', [ComplaintController::class, 'storeMessage'])->name('complaints.messages.store');
+    });
+
+    Route::middleware('can.module:sugestoes')->prefix('sugestoes')->name('suggestions.')->group(function () {
+        Route::get('/', [SuggestionController::class, 'index'])->name('index');
+        Route::get('{suggestion}', [SuggestionController::class, 'show'])->name('show')->whereNumber('suggestion');
+        Route::patch('{suggestion}/status', [SuggestionController::class, 'updateStatus'])->name('status')->whereNumber('suggestion');
     });
 
     Route::middleware('can.module:rhid')->prefix('rhid')->name('rhid.')->group(function () {

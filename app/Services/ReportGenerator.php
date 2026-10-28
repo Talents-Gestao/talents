@@ -7,6 +7,7 @@ use App\Models\Survey;
 use App\Models\SurveyResult;
 use App\Support\Nr1RiskScenarioResolver;
 use App\Support\TalentsLogoDataUri;
+use App\Support\TechnicalOpinionDisclaimerStripper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
@@ -33,9 +34,9 @@ class ReportGenerator
                 default => strtoupper((string) $l),
             },
             'healthLevelLabel' => fn (?string $l) => match ($l) {
-                'green' => 'Situação favorável',
-                'yellow' => 'Risco intermediário',
-                'red' => 'Risco elevado',
+                'green' => config('nr1.risk_labels.green'),
+                'yellow' => config('nr1.risk_labels.yellow'),
+                'red' => config('nr1.risk_labels.red'),
                 default => strtoupper((string) $l),
             },
             'riskColor' => fn (?string $l) => match ($l) {
@@ -60,7 +61,7 @@ class ReportGenerator
         }
     }
 
-    private function applyDompdfOptions(\Barryvdh\DomPDF\PDF $pdf): \Barryvdh\DomPDF\PDF
+    public function applyDompdfOptions(\Barryvdh\DomPDF\PDF $pdf): \Barryvdh\DomPDF\PDF
     {
         $this->ensureDompdfWritableDirs();
 
@@ -118,7 +119,7 @@ class ReportGenerator
         );
     }
 
-    public function actionPlanPdf(Survey $survey, bool $includeActions = true): \Barryvdh\DomPDF\PDF
+    public function actionPlanPdf(Survey $survey): \Barryvdh\DomPDF\PDF
     {
         $survey->load([
             'company',
@@ -128,7 +129,6 @@ class ReportGenerator
         $plan = ActionPlan::query()
             ->where('survey_id', $survey->id)
             ->where('company_id', $survey->company_id)
-            ->with('items')
             ->first();
 
         $presented = SurveyResultsPresenter::forSurvey($survey);
@@ -162,9 +162,7 @@ class ReportGenerator
         $data = $this->baseViewData($survey);
         $data['logoBase64'] = TalentsLogoDataUri::get();
         $data['plan'] = $plan;
-        $data['items'] = $plan?->items ?? collect();
-        $data['includeActions'] = $includeActions;
-        $data['technicalOpinion'] = $plan?->technical_opinion;
+        $data['technicalOpinion'] = TechnicalOpinionDisclaimerStripper::strip($plan?->technical_opinion);
         $data['overall'] = $overall;
         $data['bySection'] = $bySection;
         $data['deptOveralls'] = $deptOveralls;
@@ -218,9 +216,9 @@ class ReportGenerator
     }
 
     /**
-     * PDF individual do plano de ação (parecer + ações), sem os resultados da pesquisa.
+     * PDF individual do parecer técnico, sem os resultados da pesquisa.
      *
-     * @param  array{items?: list<array{title: string, description?: ?string, status?: string}>, technical_opinion?: ?string, is_draft?: bool}  $overrides
+     * @param  array{technical_opinion?: ?string, is_draft?: bool}  $overrides
      */
     public function actionPlanDocumentPdf(Survey $survey, array $overrides = []): \Barryvdh\DomPDF\PDF
     {
@@ -229,12 +227,7 @@ class ReportGenerator
         $plan = ActionPlan::query()
             ->where('survey_id', $survey->id)
             ->where('company_id', $survey->company_id)
-            ->with('items')
             ->first();
-
-        $items = array_key_exists('items', $overrides)
-            ? $this->normalizeActionPlanDocumentItems($overrides['items'] ?? [])
-            : $this->normalizeActionPlanDocumentItems($plan?->items ?? []);
 
         $technicalOpinion = array_key_exists('technical_opinion', $overrides)
             ? $overrides['technical_opinion']
@@ -247,44 +240,12 @@ class ReportGenerator
         $data = $this->baseViewData($survey);
         $data['logoBase64'] = TalentsLogoDataUri::get();
         $data['plan'] = $plan;
-        $data['items'] = $items;
-        $data['technicalOpinion'] = $technicalOpinion;
+        $data['technicalOpinion'] = TechnicalOpinionDisclaimerStripper::strip($technicalOpinion);
         $data['isDraft'] = $isDraft;
 
         return $this->applyDompdfOptions(
             Pdf::loadView('reports.action_plan_document', $data)->setPaper('a4')
         );
-    }
-
-    /**
-     * @param  iterable<int, mixed>  $items
-     * @return list<array{title: string, description: ?string, status: string}>
-     */
-    private function normalizeActionPlanDocumentItems(iterable $items): array
-    {
-        $normalized = [];
-
-        foreach ($items as $item) {
-            $title = is_array($item)
-                ? trim((string) ($item['title'] ?? ''))
-                : trim((string) ($item->title ?? ''));
-
-            if ($title === '') {
-                continue;
-            }
-
-            $normalized[] = [
-                'title' => $title,
-                'description' => is_array($item)
-                    ? ($item['description'] ?? null)
-                    : ($item->description ?? null),
-                'status' => is_array($item)
-                    ? (string) ($item['status'] ?? 'pending')
-                    : (string) ($item->status ?? 'pending'),
-            ];
-        }
-
-        return $normalized;
     }
 
     /**

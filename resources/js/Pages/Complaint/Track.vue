@@ -25,13 +25,14 @@ const submit = () => {
 
             <form class="mt-6 space-y-4" @submit.prevent="submit">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700">Protocolo (UUID)</label>
+                    <label class="block text-sm font-medium text-slate-700">Número de protocolo</label>
                     <input
                         v-model="form.protocol"
                         type="text"
                         required
-                        class="mt-1 w-full rounded-lg border-slate-200 font-mono text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        placeholder="00000000-0000-0000-0000-000000000000"
+                        autocomplete="off"
+                        class="mt-1 w-full rounded-lg border-slate-200 text-sm tracking-wide shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        placeholder="DEN-2026-00001"
                     />
                     <p v-if="form.errors.protocol" class="mt-1 text-sm text-red-600">{{ form.errors.protocol }}</p>
                 </div>

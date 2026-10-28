@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\SurveyTemplateQuestion;
+use Illuminate\Support\Str;
 
 class Nr1Scoring
 {
@@ -46,7 +47,7 @@ class Nr1Scoring
     public static function segmentRiskBenchmark(?string $segment): float
     {
         $map = config('nr1.segment_risk_benchmarks', []);
-        $key = strtolower((string) $segment);
+        $key = strtolower(Str::ascii((string) $segment));
 
         if ($key !== '' && isset($map[$key])) {
             return (float) $map[$key];

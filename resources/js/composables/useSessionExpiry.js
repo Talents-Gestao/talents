@@ -1,4 +1,4 @@
-import { redirectToLoginExpired } from '@/utils/sessionExpiry';
+import { rememberPortalLoginUrl, redirectToLoginExpired } from '@/utils/sessionExpiry';
 import { router, usePage } from '@inertiajs/vue3';
 import { nextTick, onUnmounted, ref, watch } from 'vue';
 
@@ -109,6 +109,12 @@ export function useSessionExpiry(onWarning) {
     function dismissWarning() {
         warningVisible.value = false;
     }
+
+    watch(
+        () => page.props?.portal?.login_url,
+        (loginUrl) => rememberPortalLoginUrl(loginUrl),
+        { immediate: true },
+    );
 
     watch(
         () => page.props?.sessionExpiry,

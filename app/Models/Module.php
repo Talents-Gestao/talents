@@ -25,6 +25,9 @@ class Module extends Model
     /** @var string Canal de denúncias (Lei 14.457/2022) */
     public const KEY_DENUNCIAS = 'denuncias';
 
+    /** @var string Canal anônimo de sugestões e dúvidas */
+    public const KEY_SUGESTOES = 'sugestoes';
+
     /** @var string Feedbacks internos líder ↔ colaborador */
     public const KEY_FEEDBACKS = 'feedbacks';
 

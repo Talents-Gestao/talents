@@ -7,6 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RhidEspelhoBatch extends Model
 {
+    public const SOURCE_AUTOMATIC = 'automatic';
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_RUNNING = 'running';
+
     protected $fillable = [
         'company_id',
         'user_id',

@@ -8,6 +8,7 @@ use App\Models\RhidAuditLog;
 use App\Models\Survey;
 use App\Models\SurveyResult;
 use App\Models\User;
+use App\Support\Rhid\PontoPeopleSnapshot;
 use App\Support\RhidBankBalanceFormat;
 use App\Support\RhidBankBalanceParser;
 use App\Support\RhidJustificationAnalytics;
@@ -30,75 +31,6 @@ class RhidAdminPortfolioMetricsService
     /**
      * @return array<string, mixed>
      */
-    public function portfolioMetrics(?User $user, bool $refresh = false, ?string $segment = null): array
-    {
-        $period = $this->currentPeriod();
-        $query = Company::query()
-            ->where('is_active', true)
-            ->whereNotNull('rhid_email')
-            ->whereNotNull('rhid_password')
-            ->orderBy('name');
-
-        if ($segment !== null && $segment !== '') {
-            $query->where('segment', $segment);
-        }
-
-        $companies = $query->get();
-        $configuredTotal = $companies->count();
-
-        $companyMetrics = $this->fetchMetricsForCompanies($companies, $user, $period, $refresh);
-
-        $successful = array_values(array_filter($companyMetrics, fn (array $m) => ($m['status'] ?? '') === 'ok'));
-        $failed = array_values(array_filter($companyMetrics, fn (array $m) => ($m['status'] ?? '') === 'error'));
-
-        $highAlert = array_filter($successful, fn (array $m) => ($m['operational_alert'] ?? '') === 'high');
-        $dualRisk = array_filter($successful, fn (array $m) => ! empty($m['dual_risk']));
-
-        $bankMinutes = array_values(array_filter(
-            array_map(fn (array $m) => $m['bank']['avg_minutes'] ?? null, $successful),
-            fn ($v) => $v !== null,
-        ));
-        $portfolioBankAvg = count($bankMinutes) > 0
-            ? round(array_sum($bankMinutes) / count($bankMinutes), 1)
-            : null;
-
-        $ranking = collect($successful)
-            ->sortByDesc(fn (array $m) => $this->alertSortWeight($m['operational_alert'] ?? 'low'))
-            ->values()
-            ->take(10)
-            ->all();
-
-        $bySegment = $this->aggregateBySegment($successful);
-
-        return [
-            'period' => $period,
-            'fetched_at' => now()->toIso8601String(),
-            'partial' => count($failed) > 0,
-            'summary' => [
-                'companies_rhid_configured' => $configuredTotal,
-                'companies_loaded' => count($successful),
-                'companies_failed' => count($failed),
-                'portfolio_bank_avg_minutes' => $portfolioBankAvg,
-                'high_alert_count' => count($highAlert),
-                'high_alert_pct' => $configuredTotal > 0
-                    ? round(100 * count($highAlert) / $configuredTotal, 1)
-                    : 0.0,
-                'dual_risk_count' => count($dualRisk),
-            ],
-            'companies' => $companyMetrics,
-            'ranking' => $ranking,
-            'by_segment' => $bySegment,
-            'errors' => array_map(fn (array $m) => [
-                'company_id' => $m['company_id'],
-                'company_name' => $m['company_name'],
-                'message' => $m['error'] ?? 'Erro desconhecido',
-            ], $failed),
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
     public function metricsForCompany(Company $company, ?User $user, bool $refresh = false): array
     {
         if (! $company->rhidConfigured()) {
@@ -109,6 +41,7 @@ class RhidAdminPortfolioMetricsService
                 'status' => 'not_configured',
                 'rhid_configured' => false,
                 'message' => 'Integração RHID não configurada para esta empresa.',
+                'people' => PontoPeopleSnapshot::empty(),
             ];
         }
 
@@ -170,16 +103,22 @@ class RhidAdminPortfolioMetricsService
     {
         $nr1 = $this->nr1Snapshot($company);
 
-        $bankToday = $this->compliance->allPersonBankHoursAggregated(
-            $company,
-            $user,
-            $period['bank_date_reference'],
-        );
-        $bankPrev = $this->compliance->allPersonBankHoursAggregated(
-            $company,
-            $user,
-            $period['bank_date_mom'],
-        );
+        $bankToday = ['rows' => []];
+        $bankPrev = ['rows' => []];
+        try {
+            $bankToday = $this->compliance->allPersonBankHoursAggregated(
+                $company,
+                $user,
+                $period['bank_date_reference'],
+            );
+            $bankPrev = $this->compliance->allPersonBankHoursAggregated(
+                $company,
+                $user,
+                $period['bank_date_mom'],
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         $bankStats = $this->bankStats($bankToday['rows'] ?? []);
         $bankPrevStats = $this->bankStats($bankPrev['rows'] ?? []);
@@ -198,12 +137,17 @@ class RhidAdminPortfolioMetricsService
             Carbon::parse($period['prev_month_fim']),
         );
 
-        $typeMap = RhidJustificationAnalytics::buildTypeMapFromPayload(
-            $this->compliance->listJustificationTypes($company, $user),
-        );
-
-        $justCurrent = $this->justificationStats($company, $user, $period['just_ini'], $period['just_fim'], $typeMap);
-        $justPrevious = $this->justificationStats($company, $user, $period['prev_just_ini'], $period['prev_just_fim'], $typeMap);
+        $justCurrent = $this->emptyJustificationStats();
+        $justPrevious = $this->emptyJustificationStats();
+        try {
+            $typeMap = RhidJustificationAnalytics::buildTypeMapFromPayload(
+                $this->compliance->listJustificationTypes($company, $user),
+            );
+            $justCurrent = $this->justificationStats($company, $user, $period['just_ini'], $period['just_fim'], $typeMap);
+            $justPrevious = $this->justificationStats($company, $user, $period['prev_just_ini'], $period['prev_just_fim'], $typeMap);
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         $bankRows = $this->formatBankRowsList($bankToday['rows'] ?? []);
 
@@ -213,6 +157,24 @@ class RhidAdminPortfolioMetricsService
                 100 * ($justCurrent['atestados'] - $justPrevious['atestados']) / $justPrevious['atestados'],
                 1,
             );
+        }
+
+        $people = PontoPeopleSnapshot::empty();
+        try {
+            $monthly = $this->adherence->monthlyComplianceRanking(
+                $company,
+                Carbon::parse($period['month_ini']),
+                Carbon::parse($period['month_fim']),
+                $user,
+            );
+            $people = is_array($monthly['people'] ?? null)
+                ? $monthly['people']
+                : PontoPeopleSnapshot::fromComplianceRanking(
+                    is_array($monthly['ranking_cumprimento_mes'] ?? null) ? $monthly['ranking_cumprimento_mes'] : [],
+                    is_array($monthly['resumo'] ?? null) ? $monthly['resumo'] : [],
+                );
+        } catch (\Throwable $e) {
+            report($e);
         }
 
         $punches = [];
@@ -297,6 +259,7 @@ class RhidAdminPortfolioMetricsService
                 'distinct_collaborators' => $punchDistinct,
                 'items' => $this->formatPunchRowsList(is_array($punches) ? $punches : []),
             ],
+            'people' => $people,
             'operational_alert' => $operationalAlert,
             'dual_risk' => $dualRisk,
             'integration' => $integration,
@@ -414,8 +377,21 @@ class RhidAdminPortfolioMetricsService
     }
 
     /**
+     * @return array{total: int, atestados: int, note: string, items: list<array<string, mixed>>}
+     */
+    protected function emptyJustificationStats(): array
+    {
+        return [
+            'total' => 0,
+            'atestados' => 0,
+            'note' => '',
+            'items' => [],
+        ];
+    }
+
+    /**
      * @param  array<string, array<string, mixed>>  $typeMap
-     * @return array{total: int, atestados: int, note: string}
+     * @return array{total: int, atestados: int, note: string, items: list<array<string, mixed>>}
      */
     protected function justificationStats(
         Company $company,
@@ -488,11 +464,19 @@ class RhidAdminPortfolioMetricsService
                 continue;
             }
             $parsed[] = [
+                'person_id' => $row['idPerson'] ?? $row['id'] ?? $row['id_funcionario'] ?? null,
                 'name' => RhidBankBalanceParser::displayName($row),
-                'department' => isset($row['departmentName']) ? trim((string) $row['departmentName']) : null,
-                'role' => isset($row['roleName']) ? trim((string) $row['roleName']) : null,
-                'registration' => isset($row['registration']) ? trim((string) $row['registration'])
-                    : (isset($row['matricula']) ? trim((string) $row['matricula']) : null),
+                'social_name' => $this->firstFilledString($row, ['socialName', 'strSocialName', 'nomeSocial']),
+                'registration' => $this->firstFilledString($row, [
+                    'registration', 'matricula', 'strMatricula', 'pis', 'strPis',
+                ]),
+                'cpf' => $this->firstFilledString($row, ['cpf', 'strCpf', 'document', 'documento']),
+                'department' => $this->firstFilledString($row, [
+                    'departmentName', 'strDepartmentName', 'departamento', 'department',
+                ]),
+                'role' => $this->firstFilledString($row, [
+                    'roleName', 'personRoleName', 'strPersonRole', 'cargo', 'role',
+                ]),
                 'minutes' => $minutes,
                 'balance_display' => RhidBankBalanceFormat::minutesToHhMm($minutes),
                 'excluded' => (bool) ($row['excluded'] ?? false),
@@ -605,9 +589,22 @@ class RhidAdminPortfolioMetricsService
         if (is_string($hint) && $hint !== '') {
             return $hint;
         }
+
+        $porStatus = is_array($diagnostics['imports_por_status'] ?? null)
+            ? $diagnostics['imports_por_status']
+            : [];
+        $failed = (int) ($porStatus['failed'] ?? 0);
+        $pending = (int) ($porStatus['pending'] ?? 0);
+        if ($failed > 0) {
+            return 'Há espelhos com parse falhado. Confira a fila, o Python (RHID_ESPELHO_PYTHON) e o erro do import no painel do cliente.';
+        }
+        if ($pending > 0) {
+            return 'Há espelhos ainda em parse. Se ficarem assim, a fila pode estar parada.';
+        }
+
         $imports = (int) ($diagnostics['imports_no_periodo'] ?? 0);
         if ($imports === 0) {
-            return 'Sem espelhos importados no período — aderência pode estar incompleta.';
+            return 'Sem espelhos importados no período. Importe o PDF no painel do cliente (Marcações → Espelho); a aderência Admin usa esse histórico.';
         }
 
         return null;
@@ -638,33 +635,31 @@ class RhidAdminPortfolioMetricsService
     }
 
     /**
-     * @param  list<array<string, mixed>>  $successful
-     * @return list<array<string, mixed>>
+     * @param  array<string, mixed>  $row
+     * @param  list<string>  $keys
      */
-    protected function aggregateBySegment(array $successful): array
+    protected function firstFilledString(array $row, array $keys): ?string
     {
-        $grouped = collect($successful)->groupBy(fn (array $m) => $m['segment'] ?? 'Sem segmento');
+        $sources = [$row];
+        foreach (['person', 'Person', 'pessoa', 'Pessoa'] as $nestedKey) {
+            if (isset($row[$nestedKey]) && is_array($row[$nestedKey])) {
+                $sources[] = $row[$nestedKey];
+            }
+        }
 
-        return $grouped->map(function (Collection $items, string $segment) {
-            $alerts = $items->filter(fn (array $m) => ($m['operational_alert'] ?? '') === 'high')->count();
-            $bankAvgs = $items->pluck('bank.avg_minutes')->filter(fn ($v) => $v !== null);
+        foreach ($sources as $source) {
+            foreach ($keys as $key) {
+                if (! array_key_exists($key, $source) || $source[$key] === null) {
+                    continue;
+                }
+                $value = trim((string) $source[$key]);
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+        }
 
-            return [
-                'segment' => $segment,
-                'companies' => $items->count(),
-                'high_alert' => $alerts,
-                'avg_bank_minutes' => $bankAvgs->isNotEmpty() ? round($bankAvgs->avg(), 1) : null,
-            ];
-        })->values()->sortByDesc('high_alert')->values()->all();
-    }
-
-    protected function alertSortWeight(string $alert): int
-    {
-        return match ($alert) {
-            'high' => 3,
-            'medium' => 2,
-            default => 1,
-        };
+        return null;
     }
 
     /**
@@ -685,6 +680,7 @@ class RhidAdminPortfolioMetricsService
             'error' => $message,
             'operational_alert' => null,
             'dual_risk' => false,
+            'people' => PontoPeopleSnapshot::empty(),
         ];
     }
 }

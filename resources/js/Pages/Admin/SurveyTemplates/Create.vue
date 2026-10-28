@@ -74,7 +74,12 @@ const submit = () => {
                 </div>
                 <div class="mt-4">
                     <InputLabel for="description" value="Descrição" />
-                    <textarea id="description" v-model="form.description" rows="3" class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-talents-500 focus:ring-talents-500" />
+                    <textarea
+                        id="description"
+                        v-model="form.description"
+                        rows="8"
+                        class="mt-1 min-h-[12rem] w-full rounded-md border-gray-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    />
                 </div>
             </div>
 

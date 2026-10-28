@@ -17,6 +17,10 @@ class RhidMonitoringService
      */
     public function ultimasMarcacoes(Company $company, ?User $user): array
     {
+        if ($company->usesLocalPontoFixture()) {
+            return app(PontoLocalFixtureService::class)->lastPunches($company);
+        }
+
         $r = $this->client->request(
             $company,
             $user,

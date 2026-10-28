@@ -8,9 +8,10 @@ use App\Models\Company;
 use App\Models\Complaint;
 use App\Models\ComplaintMessage;
 use App\Services\ComplaintAuditService;
+use App\Support\Complaints\ComplaintProtocol;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -69,17 +70,19 @@ class PublicComplaintController extends Controller
             ]);
         }
 
-        $complaint = Complaint::create([
-            'company_id' => $company->id,
-            'department_id' => $data['department_id'] ?? null,
-            'protocol' => (string) Str::uuid(),
-            'category' => $data['category'],
-            'description' => $data['description'],
-            'status' => 'new',
-            'is_anonymous' => $data['is_anonymous'],
-            'reporter_name' => $data['is_anonymous'] ? null : $data['reporter_name'],
-            'reporter_email' => $data['is_anonymous'] ? null : $data['reporter_email'],
-        ]);
+        $complaint = DB::transaction(function () use ($company, $data): Complaint {
+            return Complaint::query()->create([
+                'company_id' => $company->id,
+                'department_id' => $data['department_id'] ?? null,
+                'protocol' => ComplaintProtocol::generate((int) $company->id),
+                'category' => $data['category'],
+                'description' => $data['description'],
+                'status' => 'new',
+                'is_anonymous' => $data['is_anonymous'],
+                'reporter_name' => $data['is_anonymous'] ? null : $data['reporter_name'],
+                'reporter_email' => $data['is_anonymous'] ? null : $data['reporter_email'],
+            ]);
+        });
 
         ComplaintAuditService::log($complaint, 'created', $request, null, [
             'category' => $data['category'],
@@ -102,10 +105,7 @@ class PublicComplaintController extends Controller
     public function thanks(string $token, string $protocol): Response
     {
         $company = $this->findCompany($token);
-        $complaint = Complaint::query()
-            ->where('company_id', $company->id)
-            ->where('protocol', $protocol)
-            ->firstOrFail();
+        $complaint = $this->findComplaintByProtocol($company, $protocol);
 
         return Inertia::render('Complaint/Thanks', [
             'token' => $token,
@@ -128,32 +128,32 @@ class PublicComplaintController extends Controller
     {
         $company = $this->findCompany($token);
         $data = $request->validate([
-            'protocol' => ['required', 'uuid'],
+            'protocol' => ['required', 'string', 'max:32'],
+        ], [
+            'protocol.required' => 'Informe o número de protocolo.',
         ]);
 
+        $protocol = ComplaintProtocol::normalize($data['protocol']);
         $exists = Complaint::query()
             ->where('company_id', $company->id)
-            ->where('protocol', $data['protocol'])
+            ->where('protocol', $protocol)
             ->exists();
 
         if (! $exists) {
             return back()->withErrors(['protocol' => 'Protocolo não encontrado.']);
         }
 
-        return redirect()->route('denuncia.protocol', ['token' => $token, 'protocol' => $data['protocol']]);
+        return redirect()->route('denuncia.protocol', ['token' => $token, 'protocol' => $protocol]);
     }
 
     public function showProtocol(Request $request, string $token, string $protocol): Response
     {
         $company = $this->findCompany($token);
-        $complaint = Complaint::query()
-            ->where('company_id', $company->id)
-            ->where('protocol', $protocol)
-            ->with([
-                'department',
-                'messages' => fn ($q) => $q->orderBy('id'),
-            ])
-            ->firstOrFail();
+        $complaint = $this->findComplaintByProtocol($company, $protocol);
+        $complaint->load([
+            'department',
+            'messages' => fn ($q) => $q->orderBy('id'),
+        ]);
 
         ComplaintAuditService::log($complaint, 'viewed_by_reporter', $request, null, recordIp: false);
 
@@ -180,10 +180,7 @@ class PublicComplaintController extends Controller
     public function reporterMessage(Request $request, string $token, string $protocol): RedirectResponse
     {
         $company = $this->findCompany($token);
-        $complaint = Complaint::query()
-            ->where('company_id', $company->id)
-            ->where('protocol', $protocol)
-            ->firstOrFail();
+        $complaint = $this->findComplaintByProtocol($company, $protocol);
 
         $data = $request->validate([
             'content' => ['required', 'string', 'min:5', 'max:10000'],
@@ -199,5 +196,13 @@ class PublicComplaintController extends Controller
         ComplaintAuditService::log($complaint, 'message_added_by_reporter', $request, null, recordIp: false);
 
         return back()->with('success', 'Mensagem enviada.');
+    }
+
+    private function findComplaintByProtocol(Company $company, string $protocol): Complaint
+    {
+        return Complaint::query()
+            ->where('company_id', $company->id)
+            ->where('protocol', ComplaintProtocol::normalize($protocol))
+            ->firstOrFail();
     }
 }

@@ -34,6 +34,10 @@ class RhidComplianceService
      */
     public function listJustificationTypes(Company $company, ?User $user, array $query = []): array
     {
+        if ($company->usesLocalPontoFixture()) {
+            return app(PontoLocalFixtureService::class)->justificationTypes();
+        }
+
         $r = $this->client->request(
             $company,
             $user,
@@ -67,6 +71,10 @@ class RhidComplianceService
      */
     public function listJustifications(Company $company, ?User $user, array $payload): array
     {
+        if ($company->usesLocalPontoFixture()) {
+            return app(PontoLocalFixtureService::class)->justifications($company, $payload);
+        }
+
         $payload = $this->prepareJustificationListPayload($payload);
 
         $r = $this->client->request(
@@ -150,6 +158,8 @@ class RhidComplianceService
      */
     public function createJustification(Company $company, ?User $user, array $payload): array
     {
+        $this->assertNotLocalPontoFixture($company);
+
         $r = $this->client->request(
             $company,
             $user,
@@ -172,6 +182,8 @@ class RhidComplianceService
      */
     public function updateJustification(Company $company, ?User $user, array $payload): array
     {
+        $this->assertNotLocalPontoFixture($company);
+
         $r = $this->client->request(
             $company,
             $user,
@@ -192,6 +204,8 @@ class RhidComplianceService
      */
     public function massJustification(Company $company, ?User $user, array $payload): array
     {
+        $this->assertNotLocalPontoFixture($company);
+
         if (isset($payload['inicio']) && ! isset($payload['ínicio'])) {
             $payload['ínicio'] = $payload['inicio'];
             unset($payload['inicio']);
@@ -216,6 +230,8 @@ class RhidComplianceService
      */
     public function deleteJustification(Company $company, ?User $user, int $id): array
     {
+        $this->assertNotLocalPontoFixture($company);
+
         $r = $this->client->request(
             $company,
             $user,
@@ -233,6 +249,12 @@ class RhidComplianceService
      */
     public function personBankHours(Company $company, ?User $user, array $query): array
     {
+        if ($company->usesLocalPontoFixture()) {
+            $date = isset($query['date']) && is_string($query['date']) ? $query['date'] : '';
+
+            return app(PontoLocalFixtureService::class)->bankHours($company, $date)['rows'];
+        }
+
         if (isset($query['date']) && is_string($query['date'])) {
             $query['date'] = $this->normalizeBankHoursDateParam($query['date']);
         }
@@ -282,6 +304,10 @@ class RhidComplianceService
      */
     public function listPersons(Company $company, ?User $user, array $query = []): array
     {
+        if ($company->usesLocalPontoFixture()) {
+            return app(PontoLocalFixtureService::class)->people($company);
+        }
+
         $r = $this->client->request(
             $company,
             $user,
@@ -768,6 +794,10 @@ class RhidComplianceService
         int $listPageSize = 200,
         int $bankChunk = 50,
     ): array {
+        if ($company->usesLocalPontoFixture()) {
+            return app(PontoLocalFixtureService::class)->bankHours($company, $date);
+        }
+
         if (! config('rhid.bank_hours_aggregate')) {
             $rows = $this->personBankHours($company, $user, ['date' => $date]);
 
@@ -1278,6 +1308,16 @@ class RhidComplianceService
     /**
      * @return array<string, mixed>
      */
+    private function assertNotLocalPontoFixture(Company $company): void
+    {
+        if ($company->usesLocalPontoFixture()) {
+            throw new RhidApiException(
+                'Esta empresa de teste visual não grava justificativas na Control iD.',
+                422,
+            );
+        }
+    }
+
     protected function decodeJson(Response $response, string $context): array
     {
         if ($response->failed()) {

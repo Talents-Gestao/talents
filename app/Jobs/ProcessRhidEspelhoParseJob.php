@@ -31,4 +31,19 @@ class ProcessRhidEspelhoParseJob implements ShouldQueue
 
         $ingest->parseAndPersist($import);
     }
+
+    public function failed(?\Throwable $e): void
+    {
+        $import = RhidEspelhoImport::query()->find($this->importId);
+        if (! $import || $import->parse_status === 'ok') {
+            return;
+        }
+
+        $import->parse_status = 'failed';
+        $import->parse_error = $e
+            ? 'Falha na fila de parse do espelho: '.$e->getMessage()
+            : 'Falha na fila de parse do espelho. Confira se o worker e o Python estão ativos.';
+        $import->parsed_at = now();
+        $import->save();
+    }
 }

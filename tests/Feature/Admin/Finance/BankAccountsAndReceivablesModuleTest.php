@@ -622,6 +622,100 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
             );
     }
 
+    public function test_receivables_keep_sale_installments_together_across_pages(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $early = $this->saleWithInstallments($admin, 'VENDA-GRUPO-A', 'Cliente A', [
+            '2026-01-01',
+            '2026-06-01',
+        ]);
+        $this->saleWithInstallments($admin, 'VENDA-GRUPO-B', 'Cliente B', [
+            '2026-02-01',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.contas-a-receber.index', [
+                'origin' => 'sale',
+                'sort' => 'due_date',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('items.data.0.sale_id', $early->id)
+                ->where('items.data.1.sale_id', $early->id)
+                ->where('items.data.0.installment_id', $early->installments[0]->id)
+                ->where('items.data.1.installment_id', $early->installments[1]->id)
+            );
+    }
+
+    /**
+     * @param  list<string>  $dueDates
+     */
+    private function saleWithInstallments(User $admin, string $code, string $client, array $dueDates): CommercialSale
+    {
+        $sale = CommercialSale::query()->create([
+            'code' => $code,
+            'client_name' => $client,
+            'total_cents' => 10_000 * count($dueDates),
+            'installments_count' => count($dueDates),
+            'payment_method' => 'pix',
+            'status' => CommercialSale::STATUS_ABERTA,
+            'sold_at' => now(),
+            'created_by' => $admin->id,
+            'seller_id' => $admin->id,
+        ]);
+
+        foreach ($dueDates as $index => $dueDate) {
+            $sale->installments()->create([
+                'number' => $index + 1,
+                'amount_cents' => 10_000,
+                'due_date' => $dueDate,
+                'method' => 'pix',
+                'status' => CommercialSaleInstallment::STATUS_PENDENTE,
+            ]);
+        }
+
+        return $sale->load(['installments' => fn ($q) => $q->orderBy('number')]            );
+    }
+
+    public function test_receivables_page_does_not_split_a_sale_group(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $dates = [];
+        for ($i = 0; $i < 18; $i++) {
+            $dates[] = now()->startOfYear()->addMonths($i)->toDateString();
+        }
+
+        $grouped = $this->saleWithInstallments($admin, 'VENDA-BLOCO', 'Cliente Bloco', $dates);
+        $this->saleWithInstallments($admin, 'VENDA-SEGUINTE', 'Cliente Seguinte', [
+            now()->startOfYear()->addMonths(2)->toDateString(),
+            now()->startOfYear()->addMonths(20)->toDateString(),
+            now()->startOfYear()->addMonths(21)->toDateString(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.contas-a-receber.index', ['origin' => 'sale']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('items.data', 18)
+                ->where('items.data.0.sale_id', $grouped->id)
+                ->where('items.data.17.sale_id', $grouped->id)
+                ->where('items.last_page', 2)
+            );
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.contas-a-receber.index', ['origin' => 'sale', 'page' => 2]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('items.data', 3)
+                ->where('items.data.0.counterparty', 'Cliente Seguinte')
+                ->where('items.data.2.counterparty', 'Cliente Seguinte')
+            );
+    }
+
     public function test_guest_cannot_access_new_finance_modules(): void
     {
         $this->get(route('admin.financeiro.contas-bancarias.index'))->assertRedirect();

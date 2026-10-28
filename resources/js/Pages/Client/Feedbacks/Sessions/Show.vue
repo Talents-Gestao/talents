@@ -8,6 +8,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { feedbackSectionIcon } from '@/utils/feedbackSectionIcons';
+import { formatDateTime } from '@/utils/dateOnly';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { CalendarDaysIcon, UserIcon } from '@heroicons/vue/24/outline';
 import { computed } from 'vue';
@@ -83,7 +84,7 @@ const formatAnswer = (val, question = null) => {
     return String(val);
 };
 
-const formatDate = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR') : '—');
+const formatDate = (iso) => formatDateTime(iso);
 const formatDateShort = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
 
 const sectionMeta = (section) => {

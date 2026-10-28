@@ -1,5 +1,6 @@
 <script setup>
 import InputLabel from '@/Components/InputLabel.vue';
+import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TaskDescriptionEditor from '@/Components/Tasks/TaskDescriptionEditor.vue';
@@ -1411,15 +1412,13 @@ function itemDueClass(item) {
                     <div v-if="isAdmin" class="grid grid-cols-1 gap-3 md:grid-cols-2">
                         <div class="md:col-span-2">
                             <InputLabel value="Partilhar com empresa (portal cliente)" />
-                            <select
+                            <CompanySearchSelect
                                 v-model="cardUpdate.company_id"
-                                class="mt-1 block w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
-                            >
-                                <option value="">Não partilhar com empresa</option>
-                                <option v-for="c in companies" :key="c.id" :value="c.id">
-                                    {{ c.name }}
-                                </option>
-                            </select>
+                                :companies="companies"
+                                empty-label="Não partilhar com empresa"
+                                class="mt-1"
+                                input-class="block w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
+                            />
                             <p class="mt-1 text-xs text-slate-500">
                                 Sem empresa selecionada, a tarefa fica só no admin — mesmo com responsável atribuído.
                                 Ao marcar um usuário do cliente, a empresa é preenchida automaticamente.

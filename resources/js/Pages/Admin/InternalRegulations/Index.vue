@@ -1,7 +1,9 @@
 <script setup>
+import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import { formatDateTime } from '@/utils/dateOnly';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { MagnifyingGlassIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { ref } from 'vue';
@@ -78,10 +80,15 @@ const remove = async (id) => {
                     @keydown.enter.prevent="applyFilters"
                 >
             </div>
-            <select v-model="companyId" :class="fieldClass" @change="applyFilters">
-                <option value="">Todas as empresas</option>
-                <option v-for="c in companies" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
-            </select>
+            <CompanySearchSelect
+                v-model="companyId"
+                :companies="companies"
+                as-string
+                empty-label="Todas as empresas"
+                class="w-full sm:w-72"
+                :input-class="fieldClass"
+                @change="applyFilters"
+            />
             <PrimaryButton type="button" @click="applyFilters">Filtrar</PrimaryButton>
         </div>
 
@@ -123,14 +130,7 @@ const remove = async (id) => {
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-slate-500">
-                                {{
-                                    row.updated_at
-                                        ? new Date(row.updated_at).toLocaleString('pt-BR', {
-                                              dateStyle: 'short',
-                                              timeStyle: 'short',
-                                          })
-                                        : '—'
-                                }}
+                                {{ formatDateTime(row.updated_at) }}
                             </td>
                             <td class="space-x-3 px-4 py-3 text-right">
                                 <Link

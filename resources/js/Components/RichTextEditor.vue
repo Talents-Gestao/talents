@@ -2,6 +2,7 @@
 /**
  * Editor rich text TipTap (barra estilo CKEditor) para documentos HTML.
  */
+import { promptDialog } from '@/composables/useConfirmDialog';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import Color from '@tiptap/extension-color';
 import Link from '@tiptap/extension-link';
@@ -87,9 +88,14 @@ const toolbarBtn =
     'rounded px-2 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-white hover:text-slate-900';
 const toolbarBtnActive = 'bg-white text-talents-700 ring-1 ring-slate-200';
 
-function setLink() {
+async function setLink() {
     const previous = editor.value?.getAttributes('link').href || '';
-    const url = window.prompt('URL do link', previous);
+    const url = await promptDialog({
+        title: 'Endereço do link',
+        message: 'Informe a URL. Deixe em branco para remover o link.',
+        defaultValue: previous,
+        confirmLabel: 'Aplicar',
+    });
     if (url === null) {
         return;
     }

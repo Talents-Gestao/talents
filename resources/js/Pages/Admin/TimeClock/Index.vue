@@ -2,38 +2,61 @@
 import CompanyMetricsView from '@/Components/Admin/Rhid/CompanyMetricsView.vue';
 import CompanyMetricsDetailTables from '@/Components/Admin/Rhid/CompanyMetricsDetailTables.vue';
 import JustificationsCrudPanel from '@/Components/Admin/TimeClock/JustificationsCrudPanel.vue';
+import BackLink from '@/Components/BackLink.vue';
 import EmptyState from '@/Components/Dashboard/EmptyState.vue';
+import InfoTooltip from '@/Components/InfoTooltip.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { formatRhidDotNetDate } from '@/utils/rhidDate';
+import { BuildingOffice2Icon } from '@heroicons/vue/24/outline';
 import axios from 'axios';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
     companies: { type: Array, default: () => [] },
-    segments: { type: Array, default: () => [] },
 });
 
+const TAB_IDS = ['aderencia', 'banco', 'justificativas', 'equipe'];
+
 const tabs = [
-    { id: 'resumo', label: 'Resumo' },
-    { id: 'marcacoes', label: 'Marcações' },
-    { id: 'banco', label: 'Banco de horas' },
-    { id: 'aderencia', label: 'Aderência' },
-    { id: 'justificativas', label: 'Justificativas' },
-    { id: 'colaboradores', label: 'Colaboradores' },
+    {
+        id: 'aderencia',
+        label: 'Aderência',
+        help: 'Compara as marcações do espelho importado com os horários da empresa (entrada, almoço e saída). Mostra atrasos, infrações de almoço e quem menos cumpriu a escala no mês.',
+    },
+    {
+        id: 'banco',
+        label: 'Banco de horas',
+        help: 'Saldo de horas extras e negativas de cada colaborador, conforme o RHID.',
+    },
+    {
+        id: 'justificativas',
+        label: 'Justificativas',
+        help: 'Atestados, faltas e outros afastamentos registrados no ponto. Dá para consultar e lançar justificativas.',
+    },
+    {
+        id: 'equipe',
+        label: 'Equipe',
+        help: 'Colaboradores ativos no RHID desta empresa, com matrícula, departamento e cargo.',
+    },
 ];
 
 const selectedCompanyId = ref(props.companies[0]?.id ?? null);
 const search = ref('');
-const selectedSegment = ref('');
-const activeTab = ref('resumo');
+const activeTab = ref('aderencia');
 
 (() => {
     try {
-        const fromQuery = Number(new URLSearchParams(window.location.search).get('company'));
+        const params = new URLSearchParams(window.location.search);
+        const fromQuery = Number(params.get('company'));
         if (fromQuery && props.companies.some((c) => Number(c.id) === fromQuery)) {
             selectedCompanyId.value = fromQuery;
+        }
+        const tabQuery = params.get('tab');
+        if (tabQuery === 'hoje') {
+            activeTab.value = 'aderencia';
+        } else if (tabQuery && TAB_IDS.includes(tabQuery)) {
+            activeTab.value = tabQuery;
         }
     } catch {
         /* ignore */
@@ -45,47 +68,71 @@ const companyError = ref(null);
 const companyMetrics = ref(null);
 const companyLoadedAt = ref(null);
 
-const punchesLoading = ref(false);
-const punchesError = ref(null);
-const livePunches = ref([]);
-
 const peopleLoading = ref(false);
 const peopleError = ref(null);
 const peopleRows = ref([]);
 const peopleSearch = ref('');
+const justificationsPanel = ref(null);
+const pageRefreshing = ref(false);
+
+const isRefreshing = computed(
+    () =>
+        pageRefreshing.value
+        || companyLoading.value
+        || peopleLoading.value,
+);
 
 const filteredCompanies = computed(() => {
     const term = search.value.trim().toLowerCase();
 
-    return props.companies.filter((company) => {
-        const bySegment = !selectedSegment.value || company.segment === selectedSegment.value;
-        const byTerm = !term || company.name?.toLowerCase().includes(term);
-        return bySegment && byTerm;
-    });
+    return props.companies.filter((company) => !term || company.name?.toLowerCase().includes(term));
 });
 
 const selectedCompany = computed(
     () => props.companies.find((company) => Number(company.id) === Number(selectedCompanyId.value)) ?? null,
 );
 
-const detailSections = computed(() => {
-    switch (activeTab.value) {
-        case 'marcacoes':
-            return ['punches'];
-        case 'banco':
-            return ['bank'];
-        case 'aderencia':
-            return ['adherence'];
-        default:
-            return null;
-    }
-});
+const isSelectedCompany = (company) => Number(company?.id) === Number(selectedCompanyId.value);
 
-const showMetricsTables = computed(
-    () =>
-        companyMetrics.value?.status === 'ok' &&
-        !companyLoading.value &&
-        ['resumo', 'marcacoes', 'banco', 'aderencia'].includes(activeTab.value),
+const pageTitle = computed(() =>
+    selectedCompany.value
+        ? `Gestão de ponto — ${selectedCompany.value.name}`
+        : 'Gestão de ponto',
+);
+
+const companyShowHref = computed(() =>
+    selectedCompany.value
+        ? route('admin.companies.show', { company: selectedCompany.value.id, tab: 'ponto' })
+        : route('admin.companies.index'),
+);
+
+const syncHubQuery = (companyId, tab) => {
+    try {
+        const url = new URL(window.location.href);
+        if (companyId) {
+            url.searchParams.set('company', String(companyId));
+        } else {
+            url.searchParams.delete('company');
+        }
+        if (tab) {
+            url.searchParams.set('tab', tab);
+        } else {
+            url.searchParams.delete('tab');
+        }
+        window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    } catch {
+        /* ignore */
+    }
+};
+
+const isCompanyConfigured = (company) => Boolean(company?.rhid_configured);
+
+const showBankTable = computed(
+    () => companyMetrics.value?.status === 'ok' && !companyLoading.value && activeTab.value === 'banco',
+);
+
+const showAdherenceTables = computed(
+    () => companyMetrics.value?.status === 'ok' && !companyLoading.value && activeTab.value === 'aderencia',
 );
 
 const filteredPeople = computed(() => {
@@ -122,16 +169,8 @@ const normalizePeoplePayload = (payload) => {
     });
 };
 
-const normalizePunchesPayload = (payload) => {
-    const list = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
-    return list.slice(0, 150).map((row) => ({
-        name: row.name ?? row.nome ?? row.personName ?? row.strName ?? '—',
-        datetime: row.data ?? row.dateTime ?? row.Data ?? row.date ?? null,
-    }));
-};
-
 const loadCompanyMetrics = async (refresh = false) => {
-    if (!selectedCompanyId.value) {
+    if (!selectedCompanyId.value || !isCompanyConfigured(selectedCompany.value)) {
         companyMetrics.value = null;
         companyError.value = null;
         return;
@@ -161,28 +200,8 @@ const loadCompanyMetrics = async (refresh = false) => {
     }
 };
 
-const loadLivePunches = async () => {
-    if (!selectedCompanyId.value) {
-        livePunches.value = [];
-        return;
-    }
-    punchesLoading.value = true;
-    punchesError.value = null;
-    try {
-        const { data } = await axios.get(route('admin.ponto.companies.last-punches', selectedCompanyId.value), {
-            timeout: 60000,
-        });
-        livePunches.value = normalizePunchesPayload(data);
-    } catch (e) {
-        livePunches.value = [];
-        punchesError.value = e?.response?.data?.message || 'Falha ao carregar últimas marcações.';
-    } finally {
-        punchesLoading.value = false;
-    }
-};
-
 const loadPeople = async () => {
-    if (!selectedCompanyId.value) {
+    if (!selectedCompanyId.value || !isCompanyConfigured(selectedCompany.value)) {
         peopleRows.value = [];
         return;
     }
@@ -202,66 +221,76 @@ const loadPeople = async () => {
     }
 };
 
-watch(selectedCompanyId, async () => {
-    livePunches.value = [];
+watch(selectedCompanyId, async (companyId) => {
+    syncHubQuery(companyId, activeTab.value);
     peopleRows.value = [];
     await loadCompanyMetrics(false);
-    if (activeTab.value === 'marcacoes') {
-        await loadLivePunches();
-    }
-    if (activeTab.value === 'colaboradores') {
+    if (isCompanyConfigured(selectedCompany.value) && activeTab.value === 'equipe') {
         await loadPeople();
-    }
-});
-
-watch(selectedSegment, () => {
-    if (
-        selectedCompanyId.value &&
-        !filteredCompanies.value.some((company) => company.id === selectedCompanyId.value)
-    ) {
-        selectedCompanyId.value = filteredCompanies.value[0]?.id ?? null;
     }
 });
 
 watch(activeTab, async (tab) => {
-    if (tab === 'marcacoes' && selectedCompanyId.value && !livePunches.value.length && !punchesLoading.value) {
-        await loadLivePunches();
+    syncHubQuery(selectedCompanyId.value, tab);
+    if (!isCompanyConfigured(selectedCompany.value)) {
+        return;
     }
-    if (tab === 'colaboradores' && selectedCompanyId.value && !peopleRows.value.length && !peopleLoading.value) {
+    if (tab === 'equipe' && selectedCompanyId.value && !peopleRows.value.length && !peopleLoading.value) {
         await loadPeople();
     }
 });
 
+const refreshAll = async () => {
+    if (!selectedCompanyId.value || isRefreshing.value) {
+        return;
+    }
+
+    pageRefreshing.value = true;
+    try {
+        await Promise.all([
+            loadCompanyMetrics(true),
+            loadPeople(),
+            justificationsPanel.value?.refresh?.() ?? Promise.resolve(),
+        ]);
+    } finally {
+        pageRefreshing.value = false;
+    }
+};
+
 onMounted(async () => {
+    syncHubQuery(selectedCompanyId.value, activeTab.value);
     await loadCompanyMetrics(false);
 });
 </script>
 
 <template>
-    <Head title="Gestão de ponto" />
+    <Head :title="pageTitle" />
 
     <AdminLayout>
         <template #header>
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
+                <div class="min-w-0">
+                    <BackLink
+                        :href="companyShowHref"
+                        :label="selectedCompany ? 'Voltar à empresa' : 'Voltar às empresas'"
+                        :prefer-history="false"
+                    />
                     <h2 class="text-xl font-semibold leading-tight text-gray-900">Gestão de ponto</h2>
-                    <p class="mt-1 text-sm text-slate-600">
-                        Operação por empresa sobre a API RHID (Control iD) — marcações, banco, aderência e colaboradores.
+                    <p v-if="selectedCompany" class="mt-1 text-sm text-slate-600">
+                        Empresa em visualização:
+                        <span class="font-semibold text-talents-800">{{ selectedCompany.name }}</span>
+                    </p>
+                    <p v-else class="mt-1 text-sm text-slate-600">
+                        Selecione uma empresa à esquerda para ver pontualidade, faltas e atestados.
                     </p>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                    <Link
-                        :href="route('admin.rhid.index')"
-                        class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium text-talents-700 ring-1 ring-talents-200 transition hover:bg-talents-50"
-                    >
-                        Portfólio RHID
-                    </Link>
+                <div class="flex flex-wrap items-center gap-3">
                     <PrimaryButton
                         type="button"
-                        :disabled="companyLoading || !selectedCompanyId"
-                        @click="loadCompanyMetrics(true)"
+                        :disabled="isRefreshing || !selectedCompanyId"
+                        @click="refreshAll"
                     >
-                        Atualizar indicadores
+                        {{ isRefreshing ? 'Atualizando…' : 'Atualizar' }}
                     </PrimaryButton>
                 </div>
             </div>
@@ -277,32 +306,45 @@ onMounted(async () => {
                         placeholder="Buscar empresa..."
                         class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                     >
-                    <select
-                        v-model="selectedSegment"
-                        class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                    >
-                        <option value="">Todos os segmentos</option>
-                        <option v-for="segment in segments" :key="segment" :value="segment">
-                            {{ segment }}
-                        </option>
-                    </select>
                 </div>
 
                 <ul v-if="filteredCompanies.length" class="mt-4 max-h-[30rem] space-y-2 overflow-auto pr-1">
                     <li v-for="company in filteredCompanies" :key="company.id">
                         <button
                             type="button"
-                            class="w-full rounded-xl border px-3 py-2 text-left transition"
+                            class="w-full rounded-xl border px-3 py-2.5 text-left transition"
                             :class="
-                                company.id === selectedCompanyId
-                                    ? 'border-talents-300 bg-talents-50'
+                                isSelectedCompany(company)
+                                    ? 'border-talents-700 bg-talents-700 text-white shadow-md ring-2 ring-talents-300'
                                     : 'border-slate-200 bg-white hover:border-talents-200 hover:bg-slate-50'
                             "
+                            :aria-current="isSelectedCompany(company) ? 'true' : undefined"
                             @click="selectedCompanyId = company.id"
                         >
-                            <p class="truncate text-sm font-semibold text-slate-800">{{ company.name }}</p>
-                            <p class="mt-0.5 text-xs text-slate-500">
+                            <p
+                                class="truncate text-sm font-semibold"
+                                :class="isSelectedCompany(company) ? 'text-white' : 'text-slate-800'"
+                            >
+                                {{ company.name }}
+                            </p>
+                            <p
+                                class="mt-0.5 text-xs"
+                                :class="isSelectedCompany(company) ? 'text-white/80' : 'text-slate-500'"
+                            >
                                 {{ company.segment || 'Sem segmento' }}
+                            </p>
+                            <p
+                                v-if="!isCompanyConfigured(company)"
+                                class="mt-1.5 text-[11px] font-semibold uppercase tracking-wide"
+                                :class="isSelectedCompany(company) ? 'text-amber-100' : 'text-amber-800'"
+                            >
+                                Credenciais em falta
+                            </p>
+                            <p
+                                v-else-if="isSelectedCompany(company)"
+                                class="mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/90"
+                            >
+                                Em visualização
                             </p>
                         </button>
                     </li>
@@ -311,31 +353,66 @@ onMounted(async () => {
                     v-else
                     class="mt-4 border-0 bg-transparent"
                     title="Nenhuma empresa encontrada"
-                    description="Configure credenciais RHID na ficha da empresa ou no portal do cliente."
+                    description="Só entram empresas ativas com o módulo RHID ligado ou com credenciais já gravadas. Configure em Configuração RHID."
                 />
             </aside>
 
             <div class="space-y-5 xl:col-span-9">
+                <div
+                    v-if="selectedCompany"
+                    class="overflow-hidden rounded-2xl bg-gradient-to-r from-talents-800 via-talents-700 to-talents-600 p-5 text-white shadow-md"
+                >
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex min-w-0 items-start gap-3">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15">
+                                <BuildingOffice2Icon class="h-6 w-6" aria-hidden="true" />
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">
+                                    Empresa em visualização
+                                </p>
+                                <h3 class="mt-0.5 truncate text-2xl font-bold tracking-tight">
+                                    {{ selectedCompany.name }}
+                                </h3>
+                                <p class="mt-1 text-sm text-white/80">
+                                    {{ selectedCompany.segment || 'Sem segmento' }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex shrink-0 flex-wrap gap-2">
+                            <Link
+                                :href="route('admin.ponto.companies.settings.edit', selectedCompany.id)"
+                                class="inline-flex items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-talents-800 transition hover:bg-white/90"
+                            >
+                                Configuração RHID
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
                 <CompanyMetricsView
-                    :title="selectedCompany ? `Ponto — ${selectedCompany.name}` : 'Gestão de ponto'"
-                    description="Indicadores do mês corrente via RHID: banco de horas, aderência e justificativas."
-                    :rhid-configured="Boolean(selectedCompany)"
+                    title="Indicadores da equipe"
+                    description="Pontualidade, faltas não justificadas e atestados do mês, a partir dos espelhos importados."
+                    :rhid-configured="isCompanyConfigured(selectedCompany)"
                     :loading="companyLoading"
                     :error="companyError"
                     :metrics="companyMetrics"
                     :loaded-at="companyLoadedAt"
-                    :show-refresh="Boolean(selectedCompany)"
-                    refresh-label="Atualizar empresa"
-                    @refresh="loadCompanyMetrics(true)"
                 />
 
-                <div v-if="selectedCompany" class="surface-card overflow-hidden">
+                <div v-if="selectedCompany" class="surface-card">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 sm:px-4">
+                        <p class="min-w-0 truncate text-xs font-medium text-slate-500">
+                            Operação de
+                            <span class="font-semibold text-talents-800">{{ selectedCompany.name }}</span>
+                        </p>
+                    </div>
                     <div class="flex flex-wrap gap-1 border-b border-slate-100 px-3 py-2 sm:px-4">
                         <button
                             v-for="tab in tabs"
                             :key="tab.id"
                             type="button"
-                            class="rounded-lg px-3 py-1.5 text-sm font-medium transition"
+                            class="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium transition"
                             :class="
                                 activeTab === tab.id
                                     ? 'bg-talents-100 text-talents-800'
@@ -344,85 +421,56 @@ onMounted(async () => {
                             @click="activeTab = tab.id"
                         >
                             {{ tab.label }}
+                            <InfoTooltip :text="tab.help" />
                         </button>
                     </div>
 
                     <div class="p-4 sm:p-5">
-                        <template v-if="activeTab === 'resumo'">
-                            <p class="mb-4 text-sm text-slate-600">
-                                Use as abas para focar marcações, banco, aderência, justificativas ou a lista de
-                                colaboradores ativos na RHID. Os indicadores acima resumem o mês corrente.
+                        <div
+                            v-if="!isCompanyConfigured(selectedCompany)"
+                            class="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                        >
+                            Configure as credenciais em
+                            <Link
+                                :href="route('admin.ponto.companies.settings.edit', selectedCompany.id)"
+                                class="font-semibold underline"
+                            >
+                                Configuração RHID
+                            </Link>
+                            para ver indicadores, aderência e importação.
+                        </div>
+
+                        <div v-else-if="activeTab === 'aderencia'" class="space-y-4">
+                            <p class="text-sm text-slate-600">
+                                Atrasos na entrada, infrações de almoço e pior cumprimento no mês — a partir dos
+                                espelhos já importados (dias fechados).
                             </p>
                             <CompanyMetricsDetailTables
-                                v-if="showMetricsTables"
+                                v-if="showAdherenceTables"
                                 class="!mt-0"
                                 :metrics="companyMetrics"
+                                :sections="['adherence']"
                             />
-                        </template>
-
-                        <div v-else-if="activeTab === 'marcacoes'" class="space-y-4">
-                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                <p class="text-sm text-slate-600">
-                                    Últimas marcações em tempo real na RHID.
-                                </p>
-                                <PrimaryButton type="button" :disabled="punchesLoading" @click="loadLivePunches">
-                                    {{ punchesLoading ? 'Atualizando…' : 'Atualizar marcações' }}
-                                </PrimaryButton>
-                            </div>
-                            <p v-if="punchesError" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">
-                                {{ punchesError }}
+                            <p v-else-if="companyLoading" class="text-sm text-slate-500">
+                                Carregando aderência ao horário…
                             </p>
-                            <div class="max-h-[28rem] overflow-auto rounded-xl ring-1 ring-slate-100">
-                                <table class="min-w-full text-sm">
-                                    <thead class="sticky top-0 bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
-                                        <tr>
-                                            <th class="px-4 py-2">Colaborador</th>
-                                            <th class="px-4 py-2">Data/hora</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr
-                                            v-for="(row, idx) in livePunches"
-                                            :key="`live-punch-${idx}`"
-                                            class="border-t border-slate-50"
-                                        >
-                                            <td class="px-4 py-2 font-medium text-slate-800">{{ row.name }}</td>
-                                            <td class="px-4 py-2 text-slate-600">
-                                                {{ formatRhidDotNetDate(row.datetime, { withTime: true }) || '—' }}
-                                            </td>
-                                        </tr>
-                                        <tr v-if="!livePunches.length && !punchesLoading">
-                                            <td colspan="2" class="px-4 py-8 text-center text-slate-500">
-                                                Sem marcações retornadas. Atualize ou confira a integração RHID.
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <CompanyMetricsDetailTables
-                                v-if="showMetricsTables"
-                                class="!mt-4"
-                                :metrics="companyMetrics"
-                                :sections="['punches']"
-                            />
+                            <p v-else class="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                                Sem dados de aderência neste período. Importe os espelhos e configure os horários
+                                da empresa.
+                            </p>
                         </div>
 
                         <div v-else-if="activeTab === 'justificativas'">
-                            <JustificationsCrudPanel :company-id="selectedCompanyId" />
+                            <JustificationsCrudPanel ref="justificationsPanel" :company-id="selectedCompanyId" />
                         </div>
 
-                        <div v-else-if="activeTab === 'colaboradores'" class="space-y-4">
-                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                <input
-                                    v-model="peopleSearch"
-                                    type="search"
-                                    placeholder="Buscar colaborador..."
-                                    class="w-full max-w-md rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                >
-                                <PrimaryButton type="button" :disabled="peopleLoading" @click="loadPeople">
-                                    {{ peopleLoading ? 'Atualizando…' : 'Atualizar lista' }}
-                                </PrimaryButton>
-                            </div>
+                        <div v-else-if="activeTab === 'equipe'" class="space-y-4">
+                            <input
+                                v-model="peopleSearch"
+                                type="search"
+                                placeholder="Buscar colaborador..."
+                                class="w-full max-w-md rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            >
                             <p v-if="peopleError" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">
                                 {{ peopleError }}
                             </p>
@@ -458,10 +506,10 @@ onMounted(async () => {
                         </div>
 
                         <CompanyMetricsDetailTables
-                            v-else-if="showMetricsTables && detailSections"
+                            v-else-if="showBankTable"
                             class="!mt-0"
                             :metrics="companyMetrics"
-                            :sections="detailSections"
+                            :sections="['bank']"
                         />
                     </div>
                 </div>

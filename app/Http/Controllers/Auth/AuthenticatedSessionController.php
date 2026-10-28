@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Support\CompanyPortal;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,11 +50,17 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $portalSlug = $request->session()->get(CompanyPortal::SESSION_KEY);
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
+
+        if (is_string($portalSlug) && $portalSlug !== '') {
+            return redirect()->route('portal.login', ['slug' => $portalSlug]);
+        }
 
         return redirect('/');
     }

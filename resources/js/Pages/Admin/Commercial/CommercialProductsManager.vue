@@ -278,8 +278,8 @@ const typeLabel = (type) => props.pricingTypeLabels[type] ?? type;
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Descrição</label>
                         <textarea
                             v-model="form.description"
-                            rows="2"
-                            class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            rows="8"
+                            class="mt-1 min-h-[12rem] w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         />
                     </div>
                     <div class="grid gap-4 sm:grid-cols-2">

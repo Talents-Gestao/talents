@@ -28,8 +28,22 @@
             font-size: 10px;
             font-weight: bold;
         }
-        .legend { margin: 6px 0 10px; font-size: 9px; color: #64748b; }
-        .legend span { margin-right: 10px; }
+        .legend { margin: 8px 0 12px; font-size: 10px; }
+        .legend-item {
+            display: inline-block;
+            margin: 0 6px 4px 0;
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid;
+            font-weight: 700;
+        }
+        .legend-item--leve { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+        .legend-item--moderado { color: #b45309; background: #fffbeb; border-color: #fde68a; }
+        .legend-item--grave { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+        .legend-range { font-weight: 600; }
+        .legend-item--leve .dot { background: #10b981; }
+        .legend-item--moderado .dot { background: #f59e0b; }
+        .legend-item--grave .dot { background: #ef4444; }
         .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
         .two-col { width: 100%; }
         .two-col td { vertical-align: top; }
@@ -77,10 +91,6 @@
     </style>
 </head>
 <body>
-    @php
-        $actionPlan = $scenarioConfig['action_plan'] ?? [];
-    @endphp
-
     <div class="header">
         @if(!empty($logoBase64))
             <img src="{{ $logoBase64 }}" alt="Talents">
@@ -90,6 +100,9 @@
     <h1>Pesquisa - Riscos Psicossociais</h1>
     <div class="meta">
         <p class="muted">Empresa: {{ $survey->company->name }} — Campanha: {{ $survey->title }}</p>
+        @if(!empty($survey->company?->cnpj))
+            <p class="muted">CNPJ: {{ $survey->company->cnpj }}</p>
+        @endif
         <p class="muted">Data de emissão: {{ now()->format('d/m/Y') }}</p>
         @if(!empty($scenarioConfig['short_label']))
             <p class="muted">{{ $scenarioConfig['short_label'] }}</p>
@@ -106,7 +119,7 @@
             </span>
             <p class="muted" style="margin: 6px 0 0;">
                 Respondentes: {{ $overall['respondent_count'] }}
-                · Faixas: 1,00–2,33 favorável · 2,34–3,66 intermediário · 3,67–5,00 elevado
+                · Faixas: 1,00–2,33 leve · 2,34–3,66 moderado · 3,67–5,00 grave
             </p>
         </div>
     @else
@@ -115,11 +128,7 @@
 
     @if(count($bySection) > 0)
         <h2>Dimensões</h2>
-        <div class="legend">
-            <span><span class="dot" style="background:#10b981;"></span> Favorável (1,00–2,33)</span>
-            <span><span class="dot" style="background:#f59e0b;"></span> Intermediário (2,34–3,66)</span>
-            <span><span class="dot" style="background:#ef4444;"></span> Elevado (3,67–5,00)</span>
-        </div>
+        @include('reports.partials.nr1_risk_legend')
 
         <table class="two-col">
             <tr>
@@ -176,6 +185,7 @@
 
     @if(count($deptOveralls) > 0)
         <h2>Risco por setor (média geral)</h2>
+        @include('reports.partials.nr1_risk_legend')
         @foreach($deptOveralls as $row)
             @php
                 $pct = max(0, min(100, (($row['average_score'] - 1) / 4) * 100));
@@ -195,6 +205,7 @@
 
     @if(count($deptOveralls) > 0 && count($bySection) > 0 && count($deptSectionsByDepartment) > 0)
         <h2>Tabela de risco por setor e dimensão</h2>
+        @include('reports.partials.nr1_risk_legend')
         <table class="data heatmap">
             <thead>
                 <tr>
@@ -232,97 +243,11 @@
         </table>
     @endif
 
-    @if(count($questionDistributions) > 0)
-        <div class="page-break"></div>
-        <h2>Detalhamento por pergunta</h2>
-        <p class="muted">Quantidade de votos por opção da escala, no total da campanha.</p>
-
-        @foreach($questionDistributions as $section)
-            <h3>{{ $section['section_title'] }}</h3>
-            @foreach($section['questions'] as $question)
-                <p style="margin: 10px 0 2px;"><strong>{{ $question['body'] }}</strong></p>
-                <p class="muted" style="margin: 0 0 6px;">
-                    {{ $question['total'] }} resposta{{ $question['total'] === 1 ? '' : 's' }}
-                    · Escala de {{ ($question['response_scale'] ?? 'frequency') === 'agreement' ? 'concordância' : 'frequência' }}
-                </p>
-                @if($question['total'] > 0)
-                    @foreach([1, 2, 3, 4, 5] as $value)
-                        @php
-                            $count = (int) ($question['counts'][$value] ?? 0);
-                            $pct = $question['total'] > 0 ? round(($count / $question['total']) * 100) : 0;
-                            $barPct = $question['total'] > 0
-                                ? max(($count / $question['total']) * 100, $count > 0 ? 2 : 0)
-                                : 0;
-                        @endphp
-                        <div style="margin: 3px 0;">
-                            <span style="display: inline-block; width: 28%; font-size: 9px; color: #475569;">
-                                {{ $likertLabel($question['response_scale'] ?? 'frequency', $value) }}
-                            </span>
-                            <span class="likert-track">
-                                <span class="likert-fill" style="display: inline-block; width: {{ number_format($barPct, 1, '.', '') }}%;"></span>
-                            </span>
-                            <span style="font-size: 9px; margin-left: 6px;">{{ $count }} ({{ $pct }}%)</span>
-                        </div>
-                    @endforeach
-                @else
-                    <p class="muted">Nenhuma resposta ainda.</p>
-                @endif
-            @endforeach
-        @endforeach
-    @endif
-
-    <h2>Insights</h2>
-    <ul>
-        @forelse($insights as $insight)
-            <li>{{ is_object($insight) ? ($insight->message ?? '') : ($insight['message'] ?? '') }}</li>
-        @empty
-            <li class="muted">Nenhum insight gerado ainda.</li>
-        @endforelse
-    </ul>
-
     @if(!empty($technicalOpinion))
         <h2>Parecer técnico</h2>
         <div class="opinion">
             {!! $technicalOpinion !!}
         </div>
-    @endif
-
-    @if($includeActions ?? true)
-        <h2>Ações</h2>
-        <p>{{ $actionPlan['intro'] ?? 'Plano de ação derivado dos resultados da pesquisa psicossocial.' }}</p>
-
-        <table class="data">
-            <thead>
-                <tr>
-                    <th style="width: 5%;">#</th>
-                    <th style="width: 28%;">Ação</th>
-                    <th>Descrição</th>
-                    <th style="width: 14%;">Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($items as $index => $item)
-                    <tr>
-                        <td>{{ $index + 1 }}</td>
-                        <td>{{ $item->title }}</td>
-                        <td>{{ $item->description ?? '—' }}</td>
-                        <td>{{ match($item->status) {
-                            'done' => 'Concluída',
-                            'in_progress' => 'Em andamento',
-                            default => 'Pendente',
-                        } }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="4">Nenhuma ação cadastrada. O administrador Talents deve publicar o plano de ação na plataforma.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-
-        <p class="notice">
-            <strong>Aviso:</strong> este plano deve ser validado pela equipe de SST e integrado ao PGR da organização, com responsáveis e prazos definidos internamente.
-        </p>
     @endif
 </body>
 </html>

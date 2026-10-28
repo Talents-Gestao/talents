@@ -8,7 +8,6 @@ use App\Enums\FinanceReceivableStatus;
 use App\Models\CommercialSaleInstallment;
 use App\Models\FinanceReceivable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use Illuminate\Support\Collection;
 
 /**
@@ -34,20 +33,86 @@ class FinanceReceivableLedger
         }
 
         $sorted = FinanceListSort::sortRows($items, (string) ($filters['sort'] ?? FinanceListSort::DUE_DATE));
-
+        $pages = $this->packGroups($this->clusterGroups($sorted), $perPage);
+        $pageCount = max(1, count($pages));
         $page = max(1, (int) request()->integer('page', 1));
-        $slice = $sorted->forPage($page, $perPage)->values();
+        $slice = $pages[$page - 1] ?? [];
 
-        return new Paginator(
-            $slice->all(),
+        $rowsBefore = 0;
+        for ($i = 0; $i < $page - 1 && $i < count($pages); $i++) {
+            $rowsBefore += count($pages[$i]);
+        }
+
+        return new GroupedLengthAwarePaginator(
+            $slice,
             $sorted->count(),
             $perPage,
             $page,
+            $pageCount,
+            $slice === [] ? null : $rowsBefore + 1,
+            $slice === [] ? null : $rowsBefore + count($slice),
             [
                 'path' => request()->url(),
                 'query' => request()->query(),
             ],
         );
+    }
+
+    /**
+     * Parcelas da mesma venda ficam juntas. A ordem do grupo segue a primeira
+     * linha já ordenada (vencimento ou recebimento).
+     *
+     * @param  Collection<int, array<string, mixed>>  $sorted
+     * @return list<list<array<string, mixed>>>
+     */
+    private function clusterGroups(Collection $sorted): array
+    {
+        $groups = [];
+
+        foreach ($sorted as $row) {
+            $key = ($row['source'] ?? '') === 'sale' && ! empty($row['sale_id'])
+                ? 'sale-'.$row['sale_id']
+                : 'row-'.($row['id'] ?? spl_object_id((object) $row));
+
+            $groups[$key][] = $row;
+        }
+
+        return array_values($groups);
+    }
+
+    /**
+     * @param  list<list<array<string, mixed>>>  $groups
+     * @return list<list<array<string, mixed>>>
+     */
+    private function packGroups(array $groups, int $perPage): array
+    {
+        if ($groups === []) {
+            return [];
+        }
+
+        $pages = [];
+        $current = [];
+        $count = 0;
+
+        foreach ($groups as $rows) {
+            $size = count($rows);
+            if ($current !== [] && $count + $size > $perPage) {
+                $pages[] = $current;
+                $current = [];
+                $count = 0;
+            }
+
+            foreach ($rows as $row) {
+                $current[] = $row;
+            }
+            $count += $size;
+        }
+
+        if ($current !== []) {
+            $pages[] = $current;
+        }
+
+        return $pages;
     }
 
     /**

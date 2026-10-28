@@ -33,12 +33,19 @@ class AccessHierarchyVisibilityTest extends TestCase
         foreach (AdminPermissionModule::all() as $module) {
             foreach (PermissionAction::all() as $action) {
                 $this->assertTrue($owner->canAccessAdmin($module, $action));
+                if ($module === AdminPermissionModule::Dashboard && $action === PermissionAction::View) {
+                    $this->assertTrue($admin->canAccessAdmin($module, $action));
+                    continue;
+                }
                 $this->assertFalse($admin->canAccessAdmin($module, $action));
             }
         }
 
         $this->assertSame(['*' => true], $owner->adminPermissionMatrixForFrontend());
-        $this->assertSame([], $admin->adminPermissionMatrixForFrontend());
+        $this->assertSame(
+            [AdminPermissionModule::Dashboard->value => [PermissionAction::View->value]],
+            $admin->adminPermissionMatrixForFrontend(),
+        );
         $this->assertTrue($owner->hasAllAdminPermissions());
         $this->assertFalse($admin->hasAllAdminPermissions());
 

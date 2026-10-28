@@ -22,7 +22,7 @@ class CompanyShowTabsTest extends TestCase
 
     public function test_removed_tabs_fall_back_to_empresa(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $company = Company::query()->create([
             'name' => 'Empresa Tabs',
             'is_active' => true,
@@ -41,7 +41,7 @@ class CompanyShowTabsTest extends TestCase
 
     public function test_kept_tabs_still_work(): void
     {
-        $admin = User::factory()->superAdmin()->create();
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $company = Company::query()->create([
             'name' => 'Empresa Tabs Ok',
             'is_active' => true,
@@ -56,5 +56,60 @@ class CompanyShowTabsTest extends TestCase
                     ->where('tab', $tab)
                 );
         }
+    }
+
+    public function test_ponto_tab_exposes_module_and_credentials_state_without_password(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = Company::query()->create([
+            'name' => 'Empresa Ponto Estado',
+            'is_active' => true,
+            'rhid_access' => true,
+            'rhid_email' => 'rhid@example.com',
+            'rhid_password' => 'segredo-api',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.companies.show', ['company' => $company->id, 'tab' => 'ponto']))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Admin/Companies/Show')
+                ->where('tab', 'ponto')
+                ->where('rhidEnabled', true)
+                ->where('rhidConfigured', true)
+                ->where('rhidSettings.rhid_email', 'rhid@example.com')
+                ->where('rhidSettings.has_password', true)
+                ->missing('rhidSettings.rhid_password')
+                ->missing('company.rhid_password')
+            );
+    }
+
+    public function test_companies_index_paginates_after_first_page(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        for ($i = 1; $i <= 16; $i++) {
+            Company::query()->create([
+                'name' => sprintf('Empresa Lista %02d', $i),
+                'is_active' => true,
+            ]);
+        }
+
+        $this->actingAs($admin)
+            ->get(route('admin.companies.index'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Admin/Companies/Index')
+                ->has('companies.data', 15)
+                ->where('companies.total', 16)
+                ->where('companies.last_page', 2)
+            );
+
+        $this->actingAs($admin)
+            ->get(route('admin.companies.index', ['page' => 2]))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('companies.data', 1)
+            );
     }
 }

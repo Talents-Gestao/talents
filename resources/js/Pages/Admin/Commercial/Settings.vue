@@ -1,10 +1,16 @@
 <script setup>
 import FormPageHeader from '@/Components/FormPageHeader.vue';
-import CommercialPricingShortcuts from '@/Components/Commercial/CommercialPricingShortcuts.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import CommercialProductsManager from '@/Pages/Admin/Commercial/CommercialProductsManager.vue';
 import ContractTemplatesManager from '@/Pages/Admin/Commercial/ContractTemplatesManager.vue';
 import { formatCnpj } from '@/utils/formatCnpj';
+import {
+    BuildingOffice2Icon,
+    CubeIcon,
+    DocumentDuplicateIcon,
+    DocumentTextIcon,
+    UserGroupIcon,
+} from '@heroicons/vue/24/outline';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 
@@ -65,12 +71,39 @@ const submit = () => {
 };
 
 const tabs = [
-    { id: 'produtos', label: 'Produtos' },
-    { id: 'pdf', label: 'PDF' },
-    { id: 'empresa', label: 'Empresa' },
-    { id: 'contratos', label: 'Contratos' },
-    { id: 'vendedores', label: 'Vendedores' },
+    {
+        id: 'produtos',
+        label: 'Produtos',
+        hint: 'Catálogo e preços',
+        icon: CubeIcon,
+    },
+    {
+        id: 'pdf',
+        label: 'PDF',
+        hint: 'Textos da proposta',
+        icon: DocumentTextIcon,
+    },
+    {
+        id: 'empresa',
+        label: 'Empresa',
+        hint: 'Dados e ZapSign',
+        icon: BuildingOffice2Icon,
+    },
+    {
+        id: 'contratos',
+        label: 'Contratos',
+        hint: 'Modelos DOCX',
+        icon: DocumentDuplicateIcon,
+    },
+    {
+        id: 'vendedores',
+        label: 'Vendedores',
+        hint: 'Comissão e acesso',
+        icon: UserGroupIcon,
+    },
 ];
+
+const activeTabMeta = computed(() => tabs.find((t) => t.id === tab.value) ?? tabs[0]);
 
 const toggleSeller = (user) => {
     router.patch(
@@ -94,30 +127,71 @@ const pdfProductLabels = computed(() =>
         <template #header>
             <FormPageHeader
                 :back-href="route('admin.comercial.propostas.index')"
-                back-label="Comercial"
+                back-label="Gestão"
                 title="Valores e contratos"
                 subtitle="Tabelas de preço, PDF da proposta e modelos usados na geração de contratos."
             />
         </template>
 
-        <CommercialPricingShortcuts />
-
-        <div class="surface-card p-1">
-            <div class="flex flex-wrap gap-1 p-2">
+        <nav class="mb-6" aria-label="Secções de valores e contratos">
+            <div
+                role="tablist"
+                class="grid gap-2 rounded-2xl border border-slate-200 bg-slate-50/90 p-2 sm:grid-cols-2 lg:grid-cols-5"
+            >
                 <button
                     v-for="t in tabs"
+                    :id="`settings-tab-${t.id}`"
                     :key="t.id"
                     type="button"
-                    class="rounded-lg px-3 py-2 text-sm font-medium transition"
-                    :class="tab === t.id ? 'bg-talents-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    role="tab"
+                    class="group flex items-start gap-3 rounded-xl border px-3 py-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2"
+                    :class="
+                        tab === t.id
+                            ? 'border-talents-300 bg-white shadow-sm ring-1 ring-talents-200'
+                            : 'border-transparent bg-transparent hover:border-slate-200 hover:bg-white/80'
+                    "
+                    :aria-selected="tab === t.id"
+                    :aria-controls="`settings-panel-${t.id}`"
+                    :tabindex="tab === t.id ? 0 : -1"
                     @click="setTab(t.id)"
                 >
-                    {{ t.label }}
+                    <span
+                        class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition"
+                        :class="
+                            tab === t.id
+                                ? 'bg-talents-700 text-white'
+                                : 'bg-white text-slate-500 ring-1 ring-slate-200 group-hover:text-talents-700'
+                        "
+                        aria-hidden="true"
+                    >
+                        <component :is="t.icon" class="h-4 w-4" />
+                    </span>
+                    <span class="min-w-0">
+                        <span
+                            class="block text-sm font-semibold"
+                            :class="tab === t.id ? 'text-talents-900' : 'text-slate-800'"
+                        >
+                            {{ t.label }}
+                        </span>
+                        <span class="mt-0.5 block text-xs leading-snug text-slate-500">
+                            {{ t.hint }}
+                        </span>
+                    </span>
                 </button>
             </div>
-        </div>
 
-        <form class="mt-6 space-y-6" @submit.prevent="submit">
+            <p class="mt-3 text-sm text-slate-600">
+                <span class="font-medium text-slate-800">{{ activeTabMeta.label }}:</span>
+                {{ activeTabMeta.hint }}.
+            </p>
+        </nav>
+
+        <div
+            :id="`settings-panel-${tab}`"
+            role="tabpanel"
+            :aria-labelledby="`settings-tab-${tab}`"
+        >
+        <form class="mt-2 space-y-6" @submit.prevent="submit">
             <!-- Tab: PDF -->
             <template v-if="tab === 'pdf'">
                 <section class="surface-card p-6">
@@ -376,5 +450,6 @@ const pdfProductLabels = computed(() =>
                 </table>
             </div>
         </section>
+        </div>
     </AdminLayout>
 </template>

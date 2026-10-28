@@ -1,5 +1,6 @@
 <script setup>
 import Modal from '@/Components/Modal.vue';
+import PaginationBar from '@/Components/PaginationBar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
@@ -74,11 +75,16 @@ const destroyImpactItems = computed(() => {
         },
     ];
 
-    if (sale.commission && Number(sale.commission.amount_cents) > 0) {
+    const payableCommissions = Number(sale.payable_commissions_count ?? 0);
+    const hasCommission = payableCommissions > 0
+        || (sale.commission && Number(sale.commission.amount_cents) > 0);
+    if (hasCommission) {
         items.push({
             key: 'comissao',
             label: 'Financeiro · Comissões',
-            detail: 'A comissão desta venda também será removida.',
+            detail: payableCommissions > 1
+                ? 'As comissões desta venda também serão removidas.'
+                : 'A comissão desta venda também será removida.',
             href: route('admin.financeiro.comissoes.index'),
         });
     }
@@ -289,6 +295,7 @@ const confirmDestroy = () => {
                     </tbody>
                 </table>
             </div>
+            <PaginationBar :paginator="sales" />
         </div>
 
         <Modal :show="destroyModalOpen" max-width="lg" @close="closeDestroyModal">

@@ -3,6 +3,7 @@ import DesligamentoCompanyPicker from '@/Components/Offboarding/DesligamentoComp
 import DesligamentoLayout from '@/Components/Offboarding/DesligamentoLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import ListEmptyState from '@/Components/ListEmptyState.vue';
+import PaginationBar from '@/Components/PaginationBar.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { desligamentoRoute } from '@/composables/useDesligamentoRoutes';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
@@ -212,6 +213,7 @@ const remove = async (id) => {
                     v-if="!interviews.data?.length"
                     :message="emptyMessage"
                 />
+                <PaginationBar :paginator="interviews" />
             </div>
         </template>
     </DesligamentoLayout>

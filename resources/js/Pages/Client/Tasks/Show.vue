@@ -1,6 +1,7 @@
 <script setup>
 import BoardHeader from '@/Components/Tasks/BoardHeader.vue';
 import CardModal from '@/Components/Tasks/CardModal.vue';
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import KanbanBoard from '@/Components/Tasks/KanbanBoard.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { formatDateNumeric, formatRelativeDate } from '@/utils/dateOnly';
@@ -62,7 +63,12 @@ function formatDateTitle(value) {
 
     <ClientLayout>
         <template #header>
-            <h2 class="text-xl font-semibold text-gray-900">Tarefas</h2>
+            <FormPageHeader
+                :back-href="route('client.tarefas.index')"
+                back-label="Tarefas"
+                :title="boardPayload.name"
+                :prefer-history="true"
+            />
         </template>
 
         <div class="space-y-4 p-4">

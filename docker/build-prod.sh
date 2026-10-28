@@ -1,6 +1,7 @@
 #!/bin/sh
-# Build de produção em duas etapas: PHP (pesado) primeiro, nginx depois (leve).
-# No Coolify, use como comando de build se o deploy falhar com OOM no BuildKit.
+# Build de produção: PHP primeiro, nginx depois (mesmo Dockerfile, targets distintos).
+# No Coolify o compose já usa target php/nginx; este script só é necessário se o
+# painel ainda construir os dois serviços em paralelo e estourar RAM.
 set -eu
 
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"

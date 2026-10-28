@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Admin\ActionPlanAdminController;
+use App\Http\Controllers\Admin\ExecutiveBriefAdminController;
+use App\Http\Controllers\Admin\PsychosocialDocumentAdminController;
+use App\Http\Controllers\Admin\SurveyCampaignRegistrationAdminController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AiSettingsController;
 use App\Http\Controllers\Admin\Commercial\ContractController as CommercialContractController;
@@ -13,12 +16,14 @@ use App\Http\Controllers\Admin\FeedbackCompanySelectController;
 use App\Http\Controllers\Admin\FeriasCompanySelectController;
 use App\Http\Controllers\Admin\DesligamentoCompanySelectController;
 use App\Http\Controllers\Admin\ComplaintCompanySelectController;
+use App\Http\Controllers\Admin\SuggestionCompanySelectController;
 use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
 use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
 use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
 use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
 use App\Http\Controllers\Client\ComplaintController;
+use App\Http\Controllers\Client\SuggestionController;
 use App\Http\Controllers\Admin\Finance\BankAccountController as FinanceBankAccountController;
 use App\Http\Controllers\Admin\Finance\CommissionController as FinanceCommissionController;
 use App\Http\Controllers\Admin\Finance\FinanceDashboardController;
@@ -27,8 +32,10 @@ use App\Http\Controllers\Admin\Finance\PayableController as FinancePayableContro
 use App\Http\Controllers\Admin\Finance\PaymentMethodController as FinancePaymentMethodController;
 use App\Http\Controllers\Admin\Finance\ReceivableController as FinanceReceivableController;
 use App\Http\Controllers\Admin\Finance\SaleController as FinanceSaleController;
+use App\Http\Controllers\Admin\ClientEvaluationController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\CompanySurveyController;
+use App\Http\Controllers\Admin\PurposeMapCampaignController;
 use App\Http\Controllers\Admin\Commercial\CommercialProcessController;
 use App\Http\Controllers\Admin\InternalRegulationController;
 use App\Http\Controllers\Admin\MonthlyHighlightController;
@@ -45,9 +52,9 @@ use App\Http\Controllers\Admin\MethodologyController as AdminMethodologyControll
 use App\Http\Controllers\Admin\MethodologyFormTemplateController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\PlatformCompanyController;
+use App\Http\Controllers\Admin\PontoEspelhoController;
 use App\Http\Controllers\Admin\PontoPanelController;
 use App\Http\Controllers\Admin\RhidPortfolioController;
-use App\Http\Controllers\Admin\RhidPanelController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SolidesCurriculumController;
 use App\Http\Controllers\Admin\SolidesSettingsController;
@@ -85,8 +92,6 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
         Route::patch('/dashboard/meta-mensal', [AdminDashboardController::class, 'updateMonthlyGoal'])
             ->name('dashboard.monthly-goal.update');
-        Route::get('rhid/portfolio-metrics', [RhidPortfolioController::class, 'portfolioMetrics'])
-            ->name('rhid.portfolio-metrics');
     });
 
     Route::middleware('admin.can:empresa_talents')->group(function () {
@@ -142,6 +147,19 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::get('noticias', NewsFeedController::class)->name('news.feed');
 
     Route::middleware('admin.can:companies')->group(function () {
+        Route::get('avaliacoes-clientes', [ClientEvaluationController::class, 'index'])
+            ->name('client-evaluations.index');
+        Route::get('avaliacoes-clientes/criar', [ClientEvaluationController::class, 'create'])
+            ->name('client-evaluations.create');
+        Route::post('avaliacoes-clientes', [ClientEvaluationController::class, 'store'])
+            ->name('client-evaluations.store');
+        Route::get('avaliacoes-clientes/{evaluation}', [ClientEvaluationController::class, 'show'])
+            ->name('client-evaluations.show');
+        Route::delete('avaliacoes-clientes/{evaluation}', [ClientEvaluationController::class, 'destroy'])
+            ->name('client-evaluations.destroy');
+        Route::post('avaliacoes-clientes/{evaluation}/email', [ClientEvaluationController::class, 'sendEmail'])
+            ->name('client-evaluations.email');
+
         Route::get('colaboradores/lookup-cep', [CompanyEmployeeController::class, 'lookupCep'])
             ->name('colaboradores.lookup-cep');
         Route::resource('colaboradores', CompanyEmployeeController::class)
@@ -160,6 +178,32 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');
         Route::get('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'edit'])
             ->name('companies.surveys.action-plan.edit');
+        Route::get('companies/{company}/surveys/{survey}/cadastro-tecnico', [SurveyCampaignRegistrationAdminController::class, 'edit'])
+            ->name('companies.surveys.registration.edit');
+        Route::put('companies/{company}/surveys/{survey}/cadastro-tecnico', [SurveyCampaignRegistrationAdminController::class, 'update'])
+            ->name('companies.surveys.registration.update');
+        Route::post('companies/{company}/surveys/{survey}/resumo-executivo/liberar', [ExecutiveBriefAdminController::class, 'release'])
+            ->name('companies.surveys.executive-brief.release');
+        Route::get('companies/{company}/surveys/{survey}/resumo-executivo/download', [ExecutiveBriefAdminController::class, 'download'])
+            ->name('companies.surveys.executive-brief.download');
+        Route::post('companies/{company}/surveys/{survey}/subsidio-pgr/liberar', [PsychosocialDocumentAdminController::class, 'releaseSubsidy'])
+            ->name('companies.surveys.pgr-subsidy.release');
+        Route::post('companies/{company}/surveys/{survey}/dossie/liberar', [PsychosocialDocumentAdminController::class, 'releaseDossier'])
+            ->name('companies.surveys.evidence-dossier.release');
+        Route::get('companies/{company}/surveys/{survey}/dossie/anexos/{attachment}', [PsychosocialDocumentAdminController::class, 'downloadAttachment'])
+            ->name('companies.surveys.evidence-dossier.attachments.download');
+        Route::get('companies/{company}/surveys/{survey}/medidas', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'edit'])
+            ->name('companies.surveys.measures.edit');
+        Route::post('companies/{company}/surveys/{survey}/medidas', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'store'])
+            ->name('companies.surveys.measures.store');
+        Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateStatus'])
+            ->name('companies.surveys.measures.status');
+        Route::get('companies/{company}/surveys/{survey}/documentos/{type}/download', [PsychosocialDocumentAdminController::class, 'download'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->name('companies.surveys.psychosocial-documents.download');
+        Route::post('companies/{company}/surveys/{survey}/documentos/{type}/validacao-informada', [PsychosocialDocumentAdminController::class, 'validateInformed'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->name('companies.surveys.psychosocial-documents.validate-informed');
         Route::get('companies/{company}/surveys/{survey}/action-plan/pdf', [ActionPlanAdminController::class, 'pdf'])
             ->name('companies.surveys.action-plan.pdf');
         Route::match(['get', 'post'], 'companies/{company}/surveys/{survey}/action-plan/document-pdf', [ActionPlanAdminController::class, 'documentPdf'])
@@ -178,6 +222,12 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.technical-opinion-file.download');
         Route::get('companies/{company}/surveys/{survey}/nr1-reports/{type}', [ActionPlanAdminController::class, 'downloadNr1Report'])
             ->name('companies.surveys.nr1-reports.download');
+        Route::get('mapa-proposito', [PurposeMapCampaignController::class, 'index'])
+            ->name('mapa-proposito.index');
+        Route::get('mapa-proposito/resultados', [PurposeMapCampaignController::class, 'show'])
+            ->name('mapa-proposito.dashboard');
+        Route::post('mapa-proposito/analisar', [PurposeMapCampaignController::class, 'analyze'])
+            ->name('mapa-proposito.analyze');
         Route::get('companies/{company}/users', [CompanyUserController::class, 'index'])->name('companies.users.index');
         Route::get('companies/{company}/users/create', [CompanyUserController::class, 'create'])->name('companies.users.create');
         Route::post('companies/{company}/users', [CompanyUserController::class, 'store'])->name('companies.users.store');
@@ -203,11 +253,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('contratos-fechados.index');
     });
 
-    Route::middleware('admin.can:rhid')->prefix('rhid')->name('rhid.')->group(function () {
-        Route::get('/', [RhidPanelController::class, 'index'])->name('index');
-        Route::get('summary', [RhidPanelController::class, 'summary'])->name('summary');
-        Route::get('companies/{company}/metrics', [RhidPanelController::class, 'companyMetrics'])->name('companies.metrics');
-    });
+    Route::middleware('admin.can:rhid')->get('rhid/{path?}', function () {
+        return redirect()->route('admin.ponto.index');
+    })->where('path', '.*');
 
     Route::middleware('admin.can:rhid')->prefix('ponto')->name('ponto.')->group(function () {
         Route::get('/', [PontoPanelController::class, 'index'])->name('index');
@@ -228,6 +276,50 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('companies/{company}/justifications/{id}', [PontoPanelController::class, 'destroyJustification'])
             ->name('companies.justifications.destroy')
             ->whereNumber('id');
+        Route::get('companies/{company}/configuracao', [PontoPanelController::class, 'settings'])
+            ->name('companies.settings.edit');
+        Route::put('companies/{company}/settings', [PontoPanelController::class, 'updateSettings'])
+            ->name('companies.settings.update');
+        Route::post('companies/{company}/settings/test', [PontoPanelController::class, 'testSettings'])
+            ->name('companies.settings.test');
+
+        Route::get('companies/{company}/punch-schedule', [PontoEspelhoController::class, 'punchScheduleShow'])
+            ->name('companies.punch-schedule.show');
+        Route::put('companies/{company}/punch-schedule', [PontoEspelhoController::class, 'punchScheduleUpdate'])
+            ->name('companies.punch-schedule.update');
+        Route::post('companies/{company}/schedule-preferences/batch', [PontoEspelhoController::class, 'batchSchedulePreferences'])
+            ->name('companies.schedule-preferences.batch');
+
+        Route::post('companies/{company}/reports/start', [PontoEspelhoController::class, 'startReport'])
+            ->name('companies.reports.start');
+        Route::get('companies/{company}/reports/status', [PontoEspelhoController::class, 'reportStatus'])
+            ->name('companies.reports.status');
+        Route::get('companies/{company}/reports/download', [PontoEspelhoController::class, 'downloadReport'])
+            ->name('companies.reports.download');
+
+        Route::post('companies/{company}/espelhos/store', [PontoEspelhoController::class, 'storeEspelhoPdf'])
+            ->name('companies.espelhos.store');
+        Route::post('companies/{company}/espelhos/batch', [PontoEspelhoController::class, 'startEspelhoBatch'])
+            ->name('companies.espelhos.batch.start');
+        Route::get('companies/{company}/espelhos/batch/{batch}', [PontoEspelhoController::class, 'showEspelhoBatch'])
+            ->name('companies.espelhos.batch.show')
+            ->whereNumber('batch');
+        Route::get('companies/{company}/espelhos/auto-import', [PontoEspelhoController::class, 'autoImportStatus'])
+            ->name('companies.espelhos.auto-import');
+        Route::get('companies/{company}/espelhos/imports', [PontoEspelhoController::class, 'listEspelhoImports'])
+            ->name('companies.espelhos.imports.index');
+        Route::get('companies/{company}/espelhos/imports/{import}', [PontoEspelhoController::class, 'showEspelhoImport'])
+            ->name('companies.espelhos.imports.show')
+            ->whereNumber('import');
+        Route::post('companies/{company}/espelhos/imports/{import}/reparse', [PontoEspelhoController::class, 'reparseEspelhoImport'])
+            ->name('companies.espelhos.imports.reparse')
+            ->whereNumber('import');
+        Route::post('companies/{company}/espelhos/imports/{import}/parse-sync', [PontoEspelhoController::class, 'syncParseEspelhoImport'])
+            ->name('companies.espelhos.imports.parse-sync')
+            ->whereNumber('import');
+        Route::get('companies/{company}/espelhos/imports/{import}/file', [PontoEspelhoController::class, 'downloadEspelhoImportFile'])
+            ->name('companies.espelhos.imports.file')
+            ->whereNumber('import');
     });
 
     Route::middleware('admin.can:feedbacks')->prefix('feedbacks')->name('feedbacks.')->group(function () {
@@ -286,6 +378,16 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::get('{complaint}', [ComplaintController::class, 'show'])->name('show');
             Route::patch('{complaint}/status', [ComplaintController::class, 'updateStatus'])->name('status');
             Route::post('{complaint}/messages', [ComplaintController::class, 'storeMessage'])->name('messages.store');
+        });
+    });
+
+    Route::middleware('admin.can:sugestoes')->prefix('sugestoes')->name('suggestions.')->group(function () {
+        Route::get('/', [SuggestionController::class, 'index'])->name('index');
+        Route::post('company', [SuggestionCompanySelectController::class, 'store'])->name('company.store');
+
+        Route::middleware('suggestions.company')->group(function () {
+            Route::get('{suggestion}', [SuggestionController::class, 'show'])->name('show')->whereNumber('suggestion');
+            Route::patch('{suggestion}/status', [SuggestionController::class, 'updateStatus'])->name('status')->whereNumber('suggestion');
         });
     });
 
@@ -351,6 +453,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
                 ->name('propostas.notes');
             Route::post('propostas/{proposal}/reabrir', [CommercialProposalController::class, 'reopen'])
                 ->name('propostas.reopen');
+            Route::post('propostas/{proposal}/comissoes-extra', [CommercialProposalController::class, 'storeExtraCommission'])
+                ->name('propostas.comissoes-extra');
             Route::get('contratos/{contract}/pdf', [CommercialContractController::class, 'pdf'])
                 ->name('contratos.pdf');
             Route::post('contratos/{contract}/zapsign', [CommercialContractController::class, 'sendZapSign'])
@@ -525,6 +629,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
         Route::post('quadros/{board}/membros', [TaskBoardMemberController::class, 'store'])->name('quadros.membros.store');
         Route::delete('quadros/{board}/membros/{user}', [TaskBoardMemberController::class, 'destroy'])->name('quadros.membros.destroy');
+        Route::post('quadros/{board}/partilhar-cartoes', [TasksTaskBoardController::class, 'shareCards'])
+            ->middleware('admin.can:tarefas,edit')
+            ->name('quadros.partilhar-cartoes');
     });
 
     Route::middleware('admin.can:entrevistas_roteiros')->prefix('entrevistas')->name('entrevistas.')->group(function () {

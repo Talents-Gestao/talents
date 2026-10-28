@@ -1,4 +1,5 @@
 <script setup>
+import PaginationBar from '@/Components/PaginationBar.vue';
 import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -63,6 +64,7 @@ async function destroy(id) {
                     <TableEmptyRow v-if="!templates.data.length" :colspan="5" message="Nenhum modelo encontrado." />
                 </tbody>
             </table>
+            <PaginationBar :paginator="templates" />
         </div>
     </AdminLayout>
 </template>

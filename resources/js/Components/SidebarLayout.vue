@@ -1,6 +1,7 @@
 <script setup>
 import AppTopBar from '@/Components/AppTopBar.vue';
 import NewsFeedDrawer from '@/Components/NewsFeedDrawer.vue';
+import NoticeArrivalToast from '@/Components/NoticeArrivalToast.vue';
 import NoticeBellDropdown from '@/Components/NoticeBellDropdown.vue';
 import { Bars3Icon, ChevronDownIcon, ChevronUpIcon, MapPinIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import {
@@ -34,6 +35,10 @@ defineProps({
     topBarShowActions: {
         type: Boolean,
         default: true,
+    },
+    shellStyle: {
+        type: Object,
+        default: null,
     },
 });
 
@@ -263,7 +268,7 @@ const pinButtonTitle = computed(() =>
 </script>
 
 <template>
-    <div :class="shellClass">
+    <div :class="shellClass" :style="shellStyle">
         <div
             v-show="mobileOpen"
             class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
@@ -369,15 +374,6 @@ const pinButtonTitle = computed(() =>
                     <slot name="user" :collapsed="collapsed" :compact="compact" />
                 </div>
             </div>
-
-            <button
-                type="button"
-                class="absolute right-2 top-3 rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 lg:hidden"
-                @click="closeMobileSidebar"
-            >
-                <span class="sr-only">Fechar menu</span>
-                <XMarkIcon class="h-6 w-6" />
-            </button>
         </aside>
 
         <div :class="['flex min-h-screen flex-1 flex-col', mainTransitionClass, mainMarginClass]">
@@ -431,5 +427,6 @@ const pinButtonTitle = computed(() =>
                 </div>
             </div>
         </div>
+        <NoticeArrivalToast />
     </div>
 </template>

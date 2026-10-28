@@ -6,6 +6,7 @@ use App\Actions\Notices\PublishCommercialNotice;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
+use App\Models\FinanceBankAccount;
 use App\Models\User;
 use App\Services\Commercial\ProposalSaleConversionService;
 use App\Support\Commercial\CommercialCodeSearch;
@@ -33,6 +34,8 @@ class SaleController extends Controller
             ->withCount([
                 'installments as pending_installments_count' => fn ($query) => $query
                     ->where('status', 'pendente'),
+                'commissions as payable_commissions_count' => fn ($query) => $query
+                    ->where('amount_cents', '>', 0),
             ])
             ->orderByDesc('sold_at');
 
@@ -80,6 +83,7 @@ class SaleController extends Controller
             'proposal:id,code',
             'installments' => fn ($q) => $q->orderBy('number'),
             'commission.seller:id,name',
+            'commissions.seller:id,name',
         ]);
 
         return Inertia::render('Admin/Finance/Sales/Show', [
@@ -100,6 +104,15 @@ class SaleController extends Controller
                 ['value' => 'pago', 'label' => 'Pago'],
                 ['value' => 'cancelado', 'label' => 'Cancelado'],
             ],
+            'bankAccounts' => $this->activeBankAccounts(
+                $sale->installments
+                    ->pluck('bank_account_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all()
+            ),
         ]);
     }
 
@@ -218,8 +231,9 @@ class SaleController extends Controller
 
         $installments = (int) ($sale->installments_count
             ?? $sale->installments()->count());
-        $hasCommission = $sale->commission !== null
-            && (int) $sale->commission->amount_cents > 0;
+        $hasCommission = $sale->commissions()
+            ->where('amount_cents', '>', 0)
+            ->exists();
         $hasProposal = $sale->proposal_id !== null && $sale->proposal !== null;
 
         $items = [
@@ -447,5 +461,31 @@ class SaleController extends Controller
             ->with('success', "Venda {$saleCode} criada a partir da proposta {$proposal->code}.")
             ->with('sale_id', $saleId)
             ->with('sale_code', $saleCode);
+    }
+
+    /**
+     * Mesma origem das opções em Contas a receber: contas ativas, mais as já
+     * ligadas às parcelas (para o select não ficar vazio se a conta foi inativada).
+     *
+     * @param  list<int>  $includeIds
+     * @return list<array{id: int, name: string}>
+     */
+    private function activeBankAccounts(array $includeIds = []): array
+    {
+        $includeIds = array_values(array_unique(array_filter($includeIds)));
+
+        return FinanceBankAccount::query()
+            ->where(function ($q) use ($includeIds) {
+                $q->where('is_active', true);
+                if ($includeIds !== []) {
+                    $q->orWhereIn('id', $includeIds);
+                }
+            })
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (FinanceBankAccount $a) => $a->only(['id', 'name']))
+            ->values()
+            ->all();
     }
 }

@@ -10,6 +10,7 @@ import {
     PencilSquareIcon,
     TrashIcon,
     UserIcon,
+    UserPlusIcon,
 } from '@heroicons/vue/24/outline';
 import {
     activeProposalKanbanMenuId,
@@ -33,6 +34,7 @@ const emit = defineEmits([
     'reopen',
     'convert',
     'contract',
+    'extra-commission',
     'destroy',
 ]);
 
@@ -42,7 +44,7 @@ const menuButtonEl = ref(null);
 const menuPanelEl = ref(null);
 
 const MENU_WIDTH = 176;
-const MENU_HEIGHT_FALLBACK = 200;
+const MENU_HEIGHT_FALLBACK = 264;
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
 
@@ -346,6 +348,13 @@ onUnmounted(() => {
                     Venda
                 </span>
                 <span
+                    v-if="proposal.extra_commissions?.length"
+                    class="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-800 ring-1 ring-violet-200/80"
+                    :title="proposal.extra_commissions.map((item) => item.name).filter(Boolean).join(', ')"
+                >
+                    Comissão extra
+                </span>
+                <span
                     v-if="installmentsLabel"
                     class="rounded-full bg-slate-50 px-2 py-0.5 text-[11px] tabular-nums text-slate-600 ring-1 ring-slate-200/80"
                 >
@@ -420,6 +429,15 @@ onUnmounted(() => {
                 >
                     <BanknotesIcon class="h-3.5 w-3.5 text-emerald-600" />
                     Converter em venda
+                </button>
+                <button
+                    type="button"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                    role="menuitem"
+                    @click="runAction(() => emit('extra-commission', proposal))"
+                >
+                    <UserPlusIcon class="h-3.5 w-3.5 text-slate-400" />
+                    Incluir comissão
                 </button>
                 <button
                     v-if="proposal.can_reopen"

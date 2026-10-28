@@ -1,5 +1,7 @@
 <script setup>
 import CompanyShowAccordion from '@/Components/Admin/Companies/CompanyShowAccordion.vue';
+import CompanyShowTabFrame from '@/Components/Admin/Companies/CompanyShowTabFrame.vue';
+import CompanyRhidCredentialsForm from '@/Components/Admin/Rhid/CompanyRhidCredentialsForm.vue';
 import ComplaintsPublicLinkPanel from '@/Components/Complaints/ComplaintsPublicLinkPanel.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import BackLink from '@/Components/BackLink.vue';
@@ -10,13 +12,20 @@ import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import {
     BuildingOffice2Icon,
     ChartBarIcon,
+    ChevronDownIcon,
     ClipboardDocumentListIcon,
     CreditCardIcon,
     DocumentTextIcon,
+    EnvelopeIcon,
     ExclamationTriangleIcon,
+    FingerPrintIcon,
+    GlobeAltIcon,
+    KeyIcon,
     LinkIcon,
     MapIcon,
     PencilSquareIcon,
+    StarIcon,
+    SparklesIcon,
     UserGroupIcon,
 } from '@heroicons/vue/24/outline';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -29,6 +38,16 @@ const props = defineProps({
     company: Object,
     tab: { type: String, default: 'empresa' },
     rhidConfigured: { type: Boolean, default: false },
+    rhidEnabled: { type: Boolean, default: false },
+    rhidSettings: {
+        type: Object,
+        default: () => ({
+            rhid_base_url: '',
+            rhid_email: '',
+            rhid_domain: '',
+            has_password: false,
+        }),
+    },
     planIncludesMetodologia: { type: Boolean, default: false },
     pendingRegistration: { type: Boolean, default: false },
     registrationAdminEmail: { type: String, default: null },
@@ -245,13 +264,16 @@ const removeRegulation = async (id) => {
 
         <div class="space-y-6">
             <!-- Hero -->
-            <section class="surface-card overflow-hidden p-6 sm:p-8">
-                <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+            <section
+                class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-talents-800 via-talents-700 to-talents-600 p-6 text-white shadow-sm sm:p-8"
+            >
+                <div class="pointer-events-none absolute -right-8 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+                <div class="relative flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0 flex-1">
                         <div class="flex items-start gap-4">
                             <div
                                 v-if="company.logo_url"
-                                class="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:h-20 sm:w-20"
+                                class="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-white/30 sm:h-20 sm:w-20"
                             >
                                 <img
                                     :src="company.logo_url"
@@ -262,49 +284,49 @@ const removeRegulation = async (id) => {
                             <div class="min-w-0 flex-1">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <span
-                                        class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
+                                        class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
                                         :class="
                                             company.is_active
-                                                ? 'bg-emerald-50 text-emerald-800 ring-emerald-200/80'
-                                                : 'bg-slate-100 text-slate-600 ring-slate-200/80'
+                                                ? 'bg-emerald-400/20 text-emerald-100 ring-1 ring-emerald-200/30'
+                                                : 'bg-white/10 text-white/80 ring-1 ring-white/20'
                                         "
                                     >
                                         {{ company.is_active ? 'Ativa' : 'Inativa' }}
                                     </span>
                                     <span
                                         v-if="rhidConfigured"
-                                        class="inline-flex items-center rounded-full bg-talents-50 px-2.5 py-0.5 text-xs font-semibold text-talents-800 ring-1 ring-talents-200/80"
+                                        class="inline-flex items-center rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white ring-1 ring-white/25"
                                     >
                                         RHID configurado
                                     </span>
                                     <span
                                         v-if="pendingRegistration"
-                                        class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/80"
+                                        class="inline-flex items-center rounded-full bg-amber-400/20 px-2.5 py-1 text-[11px] font-semibold text-amber-50 ring-1 ring-amber-200/30"
                                     >
                                         Aguarda cadastro
                                     </span>
                                 </div>
-                                <h1 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                                <h1 class="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
                                     {{ company.name }}
                                 </h1>
                                 <p
                                     v-if="company.legal_name && company.legal_name !== company.name"
-                                    class="mt-1 text-sm text-slate-500"
+                                    class="mt-1 text-sm text-white/75"
                                 >
                                     {{ company.legal_name }}
                                 </p>
-                                <dl class="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
+                                <dl class="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/80">
                                     <div v-if="company.cnpj">
                                         <dt class="sr-only">CNPJ</dt>
-                                        <dd><span class="text-slate-400">CNPJ</span> {{ formatCnpj(company.cnpj) }}</dd>
+                                        <dd><span class="text-white/50">CNPJ</span> {{ formatCnpj(company.cnpj) }}</dd>
                                     </div>
                                     <div v-if="company.segment">
                                         <dt class="sr-only">Segmento</dt>
-                                        <dd><span class="text-slate-400">Segmento</span> {{ company.segment }}</dd>
+                                        <dd><span class="text-white/50">Segmento</span> {{ company.segment }}</dd>
                                     </div>
                                     <div v-if="locationLabel">
                                         <dt class="sr-only">Localização</dt>
-                                        <dd><span class="text-slate-400">Local</span> {{ locationLabel }}</dd>
+                                        <dd><span class="text-white/50">Local</span> {{ locationLabel }}</dd>
                                     </div>
                                 </dl>
                             </div>
@@ -314,11 +336,11 @@ const removeRegulation = async (id) => {
                         <button
                             v-if="registrationAdminEmail"
                             type="button"
-                            class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition disabled:opacity-50"
+                            class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition disabled:opacity-50"
                             :class="
                                 pendingRegistration
-                                    ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
-                                    : 'border-slate-200 bg-white text-slate-700 hover:border-talents-200 hover:bg-talents-50/50 hover:text-talents-800'
+                                    ? 'bg-amber-400/20 text-amber-50 ring-1 ring-amber-200/30 hover:bg-amber-400/30'
+                                    : 'bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25'
                             "
                             :disabled="resendingInvitation"
                             @click="resendInvitation"
@@ -332,15 +354,22 @@ const removeRegulation = async (id) => {
                             }}
                         </button>
                         <Link
+                            :href="route('admin.client-evaluations.create', { company_id: company.id })"
+                            class="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-medium text-white ring-1 ring-white/25 transition hover:bg-white/25"
+                        >
+                            <StarIcon class="h-4 w-4" aria-hidden="true" />
+                            Avaliação
+                        </Link>
+                        <Link
                             :href="route('admin.companies.edit', company.id)"
-                            class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-talents-200 hover:bg-talents-50/50 hover:text-talents-800"
+                            class="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-medium text-white ring-1 ring-white/25 transition hover:bg-white/25"
                         >
                             <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
                             Editar
                         </Link>
                         <Link
                             :href="route('admin.companies.users.index', company.id)"
-                            class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-talents-200 hover:bg-talents-50/50 hover:text-talents-800"
+                            class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-50"
                         >
                             <UserGroupIcon class="h-4 w-4" aria-hidden="true" />
                             Gerenciar usuários
@@ -375,7 +404,25 @@ const removeRegulation = async (id) => {
             </div>
 
             <!-- Tab: Empresa -->
-            <div v-if="activeTab === 'empresa'" class="space-y-4">
+            <div v-if="activeTab === 'empresa'">
+                <CompanyShowTabFrame
+                    accent="slate"
+                    eyebrow="Ficha cadastral"
+                    title="Empresa"
+                    description="Dados, planos, pesquisas e usuários vinculados a esta empresa."
+                >
+                    <template #icon>
+                        <BuildingOffice2Icon class="h-6 w-6" aria-hidden="true" />
+                    </template>
+                    <template #actions>
+                        <Link
+                            :href="route('admin.companies.edit', company.id)"
+                            class="inline-flex items-center justify-center rounded-full bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900"
+                        >
+                            Editar empresa
+                        </Link>
+                    </template>
+                    <div class="space-y-4">
                 <CompanyShowAccordion title="Dados" description="Informações cadastrais da empresa" default-open>
                     <template #icon>
                         <BuildingOffice2Icon class="h-5 w-5" />
@@ -388,6 +435,17 @@ const removeRegulation = async (id) => {
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Instagram</dt>
                             <dd class="mt-1 text-slate-800">{{ company.instagram || '—' }}</dd>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Portal de entrada</dt>
+                            <dd class="mt-1 text-slate-800">
+                                <template v-if="company.portal_slug">
+                                    {{ company.portal_enabled ? 'Ativo' : 'Inativo' }}
+                                    — /entrar/{{ company.portal_slug }}
+                                    <span v-if="company.brand_name"> ({{ company.brand_name }})</span>
+                                </template>
+                                <template v-else>—</template>
+                            </dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Razão social</dt>
@@ -592,6 +650,23 @@ const removeRegulation = async (id) => {
                     <p v-else class="text-sm text-slate-500">Nenhuma pesquisa cadastrada para esta empresa.</p>
                 </CompanyShowAccordion>
 
+                <CompanyShowAccordion
+                    title="Mapa de Propósito"
+                    description="Perguntas anónimas e dashboard de resultados"
+                >
+                    <template #icon>
+                        <SparklesIcon class="h-5 w-5" />
+                    </template>
+                    <div class="flex flex-wrap gap-2">
+                        <Link
+                            href="/admin/mapa-proposito"
+                            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-talents-700 ring-1 ring-talents-200/80 transition hover:bg-talents-50"
+                        >
+                            Abrir dashboard
+                        </Link>
+                    </div>
+                </CompanyShowAccordion>
+
                 <CompanyShowAccordion title="Usuários" description="Usuários vinculados a esta empresa">
                     <template #icon>
                         <UserGroupIcon class="h-5 w-5" />
@@ -642,64 +717,181 @@ const removeRegulation = async (id) => {
                         Excluir empresa
                     </DangerButton>
                 </CompanyShowAccordion>
+                    </div>
+                </CompanyShowTabFrame>
             </div>
 
             <!-- Tab: Ponto -->
-            <div v-else-if="activeTab === 'ponto'" class="space-y-4">
-                <div class="surface-card p-6 sm:p-7">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div class="flex items-start gap-3">
-                            <div
-                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-talents-50 text-talents-700"
-                            >
-                                <ClipboardDocumentListIcon class="h-5 w-5" aria-hidden="true" />
-                            </div>
-                            <div>
-                                <h2 class="text-base font-semibold text-slate-900">Gestão de ponto</h2>
-                                <p class="mt-1 max-w-xl text-sm text-slate-500">
-                                    Marcações, adesão a horários e justificativas desta empresa no hub de ponto.
-                                </p>
-                                <p
-                                    v-if="!rhidConfigured"
-                                    class="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                                >
-                                    Esta empresa ainda não tem RHID configurado.
-                                </p>
-                            </div>
-                        </div>
+            <div v-else-if="activeTab === 'ponto'">
+                <CompanyShowTabFrame
+                    accent="talents"
+                    eyebrow="Integração Control iD"
+                    title="Gestão de ponto"
+                    description="Indicadores, marcações e justificativas ficam no hub. Credenciais e horários ficam na tela de configuração; os espelhos entram automaticamente após o fechamento do dia."
+                >
+                    <template #icon>
+                        <FingerPrintIcon class="h-6 w-6" aria-hidden="true" />
+                    </template>
+                    <template #badges>
+                        <span
+                            class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1"
+                            :class="
+                                rhidEnabled
+                                    ? 'bg-emerald-50 text-emerald-800 ring-emerald-200'
+                                    : 'bg-slate-100 text-slate-600 ring-slate-200'
+                            "
+                        >
+                            Módulo {{ rhidEnabled ? 'ligado' : 'desligado' }}
+                        </span>
+                        <span
+                            class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1"
+                            :class="
+                                rhidConfigured
+                                    ? 'bg-talents-50 text-talents-800 ring-talents-200'
+                                    : 'bg-amber-50 text-amber-900 ring-amber-200'
+                            "
+                        >
+                            Credenciais {{ rhidConfigured ? 'ok' : 'em falta' }}
+                        </span>
+                    </template>
+                    <template #actions>
                         <Link
+                            v-if="rhidEnabled || rhidConfigured"
+                            :href="route('admin.ponto.companies.settings.edit', company.id)"
+                            class="inline-flex shrink-0 items-center justify-center rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-talents-800 ring-1 ring-talents-200 transition hover:bg-talents-50"
+                        >
+                            Configuração RHID
+                        </Link>
+                        <Link
+                            v-if="rhidConfigured"
                             :href="route('admin.ponto.index', { company: company.id })"
-                            class="inline-flex shrink-0 items-center justify-center rounded-full bg-talents-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800"
+                            class="inline-flex shrink-0 items-center justify-center rounded-full bg-talents-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800"
                         >
                             Abrir gestão de ponto
                         </Link>
+                    </template>
+                    <div class="space-y-4">
+                        <p
+                            v-if="!rhidEnabled"
+                            class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+                        >
+                            O módulo RHID / Ponto está desligado no plano ou na ficha desta empresa. Ligue em
+                            <Link
+                                :href="route('admin.companies.edit', company.id)"
+                                class="font-semibold text-talents-800 underline"
+                            >
+                                Editar empresa
+                            </Link>
+                            (campo RHID / Ponto). Sem o módulo, o menu some no painel do cliente.
+                        </p>
+                        <p
+                            v-else-if="!rhidConfigured"
+                            class="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                        >
+                            O módulo está ligado, mas faltam e-mail e senha da API Control iD. Preencha abaixo ou
+                            abra <strong>Configuração RHID</strong> — horários também ficam nessa tela. Sem
+                            credenciais, a importação automática não roda.
+                        </p>
+
+                        <dl v-if="rhidConfigured" class="grid gap-3 sm:grid-cols-3">
+                            <div class="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+                                <dt class="flex items-center gap-2 text-xs font-medium text-slate-500">
+                                    <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-talents-100 text-talents-700">
+                                        <EnvelopeIcon class="h-4 w-4" aria-hidden="true" />
+                                    </span>
+                                    E-mail RHID
+                                </dt>
+                                <dd class="mt-2 truncate text-sm font-semibold text-slate-900">
+                                    {{ rhidSettings.rhid_email || '—' }}
+                                </dd>
+                            </div>
+                            <div class="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+                                <dt class="flex items-center gap-2 text-xs font-medium text-slate-500">
+                                    <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-talents-100 text-talents-700">
+                                        <GlobeAltIcon class="h-4 w-4" aria-hidden="true" />
+                                    </span>
+                                    Domínio
+                                </dt>
+                                <dd class="mt-2 truncate text-sm font-semibold text-slate-900">
+                                    {{ rhidSettings.rhid_domain || 'Não definido' }}
+                                </dd>
+                            </div>
+                            <div class="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+                                <dt class="flex items-center gap-2 text-xs font-medium text-slate-500">
+                                    <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-talents-100 text-talents-700">
+                                        <KeyIcon class="h-4 w-4" aria-hidden="true" />
+                                    </span>
+                                    Senha
+                                </dt>
+                                <dd
+                                    class="mt-2 text-sm font-semibold"
+                                    :class="rhidSettings.has_password ? 'text-emerald-700' : 'text-amber-800'"
+                                >
+                                    {{ rhidSettings.has_password ? 'Cadastrada' : 'Em falta' }}
+                                </dd>
+                            </div>
+                        </dl>
+
+                        <CompanyRhidCredentialsForm
+                            v-if="!rhidConfigured"
+                            :company-id="company.id"
+                            :settings="rhidSettings"
+                        />
+                        <details
+                            v-else
+                            class="group overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                        >
+                            <summary
+                                class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 marker:content-none [&::-webkit-details-marker]:hidden"
+                            >
+                                <span>Alterar credenciais da API RHID</span>
+                                <span class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                                    <span class="group-open:hidden">Recolhido</span>
+                                    <span class="hidden group-open:inline">E-mail e senha da Control iD</span>
+                                    <ChevronDownIcon class="h-4 w-4 transition group-open:rotate-180" aria-hidden="true" />
+                                </span>
+                            </summary>
+                            <div class="border-t border-slate-100">
+                                <CompanyRhidCredentialsForm
+                                    :company-id="company.id"
+                                    :settings="rhidSettings"
+                                    embedded
+                                />
+                            </div>
+                        </details>
                     </div>
-                </div>
+                </CompanyShowTabFrame>
             </div>
 
             <!-- Tab: Colaboradores -->
-            <div v-else-if="activeTab === 'colaboradores'" class="space-y-4">
-                <div class="surface-card overflow-hidden">
-                    <div
-                        class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6"
-                    >
-                        <div>
-                            <h2 class="text-base font-semibold text-slate-900">Cadastro de colaboradores</h2>
-                            <p class="text-sm text-slate-500">Ficha dos colaboradores desta empresa.</p>
-                        </div>
-                        <Link :href="route('admin.colaboradores.create', { company_id: company.id })">
-                            <span
-                                class="inline-flex rounded-full bg-talents-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800"
-                            >
-                                Novo colaborador
-                            </span>
+            <div v-else-if="activeTab === 'colaboradores'">
+                <CompanyShowTabFrame
+                    accent="teal"
+                    eyebrow="Cadastro"
+                    title="Colaboradores"
+                    description="Ficha dos colaboradores desta empresa."
+                >
+                    <template #icon>
+                        <UserGroupIcon class="h-6 w-6" aria-hidden="true" />
+                    </template>
+                    <template #badges>
+                        <span class="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-800 ring-1 ring-teal-200">
+                            {{ employees.length }} {{ employees.length === 1 ? 'colaborador' : 'colaboradores' }}
+                        </span>
+                    </template>
+                    <template #actions>
+                        <Link
+                            :href="route('admin.colaboradores.create', { company_id: company.id })"
+                            class="inline-flex items-center justify-center rounded-full bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800"
+                        >
+                            Novo colaborador
                         </Link>
-                    </div>
-                    <ul v-if="employees.length" class="divide-y divide-slate-100">
+                    </template>
+                    <ul v-if="employees.length" class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100">
                         <li
                             v-for="e in employees"
                             :key="e.id"
-                            class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-6"
+                            class="flex flex-wrap items-center justify-between gap-3 bg-white px-4 py-3"
                         >
                             <div class="min-w-0">
                                 <p class="text-sm font-medium text-slate-800">{{ e.name }}</p>
@@ -736,35 +928,41 @@ const removeRegulation = async (id) => {
                             </div>
                         </li>
                     </ul>
-                    <p v-else class="px-5 py-8 text-center text-sm text-slate-500 sm:px-6">
+                    <p v-else class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-500">
                         Nenhum colaborador cadastrado para esta empresa.
                     </p>
-                </div>
+                </CompanyShowTabFrame>
             </div>
 
             <!-- Tab: Regulamento -->
-            <div v-else-if="activeTab === 'regulamento'" class="space-y-4">
-                <div class="surface-card overflow-hidden">
-                    <div
-                        class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6"
-                    >
-                        <div>
-                            <h2 class="text-base font-semibold text-slate-900">Regulamento interno</h2>
-                            <p class="text-sm text-slate-500">Documentos de regulamento desta empresa.</p>
-                        </div>
-                        <Link :href="route('admin.regulamento-interno.create', { company_id: company.id })">
-                            <span
-                                class="inline-flex rounded-full bg-talents-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800"
-                            >
-                                Novo regulamento
-                            </span>
+            <div v-else-if="activeTab === 'regulamento'">
+                <CompanyShowTabFrame
+                    accent="amber"
+                    eyebrow="Documentos"
+                    title="Regulamento interno"
+                    description="Documentos de regulamento desta empresa."
+                >
+                    <template #icon>
+                        <DocumentTextIcon class="h-6 w-6" aria-hidden="true" />
+                    </template>
+                    <template #badges>
+                        <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200">
+                            {{ regulations.length }} {{ regulations.length === 1 ? 'documento' : 'documentos' }}
+                        </span>
+                    </template>
+                    <template #actions>
+                        <Link
+                            :href="route('admin.regulamento-interno.create', { company_id: company.id })"
+                            class="inline-flex items-center justify-center rounded-full bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-700"
+                        >
+                            Novo regulamento
                         </Link>
-                    </div>
-                    <ul v-if="regulations.length" class="divide-y divide-slate-100">
+                    </template>
+                    <ul v-if="regulations.length" class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100">
                         <li
                             v-for="r in regulations"
                             :key="r.id"
-                            class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-6"
+                            class="flex flex-wrap items-center justify-between gap-3 bg-white px-4 py-3"
                         >
                             <div class="min-w-0">
                                 <p class="text-sm font-medium text-slate-800">{{ r.title }}</p>
@@ -794,10 +992,10 @@ const removeRegulation = async (id) => {
                             </div>
                         </li>
                     </ul>
-                    <p v-else class="px-5 py-8 text-center text-sm text-slate-500 sm:px-6">
+                    <p v-else class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-500">
                         Nenhum regulamento cadastrado.
                     </p>
-                </div>
+                </CompanyShowTabFrame>
             </div>
         </div>
 

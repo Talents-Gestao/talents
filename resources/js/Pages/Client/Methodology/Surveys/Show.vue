@@ -1,4 +1,5 @@
 <script setup>
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import DangerButton from '@/Components/DangerButton.vue';
@@ -39,9 +40,13 @@ const deleteSurvey = async () => {
 
     <ClientLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-xl font-semibold leading-tight text-talents-900">{{ survey.title }}</h2>
-                <div class="flex flex-wrap gap-2">
+            <FormPageHeader
+                :back-href="route('client.metodologia.pesquisa-satisfacao.index')"
+                back-label="Pesquisas"
+                :title="survey.title"
+                :prefer-history="true"
+            >
+                <template #trailing>
                     <Link
                         :href="route('client.metodologia.pesquisa-satisfacao.results', survey.id)"
                         class="rounded-md bg-talents-600 px-3 py-2 text-sm font-semibold text-white hover:bg-talents-700"
@@ -54,8 +59,8 @@ const deleteSurvey = async () => {
                     >
                         Editar
                     </Link>
-                </div>
-            </div>
+                </template>
+            </FormPageHeader>
         </template>
 
         <div class="grid gap-6 lg:grid-cols-2">

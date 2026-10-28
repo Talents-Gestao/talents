@@ -249,7 +249,7 @@ class FeedbackDemoSeeder extends Seeder
             [
                 'name' => 'Inovação Plus',
                 'legal_name' => 'Inovação Plus LTDA',
-                'segment' => 'servicos',
+                'segment' => 'Serviços',
                 'employee_count_estimate' => 45,
                 'is_active' => true,
                 'feedbacks_access' => true,

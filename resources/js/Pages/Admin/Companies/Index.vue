@@ -1,4 +1,5 @@
 <script setup>
+import PaginationBar from '@/Components/PaginationBar.vue';
 import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -11,14 +12,11 @@ import { confirmDialog } from '@/composables/useConfirmDialog';
 const props = defineProps({
     companies: Object,
     filters: Object,
-    rhidConfiguredIds: { type: Array, default: () => [] },
     pendingRegistrationIds: { type: Array, default: () => [] },
 });
 
-const rhidIdSet = new Set(props.rhidConfiguredIds.map((id) => Number(id)));
 const pendingRegistrationIdSet = new Set(props.pendingRegistrationIds.map((id) => Number(id)));
 
-const isRhidConfigured = (companyId) => rhidIdSet.has(Number(companyId));
 const hasPendingRegistration = (companyId) => pendingRegistrationIdSet.has(Number(companyId));
 
 const resendingId = ref(null);
@@ -91,9 +89,6 @@ const submit = () => {
                                 Ativa
                             </th>
                             <th scope="col" class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">
-                                RHID
-                            </th>
-                            <th scope="col" class="whitespace-nowrap px-4 py-3 text-left font-medium text-slate-700">
                                 Cadastro
                             </th>
                             <th scope="col" class="whitespace-nowrap px-4 py-3 text-right font-medium text-slate-700">
@@ -136,15 +131,6 @@ const submit = () => {
                             </td>
                             <td class="whitespace-nowrap px-4 py-3 align-middle">
                                 <span
-                                    v-if="isRhidConfigured(c.id)"
-                                    class="inline-flex rounded-full bg-talents-100 px-2 py-0.5 text-[11px] font-semibold text-talents-800 ring-1 ring-talents-200"
-                                >
-                                    Configurado
-                                </span>
-                                <span v-else class="text-xs text-slate-400">—</span>
-                            </td>
-                            <td class="whitespace-nowrap px-4 py-3 align-middle">
-                                <span
                                     v-if="hasPendingRegistration(c.id)"
                                     class="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200"
                                 >
@@ -177,10 +163,11 @@ const submit = () => {
                                 </div>
                             </td>
                         </tr>
-                        <TableEmptyRow v-if="!companies.data.length" :colspan="7" message="Nenhuma empresa encontrada." />
+                        <TableEmptyRow v-if="!companies.data.length" :colspan="6" message="Nenhuma empresa encontrada." />
                     </tbody>
                 </table>
             </div>
+            <PaginationBar :paginator="companies" />
         </div>
     </AdminLayout>
 </template>

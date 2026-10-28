@@ -76,8 +76,11 @@ class CommissionController extends Controller
             'summary' => $summary,
             'filters' => $request->only(['search', 'seller_id', 'status']),
             'sellers' => User::query()
-                ->where('is_commercial', true)
                 ->where('is_active', true)
+                ->where(function ($query): void {
+                    $query->where('is_commercial', true)
+                        ->orWhere('commission_percent', '>', 0);
+                })
                 ->orderBy('name')
                 ->get(['id', 'name'])
                 ->all(),

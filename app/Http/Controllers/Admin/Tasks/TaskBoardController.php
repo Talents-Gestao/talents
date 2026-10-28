@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Tasks;
 
+use App\Actions\Tasks\ShareBoardCardsWithCompany;
 use App\Enums\TaskCardRecurrence;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
@@ -248,5 +249,37 @@ class TaskBoardController extends Controller
         return redirect()
             ->route('admin.tarefas.quadros.index')
             ->with('success', 'Quadro excluído.');
+    }
+
+    /**
+     * Partilha com o portal da empresa os cartões do quadro que ainda não têm company_id.
+     * Útil em quadros Internos (Talents) cujas colunas já estão em modo empresa.
+     */
+    public function shareCards(Request $request, TaskBoard $board, ShareBoardCardsWithCompany $share): RedirectResponse
+    {
+        $data = $request->validate([
+            'company_id' => ['required', 'integer', 'exists:companies,id'],
+        ], [
+            'company_id.required' => 'Selecione a empresa para partilhar os cartões.',
+        ]);
+
+        $result = $share->handle($board, (int) $data['company_id'], onlyWithoutCompany: true);
+
+        $companyName = Company::query()->whereKey($data['company_id'])->value('name') ?? 'empresa';
+
+        if ($result['updated'] === 0) {
+            return back()->with(
+                'info',
+                $result['skipped'] > 0
+                    ? "Nenhum cartão novo para partilhar com {$companyName}. Os cartões já existentes podem já estar vinculados a outra empresa."
+                    : 'Este quadro não tem cartões ativos para partilhar.',
+            );
+        }
+
+        return back()->with(
+            'success',
+            "{$result['updated']} cartão(ões) partilhado(s) com {$companyName} no portal do cliente."
+            .($result['skipped'] > 0 ? " {$result['skipped']} cartão(ões) mantido(s) sem alteração." : ''),
+        );
     }
 }

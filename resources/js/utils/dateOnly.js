@@ -80,6 +80,50 @@ export function formatDateTime(iso) {
 }
 
 /**
+ * Hora e minuto em São Paulo. Ex.: "14:32"
+ *
+ * @param {string|null|undefined} iso
+ * @returns {string}
+ */
+export function formatTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('pt-BR', {
+        timeZone: APP_TIMEZONE,
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+/**
+ * Dia relativo + hora da criação. Ex.: "Sexta-feira, 14:32" ou "Hoje, 09:05"
+ *
+ * @param {string|null|undefined} iso
+ * @returns {string}
+ */
+export function formatRelativeDateTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+
+    const ymd = new Intl.DateTimeFormat('en-CA', {
+        timeZone: APP_TIMEZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(d);
+
+    const dateLabel = formatRelativeDate(ymd);
+    const time = formatTime(iso);
+    if (!time) {
+        return dateLabel;
+    }
+
+    return `${dateLabel}, ${time}`;
+}
+
+/**
  * Ex.: "Terça-feira, 13 de maio de 2026"
  */
 export function formatDateLong(iso) {

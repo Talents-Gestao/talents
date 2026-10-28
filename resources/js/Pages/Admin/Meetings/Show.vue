@@ -1,9 +1,10 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import FormPageHeader from '@/Components/FormPageHeader.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { confirmDialog } from '@/composables/useConfirmDialog';
 
@@ -231,20 +232,13 @@ onUnmounted(() => {
 
     <AdminLayout>
         <template #header>
-            <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <p class="text-sm text-gray-500">
-                        <Link :href="route('admin.reunioes.index')" class="text-talents-700 hover:underline">
-                            Reuniões
-                        </Link>
-                        / {{ meeting.title }}
-                    </p>
-                    <h2 class="text-xl font-semibold leading-tight text-gray-900">{{ meeting.title }}</h2>
-                    <p v-if="meeting.company" class="mt-1 text-sm text-gray-600">
-                        Empresa: {{ meeting.company.name }}
-                    </p>
-                </div>
-                <div class="flex flex-wrap gap-2">
+            <FormPageHeader
+                :back-href="route('admin.reunioes.index')"
+                back-label="Reuniões"
+                :title="meeting.title"
+                :subtitle="meeting.company ? `Empresa: ${meeting.company.name}` : null"
+            >
+                <template #trailing>
                     <SecondaryButton
                         v-if="meeting.has_audio && !meeting.is_processing"
                         type="button"
@@ -255,8 +249,8 @@ onUnmounted(() => {
                     <SecondaryButton type="button" class="!text-red-700 ring-red-200" @click="destroyMeeting">
                         Excluir
                     </SecondaryButton>
-                </div>
-            </div>
+                </template>
+            </FormPageHeader>
         </template>
 
         <div

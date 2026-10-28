@@ -1,4 +1,5 @@
 <script setup>
+import PaginationBar from '@/Components/PaginationBar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { formatCnpj } from '@/utils/formatCnpj';
@@ -216,32 +217,7 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '
                     </tbody>
                 </table>
             </div>
-            <div
-                v-if="proposals.prev_page_url || proposals.next_page_url"
-                class="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-sm"
-            >
-                <Link
-                    v-if="proposals.prev_page_url"
-                    :href="proposals.prev_page_url"
-                    class="font-medium text-talents-700 hover:underline"
-                    preserve-scroll
-                >
-                    Anterior
-                </Link>
-                <span v-else class="text-slate-400">Anterior</span>
-                <span class="text-slate-500">
-                    Página {{ proposals.current_page }} de {{ proposals.last_page }}
-                </span>
-                <Link
-                    v-if="proposals.next_page_url"
-                    :href="proposals.next_page_url"
-                    class="font-medium text-talents-700 hover:underline"
-                    preserve-scroll
-                >
-                    Próxima
-                </Link>
-                <span v-else class="text-slate-400">Próxima</span>
-            </div>
+            <PaginationBar :paginator="proposals" />
         </div>
     </AdminLayout>
 </template>

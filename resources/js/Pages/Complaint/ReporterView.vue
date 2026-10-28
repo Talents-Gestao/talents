@@ -1,4 +1,5 @@
 <script setup>
+import { formatDateTime } from '@/utils/dateOnly';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
@@ -46,8 +47,7 @@ const flashSuccess = computed(() => page.props.flash?.success);
     <div class="app-shell min-h-screen px-4 py-8 text-slate-900">
         <div class="mx-auto max-w-2xl">
             <p class="text-xs uppercase text-talents-600">{{ companyName }}</p>
-            <h1 class="text-xl font-semibold text-slate-900">Protocolo</h1>
-            <p class="mt-1 break-all font-mono text-sm text-slate-600">{{ complaint.protocol }}</p>
+            <h1 class="text-xl font-semibold text-slate-900">Protocolo {{ complaint.protocol }}</h1>
             <p class="mt-2 text-sm">
                 Status:
                 <span class="font-semibold text-talents-800">{{ statusLabel(complaint.status) }}</span>
@@ -78,7 +78,7 @@ const flashSuccess = computed(() => page.props.flash?.success);
                 >
                     <p class="text-xs font-medium text-talents-700">{{ authorLabel(m.author_type) }}</p>
                     <p class="mt-2 whitespace-pre-wrap text-slate-700">{{ m.content }}</p>
-                    <p class="mt-2 text-xs text-slate-400">{{ m.created_at }}</p>
+                    <p class="mt-2 text-xs text-slate-400">{{ formatDateTime(m.created_at) }}</p>
                 </div>
             </div>
 

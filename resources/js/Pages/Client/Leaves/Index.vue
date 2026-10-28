@@ -3,6 +3,7 @@ import FeriasCompanyPicker from '@/Components/Leaves/FeriasCompanyPicker.vue';
 import FeriasLayout from '@/Components/Leaves/FeriasLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import ListEmptyState from '@/Components/ListEmptyState.vue';
+import PaginationBar from '@/Components/PaginationBar.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { feriasRoute } from '@/composables/useFeriasRoutes';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
@@ -185,6 +186,7 @@ const remove = async (id) => {
                     v-if="!leaves.data?.length"
                     message="Nenhum período de férias cadastrado. Informe o nome do colaborador ao criar um novo período."
                 />
+                <PaginationBar :paginator="leaves" />
             </div>
         </template>
     </FeriasLayout>

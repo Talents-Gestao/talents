@@ -104,9 +104,9 @@
         <tbody>
             @php
                 $pgrRows = [
-                    'red' => ['Risco elevado', 'Priorizar análise aprofundada, medidas de controle e prazo definido; comunicação com CIPA/participação dos trabalhadores quando aplicável.'],
-                    'yellow' => ['Risco intermediário', 'Planejar ações preventivas, monitoramento em nova rodada de coleta ou indicadores correlatos.'],
-                    'green' => ['Situação favorável', 'Manter práticas, revisar periodicamente e registrar evolução histórica no PGR.'],
+                    'red' => [config('nr1.risk_labels.red'), 'Priorizar análise aprofundada, medidas de controle e prazo definido; comunicação com CIPA/participação dos trabalhadores quando aplicável.'],
+                    'yellow' => [config('nr1.risk_labels.yellow'), 'Planejar ações preventivas, monitoramento em nova rodada de coleta ou indicadores correlatos.'],
+                    'green' => [config('nr1.risk_labels.green'), 'Manter práticas, revisar periodicamente e registrar evolução histórica no PGR.'],
                 ];
                 $highlight = $scenario ?? 'green';
             @endphp

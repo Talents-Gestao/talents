@@ -1,6 +1,6 @@
 <script setup>
 import { NewspaperIcon, XMarkIcon } from '@heroicons/vue/24/outline';
-import { formatRelativeDate } from '@/utils/dateOnly';
+import { formatRelativeDateTime } from '@/utils/dateOnly';
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
@@ -25,8 +25,7 @@ const feedUrl = computed(() => {
 });
 
 function formatPublished(iso) {
-    if (!iso) return '';
-    return formatRelativeDate(iso.slice(0, 10));
+    return formatRelativeDateTime(iso);
 }
 
 async function fetchNews() {

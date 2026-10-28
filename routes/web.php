@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\LandingInterestController;
 use App\Http\Controllers\ProfileController;
-use App\Support\AdminHomeResolver;
 use App\Support\WorkspaceManager;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -113,17 +112,14 @@ Route::get('/dashboard', function () {
         return redirect()->route('login');
     }
 
-    $workspace = app(WorkspaceManager::class)->resolveActiveWorkspace($user, request());
+    $manager = app(WorkspaceManager::class);
+    $workspace = $manager->resolveActiveWorkspace($user, request());
 
     if (! $workspace) {
         return redirect()->route('workspaces.select');
     }
 
-    if ($workspace->isTalents()) {
-        return redirect(app(AdminHomeResolver::class)->urlFor($user));
-    }
-
-    return redirect()->route('client.dashboard');
+    return $manager->redirectForWorkspace($user, $workspace);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {

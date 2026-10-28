@@ -1,6 +1,7 @@
 <script setup>
 import ExitInterviewAccordions from '@/Components/Offboarding/ExitInterviewAccordions.vue';
 import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccordion.vue';
+import PaginationBar from '@/Components/PaginationBar.vue';
 import TableEmptyRow from '@/Components/TableEmptyRow.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { desligamentoRoute } from '@/composables/useDesligamentoRoutes';
@@ -115,6 +116,7 @@ const removeInterview = async (id) => {
                                 </tbody>
                             </table>
                         </div>
+                        <PaginationBar :paginator="templates" />
                     </div>
                 </div>
             </FeedbackSectionAccordion>

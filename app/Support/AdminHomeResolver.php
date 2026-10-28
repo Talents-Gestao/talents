@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Enums\AdminPermissionModule;
+use App\Enums\PermissionAction;
 use App\Models\User;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -17,7 +19,11 @@ class AdminHomeResolver
             return null;
         }
 
-        // Admin Talents master: home única para todos.
+        // Home admin exige view do módulo Painel (sempre concedida a super_admin ativo).
+        if (! $user->canAccessAdmin(AdminPermissionModule::Dashboard, PermissionAction::View)) {
+            return null;
+        }
+
         return 'admin.dashboard';
     }
 

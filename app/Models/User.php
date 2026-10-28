@@ -242,6 +242,12 @@ class User extends Authenticatable
             return false;
         }
 
+        // Painel (home): acesso de leitura para qualquer super_admin ativo da Equipe Talents.
+        // Evita 403 ao entrar por /dashboard quando a matriz ainda não tem o grant explícito.
+        if ($module === AdminPermissionModule::Dashboard && $action === PermissionAction::View) {
+            return true;
+        }
+
         // Proprietário Talents: acesso master (não depende da matriz).
         if ($talentsWorkspace->isOwner() || $this->isOwner()) {
             return true;
@@ -336,6 +342,12 @@ class User extends Authenticatable
             $matrix[$mod][] = $act;
         }
 
+        // Home sempre visível no menu para super_admin ativo (alinhado a canAccessAdmin).
+        $matrix[AdminPermissionModule::Dashboard->value] = array_values(array_unique(array_merge(
+            $matrix[AdminPermissionModule::Dashboard->value] ?? [],
+            [PermissionAction::View->value],
+        )));
+
         foreach ($matrix as $key => $actions) {
             $matrix[$key] = array_values(array_unique($actions));
         }
@@ -380,9 +392,15 @@ class User extends Authenticatable
 
         if ($this->isCompanyAdmin()) {
             $matrix = [];
-            $allActions = array_map(static fn (PermissionAction $a) => $a->value, PermissionAction::all());
             foreach ($active as $modVal) {
-                $matrix[$modVal] = $allActions;
+                $module = PermissionModule::from($modVal);
+                $matrix[$modVal] = array_values(array_map(
+                    static fn (PermissionAction $action) => $action->value,
+                    array_filter(
+                        PermissionAction::forCompanyMatrix(),
+                        static fn (PermissionAction $action) => $action->allowedFor($module),
+                    ),
+                ));
             }
 
             return $matrix;

@@ -59,6 +59,7 @@ class RhidPersonBankHoursPipelineTest extends TestCase
         $company = Mockery::mock(Company::class);
         $company->shouldReceive('getAttribute')->with('id')->andReturn(1);
         $company->allows('rhidConfigured')->andReturn(true);
+        $company->allows('usesLocalPontoFixture')->andReturn(false);
 
         $rows = $compliance->personBankHours($company, null, ['date' => '20260413']);
 

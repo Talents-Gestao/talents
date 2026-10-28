@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureFeedbackCompanySelected;
 use App\Http\Middleware\EnsureFeriasCompanySelected;
 use App\Http\Middleware\EnsureDesligamentoCompanySelected;
 use App\Http\Middleware\EnsureComplaintCompanySelected;
+use App\Http\Middleware\EnsureSuggestionCompanySelected;
 use App\Http\Middleware\EnsureCompanyAdmin;
 use App\Http\Middleware\EnsureModulePermission;
 use App\Http\Middleware\EnsureStrategicCalendarAccess;
@@ -29,10 +30,13 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(base_path('routes/admin.php'));
             Route::middleware('web')->group(base_path('routes/client.php'));
             Route::middleware('web')->group(base_path('routes/survey.php'));
+            Route::middleware('web')->group(base_path('routes/purpose-map.php'));
             Route::middleware('web')->group(base_path('routes/complaint.php'));
+            Route::middleware('web')->group(base_path('routes/suggestion.php'));
             Route::middleware('web')->group(base_path('routes/methodology.php'));
             Route::middleware('web')->group(base_path('routes/feedback.php'));
             Route::middleware('web')->group(base_path('routes/offboarding.php'));
+            Route::middleware('web')->group(base_path('routes/client-evaluation.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -59,6 +63,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'ferias.company' => EnsureFeriasCompanySelected::class,
             'desligamento.company' => EnsureDesligamentoCompanySelected::class,
             'complaints.company' => EnsureComplaintCompanySelected::class,
+            'suggestions.company' => EnsureSuggestionCompanySelected::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -67,5 +72,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->job(new RemindUpcomingTaskDueDatesJob)->dailyAt('08:00');
         $schedule->command('commercial:notify-overdue-installments')->dailyAt('08:15');
+        $schedule->command('rhid:import-closed-day')
+            ->dailyAt('00:30')
+            ->timezone('America/Sao_Paulo');
     })
     ->create();

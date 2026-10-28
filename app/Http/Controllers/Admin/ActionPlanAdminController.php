@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateAiAnalysisJob;
 use App\Models\ActionPlan;
-use App\Models\ActionPlanItem;
 use App\Models\AiAnalysis;
 use App\Models\AiSetting;
 use App\Models\Company;
@@ -13,7 +12,10 @@ use App\Models\Survey;
 use App\Models\SurveyNr1Report;
 use App\Support\HtmlSanitizer;
 use App\Support\Nr1RiskScenarioResolver;
+use App\Support\TechnicalOpinionDisclaimerStripper;
 use App\Services\ActionPlanGenerator;
+use App\Services\ExecutiveBriefService;
+use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\Nr1AiAnalyzer;
 use App\Services\ReportGenerator;
 use App\Services\SurveyResultsPresenter;
@@ -35,18 +37,12 @@ class ActionPlanAdminController extends Controller
         abort_unless($survey->company_id === $company->id, 404);
     }
 
-    public function pdf(Request $request, Company $company, Survey $survey, ReportGenerator $generator): SymfonyResponse
+    public function pdf(Company $company, Survey $survey, ReportGenerator $generator): SymfonyResponse
     {
         $this->assertSurveyBelongsToCompany($company, $survey);
 
-        $request->validate([
-            'include_actions' => ['sometimes', 'boolean'],
-        ]);
-
-        $includeActions = $request->boolean('include_actions', true);
-
         return $generator
-            ->actionPlanPdf($survey, $includeActions)
+            ->actionPlanPdf($survey)
             ->stream('plano-de-acao-'.$survey->id.'.pdf');
     }
 
@@ -58,22 +54,15 @@ class ActionPlanAdminController extends Controller
 
         if ($request->isMethod('post')) {
             $data = $request->validate([
-                'items' => ['present', 'array'],
-                'items.*.title' => ['nullable', 'string', 'max:255'],
-                'items.*.description' => ['nullable', 'string'],
                 'technical_opinion' => ['nullable', 'string'],
+                'is_draft' => ['sometimes', 'boolean'],
             ]);
 
             $overrides = [
-                'items' => collect($data['items'])->filter(
-                    fn (array $row) => trim((string) ($row['title'] ?? '')) !== ''
-                )->values()->map(fn (array $row) => [
-                    'title' => $row['title'],
-                    'description' => $row['description'] ?? null,
-                    'status' => 'pending',
-                ])->all(),
                 'technical_opinion' => HtmlSanitizer::sanitizeRichText($data['technical_opinion'] ?? null),
-                'is_draft' => true,
+                'is_draft' => array_key_exists('is_draft', $data)
+                    ? (bool) $data['is_draft']
+                    : true,
             ];
         }
 
@@ -113,14 +102,7 @@ class ActionPlanAdminController extends Controller
         $plan = ActionPlan::query()
             ->where('company_id', $company->id)
             ->where('survey_id', $survey->id)
-            ->with('items')
             ->first();
-
-        $items = $plan?->items->map(fn (ActionPlanItem $i) => [
-            'id' => $i->id,
-            'title' => $i->title,
-            'description' => $i->description ?? '',
-        ])->values()->all() ?? [];
 
         $nr1Reports = $this->nr1ReportsPayload($company, $survey);
 
@@ -131,29 +113,29 @@ class ActionPlanAdminController extends Controller
                 Nr1RiskScenarioResolver::forSurvey($survey) ?? 'green'
             )['short_label'] ?? null,
             'nr1Reports' => $nr1Reports,
+            'executiveBrief' => app(ExecutiveBriefService::class)->currentVersionSummary($survey),
+            'psychosocialDocuments' => app(PsychosocialDocumentService::class)->documentsSummary($survey),
             'plan' => $plan ? [
                 'id' => $plan->id,
                 'admin_published_at' => $plan->admin_published_at?->format('d/m/Y H:i'),
-                'technical_opinion' => $plan->technical_opinion ?? '',
+                'technical_opinion' => TechnicalOpinionDisclaimerStripper::strip($plan->technical_opinion) ?? '',
                 'technical_opinion_file_name' => $plan->technical_opinion_file_name,
                 'technical_opinion_file_url' => $plan->technical_opinion_file_path
                     ? route('admin.companies.surveys.technical-opinion-file.download', [$company, $survey])
                     : null,
             ] : null,
-            'technical_opinion' => $plan?->technical_opinion ?? '',
-            'items' => $items,
+            'technical_opinion' => TechnicalOpinionDisclaimerStripper::strip($plan?->technical_opinion) ?? '',
             'aiEnabled' => $aiEnabled,
             'aiAnalysis' => $latestAi ? [
                 'content' => $latestAi->content,
             ] : null,
             'aiAnalysisPending' => $aiAnalysisPending,
             'technicalOpinionAi' => $latestTechnicalOpinionAi ? [
-                'content' => $latestTechnicalOpinionAi->content,
+                'content' => TechnicalOpinionDisclaimerStripper::strip($latestTechnicalOpinionAi->content) ?? '',
             ] : null,
             'technicalOpinionAiPending' => $technicalOpinionAiPending,
             'aiGeneratePostUrl' => url('/admin/companies/'.$company->getKey().'/surveys/'.$survey->getKey().'/ai-analysis'),
             'technicalOpinionGeneratePostUrl' => url('/admin/companies/'.$company->getKey().'/surveys/'.$survey->getKey().'/technical-opinion'),
-            'generateSuggestedPlanUrl' => route('admin.companies.surveys.action-plan.generate-suggested', [$company, $survey]),
         ]));
     }
 
@@ -275,9 +257,6 @@ class ActionPlanAdminController extends Controller
         $this->assertSurveyBelongsToCompany($company, $survey);
 
         $data = $request->validate([
-            'items' => ['present', 'array'],
-            'items.*.title' => ['nullable', 'string', 'max:255'],
-            'items.*.description' => ['nullable', 'string'],
             'technical_opinion' => ['nullable', 'string'],
             'technical_opinion_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:20480'],
             'remove_technical_opinion_file' => ['nullable', 'boolean'],
@@ -294,10 +273,9 @@ class ActionPlanAdminController extends Controller
             'technical_referral_file.max' => 'O encaminhamento técnico não pode exceder 20 MB.',
         ]);
 
-        $technicalOpinion = HtmlSanitizer::sanitizeRichText($data['technical_opinion'] ?? null);
-        $filteredItems = collect($data['items'])->filter(
-            fn (array $row) => trim((string) ($row['title'] ?? '')) !== ''
-        )->values()->all();
+        $technicalOpinion = TechnicalOpinionDisclaimerStripper::strip(
+            HtmlSanitizer::sanitizeRichText($data['technical_opinion'] ?? null)
+        );
 
         $uploadedFile = $request->file('technical_opinion_file');
         $removeFile = $request->boolean('remove_technical_opinion_file');
@@ -322,23 +300,10 @@ class ActionPlanAdminController extends Controller
             $newFileName = null;
         }
 
-        $hasPublishableContent = count($filteredItems) > 0
-            || ($technicalOpinion !== null && trim(strip_tags($technicalOpinion)) !== '')
+        $hasPublishableContent = ($technicalOpinion !== null && trim(strip_tags($technicalOpinion)) !== '')
             || $newFilePath !== null;
 
-        DB::transaction(function () use ($plan, $filteredItems, $technicalOpinion, $hasPublishableContent, $newFilePath, $newFileName) {
-            $plan->items()->delete();
-
-            foreach ($filteredItems as $index => $row) {
-                ActionPlanItem::create([
-                    'action_plan_id' => $plan->id,
-                    'title' => $row['title'],
-                    'description' => $row['description'] ?? null,
-                    'status' => 'pending',
-                    'sort_order' => $index,
-                ]);
-            }
-
+        DB::transaction(function () use ($plan, $technicalOpinion, $hasPublishableContent, $newFilePath, $newFileName) {
             $plan->update([
                 'technical_opinion' => $technicalOpinion,
                 'technical_opinion_file_path' => $newFilePath,
@@ -375,8 +340,8 @@ class ActionPlanAdminController extends Controller
         return redirect()
             ->route('admin.companies.surveys.action-plan.edit', [$company, $survey])
             ->with('success', $hasPublishableContent
-                ? 'Parecer e plano de ação salvos e disponibilizados para a empresa.'
-                : 'Conteúdo removido — a empresa não verá parecer nem plano até você publicar novamente.');
+                ? 'Parecer técnico salvo e disponibilizado para a empresa.'
+                : 'Conteúdo removido — a empresa não verá o parecer até você publicar novamente.');
     }
 
     public function downloadTechnicalOpinionFile(Company $company, Survey $survey): StreamedResponse

@@ -1,7 +1,9 @@
 <script setup>
 import ColorPresetPicker from '@/Components/Tasks/ColorPresetPicker.vue';
+import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import {
+    BuildingOffice2Icon,
     PaintBrushIcon,
     PencilSquareIcon,
     StarIcon as StarOutlineIcon,
@@ -18,6 +20,8 @@ const props = defineProps({
     companyUsers: { type: Array, default: () => [] },
     /** Usuários internos Talents (super admins) para quadros globais/internos. */
     teamUsers: { type: Array, default: () => [] },
+    /** Empresas ativas — partilha em lote de cartões em quadros internos. */
+    companies: { type: Array, default: () => [] },
     /** Quando false, não repete o nome do quadro (ex.: já exibido num hero acima). */
     showBoardTitle: { type: Boolean, default: true },
 });
@@ -30,6 +34,9 @@ const inviteUserId = ref(null);
 const inviteRole = ref('viewer');
 const editingName = ref(false);
 const editingCover = ref(false);
+const sharingCards = ref(false);
+const shareCompanyId = ref('');
+const shareProcessing = ref(false);
 
 const boardForm = useForm({
     name: props.boardPayload?.name || '',
@@ -53,6 +60,12 @@ const extraMembers = computed(() => Math.max(0, members.value.length - visibleMe
 
 const memberIds = computed(() => new Set(members.value.map((m) => Number(m.id))));
 
+const byUserName = (a, b) =>
+    String(a?.name ?? '').localeCompare(String(b?.name ?? ''), 'pt-BR', {
+        sensitivity: 'base',
+        numeric: true,
+    });
+
 const eligibleCompanyUsers = computed(() => {
     const list = props.companyUsers || [];
     const companyId = props.boardPayload?.company_id;
@@ -63,11 +76,17 @@ const eligibleCompanyUsers = computed(() => {
 });
 
 const availableTeamToInvite = computed(() =>
-    (props.teamUsers || []).filter((u) => !memberIds.value.has(Number(u.id))),
+    (props.teamUsers || [])
+        .filter((u) => !memberIds.value.has(Number(u.id)))
+        .slice()
+        .sort(byUserName),
 );
 
 const availableCompanyToInvite = computed(() =>
-    eligibleCompanyUsers.value.filter((u) => !memberIds.value.has(Number(u.id))),
+    eligibleCompanyUsers.value
+        .filter((u) => !memberIds.value.has(Number(u.id)))
+        .slice()
+        .sort(byUserName),
 );
 
 const hasAnyoneToInvite = computed(
@@ -160,6 +179,41 @@ function openInviteModal() {
     inviteUserId.value = null;
     inviteRole.value = 'viewer';
     inviting.value = true;
+}
+
+function openShareCardsModal() {
+    shareCompanyId.value = '';
+    sharingCards.value = true;
+}
+
+async function submitShareCards() {
+    if (!shareCompanyId.value || shareProcessing.value) {
+        return;
+    }
+    const company = (props.companies || []).find((c) => Number(c.id) === Number(shareCompanyId.value));
+    const label = company?.name || 'a empresa selecionada';
+    if (
+        !(await confirmDialog(
+            `Partilhar com ${label} todos os cartões deste quadro que ainda não estão vinculados a uma empresa? Eles passam a aparecer no portal do cliente.`,
+        ))
+    ) {
+        return;
+    }
+    shareProcessing.value = true;
+    router.post(
+        route('admin.tarefas.quadros.partilhar-cartoes', props.boardPayload.id),
+        { company_id: Number(shareCompanyId.value) },
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                shareProcessing.value = false;
+            },
+            onSuccess: () => {
+                sharingCards.value = false;
+                emit('refresh');
+            },
+        },
+    );
 }
 
 async function removeMember(userId) {
@@ -334,6 +388,17 @@ async function deleteBoard() {
             </div>
 
             <button
+                v-if="isAdmin && boardPayload.is_internal"
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-talents-200 bg-white px-3 py-1.5 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-50"
+                title="Partilhar cartões com o portal de uma empresa"
+                @click="openShareCardsModal"
+            >
+                <BuildingOffice2Icon class="h-4 w-4" />
+                Partilhar com empresa
+            </button>
+
+            <button
                 v-if="isAdmin"
                 type="button"
                 class="inline-flex items-center gap-1.5 rounded-lg bg-talents-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
@@ -459,6 +524,61 @@ async function deleteBoard() {
                                 </li>
                             </ul>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <Teleport to="body">
+            <div
+                v-if="sharingCards"
+                class="fixed inset-0 z-[100] flex items-start justify-center bg-slate-900/40 px-4 py-12"
+                @click.self="sharingCards = false"
+            >
+                <div class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-semibold text-slate-900">Partilhar cartões com empresa</h3>
+                        <button
+                            type="button"
+                            class="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+                            @click="sharingCards = false"
+                        >
+                            <span class="sr-only">Fechar</span>
+                            ✕
+                        </button>
+                    </div>
+                    <p class="mt-2 text-sm text-slate-600">
+                        Os cartões deste quadro interno que ainda não têm empresa passam a aparecer no
+                        portal do cliente selecionado. Cartões já vinculados a outra empresa não são alterados.
+                    </p>
+                    <div class="mt-4">
+                        <label class="text-xs font-medium text-slate-600">Empresa</label>
+                        <CompanySearchSelect
+                            v-model="shareCompanyId"
+                            :companies="companies"
+                            as-string
+                            required
+                            placeholder="Selecione a empresa…"
+                            class="mt-1"
+                            input-class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
+                    </div>
+                    <div class="mt-5 flex justify-end gap-2">
+                        <button
+                            type="button"
+                            class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                            @click="sharingCards = false"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-lg bg-talents-600 px-3 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
+                            :disabled="!shareCompanyId || shareProcessing"
+                            @click="submitShareCards"
+                        >
+                            {{ shareProcessing ? 'A partilhar…' : 'Partilhar cartões' }}
+                        </button>
                     </div>
                 </div>
             </div>

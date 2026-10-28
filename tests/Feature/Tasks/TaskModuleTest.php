@@ -1974,4 +1974,63 @@ class TaskModuleTest extends TestCase
         $this->assertSame('SOLIDES', $item->text);
         $this->assertSame('Original', $item->description);
     }
+
+    public function test_admin_can_bulk_share_internal_board_cards_with_company(): void
+    {
+        $company = $this->baseCompany();
+        $other = \App\Models\Company::query()->create(['name' => 'Outra Ltda', 'is_active' => true]);
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'PASQUALINO',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $unshared = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'company_id' => null,
+            'title' => 'PLANO DE CARREIRA',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $alreadyOther = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'company_id' => $other->id,
+            'title' => 'Outro cliente',
+            'position' => 2000,
+            'visibility' => 'company',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.tarefas.quadros.partilhar-cartoes', $board), [
+                'company_id' => $company->id,
+            ])
+            ->assertRedirect();
+
+        $unshared->refresh();
+        $alreadyOther->refresh();
+
+        $this->assertSame($company->id, (int) $unshared->company_id);
+        $this->assertSame('company', $unshared->visibility);
+        $this->assertSame($other->id, (int) $alreadyOther->company_id);
+
+        $clientUser = User::factory()->companyAdmin($company->id)->create();
+        $payload = BoardPresenter::forClient($board->fresh(), $company->id, $clientUser);
+        $cardIds = collect($payload['lists'])->flatMap(fn ($l) => collect($l['cards'])->pluck('id'))->all();
+        $this->assertContains($unshared->id, $cardIds);
+        $this->assertNotContains($alreadyOther->id, $cardIds);
+    }
 }

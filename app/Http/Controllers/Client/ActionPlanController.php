@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\ActionPlanItem;
 use App\Models\Survey;
+use App\Support\TechnicalOpinionDisclaimerStripper;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -30,7 +31,7 @@ class ActionPlanController extends Controller
     {
         $survey = $this->findSurvey($request, $survey);
 
-        $plan = $survey->actionPlans()->with('items')->latest()->first();
+        $plan = $survey->actionPlans()->latest()->first();
 
         $hasOpinion = $plan !== null
             && filled($plan->technical_opinion)
@@ -38,22 +39,19 @@ class ActionPlanController extends Controller
 
         $hasOpinionFile = $plan !== null && filled($plan->technical_opinion_file_path);
 
-        $hasItems = $plan !== null && $plan->items->isNotEmpty();
-
         $visible = $plan !== null
             && $plan->admin_published_at !== null
-            && ($hasOpinion || $hasOpinionFile || $hasItems);
+            && ($hasOpinion || $hasOpinionFile);
 
         return Inertia::render('Client/Surveys/ActionPlan', [
             'survey' => $survey,
             'plan' => $visible ? [
                 'id' => $plan->id,
-                'technical_opinion' => $plan->technical_opinion,
+                'technical_opinion' => TechnicalOpinionDisclaimerStripper::strip($plan->technical_opinion),
                 'technical_opinion_file_name' => $plan->technical_opinion_file_name,
                 'technical_opinion_file_url' => $hasOpinionFile
                     ? route('client.surveys.action-plan.technical-opinion-file', $survey)
                     : null,
-                'items' => $plan->items,
             ] : null,
             'actionPlanLocked' => ! $visible,
         ]);

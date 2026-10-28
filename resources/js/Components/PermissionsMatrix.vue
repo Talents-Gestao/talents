@@ -8,6 +8,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
+const appliesTo = (action, mod) => !action.only_modules || action.only_modules.includes(mod);
+
 const has = (mod, act) => props.modelValue.some((p) => p.module === mod && p.action === act);
 
 const toggle = (mod, act) => {
@@ -48,6 +50,7 @@ const toggle = (mod, act) => {
                     <td class="whitespace-nowrap px-3 py-2 font-medium text-slate-800">{{ m.label }}</td>
                     <td v-for="a in permissionActions" :key="m.value + '-' + a.value" class="px-2 py-2 text-center">
                         <input
+                            v-if="appliesTo(a, m.value)"
                             type="checkbox"
                             class="h-4 w-4 rounded border-slate-300 text-talents-700 focus:ring-talents-500"
                             :checked="has(m.value, a.value)"

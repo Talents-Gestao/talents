@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PermissionModule;
 use App\Enums\UserRole;
+use App\Support\PortugueseLabels;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -54,10 +55,18 @@ class Company extends Model
         'ferias_access',
         'desligamento_access',
         'acompanhamento_access',
+        'portal_slug',
+        'portal_enabled',
+        'brand_name',
+        'brand_primary_color',
     ];
 
     protected $appends = [
         'logo_url',
+    ];
+
+    protected $hidden = [
+        'rhid_password',
     ];
 
     protected function casts(): array
@@ -74,7 +83,31 @@ class Company extends Model
             'ferias_access' => 'boolean',
             'desligamento_access' => 'boolean',
             'acompanhamento_access' => 'boolean',
+            'portal_enabled' => 'boolean',
         ];
+    }
+
+    protected function segment(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value): ?string => PortugueseLabels::segment($value),
+            set: fn (?string $value): ?string => PortugueseLabels::segment($value),
+        );
+    }
+
+    public function hasActivePortal(): bool
+    {
+        return $this->portal_enabled
+            && $this->is_active
+            && is_string($this->portal_slug)
+            && $this->portal_slug !== '';
+    }
+
+    public function portalBrandName(): string
+    {
+        $brand = is_string($this->brand_name) ? trim($this->brand_name) : '';
+
+        return $brand !== '' ? $brand : $this->name;
     }
 
     /**
@@ -156,6 +189,13 @@ class Company extends Model
         return filled($this->rhid_email) && filled($this->rhid_password);
     }
 
+    public function usesLocalPontoFixture(): bool
+    {
+        $email = (string) config('rhid.visual_qa_email', '');
+
+        return $email !== '' && $this->rhid_email === $email;
+    }
+
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
@@ -213,6 +253,11 @@ class Company extends Model
         return $this->hasMany(Survey::class);
     }
 
+    public function purposeMapCampaigns(): HasMany
+    {
+        return $this->hasMany(PurposeMapCampaign::class);
+    }
+
     public function complaints(): HasMany
     {
         return $this->hasMany(Complaint::class);
@@ -238,6 +283,11 @@ class Company extends Model
     public function methodologySurveys(): HasMany
     {
         return $this->hasMany(MethodologySurvey::class);
+    }
+
+    public function clientEvaluations(): HasMany
+    {
+        return $this->hasMany(ClientEvaluation::class);
     }
 
     /**
@@ -320,6 +370,14 @@ class Company extends Model
         }
 
         return $this->subscriptionHasModuleKey(Module::KEY_DENUNCIAS);
+    }
+
+    /**
+     * Canal de sugestões e dúvidas: chave «sugestoes» no plano da assinatura ativa.
+     */
+    public function hasSuggestionsEnabled(): bool
+    {
+        return $this->subscriptionHasModuleKey(Module::KEY_SUGESTOES);
     }
 
     public function hasFeedbacksEnabled(): bool
@@ -436,6 +494,7 @@ class Company extends Model
             PermissionModule::Rhid => $this->hasRhidEnabled(),
             PermissionModule::Tarefas => $this->hasTasksEnabled(),
             PermissionModule::Denuncias => $this->hasComplaintsEnabled(),
+            PermissionModule::Sugestoes => $this->hasSuggestionsEnabled(),
             PermissionModule::Feedbacks => $this->hasFeedbacksEnabled(),
             PermissionModule::Ferias => $this->hasFeriasEnabled(),
             PermissionModule::Desligamento => $this->hasDesligamentoEnabled(),

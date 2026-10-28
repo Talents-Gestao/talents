@@ -1,7 +1,9 @@
 <script setup>
+import PaginationBar from '@/Components/PaginationBar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import { formatDateTime } from '@/utils/dateOnly';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { onMounted, onUnmounted, ref } from 'vue';
 
@@ -138,16 +140,7 @@ onUnmounted(() => {
                                     {{ item.status_label }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-gray-600">
-                                {{
-                                    item.created_at
-                                        ? new Date(item.created_at).toLocaleString('pt-BR', {
-                                              dateStyle: 'short',
-                                              timeStyle: 'short',
-                                          })
-                                        : '—'
-                                }}
-                            </td>
+                            <td class="px-4 py-3 text-gray-600">{{ formatDateTime(item.created_at) }}</td>
                             <td class="px-4 py-3 text-right">
                                 <Link
                                     :href="route('admin.entrevistas.show', item.id)"
@@ -160,6 +153,7 @@ onUnmounted(() => {
                     </tbody>
                 </table>
             </div>
+            <PaginationBar :paginator="interviews" />
         </div>
     </AdminLayout>
 </template>
