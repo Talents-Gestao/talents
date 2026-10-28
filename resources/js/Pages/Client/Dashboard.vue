@@ -14,6 +14,9 @@ import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const page = usePage();
+/** Com o shell NR-1 ligado, os atalhos de pesquisas levam ao «NR-1» (rotas antigas seguem valendo por URL). */
+const nr1ShellUrl = computed(() => page.props.nr1Shell?.url ?? null);
+const surveysHref = computed(() => nr1ShellUrl.value ?? route('client.surveys.index'));
 const { can } = usePermissions();
 const greeting = useDashboardGreeting();
 
@@ -166,7 +169,7 @@ const attentionHref = computed(() => {
                 <div class="surface-glass space-y-3 p-4 text-sm text-slate-700">
                     <Link
                         v-if="can('pesquisas', 'view')"
-                        :href="route('client.surveys.index')"
+                        :href="surveysHref"
                         class="block font-medium text-talents-800 hover:underline"
                     >
                         Pesquisas NR1
@@ -276,14 +279,14 @@ const attentionHref = computed(() => {
                 <div class="flex shrink-0 flex-col gap-2">
                     <Link
                         v-if="lastSurvey"
-                        :href="route('client.surveys.results', lastSurvey.id)"
+                        :href="nr1ShellUrl ? '/nr1/resultados' : route('client.surveys.results', lastSurvey.id)"
                         class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-talents-900 shadow-sm transition hover:bg-slate-100"
                     >
                         Ver resultados
                     </Link>
                     <Link
                         v-if="can('pesquisas', 'view')"
-                        :href="route('client.surveys.index')"
+                        :href="surveysHref"
                         class="inline-flex items-center justify-center rounded-xl border border-white/30 px-4 py-2 text-sm font-semibold text-white/95 hover:bg-white/10"
                     >
                         Todas as pesquisas
@@ -294,7 +297,7 @@ const attentionHref = computed(() => {
                 <p class="font-medium text-white">Comece criando uma campanha</p>
                 <p class="mt-1 text-slate-300">Assim que existir uma pesquisa, o resumo de risco aparece aqui.</p>
                 <Link
-                    :href="route('client.surveys.index')"
+                    :href="surveysHref"
                     class="mt-3 inline-flex text-sm font-semibold text-white underline decoration-white/40 hover:decoration-white"
                 >
                     Ir para pesquisas
@@ -310,7 +313,7 @@ const attentionHref = computed(() => {
                     v-if="can('pesquisas', 'view')"
                     label="Pesquisas ativas"
                     :value="activeSurveys"
-                    :detail-href="route('client.surveys.index')"
+                    :detail-href="surveysHref"
                     detail-label="Abrir"
                 />
                 <StatCard

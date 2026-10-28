@@ -30,6 +30,8 @@ import { computed } from 'vue';
 import { brandThemeStyle } from '@/utils/brandTheme';
 
 const page = usePage();
+/** Com o shell NR-1 ligado, «Pesquisas NR1» abre o shell NR-1 (a lista antiga segue valendo por URL direta). */
+const nr1ShellUrl = computed(() => page.props.nr1Shell?.url ?? null);
 const { can } = usePermissions();
 
 const showVozDoTime = computed(
@@ -105,8 +107,8 @@ const mapaPropositoActive = computed(() =>
                 />
                 <SidebarNavItem
                     v-if="can('pesquisas', 'view')"
-                    :href="route('client.surveys.index')"
-                    :active="route().current('client.surveys.*')"
+                    :href="nr1ShellUrl ?? route('client.surveys.index')"
+                    :active="route().current('client.surveys.*') || String(page.url ?? '').startsWith('/nr1')"
                     :icon="ClipboardDocumentListIcon"
                     label="Pesquisas NR1"
                     :collapsed="collapsed"

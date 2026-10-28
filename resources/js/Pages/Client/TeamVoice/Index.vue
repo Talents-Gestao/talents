@@ -1,7 +1,8 @@
 <script setup>
 import ComplaintsPublicLinkPanel from '@/Components/Complaints/ComplaintsPublicLinkPanel.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import {
     ClipboardDocumentListIcon,
     LightBulbIcon,
@@ -23,6 +24,10 @@ defineProps({
     complaintsPublicUrl: { type: String, default: null },
     suggestionsPublicUrl: { type: String, default: null },
 });
+
+/** Com o shell NR-1 ligado, o cartão de pesquisas leva ao «NR-1». */
+const page = usePage();
+const surveysHref = computed(() => page.props.nr1Shell?.url ?? route('client.surveys.index'));
 </script>
 
 <template>
@@ -41,7 +46,7 @@ defineProps({
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Link
                 v-if="canSurveys"
-                :href="route('client.surveys.index')"
+                :href="surveysHref"
                 class="surface-card group flex flex-col gap-3 p-5 transition hover:border-talents-200 hover:shadow-md"
             >
                 <div class="flex items-start justify-between gap-3">
