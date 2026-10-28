@@ -1,26 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
-import {
-    BEVEL,
-    CORNER_RADIUS,
-    DEPTH,
-    GAP,
-    REF_WIDTH,
-    applyHomography,
-    clamp,
-    easeOutBack,
-    heroCells,
-    heroLayout,
-    homographyToMatrix3d,
-    insetPolygon,
-    keepoutRects,
-    boxCenter,
-    calmNear,
-    roundedCorners,
-    solveHomography,
-    springStep,
-} from '@/utils/heroGlass.js';
 
 /**
  * Hero "Designed in glass" (WebGL). Com `enabled=false` — ou sem WebGL, com reduced-motion,
@@ -132,9 +112,31 @@ const loadImage = (src) =>
     });
 
 const init = async () => {
-    const [THREE, { RoomEnvironment }] = await Promise.all([
+    // Os utilitários vêm junto com o three: importá-los estaticamente aqui faria os chunks dinâmicos das
+    // direções da Hero dependerem do chunk da Welcome, que perderia a própria entrada no manifest do Vite.
+    const [THREE, { RoomEnvironment }, {
+        BEVEL,
+        CORNER_RADIUS,
+        DEPTH,
+        GAP,
+        REF_WIDTH,
+        applyHomography,
+        clamp,
+        easeOutBack,
+        heroCells,
+        heroLayout,
+        homographyToMatrix3d,
+        insetPolygon,
+        keepoutRects,
+        boxCenter,
+        calmNear,
+        roundedCorners,
+        solveHomography,
+        springStep,
+    }] = await Promise.all([
         import('three'),
         import('three/examples/jsm/environments/RoomEnvironment.js'),
+        import('@/utils/heroGlass.js'),
     ]);
     const [heroImg] = await Promise.all([
         loadImage(CONTENT.image.src),
