@@ -46,10 +46,21 @@ const CONTENT = {
 };
 
 const FONT = 'Figtree, ui-sans-serif, system-ui, sans-serif';
-const ACCENT = '#b388d9';
-const BG = 0x050507;
-const FADE_DESKTOP = 120;
-const FADE_MOBILE = 96;
+// Tokens do site: tailwind.config.js (talents-*) e .app-shell (#faf8fc); subtítulo = slate-600 como na Hero atual.
+const PALETTE = {
+    ink: '#2a1042', // talents-900
+    inkSoft: '#4a2070', // talents-700
+    eyebrow: '#632a7e', // talents-600
+    subtitle: '#475569', // slate-600
+    primary: '#632a7e', // talents-600
+    primaryHover: '#7b4fa2', // talents-500
+    ring: '#7b4fa2',
+    page: '#faf8fc',
+};
+const BG = 0xfaf8fc;
+// Respiro abaixo da placa (a transição agora é claro → claro, sem degradê escuro).
+const FADE_DESKTOP = 48;
+const FADE_MOBILE = 32;
 
 const supportsGlass = () => {
     if (typeof window === 'undefined' || !props.enabled) return false;
@@ -138,6 +149,7 @@ const init = async () => {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setClearColor(BG, 1);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
     const scene = new THREE.Scene();
@@ -145,8 +157,8 @@ const init = async () => {
     const roomEnv = new RoomEnvironment();
     const envTex = pmrem.fromScene(roomEnv, 0.04).texture;
     scene.environment = envTex;
-    scene.environmentIntensity = 0.42;
-    const key = new THREE.DirectionalLight(0xd8e4ff, 2.2);
+    scene.environmentIntensity = 0.9;
+    const key = new THREE.DirectionalLight(0xf3eeff, 1.6);
     key.position.set(-600, 800, 900);
     scene.add(key);
 
@@ -154,24 +166,31 @@ const init = async () => {
     const block = new THREE.Group();
     scene.add(block);
 
-    // Brilho lavanda do cursor injetado no shader do vidro.
+    // Fundo claro (degradê + manchas da marca) desenhado em canvas: serve de cena e de "refração" barata.
+    const bgTex = new THREE.CanvasTexture(document.createElement('canvas'));
+    bgTex.colorSpace = THREE.SRGBColorSpace;
+    scene.background = bgTex;
+
+    // Halo roxo/lilás do cursor + refração falsa do fundo, injetados no shader do vidro.
+    // Escolha: em vez de `transmission` (render extra da cena por frame), uma amostra do próprio
+    // fundo com deslocamento pela normal — 1 fetch por fragmento, sem pass adicional.
     const glow = {
         uGlowPos: { value: new THREE.Vector3(1e5, 1e5, 0) },
         uGlowAmt: { value: 0 },
         uGlowR: { value: 300 },
+        uBg: { value: bgTex },
+        uRes: { value: new THREE.Vector2(1, 1) },
+        uRefr: { value: 0.62 },
     };
-    const makeMaterial = () => {
+    const makeMaterial = (params) => {
         const m = new THREE.MeshPhysicalMaterial({
-            color: 0x17171b,
-            roughness: 0.36,
-            clearcoat: 0.7,
-            clearcoatRoughness: 0.12,
-            specularIntensity: 0.7,
-            iridescence: 0.55,
+            metalness: 0,
+            clearcoat: 1,
+            clearcoatRoughness: 0.1,
             iridescenceIOR: 1.3,
-            iridescenceThicknessRange: [250, 650],
+            iridescenceThicknessRange: [180, 380],
             envMap: envTex,
-            envMapIntensity: 0.42,
+            ...params,
         });
         m.onBeforeCompile = (shader) => {
             Object.assign(shader.uniforms, glow);
@@ -181,18 +200,55 @@ const init = async () => {
             shader.fragmentShader = shader.fragmentShader
                 .replace(
                     '#include <common>',
-                    '#include <common>\nvarying vec3 vGWP;\nuniform vec3 uGlowPos;\nuniform float uGlowAmt;\nuniform float uGlowR;',
+                    `#include <common>
+                    varying vec3 vGWP;
+                    uniform vec3 uGlowPos;
+                    uniform float uGlowAmt;
+                    uniform float uGlowR;
+                    uniform sampler2D uBg;
+                    uniform vec2 uRes;
+                    uniform float uRefr;`,
+                )
+                .replace(
+                    '#include <color_fragment>',
+                    `#include <color_fragment>
+                    float gd = distance(vGWP.xy, uGlowPos.xy) / uGlowR;
+                    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.70, .53, .85), exp(-1.6 * gd * gd) * uGlowAmt * .26);`,
                 )
                 .replace(
                     '#include <emissivemap_fragment>',
                     `#include <emissivemap_fragment>
-                    float gd = distance(vGWP.xy, uGlowPos.xy) / uGlowR;
-                    totalEmissiveRadiance += vec3(.42, .37, .62) * .16 * exp(-1.6 * gd * gd) * uGlowAmt;`,
+                    totalEmissiveRadiance += texture2D(uBg, gl_FragCoord.xy / uRes + normal.xy * .04).rgb * uRefr;`,
                 );
         };
-        m.customProgramCacheKey = () => 'hero-glass-v1';
+        m.customProgramCacheKey = () => 'hero-glass-light-v2';
         return m;
     };
+    // Face: branco-gelo com irisação sutil lilás/azul/rosa. Lateral: cinza-lilás mais escuro (espessura visível).
+    const makeFace = () =>
+        makeMaterial({
+            color: 0xfaf8ff,
+            roughness: 0.3,
+            specularIntensity: 0.8,
+            iridescence: 0.3,
+            sheen: 0.5,
+            sheenRoughness: 0.5,
+            sheenColor: new THREE.Color(0xb388d9),
+            envMapIntensity: 0.9,
+        });
+    const makeSide = () =>
+        makeMaterial({
+            color: 0xa99bc0,
+            roughness: 0.22,
+            specularIntensity: 1,
+            iridescence: 0.3,
+            envMapIntensity: 1.15,
+        });
+    const shadowLayers = [
+        { out: 3, alpha: 0.16 },
+        { out: 12, alpha: 0.09 },
+        { out: 26, alpha: 0.05 },
+    ];
 
     const pageTex = new THREE.CanvasTexture(document.createElement('canvas'));
     pageTex.colorSpace = THREE.SRGBColorSpace;
@@ -209,14 +265,24 @@ const init = async () => {
 
     const pieces = Array.from({ length: 5 }, () => {
         const group = new THREE.Group();
-        const glass = new THREE.Mesh(new THREE.BufferGeometry(), makeMaterial());
+        const glass = new THREE.Mesh(new THREE.BufferGeometry(), [makeFace(), makeSide()]);
         const content = new THREE.Mesh(new THREE.BufferGeometry(), contentMat);
         group.add(glass, content);
+        // Sombra de contato/projetada: camadas suaves (roxo translúcido) atrás da peça.
+        const shadows = shadowLayers.map((l) => {
+            const m = new THREE.Mesh(
+                new THREE.BufferGeometry(),
+                new THREE.MeshBasicMaterial({ color: 0x4a2070, transparent: true, opacity: l.alpha, depthWrite: false, toneMapped: false }),
+            );
+            block.add(m);
+            return m;
+        });
         block.add(group);
         return {
             group,
             glass,
             content,
+            shadows,
             c: new THREE.Vector2(),
             half: new THREE.Vector2(1, 1),
             z: { x: 0, v: 0 },
@@ -287,6 +353,14 @@ const init = async () => {
             const tc = t.getContext('2d');
             tc.scale(g.dpr, g.dpr);
             drawImageCover(tc, heroImg, { x: 0, y: 0, w: L.image.w, h: L.image.h }, 0.78, 0.08);
+            // Véu de vidro: reflexo diagonal claro sobre a foto, sem escurecer.
+            tc.globalCompositeOperation = 'source-atop';
+            const veil = tc.createLinearGradient(0, 0, L.image.w, L.image.h);
+            veil.addColorStop(0, 'rgba(255,255,255,.20)');
+            veil.addColorStop(0.45, 'rgba(255,255,255,.03)');
+            veil.addColorStop(1, 'rgba(255,255,255,.10)');
+            tc.fillStyle = veil;
+            tc.fillRect(0, 0, L.image.w, L.image.h);
             tc.globalCompositeOperation = 'destination-in';
             const fade = g.portrait
                 ? tc.createLinearGradient(0, 0, 0, L.image.h * 0.35)
@@ -299,44 +373,50 @@ const init = async () => {
         }
 
         const e = L.eyebrow;
-        ctx.font = fontOf(e.size, 500);
-        ctx.fillStyle = 'rgba(255,255,255,.38)';
+        ctx.font = fontOf(e.size, 600);
+        ctx.fillStyle = PALETTE.eyebrow;
         e.lines.forEach((line, i) => fillTracked(ctx, line, e.x, baselineOf(ctx, e.y + i * e.lh, e.lh), e.tracking));
 
         const hd = L.headline;
         ctx.font = fontOf(hd.size, 600);
         const grad = ctx.createLinearGradient(0, hd.y, 0, hd.y + hd.lines.length * hd.lh);
-        grad.addColorStop(0, '#dcdce0');
-        grad.addColorStop(1, '#bdbdc3');
+        grad.addColorStop(0, PALETTE.ink);
+        grad.addColorStop(1, PALETTE.inkSoft);
         ctx.fillStyle = grad;
         hd.lines.forEach((line, i) => fillTracked(ctx, line, hd.x, baselineOf(ctx, hd.y + i * hd.lh, hd.lh), hd.tracking));
 
         const sb = L.subtitle;
         ctx.font = fontOf(sb.size, 400);
-        ctx.fillStyle = 'rgba(255,255,255,.55)';
+        ctx.fillStyle = PALETTE.subtitle;
         sb.lines.forEach((line, i) => ctx.fillText(line, sb.x, baselineOf(ctx, sb.y + i * sb.lh, sb.lh)));
 
         L.ctas.forEach((c, i) => {
             const hot = hoverCta.value === i;
             const base = baselineOf(ctx, c.y, c.h);
             if (c.kind === 'primary') {
-                ctx.fillStyle = hot ? ACCENT : '#e9e9ec';
+                const lift = hot ? 2 : 0;
+                ctx.save();
+                ctx.shadowColor = 'rgba(74,32,112,.38)';
+                ctx.shadowBlur = hot ? 16 : 8;
+                ctx.shadowOffsetY = hot ? 7 : 3;
+                ctx.fillStyle = hot ? PALETTE.primaryHover : PALETTE.primary;
                 ctx.beginPath();
-                ctx.roundRect(c.x, c.y, c.w, c.h, 6);
+                ctx.roundRect(c.x, c.y - lift, c.w, c.h, 6);
                 ctx.fill();
+                ctx.restore();
                 ctx.font = fontOf(c.size, 600);
-                ctx.fillStyle = '#0a0a0c';
+                ctx.fillStyle = '#ffffff';
                 ctx.textAlign = 'center';
-                ctx.fillText(c.label, c.x + c.w / 2, base);
+                ctx.fillText(c.label, c.x + c.w / 2, base - lift);
                 ctx.textAlign = 'left';
             } else {
                 ctx.font = fontOf(c.size, 500);
-                ctx.fillStyle = hot ? '#ffffff' : 'rgba(255,255,255,.72)';
+                ctx.fillStyle = hot ? PALETTE.ink : PALETTE.inkSoft;
                 ctx.fillText(c.label, c.x, base);
-                if (hot) ctx.fillRect(c.x, base + 3, c.w, 1.2);
+                if (hot) ctx.fillRect(c.x, base + 3, c.w, 1.4);
             }
             if (focusCta.value === i) {
-                ctx.strokeStyle = ACCENT;
+                ctx.strokeStyle = PALETTE.ring;
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.roundRect(c.x - 4, c.y - 4, c.w + 8, c.h + 8, 9);
@@ -351,14 +431,18 @@ const init = async () => {
         const inset = insetPolygon(pts, (GAP / 2 + BEVEL) * g.Sg);
         const [cx, cy] = polygonCentroid(inset);
         const local = inset.map(([x, y]) => [x - cx, y - cy]);
-        const corners = roundedCorners(local, CORNER_RADIUS * g.Sg);
-        const shape = new THREE.Shape();
-        shape.moveTo(...corners[0].to);
-        for (let i = 1; i <= corners.length; i += 1) {
-            const c = corners[i % corners.length];
-            shape.lineTo(...c.from);
-            shape.quadraticCurveTo(...c.ctrl, ...c.to);
-        }
+        const shapeOf = (pts2, radius) => {
+            const corners = roundedCorners(pts2, radius);
+            const sh = new THREE.Shape();
+            sh.moveTo(...corners[0].to);
+            for (let i = 1; i <= corners.length; i += 1) {
+                const c = corners[i % corners.length];
+                sh.lineTo(...c.from);
+                sh.quadraticCurveTo(...c.ctrl, ...c.to);
+            }
+            return sh;
+        };
+        const shape = shapeOf(local, CORNER_RADIUS * g.Sg);
         const depth = DEPTH * g.Sg;
         const geo = new THREE.ExtrudeGeometry(shape, {
             depth,
@@ -381,6 +465,11 @@ const init = async () => {
         p.content.geometry.dispose();
         p.glass.geometry = geo;
         p.content.geometry = cgeo;
+        p.shadows.forEach((m, i) => {
+            m.geometry.dispose();
+            const o = shadowLayers[i].out * g.Sg;
+            m.geometry = new THREE.ShapeGeometry(shapeOf(insetPolygon(local, -o), CORNER_RADIUS * g.Sg + o), 6);
+        });
         p.content.position.z = g.frontZ + 0.5;
         p.c.set(cx, cy);
         let mx = 1;
@@ -415,6 +504,44 @@ const init = async () => {
     const inv = new THREE.Matrix4();
     const tmpV = new THREE.Vector3();
 
+    // Degradê branco → #faf8fc (funde com o cabeçalho e com a seção seguinte) + manchas da marca desfocadas.
+    const drawBackground = (W, H) => {
+        const cv = bgTex.image;
+        cv.width = W;
+        cv.height = H;
+        const ctx = cv.getContext('2d');
+        const lin = ctx.createLinearGradient(0, 0, 0, H);
+        lin.addColorStop(0, '#ffffff');
+        lin.addColorStop(0.5, '#f8f4fc');
+        lin.addColorStop(1, PALETTE.page);
+        ctx.fillStyle = lin;
+        ctx.fillRect(0, 0, W, H);
+        const blob = (fx, fy, fr, rgb, a) => {
+            const r = fr * Math.max(W, H * 1.4);
+            const rg = ctx.createRadialGradient(fx * W, fy * H, 0, fx * W, fy * H, r);
+            rg.addColorStop(0, `rgba(${rgb},${a})`);
+            rg.addColorStop(1, `rgba(${rgb},0)`);
+            ctx.fillStyle = rg;
+            ctx.fillRect(0, 0, W, H);
+        };
+        blob(0.16, 0.34, 0.3, '179,136,217', 0.5); // talents-300
+        blob(0.52, 0.72, 0.26, '123,79,162', 0.3); // talents-500
+        blob(0.86, 0.26, 0.28, '212,184,228', 0.75); // talents-200
+        blob(0.38, 0.5, 0.2, '99,42,126', 0.16); // talents-600
+        // Bordas superior/inferior voltam ao tom exato do cabeçalho e da seção seguinte.
+        const top = ctx.createLinearGradient(0, 0, 0, H * 0.14);
+        top.addColorStop(0, 'rgba(255,255,255,1)');
+        top.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = top;
+        ctx.fillRect(0, 0, W, H * 0.14);
+        const bot = ctx.createLinearGradient(0, H * 0.78, 0, H);
+        bot.addColorStop(0, 'rgba(250,248,252,0)');
+        bot.addColorStop(1, 'rgba(250,248,252,1)');
+        ctx.fillStyle = bot;
+        ctx.fillRect(0, H * 0.78, W, H * 0.22);
+        bgTex.needsUpdate = true;
+    };
+
     const resize = () => {
         const W = root.clientWidth;
         const H = root.clientHeight;
@@ -422,7 +549,7 @@ const init = async () => {
         g.W = W;
         g.H = H;
         g.portrait = W < 700;
-        // Faixa inferior reservada ao degradê para a seção clara; o bloco de vidro sobe para não ser coberto.
+        // Respiro inferior: o bloco de vidro sobe um pouco, deixando o fundo claro fundir com a seção seguinte.
         g.fade = g.portrait ? FADE_MOBILE : FADE_DESKTOP;
         const mx = g.portrait ? 16 : W * 0.055;
         const my = g.portrait ? 16 : (H - g.fade) * 0.085;
@@ -435,6 +562,8 @@ const init = async () => {
         g.dpr = Math.min(2, Math.max(1.5, window.devicePixelRatio || 1));
         glow.uGlowR.value = 300 * g.Sg;
         renderer.setSize(W, H, false);
+        renderer.getDrawingBufferSize(glow.uRes.value);
+        drawBackground(W, H);
         camera.aspect = W / H;
         camera.position.set(0, 0, H / 2 / Math.tan((15 * Math.PI) / 180));
         camera.far = camera.position.z + 3000;
@@ -520,15 +649,26 @@ const init = async () => {
             springStep(p.rx, rxT, dt);
             springStep(p.ry, ryT, dt);
             p.hover += ((isHover ? 1 : 0) - p.hover) * (1 - Math.exp(-dt / 0.12));
-            const m = p.glass.material;
-            m.iridescence = 0.55 + 0.45 * p.hover;
-            m.envMapIntensity = 0.42 * (1 + 0.9 * p.hover);
+            // Hover sutil: irisação e reflexo sobem pouco para o texto manter contraste.
+            p.glass.material.forEach((m, mi) => {
+                m.iridescence = 0.3 + 0.22 * p.hover;
+                m.envMapIntensity = (mi === 0 ? 0.9 : 1.15) * (1 + 0.25 * p.hover);
+            });
 
             // Entrada: peças voam de fora da tela (ease-out-back, 0.72 s, 30 ms de escalonamento).
             const e = easeOutBack((time - i * 0.03) / 0.72);
             const fly = (1 - e) * Math.max(g.W, g.H) * 0.9;
             p.group.position.set(p.c.x + p.dir.x * fly, p.c.y + p.dir.y * fly, p.z.x);
             p.group.rotation.set(p.rx.x, p.ry.x, 0);
+            const lift = clamp(p.z.x / (50 * g.Sg), 0, 1.2);
+            p.shadows.forEach((m, k) => {
+                m.position.set(
+                    p.c.x + p.dir.x * fly + (10 + 16 * lift) * g.Sg,
+                    p.c.y + p.dir.y * fly - (14 + 20 * lift) * g.Sg,
+                    -g.frontZ - 1,
+                );
+                m.material.opacity = shadowLayers[k].alpha * (1 - 0.3 * lift);
+            });
         });
 
         // Camada de texto DOM mapeada ao painel inclinado (homografia).
@@ -626,8 +766,13 @@ const init = async () => {
             pieces.forEach((p) => {
                 p.glass.geometry.dispose();
                 p.content.geometry.dispose();
-                p.glass.material.dispose();
+                p.glass.material.forEach((m) => m.dispose());
+                p.shadows.forEach((m) => {
+                    m.geometry.dispose();
+                    m.material.dispose();
+                });
             });
+            bgTex.dispose();
             contentMat.dispose();
             pageTex.dispose();
             envTex.dispose();
@@ -698,7 +843,7 @@ onBeforeUnmount(teardown);
 <style scoped>
 .hero-glass {
     position: relative;
-    height: calc(clamp(620px, 50vw, 780px) + 120px);
+    height: calc(clamp(620px, 50vw, 780px) + 48px);
     overflow: hidden;
     background: transparent;
     transition: background-color 0.25s ease;
@@ -706,36 +851,19 @@ onBeforeUnmount(teardown);
 
 @media (max-width: 767px) {
     .hero-glass {
-        height: calc(780px + 96px);
+        height: calc(780px + 32px);
     }
 }
 
+/* Fundo claro: branco no topo (cabeçalho) e, na base, a cena se dissolve no fundo real da página
+   (que muda com a rolagem), sem degrau de cor visível com a seção seguinte. */
 .hero-glass--on {
-    background: #050507;
+    background: linear-gradient(to bottom, #ffffff 0%, rgba(250, 248, 252, 0) 100%);
 }
 
-/* Transição para a seção clara: degradê #050507 → fundo da página, sem cobrir a placa. */
-.hero-glass::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 120px;
-    pointer-events: none;
-    opacity: 0;
-    background: linear-gradient(to bottom, #050507 0%, #faf8fc 100%);
-    transition: opacity 0.25s ease;
-}
-
-.hero-glass--on::after {
-    opacity: 1;
-}
-
-@media (max-width: 767px) {
-    .hero-glass::after {
-        height: 96px;
-    }
+.hero-glass--on .hero-glass__canvas {
+    -webkit-mask-image: linear-gradient(to bottom, #000 86%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 86%, transparent 100%);
 }
 
 .hero-glass__fallback {
@@ -810,7 +938,7 @@ h1.hg-text {
 }
 
 .hero-glass__layer ::selection {
-    background: rgba(179, 136, 217, 0.45);
-    color: #fff;
+    background: rgba(123, 79, 162, 0.28);
+    color: #2a1042;
 }
 </style>

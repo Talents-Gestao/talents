@@ -208,7 +208,7 @@ export const insetPolygon = (pts, d) => {
         const mx = x - pt[0];
         const my = y - pt[1];
         const m = Math.hypot(mx, my);
-        const maxM = d * 2.5;
+        const maxM = Math.abs(d) * 2.5;
         if (m > maxM) {
             x = pt[0] + (mx / m) * maxM;
             y = pt[1] + (my / m) * maxM;
