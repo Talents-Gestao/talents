@@ -15,6 +15,8 @@ import {
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import HeroGlass from '@/Components/Landing/HeroGlass.vue';
+import LandingFrentes from '@/Components/Landing/LandingFrentes.vue';
+import LandingPilaresBento from '@/Components/Landing/LandingPilaresBento.vue';
 import LandingButterflyPillars from '@/Components/Landing/LandingButterflyPillars.vue';
 import LandingCardGrid from '@/Components/Landing/LandingCardGrid.vue';
 import LandingHeroTypewriter from '@/Components/Landing/LandingHeroTypewriter.vue';
@@ -25,6 +27,7 @@ defineProps({
     canLogin: Boolean,
     canRegister: Boolean,
     heroGlass: Boolean,
+    redesign: Boolean,
 });
 
 const title = 'Talents — Contratação de Talentos e Consultoria em Gestão de Pessoas';
@@ -232,6 +235,7 @@ const organizationJsonLd = computed(() =>
         :description="description"
         :can-login="canLogin"
         :can-register="canRegister"
+        :redesign="redesign"
     >
         <template #head>
             <component :is="'script'" type="application/ld+json" head-key="jsonld-org">
@@ -264,7 +268,12 @@ const organizationJsonLd = computed(() =>
         </section>
         </HeroGlass>
 
-        <section class="border-t border-white/20 bg-white/40 py-12 backdrop-blur-sm md:py-16">
+        <template v-if="redesign">
+            <LandingFrentes />
+            <LandingPilaresBento :pillars="methodologyPillars" />
+        </template>
+
+        <section v-else class="border-t border-white/20 bg-white/40 py-12 backdrop-blur-sm md:py-16">
             <div class="mx-auto max-w-6xl px-4">
                 <div class="max-w-3xl">
                     <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">

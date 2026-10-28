@@ -32,4 +32,10 @@ return [
      * com false a landing renderiza o Hero atual, inalterado.
      */
     'hero_glass' => filter_var(env('LANDING_HERO_GLASS', env('APP_ENV') === 'local'), FILTER_VALIDATE_BOOLEAN),
+
+    /**
+     * Redesenho da Home (cabeçalho de vidro, Frentes e Pilares). Desligado por padrão fora do ambiente
+     * local; com false a Home renderiza as seções atuais, inalteradas.
+     */
+    'redesign' => filter_var(env('LANDING_REDESIGN', env('APP_ENV') === 'local'), FILTER_VALIDATE_BOOLEAN),
 ];

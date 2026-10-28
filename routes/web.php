@@ -11,6 +11,7 @@ Route::get('/', function () {
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'heroGlass' => (bool) config('landing.hero_glass'),
+        'redesign' => (bool) config('landing.redesign'),
     ]);
 })->name('landing.home');
 
