@@ -14,6 +14,7 @@ import {
 } from '@heroicons/vue/24/outline';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import HeroGlass from '@/Components/Landing/HeroGlass.vue';
 import LandingButterflyPillars from '@/Components/Landing/LandingButterflyPillars.vue';
 import LandingCardGrid from '@/Components/Landing/LandingCardGrid.vue';
 import LandingHeroTypewriter from '@/Components/Landing/LandingHeroTypewriter.vue';
@@ -23,6 +24,7 @@ import LandingRecruitmentPhaseCard from '@/Components/Landing/LandingRecruitment
 defineProps({
     canLogin: Boolean,
     canRegister: Boolean,
+    heroGlass: Boolean,
 });
 
 const title = 'Talents — Contratação de Talentos e Consultoria em Gestão de Pessoas';
@@ -237,6 +239,7 @@ const organizationJsonLd = computed(() =>
             </component>
         </template>
 
+        <HeroGlass :enabled="heroGlass">
         <section class="relative overflow-hidden lg:min-h-[560px]">
             <div class="relative z-10 mx-auto max-w-6xl px-4 py-10 md:py-24 lg:py-28">
                 <div class="lg:max-w-[46%]">
@@ -259,6 +262,7 @@ const organizationJsonLd = computed(() =>
                 fetchpriority="high"
             />
         </section>
+        </HeroGlass>
 
         <section class="border-t border-white/20 bg-white/40 py-12 backdrop-blur-sm md:py-16">
             <div class="mx-auto max-w-6xl px-4">

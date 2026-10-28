@@ -26,4 +26,10 @@ return [
      * @var list<string>
      */
     'interest_recipients' => $parsed !== [] ? $parsed : $defaultInterestRecipients,
+
+    /**
+     * Hero "Designed in glass" (WebGL). Desligado por padrão fora do ambiente local;
+     * com false a landing renderiza o Hero atual, inalterado.
+     */
+    'hero_glass' => filter_var(env('LANDING_HERO_GLASS', env('APP_ENV') === 'local'), FILTER_VALIDATE_BOOLEAN),
 ];

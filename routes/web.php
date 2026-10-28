@@ -10,6 +10,7 @@ Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
+        'heroGlass' => (bool) config('landing.hero_glass'),
     ]);
 })->name('landing.home');
 
