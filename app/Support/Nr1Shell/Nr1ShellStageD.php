@@ -138,7 +138,7 @@ final class Nr1ShellStageD
      */
     public function opportunities(Request $request): array
     {
-        $props = Nr1ShellLegacy::capture(fn () => app(Nr1OpportunityController::class)->index($request), $request);
+        $props = app(Nr1OpportunityController::class)->queuePage($request);
         $queue = collect($props['queue']);
         $ids = $queue->pluck('id')->all();
 
@@ -164,6 +164,8 @@ final class Nr1ShellStageD
 
         return [
             'counters' => $props['counters'],
+            'pagination' => $props['pagination'],
+            'stageCounts' => $props['stageCounts'],
             'filters' => $props['filters'],
             'originLabels' => $props['originLabels'],
             'statusLabels' => $props['statusLabels'],

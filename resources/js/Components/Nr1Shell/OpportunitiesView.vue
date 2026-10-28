@@ -22,7 +22,14 @@ const apply = (changes) => {
     router.get(window.location.pathname, Object.fromEntries(Object.entries(next).filter(([, value]) => value)), { preserveState: true, preserveScroll: true, replace: true });
 };
 
-const columns = computed(() => props.opportunities.stages.map((stage) => ({ ...stage, rows: props.opportunities.queue.filter((row) => row.status === stage.key) })));
+const pagination = computed(() => props.opportunities.pagination);
+const goTo = (page) => {
+    const query = Object.fromEntries(Object.entries({ ...filters.value, pagina: page > 1 ? page : '' }).filter(([, value]) => value));
+    router.get(window.location.pathname, query, { preserveState: true, preserveScroll: true, replace: true });
+};
+
+// O quadro mostra os cartões da página atual; o número do cabeçalho é o total do estágio na fila inteira.
+const columns = computed(() => props.opportunities.stages.map((stage) => ({ ...stage, total: props.opportunities.stageCounts[stage.key] ?? 0, rows: props.opportunities.queue.filter((row) => row.status === stage.key) })));
 </script>
 
 <template>
@@ -75,13 +82,18 @@ const columns = computed(() => props.opportunities.stages.map((stage) => ({ ...s
                 </div>
 
                 <div v-else class="n1-kanban" role="list" aria-label="Quadro por estágio (somente visual)">
-                    <section v-for="column in columns" :key="column.key" class="n1-kcol" role="listitem" :aria-label="`${column.label}: ${column.rows.length}`">
-                        <header><b>{{ column.label }}</b><span class="n1-pill gray">{{ column.rows.length }}</span></header>
+                    <section v-for="column in columns" :key="column.key" class="n1-kcol" role="listitem" :aria-label="`${column.label}: ${column.total} no total, ${column.rows.length} nesta página`">
+                        <header><b>{{ column.label }}</b><span class="n1-pill gray">{{ column.total }}</span></header>
                         <OpportunityCard v-for="row in column.rows" :key="row.id" :row="row" compact />
                         <p v-if="!column.rows.length" class="n1-tiny">Nenhuma</p>
                     </section>
                 </div>
-                <p v-if="view === 'quadro'" class="n1-tiny no-print" style="margin-top: 10px">O quadro é só visual: para mudar o estágio, use a ação no cartão da fila.</p>
+                <nav v-if="pagination.lastPage > 1" class="n1-pager no-print" aria-label="Páginas da fila">
+                    <Nr1Button variant="secondary" size="sm" :disabled="pagination.page <= 1" @click="goTo(pagination.page - 1)">← Anterior</Nr1Button>
+                    <span class="n1-tiny" aria-live="polite">Página {{ pagination.page }} de {{ pagination.lastPage }} · {{ pagination.from }} a {{ pagination.to }} de {{ pagination.total }}</span>
+                    <Nr1Button variant="secondary" size="sm" :disabled="pagination.page >= pagination.lastPage" @click="goTo(pagination.page + 1)">Próxima →</Nr1Button>
+                </nav>
+                <p v-if="view === 'quadro'" class="n1-tiny no-print" style="margin-top: 10px">O quadro é só visual e mostra os cartões desta página; o número de cada coluna é o total do estágio. Para mudar o estágio, use a ação no cartão da fila.</p>
             </section>
         </div>
     </div>

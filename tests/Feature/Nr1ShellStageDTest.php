@@ -159,6 +159,56 @@ class Nr1ShellStageDTest extends TestCase
         $this->assertNotEmpty($after['recommendations']);
     }
 
+    public function test_the_queue_is_paginated_on_the_server_keeping_filters_order_totals_and_the_company_out(): void
+    {
+        $c = $this->campaign();
+        $now = now();
+        $rows = [];
+        for ($i = 0; $i < 60; $i++) {
+            $rows[] = [
+                'survey_id' => $c->survey->id, 'company_id' => $c->company->id, 'origin' => $i % 4 === 0 ? Nr1Opportunity::ORIGIN_TRAINING : Nr1Opportunity::ORIGIN_SOLUTION_SUGGESTION,
+                'service_key' => 'avaliacao_complementar', 'status' => ['new', 'to_qualify', 'in_contact', 'won'][$i % 4 === 0 ? 0 : ($i % 3) + 1],
+                'last_activity_at' => $now->copy()->subMinutes($i), 'created_at' => $now, 'updated_at' => $now,
+            ];
+        }
+        DB::table('nr1_opportunities')->insert($rows);
+        $total = Nr1Opportunity::query()->count();
+        $section = fn (array $q = []) => $this->actingAs($c->owner)->get(route('nr1.oportunidades', $q))->viewData('page')['props']['section']['opportunities'];
+
+        // 25 por página; KPIs e totais sobre a fila inteira, não sobre a página.
+        $page1 = $section();
+        $this->assertCount(25, $page1['queue']);
+        $this->assertSame(['page' => 1, 'lastPage' => (int) ceil($total / 25), 'total' => $total, 'perPage' => 25, 'from' => 1, 'to' => 25], $page1['pagination']);
+        $this->assertSame($total, $page1['counters']['identified']);
+        $this->assertSame($total, array_sum($page1['stageCounts']));
+
+        // Páginas não repetem nem perdem cartões e respeitam a mesma ordenação (ativas antes de ganhas/perdidas).
+        $ids = [];
+        foreach (range(1, $page1['pagination']['lastPage']) as $n) {
+            $ids = array_merge($ids, array_column($section(['pagina' => $n])['queue'], 'id'));
+        }
+        $this->assertCount($total, array_unique($ids));
+        $statuses = array_column(array_merge(...array_map(fn ($n) => $section(['pagina' => $n])['queue'], range(1, $page1['pagination']['lastPage']))), 'status');
+        $firstWon = array_search('won', $statuses, true);
+        $this->assertNotContains('in_contact', array_slice($statuses, $firstWon));
+
+        // Filtros valem para o total e para as páginas; o quadro continua com o total por estágio (só pela origem).
+        $filtered = $section(['status' => 'in_contact', 'origin' => Nr1Opportunity::ORIGIN_SOLUTION_SUGGESTION]);
+        $expected = Nr1Opportunity::query()->where('status', 'in_contact')->where('origin', Nr1Opportunity::ORIGIN_SOLUTION_SUGGESTION)->count();
+        $this->assertSame($expected, $filtered['pagination']['total']);
+        $this->assertEquals(['status' => 'in_contact', 'origin' => Nr1Opportunity::ORIGIN_SOLUTION_SUGGESTION], $filtered['filters']);
+        $this->assertSame($total, $filtered['counters']['identified']);
+        $this->assertSame(Nr1Opportunity::query()->where('origin', Nr1Opportunity::ORIGIN_SOLUTION_SUGGESTION)->count(), array_sum($filtered['stageCounts']));
+        foreach ($filtered['queue'] as $row) {
+            $this->assertSame('in_contact', $row['status']);
+        }
+
+        // Página além do fim vem vazia; valores inválidos são recusados; a Empresa continua fora.
+        $this->assertSame([], $section(['pagina' => 99])['queue']);
+        $this->actingAs($c->owner)->get(route('nr1.oportunidades', ['pagina' => 0]))->assertSessionHasErrors('pagina');
+        $this->actingAs($c->admin)->get(route('nr1.oportunidades', ['pagina' => 1]))->assertForbidden();
+    }
+
     public function test_commercial_sees_solutions_only_if_the_matrix_allows_and_without_a_campaign(): void
     {
         $this->campaign();

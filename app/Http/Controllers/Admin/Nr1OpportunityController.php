@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminPermissionModule;
+use App\Enums\PermissionAction;
 use App\Exceptions\Nr1CampaignException;
 use App\Http\Controllers\Controller;
 use App\Models\Nr1Opportunity;
@@ -65,8 +67,49 @@ class Nr1OpportunityController extends Controller
             'filters' => ['origin' => $filters['origin'] ?? '', 'status' => $filters['status'] ?? ''],
             'originLabels' => Nr1Opportunity::ORIGIN_LABELS,
             'statusLabels' => Nr1Opportunity::STATUS_LABELS,
-            'canWork' => $request->user()->canAccessAdmin(\App\Enums\AdminPermissionModule::Nr1Oportunidades, \App\Enums\PermissionAction::Edit),
+            'canWork' => $request->user()->canAccessAdmin(AdminPermissionModule::Nr1Oportunidades, PermissionAction::Edit),
         ]);
+    }
+
+    /**
+     * Fila paginada no servidor (shell NR-1): mesmos filtros e mesma ordenação de index(), 25 por página, KPIs sobre o total
+     * e contagem por estágio (respeitando só o filtro de origem) para o quadro. index() segue com o corte de 200 de sempre.
+     *
+     * @return array<string, mixed>
+     */
+    public function queuePage(Request $request, int $perPage = 25): array
+    {
+        $filters = $request->validate([
+            'origin' => ['nullable', Rule::in(array_keys(Nr1Opportunity::ORIGIN_LABELS))],
+            'status' => ['nullable', Rule::in(array_keys(Nr1Opportunity::STATUS_LABELS))],
+            'pagina' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $all = Nr1Opportunity::query();
+        $page = Nr1Opportunity::query()
+            ->when($filters['origin'] ?? null, fn ($q, $origin) => $q->where('origin', $origin))
+            ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
+            ->with(['company:id,name', 'survey:id,title', 'requester:id,name', 'assignee:id,name'])
+            ->orderByRaw("CASE WHEN status IN ('won', 'lost') THEN 1 ELSE 0 END")
+            ->orderByDesc('last_activity_at')
+            ->orderByDesc('id')
+            ->paginate($perPage, ['*'], 'pagina', (int) ($filters['pagina'] ?? 1));
+
+        return [
+            'queue' => $page->getCollection()->map(fn (Nr1Opportunity $row) => $this->serializer->queueRow($row))->values()->all(),
+            'pagination' => ['page' => $page->currentPage(), 'lastPage' => $page->lastPage(), 'total' => $page->total(), 'perPage' => $page->perPage(), 'from' => $page->firstItem(), 'to' => $page->lastItem()],
+            'counters' => [
+                'identified' => (clone $all)->count(),
+                'in_contact' => (clone $all)->where('status', Nr1Opportunity::STATUS_IN_CONTACT)->count(),
+                'to_qualify' => (clone $all)->whereIn('status', [Nr1Opportunity::STATUS_NEW, Nr1Opportunity::STATUS_TO_QUALIFY])->count(),
+            ],
+            'stageCounts' => (clone $all)->when($filters['origin'] ?? null, fn ($q, $origin) => $q->where('origin', $origin))
+                ->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->map(fn ($n) => (int) $n)->all(),
+            'filters' => ['origin' => $filters['origin'] ?? '', 'status' => $filters['status'] ?? ''],
+            'originLabels' => Nr1Opportunity::ORIGIN_LABELS,
+            'statusLabels' => Nr1Opportunity::STATUS_LABELS,
+            'canWork' => $request->user()->canAccessAdmin(AdminPermissionModule::Nr1Oportunidades, PermissionAction::Edit),
+        ];
     }
 
     public function show(int $survey): Response
@@ -88,7 +131,7 @@ class Nr1OpportunityController extends Controller
             'opportunity' => $this->serializer->opportunityDetail($opportunity),
             'transitions' => collect(Nr1OpportunityService::TRANSITIONS[$opportunity->status] ?? [])
                 ->map(fn (string $status) => ['value' => $status, 'label' => Nr1Opportunity::STATUS_LABELS[$status]])->values(),
-            'canWork' => $request->user()->canAccessAdmin(\App\Enums\AdminPermissionModule::Nr1Oportunidades, \App\Enums\PermissionAction::Edit),
+            'canWork' => $request->user()->canAccessAdmin(AdminPermissionModule::Nr1Oportunidades, PermissionAction::Edit),
             'me' => $request->user()->id,
         ]);
     }
