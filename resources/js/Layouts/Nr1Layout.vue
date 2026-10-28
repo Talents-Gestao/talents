@@ -6,6 +6,7 @@ import '../../css/nr1-shell-results.css';
 import '../../css/nr1-theme.css';
 import '../../css/nr1-shell-motion.css';
 import '../../css/nr1-shell-header.css';
+import '../../css/nr1-shell-d.css';
 import ShellHeader from '@/Components/Nr1Shell/ShellHeader.vue';
 import ToastHost from '@/Components/Nr1Shell/ToastHost.vue';
 import { Link, router } from '@inertiajs/vue3';

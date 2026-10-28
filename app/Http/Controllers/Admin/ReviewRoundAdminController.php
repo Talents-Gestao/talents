@@ -151,6 +151,12 @@ class ReviewRoundAdminController extends Controller
 
     private function back(Company $company, Survey $survey): RedirectResponse
     {
+        // Ações disparadas pelo shell NR-1 voltam para ele (só caminhos internos /nr1); sem o campo, a tela antiga de sempre.
+        $return = request()->input('_nr1_return');
+        if (is_string($return) && str_starts_with($return, '/nr1') && ! str_contains($return, '//')) {
+            return redirect()->to($return);
+        }
+
         return redirect()->route('admin.companies.surveys.documents.index', [$company->id, $survey->id]);
     }
 

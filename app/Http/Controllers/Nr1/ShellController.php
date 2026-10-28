@@ -18,6 +18,7 @@ use App\Support\Nr1Shell\Nr1Shell;
 use App\Support\Nr1Shell\Nr1ShellContext;
 use App\Support\Nr1Shell\Nr1ShellLegacy;
 use App\Support\Nr1Shell\Nr1ShellPageData;
+use App\Support\Nr1Shell\Nr1ShellStageD;
 use App\Support\SurveyPublicationGate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -95,12 +96,21 @@ class ShellController extends Controller
     private function pageProps(Request $request, Nr1ShellPageData $pages, User $user, string $profile, string $section, Nr1ShellContext $context): array
     {
         $survey = $context->survey;
+        $stageD = app(Nr1ShellStageD::class);
+        // Oportunidades é global (fila comercial): não depende da campanha em foco nem do modelo dela.
+        if ($section === 'oportunidades') {
+            return ['opportunities' => $stageD->opportunities($request)];
+        }
+        // Comercial (sem campanha em foco): só os cartões de serviço.
+        if ($section === 'solucoes' && $survey === null && $profile === Nr1Shell::PROFILE_COMERCIAL) {
+            return ['solutions' => $stageD->solutionsWithoutSurvey()];
+        }
         // Campanha do modelo anterior: o legado integrado (mesmas props e regras das telas antigas) ou só o aviso.
         if ($survey !== null && Nr1ShellLegacy::isLegacy($survey)) {
             return ['legacy' => app(Nr1ShellLegacy::class)->section($request, $user, $profile, $section, $survey, $context->company)];
         }
 
-        if ($survey === null || ! in_array($section, ['visao-geral', 'campanha', 'resultados', 'plano-de-acao'], true)) {
+        if ($survey === null || ! in_array($section, ['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'solucoes'], true)) {
             return [];
         }
 
@@ -112,6 +122,8 @@ class ShellController extends Controller
             'campanha' => ['campaign' => $pages->campaign($survey, $user, $profile === Nr1Shell::PROFILE_TALENTS, $hide)],
             'resultados' => ['results' => $pages->results($survey, $hide, $this->insufficientMessage($survey), $context->company, $profile === Nr1Shell::PROFILE_TALENTS)],
             'plano-de-acao' => ['plan' => $pages->plan($survey, $user, $profile === Nr1Shell::PROFILE_TALENTS)],
+            'documentos' => ['documents' => $stageD->documents($request, $user, $profile, $survey, $context->company)],
+            'solucoes' => ['solutions' => $stageD->solutions($request, $profile, $survey)],
         };
     }
 
@@ -200,7 +212,7 @@ class ShellController extends Controller
                 'statusBadge' => $this->statusBadge($survey),
             ] : null,
             'companies' => $context->companies->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values()->all(),
-            'surveys' => $context->surveys->map(fn (Survey $s) => ['id' => $s->id, 'title' => $s->title, 'year' => ($s->starts_at ?? $s->created_at)?->year])->values()->all(),
+            'surveys' => $context->surveys->map(fn (Survey $s) => ['id' => $s->id, 'title' => $s->title, 'year' => ($s->starts_at ?? $s->created_at)?->year, 'legacy' => Nr1ShellLegacy::isLegacy($s)])->values()->all(),
             'canPickCompany' => $context->canPickCompany,
             'awaitingPublication' => $context->awaitingPublication,
             'collaborator' => false,

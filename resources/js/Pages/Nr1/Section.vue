@@ -8,9 +8,12 @@ import LegacyDocumentsView from '@/Components/Nr1Shell/LegacyDocumentsView.vue';
 import LegacyNotice from '@/Components/Nr1Shell/LegacyNotice.vue';
 import LegacyOverviewView from '@/Components/Nr1Shell/LegacyOverviewView.vue';
 import LegacyResultsView from '@/Components/Nr1Shell/LegacyResultsView.vue';
+import DocumentsView from '@/Components/Nr1Shell/DocumentsView.vue';
+import OpportunitiesView from '@/Components/Nr1Shell/OpportunitiesView.vue';
 import OverviewView from '@/Components/Nr1Shell/OverviewView.vue';
 import PlanView from '@/Components/Nr1Shell/PlanView.vue';
 import ResultsView from '@/Components/Nr1Shell/ResultsView.vue';
+import SolutionsView from '@/Components/Nr1Shell/SolutionsView.vue';
 import Nr1Layout from '@/Layouts/Nr1Layout.vue';
 import { Head } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -30,6 +33,9 @@ const view = computed(() => {
     if (props.section.campaign) return 'campaign';
     if (props.section.results) return 'results';
     if (props.section.plan) return 'plan';
+    if (props.section.documents) return 'documents';
+    if (props.section.solutions) return 'solutions';
+    if (props.section.opportunities) return 'opportunities';
     if (props.section.journey) return 'journey';
 
     return null;
@@ -49,7 +55,21 @@ const view = computed(() => {
             Os resultados desta campanha ficam disponíveis assim que a Talents publicar. Você será avisado.
         </p>
 
-        <template v-if="section.legacy">
+        <template v-if="section.legacy && !section.legacy.embedded">
+            <div class="n1-intro">
+                <div>
+                    <div class="n1-eyebrow">{{ shell.profileLabel }}</div>
+                    <h1>{{ section.label }}</h1>
+                </div>
+                <LegacyNotice :text="section.legacy.notice" />
+            </div>
+            <EmptyState title="Esta pesquisa usa a tela do modelo anterior" text="O Laudo NR-1 desta campanha continua na tela atual, que segue funcionando como sempre. Use o botão abaixo para abri-la." />
+            <div class="n1-tools" style="margin-top: 16px; justify-content: center">
+                <Nr1Button variant="primary" :href="section.legacy.openUrl">{{ section.legacy.openLabel }} →</Nr1Button>
+            </div>
+        </template>
+
+        <template v-else-if="section.legacy">
             <LegacyOverviewView v-if="section.key === 'visao-geral'" :overview="section.legacy.overview" :notice="section.legacy.notice" :results-url="menuUrl('resultados')" :documents-url="menuUrl('documentos')" />
             <LegacyCampaignView v-else-if="section.key === 'campanha'" :campaign="section.legacy.campaign" :notice="section.legacy.notice" />
             <LegacyResultsView v-else-if="section.key === 'resultados'" :results="section.legacy.results" :notice="section.legacy.notice" :min-per-sector="section.legacy.minPerSector" :for-talents="section.legacy.forTalents" />
@@ -70,6 +90,9 @@ const view = computed(() => {
         <CampaignView v-else-if="view === 'campaign'" :campaign="section.campaign" :company-name="context.company?.name ?? ''" />
         <ResultsView v-else-if="view === 'results'" :results="section.results" />
         <PlanView v-else-if="view === 'plan'" :plan="section.plan" />
+        <DocumentsView v-else-if="view === 'documents'" :documents="section.documents" />
+        <SolutionsView v-else-if="view === 'solutions'" :solutions="section.solutions" :opportunities-url="menuUrl('oportunidades')" />
+        <OpportunitiesView v-else-if="view === 'opportunities'" :opportunities="section.opportunities" />
         <JourneyView v-else-if="view === 'journey'" :journey="section.journey" :mode="section.key" />
 
         <template v-else>
