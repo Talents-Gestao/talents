@@ -366,7 +366,7 @@ const init = async () => {
             tc.fillRect(0, 0, L.image.w, L.image.h);
             tc.globalCompositeOperation = 'destination-in';
             const fade = g.portrait
-                ? tc.createLinearGradient(0, 0, 0, L.image.h * 0.35)
+                ? tc.createLinearGradient(0, 0, 0, L.image.h * 0.12) // curto: o rosto fica no topo da foto
                 : tc.createLinearGradient(0, 0, L.image.w * 0.35, 0);
             fade.addColorStop(0, 'rgba(0,0,0,0)');
             fade.addColorStop(1, 'rgba(0,0,0,1)');
@@ -552,7 +552,8 @@ const init = async () => {
     const resize = () => {
         const W = root.clientWidth;
         const H = root.clientHeight;
-        if (!W || !H) return;
+        // sem largura útil (oculto ou em transição de viewport): mantém o último layout
+        if (W < 200 || !H) return;
         g.W = W;
         g.H = H;
         g.portrait = W < 700;
@@ -849,7 +850,9 @@ onBeforeUnmount(teardown);
             <h1 class="hg-text" :style="headlineStyle">
                 <span v-for="(line, i) in layout.headline.lines" :key="i" class="block whitespace-pre">{{ line }}{{ ' ' }}</span>
             </h1>
-            <p class="hg-text" :style="subtitleStyle">{{ CONTENT.subtitle }}</p>
+            <p class="hg-text" :style="subtitleStyle">
+                <span v-for="(line, i) in layout.subtitle.lines" :key="i" class="block whitespace-pre">{{ line }}{{ ' ' }}</span>
+            </p>
             <img
                 class="hg-image"
                 :src="CONTENT.image.src"

@@ -87,6 +87,30 @@ describe('direções da Hero: texto e CTAs inteiros na peça do texto (folga >= 
         });
     });
 
+    // Altura do .hs: clamp(620px, 50vw, 780px) + 48px (desktop/tablet) e 780px + 32px (retrato).
+    const heroH = (W) => (W < 768 ? 812 : Math.min(780, Math.max(620, W / 2)) + 48);
+    const bottom = (b) => b.y + b.h;
+
+    it('subtítulo e CTAs não se sobrepõem e as CTAs ficam no painel, de 320 a 1600px', () => {
+        // medida mais larga que a Figtree real, para cobrir o pior caso de quebra
+        const wide = (t, size, w, tr = 0) => t.length * (size * (w >= 600 ? 0.58 : 0.55) + tr);
+        for (let W = 320; W <= 1600; W += 8) {
+            [measure, wide].forEach((m) => {
+                const g = panelGeometry(W, heroH(W));
+                const L = heroLayout({ pw: g.pw, ph: g.ph, S: g.S, portrait: g.portrait, content, measure: m });
+                const subBottom = L.subtitle.y + L.subtitle.lines.length * L.subtitle.lh;
+                const headBottom = L.headline.y + L.headline.lines.length * L.headline.lh;
+                assert.ok(L.subtitle.y >= headBottom, `${W}px: subtítulo sobre o título`);
+                L.ctas.forEach((c) => {
+                    assert.ok(c.y >= subBottom + 8, `${W}px: CTA "${c.label}" em ${c.y.toFixed(0)} sobre o subtítulo (até ${subBottom.toFixed(0)})`);
+                    assert.ok(bottom(c) <= g.ph, `${W}px: CTA "${c.label}" fora do painel`);
+                    // retrato: a foto (rosto no topo) começa abaixo das CTAs, não sob a peça do texto
+                    if (g.portrait) assert.ok(L.image.y >= bottom(c) + 24, `${W}px: foto começa sob as CTAs`);
+                });
+            });
+        }
+    });
+
     it('A tem uma peça calma para o texto e 7 facetas de asa', () => {
         assert.equal(PATTERNS.a.cells.length, 8);
         assert.equal(PATTERNS.c.cells.length, 3);

@@ -92,7 +92,8 @@ const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce
 
 const relayout = () => {
     const root = rootEl.value;
-    if (!root || !measureApi) return;
+    // container ainda sem largura (ex.: oculto ou em transição de viewport): mantém o último layout
+    if (!root || !measureApi || root.clientWidth < 200) return;
     const g = panelGeometry(root.clientWidth, root.clientHeight);
     const L = heroLayout({ pw: g.pw, ph: g.ph, S: g.S, portrait: g.portrait, content: CONTENT, measure: measureApi.measure });
     const keep = keepoutRects(L.keepout, g.pw, g.ph, (16 + (7 + 2.6) * g.Sg) * 1.2, g.portrait);
@@ -354,7 +355,9 @@ onBeforeUnmount(() => {
             <h1 class="hg-text hs-title" :style="headlineStyle">
                 <span v-for="(line, i) in layout.headline.lines" :key="i" class="block whitespace-pre">{{ line }}{{ ' ' }}</span>
             </h1>
-            <p class="hg-text hs-sub" :style="subtitleStyle">{{ CONTENT.subtitle }}</p>
+            <p class="hg-text hs-sub" :style="subtitleStyle">
+                <span v-for="(line, i) in layout.subtitle.lines" :key="i" class="block whitespace-pre">{{ line }}{{ ' ' }}</span>
+            </p>
             <img class="hs-img" :src="CONTENT.image.src" :alt="CONTENT.image.alt" :style="box(layout.image)" width="760" height="593" />
             <Link
                 v-for="(c, i) in layout.ctas"

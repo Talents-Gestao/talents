@@ -91,7 +91,7 @@ export const drawPage = (cv, { g, layout: L, heroImg, printImage = true, hover =
         tc.fillRect(0, 0, L.image.w, L.image.h);
         tc.globalCompositeOperation = 'destination-in';
         const fade = g.portrait
-            ? tc.createLinearGradient(0, 0, 0, L.image.h * 0.35)
+            ? tc.createLinearGradient(0, 0, 0, L.image.h * 0.12) // curto: o rosto fica no topo da foto
             : tc.createLinearGradient(0, 0, L.image.w * 0.35, 0);
         fade.addColorStop(0, 'rgba(0,0,0,0)');
         fade.addColorStop(1, 'rgba(0,0,0,1)');
