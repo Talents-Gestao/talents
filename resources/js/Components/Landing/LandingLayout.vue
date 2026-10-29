@@ -11,7 +11,8 @@ const props = defineProps({
     canonical: { type: String, default: null },
     canLogin: Boolean,
     canRegister: Boolean,
-    redesign: Boolean,
+    /** Cabeçalho de vidro (Home); as demais páginas da landing seguem com o cabeçalho atual. */
+    glassHeader: Boolean,
 });
 
 const mobileOpen = ref(false);
@@ -82,7 +83,7 @@ defineExpose({ openContact });
 
     <div class="app-shell min-h-screen scroll-smooth text-slate-900">
         <LandingHeaderGlass
-            v-if="redesign"
+            v-if="glassHeader"
             v-model:open="mobileOpen"
             :nav-links="navLinks"
             :can-login="canLogin"

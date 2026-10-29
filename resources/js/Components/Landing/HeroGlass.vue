@@ -3,13 +3,10 @@ import { Link } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 
 /**
- * Hero "Designed in glass" (WebGL). Com `enabled=false` — ou sem WebGL, com reduced-motion,
- * aparelho fraco ou contexto perdido — renderiza apenas o slot (Hero atual, sem wrapper).
+ * Hero "Designed in glass" (WebGL). Fallback técnico: sem WebGL, com reduced-motion, aparelho fraco
+ * ou contexto perdido, renderiza apenas o slot (Hero em HTML, com o mesmo conteúdo real).
  * Os textos abaixo espelham o Hero de Welcome.vue / LandingHeroTypewriter.vue.
  */
-const props = defineProps({
-    enabled: { type: Boolean, default: false },
-});
 
 const CONTENT = {
     eyebrow: 'Consultoria estratégica em gestão de pessoas',
@@ -44,7 +41,7 @@ const FADE_DESKTOP = 48;
 const FADE_MOBILE = 32;
 
 const supportsGlass = () => {
-    if (typeof window === 'undefined' || !props.enabled) return false;
+    if (typeof window === 'undefined') return false;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false;
     if ((navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.deviceMemory ?? 8) <= 2) return false;
     try {

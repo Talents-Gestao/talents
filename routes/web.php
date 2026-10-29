@@ -10,10 +10,6 @@ Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
-        'heroGlass' => (bool) config('landing.hero_glass'),
-        // `?landing=classic` mostra a Home sem o redesenho, só em APP_ENV=local (comparação de desempenho).
-        'redesign' => (bool) config('landing.redesign')
-            && ! (app()->environment('local') && request()->query('landing') === 'classic'),
     ]);
 })->name('landing.home');
 
