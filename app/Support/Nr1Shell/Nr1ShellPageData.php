@@ -19,6 +19,7 @@ use App\Services\Nr1\Nr1JourneyBuilder;
 use App\Services\Psychosocial\InternalReviewService;
 use App\Services\PsychosocialDashboardBuilder;
 use App\Services\PsychosocialDashboardExtras;
+use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1InstrumentMatrix;
 use App\Support\PsychosocialMeasurePresenter;
 
@@ -54,6 +55,9 @@ class Nr1ShellPageData
         $respondents = (int) ($cards['participation']['respondents'] ?? 0);
         $groups = $dashboard['groups']['items'] ?? [];
         $others = collect($groups)->firstWhere('kind', 'others');
+        // Pontos fortes só com a base mínima da campanha (mesmo grupo mínimo da privacidade), para qualquer perfil.
+        $minGroup = Nr1GroupPrivacy::minFor($survey);
+        $strengthsAllowed = ! $hideParticipation && $respondents >= $minGroup;
 
         return [
             'hasResults' => true,
@@ -65,14 +69,17 @@ class Nr1ShellPageData
                 'attention' => $cards['attention'],
                 'plan' => $cards['plan'],
             ],
-            'strengths' => collect($dashboard['strengths'] ?? [])->take(3)->map(fn (array $row) => [
+            // As 3 perguntas com maior % favorável (desempate: maior base, depois a ordem da pergunta).
+            'strengths' => $strengthsAllowed ? collect($dashboard['strengths'] ?? [])->take(3)->map(fn (array $row) => [
                 'item' => $items->get($row['id'])['item_number'] ?? null,
                 'dimension' => $row['section_title'] ?? null,
                 'body' => $row['body'],
                 'pct_label' => $row['favorable_pct_label'],
-                'favorable' => (int) round((float) $row['favorable_pct'] * (int) $row['n'] / 100),
+                'favorable' => (int) $row['favorable'],
                 'n' => (int) $row['n'],
-            ])->values()->all(),
+            ])->values()->all() : [],
+            'strengthsEmpty' => $strengthsAllowed ? null : "Pontos fortes aparecem quando a campanha tiver ao menos {$minGroup} respostas, para proteger o anonimato.",
+            'strengthsBase' => $strengthsAllowed ? (int) (collect($dashboard['strengths'] ?? [])->take(3)->max('n') ?? $respondents) : null,
             'dimensions' => collect($dashboard['dimensions'] ?? [])->map(fn (array $row) => [
                 'id' => $row['section_id'],
                 'title' => $row['title'],
@@ -291,11 +298,14 @@ class Nr1ShellPageData
                 'questions' => count($matrix),
                 'dimensions' => collect($matrix)->pluck('section_id')->unique()->count(),
             ],
-            'links' => $survey->audienceLinks()->orderBy('audience')->get()->map(fn (SurveyAudienceLink $link) => [
-                'label' => $link->label(),
-                'url' => $open && $link->closureReason() === null ? route('survey.public', ['token' => $link->token]) : null,
-            ])->values()->all(),
+            'links' => $survey->audienceLinks()->orderBy('audience')->get()->map(function (SurveyAudienceLink $link) use ($open): array {
+                $url = $open && $link->closureReason() === null ? route('survey.public', ['token' => $link->token]) : null;
+
+                return ['label' => $link->label(), 'url' => $url, 'qr' => $url !== null ? Nr1ShellCampaignFacts::qr($url) : null];
+            })->values()->all(),
             'publicUrl' => $open ? route('survey.public', ['token' => $survey->public_token]) : null,
+            'publicQr' => $open ? Nr1ShellCampaignFacts::qr(route('survey.public', ['token' => $survey->public_token])) : null,
+            'facts' => Nr1ShellCampaignFacts::build($survey),
             'participation' => $hideParticipation ? null : [
                 'completed' => $overview['participation']['completed'],
                 'eligible' => $overview['participation']['eligible'],

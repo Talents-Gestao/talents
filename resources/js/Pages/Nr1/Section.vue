@@ -3,9 +3,11 @@ import Nr1Button from '@/Components/Nr1Shell/Nr1Button.vue';
 import CampaignView from '@/Components/Nr1Shell/CampaignView.vue';
 import JourneyView from '@/Components/Nr1Shell/JourneyView.vue';
 import LegacyCampaignView from '@/Components/Nr1Shell/LegacyCampaignView.vue';
+import LegacyCentralView from '@/Components/Nr1Shell/LegacyCentralView.vue';
 import LegacyDocumentsView from '@/Components/Nr1Shell/LegacyDocumentsView.vue';
 import LegacyNotice from '@/Components/Nr1Shell/LegacyNotice.vue';
 import LegacyOverviewView from '@/Components/Nr1Shell/LegacyOverviewView.vue';
+import LegacyPlanView from '@/Components/Nr1Shell/LegacyPlanView.vue';
 import LegacyResultsView from '@/Components/Nr1Shell/LegacyResultsView.vue';
 import DocumentsView from '@/Components/Nr1Shell/DocumentsView.vue';
 import OpportunitiesView from '@/Components/Nr1Shell/OpportunitiesView.vue';
@@ -55,10 +57,12 @@ const view = computed(() => {
         </p>
 
         <template v-if="section.legacy">
-            <LegacyOverviewView v-if="section.key === 'visao-geral'" :overview="section.legacy.overview" :notice="section.legacy.notice" :results-url="menuUrl('resultados')" :documents-url="menuUrl('documentos')" />
+            <LegacyOverviewView v-if="section.key === 'visao-geral'" :overview="section.legacy.overview" :notice="section.legacy.notice" :results-url="menuUrl('resultados')" :documents-url="menuUrl('parecer')" />
             <LegacyCampaignView v-else-if="section.key === 'campanha'" :campaign="section.legacy.campaign" :notice="section.legacy.notice" />
             <LegacyResultsView v-else-if="section.key === 'resultados'" :results="section.legacy.results" :notice="section.legacy.notice" :min-per-sector="section.legacy.minPerSector" :for-talents="section.legacy.forTalents" />
-            <LegacyDocumentsView v-else-if="section.key === 'documentos'" :documents="section.legacy.documents" :notice="section.legacy.notice" />
+            <LegacyPlanView v-else-if="section.key === 'plano-de-acao'" :plan="section.legacy.plan" :notice="section.legacy.notice" />
+            <LegacyCentralView v-else-if="section.key === 'documentos'" :central="section.legacy.central" :notice="section.legacy.notice" />
+            <LegacyDocumentsView v-else-if="section.key === 'parecer'" :documents="section.legacy.documents" :notice="section.legacy.notice" />
             <div class="n1-tools" style="margin-top: 16px">
                 <Nr1Button variant="secondary" :href="section.legacy.fullUrl">{{ section.legacy.fullLabel }} →</Nr1Button>
             </div>

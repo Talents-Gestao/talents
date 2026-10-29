@@ -74,9 +74,10 @@ class Nr1ShellLegacyTest extends TestCase
         $this->actingAs($c->owner)->get(route('nr1.resultados', $q))->assertOk()->assertInertia(fn (Assert $p) => $p
             ->has('section.legacy.results.panel.overall')->has('section.legacy.results.panel.deptSectionsByDepartment')
             ->has('section.legacy.results.panel.questionDistributions')->where('section.legacy.results.client', null)
-            ->where('section.legacy.results.nextUrl', route('nr1.documentos'))->missing('section.results'));
+            ->where('section.legacy.results.nextUrl', route('nr1.parecer'))->missing('section.results'));
 
-        $page = $this->actingAs($c->owner)->get(route('nr1.documentos', $q))->assertOk()->assertInertia(fn (Assert $p) => $p
+        // O Laudo (parecer técnico e publicação) saiu de Documentos para «Parecer e publicação».
+        $page = $this->actingAs($c->owner)->get(route('nr1.parecer', $q))->assertOk()->assertInertia(fn (Assert $p) => $p
             ->has('section.legacy.documents.laudo.technicalOpinionGeneratePostUrl')->has('section.legacy.documents.laudo.publication')
             ->where('section.legacy.documents.laudo.company.id', $c->company->id));
 
@@ -94,10 +95,11 @@ class Nr1ShellLegacyTest extends TestCase
         // Oportunidades é a fila comercial global: não depende do modelo da campanha em foco.
         $this->actingAs($c->owner)->get('/nr1/oportunidades?'.http_build_query($q))->assertOk()->assertInertia(fn (Assert $p) => $p->has('section.opportunities.queue')->missing('section.legacy'));
 
-        // Seções que só existem na V11: não aparecem para o legado (a URL direta leva a Documentos / Visão geral, sem tela vazia).
-        foreach (['plano-de-acao', 'solucoes'] as $section) {
-            $this->actingAs($c->owner)->get('/nr1/'.$section.'?'.http_build_query($q))->assertRedirect();
-        }
+        // Plano de ação e Soluções também abrem no legado: o plano do parecer (só leitura) e os serviços com aviso honesto.
+        $this->actingAs($c->owner)->get(route('nr1.plano-de-acao', $q))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('section.legacy.plan.locked', false)->where('section.legacy.plan.items', [])->where('section.legacy.plan.editUrl', route('nr1.parecer')));
+        $this->actingAs($c->owner)->get(route('nr1.solucoes', $q))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('section.solutions.legacy', true)->where('section.solutions.recommendations', [])->where('section.solutions.canRequest', false));
     }
 
     public function test_the_company_sees_the_legacy_results_and_the_plan_only_as_the_old_pages_do(): void
@@ -111,17 +113,17 @@ class Nr1ShellLegacyTest extends TestCase
             ->where('section.legacy.minPerSector', 1));
 
         // Parecer e plano: nada antes de publicar (a tela antiga mostra o bloqueio) e só os relatórios automáticos.
-        $this->actingAs($c->admin)->get(route('nr1.documentos'))->assertOk()->assertInertia(fn (Assert $p) => $p
+        $this->actingAs($c->admin)->get(route('nr1.parecer'))->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('section.legacy.documents.actionPlan.actionPlanLocked', true)->where('section.legacy.documents.actionPlan.plan', null)
             ->has('section.legacy.documents.reports', 5)->missing('section.legacy.documents.laudo'));
 
         ActionPlan::query()->create(['company_id' => $c->company->id, 'survey_id' => $c->survey->id, 'technical_opinion' => '<p>Parecer publicado</p>', 'admin_published_at' => now()]);
-        $this->actingAs($c->admin)->get(route('nr1.documentos'))->assertInertia(fn (Assert $p) => $p
+        $this->actingAs($c->admin)->get(route('nr1.parecer'))->assertInertia(fn (Assert $p) => $p
             ->where('section.legacy.documents.actionPlan.actionPlanLocked', false)->where('section.legacy.documents.actionPlan.plan.technical_opinion', '<p>Parecer publicado</p>')
             ->has('section.legacy.documents.reports', 6));
 
         // Nada do Talents chega à empresa.
-        $json = (string) json_encode($this->actingAs($c->admin)->get(route('nr1.documentos'))->viewData('page')['props']['section']);
+        $json = (string) json_encode($this->actingAs($c->admin)->get(route('nr1.parecer'))->viewData('page')['props']['section']);
         $this->assertStringNotContainsString('technicalOpinionGeneratePostUrl', $json);
         $this->assertStringNotContainsString('aiGeneratePostUrl', $json);
     }
@@ -179,7 +181,7 @@ class Nr1ShellLegacyTest extends TestCase
         $c = $this->legacy();
         $q = ['empresa' => $c->company->id, 'campanha' => $c->survey->id];
 
-        foreach (['visao-geral', 'campanha', 'resultados', 'documentos'] as $section) {
+        foreach (['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'parecer'] as $section) {
             $this->actingAs($c->owner)->get('/nr1/'.$section.'?'.http_build_query($q))->assertOk()->assertInertia(fn (Assert $p) => $p
                 ->where('section.legacy.notice', 'Pesquisa no modelo anterior')
                 ->where('section.legacy.fullUrl', route('admin.companies.surveys.action-plan.edit', [$c->company->id, $c->survey->id]))
@@ -187,11 +189,9 @@ class Nr1ShellLegacyTest extends TestCase
                 ->missing('section.overview')->where('section.kpis', []));
         }
 
-        // O que é da V11 não aparece: nem no menu, e a URL direta leva à seção equivalente (sem tela vazia).
+        // Menu do legado: todas as seções do Talents, com «Parecer e publicação» logo depois de Documentos.
         $menu = $this->actingAs($c->owner)->get('/nr1/visao-geral?'.http_build_query($q))->viewData('page')['props']['shell']['menu'];
-        $this->assertSame([], array_values(array_intersect(array_column($menu, 'key'), ['plano-de-acao', 'solucoes'])));
-        $this->actingAs($c->owner)->get('/nr1/plano-de-acao?'.http_build_query($q))->assertRedirect('/nr1/documentos?'.http_build_query($q));
-        $this->actingAs($c->owner)->get('/nr1/solucoes?'.http_build_query($q))->assertRedirect('/nr1/visao-geral?'.http_build_query($q));
+        $this->assertSame(['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'parecer', 'solucoes', 'oportunidades'], array_column($menu, 'key'));
 
         // Empresa: a tela de Resultados como caminho direto.
         $this->actingAs($c->admin)->get(route('nr1.documentos'))->assertOk()->assertInertia(fn (Assert $p) => $p
