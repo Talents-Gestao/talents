@@ -19,17 +19,39 @@
     isolation: isolate;
 }
 
-/* Brilho de marca por trás do conteúdo: dá o que o vidro dos cartões refratar. */
+/*
+ * Brilho de marca por trás do conteúdo: dá o que o vidro dos cartões refratar.
+ * Fica dentro da coluna de conteúdo (sem vazar para o padding do <main>) e com o mesmo raio dos
+ * cartões. Cada mancha é uma camada própria com `closest-side`, então chega a transparente na borda
+ * da camada, e as camadas ficam recuadas das bordas do pseudo-elemento: nenhuma borda reta aparece.
+ */
 .admin-home::before {
     content: '';
     position: absolute;
-    inset: -2rem -1rem auto -1rem;
-    height: 34rem;
+    inset: -1.25rem 0 auto 0;
+    height: 32rem;
     z-index: -1;
     pointer-events: none;
+    border-radius: 1.5rem;
     background:
-        radial-gradient(ellipse 42% 60% at 8% 0%, rgb(var(--primary) / 0.13), transparent 70%),
-        radial-gradient(ellipse 38% 55% at 96% 6%, rgb(var(--info) / 0.1), transparent 70%);
+        radial-gradient(
+                closest-side,
+                rgb(var(--primary) / 0.15),
+                rgb(var(--primary) / 0.09) 32%,
+                rgb(var(--primary) / 0.035) 64%,
+                rgb(var(--primary) / 0.01) 86%,
+                transparent
+            )
+            4% 20% / 58% 80% no-repeat,
+        radial-gradient(
+                closest-side,
+                rgb(var(--info) / 0.11),
+                rgb(var(--info) / 0.065) 32%,
+                rgb(var(--info) / 0.025) 64%,
+                rgb(var(--info) / 0.008) 86%,
+                transparent
+            )
+            96% 8% / 46% 70% no-repeat;
 }
 
 /* ---------- Cabeçalho ---------- */
