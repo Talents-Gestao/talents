@@ -1,29 +1,22 @@
 <script setup>
 import Nr1Button from './Nr1Button.vue';
-import { computed } from 'vue';
 import CountUp from './CountUp.vue';
 import DimensionBadge from './DimensionBadge.vue';
 import DimensionBars from './DimensionBars.vue';
 import EmptyState from './EmptyState.vue';
 import GroupDonut from './GroupDonut.vue';
 import LevelPill from './LevelPill.vue';
-import ProgressRing from './ProgressRing.vue';
-import ScoreGauge from './ScoreGauge.vue';
+import Nr1OverviewCards from './Nr1OverviewCards.vue';
 import { dimensionMeta } from './nr1Theme';
 
-const props = defineProps({
+defineProps({
     overview: { type: Object, required: true },
     planUrl: { type: String, default: null },
 });
 
 const print = () => window.print();
-const score = computed(() => parseFloat(String(props.overview.cards?.overall?.score_label ?? '0').replace(',', '.')));
-const participationPercent = computed(() => parseFloat(String(props.overview.cards?.participation?.percent_label ?? '0').replace(',', '.')) || 0);
-const planProgress = computed(() => {
-    const plan = props.overview.cards?.plan;
-
-    return plan && plan.total > 0 ? Math.round((plan.confirmed / plan.total) * 100) : 0;
-});
+// Três cartões de pontos fortes com acento próprio (verde, roxo, azul), como no HTML aprovado.
+const STRENGTH_TONES = ['ok', 'purple', 'blue'];
 </script>
 
 <template>
@@ -51,71 +44,29 @@ const planProgress = computed(() => {
         />
 
         <div v-else class="n1-g12">
-            <div class="n1-card n1-stat purple c3 n1-lift">
-                <div class="n1-cap">Índice geral da pesquisa</div>
-                <div class="n1-stat-row">
-                    <div>
-                        <div class="n1-big"><CountUp :value="overview.cards.overall.score_label" /> <small>/ 5</small></div>
-                        <LevelPill :risk="overview.cards.overall.risk_level" :label="overview.cards.overall.band_label" />
-                    </div>
-                    <ScoreGauge :score="score" :score-label="overview.cards.overall.score_label" :risk="overview.cards.overall.risk_level" :band-label="overview.cards.overall.band_label" />
-                </div>
-            </div>
-            <div class="n1-card n1-stat teal c3 n1-lift">
-                <div class="n1-cap">Participação</div>
-                <template v-if="!overview.cards.participation.hidden">
-                    <div class="n1-stat-row">
-                        <div>
-                            <div class="n1-big"><CountUp :value="overview.cards.participation.percent_label ?? '—'" /></div>
-                            <p class="n1-tiny">
-                                <b>{{ overview.cards.participation.respondents }}</b> respostas
-                                <template v-if="overview.cards.participation.eligible"> · {{ overview.cards.participation.eligible }} elegíveis</template>
-                            </p>
-                        </div>
-                        <ProgressRing :percent="participationPercent" :label="`Participação de ${overview.cards.participation.percent_label}`" />
-                    </div>
-                </template>
-                <template v-else>
-                    <div class="n1-big">—</div>
-                    <p class="n1-tiny">{{ overview.cards.participation.message }}</p>
-                </template>
-            </div>
-            <div class="n1-card n1-stat gold c3 n1-lift">
-                <div class="n1-cap">Dimensões em atenção</div>
-                <div class="n1-big"><CountUp :value="String(overview.cards.attention.count)" /> <small>/ {{ overview.cards.attention.total }}</small></div>
-                <div class="n1-dots" role="img" :aria-label="`${overview.cards.attention.count} de ${overview.cards.attention.total} dimensões em atenção`">
-                    <i v-for="n in overview.cards.attention.total" :key="n" :class="{ on: n <= overview.cards.attention.count }"></i>
-                </div>
-                <p class="n1-tiny">{{ overview.cards.attention.count === overview.attention.length ? 'Todas aparecem nas prioridades' : 'Veja as prioridades abaixo' }}</p>
-            </div>
-            <div class="n1-card n1-stat rose c3 n1-lift">
-                <div class="n1-cap">Plano de ação</div>
-                <div class="n1-big"><CountUp :value="String(overview.cards.plan.confirmed)" /> <small>/ {{ overview.cards.plan.total }}</small></div>
-                <div class="n1-progress" role="img" :aria-label="`${overview.cards.plan.confirmed} de ${overview.cards.plan.total} medidas com responsável confirmado`"><span :style="{ width: planProgress + '%' }"></span></div>
-                <p class="n1-tiny" style="margin-top: 8px">Medidas com responsável confirmado</p>
-            </div>
+            <Nr1OverviewCards :cards="overview.cards" :priorities-count="overview.attention.length" />
 
-            <div v-if="overview.strengths.length" class="n1-card c12">
+            <div class="n1-card c12">
                 <div class="n1-sectiontop">
                     <h2>O que a equipe reconhece como positivo</h2>
                     <span class="n1-pill ok">Pontos fortes da pesquisa</span>
                 </div>
-                <div class="n1-positive">
-                    <div v-for="strength in overview.strengths" :key="strength.item" class="n1-tile n1-lift" :style="{ '--dim': dimensionMeta(strength.dimension).color }">
-                        <div class="n1-row" style="justify-content: flex-start; gap: 8px">
-                            <DimensionBadge v-if="strength.dimension" :title="strength.dimension" :size="26" />
+                <EmptyState v-if="!overview.strengths.length" title="Pontos fortes indisponíveis" :text="overview.strengthsEmpty ?? 'Ainda não há respostas suficientes para calcular os pontos fortes.'" />
+                <template v-else>
+                    <div class="n1-positive">
+                        <div v-for="(strength, index) in overview.strengths" :key="strength.item" class="n1-tile n1-strength n1-lift" :class="STRENGTH_TONES[index % STRENGTH_TONES.length]">
                             <span class="n1-overline">Ponto forte · Pergunta {{ strength.item }}</span>
+                            <div style="margin-top: 6px"><strong><CountUp :value="strength.pct_label" /></strong></div>
+                            <p>{{ strength.body }}</p>
+                            <div class="n1-progress"><span :style="{ width: strength.pct_label.replace(',', '.').replace('%', '') + '%' }"></span></div>
+                            <small>{{ strength.favorable }} de {{ strength.n }} respostas favoráveis</small>
                         </div>
-                        <div style="margin-top: 6px"><strong><CountUp :value="strength.pct_label" /></strong></div>
-                        <p>{{ strength.body }}</p>
-                        <div class="n1-progress"><span :style="{ width: strength.pct_label.replace(',', '.').replace('%', '') + '%', background: dimensionMeta(strength.dimension).color }"></span></div>
-                        <small>{{ strength.favorable }} de {{ strength.n }} respostas favoráveis<template v-if="strength.dimension"> · {{ strength.dimension }}</template></small>
                     </div>
-                </div>
-                <p class="n1-tiny" style="margin-top: 13px">
-                    Percentuais de respostas favoráveis: “Frequentemente” ou “Sempre” nos enunciados positivos; “Nunca” ou “Raramente” nos enunciados desfavoráveis.
-                    <template v-if="overview.respondents">Base: {{ overview.respondents }} respostas por pergunta.</template>
-                </p>
+                    <p class="n1-tiny" style="margin-top: 13px">
+                        Percentuais de respostas favoráveis: “Frequentemente” ou “Sempre” nos enunciados positivos; “Nunca” ou “Raramente” nos enunciados desfavoráveis.
+                        <template v-if="overview.strengthsBase">Base: {{ overview.strengthsBase }} respostas por pergunta.</template>
+                    </p>
+                </template>
             </div>
 
             <div class="n1-card c7">

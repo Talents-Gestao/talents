@@ -131,6 +131,29 @@ final class Nr1ShellStageD
     }
 
     /**
+     * Soluções numa campanha do modelo anterior: só os serviços. As recomendações dependem das 7 dimensões do
+     * questionário V11, então não há regra aplicável nem botão de pedido (estado honesto, sem recomendação inventada).
+     *
+     * @return array<string, mixed>
+     */
+    public function solutionsForLegacy(string $profile): array
+    {
+        $staff = $profile !== Nr1Shell::PROFILE_EMPRESA;
+
+        return [
+            'mode' => $staff ? 'staff' : 'company',
+            'cards' => Nr1ServiceCards::all(),
+            'recommendations' => [],
+            'requests' => [],
+            'canRequest' => false,
+            'locked' => false,
+            'noSurvey' => false,
+            'legacy' => true,
+            'rulesUrl' => $staff ? route('admin.service-matches.index') : null,
+        ];
+    }
+
+    /**
      * Fila comercial: as props do controller atual (contadores, filtros, fila) mais as transições permitidas e os
      * últimos eventos de cada oportunidade. As ações usam as rotas de assumir, mudar de estado e próxima ação.
      *

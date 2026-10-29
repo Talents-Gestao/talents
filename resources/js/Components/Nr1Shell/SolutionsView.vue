@@ -3,6 +3,7 @@ import { router } from '@inertiajs/vue3';
 import CountUp from './CountUp.vue';
 import DimensionBadge from './DimensionBadge.vue';
 import EmptyState from './EmptyState.vue';
+import LegacyNotice from './LegacyNotice.vue';
 import LevelPill from './LevelPill.vue';
 import Nr1Button from './Nr1Button.vue';
 import { BAND_BY_RISK } from './nr1Theme';
@@ -33,6 +34,7 @@ const request = (item) => {
                 <h1>Soluções conectadas às necessidades.</h1>
                 <p>Serviços que podem apoiar o plano de ação, a partir dos fatores sinalizados na pesquisa.</p>
             </div>
+            <LegacyNotice v-if="solutions.legacy" text="Pesquisa no modelo anterior" />
         </div>
 
         <p v-if="solutions.locked" class="n1-notice warn" role="status" style="margin-bottom: 15px">Recomendações disponíveis quando o relatório for publicado.</p>
@@ -51,7 +53,8 @@ const request = (item) => {
                     <span v-if="solutions.recommendations.length" class="n1-badge-total"><CountUp :value="String(solutions.recommendations.length)" /> {{ solutions.recommendations.length === 1 ? 'frente de atenção' : 'frentes de atenção' }}</span>
                 </div>
 
-                <EmptyState v-if="solutions.noSurvey" title="Escolha uma campanha para ver as recomendações" text="As recomendações são geradas a partir dos resultados de cada campanha publicada; aqui o Comercial acompanha os serviços e as regras." />
+                <EmptyState v-if="solutions.legacy" title="Recomendações indisponíveis nesta pesquisa" text="As recomendações ligam os serviços às 7 dimensões do questionário NR-1 de 39 perguntas. Esta campanha está no modelo anterior; os serviços acima seguem disponíveis sob proposta." />
+                <EmptyState v-else-if="solutions.noSurvey" title="Escolha uma campanha para ver as recomendações" text="As recomendações são geradas a partir dos resultados de cada campanha publicada; aqui o Comercial acompanha os serviços e as regras." />
                 <EmptyState v-else-if="solutions.locked" title="Recomendações ainda bloqueadas" text="Elas aparecem para a empresa e para a consultoria quando o relatório da campanha for publicado." />
                 <EmptyState v-else-if="!solutions.recommendations.length" title="Ainda não há recomendações para esta campanha" text="Elas aparecem quando uma dimensão fica em atenção e a Talents libera o serviço correspondente." />
 

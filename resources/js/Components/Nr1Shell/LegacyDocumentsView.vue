@@ -6,7 +6,7 @@ import LegacyNotice from './LegacyNotice.vue';
 import Nr1Button from './Nr1Button.vue';
 
 /**
- * Documentos no modelo anterior: Laudo 02 Parecer + 03 Publicar + Documentos liberados (Talents, mesmo corpo da tela
+ * Parecer e publicação (modelo anterior; antes ficava em Documentos): Laudo 02 Parecer + 03 Publicar + Documentos liberados (Talents, mesmo corpo da tela
  * antiga) ou o parecer e plano publicados (empresa). As ações que a tela antiga mostrava no cabeçalho (Cadastro técnico,
  * Medidas, Liberar resumo executivo, subsídio AEP/PGR, Exportar resultados) ficam na barra abaixo. O fluxo
  * Rascunho → Publicado e o gate «só após publicação» são os do legado.
@@ -24,9 +24,9 @@ const laudo = computed(() => props.documents.laudo ?? null);
     <div>
         <div class="n1-intro">
             <div>
-                <div class="n1-eyebrow">Central de documentos</div>
+                <div class="n1-eyebrow">Parecer e publicação</div>
                 <h1>Parecer técnico e publicação.</h1>
-                <p>Laudo 02 · Parecer e 03 · Publicar, com os documentos liberados desta campanha.</p>
+                <p>Laudo 02 · Parecer e 03 · Publicar, com os documentos liberados desta campanha. Os arquivos finais ficam em Documentos.</p>
             </div>
             <LegacyNotice :text="notice" />
         </div>

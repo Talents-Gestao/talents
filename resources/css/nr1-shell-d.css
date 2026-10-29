@@ -128,3 +128,28 @@
 .nr1-shell input[type='checkbox']:focus-visible,
 .nr1-shell input[type='radio']:focus-visible { outline: 3px solid #7a3f94; outline-offset: 2px; }
 .nr1-shell .n1-pager { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
+
+/* Pontos fortes (verde, roxo, azul) e QR do link da campanha. */
+.nr1-shell .n1-strength.ok { --dim: #3fae8c; }
+.nr1-shell .n1-strength.purple { --dim: #9b6cc4; }
+.nr1-shell .n1-strength.blue { --dim: #5b8fd4; }
+.nr1-shell .n1-strength .n1-progress span { background: var(--dim); }
+.nr1-shell .n1-qr { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.nr1-shell .n1-qr img { border: 1px solid #eadff2; border-radius: 10px; background: #fff; padding: 4px; }
+
+/* Central de documentos (modelo anterior) e plano do parecer. */
+.nr1-shell .n1-docgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 15px; align-items: start; }
+.nr1-shell .n1-docrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid #f0e8f5; }
+.nr1-shell .n1-docrow:last-child { border-bottom: 0; }
+.nr1-shell .n1-docrow p { margin: 3px 0 0; font-size: 12px; color: #5b6770; line-height: 1.5; }
+.nr1-shell .n1-docico { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: #f2e8ff; color: #794c9c; font-size: 17px; }
+.nr1-shell .n1-history { list-style: none; margin: 8px 0 0; padding: 0; }
+.nr1-shell .n1-history li { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #eee4f3; font-size: 12px; }
+.nr1-shell .n1-history time { color: #6b5a78; font-weight: 700; white-space: nowrap; }
+.nr1-shell .n1-planlist { list-style: none; margin: 0; padding: 0; }
+.nr1-shell .n1-planlist li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 13px 0; border-bottom: 1px solid #f0e8f5; }
+.nr1-shell .n1-planlist li:last-child { border-bottom: 0; }
+.nr1-shell .n1-planlist p { margin: 3px 0 0; font-size: 12px; color: #5b6770; }
+@media (max-width: 860px) {
+    .nr1-shell .n1-docgrid { grid-template-columns: 1fr; }
+}

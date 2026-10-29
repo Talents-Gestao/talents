@@ -39,8 +39,8 @@ class ShellController extends Controller
         Nr1Shell::PROFILE_COLABORADOR => 'Colaborador',
     ];
 
-    /** Seções que só existem na V11 (o legado concentra o plano no parecer). */
-    private const NOT_IN_LEGACY = ['plano-de-acao', 'solucoes'];
+    /** Seções que só existem no modelo anterior: o Laudo (parecer técnico e publicação). Na V11 a publicação vive em Documentos. */
+    private const ONLY_LEGACY = ['parecer'];
 
     public function index(Request $request): RedirectResponse
     {
@@ -65,11 +65,10 @@ class ShellController extends Controller
 
         $context = Nr1ShellContext::resolve($request, $user, $profile);
 
-        // Campanha do modelo anterior: Soluções e o plano por medidas são da V11 (o plano dela vive no parecer, em Documentos).
-        // O que não se aplica ao legado não aparece no menu; a URL direta leva à seção equivalente.
+        // «Parecer e publicação» só existe no modelo anterior; na V11 (ou sem campanha) a URL direta leva a Documentos.
         $legacy = $context->survey !== null && Nr1ShellLegacy::isLegacy($context->survey);
-        if ($legacy && in_array($section, self::NOT_IN_LEGACY, true)) {
-            $target = collect([$section === 'plano-de-acao' ? 'documentos' : 'visao-geral', 'visao-geral', 'campanha', 'resultados', 'documentos'])
+        if (! $legacy && in_array($section, self::ONLY_LEGACY, true)) {
+            $target = collect(['documentos', 'visao-geral', 'campanha', 'resultados'])
                 ->first(fn (string $key) => Nr1Shell::allows($user, $key, $profile));
             abort_if($target === null, 403);
 
@@ -82,7 +81,7 @@ class ShellController extends Controller
                 'profileLabel' => self::PROFILE_LABELS[$profile],
                 'menu' => array_values(array_map(
                     fn (array $item) => $item + ['href' => route('nr1.'.$item['key'])],
-                    array_filter(Nr1Shell::sectionsFor($user), fn (array $item) => ! $legacy || ! in_array($item['key'], self::NOT_IN_LEGACY, true)),
+                    array_filter(Nr1Shell::sectionsFor($user), fn (array $item) => $legacy || ! in_array($item['key'], self::ONLY_LEGACY, true)),
                 )),
                 'current' => $section,
                 'backUrl' => match (true) {
@@ -122,7 +121,11 @@ class ShellController extends Controller
         if ($section === 'solucoes' && $survey === null && $profile === Nr1Shell::PROFILE_COMERCIAL) {
             return ['solutions' => $stageD->solutionsWithoutSurvey()];
         }
-        // Campanha do modelo anterior: o legado integrado (mesmas props e regras das telas antigas) ou só o aviso.
+        // Modelo anterior: as regras de Soluções usam as 7 dimensões da V11; ficam os serviços e um aviso honesto.
+        if ($section === 'solucoes' && $survey !== null && Nr1ShellLegacy::isLegacy($survey)) {
+            return ['solutions' => $stageD->solutionsForLegacy($profile)];
+        }
+        // Campanha do modelo anterior: o legado integrado (mesmas props e regras das telas antigas).
         if ($survey !== null && Nr1ShellLegacy::isLegacy($survey)) {
             return ['legacy' => app(Nr1ShellLegacy::class)->section($request, $user, $profile, $section, $survey, $context->company)];
         }

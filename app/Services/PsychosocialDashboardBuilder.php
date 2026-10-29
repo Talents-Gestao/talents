@@ -505,7 +505,7 @@ class PsychosocialDashboardBuilder
     {
         return collect($items)
             ->filter(fn (array $item) => $item['n'] > 0 && $item['favorable_pct'] !== null)
-            ->sort(fn (array $a, array $b) => [$b['favorable_pct'], $b['n'], $a['id']] <=> [$a['favorable_pct'], $a['n'], $b['id']])
+            ->sort(fn (array $a, array $b) => [$b['favorable_pct'], $b['n'], $a['position']] <=> [$a['favorable_pct'], $a['n'], $b['position']])
             ->take($limit)
             ->map(fn (array $item) => [
                 'id' => $item['id'],
@@ -513,6 +513,8 @@ class PsychosocialDashboardBuilder
                 'section_title' => $item['section_title'],
                 'favorable_pct' => $item['favorable_pct'],
                 'favorable_pct_label' => number_format((float) $item['favorable_pct'], 1, ',', '').'%',
+                // Contagem real de respostas favoráveis (mesmo sentido do % favorável).
+                'favorable' => $item['statement'] === 'favorable' ? $item['counts'][4] + $item['counts'][5] : $item['counts'][1] + $item['counts'][2],
                 'n' => $item['n'],
             ])
             ->values()

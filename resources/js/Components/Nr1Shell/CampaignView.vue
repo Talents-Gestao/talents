@@ -2,6 +2,7 @@
 import Nr1Button from './Nr1Button.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import CampaignStatus from './CampaignStatus.vue';
 import EmptyState from './EmptyState.vue';
 import { useNr1Toast } from './useNr1Toast';
 
@@ -220,12 +221,20 @@ const copy = async (url) => {
                             <input :id="'link-' + link.label" type="text" readonly :value="link.url" class="n1-field" :aria-label="'Link da campanha ' + link.label" />
                             <Nr1Button variant="primary" block type="button" @click="copy(link.url)">{{ copied === link.url ? 'Link copiado' : 'Copiar link da pesquisa' }}</Nr1Button>
                         </div>
+                        <div v-if="link.qr" class="n1-qr">
+                            <img :src="link.qr" :alt="'QR Code do link da campanha ' + link.label" width="112" height="112" />
+                            <a :href="link.qr" :download="'qr-campanha-' + link.label.toLowerCase() + '.svg'" class="n1-tiny">Baixar QR Code</a>
+                        </div>
                     </div>
                     <div v-if="!campaign.links.some((l) => l.url) && campaign.publicUrl">
                         <label class="n1-label" for="link-campanha">Link da campanha</label>
                         <div class="n1-fields">
                             <input id="link-campanha" type="text" readonly :value="campaign.publicUrl" class="n1-field" aria-label="Link da campanha" />
                             <Nr1Button variant="primary" block type="button" @click="copy(campaign.publicUrl)">{{ copied === campaign.publicUrl ? 'Link copiado' : 'Copiar link da pesquisa' }}</Nr1Button>
+                        </div>
+                        <div v-if="campaign.publicQr" class="n1-qr">
+                            <img :src="campaign.publicQr" alt="QR Code do link da campanha" width="112" height="112" />
+                            <a :href="campaign.publicQr" download="qr-campanha.svg" class="n1-tiny">Baixar QR Code</a>
                         </div>
                     </div>
                 </div>
@@ -253,6 +262,8 @@ const copy = async (url) => {
                 </form>
                 <span class="n1-pill" :class="campaign.collection.open ? 'ok' : 'gray'">{{ campaign.collection.open ? 'Coleta em andamento' : 'Coleta finalizada' }}</span>
             </div>
+
+            <CampaignStatus v-if="campaign.facts" :facts="campaign.facts" />
 
             <div v-if="content" class="n1-card c12" role="region" aria-live="polite" aria-label="Material">
                 <div class="n1-row">

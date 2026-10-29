@@ -1,26 +1,24 @@
 <script setup>
-import { computed } from 'vue';
-import CountUp from './CountUp.vue';
 import DimensionBadge from './DimensionBadge.vue';
 import EmptyState from './EmptyState.vue';
 import LegacyNotice from './LegacyNotice.vue';
 import LevelPill from './LevelPill.vue';
 import Nr1Button from './Nr1Button.vue';
-import ScoreGauge from './ScoreGauge.vue';
+import Nr1OverviewCards from './Nr1OverviewCards.vue';
 import { BAND_BY_RISK } from './nr1Theme';
 
 /**
  * Visão geral de uma campanha do modelo anterior: cabeçalho do laudo (período, cenário de risco, mínimo por setor,
- * última publicação) + indicador geral e dimensões do legado. Sem pontos fortes nem plano V11 (não existem aqui).
+ * última publicação), os quatro cartões (índice, participação, dimensões em atenção, plano do parecer) e as dimensões.
+ * Pontos fortes: estado honesto (dependem do sentido dos enunciados do questionário de 39 perguntas).
  */
-const props = defineProps({
+defineProps({
     overview: { type: Object, required: true },
     notice: { type: String, default: 'Pesquisa no modelo anterior' },
     resultsUrl: { type: String, default: null },
     documentsUrl: { type: String, default: null },
 });
 
-const score = computed(() => parseFloat(String(props.overview.overall?.score_label ?? '0').replace(',', '.')));
 const fillClass = (risk) => (risk === 'green' ? 'ok' : risk === 'yellow' ? 'warn' : 'high');
 const SURVEY_STATUS = { active: 'Em coleta', closed: 'Encerrada', draft: 'Rascunho' };
 </script>
@@ -50,28 +48,17 @@ const SURVEY_STATUS = { active: 'Em coleta', closed: 'Encerrada', draft: 'Rascun
             </dl>
         </section>
 
-        <EmptyState v-if="!overview.overall" title="Ainda não há resultados calculados" text="Os indicadores aparecem aqui quando houver respostas concluídas e o cálculo for feito." />
+        <EmptyState v-if="!overview.overall || !overview.cards" title="Ainda não há resultados calculados" text="Os indicadores aparecem aqui quando houver respostas concluídas e o cálculo for feito." />
 
         <div v-else class="n1-g12">
-            <div class="n1-card n1-stat purple c4 n1-lift">
-                <div class="n1-cap">Índice geral da pesquisa</div>
-                <div class="n1-stat-row">
-                    <div>
-                        <div class="n1-big"><CountUp :value="overview.overall.score_label" /> <small>/ 5</small></div>
-                        <LevelPill :risk="overview.overall.risk_level" :label="BAND_BY_RISK[overview.overall.risk_level]" />
-                    </div>
-                    <ScoreGauge :score="score" :score-label="overview.overall.score_label" :risk="overview.overall.risk_level" :band-label="BAND_BY_RISK[overview.overall.risk_level]" />
+            <Nr1OverviewCards :cards="overview.cards" />
+
+            <div class="n1-card c12">
+                <div class="n1-sectiontop">
+                    <h2>O que a equipe reconhece como positivo</h2>
+                    <span class="n1-pill ok">Pontos fortes da pesquisa</span>
                 </div>
-            </div>
-            <div class="n1-card n1-stat teal c4 n1-lift">
-                <div class="n1-cap">Respostas concluídas</div>
-                <div class="n1-big"><CountUp :value="String(overview.respondents)" /></div>
-                <p class="n1-tiny">Participação por setor em Resultados.</p>
-            </div>
-            <div class="n1-card n1-stat gold c4 n1-lift">
-                <div class="n1-cap">Dimensões</div>
-                <div class="n1-big"><CountUp :value="String(overview.dimensions.length)" /></div>
-                <p class="n1-tiny">Leitura por dimensão em Resultados.</p>
+                <EmptyState title="Pontos fortes indisponíveis nesta pesquisa" :text="overview.strengthsEmpty" />
             </div>
 
             <div class="n1-card c12">

@@ -309,10 +309,31 @@ export const wrapLines = (text, maxWidth, measure) => {
  * Layout do conteúdo impresso no painel (px do painel). `measure(text, size, weight, tracking)` → largura.
  * Fonte única para o canvas e para a camada DOM, para que ambos coincidam.
  */
-export const heroLayout = ({ pw, ph, S, portrait, content, measure }) => {
+/** Conteúdo do cabeçalho da landing: max-w-6xl com px-4. */
+export const HEADER_MAX = 1152;
+export const HEADER_PAD = 16;
+
+/**
+ * Painel da Hero em tela cheia (W×H da Hero). O vidro sangra além das bordas: o recuo e o canto arredondado das
+ * peças externas ficam fora da tela, e o fundo e o vidro vão até a borda. Só a coluna de texto tem largura
+ * máxima, alinhada ao conteúdo do cabeçalho (no desktop largo) e com respiro mínimo de 5% (6% no retrato).
+ */
+export const heroGeometry = (W, H) => {
+    const portrait = W < 700;
+    const bleed = (GAP / 2 + BEVEL + CORNER_RADIUS * 0.5) * Math.max(W / REF_WIDTH, 0.42);
+    const pw = W + bleed * 2;
+    const ph = H + bleed * 2;
+    const S = pw / REF_WIDTH;
+    const left = portrait ? Math.max(20, W * 0.06) : Math.max((W - HEADER_MAX) / 2 + HEADER_PAD, W * 0.05);
+    const right = portrait ? W - left : W * 0.47;
+    return { W, H, portrait, fade: 0, mx: -bleed, my: -bleed, pw, ph, S, Sg: Math.max(S, 0.42), column: { x: bleed + left, w: right - left } };
+};
+
+export const heroLayout = ({ pw, ph, S, portrait, content, measure, column = null }) => {
     const u = Math.max(S, 0.62);
-    const padX = portrait ? pw * 0.07 : pw * 0.05;
-    const textW = portrait ? pw - padX * 2 : pw * 0.44 - padX;
+    // column: coluna de texto em coordenadas do painel (na Hero em tela cheia, alinhada ao cabeçalho)
+    const padX = column ? column.x : portrait ? pw * 0.07 : pw * 0.05;
+    const textW = column ? column.w : portrait ? pw - padX * 2 : pw * 0.44 - padX;
     const eyebrowSize = Math.max(11 * S, 10);
     const eyebrowTracking = 0.2 * eyebrowSize;
     const eyebrowLines = wrapLines(content.eyebrow.toUpperCase(), textW, (t) =>

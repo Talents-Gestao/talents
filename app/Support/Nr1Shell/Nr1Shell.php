@@ -38,14 +38,16 @@ final class Nr1Shell
         'resultados' => ['Resultados da pesquisa', '▥'],
         'plano-de-acao' => ['Plano de ação', '☷'],
         'documentos' => ['Documentos', '▤'],
+        // Só nas campanhas do modelo anterior: o Laudo (parecer técnico, publicação e documentos liberados).
+        'parecer' => ['Parecer e publicação', '✎'],
         'solucoes' => ['Soluções Talents', '✦'],
         'oportunidades' => ['Oportunidades', '↗'],
     ];
 
     /** PERMISSIONS do HTML aprovado (colaborador: Campanha NR-1 e Minha jornada, conforme a diretriz do produto). */
     public const MATRIX = [
-        self::PROFILE_TALENTS => ['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'solucoes', 'oportunidades'],
-        self::PROFILE_EMPRESA => ['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'solucoes'],
+        self::PROFILE_TALENTS => ['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'parecer', 'solucoes', 'oportunidades'],
+        self::PROFILE_EMPRESA => ['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'parecer', 'solucoes'],
         self::PROFILE_PASSEG => ['documentos'],
         self::PROFILE_COMERCIAL => ['solucoes', 'oportunidades'],
         self::PROFILE_COLABORADOR => ['campanha', 'minha-jornada'],
@@ -93,12 +95,15 @@ final class Nr1Shell
                 default => $user->canAccessAdmin(AdminPermissionModule::Companies, PermissionAction::View),
             },
             // Mesmo módulo das rotas client antigas: plano = planos_acao; documentos e painel/KPIs (visão geral e
-            // resultados leem o painel psicossocial) = relatorios; campanha e soluções = pesquisas.
-            self::PROFILE_EMPRESA => $user->canAccess(match ($section) {
-                'plano-de-acao' => PermissionModule::PlanosAcao,
-                'documentos', 'visao-geral', 'resultados' => PermissionModule::Relatorios,
-                default => PermissionModule::Pesquisas,
-            }, PermissionAction::View),
+            // resultados leem o painel psicossocial) = relatorios; campanha e soluções = pesquisas. O parecer (que antes
+            // ficava em Documentos) mantém as duas exigências de antes: relatorios e planos_acao.
+            self::PROFILE_EMPRESA => $section === 'parecer'
+                ? $user->canAccess(PermissionModule::Relatorios, PermissionAction::View) && $user->canAccess(PermissionModule::PlanosAcao, PermissionAction::View)
+                : $user->canAccess(match ($section) {
+                    'plano-de-acao' => PermissionModule::PlanosAcao,
+                    'documentos', 'visao-geral', 'resultados' => PermissionModule::Relatorios,
+                    default => PermissionModule::Pesquisas,
+                }, PermissionAction::View),
             self::PROFILE_PASSEG => DocumentShareService::enabled(),
             default => false,
         };
