@@ -12,6 +12,7 @@ import {
     calmNear,
     clamp,
     heroCells,
+    heroGeometry,
     heroLayout,
     homographyToMatrix3d,
     insetPolygon,
@@ -56,9 +57,6 @@ const PALETTE = {
     page: '#faf8fc',
 };
 const BG = 0xfaf8fc;
-// Respiro abaixo da placa (a transição agora é claro → claro, sem degradê escuro).
-const FADE_DESKTOP = 48;
-const FADE_MOBILE = 32;
 
 const supportsGlass = () => {
     if (typeof window === 'undefined') return false;
@@ -108,31 +106,23 @@ const measure = (text, size, weight, tracking) => {
     return hasLS ? w : w + tracking * text.length;
 };
 
-/** Painel de vidro dentro do Hero (W×H do Hero): mesma conta do canvas. */
-const geometryOf = (W, H) => {
-    const portrait = W < 700;
-    const fade = portrait ? FADE_MOBILE : FADE_DESKTOP;
-    const mx = portrait ? 16 : W * 0.055;
-    const my = portrait ? 16 : (H - fade) * 0.085;
-    const pw = W - mx * 2;
-    const ph = H - fade - my * 2;
-    const S = pw / REF_WIDTH;
-    return { W, H, portrait, fade, mx, my, pw, ph, S, Sg: Math.max(S, 0.42) };
-};
+/** Painel de vidro em tela cheia (W×H da Hero): mesma conta do canvas. */
+const geometryOf = heroGeometry;
 
 const applyGeometry = (W, H) => {
     // sem largura útil (oculto ou em transição de viewport): mantém o último layout
     if (W < 200 || !H) return null;
     const gm = geometryOf(W, H);
     geo.value = gm;
-    layout.value = heroLayout({ pw: gm.pw, ph: gm.ph, S: gm.S, portrait: gm.portrait, content: CONTENT, measure });
+    layout.value = heroLayout({ pw: gm.pw, ph: gm.ph, S: gm.S, portrait: gm.portrait, column: gm.column, content: CONTENT, measure });
     return gm;
 };
 
-// Altura do .hero-glass no CSS: clamp(620px, 50vw, 780px) + 48px; no retrato (<768px) 780px + 32px.
+// Altura do .hero-glass no CSS: a primeira dobra sob o cabeçalho (88px; 72px abaixo de 768px), com mínimo de 600px (680px).
 const initialSize = () => {
     const vw = window.innerWidth;
-    return { W: document.documentElement.clientWidth, H: vw < 768 ? 812 : Math.min(780, Math.max(620, vw / 2)) + 48 };
+    const H = vw < 768 ? Math.max(680, window.innerHeight - 72) : Math.max(600, window.innerHeight - 88);
+    return { W: document.documentElement.clientWidth, H };
 };
 
 if (typeof window !== 'undefined') {
@@ -176,7 +166,7 @@ const restTransform = (gm) => {
 const layerStyle = computed(() => ({ width: `${geo.value.pw}px`, height: `${geo.value.ph}px`, transform: restTransform(geo.value) }));
 const cardStyle = computed(() => {
     const gm = geo.value;
-    return { left: `${gm.mx}px`, top: `${gm.my}px`, width: `${gm.pw}px`, height: `${gm.ph}px`, borderRadius: `${CORNER_RADIUS * gm.Sg}px` };
+    return { left: `${gm.mx}px`, top: `${gm.my}px`, width: `${gm.pw}px`, height: `${gm.ph}px` };
 });
 // Fundo da cena (mesmas cores e manchas do canvas), em CSS.
 const staticBgStyle = computed(() => {
@@ -197,10 +187,8 @@ const staticBgStyle = computed(() => {
 });
 const imageStyle = computed(() => {
     const b = layout.value.image;
-    const r = `${CORNER_RADIUS * geo.value.Sg}px`;
     return {
         ...box(b),
-        borderRadius: geo.value.portrait ? `0 0 ${r} ${r}` : `0 ${r} ${r} 0`,
         WebkitMaskImage: geo.value.portrait ? 'linear-gradient(to bottom, transparent, #000 12%)' : 'linear-gradient(to right, transparent, #000 35%)',
         maskImage: geo.value.portrait ? 'linear-gradient(to bottom, transparent, #000 12%)' : 'linear-gradient(to right, transparent, #000 35%)',
     };
@@ -640,7 +628,7 @@ const init = async () => {
         if (W < 200 || !H) return;
         const gm = geometryOf(W, H);
         geo.value = gm;
-        Object.assign(g, { W, H, portrait: gm.portrait, fade: gm.fade, pw: gm.pw, ph: gm.ph, S: gm.S, Sg: gm.Sg });
+        Object.assign(g, { W, H, portrait: gm.portrait, fade: gm.fade, pw: gm.pw, ph: gm.ph, S: gm.S, Sg: gm.Sg, column: gm.column });
         block.position.y = g.fade / 2;
         g.frontZ = (DEPTH / 2 + BEVEL) * g.Sg;
         g.dpr = Math.min(2, Math.max(1.5, window.devicePixelRatio || 1));
@@ -652,7 +640,7 @@ const init = async () => {
         camera.position.set(0, 0, H / 2 / Math.tan((15 * Math.PI) / 180));
         camera.far = camera.position.z + 3000;
         camera.updateProjectionMatrix();
-        layout.value = heroLayout({ pw: g.pw, ph: g.ph, S: g.S, portrait: g.portrait, content: CONTENT, measure });
+        layout.value = heroLayout({ pw: g.pw, ph: g.ph, S: g.S, portrait: g.portrait, column: g.column, content: CONTENT, measure });
         // Folga de 16 px (+ recuo do vidro) entre texto/CTAs e qualquer corte.
         const clearance = (16 + (GAP / 2 + BEVEL) * g.Sg) * 1.2;
         g.keep = keepoutRects(layout.value.keepout, g.pw, g.ph, clearance, g.portrait);
@@ -988,15 +976,20 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .hero-glass {
+    /* Tela cheia: a primeira dobra inteira sob o cabeçalho de vidro (sticky, 88px; 72px abaixo de 768px). */
     position: relative;
-    height: calc(clamp(620px, 50vw, 780px) + 48px);
+    height: calc(100vh - 88px);
+    height: calc(100svh - 88px);
+    min-height: 600px;
     overflow: hidden;
     background: linear-gradient(to bottom, #ffffff 0%, rgba(250, 248, 252, 0) 100%);
 }
 
 @media (max-width: 767px) {
     .hero-glass {
-        height: calc(780px + 32px);
+        height: calc(100vh - 72px);
+        height: calc(100svh - 72px);
+        min-height: 680px;
     }
 }
 
@@ -1011,10 +1004,6 @@ onBeforeUnmount(() => {
 .hero-glass__card {
     position: absolute;
     background: #f5f5f7;
-    box-shadow:
-        0 0 0 3px rgba(179, 136, 217, 0.32),
-        0 16px 34px rgba(74, 32, 112, 0.2),
-        inset 0 2px 0 rgba(255, 255, 255, 0.9);
 }
 
 .hero-glass__canvas {
