@@ -402,10 +402,19 @@
     gap: 1.1rem;
 }
 
+/*
+ * Na linha de três cartões, o de Leads estica até a altura do Funil/Meta: o donut ocupa o espaço
+ * livre e fica centralizado nele, em vez de deixar um vazio acima de "Ver leads".
+ */
+.admin-home .home-card--leads .home-donut {
+    flex: 1;
+    justify-content: center;
+}
+
 .admin-home .home-donut__chart {
     position: relative;
     margin-inline: auto;
-    width: min(100%, 12.5rem);
+    width: min(100%, 13.5rem);
     aspect-ratio: 1;
 }
 
@@ -562,6 +571,27 @@
     cursor: pointer;
 }
 
+/* O cartão inteiro edita a meta: hover e foco avisam isso no subtítulo e no trilho do medidor. */
+.admin-home .home-card--goal .home-card__sub {
+    transition: color 0.2s;
+}
+
+.admin-home .home-card--goal:hover .home-card__sub,
+.admin-home .home-card--goal:focus-visible .home-card__sub {
+    color: rgb(var(--primary-text));
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.admin-home .home-card--goal .home-gauge__track {
+    transition: stroke 0.25s;
+}
+
+.admin-home .home-card--goal:hover .home-gauge__track,
+.admin-home .home-card--goal:focus-visible .home-gauge__track {
+    stroke: rgb(var(--primary) / 0.16);
+}
+
 .admin-home .home-gauge {
     position: relative;
     margin: 0.75rem auto 0;
@@ -680,10 +710,12 @@
     --seller: var(--talents-400);
 }
 
+/* Em cartão estreito o valor desce para a linha de baixo, em vez de truncar o nome. */
 .admin-home .home-seller__row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.15rem 0.6rem;
 }
 
 .admin-home .home-seller__avatar {
@@ -703,7 +735,7 @@
 
 .admin-home .home-seller__name {
     min-width: 0;
-    flex: 1;
+    flex: 1 1 5.5rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -714,6 +746,7 @@
 
 .admin-home .home-seller__value {
     flex: none;
+    margin-left: auto;
     font-size: 0.8125rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
