@@ -1,11 +1,31 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
+import {
+    BEVEL,
+    CORNER_RADIUS,
+    DEPTH,
+    GAP,
+    REF_WIDTH,
+    applyHomography,
+    boxCenter,
+    calmNear,
+    clamp,
+    heroCells,
+    heroLayout,
+    homographyToMatrix3d,
+    insetPolygon,
+    keepoutRects,
+    roundedCorners,
+    solveHomography,
+    springStep,
+} from '@/utils/heroGlass.js';
 
 /**
- * Hero "Designed in glass" (WebGL). Fallback técnico: sem WebGL, com reduced-motion, aparelho fraco
- * ou contexto perdido, renderiza apenas o slot (Hero em HTML, com o mesmo conteúdo real).
- * Os textos abaixo espelham o Hero de Welcome.vue / LandingHeroTypewriter.vue.
+ * Hero "Designed in glass". A PRIMEIRA pintura já é a composição final, em HTML/CSS (mesmo leiaute, foto e texto do
+ * vidro; painel em versão CSS), calculada de forma síncrona com o mesmo `heroLayout` do canvas. O WebGL entra por cima
+ * com um fade de opacidade, sem mudar tamanho, posição nem imagem; só então o texto do DOM vira transparente (o canvas
+ * passa a desenhá-lo). Sem WebGL, com reduced-motion ou aparelho fraco, fica só a composição estática (sem fade).
  */
 
 const CONTENT = {
@@ -18,7 +38,7 @@ const CONTENT = {
         { label: 'Falar com Especialista', route: 'landing.contato' },
     ],
     image: {
-        src: '/images/hero-home.png',
+        src: '/images/hero-home.webp',
         alt: 'Profissional apresentando perfis comportamentais: Executor, Comunicador, Planejador e Analista',
     },
 };
@@ -52,22 +72,84 @@ const supportsGlass = () => {
     }
 };
 
-// pending: slot visível até o WebGL estar pronto · glass: vidro ativo · fallback: Hero atual
-const mode = ref(supportsGlass() ? 'pending' : 'fallback');
+// static: composição final em HTML/CSS (1ª pintura e fallback) · glass: canvas entrando por cima (fade)
+const wantsGlass = supportsGlass();
+const mode = ref('static');
+// canvas totalmente visível: o texto/foto do DOM ficam transparentes (o canvas os desenha)
+const settled = ref(false);
 const rootEl = ref(null);
 const canvasEl = ref(null);
 const layerEl = ref(null);
+const imageEl = ref(null);
+const geo = shallowRef(null);
 const layout = shallowRef(null);
-const panel = ref({ w: 0, h: 0 });
+// Foto já em cache (ou pré-carregada pelo HTML) entra na 1ª pintura; senão, aparece com um fade ao carregar.
+const imageReady = ref(false);
+if (typeof Image !== 'undefined') {
+    const probe = new Image();
+    probe.onload = () => (imageReady.value = true);
+    probe.src = CONTENT.image.src;
+    imageReady.value = probe.complete && probe.naturalWidth > 0;
+}
 const hoverCta = ref(-1);
 const focusCta = ref(-1);
 
 let engine = null;
 let disposed = false;
 
+// Medição compartilhada pelo leiaute estático e pelo do canvas (mesma fonte, mesmo resultado).
+const measureCtx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
+const hasLS = !!measureCtx && 'letterSpacing' in measureCtx;
+const fontOf = (size, weight) => `${weight} ${size}px ${FONT}`;
+const measure = (text, size, weight, tracking) => {
+    measureCtx.font = fontOf(size, weight);
+    if (hasLS) measureCtx.letterSpacing = `${tracking}px`;
+    const w = measureCtx.measureText(text).width;
+    return hasLS ? w : w + tracking * text.length;
+};
+
+/** Painel de vidro dentro do Hero (W×H do Hero): mesma conta do canvas. */
+const geometryOf = (W, H) => {
+    const portrait = W < 700;
+    const fade = portrait ? FADE_MOBILE : FADE_DESKTOP;
+    const mx = portrait ? 16 : W * 0.055;
+    const my = portrait ? 16 : (H - fade) * 0.085;
+    const pw = W - mx * 2;
+    const ph = H - fade - my * 2;
+    const S = pw / REF_WIDTH;
+    return { W, H, portrait, fade, mx, my, pw, ph, S, Sg: Math.max(S, 0.42) };
+};
+
+const applyGeometry = (W, H) => {
+    // sem largura útil (oculto ou em transição de viewport): mantém o último layout
+    if (W < 200 || !H) return null;
+    const gm = geometryOf(W, H);
+    geo.value = gm;
+    layout.value = heroLayout({ pw: gm.pw, ph: gm.ph, S: gm.S, portrait: gm.portrait, content: CONTENT, measure });
+    return gm;
+};
+
+// Altura do .hero-glass no CSS: clamp(620px, 50vw, 780px) + 48px; no retrato (<768px) 780px + 32px.
+const initialSize = () => {
+    const vw = window.innerWidth;
+    return { W: document.documentElement.clientWidth, H: vw < 768 ? 812 : Math.min(780, Math.max(620, vw / 2)) + 48 };
+};
+
+if (typeof window !== 'undefined') {
+    const size = initialSize();
+    applyGeometry(size.W, size.H);
+}
+
+const relayout = () => {
+    if (engine || !rootEl.value) return;
+    applyGeometry(rootEl.value.clientWidth, rootEl.value.clientHeight);
+};
+
 const toFallback = () => {
     teardown();
-    mode.value = 'fallback';
+    mode.value = 'static';
+    settled.value = false;
+    relayout();
 };
 
 const teardown = () => {
@@ -84,7 +166,45 @@ const setCta = (hover, focus) => {
 
 const onFocus = (i, e) => setCta(undefined, e.target.matches?.(':focus-visible') ? i : -1);
 
-const layerStyle = computed(() => ({ width: `${panel.value.w}px`, height: `${panel.value.h}px` }));
+// Pose de repouso do plano impresso: o mesmo que a homografia do canvas dá sem inclinação (perspectiva de 30°).
+const restTransform = (gm) => {
+    const camZ = gm.H / 2 / Math.tan((15 * Math.PI) / 180);
+    const zf = (DEPTH / 2 + BEVEL) * gm.Sg + 0.5;
+    const k = camZ / (camZ - zf);
+    return `translate(${gm.W / 2}px, ${gm.H / 2 - gm.fade / 2}px) scale(${k}) translate(${-gm.pw / 2}px, ${-gm.ph / 2}px)`;
+};
+const layerStyle = computed(() => ({ width: `${geo.value.pw}px`, height: `${geo.value.ph}px`, transform: restTransform(geo.value) }));
+const cardStyle = computed(() => {
+    const gm = geo.value;
+    return { left: `${gm.mx}px`, top: `${gm.my}px`, width: `${gm.pw}px`, height: `${gm.ph}px`, borderRadius: `${CORNER_RADIUS * gm.Sg}px` };
+});
+// Fundo da cena (mesmas cores e manchas do canvas), em CSS.
+const staticBgStyle = computed(() => {
+    const { W, H } = geo.value;
+    const r = Math.max(W, H * 1.4);
+    const blob = (fx, fy, fr, rgb, a) => `radial-gradient(circle ${(fr * r).toFixed(1)}px at ${fx * 100}% ${fy * 100}%, rgba(${rgb},${a}), rgba(${rgb},0))`;
+    return {
+        backgroundImage: [
+            'linear-gradient(to bottom, rgba(255,255,255,1), rgba(255,255,255,0) 14%)',
+            'linear-gradient(to bottom, rgba(250,248,252,0) 78%, rgba(250,248,252,1))',
+            blob(0.38, 0.5, 0.2, '99,42,126', 0.16),
+            blob(0.86, 0.26, 0.28, '212,184,228', 0.75),
+            blob(0.52, 0.72, 0.26, '123,79,162', 0.3),
+            blob(0.16, 0.34, 0.3, '179,136,217', 0.5),
+            'linear-gradient(to bottom, #ffffff, #f8f4fc 50%, #faf8fc)',
+        ].join(','),
+    };
+});
+const imageStyle = computed(() => {
+    const b = layout.value.image;
+    const r = `${CORNER_RADIUS * geo.value.Sg}px`;
+    return {
+        ...box(b),
+        borderRadius: geo.value.portrait ? `0 0 ${r} ${r}` : `0 ${r} ${r} 0`,
+        WebkitMaskImage: geo.value.portrait ? 'linear-gradient(to bottom, transparent, #000 12%)' : 'linear-gradient(to right, transparent, #000 35%)',
+        maskImage: geo.value.portrait ? 'linear-gradient(to bottom, transparent, #000 12%)' : 'linear-gradient(to right, transparent, #000 35%)',
+    };
+});
 const box = (b) => ({ left: `${b.x}px`, top: `${b.y}px`, width: `${b.w}px`, height: `${b.h}px` });
 const eyebrowStyle = computed(() => {
     const e = layout.value.eyebrow;
@@ -109,31 +229,8 @@ const loadImage = (src) =>
     });
 
 const init = async () => {
-    // Os utilitários vêm junto com o three: só são usados com o WebGL ligado e ficam fora do chunk da Welcome.
-    const [THREE, { RoomEnvironment }, {
-        BEVEL,
-        CORNER_RADIUS,
-        DEPTH,
-        GAP,
-        REF_WIDTH,
-        applyHomography,
-        clamp,
-        easeOutBack,
-        heroCells,
-        heroLayout,
-        homographyToMatrix3d,
-        insetPolygon,
-        keepoutRects,
-        boxCenter,
-        calmNear,
-        roundedCorners,
-        solveHomography,
-        springStep,
-    }] = await Promise.all([
-        import('three'),
-        import('three/examples/jsm/environments/RoomEnvironment.js'),
-        import('@/utils/heroGlass.js'),
-    ]);
+    // O three (e o ambiente de sala) só são baixados com o WebGL ligado e ficam fora do chunk da Welcome.
+    const [THREE, { RoomEnvironment }] = await Promise.all([import('three'), import('three/examples/jsm/environments/RoomEnvironment.js')]);
     const [heroImg] = await Promise.all([
         loadImage(CONTENT.image.src),
         document.fonts?.ready,
@@ -293,15 +390,6 @@ const init = async () => {
     });
 
     const g = { W: 0, H: 0, pw: 0, ph: 0, S: 1, Sg: 1, portrait: false, frontZ: 0, dpr: 1, fade: 0, keep: [] };
-    const measureCtx = document.createElement('canvas').getContext('2d');
-    const hasLS = 'letterSpacing' in measureCtx;
-    const fontOf = (size, weight) => `${weight} ${size}px ${FONT}`;
-    const measure = (text, size, weight, tracking) => {
-        measureCtx.font = fontOf(size, weight);
-        if (hasLS) measureCtx.letterSpacing = `${tracking}px`;
-        const w = measureCtx.measureText(text).width;
-        return hasLS ? w : w + tracking * text.length;
-    };
     const fillTracked = (ctx, text, x, y, tracking) => {
         if (hasLS) {
             ctx.letterSpacing = `${tracking}px`;
@@ -550,18 +638,10 @@ const init = async () => {
         const H = root.clientHeight;
         // sem largura útil (oculto ou em transição de viewport): mantém o último layout
         if (W < 200 || !H) return;
-        g.W = W;
-        g.H = H;
-        g.portrait = W < 700;
-        // Respiro inferior: o bloco de vidro sobe um pouco, deixando o fundo claro fundir com a seção seguinte.
-        g.fade = g.portrait ? FADE_MOBILE : FADE_DESKTOP;
-        const mx = g.portrait ? 16 : W * 0.055;
-        const my = g.portrait ? 16 : (H - g.fade) * 0.085;
-        g.pw = W - mx * 2;
-        g.ph = H - g.fade - my * 2;
+        const gm = geometryOf(W, H);
+        geo.value = gm;
+        Object.assign(g, { W, H, portrait: gm.portrait, fade: gm.fade, pw: gm.pw, ph: gm.ph, S: gm.S, Sg: gm.Sg });
         block.position.y = g.fade / 2;
-        g.S = g.pw / REF_WIDTH;
-        g.Sg = Math.max(g.S, 0.42);
         g.frontZ = (DEPTH / 2 + BEVEL) * g.Sg;
         g.dpr = Math.min(2, Math.max(1.5, window.devicePixelRatio || 1));
         glow.uGlowR.value = 300 * g.Sg;
@@ -572,7 +652,6 @@ const init = async () => {
         camera.position.set(0, 0, H / 2 / Math.tan((15 * Math.PI) / 180));
         camera.far = camera.position.z + 3000;
         camera.updateProjectionMatrix();
-        panel.value = { w: g.pw, h: g.ph };
         layout.value = heroLayout({ pw: g.pw, ph: g.ph, S: g.S, portrait: g.portrait, content: CONTENT, measure });
         // Folga de 16 px (+ recuo do vidro) entre texto/CTAs e qualquer corte.
         const clearance = (16 + (GAP / 2 + BEVEL) * g.Sg) * 1.2;
@@ -618,8 +697,8 @@ const init = async () => {
         const k = 1 - Math.exp(-dt / 0.3);
         tilt.x += (tx - tilt.x) * k;
         tilt.y += (ty - tilt.y) * k;
-        block.rotation.y = tilt.x * ((7 * Math.PI) / 180) - (1.2 * Math.PI) / 180;
-        block.rotation.x = tilt.y * ((5.5 * Math.PI) / 180) - (0.8 * Math.PI) / 180;
+        block.rotation.y = tilt.x * ((7 * Math.PI) / 180);
+        block.rotation.x = tilt.y * ((5.5 * Math.PI) / 180);
         block.updateMatrixWorld(true);
 
         // Ponteiro no plano do painel (hover, brilho e padrão de corte).
@@ -680,9 +759,8 @@ const init = async () => {
                 m.envMapIntensity = (mi === 0 ? 0.9 : 1.15) * (1 + 0.25 * p.hover);
             });
 
-            // Entrada: peças voam de fora da tela (ease-out-back, 0.72 s, 30 ms de escalonamento).
-            const e = easeOutBack((time - i * 0.03) / 0.72);
-            const fly = (1 - e) * Math.max(g.W, g.H) * 0.9;
+            // As peças já nascem no lugar (a 1ª pintura é a composição final; o canvas só entra por cima com fade).
+            const fly = 0;
             p.group.position.set(p.c.x + p.dir.x * fly, p.c.y + p.dir.y * fly, p.z.x);
             p.group.rotation.set(p.rx.x, p.ry.x, 0);
             const lift = clamp(p.z.x / (50 * g.Sg), 0, 1.2);
@@ -728,6 +806,9 @@ const init = async () => {
         if (!started) {
             started = true;
             mode.value = 'glass';
+            window.setTimeout(() => {
+                if (!disposed) settled.value = true;
+            }, 450);
         }
         raf = requestAnimationFrame(frame);
     };
@@ -825,47 +906,74 @@ const init = async () => {
     kick();
 };
 
+let staticRo = null;
 onMounted(() => {
-    if (mode.value === 'pending') {
+    const el = rootEl.value;
+    if (imageEl.value?.complete) imageReady.value = true;
+    relayout();
+    // A 1ª pintura mede com a fonte que já houver; quando as fontes terminam, refaz o leiaute (só muda se a medida mudar).
+    Promise.all([
+        document.fonts?.load?.(`600 40px ${FONT}`),
+        document.fonts?.load?.(`500 16px ${FONT}`),
+        document.fonts?.load?.(`400 16px ${FONT}`),
+    ])
+        .then(relayout)
+        .catch(() => {});
+    if (el && typeof ResizeObserver !== 'undefined') {
+        staticRo = new ResizeObserver(relayout);
+        staticRo.observe(el);
+    }
+    if (wantsGlass) {
         init().catch(() => {
             if (!disposed) toFallback();
         });
     }
 });
 
-onBeforeUnmount(teardown);
+onBeforeUnmount(() => {
+    staticRo?.disconnect();
+    teardown();
+});
 </script>
 
 <template>
-    <slot v-if="mode === 'fallback'" />
-    <div v-else ref="rootEl" class="hero-glass" :class="{ 'hero-glass--on': mode === 'glass' }">
-        <div class="hero-glass__fallback" :aria-hidden="mode === 'glass' || undefined" :inert="mode === 'glass' || undefined">
-            <slot />
-        </div>
-        <canvas ref="canvasEl" class="hero-glass__canvas" aria-hidden="true" />
-        <div v-if="layout" ref="layerEl" class="hero-glass__layer" :style="layerStyle">
-            <p class="hg-text hg-eyebrow" :style="eyebrowStyle">
-                <span v-for="(line, i) in layout.eyebrow.lines" :key="i" class="block whitespace-pre">{{ line }}{{ ' ' }}</span>
-            </p>
-            <h1 class="hg-text" :style="headlineStyle">
-                <span v-for="(line, i) in layout.headline.lines" :key="i" class="block whitespace-pre">{{ line }}{{ ' ' }}</span>
-            </h1>
-            <p class="hg-text" :style="subtitleStyle">
-                <span v-for="(line, i) in layout.subtitle.lines" :key="i" class="block whitespace-pre">{{ line }}{{ ' ' }}</span>
-            </p>
+    <div
+        ref="rootEl"
+        class="hero-glass"
+        :class="{ 'hero-glass--ready': imageReady, 'hero-glass--on': mode === 'glass', 'hero-glass--settled': settled }"
+    >
+        <div class="hero-glass__static" :style="staticBgStyle" aria-hidden="true" />
+        <div class="hero-glass__card" :style="cardStyle" aria-hidden="true" />
+        <canvas v-if="wantsGlass" ref="canvasEl" class="hero-glass__canvas" aria-hidden="true" />
+        <div ref="layerEl" class="hero-glass__layer" :style="layerStyle">
             <img
-                class="hg-image"
+                ref="imageEl"
+                class="hg-image hg-fx"
+                @load="imageReady = true"
+                @error="imageReady = true"
                 :src="CONTENT.image.src"
                 :alt="CONTENT.image.alt"
-                :style="box(layout.image)"
+                :style="imageStyle"
                 width="760"
                 height="593"
+                fetchpriority="high"
+                decoding="async"
             />
+            <p class="hg-text hg-fx hg-eyebrow" :style="eyebrowStyle">
+                <span v-for="(line, i) in layout.eyebrow.lines" :key="i" class="block whitespace-pre">{{ line }}{{ ' ' }}</span>
+            </p>
+            <h1 class="hg-text hg-fx hg-headline" :style="headlineStyle">
+                <span v-for="(line, i) in layout.headline.lines" :key="i" class="block whitespace-pre">{{ line }}{{ ' ' }}</span>
+            </h1>
+            <p class="hg-text hg-fx hg-subtitle" :style="subtitleStyle">
+                <span v-for="(line, i) in layout.subtitle.lines" :key="i" class="block whitespace-pre">{{ line }}{{ ' ' }}</span>
+            </p>
             <Link
                 v-for="(c, i) in layout.ctas"
                 :key="c.route"
                 :href="route(c.route)"
-                class="hg-cta"
+                class="hg-cta hg-fx"
+                :class="c.kind === 'primary' ? 'hg-cta--primary' : 'hg-cta--link'"
                 :style="ctaStyle(c)"
                 @mouseenter="setCta(i)"
                 @mouseleave="setCta(-1)"
@@ -883,8 +991,7 @@ onBeforeUnmount(teardown);
     position: relative;
     height: calc(clamp(620px, 50vw, 780px) + 48px);
     overflow: hidden;
-    background: transparent;
-    transition: background-color 0.25s ease;
+    background: linear-gradient(to bottom, #ffffff 0%, rgba(250, 248, 252, 0) 100%);
 }
 
 @media (max-width: 767px) {
@@ -893,25 +1000,21 @@ onBeforeUnmount(teardown);
     }
 }
 
-/* Fundo claro: branco no topo (cabeçalho) e, na base, a cena se dissolve no fundo real da página
-   (que muda com a rolagem), sem degrau de cor visível com a seção seguinte. */
-.hero-glass--on {
-    background: linear-gradient(to bottom, #ffffff 0%, rgba(250, 248, 252, 0) 100%);
-}
-
-.hero-glass--on .hero-glass__canvas {
+/* Composição estática: o fundo da cena e, no mesmo recorte do canvas, o painel e a foto. */
+.hero-glass__static {
+    position: absolute;
+    inset: 0;
     -webkit-mask-image: linear-gradient(to bottom, #000 86%, transparent 100%);
     mask-image: linear-gradient(to bottom, #000 86%, transparent 100%);
 }
 
-.hero-glass__fallback {
+.hero-glass__card {
     position: absolute;
-    inset: 0;
-    overflow: hidden;
-}
-
-.hero-glass--on .hero-glass__fallback {
-    visibility: hidden;
+    background: #f5f5f7;
+    box-shadow:
+        0 0 0 3px rgba(179, 136, 217, 0.32),
+        0 16px 34px rgba(74, 32, 112, 0.2),
+        inset 0 2px 0 rgba(255, 255, 255, 0.9);
 }
 
 .hero-glass__canvas {
@@ -920,6 +1023,9 @@ onBeforeUnmount(teardown);
     width: 100%;
     height: 100%;
     opacity: 0;
+    transition: opacity 0.4s ease;
+    -webkit-mask-image: linear-gradient(to bottom, #000 86%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 86%, transparent 100%);
 }
 
 .hero-glass--on .hero-glass__canvas {
@@ -932,19 +1038,24 @@ onBeforeUnmount(teardown);
     top: 0;
     transform-origin: 0 0;
     pointer-events: none;
-    visibility: hidden;
     font-family: Figtree, ui-sans-serif, system-ui, sans-serif;
 }
 
-.hero-glass--on .hero-glass__layer {
-    visibility: visible;
+/* O canvas entra por cima: a versão em DOM some no mesmo tempo (mesma pose, sem salto). */
+.hero-glass--on .hg-fx {
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.hero-glass--settled .hg-fx {
+    opacity: 1;
+    transition: none;
 }
 
 .hg-text {
     position: absolute;
     margin: 0;
     white-space: nowrap;
-    color: transparent;
     font-weight: 400;
     /* Texto selecionável (a camada em si não captura o ponteiro). */
     pointer-events: auto;
@@ -952,18 +1063,34 @@ onBeforeUnmount(teardown);
 }
 
 .hg-eyebrow {
+    color: #632a7e;
     font-weight: 600;
     text-transform: uppercase;
 }
 
-h1.hg-text {
+.hg-headline {
     font-weight: 600;
+    color: transparent;
+    background: linear-gradient(to bottom, #2a1042, #4a2070);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.hg-subtitle {
+    color: #475569;
 }
 
 .hg-image {
     position: absolute;
-    opacity: 0;
     object-fit: cover;
+    object-position: 78% 8%;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+/* A foto entra com um fade assim que carrega (o texto e o painel já estão na 1ª pintura). */
+.hero-glass--ready:not(.hero-glass--on) .hg-image {
+    opacity: 1;
 }
 
 .hg-cta {
@@ -971,11 +1098,54 @@ h1.hg-text {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: transparent;
-    font-weight: 600;
     pointer-events: auto;
     outline: none;
     white-space: nowrap;
+}
+
+.hg-cta--primary {
+    color: #ffffff;
+    font-weight: 600;
+    background: #632a7e;
+    border-radius: 6px;
+    box-shadow: 0 3px 8px rgba(74, 32, 112, 0.38);
+}
+
+.hg-cta--link {
+    color: #4a2070;
+    font-weight: 500;
+}
+
+.hero-glass:not(.hero-glass--settled) .hg-cta:hover {
+    color: #2a1042;
+}
+
+.hero-glass:not(.hero-glass--settled) .hg-cta--primary:hover {
+    color: #ffffff;
+    background: #7b4fa2;
+}
+
+.hero-glass:not(.hero-glass--settled) .hg-cta:focus-visible {
+    outline: 2px solid #7b4fa2;
+    outline-offset: 4px;
+    border-radius: 9px;
+}
+
+/* Com o canvas assentado ele desenha foto, texto e CTAs; o DOM fica só como camada selecionável e clicável. */
+.hero-glass--settled .hg-image {
+    opacity: 0;
+}
+
+.hero-glass--settled .hg-text,
+.hero-glass--settled .hg-cta {
+    color: transparent;
+    background: none;
+    box-shadow: none;
+}
+
+.hero-glass--settled .hg-headline {
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
 }
 
 .hero-glass__layer ::selection {

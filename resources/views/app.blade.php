@@ -21,6 +21,12 @@
 
         <!-- Fonts (Figtree local; ver @font-face em resources/css/app.css) -->
         <link rel="preload" href="{{ Vite::asset('resources/fonts/figtree-latin-400-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+        @if (($page['component'] ?? null) === 'Welcome')
+            {{-- Hero da Home: o leiaute mede com Figtree 500/600 e a foto é o LCP; baixam já com o HTML. --}}
+            <link rel="preload" href="{{ Vite::asset('resources/fonts/figtree-latin-500-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+            <link rel="preload" href="{{ Vite::asset('resources/fonts/figtree-latin-600-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+            <link rel="preload" href="/images/hero-home.webp" as="image" type="image/webp" fetchpriority="high">
+        @endif
 
         <!-- Scripts -->
         @routes

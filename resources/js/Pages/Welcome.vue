@@ -19,7 +19,6 @@ import LandingAlem from '@/Components/Landing/LandingAlem.vue';
 import LandingFrentes from '@/Components/Landing/LandingFrentes.vue';
 import LandingPilaresBento from '@/Components/Landing/LandingPilaresBento.vue';
 import LandingRecrutamento from '@/Components/Landing/LandingRecrutamento.vue';
-import LandingHeroTypewriter from '@/Components/Landing/LandingHeroTypewriter.vue';
 import LandingLayout from '@/Components/Landing/LandingLayout.vue';
 
 defineProps({
@@ -240,32 +239,7 @@ const organizationJsonLd = computed(() =>
             </component>
         </template>
 
-        <HeroGlass>
-        <section class="relative overflow-hidden lg:min-h-[560px]">
-            <div class="relative z-10 mx-auto max-w-6xl px-4 py-10 md:py-24 lg:py-28">
-                <div class="lg:max-w-[46%]">
-                    <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">
-                        Consultoria estratégica em gestão de pessoas
-                    </p>
-                    <LandingHeroTypewriter />
-                    <div class="mt-6 flex flex-wrap gap-3 md:mt-8">
-                        <Link :href="route('landing.empresas')" class="btn-primary"> Para Empresas </Link>
-                        <Link :href="route('landing.pessoas')" class="btn-secondary"> Para Pessoas </Link>
-                        <Link :href="route('landing.contato')" class="btn-ghost"> Falar com Especialista </Link>
-                    </div>
-                </div>
-            </div>
-
-            <img
-                src="/images/hero-home.png"
-                alt="Profissional apresentando perfis comportamentais: Executor, Comunicador, Planejador e Analista"
-                class="hidden h-auto w-full object-cover lg:absolute lg:inset-y-0 lg:right-0 lg:block lg:h-full lg:w-1/2 lg:object-[78%_8%]"
-                width="760"
-                height="593"
-                fetchpriority="high"
-            />
-        </section>
-        </HeroGlass>
+        <HeroGlass />
 
         <LandingFrentes />
         <LandingPilaresBento :pillars="methodologyPillars" />
