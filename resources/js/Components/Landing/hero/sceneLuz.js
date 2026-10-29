@@ -79,7 +79,8 @@ export default {
         if (caustics) {
             caustics.material.uniforms.uTime.value = time;
             const intro = easeOutCubic((time - 0.6) / 1.6);
-            caustics.material.uniforms.uAmt.value = intro * (0.8 + 0.2 * (ctx.pointer.calm < 0.5 && ctx.pointer.local ? 1 : 0) + 0.25 * scroll);
+            // base 0,5: mais forte, as cáusticas liam como manchas sob o painel
+            caustics.material.uniforms.uAmt.value = intro * (0.5 + 0.2 * (ctx.pointer.calm < 0.5 && ctx.pointer.local ? 1 : 0) + 0.25 * scroll);
         }
     },
 

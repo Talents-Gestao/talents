@@ -253,6 +253,8 @@ const organizationJsonLd = computed(() =>
             <component :is="'script'" type="application/ld+json" head-key="jsonld-org">
                 {{ organizationJsonLd }}
             </component>
+            <!-- Direções da Hero: a foto (elemento de LCP) só seria pedida depois do chunk e do layout -->
+            <link v-if="heroDirection" head-key="hero-image" rel="preload" as="image" href="/images/hero-home.png" fetchpriority="high" />
         </template>
 
         <HeroStage v-if="heroDirection" :direction="heroDirection" :perf="heroPerf" />
