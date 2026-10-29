@@ -8,11 +8,8 @@ use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Enums\PermissionModule;
 use App\Enums\UserRole;
-use App\Models\Survey;
-use App\Models\SurveyMethodVersion;
 use App\Models\User;
 use App\Services\Psychosocial\DocumentShareService;
-use App\Support\SurveyPublicationGate;
 
 /**
  * Shell NR-1 (/nr1): perfis, matriz de seções por perfil (contrato do HTML aprovado) e a decisão de acesso.
@@ -53,17 +50,6 @@ final class Nr1Shell
         self::PROFILE_COMERCIAL => ['solucoes', 'oportunidades'],
         self::PROFILE_COLABORADOR => ['campanha', 'minha-jornada'],
     ];
-
-    public static function enabled(): bool
-    {
-        return (bool) config('nr1.shell_enabled');
-    }
-
-    /** Laudo do modelo anterior renderizado dentro do shell (padrão: desligado). */
-    public static function legacyEmbedded(): bool
-    {
-        return (bool) config('nr1.shell_legacy_embed');
-    }
 
     /** Perfil do usuário autenticado no shell (colaborador não tem login: entra pelo link da campanha). */
     public static function profileFor(User $user): ?string
@@ -154,37 +140,23 @@ final class Nr1Shell
         return in_array($preferred, $keys, true) ? $preferred : ($keys[0] ?? null);
     }
 
-    /** Entrada «Oportunidades NR-1» do grupo Comercial do menu do Admin (flag ligada e permissão nr1_oportunidades:view). */
+    /** Entrada «Oportunidades NR-1» do grupo Comercial do menu do Admin (permissão nr1_oportunidades:view). */
     public static function opportunitiesMenuUrl(?User $user): ?string
     {
-        if ($user === null || ! self::enabled() || ! $user->isSuperAdmin() || ! self::allows($user, 'oportunidades')) {
+        if ($user === null || ! $user->isSuperAdmin() || ! self::allows($user, 'oportunidades')) {
             return null;
         }
 
         return route('nr1.oportunidades', absolute: false);
     }
 
-    /** URL do item único «NR-1» do menu principal, ou null (flag desligada ou sem acesso). */
+    /** URL do item único «NR-1» do menu principal, ou null (sem acesso). */
     public static function menuUrl(?User $user): ?string
     {
-        if ($user === null || ! self::enabled() || self::landingSection($user) === null) {
-            return null;
-        }
-
-        // Sem o Laudo embutido, a empresa que só tem pesquisas do modelo anterior continua usando a lista antiga.
-        if (! self::legacyEmbedded() && self::profileFor($user) === self::PROFILE_EMPRESA && ! self::hasV11Survey($user)) {
+        if ($user === null || self::landingSection($user) === null) {
             return null;
         }
 
         return route('nr1.index', absolute: false);
-    }
-
-    private static function hasV11Survey(User $user): bool
-    {
-        $companyId = $user->contextCompanyId();
-
-        return $companyId !== null && SurveyPublicationGate::scopeVisible(Survey::query()->where('company_id', $companyId))
-            ->where('method_version_id', SurveyMethodVersion::idForCode(SurveyMethodVersion::CODE_TALENTS39_V1))
-            ->exists();
     }
 }

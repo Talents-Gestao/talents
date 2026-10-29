@@ -34,7 +34,6 @@ class Nr1ShellStageBTest extends TestCase
         parent::setUp();
         $this->withoutVite();
         Storage::fake('local');
-        config(['nr1.shell_enabled' => true]);
     }
 
     /** @return object{company: Company, survey: Survey, owner: User, admin: User} */

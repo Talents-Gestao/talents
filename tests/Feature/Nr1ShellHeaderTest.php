@@ -27,7 +27,6 @@ class Nr1ShellHeaderTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
-        config(['nr1.shell_enabled' => true]);
     }
 
     private function badge(User $user, array $query = []): array

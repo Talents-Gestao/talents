@@ -631,20 +631,11 @@ const removeRegulation = async (id) => {
                             <span class="text-sm font-medium text-slate-800">{{ s.title }}</span>
                             <div class="flex flex-wrap items-center gap-2">
                                 <Link
-                                    v-if="nr1ShellUrls[s.id]"
                                     :href="nr1ShellUrls[s.id]"
                                     class="inline-flex items-center gap-1.5 rounded-full bg-talents-700 px-3 py-1 text-xs font-semibold text-white transition hover:bg-talents-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-talents-700"
                                 >
                                     <ClipboardDocumentListIcon class="h-3.5 w-3.5" aria-hidden="true" />
                                     Abrir painel NR-1
-                                </Link>
-                                <Link
-                                    v-else
-                                    :href="route('admin.companies.surveys.action-plan.edit', [company.id, s.id])"
-                                    class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-talents-700 ring-1 ring-talents-200/80 transition hover:bg-talents-50"
-                                >
-                                    <DocumentTextIcon class="h-3.5 w-3.5" aria-hidden="true" />
-                                    Parecer e plano
                                 </Link>
                                 <button
                                     v-if="canAdmin('companies', 'delete')"

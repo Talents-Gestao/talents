@@ -10,7 +10,6 @@ use App\Http\Middleware\EnsureFeedbackCompanySelected;
 use App\Http\Middleware\EnsureFeriasCompanySelected;
 use App\Http\Middleware\EnsureMfa;
 use App\Http\Middleware\EnsureModulePermission;
-use App\Http\Middleware\EnsureNr1Shell;
 use App\Http\Middleware\EnsureStrategicCalendarAccess;
 use App\Http\Middleware\EnsureSuggestionCompanySelected;
 use App\Http\Middleware\EnsureSuperAdmin;
@@ -19,7 +18,6 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\LogInertiaRequestTiming;
 use App\Jobs\RemindUpcomingTaskDueDatesJob;
 use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -54,9 +52,6 @@ return Application::configure(basePath: dirname(__DIR__))
             LogInertiaRequestTiming::class,
         ]);
 
-        // Flag do shell NR-1 desligada: /nr1 responde 404 também para visitante (antes do redirecionamento de login).
-        $middleware->prependToPriorityList(before: AuthenticatesRequests::class, prepend: EnsureNr1Shell::class);
-
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
@@ -66,7 +61,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'super_admin' => EnsureSuperAdmin::class,
             'external_reviewer' => EnsureExternalReviewer::class,
             'mfa' => EnsureMfa::class,
-            'nr1.shell' => EnsureNr1Shell::class,
             'survey.published' => EnsureSurveyPublished::class,
             'admin.can' => EnsureAdminPermission::class,
             'company' => EnsureCompanyAccess::class,
