@@ -92,7 +92,7 @@ defineExpose({ openContact });
         <header v-else class="landing-header">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
                 <Link href="/" class="inline-flex shrink-0 items-center">
-                    <img src="/images/logo.png" alt="Talents — Gestão de Pessoas" class="h-14 w-auto md:h-16" />
+                    <img src="/images/logo.png" alt="Talents — Gestão de Pessoas" width="483" height="190" class="h-14 w-auto md:h-16" />
                 </Link>
 
                 <nav class="hidden items-center gap-1 lg:flex">

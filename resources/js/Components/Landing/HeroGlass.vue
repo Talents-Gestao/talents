@@ -112,8 +112,7 @@ const loadImage = (src) =>
     });
 
 const init = async () => {
-    // Os utilitários vêm junto com o three: importá-los estaticamente aqui faria os chunks dinâmicos das
-    // direções da Hero dependerem do chunk da Welcome, que perderia a própria entrada no manifest do Vite.
+    // Os utilitários vêm junto com o three: só são usados com o WebGL ligado e ficam fora do chunk da Welcome.
     const [THREE, { RoomEnvironment }, {
         BEVEL,
         CORNER_RADIUS,
@@ -821,6 +820,10 @@ const init = async () => {
     };
 
     resize();
+    // Compila os shaders antes do primeiro quadro (em paralelo quando a GPU tem KHR_parallel_shader_compile),
+    // para a compilação não virar uma tarefa longa na thread principal no primeiro render.
+    await renderer.compileAsync?.(scene, camera).catch(() => {});
+    if (disposed) return;
     await nextTick();
     kick();
 };
@@ -858,6 +861,8 @@ onBeforeUnmount(teardown);
                 :src="CONTENT.image.src"
                 :alt="CONTENT.image.alt"
                 :style="box(layout.image)"
+                width="760"
+                height="593"
             />
             <Link
                 v-for="(c, i) in layout.ctas"
