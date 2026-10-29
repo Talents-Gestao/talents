@@ -39,6 +39,9 @@ class ShellController extends Controller
         Nr1Shell::PROFILE_COLABORADOR => 'Colaborador',
     ];
 
+    /** Seções que só existem na V11 (o legado concentra o plano no parecer). */
+    private const NOT_IN_LEGACY = ['plano-de-acao', 'solucoes'];
+
     public function index(Request $request): RedirectResponse
     {
         $user = $request->user();
@@ -62,11 +65,25 @@ class ShellController extends Controller
 
         $context = Nr1ShellContext::resolve($request, $user, $profile);
 
+        // Campanha do modelo anterior: Soluções e o plano por medidas são da V11 (o plano dela vive no parecer, em Documentos).
+        // O que não se aplica ao legado não aparece no menu; a URL direta leva à seção equivalente.
+        $legacy = $context->survey !== null && Nr1ShellLegacy::isLegacy($context->survey);
+        if ($legacy && in_array($section, self::NOT_IN_LEGACY, true)) {
+            $target = collect([$section === 'plano-de-acao' ? 'documentos' : 'visao-geral', 'visao-geral', 'campanha', 'resultados', 'documentos'])
+                ->first(fn (string $key) => Nr1Shell::allows($user, $key, $profile));
+            abort_if($target === null, 403);
+
+            return redirect()->route('nr1.'.$target, $request->query());
+        }
+
         return Inertia::render('Nr1/Section', [
             'shell' => [
                 'profile' => $profile,
                 'profileLabel' => self::PROFILE_LABELS[$profile],
-                'menu' => array_map(fn (array $item) => $item + ['href' => route('nr1.'.$item['key'])], Nr1Shell::sectionsFor($user)),
+                'menu' => array_values(array_map(
+                    fn (array $item) => $item + ['href' => route('nr1.'.$item['key'])],
+                    array_filter(Nr1Shell::sectionsFor($user), fn (array $item) => ! $legacy || ! in_array($item['key'], self::NOT_IN_LEGACY, true)),
+                )),
                 'current' => $section,
                 'backUrl' => match (true) {
                     $profile === Nr1Shell::PROFILE_EMPRESA => route('client.dashboard'),

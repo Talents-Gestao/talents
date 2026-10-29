@@ -86,27 +86,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Shell NR-1 (navegação própria em /nr1)
-    |--------------------------------------------------------------------------
-    |
-    | Desligado por padrão em produção e ligado no ambiente local. Ligado: aparece UM item «NR-1» no menu
-    | principal (e some o item antigo «Pesquisas NR1» da empresa) e as rotas /nr1/* respondem. Desligado: o
-    | sistema se comporta exatamente como antes e /nr1/* responde 404. As rotas antigas (admin e client)
-    | nunca saem do ar: continuam valendo por URL direta nos dois casos. Ligar em produção só depois da
-    | aprovação do visual pela Suzane.
-    */
-    'shell_enabled' => (bool) env('NR1_SHELL_ENABLED', env('APP_ENV') === 'local'),
-
-    /*
-    | Laudo do modelo anterior DENTRO do shell (Etapa L). Desligado (padrão em TODOS os ambientes): as pesquisas do
-    | modelo anterior mantêm «Parecer e plano» e a tela antiga; o shell só mostra o aviso «Pesquisa no modelo anterior» com
-    | o botão «Abrir Laudo NR-1». Ligado: Resultados, Documentos e Visão geral do legado são renderizados no shell
-    | (Components/Nr1Legacy, tema .nr1-theme). A decisão de como o Laudo entra no fluxo está pendente (ver NOTAS.md).
-    */
-    'shell_legacy_embed' => (bool) env('NR1_SHELL_LEGACY_EMBED', false),
-
-    /*
-    |--------------------------------------------------------------------------
     | Soluções Talents (Caderno §14)
     |--------------------------------------------------------------------------
     |

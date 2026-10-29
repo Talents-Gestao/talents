@@ -32,7 +32,6 @@ class Nr1ShellPrivacySweepTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
-        config(['nr1.shell_enabled' => true]);
     }
 
     private function published(string $companyName): object

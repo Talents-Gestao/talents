@@ -43,7 +43,6 @@ class Nr1ShellStageDTest extends TestCase
         parent::setUp();
         $this->withoutVite();
         Storage::fake(PsychosocialDocumentService::DISK);
-        config(['nr1.shell_enabled' => true]);
     }
 
     /** @return object{company: Company, survey: Survey, owner: User, admin: User} */
@@ -288,12 +287,9 @@ class Nr1ShellStageDTest extends TestCase
         $this->publishedRound($c);
         $c->survey->forceFill(['published_at' => now()])->save();
 
-        foreach ([false, true] as $on) {
-            config(['nr1.shell_enabled' => $on]);
-            $this->actingAs($c->owner)->get(route('admin.companies.surveys.documents.index', [$c->company->id, $c->survey->id]))->assertOk()->assertInertia(fn (Assert $p) => $p->component('Admin/Documents/Central'));
-            $this->actingAs($c->admin)->get(route('client.surveys.documents.index', $c->survey->id))->assertOk()->assertInertia(fn (Assert $p) => $p->component('Client/Surveys/Documents'));
-            $this->actingAs($c->admin)->get(route('client.surveys.solutions', $c->survey->id))->assertOk()->assertInertia(fn (Assert $p) => $p->component('Client/Surveys/Solutions'));
-            $this->actingAs($c->owner)->get(route('admin.nr1-opportunities.index'))->assertOk()->assertInertia(fn (Assert $p) => $p->component('Admin/Nr1Opportunities/Index'));
-        }
+        $this->actingAs($c->owner)->get(route('admin.companies.surveys.documents.index', [$c->company->id, $c->survey->id]))->assertOk()->assertInertia(fn (Assert $p) => $p->component('Admin/Documents/Central'));
+        $this->actingAs($c->admin)->get(route('client.surveys.documents.index', $c->survey->id))->assertOk()->assertInertia(fn (Assert $p) => $p->component('Client/Surveys/Documents'));
+        $this->actingAs($c->admin)->get(route('client.surveys.solutions', $c->survey->id))->assertOk()->assertInertia(fn (Assert $p) => $p->component('Client/Surveys/Solutions'));
+        $this->actingAs($c->owner)->get(route('admin.nr1-opportunities.index'))->assertOk()->assertInertia(fn (Assert $p) => $p->component('Admin/Nr1Opportunities/Index'));
     }
 }

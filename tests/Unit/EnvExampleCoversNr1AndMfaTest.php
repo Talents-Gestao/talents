@@ -28,7 +28,7 @@ class EnvExampleCoversNr1AndMfaTest extends TestCase
     {
         $example = (string) file_get_contents(base_path('.env.example'));
 
-        foreach (['NR1_SHELL_ENABLED', 'NR1_SHELL_LEGACY_EMBED', 'NR1_EXTERNAL_REVIEW_ENABLED', 'MFA_REQUIRED_AT_LOGIN'] as $off) {
+        foreach (['NR1_EXTERNAL_REVIEW_ENABLED', 'MFA_REQUIRED_AT_LOGIN'] as $off) {
             $this->assertMatchesRegularExpression('/^'.$off.'=false$/m', $example, "{$off} deve nascer desligada");
         }
         foreach (['NR1_EXTERNAL_REVIEW_MFA_REQUIRED', 'NR1_SOLUTIONS_REQUIRE_REVIEW', 'MFA_STEP_UP_REQUIRED'] as $on) {

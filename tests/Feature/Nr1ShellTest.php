@@ -35,11 +35,6 @@ class Nr1ShellTest extends TestCase
         $this->withoutVite();
     }
 
-    private function shell(bool $on): void
-    {
-        config(['nr1.shell_enabled' => $on]);
-    }
-
     private function campaign(bool $published = true): object
     {
         $campaign = $this->v11Campaign(true);
@@ -69,29 +64,8 @@ class Nr1ShellTest extends TestCase
         return array_column($page->viewData('page')['props']['shell']['menu'], 'key');
     }
 
-    public function test_with_the_flag_off_the_shell_does_not_exist_and_the_menu_is_the_current_one(): void
+    public function test_the_main_menu_gets_a_single_nr1_item_for_who_has_access(): void
     {
-        $this->shell(false);
-        $c = $this->campaign();
-        $admin = User::factory()->companyAdmin($c->company->id)->create();
-        $owner = User::factory()->talentsOwner()->create();
-
-        foreach ([$admin, $owner] as $user) {
-            $this->actingAs($user)->get('/nr1')->assertNotFound();
-            foreach (self::ALL as $section) {
-                $this->actingAs($user)->get('/nr1/'.$section)->assertNotFound();
-            }
-            $this->actingAs($user)->get(route('nr1.jornada', $c->survey->public_token))->assertNotFound();
-        }
-
-        // Menu idêntico ao atual: nenhum item novo é compartilhado com o front-end.
-        $this->actingAs($admin)->get(route('client.dashboard'))->assertInertia(fn (Assert $p) => $p->where('nr1Shell.url', null));
-        $this->actingAs($owner)->get(route('admin.dashboard'))->assertInertia(fn (Assert $p) => $p->where('nr1Shell.url', null));
-    }
-
-    public function test_with_the_flag_on_the_main_menu_gets_a_single_nr1_item_for_who_has_access(): void
-    {
-        $this->shell(true);
         $c = $this->campaign();
 
         $this->actingAs(User::factory()->companyAdmin($c->company->id)->create())->get(route('client.dashboard'))
@@ -106,26 +80,33 @@ class Nr1ShellTest extends TestCase
             ->assertInertia(fn (Assert $p) => $p->where('nr1Shell.url', null));
     }
 
-    public function test_the_old_routes_answer_with_the_flag_off_and_on(): void
+    public function test_the_shell_has_no_flag_visitors_go_to_login_and_the_collaborator_link_is_public(): void
+    {
+        $c = $this->campaign();
+
+        $this->get('/nr1')->assertRedirect(route('login'));
+        $this->get(route('nr1.visao-geral'))->assertRedirect(route('login'));
+        $this->get(route('nr1.jornada', $c->survey->public_token))->assertOk();
+        $this->assertArrayNotHasKey('shell_enabled', config('nr1'));
+        $this->assertArrayNotHasKey('shell_legacy_embed', config('nr1'));
+    }
+
+    public function test_the_old_routes_keep_answering_next_to_the_shell(): void
     {
         $c = $this->campaign();
         $admin = User::factory()->companyAdmin($c->company->id)->create();
         $owner = User::factory()->talentsOwner()->create();
 
-        foreach ([false, true] as $on) {
-            $this->shell($on);
-            $this->actingAs($admin)->get(route('client.surveys.index'))->assertOk();
-            $this->actingAs($admin)->get(route('client.surveys.psychosocial-dashboard', $c->survey))->assertOk();
-            $this->actingAs($admin)->get(route('client.surveys.documents.index', $c->survey))->assertOk();
-            $this->actingAs($owner)->get(route('admin.companies.surveys.results.show', [$c->company->id, $c->survey->id]))->assertOk();
-            $this->actingAs($owner)->get(route('admin.nr1-opportunities.index'))->assertOk();
-            $this->actingAs($owner)->get(route('admin.service-matches.index'))->assertOk();
-        }
+        $this->actingAs($admin)->get(route('client.surveys.index'))->assertOk();
+        $this->actingAs($admin)->get(route('client.surveys.psychosocial-dashboard', $c->survey))->assertOk();
+        $this->actingAs($admin)->get(route('client.surveys.documents.index', $c->survey))->assertOk();
+        $this->actingAs($owner)->get(route('admin.companies.surveys.results.show', [$c->company->id, $c->survey->id]))->assertOk();
+        $this->actingAs($owner)->get(route('admin.nr1-opportunities.index'))->assertOk();
+        $this->actingAs($owner)->get(route('admin.service-matches.index'))->assertOk();
     }
 
     public function test_talents_sees_all_sections_except_my_journey_and_opens_on_the_overview(): void
     {
-        $this->shell(true);
         $c = $this->campaign();
         $owner = User::factory()->talentsOwner()->create();
 
@@ -145,7 +126,6 @@ class Nr1ShellTest extends TestCase
 
     public function test_the_company_sees_its_own_sections_only_and_opens_on_the_overview(): void
     {
-        $this->shell(true);
         $c = $this->campaign();
         $other = $this->campaign();
         $admin = User::factory()->companyAdmin($c->company->id)->create();
@@ -162,7 +142,6 @@ class Nr1ShellTest extends TestCase
 
     public function test_the_company_sees_nothing_before_the_campaign_is_published(): void
     {
-        $this->shell(true);
         $c = $this->campaign(published: false);
         $admin = User::factory()->companyAdmin($c->company->id)->create();
 
@@ -172,7 +151,6 @@ class Nr1ShellTest extends TestCase
 
     public function test_commercial_sees_opportunities_and_opens_on_it_and_cannot_read_results(): void
     {
-        $this->shell(true);
         $this->campaign();
         $commercial = $this->commercial();
 
@@ -185,7 +163,6 @@ class Nr1ShellTest extends TestCase
 
     public function test_the_matrix_is_enforced_in_the_backend_not_only_in_the_menu(): void
     {
-        $this->shell(true);
         $c = $this->campaign();
         $companyUser = User::factory()->companyUser($c->company->id)->create();
 
@@ -202,7 +179,6 @@ class Nr1ShellTest extends TestCase
 
     public function test_the_external_reviewer_only_gets_documents_and_goes_to_the_review_area(): void
     {
-        $this->shell(true);
         $organization = ApproverOrganization::query()->create(['name' => 'Org', 'is_active' => true]);
         $reviewer = User::factory()->externalReviewer($organization->id)->create();
 
@@ -220,7 +196,6 @@ class Nr1ShellTest extends TestCase
 
     public function test_the_collaborator_gets_only_campaign_and_my_journey_through_the_campaign_link(): void
     {
-        $this->shell(true);
         $c = $this->campaign();
         $token = $c->survey->public_token;
 
@@ -238,7 +213,6 @@ class Nr1ShellTest extends TestCase
 
     public function test_the_collaborator_link_mirrors_the_old_public_route_for_invalid_closed_and_not_started_campaigns(): void
     {
-        $this->shell(true);
         $c = $this->campaign();
         $token = $c->survey->public_token;
         $title = $c->survey->title;
@@ -266,7 +240,6 @@ class Nr1ShellTest extends TestCase
 
     public function test_the_company_cannot_pick_another_companys_campaign_and_talents_handles_valid_and_invalid_company(): void
     {
-        $this->shell(true);
         $mine = $this->campaign();
         $other = $this->campaign();
         $admin = User::factory()->companyAdmin($mine->company->id)->create();
@@ -287,7 +260,6 @@ class Nr1ShellTest extends TestCase
 
     public function test_company_and_collaborator_get_no_response_count_or_participation_below_the_minimum_group(): void
     {
-        $this->shell(true);
         $c = $this->campaign();
         $admin = User::factory()->companyAdmin($c->company->id)->create();
         $owner = User::factory()->talentsOwner()->create();
@@ -320,7 +292,6 @@ class Nr1ShellTest extends TestCase
 
     public function test_the_shell_payload_has_no_individual_answers_other_campaign_tokens_or_respondent_emails(): void
     {
-        $this->shell(true);
         $c = $this->campaign();
         $other = $this->campaign();
         $admin = User::factory()->companyAdmin($c->company->id)->create();
@@ -346,33 +317,8 @@ class Nr1ShellTest extends TestCase
         $this->assertStringNotContainsString($c->survey->public_token, json_encode($responses[0]->viewData('page')['props']['section']));
     }
 
-    public function test_with_the_flag_off_every_nr1_subroute_is_404_for_every_profile_and_the_menu_stays_as_before(): void
-    {
-        $this->shell(false);
-        $c = $this->campaign();
-        $users = [
-            User::factory()->companyAdmin($c->company->id)->create(),
-            User::factory()->talentsOwner()->create(),
-            $this->commercial(),
-        ];
-
-        foreach ($users as $user) {
-            foreach (['/nr1', ...array_map(fn ($s) => '/nr1/'.$s, self::ALL)] as $url) {
-                $this->actingAs($user)->get($url)->assertNotFound();
-            }
-            $this->actingAs($user)->get('/nr1/jornada/'.$c->survey->public_token.'/campanha')->assertNotFound();
-        }
-        auth()->logout();
-        $this->get('/nr1')->assertNotFound();
-        $this->get(route('nr1.jornada', $c->survey->public_token))->assertNotFound();
-
-        $this->actingAs($users[0])->get(route('client.dashboard'))->assertInertia(fn (Assert $p) => $p->where('nr1Shell.url', null));
-        $this->actingAs($users[1])->get(route('admin.dashboard'))->assertInertia(fn (Assert $p) => $p->where('nr1Shell.url', null));
-    }
-
     public function test_the_company_sections_follow_the_module_of_the_old_client_routes(): void
     {
-        $this->shell(true);
         $c = $this->campaign();
         $user = User::factory()->companyUser($c->company->id)->create();
 

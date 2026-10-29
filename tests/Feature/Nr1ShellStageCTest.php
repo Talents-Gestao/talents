@@ -31,7 +31,6 @@ class Nr1ShellStageCTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
-        config(['nr1.shell_enabled' => true]);
     }
 
     /** @return object{company: Company, survey: Survey, owner: User, admin: User} */

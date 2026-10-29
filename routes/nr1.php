@@ -4,9 +4,8 @@ use App\Http\Controllers\Nr1\ShellController;
 use App\Support\Nr1Shell\Nr1Shell;
 use Illuminate\Support\Facades\Route;
 
-// Shell NR-1: navegação própria. Nada aqui substitui as rotas antigas (admin e client), que seguem valendo.
-// Flag: config nr1.shell_enabled (NR1_SHELL_ENABLED). Desligada, tudo abaixo responde 404.
-Route::middleware(['web', 'nr1.shell'])->prefix('nr1')->name('nr1.')->group(function () {
+// Shell NR-1: navegação própria, padrão em todos os ambientes (sem flag). As rotas antigas (admin e client) seguem valendo por URL.
+Route::middleware(['web'])->prefix('nr1')->name('nr1.')->group(function () {
     // Colaborador: link da campanha, sem login.
     Route::get('jornada/{token}/{section?}', [ShellController::class, 'jornada'])
         ->whereIn('section', ['campanha', 'minha-jornada'])

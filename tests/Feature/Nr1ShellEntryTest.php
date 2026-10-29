@@ -32,18 +32,13 @@ class Nr1ShellEntryTest extends TestCase
         $this->withoutVite();
     }
 
-    public function test_the_company_page_opens_the_shell_for_every_survey_and_only_with_the_flag_on(): void
+    public function test_the_company_page_opens_the_shell_for_every_survey(): void
     {
         $c = $this->v11Campaign(true);
         $c->survey->forceFill(['requires_publication' => true, 'published_at' => now()])->save();
         $legacy = Survey::query()->create(['company_id' => $c->company->id, 'survey_template_id' => $c->template->id, 'title' => 'Pesquisa antiga', 'public_token' => (string) Str::uuid(), 'starts_at' => now()->subDay(), 'ends_at' => now()->addMonth(), 'status' => 'active']);
         $owner = User::factory()->talentsOwner()->create();
 
-        config(['nr1.shell_enabled' => false]);
-        $this->actingAs($owner)->get(route('admin.companies.show', $c->company))->assertOk()
-            ->assertInertia(fn (Assert $p) => $p->where('nr1ShellUrls', []));
-
-        config(['nr1.shell_enabled' => true, 'nr1.shell_legacy_embed' => true]);
         $this->actingAs($owner)->get(route('admin.companies.show', $c->company))->assertOk()
             ->assertInertia(fn (Assert $p) => $p
                 ->where('nr1ShellUrls.'.$c->survey->id, '/nr1/visao-geral?empresa='.$c->company->id.'&campanha='.$c->survey->id)
@@ -57,7 +52,6 @@ class Nr1ShellEntryTest extends TestCase
 
     public function test_the_company_profile_back_button_and_the_commercial_one_use_the_right_label(): void
     {
-        config(['nr1.shell_enabled' => true]);
         $c = $this->v11Campaign(true);
         $c->survey->forceFill(['requires_publication' => true, 'published_at' => now()])->save();
 
@@ -78,7 +72,7 @@ class Nr1ShellEntryTest extends TestCase
         $this->assertStringNotContainsString('Nr1ContextBar', $layout);
     }
 
-    public function test_the_commercial_menu_item_exists_only_with_the_flag_on_and_the_permission(): void
+    public function test_the_commercial_menu_item_exists_only_with_the_permission(): void
     {
         $owner = User::factory()->talentsOwner()->create();
         $commercial = User::factory()->superAdmin()->create(['is_owner' => false]);
@@ -91,15 +85,7 @@ class Nr1ShellEntryTest extends TestCase
         $company = $this->v11Campaign(false)->company;
         $companyAdmin = User::factory()->companyAdmin($company->id)->create();
 
-        // Flag desligada: o item não existe para ninguém e a rota responde 404.
-        config(['nr1.shell_enabled' => false]);
-        foreach ([$owner, $commercial] as $user) {
-            $this->actingAs($user)->get(route('admin.dashboard'))->assertInertia(fn (Assert $p) => $p->where('nr1Shell.opportunitiesUrl', null));
-        }
-        $this->actingAs($commercial)->get('/nr1/oportunidades')->assertNotFound();
-
-        // Flag ligada: aparece para quem tem nr1_oportunidades:view (e para o proprietário), abrindo /nr1/oportunidades.
-        config(['nr1.shell_enabled' => true]);
+        // Aparece para quem tem nr1_oportunidades:view (e para o proprietário), abrindo /nr1/oportunidades.
         foreach ([$owner, $commercial] as $user) {
             $this->actingAs($user)->get(route('admin.dashboard'))->assertInertia(fn (Assert $p) => $p->where('nr1Shell.opportunitiesUrl', '/nr1/oportunidades'));
         }
