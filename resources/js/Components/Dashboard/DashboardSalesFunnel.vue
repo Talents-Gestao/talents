@@ -183,6 +183,7 @@ function formatLostDate(iso) {
                     :class="{
                         'dashboard-sales-funnel__row--link': !!row.href,
                         'dashboard-sales-funnel__row--last': index === rows.length - 1,
+                        'dashboard-sales-funnel__row--zero': row.count === 0,
                     }"
                     data-home-funnel-row
                 >
@@ -216,7 +217,6 @@ function formatLostDate(iso) {
                                 vector-effect="non-scaling-stroke"
                             />
                         </svg>
-                        <span class="dashboard-sales-funnel__tip" role="tooltip">{{ row.tooltip }}</span>
                     </div>
 
                     <div class="dashboard-sales-funnel__metrics">
@@ -239,6 +239,8 @@ function formatLostDate(iso) {
                             {{ row.pctOfPrevious }} da anterior<span v-if="row.overPrevious" aria-hidden="true"> ›</span>
                         </div>
                     </div>
+
+                    <span class="dashboard-sales-funnel__tip" role="tooltip">{{ row.tooltip }}</span>
                 </component>
             </div>
         </template>
@@ -354,6 +356,11 @@ function formatLostDate(iso) {
 
 <style scoped>
 .dashboard-sales-funnel {
+    /* Largura máxima da coluna de rótulos + gap: o tooltip começa depois dela e nunca cobre um rótulo. */
+    --funnel-tip-left: 7.25rem;
+    --funnel-tip-right: 0px;
+
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     gap: 3px; /* pequeno espaçamento entre faixas; topo de cada uma = base da anterior */
@@ -412,13 +419,17 @@ function formatLostDate(iso) {
     filter: brightness(1.08) saturate(1.1);
 }
 
+/*
+ * Tooltip acima da linha, ancorado à direita e limitado às colunas da faixa e dos números: os
+ * rótulos das etapas (desta e da anterior) continuam legíveis durante o hover.
+ */
 .dashboard-sales-funnel__tip {
     position: absolute;
-    bottom: calc(100% - 6px);
-    left: 50%;
+    bottom: calc(100% + 2px);
+    right: var(--funnel-tip-right);
     z-index: 5;
     width: max-content;
-    max-width: 16rem;
+    max-width: min(16rem, calc(100% - var(--funnel-tip-left) - var(--funnel-tip-right)));
     padding: 0.4rem 0.6rem;
     border-radius: 0.6rem;
     background: rgb(var(--ink));
@@ -426,18 +437,41 @@ function formatLostDate(iso) {
     font-size: 0.75rem;
     font-weight: 500;
     line-height: 1.35;
-    text-align: center;
+    text-align: left;
     box-shadow: 0 10px 24px -8px rgb(15 23 42 / 0.5);
     opacity: 0;
     pointer-events: none;
-    transform: translate(-50%, 4px);
+    transform: translateY(4px);
     transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .dashboard-sales-funnel__row:hover .dashboard-sales-funnel__tip,
 .dashboard-sales-funnel__row:focus-visible .dashboard-sales-funnel__tip {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: none;
+}
+
+/* Etapa sem contagem: contorno tracejado e números neutros, sem o degradê de etapa "cheia". */
+.dashboard-sales-funnel__row--zero polygon {
+    fill: rgb(var(--primary) / 0.05);
+    stroke: rgb(var(--primary) / 0.32);
+    stroke-width: 1.25;
+    stroke-dasharray: 4 3;
+}
+
+.dashboard-sales-funnel__row--zero .dashboard-sales-funnel__label,
+.dashboard-sales-funnel__row--zero .dashboard-sales-funnel__count {
+    color: rgb(var(--ink-muted));
+}
+
+.dashboard-sales-funnel__row--zero .dashboard-sales-funnel__pct {
+    color: rgb(var(--ink-muted));
+    font-weight: 600;
+}
+
+.dashboard-sales-funnel__row--zero:hover .dashboard-sales-funnel__band,
+.dashboard-sales-funnel__row--zero:focus-visible .dashboard-sales-funnel__band {
+    filter: none;
 }
 
 .dashboard-sales-funnel__metrics {
@@ -618,9 +652,54 @@ function formatLostDate(iso) {
 }
 
 @media (max-width: 639px) {
+    .dashboard-sales-funnel {
+        --funnel-tip-left: 5.5rem;
+    }
+
     .dashboard-sales-funnel__row {
         grid-template-columns: minmax(4.25rem, 5rem) minmax(0, 1fr) minmax(6.5rem, 7.5rem);
         gap: 0.5rem;
+    }
+}
+
+/*
+ * Cartão estreito (ex.: três colunas em 1024px): três colunas deixariam a silhueta sem largura.
+ * A faixa ocupa a esquerda nas duas linhas; rótulo e números empilham à direita.
+ */
+@container (max-width: 21rem) {
+    .dashboard-sales-funnel__row {
+        --funnel-tip-left: 0px;
+        --funnel-tip-right: 7.75rem;
+
+        grid-template-columns: minmax(0, 1fr) minmax(6.5rem, 7.25rem);
+        grid-template-rows: auto auto;
+        column-gap: 0.5rem;
+        row-gap: 0.1rem;
+        min-height: 3.75rem;
+    }
+
+    .dashboard-sales-funnel__band-wrap {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+    }
+
+    .dashboard-sales-funnel__label {
+        grid-column: 2;
+        grid-row: 1;
+        justify-content: flex-end;
+        align-items: flex-end;
+        font-size: 0.8125rem;
+    }
+
+    .dashboard-sales-funnel__metrics {
+        grid-column: 2;
+        grid-row: 2;
+        justify-content: flex-start;
+    }
+
+    .dashboard-sales-funnel__tip {
+        right: auto;
+        left: 0;
     }
 }
 

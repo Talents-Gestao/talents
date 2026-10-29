@@ -4,8 +4,10 @@
  * Só cores via tokens semânticos (tokens.css + tema da empresa); nada aqui altera telas fora da
  * Home. Cada domínio tem um par de cores (--home-a → --home-b) usado no filete, no chip de ícone e
  * no brilho do hover:
- *   Comercial/Leads → primary → info · Meta → primary → success · Financeiro → success
- *   Tarefas → primary · Calendário → info/turquesa.
+ *   Comercial/Leads → primary → info · Meta → primary → success · Financeiro → success → teal
+ *   Tarefas → primary → talents-400 · Calendário → info → teal.
+ *   Indicadores: Clientes = comercial, MRR/Faturamento = financeiro, Contratações = teal → info,
+ *   Direcionamento = primary → talents-400.
  * Animações só em transform/opacity (exceção documentada: o traço do medidor da meta).
  */
 .admin-home {
@@ -19,17 +21,39 @@
     isolation: isolate;
 }
 
-/* Brilho de marca por trás do conteúdo: dá o que o vidro dos cartões refratar. */
+/*
+ * Brilho de marca por trás do conteúdo: dá o que o vidro dos cartões refratar.
+ * Fica dentro da coluna de conteúdo (sem vazar para o padding do <main>) e com o mesmo raio dos
+ * cartões. Cada mancha é uma camada própria com `closest-side`, então chega a transparente na borda
+ * da camada, e as camadas ficam recuadas das bordas do pseudo-elemento: nenhuma borda reta aparece.
+ */
 .admin-home::before {
     content: '';
     position: absolute;
-    inset: -2rem -1rem auto -1rem;
-    height: 34rem;
+    inset: -1.25rem 0 auto 0;
+    height: 32rem;
     z-index: -1;
     pointer-events: none;
+    border-radius: 1.5rem;
     background:
-        radial-gradient(ellipse 42% 60% at 8% 0%, rgb(var(--primary) / 0.13), transparent 70%),
-        radial-gradient(ellipse 38% 55% at 96% 6%, rgb(var(--info) / 0.1), transparent 70%);
+        radial-gradient(
+                closest-side,
+                rgb(var(--primary) / 0.15),
+                rgb(var(--primary) / 0.09) 32%,
+                rgb(var(--primary) / 0.035) 64%,
+                rgb(var(--primary) / 0.01) 86%,
+                transparent
+            )
+            4% 20% / 58% 80% no-repeat,
+        radial-gradient(
+                closest-side,
+                rgb(var(--info) / 0.11),
+                rgb(var(--info) / 0.065) 32%,
+                rgb(var(--info) / 0.025) 64%,
+                rgb(var(--info) / 0.008) 86%,
+                transparent
+            )
+            96% 8% / 46% 70% no-repeat;
 }
 
 /* ---------- Cabeçalho ---------- */
@@ -380,10 +404,19 @@
     gap: 1.1rem;
 }
 
+/*
+ * Na linha de três cartões, o de Leads estica até a altura do Funil/Meta: o donut ocupa o espaço
+ * livre e fica centralizado nele, em vez de deixar um vazio acima de "Ver leads".
+ */
+.admin-home .home-card--leads .home-donut {
+    flex: 1;
+    justify-content: center;
+}
+
 .admin-home .home-donut__chart {
     position: relative;
     margin-inline: auto;
-    width: min(100%, 12.5rem);
+    width: min(100%, 13.5rem);
     aspect-ratio: 1;
 }
 
@@ -540,6 +573,27 @@
     cursor: pointer;
 }
 
+/* O cartão inteiro edita a meta: hover e foco avisam isso no subtítulo e no trilho do medidor. */
+.admin-home .home-card--goal .home-card__sub {
+    transition: color 0.2s;
+}
+
+.admin-home .home-card--goal:hover .home-card__sub,
+.admin-home .home-card--goal:focus-visible .home-card__sub {
+    color: rgb(var(--primary-text));
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.admin-home .home-card--goal .home-gauge__track {
+    transition: stroke 0.25s;
+}
+
+.admin-home .home-card--goal:hover .home-gauge__track,
+.admin-home .home-card--goal:focus-visible .home-gauge__track {
+    stroke: rgb(var(--primary) / 0.16);
+}
+
 .admin-home .home-gauge {
     position: relative;
     margin: 0.75rem auto 0;
@@ -658,10 +712,12 @@
     --seller: var(--talents-400);
 }
 
+/* Em cartão estreito o valor desce para a linha de baixo, em vez de truncar o nome. */
 .admin-home .home-seller__row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.15rem 0.6rem;
 }
 
 .admin-home .home-seller__avatar {
@@ -681,7 +737,7 @@
 
 .admin-home .home-seller__name {
     min-width: 0;
-    flex: 1;
+    flex: 1 1 5.5rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -692,6 +748,7 @@
 
 .admin-home .home-seller__value {
     flex: none;
+    margin-left: auto;
     font-size: 0.8125rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -713,6 +770,397 @@
     border-radius: 9999px;
     background: linear-gradient(90deg, rgb(var(--seller) / 0.75), rgb(var(--seller)));
     transition: transform 0.6s var(--home-ease);
+}
+
+/* ---------- Operação de hoje ---------- */
+
+.admin-home .home-card--finance {
+    --home-a: var(--success);
+    --home-b: var(--home-teal);
+    /* Os valores se ajustam à largura do cartão (1 coluna, 2 colunas em lg ou 1/3 em xl). */
+    container-type: inline-size;
+}
+
+.admin-home .home-card--tasks {
+    --home-a: var(--primary);
+    --home-b: var(--talents-400);
+}
+
+.admin-home .home-card--calendar {
+    --home-a: var(--info);
+    --home-b: var(--home-teal);
+}
+
+.admin-home .home-stats {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+
+@container (min-width: 38rem) {
+    .admin-home .home-stats {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.admin-home .home-stat {
+    border-radius: 1rem;
+    padding: 0.75rem 0.85rem;
+    background: rgb(var(--surface) / 0.72);
+    box-shadow: inset 0 0 0 1px rgb(var(--line) / 0.9), inset 0 1px 0 rgb(255 255 255 / 0.9);
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.admin-home .home-stat:hover {
+    background: rgb(var(--surface));
+    box-shadow: inset 0 0 0 1px rgb(var(--home-a) / 0.3);
+}
+
+.admin-home .home-stat__label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgb(var(--ink-muted));
+}
+
+.admin-home .home-stat__value {
+    margin-top: 0.35rem;
+    font-size: clamp(1rem, 4.6cqi, 1.25rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+    color: rgb(var(--ink));
+}
+
+.admin-home .home-stat--positive {
+    background: rgb(var(--success) / 0.06);
+    box-shadow: inset 0 0 0 1px rgb(var(--success) / 0.18);
+}
+
+.admin-home .home-stat--positive .home-stat__value {
+    color: rgb(var(--success));
+}
+
+/* "Contas a pagar": vermelho só no valor e num fundo bem suave. */
+.admin-home .home-stat--negative {
+    background: rgb(var(--danger) / 0.035);
+    box-shadow: inset 0 0 0 1px rgb(var(--danger) / 0.14);
+}
+
+.admin-home .home-stat--negative:hover {
+    box-shadow: inset 0 0 0 1px rgb(var(--danger) / 0.3);
+}
+
+.admin-home .home-stat--negative .home-stat__value {
+    color: rgb(var(--danger));
+}
+
+/* Fluxo previsto: a faixa de destaque do cartão. */
+.admin-home .home-forecast {
+    --forecast: var(--success);
+    margin-top: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    border-radius: 1rem;
+    padding: 0.8rem 1rem;
+    background: linear-gradient(100deg, rgb(var(--forecast) / 0.14), rgb(var(--forecast) / 0.05) 60%, rgb(var(--surface) / 0.6));
+    box-shadow: inset 0 0 0 1px rgb(var(--forecast) / 0.22);
+}
+
+.admin-home .home-forecast.is-negative {
+    --forecast: var(--danger);
+}
+
+.admin-home .home-forecast__label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgb(var(--ink-muted));
+}
+
+.admin-home .home-forecast__value {
+    font-size: 1.375rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: rgb(var(--forecast));
+}
+
+.admin-home .home-card__actions {
+    margin-top: auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding-top: 1rem;
+}
+
+.admin-home .home-card__actions .home-link {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+/* Lista do dia (tarefas e agenda): trilho fino na cor do domínio. */
+.admin-home .home-list {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-home .home-list__item {
+    position: relative;
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.6rem 0 0.6rem 1.35rem;
+}
+
+.admin-home .home-list__item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 0.34rem;
+    top: 1.55rem;
+    bottom: -0.45rem;
+    width: 1px;
+    background: linear-gradient(rgb(var(--home-a) / 0.45), rgb(var(--home-a) / 0.12));
+}
+
+.admin-home .home-list__dot {
+    position: absolute;
+    left: 0;
+    top: 0.85rem;
+    height: 0.75rem;
+    width: 0.75rem;
+    border-radius: 9999px;
+    background: rgb(var(--surface));
+    box-shadow: inset 0 0 0 2px rgb(var(--home-a)), 0 0 0 3px rgb(var(--home-a) / 0.12);
+}
+
+.admin-home .home-list__time {
+    width: 3.4rem;
+    flex: none;
+    padding-top: 0.05rem;
+    font-size: 0.875rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: rgb(var(--home-a));
+}
+
+.admin-home .home-list__title {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: rgb(var(--ink));
+}
+
+.admin-home .home-list__meta {
+    display: block;
+    margin-top: 0.1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: rgb(var(--ink-muted));
+}
+
+/* ---------- Estados vazios ---------- */
+
+.admin-home .home-empty {
+    margin-top: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    border-radius: 1.1rem;
+    border: 1px dashed rgb(var(--home-a) / 0.25);
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: rgb(var(--home-a));
+    background:
+        radial-gradient(ellipse 70% 60% at 50% 30%, rgb(var(--home-a) / 0.07), transparent 70%),
+        rgb(var(--surface) / 0.5);
+}
+
+.admin-home .home-empty__art {
+    width: 6rem;
+    height: auto;
+    margin-bottom: 0.25rem;
+}
+
+.admin-home .home-empty__title {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: rgb(var(--ink));
+}
+
+.admin-home .home-empty__text {
+    max-width: 22rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: rgb(var(--ink-muted));
+}
+
+/* ---------- Indicadores ---------- */
+
+.admin-home .home-kpi {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 8.5rem;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    padding: 1rem 1.1rem 1.05rem 1.25rem;
+    border: 1px solid rgb(255 255 255 / 0.85);
+    background:
+        radial-gradient(ellipse 90% 70% at 100% 0%, rgb(var(--home-a) / 0.08), transparent 60%),
+        linear-gradient(165deg, rgb(var(--surface) / 0.92), rgb(var(--surface-muted) / 0.8));
+    box-shadow:
+        0 0 0 1px rgb(var(--home-a) / 0.1),
+        0 8px 22px -14px rgb(var(--home-a) / 0.3),
+        inset 0 1px 0 rgb(255 255 255 / 0.95);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
+    backdrop-filter: blur(12px) saturate(1.2);
+    transition: box-shadow 0.3s var(--home-ease), translate 0.3s var(--home-ease);
+}
+
+/* Filete lateral na cor do domínio (os cartões grandes usam o superior). */
+.admin-home .home-kpi::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgb(var(--home-a)), rgb(var(--home-b)));
+}
+
+.admin-home .home-kpi:hover {
+    translate: 0 -2px;
+    box-shadow:
+        0 0 0 1px rgb(var(--home-a) / 0.24),
+        0 16px 32px -14px rgb(var(--home-a) / 0.42),
+        inset 0 1px 0 rgb(255 255 255 / 0.95);
+}
+
+.admin-home .home-kpi:focus-visible {
+    outline: 2px solid rgb(var(--primary-ring));
+    outline-offset: 2px;
+}
+
+.admin-home .home-kpi--commercial {
+    --home-a: var(--primary);
+    --home-b: var(--info);
+}
+
+.admin-home .home-kpi--finance {
+    --home-a: var(--success);
+    --home-b: var(--home-teal);
+}
+
+.admin-home .home-kpi--hiring {
+    --home-a: var(--home-teal);
+    --home-b: var(--info);
+}
+
+.admin-home .home-kpi--methodology {
+    --home-a: var(--primary);
+    --home-b: var(--talents-400);
+}
+
+.admin-home .home-kpi {
+    container-type: inline-size;
+}
+
+.admin-home .home-kpi__head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding-right: 1.75rem; /* espaço da alça de arrastar */
+}
+
+/* Cartão estreito (4 colunas em 1024px): chip em cima, rótulo com a largura toda, sem corte. */
+@container (max-width: 15rem) {
+    .admin-home .home-kpi__head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.55rem;
+        padding-right: 0;
+    }
+}
+
+.admin-home .home-chip--sm {
+    height: 2rem;
+    width: 2rem;
+    border-radius: 0.65rem;
+    transition: transform 0.25s var(--home-ease);
+}
+
+.admin-home .home-kpi:hover .home-chip--sm {
+    transform: scale(1.06);
+}
+
+.admin-home .home-kpi__label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    color: rgb(var(--ink));
+}
+
+.admin-home .home-kpi__value {
+    margin-top: auto;
+    padding-top: 0.9rem;
+    font-size: clamp(1.5rem, 1.3rem + 0.6vw, 1.875rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: rgb(var(--ink));
+}
+
+.admin-home .home-kpi__hint {
+    margin-top: 0.35rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: rgb(var(--ink-muted));
+}
+
+.admin-home .home-kpi__go {
+    flex: none;
+    font-weight: 700;
+    color: rgb(var(--primary-text));
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.2s, transform 0.2s var(--home-ease);
+}
+
+.admin-home .home-kpi:hover .home-kpi__go,
+.admin-home .home-kpi:focus-visible .home-kpi__go {
+    opacity: 1;
+    transform: none;
+}
+
+/* Alça de arrastar dos cartões: foco visível como o resto da Home. */
+.admin-home .dashboard-widget-drag-handle:focus-visible {
+    outline: 2px solid rgb(var(--primary-ring));
+    outline-offset: 2px;
 }
 
 /* ---------- Entrada em sequência (só na primeira renderização) ---------- */
@@ -744,14 +1192,23 @@
     .admin-home .home-pill,
     .admin-home .home-donut__slice,
     .admin-home .home-seller__fill,
-    .admin-home .home-link {
+    .admin-home .home-link,
+    .admin-home .home-kpi,
+    .admin-home .home-kpi__go,
+    .admin-home .home-chip--sm,
+    .admin-home .home-stat {
         transition: none;
     }
 
     .admin-home .home-card:hover,
+    .admin-home .home-kpi:hover,
     .admin-home .home-btn:hover,
     .admin-home .home-cta:hover {
         translate: none;
+    }
+
+    .admin-home .home-kpi:hover .home-chip--sm {
+        transform: none;
     }
 
     .admin-home .home-gauge__fill.is-intro {
@@ -761,7 +1218,8 @@
 
 /* Sem suporte a backdrop-filter, o cartão fica um pouco mais opaco para manter a leitura. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .admin-home .home-card {
+    .admin-home .home-card,
+    .admin-home .home-kpi {
         background:
             radial-gradient(ellipse 85% 55% at 100% 0%, rgb(var(--home-a) / 0.09), transparent 60%),
             rgb(var(--surface));

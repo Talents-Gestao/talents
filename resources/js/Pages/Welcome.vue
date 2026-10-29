@@ -13,33 +13,18 @@ import {
     UserPlusIcon,
 } from '@heroicons/vue/24/outline';
 import { Link } from '@inertiajs/vue3';
-import { computed, defineAsyncComponent } from 'vue';
+import { computed } from 'vue';
 import HeroGlass from '@/Components/Landing/HeroGlass.vue';
-import HeroStagePlaceholder from '@/Components/Landing/hero/HeroStagePlaceholder.vue';
 import LandingAlem from '@/Components/Landing/LandingAlem.vue';
 import LandingFrentes from '@/Components/Landing/LandingFrentes.vue';
 import LandingPilaresBento from '@/Components/Landing/LandingPilaresBento.vue';
 import LandingRecrutamento from '@/Components/Landing/LandingRecrutamento.vue';
-import LandingButterflyPillars from '@/Components/Landing/LandingButterflyPillars.vue';
-import LandingCardGrid from '@/Components/Landing/LandingCardGrid.vue';
 import LandingHeroTypewriter from '@/Components/Landing/LandingHeroTypewriter.vue';
 import LandingLayout from '@/Components/Landing/LandingLayout.vue';
-import LandingRecruitmentPhaseCard from '@/Components/Landing/LandingRecruitmentPhaseCard.vue';
-
-// Direções da Hero (só em ambiente local): chunk próprio, carregado sob demanda.
-const HeroStage = defineAsyncComponent({
-    loader: () => import('@/Components/Landing/hero/HeroStage.vue'),
-    loadingComponent: HeroStagePlaceholder,
-    delay: 0,
-});
 
 defineProps({
     canLogin: Boolean,
     canRegister: Boolean,
-    heroGlass: Boolean,
-    heroDirection: { type: String, default: null },
-    heroPerf: Boolean,
-    redesign: Boolean,
 });
 
 const title = 'Talents — Contratação de Talentos e Consultoria em Gestão de Pessoas';
@@ -247,7 +232,7 @@ const organizationJsonLd = computed(() =>
         :description="description"
         :can-login="canLogin"
         :can-register="canRegister"
-        :redesign="redesign"
+        glass-header
     >
         <template #head>
             <component :is="'script'" type="application/ld+json" head-key="jsonld-org">
@@ -255,8 +240,7 @@ const organizationJsonLd = computed(() =>
             </component>
         </template>
 
-        <HeroStage v-if="heroDirection" :direction="heroDirection" :perf="heroPerf" />
-        <HeroGlass v-else :enabled="heroGlass">
+        <HeroGlass>
         <section class="relative overflow-hidden lg:min-h-[560px]">
             <div class="relative z-10 mx-auto max-w-6xl px-4 py-10 md:py-24 lg:py-28">
                 <div class="lg:max-w-[46%]">
@@ -276,102 +260,17 @@ const organizationJsonLd = computed(() =>
                 src="/images/hero-home.png"
                 alt="Profissional apresentando perfis comportamentais: Executor, Comunicador, Planejador e Analista"
                 class="hidden h-auto w-full object-cover lg:absolute lg:inset-y-0 lg:right-0 lg:block lg:h-full lg:w-1/2 lg:object-[78%_8%]"
+                width="760"
+                height="593"
                 fetchpriority="high"
             />
         </section>
         </HeroGlass>
 
-        <template v-if="redesign">
-            <LandingFrentes />
-            <LandingPilaresBento :pillars="methodologyPillars" />
-            <LandingRecrutamento :phases="recruitmentPhases" />
-            <LandingAlem :items="pillars" />
-        </template>
-
-        <template v-else>
-        <section class="border-t border-white/20 bg-white/40 py-12 backdrop-blur-sm md:py-16">
-            <div class="mx-auto max-w-6xl px-4">
-                <div class="max-w-3xl">
-                    <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">
-                        Metodologia Talents
-                    </p>
-                    <h2 class="mt-3 text-2xl font-bold text-slate-900 md:text-3xl">
-                        Metodologia em 4 pilares — com a contratação no centro
-                    </h2>
-                    <p class="mt-3 text-base font-medium text-talents-800 md:text-lg">
-                        Contratar certo é o ponto de partida. Os outros pilares sustentam retenção, cultura e saúde do
-                        time.
-                    </p>
-                    <p class="mt-3 text-sm leading-relaxed text-slate-600 md:text-base">
-                        A metamorfose empresarial começa com bons talentos no time — e continua com comportamento,
-                        direcionamento e proteção psicossocial.
-                    </p>
-                </div>
-
-                <div class="mt-10">
-                    <LandingButterflyPillars :pillars="methodologyPillars" />
-                </div>
-            </div>
-        </section>
-
-        <section
-            id="recrutamento-estrategico"
-            class="scroll-mt-24 border-t border-white/20 py-14 md:py-20"
-        >
-            <div class="mx-auto max-w-6xl px-4">
-                <div class="max-w-2xl">
-                    <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">
-                        Contratação de talentos
-                    </p>
-                    <h2 class="mt-3 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-                        Recrutamento estratégico
-                    </h2>
-                    <p class="mt-4 text-base leading-relaxed text-slate-600 md:text-lg">
-                        Contratar errado custa tempo, clima e resultado. Em quatro fases — preparar, selecionar,
-                        contratar e acompanhar — unimos análise comportamental, critério técnico e pós-contratação para
-                        mais aderência e menos risco de turnover.
-                    </p>
-                </div>
-
-                <div class="mx-auto mt-12 grid max-w-3xl grid-cols-1 gap-6 overflow-visible">
-                    <LandingRecruitmentPhaseCard
-                        v-for="(phase, phaseIndex) in recruitmentPhases"
-                        :key="phase.title"
-                        :phase="phase"
-                        :phase-index="phaseIndex"
-                    />
-                </div>
-
-                <div class="mt-10 flex flex-wrap items-center gap-3">
-                    <Link :href="route('landing.contato')" class="btn-primary">
-                        Quero contratar com a Talents
-                    </Link>
-                </div>
-            </div>
-        </section>
-
-        <section class="border-t border-white/20 py-12 md:py-14">
-            <div class="mx-auto max-w-6xl px-4">
-                <div class="max-w-3xl">
-                    <p class="text-xs font-semibold uppercase tracking-widest text-talents-600 md:text-sm">
-                        Amplitude da consultoria
-                    </p>
-                    <h2 class="mt-3 text-xl font-bold text-slate-900 md:text-2xl">
-                        Além de contratar: o que sustenta o talento no time
-                    </h2>
-                    <p class="mt-3 text-sm leading-relaxed text-slate-600 md:text-base">
-                        Contratar é o centro. As demais frentes da Talents existem para que o hire não fique órfão —
-                        com liderança, cultura, desenvolvimento e proteção psicossocial.
-                    </p>
-                </div>
-
-                <div class="mt-10">
-                    <LandingCardGrid :items="pillars" columns="md:grid-cols-2 lg:grid-cols-3" variant="rich" />
-                </div>
-            </div>
-        </section>
-
-        </template>
+        <LandingFrentes />
+        <LandingPilaresBento :pillars="methodologyPillars" />
+        <LandingRecrutamento :phases="recruitmentPhases" />
+        <LandingAlem :items="pillars" />
 
         <section class="py-16">
             <div class="mx-auto max-w-6xl px-4">

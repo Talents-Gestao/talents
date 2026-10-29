@@ -1,10 +1,11 @@
 <script setup>
 import '../../../css/admin-home.css';
 import AdminQuoteBanner from '@/Components/AdminHome/AdminQuoteBanner.vue';
+import CountUp from '@/Components/AdminHome/CountUp.vue';
+import HomeEmptyState from '@/Components/AdminHome/HomeEmptyState.vue';
 import LeadsSourceDonut from '@/Components/AdminHome/LeadsSourceDonut.vue';
 import MonthlyGoalGauge from '@/Components/AdminHome/MonthlyGoalGauge.vue';
 import DashboardSalesFunnel from '@/Components/Dashboard/DashboardSalesFunnel.vue';
-import EmptyState from '@/Components/Dashboard/EmptyState.vue';
 import ProgressBar from '@/Components/Dashboard/ProgressBar.vue';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import InputError from '@/Components/InputError.vue';
@@ -110,13 +111,14 @@ const sectionMeta = {
         label: 'Operação de hoje',
         title: 'Caixa, tarefas e agenda',
         headingId: 'dashboard-operation-heading',
-        gridClass: 'grid gap-4 xl:grid-cols-3 xl:items-stretch',
+        gridClass: 'grid gap-4 lg:grid-cols-2 xl:grid-cols-3 xl:items-stretch',
     },
     kpis: {
         label: 'Indicadores',
         title: 'Visão consolidada',
         headingId: 'dashboard-kpis-heading',
-        gridClass: 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3',
+        // 4 colunas: os 7 indicadores ficam 4 + 3, sem um cartão sozinho na última linha.
+        gridClass: 'grid gap-3 sm:grid-cols-2 lg:grid-cols-4',
     },
     insights: {
         label: 'Leitura do mês',
@@ -181,6 +183,7 @@ const kpiById = computed(() => ({
             ? `+${props.kpis.active_clients_delta} este mês`
             : 'Empresas ativas',
         icon: BuildingOffice2Icon,
+        domain: 'commercial',
         href: route('admin.companies.index'),
     },
     new_clients: {
@@ -192,6 +195,7 @@ const kpiById = computed(() => ({
                 ? 'Vs mês anterior'
                 : `${props.kpis.new_clients_delta_pct > 0 ? '+' : ''}${props.kpis.new_clients_delta_pct}% vs mês anterior`,
         icon: UserPlusIcon,
+        domain: 'commercial',
         href: route('admin.companies.index'),
     },
     mrr: {
@@ -200,6 +204,7 @@ const kpiById = computed(() => ({
         value: formatMoneyCompact(props.kpis.mrr_cents),
         hint: 'Soma dos planos das assinaturas ativas',
         icon: CurrencyDollarIcon,
+        domain: 'finance',
         href: route('admin.plans.index'),
     },
     revenue: {
@@ -208,6 +213,7 @@ const kpiById = computed(() => ({
         value: formatMoneyCompact(props.kpis.revenue_month_cents),
         hint: `${Math.round(Number(props.kpis.revenue_goal_pct || 0))}% da meta (parcelas pagas)`,
         icon: ChartBarIcon,
+        domain: 'finance',
         href: route('admin.financeiro.vendas.index'),
     },
     hiring: {
@@ -216,6 +222,7 @@ const kpiById = computed(() => ({
         value: props.kpis.hiring_open,
         hint: `${props.kpis.hiring_closed} fechadas`,
         icon: BriefcaseIcon,
+        domain: 'hiring',
         href: route('admin.acompanhamento.index'),
     },
     hiring_days: {
@@ -224,6 +231,7 @@ const kpiById = computed(() => ({
         value: props.kpis.avg_hiring_days == null ? '—' : `${props.kpis.avg_hiring_days} dias`,
         hint: props.kpis.avg_hiring_days == null ? 'Sem processos fechados' : 'Da abertura à contratação',
         icon: ClockIcon,
+        domain: 'hiring',
         href: route('admin.acompanhamento.index'),
     },
     methodology: {
@@ -232,6 +240,7 @@ const kpiById = computed(() => ({
         value: props.kpis.methodology_active,
         hint: 'Empresas com metodologia ativa',
         icon: FolderOpenIcon,
+        domain: 'methodology',
         href: route('admin.metodologia.index'),
     },
 }));
@@ -374,7 +383,11 @@ const submitGoal = () => {
                             v-for="widgetId in layout.sections[sectionId]"
                             :key="widgetId"
                             class="relative"
-                            :class="kpiById[widgetId] ? '' : 'flex h-full min-h-0 flex-col'"
+                            :class="[
+                                kpiById[widgetId] ? '' : 'flex h-full min-h-0 flex-col',
+                                // Em 2 colunas (lg) o Financeiro ocupa a linha e Tarefas/Calendário ficam lado a lado.
+                                widgetId === 'finance' && sectionId === 'operation' ? 'lg:col-span-2 xl:col-span-1' : '',
+                            ]"
                         >
                             <button
                                 type="button"
@@ -392,180 +405,174 @@ const submitGoal = () => {
 
                             <section
                                 v-if="widgetId === 'finance'"
-                                class="dashboard-panel dashboard-panel-accent-finance dashboard-reveal flex h-full flex-col"
+                                class="home-card home-card--finance dashboard-reveal h-full"
                             >
-                                    <div class="dashboard-panel-heading pr-10">
-                                        <div>
-                                            <h3 class="dashboard-panel-title text-emerald-800/80">Financeiro</h3>
-                                            <p class="dashboard-panel-kicker">Caixa e fluxo do mês</p>
-                                        </div>
-                                        <span class="dashboard-panel-icon dashboard-panel-icon-finance" aria-hidden="true">
-                                            <BanknotesIcon class="h-5 w-5" />
-                                        </span>
+                                <div class="home-card__head">
+                                    <span class="home-chip" aria-hidden="true">
+                                        <BanknotesIcon class="h-5 w-5" />
+                                    </span>
+                                    <div class="min-w-0">
+                                        <h3 class="home-card__title">Financeiro</h3>
+                                        <p class="home-card__sub">Caixa e fluxo do mês</p>
                                     </div>
-                                    <dl class="relative mt-5 grid grid-cols-2 gap-2.5">
-                                        <div class="dashboard-instrument">
-                                            <dt class="dashboard-instrument-label">Receber este mês</dt>
-                                            <dd class="dashboard-instrument-value text-emerald-700">
-                                                {{ formatMoney(finance.receive_this_month_cents) }}
-                                            </dd>
-                                        </div>
-                                        <div class="dashboard-instrument">
-                                            <dt class="dashboard-instrument-label">Recebido</dt>
-                                            <dd class="dashboard-instrument-value text-slate-900">
-                                                {{ formatMoney(finance.received_cents) }}
-                                            </dd>
-                                        </div>
-                                        <div class="dashboard-instrument">
-                                            <dt class="dashboard-instrument-label">A receber</dt>
-                                            <dd class="dashboard-instrument-value text-slate-900">
-                                                {{ formatMoney(finance.to_receive_cents) }}
-                                            </dd>
-                                        </div>
-                                        <div class="dashboard-instrument hover:!border-rose-200/70">
-                                            <dt class="dashboard-instrument-label">Contas a pagar</dt>
-                                            <dd class="dashboard-instrument-value text-rose-600">
-                                                {{ formatMoney(finance.payables_cents) }}
-                                            </dd>
-                                        </div>
-                                    </dl>
-                                    <div
-                                        class="dashboard-forecast-strip relative"
-                                        :class="{ 'dashboard-forecast-strip-neg': !forecastPositive }"
-                                    >
-                                        <span class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
-                                            Fluxo previsto
-                                        </span>
-                                        <span
-                                            class="text-lg font-bold tabular-nums tracking-tight sm:text-xl"
-                                            :class="forecastPositive ? 'text-emerald-700' : 'text-rose-600'"
-                                        >
-                                            {{ forecastPositive ? '+' : '' }}{{ formatMoney(finance.forecast_cents) }}
-                                        </span>
+                                </div>
+                                <dl class="home-stats">
+                                    <div class="home-stat home-stat--positive">
+                                        <dt class="home-stat__label">Receber este mês</dt>
+                                        <dd class="home-stat__value">{{ formatMoney(finance.receive_this_month_cents) }}</dd>
                                     </div>
-                                    <div class="relative mt-3 flex w-full items-center justify-between gap-3">
-                                        <Link
-                                            :href="route('admin.financeiro.contas-a-pagar.index')"
-                                            class="dashboard-action-link"
-                                        >
-                                            Contas a pagar
-                                        </Link>
-                                        <Link
-                                            :href="route('admin.financeiro.contas-a-receber.index')"
-                                            class="dashboard-action-link"
-                                        >
-                                            Contas a receber
-                                        </Link>
+                                    <div class="home-stat">
+                                        <dt class="home-stat__label">Recebido</dt>
+                                        <dd class="home-stat__value">{{ formatMoney(finance.received_cents) }}</dd>
                                     </div>
-                                </section>
-
-                                <section
-                                    v-else-if="widgetId === 'tasks_today'"
-                                    class="dashboard-panel dashboard-panel-accent-tasks dashboard-reveal flex h-full flex-col"
-                                >
-                                    <div class="dashboard-panel-heading pr-10">
-                                        <div>
-                                            <h3 class="dashboard-panel-title text-talents-800/80">Tarefas · hoje</h3>
-                                            <p class="dashboard-panel-kicker">Prioridades do dia</p>
-                                        </div>
-                                        <span class="dashboard-panel-icon dashboard-panel-icon-tasks" aria-hidden="true">
-                                            <ViewColumnsIcon class="h-5 w-5" />
-                                        </span>
+                                    <div class="home-stat">
+                                        <dt class="home-stat__label">A receber</dt>
+                                        <dd class="home-stat__value">{{ formatMoney(finance.to_receive_cents) }}</dd>
                                     </div>
-                                    <ul v-if="tasksToday.length" class="dashboard-calendar-rail relative mt-4">
-                                        <li
-                                            v-for="task in tasksToday"
-                                            :key="task.id"
-                                            class="dashboard-calendar-item"
-                                        >
-                                            <span class="dashboard-calendar-dot" aria-hidden="true" />
-                                            <span class="min-w-0 flex-1">
-                                                <span class="block truncate text-sm font-semibold text-slate-900">{{ task.title }}</span>
-                                                <span
-                                                    v-if="task.list_name || task.board_name"
-                                                    class="mt-0.5 block truncate text-xs text-slate-500"
-                                                >
-                                                    <template v-if="task.board_name">{{ task.board_name }}</template>
-                                                    <template v-if="task.board_name && task.list_name"> · </template>
-                                                    <template v-if="task.list_name">{{ task.list_name }}</template>
-                                                </span>
-                                            </span>
-                                        </li>
-                                    </ul>
-                                    <EmptyState
-                                        v-else
-                                        class="dashboard-empty-trust relative mt-4 flex-1 py-6"
-                                        title="Sem tarefas atribuídas a si para hoje"
-                                        description="Quando houver tarefas Admin com vencimento hoje (ou atrasadas) e o seu nome no cartão, elas aparecem aqui."
-                                    />
+                                    <div class="home-stat home-stat--negative">
+                                        <dt class="home-stat__label">Contas a pagar</dt>
+                                        <dd class="home-stat__value">{{ formatMoney(finance.payables_cents) }}</dd>
+                                    </div>
+                                </dl>
+                                <div class="home-forecast" :class="{ 'is-negative': !forecastPositive }">
+                                    <span class="home-forecast__label">Fluxo previsto</span>
+                                    <span class="home-forecast__value">
+                                        {{ forecastPositive ? '+' : '' }}{{ formatMoney(finance.forecast_cents) }}
+                                    </span>
+                                </div>
+                                <div class="home-card__actions">
                                     <Link
-                                        :href="route('admin.tarefas.quadros.index')"
-                                        class="dashboard-panel-link group/link relative mt-auto pt-4"
+                                        :href="route('admin.financeiro.contas-a-pagar.index')"
+                                        class="home-link group/link"
                                     >
-                                        Ver tarefas
+                                        Contas a pagar
                                         <span class="dashboard-panel-link-arrow" aria-hidden="true">→</span>
                                     </Link>
-                                </section>
-
-                                <section
-                                    v-else-if="widgetId === 'calendar_today'"
-                                    class="dashboard-panel dashboard-panel-accent-calendar dashboard-reveal flex h-full flex-col"
-                                >
-                                    <div class="dashboard-panel-heading pr-10">
-                                        <div>
-                                            <h3 class="dashboard-panel-title text-sky-800/80">Calendário · hoje</h3>
-                                            <p class="dashboard-panel-kicker">Agenda do dia · {{ todayDateLabel }}</p>
-                                        </div>
-                                        <span class="dashboard-panel-icon dashboard-panel-icon-calendar" aria-hidden="true">
-                                            <CalendarDaysIcon class="h-5 w-5" />
-                                        </span>
-                                    </div>
-                                    <ul v-if="operationToday.length" class="dashboard-calendar-rail relative mt-4">
-                                        <li
-                                            v-for="item in operationToday"
-                                            :key="item.id"
-                                            class="dashboard-calendar-item"
-                                        >
-                                            <span class="dashboard-calendar-dot" aria-hidden="true" />
-                                            <span class="dashboard-calendar-time">{{ item.time || '—' }}</span>
-                                            <span class="min-w-0 flex-1">
-                                                <span class="block truncate text-sm font-semibold text-slate-900">{{ item.title }}</span>
-                                                <span v-if="item.company_name" class="mt-0.5 block truncate text-xs text-slate-500">
-                                                    {{ item.company_name }}
-                                                </span>
-                                            </span>
-                                        </li>
-                                    </ul>
-                                    <EmptyState
-                                        v-else
-                                        class="dashboard-empty-trust relative mt-4 flex-1 py-6"
-                                        title="Sem agenda para hoje"
-                                        description="Quando houver itens no calendário estratégico de hoje, eles aparecem aqui."
-                                    />
                                     <Link
-                                        :href="route('admin.strategic-calendar.index')"
-                                        class="dashboard-panel-link group/link relative mt-auto pt-4"
+                                        :href="route('admin.financeiro.contas-a-receber.index')"
+                                        class="home-link group/link"
                                     >
-                                        Ver agenda completa
+                                        Contas a receber
                                         <span class="dashboard-panel-link-arrow" aria-hidden="true">→</span>
                                     </Link>
-                                </section>
+                                </div>
+                            </section>
+
+                            <section
+                                v-else-if="widgetId === 'tasks_today'"
+                                class="home-card home-card--tasks dashboard-reveal h-full"
+                            >
+                                <div class="home-card__head">
+                                    <span class="home-chip" aria-hidden="true">
+                                        <ViewColumnsIcon class="h-5 w-5" />
+                                    </span>
+                                    <div class="min-w-0">
+                                        <h3 class="home-card__title">Tarefas · hoje</h3>
+                                        <p class="home-card__sub">Prioridades do dia</p>
+                                    </div>
+                                </div>
+                                <ul v-if="tasksToday.length" class="home-list">
+                                    <li
+                                        v-for="task in tasksToday"
+                                        :key="task.id"
+                                        class="home-list__item"
+                                    >
+                                        <span class="home-list__dot" aria-hidden="true" />
+                                        <span class="min-w-0 flex-1">
+                                            <span class="home-list__title">{{ task.title }}</span>
+                                            <span
+                                                v-if="task.list_name || task.board_name"
+                                                class="home-list__meta"
+                                            >
+                                                <template v-if="task.board_name">{{ task.board_name }}</template>
+                                                <template v-if="task.board_name && task.list_name"> · </template>
+                                                <template v-if="task.list_name">{{ task.list_name }}</template>
+                                            </span>
+                                        </span>
+                                    </li>
+                                </ul>
+                                <HomeEmptyState
+                                    v-else
+                                    variant="tasks"
+                                    title="Sem tarefas atribuídas a si para hoje"
+                                    description="Quando houver tarefas Admin com vencimento hoje (ou atrasadas) e o seu nome no cartão, elas aparecem aqui."
+                                />
+                                <Link
+                                    :href="route('admin.tarefas.quadros.index')"
+                                    class="home-link group/link"
+                                >
+                                    Ver tarefas
+                                    <span class="dashboard-panel-link-arrow" aria-hidden="true">→</span>
+                                </Link>
+                            </section>
+
+                            <section
+                                v-else-if="widgetId === 'calendar_today'"
+                                class="home-card home-card--calendar dashboard-reveal h-full"
+                            >
+                                <div class="home-card__head">
+                                    <span class="home-chip" aria-hidden="true">
+                                        <CalendarDaysIcon class="h-5 w-5" />
+                                    </span>
+                                    <div class="min-w-0">
+                                        <h3 class="home-card__title">Calendário · hoje</h3>
+                                        <p class="home-card__sub">Agenda do dia · {{ todayDateLabel }}</p>
+                                    </div>
+                                </div>
+                                <ul v-if="operationToday.length" class="home-list">
+                                    <li
+                                        v-for="item in operationToday"
+                                        :key="item.id"
+                                        class="home-list__item"
+                                    >
+                                        <span class="home-list__dot" aria-hidden="true" />
+                                        <span class="home-list__time">{{ item.time || '—' }}</span>
+                                        <span class="min-w-0 flex-1">
+                                            <span class="home-list__title">{{ item.title }}</span>
+                                            <span v-if="item.company_name" class="home-list__meta">
+                                                {{ item.company_name }}
+                                            </span>
+                                        </span>
+                                    </li>
+                                </ul>
+                                <HomeEmptyState
+                                    v-else
+                                    variant="calendar"
+                                    title="Sem agenda para hoje"
+                                    description="Quando houver itens no calendário estratégico de hoje, eles aparecem aqui."
+                                />
+                                <Link
+                                    :href="route('admin.strategic-calendar.index')"
+                                    class="home-link group/link"
+                                >
+                                    Ver agenda completa
+                                    <span class="dashboard-panel-link-arrow" aria-hidden="true">→</span>
+                                </Link>
+                            </section>
 
                             <Link
                                 v-else-if="kpiById[widgetId]"
                                 :href="kpiById[widgetId].href"
-                                class="dashboard-panel-compact group dashboard-reveal flex min-h-[7.5rem] flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-talents-600"
+                                class="home-kpi group dashboard-reveal"
+                                :class="`home-kpi--${kpiById[widgetId].domain}`"
                             >
-                                <div class="flex items-start justify-between gap-3 pr-8">
-                                    <p class="dashboard-panel-title max-w-[70%] leading-snug">
-                                        {{ kpiById[widgetId].label }}
-                                    </p>
-                                    <span class="dashboard-kpi-tile" aria-hidden="true">
-                                        <component :is="kpiById[widgetId].icon" class="dashboard-kpi-icon" />
+                                <div class="home-kpi__head">
+                                    <span class="home-chip home-chip--sm" aria-hidden="true">
+                                        <component :is="kpiById[widgetId].icon" class="h-4 w-4" />
                                     </span>
+                                    <p class="home-kpi__label">{{ kpiById[widgetId].label }}</p>
                                 </div>
-                                <p class="dashboard-metric-value mt-auto pt-3">{{ kpiById[widgetId].value }}</p>
-                                <p class="dashboard-metric-hint">{{ kpiById[widgetId].hint }}</p>
+                                <p class="home-kpi__value">
+                                    <CountUp
+                                        v-if="typeof kpiById[widgetId].value === 'number'"
+                                        :value="kpiById[widgetId].value"
+                                    />
+                                    <template v-else>{{ kpiById[widgetId].value }}</template>
+                                </p>
+                                <p class="home-kpi__hint">
+                                    <span>{{ kpiById[widgetId].hint }}</span>
+                                    <span class="home-kpi__go" aria-hidden="true">→</span>
+                                </p>
                             </Link>
 
                             <section
@@ -586,9 +593,9 @@ const submitGoal = () => {
                                     :rows="leadsBySource"
                                     :colors="sourceColors"
                                 />
-                                <EmptyState
+                                <HomeEmptyState
                                     v-else
-                                    class="dashboard-empty-trust mt-4 py-8"
+                                    variant="leads"
                                     title="Sem leads neste mês"
                                     description="Quando houver envios da landing ou cadastros manuais, as origens aparecem aqui."
                                 />

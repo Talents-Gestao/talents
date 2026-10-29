@@ -162,11 +162,14 @@ onBeforeUnmount(() => {
                 aria-hidden="true"
                 :aria-live="prefersReducedMotion ? undefined : 'polite'"
             >
+                <!-- Cursor como borda do trecho digitado: um caractere "|" mudando de posição a cada letra
+                     contava como deslocamento de layout (CLS). -->
                 <template v-if="prefersReducedMotion">{{ TITLE }}</template>
-                <template v-else>{{ displayed }}<span
-                    class="landing-hero-typewriter__cursor"
-                    :class="{ 'landing-hero-typewriter__cursor--on': showCursor }"
-                >|</span></template>
+                <span
+                    v-else
+                    class="landing-hero-typewriter__typed"
+                    :class="{ 'landing-hero-typewriter__typed--cursor': showCursor }"
+                >{{ displayed }}</span>
             </span>
         </h1>
 
@@ -177,14 +180,11 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.landing-hero-typewriter__cursor {
-    margin-left: 0;
-    font-weight: 400;
-    color: currentColor;
-    opacity: 0;
+.landing-hero-typewriter__typed {
+    border-right: 0.08em solid transparent;
 }
 
-.landing-hero-typewriter__cursor--on {
-    opacity: 1;
+.landing-hero-typewriter__typed--cursor {
+    border-right-color: currentColor;
 }
 </style>

@@ -3,13 +3,10 @@ import { Link } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 
 /**
- * Hero "Designed in glass" (WebGL). Com `enabled=false` — ou sem WebGL, com reduced-motion,
- * aparelho fraco ou contexto perdido — renderiza apenas o slot (Hero atual, sem wrapper).
+ * Hero "Designed in glass" (WebGL). Fallback técnico: sem WebGL, com reduced-motion, aparelho fraco
+ * ou contexto perdido, renderiza apenas o slot (Hero em HTML, com o mesmo conteúdo real).
  * Os textos abaixo espelham o Hero de Welcome.vue / LandingHeroTypewriter.vue.
  */
-const props = defineProps({
-    enabled: { type: Boolean, default: false },
-});
 
 const CONTENT = {
     eyebrow: 'Consultoria estratégica em gestão de pessoas',
@@ -44,7 +41,7 @@ const FADE_DESKTOP = 48;
 const FADE_MOBILE = 32;
 
 const supportsGlass = () => {
-    if (typeof window === 'undefined' || !props.enabled) return false;
+    if (typeof window === 'undefined') return false;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false;
     if ((navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.deviceMemory ?? 8) <= 2) return false;
     try {
@@ -112,8 +109,7 @@ const loadImage = (src) =>
     });
 
 const init = async () => {
-    // Os utilitários vêm junto com o three: importá-los estaticamente aqui faria os chunks dinâmicos das
-    // direções da Hero dependerem do chunk da Welcome, que perderia a própria entrada no manifest do Vite.
+    // Os utilitários vêm junto com o three: só são usados com o WebGL ligado e ficam fora do chunk da Welcome.
     const [THREE, { RoomEnvironment }, {
         BEVEL,
         CORNER_RADIUS,
@@ -366,7 +362,7 @@ const init = async () => {
             tc.fillRect(0, 0, L.image.w, L.image.h);
             tc.globalCompositeOperation = 'destination-in';
             const fade = g.portrait
-                ? tc.createLinearGradient(0, 0, 0, L.image.h * 0.35)
+                ? tc.createLinearGradient(0, 0, 0, L.image.h * 0.12) // curto: o rosto fica no topo da foto
                 : tc.createLinearGradient(0, 0, L.image.w * 0.35, 0);
             fade.addColorStop(0, 'rgba(0,0,0,0)');
             fade.addColorStop(1, 'rgba(0,0,0,1)');
@@ -552,7 +548,8 @@ const init = async () => {
     const resize = () => {
         const W = root.clientWidth;
         const H = root.clientHeight;
-        if (!W || !H) return;
+        // sem largura útil (oculto ou em transição de viewport): mantém o último layout
+        if (W < 200 || !H) return;
         g.W = W;
         g.H = H;
         g.portrait = W < 700;
@@ -820,6 +817,10 @@ const init = async () => {
     };
 
     resize();
+    // Compila os shaders antes do primeiro quadro (em paralelo quando a GPU tem KHR_parallel_shader_compile),
+    // para a compilação não virar uma tarefa longa na thread principal no primeiro render.
+    await renderer.compileAsync?.(scene, camera).catch(() => {});
+    if (disposed) return;
     await nextTick();
     kick();
 };
@@ -849,12 +850,16 @@ onBeforeUnmount(teardown);
             <h1 class="hg-text" :style="headlineStyle">
                 <span v-for="(line, i) in layout.headline.lines" :key="i" class="block whitespace-pre">{{ line }}{{ ' ' }}</span>
             </h1>
-            <p class="hg-text" :style="subtitleStyle">{{ CONTENT.subtitle }}</p>
+            <p class="hg-text" :style="subtitleStyle">
+                <span v-for="(line, i) in layout.subtitle.lines" :key="i" class="block whitespace-pre">{{ line }}{{ ' ' }}</span>
+            </p>
             <img
                 class="hg-image"
                 :src="CONTENT.image.src"
                 :alt="CONTENT.image.alt"
                 :style="box(layout.image)"
+                width="760"
+                height="593"
             />
             <Link
                 v-for="(c, i) in layout.ctas"

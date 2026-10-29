@@ -328,66 +328,78 @@ export const heroLayout = ({ pw, ph, S, portrait, content, measure }) => {
         y: ph * 0.135,
     };
 
-    const maxLines = portrait ? 0.3 : 0.46;
-    let size = Math.min(pw * 0.078, ph * 0.2);
-    let lines;
-    let lh;
-    for (;;) {
-        const tracking = -0.045 * size;
-        lines = wrapLines(content.title, textW, (t) => measure(t, size, 600, tracking));
-        lh = size * 0.97;
-        const widest = Math.max(...lines.map((l) => measure(l, size, 600, tracking)));
-        if ((lines.length * lh <= ph * maxLines && widest <= textW) || size <= 22) break;
-        size *= 0.94;
-    }
-    const headline = { lines, size, lh, tracking: -0.045 * size, x: padX, y: eyebrow.y + eyebrowLines.length * eyebrowLh + eyebrowSize * 1.2 };
+    const widest = (arr, sz, weight, tracking) => Math.max(...arr.map((l) => measure(l, sz, weight, tracking)));
 
     const subSize = Math.max(16 * u, 14);
     const subLines = wrapLines(content.subtitle, textW, (t) => measure(t, subSize, 400, 0));
-    const subtitle = {
-        lines: subLines,
-        size: subSize,
-        lh: subSize * 1.45,
-        x: padX,
-        y: headline.y + lines.length * lh + subSize * 1.1,
-    };
-
-    const widest = (arr, sz, weight, tracking) => Math.max(...arr.map((l) => measure(l, sz, weight, tracking)));
-    const headlineW = widest(lines, size, 600, -0.045 * size);
+    const subLh = subSize * 1.45;
     const subtitleW = widest(subLines, subSize, 400, 0);
-    // Borda direita do bloco de texto (título/subtítulo): a linha de CTAs termina nela.
-    const blockRight = padX + Math.min(textW, Math.max(headlineW, subtitleW));
 
     const ctaH = Math.max(40 * S, 40);
     const ctaSize = Math.max(14 * u, 13);
     const gap = 26;
+    const rowGap = 6;
     const primaryW = Math.max(116 * Math.max(S, 1), measure(content.ctas[0].label, ctaSize, 600, 0) + 44);
-    const items = [
-        { ...content.ctas[0], kind: 'primary', w: primaryW },
-        ...content.ctas.slice(1).map((c) => ({ ...c, kind: 'link', w: measure(c.label, ctaSize, 500, 0) })),
-    ];
     // Linhas: no retrato o primário ocupa a largura do bloco e os links vêm abaixo, um em cada ponta;
     // no desktop/tablet, quebra gulosa com cada linha alinhada à direita do bloco.
-    const rows = [];
-    if (portrait) {
-        items[0].w = blockRight - padX;
-        rows.push([items[0]]);
-        const rest = items.slice(1);
-        const restW = rest.reduce((acc, c) => acc + c.w, 0) + gap * (rest.length - 1);
-        if (restW <= blockRight - padX) rows.push(rest);
-        else rest.forEach((c) => rows.push([c]));
-    } else {
-        items.forEach((c) => {
-            const row = rows[rows.length - 1];
-            const rowW = row ? row.reduce((acc, r) => acc + r.w, 0) + gap * row.length : Infinity;
-            if (row && rowW + c.w <= blockRight - padX) row.push(c);
-            else rows.push([c]);
-        });
+    const ctaRows = (blockRight) => {
+        const items = [
+            { ...content.ctas[0], kind: 'primary', w: primaryW },
+            ...content.ctas.slice(1).map((c) => ({ ...c, kind: 'link', w: measure(c.label, ctaSize, 500, 0) })),
+        ];
+        const rows = [];
+        if (portrait) {
+            items[0].w = blockRight - padX;
+            rows.push([items[0]]);
+            const rest = items.slice(1);
+            const restW = rest.reduce((acc, c) => acc + c.w, 0) + gap * (rest.length - 1);
+            if (restW <= blockRight - padX) rows.push(rest);
+            else rest.forEach((c) => rows.push([c]));
+        } else {
+            items.forEach((c) => {
+                const row = rows[rows.length - 1];
+                const rowW = row ? row.reduce((acc, r) => acc + r.w, 0) + gap * row.length : Infinity;
+                if (row && rowW + c.w <= blockRight - padX) row.push(c);
+                else rows.push([c]);
+            });
+        }
+        return rows;
+    };
+    const ctaLimit = ph * (portrait ? 0.62 : 0.86);
+
+    // O título encolhe até caber na coluna e até o bloco inteiro (título, subtítulo e CTAs, com a folga
+    // mínima de meio botão sob o subtítulo) caber acima do limite das CTAs — no tablet as CTAs quebram em
+    // duas linhas e, sem isso, subiam por cima do subtítulo.
+    const maxLines = portrait ? 0.3 : 0.46;
+    const headlineY = eyebrow.y + eyebrowLines.length * eyebrowLh + eyebrowSize * 1.2;
+    let size = Math.min(pw * 0.078, ph * 0.2);
+    let lines;
+    let lh;
+    let headlineW;
+    let blockRight;
+    let rows;
+    let subY;
+    for (;;) {
+        const tracking = -0.045 * size;
+        lines = wrapLines(content.title, textW, (t) => measure(t, size, 600, tracking));
+        lh = size * 0.97;
+        headlineW = widest(lines, size, 600, tracking);
+        // Borda direita do bloco de texto (título/subtítulo): a linha de CTAs termina nela.
+        blockRight = padX + Math.min(textW, Math.max(headlineW, subtitleW));
+        rows = ctaRows(blockRight);
+        subY = headlineY + lines.length * lh + subSize * 1.1;
+        const rowsH = rows.length * ctaH + (rows.length - 1) * rowGap;
+        const fits = subY + subLines.length * subLh + ctaH * 0.5 + rowsH <= ctaLimit;
+        if ((lines.length * lh <= ph * maxLines && headlineW <= textW && fits) || size <= 22) break;
+        size *= 0.94;
     }
-    const rowGap = 6;
-    const ctaY = Math.min(
-        subtitle.y + subLines.length * subtitle.lh + ctaH * 0.7,
-        ph * (portrait ? 0.62 : 0.86) - ctaH - (rows.length - 1) * (ctaH + rowGap),
+    const headline = { lines, size, lh, tracking: -0.045 * size, x: padX, y: headlineY };
+    const subtitle = { lines: subLines, size: subSize, lh: subLh, x: padX, y: subY };
+
+    const subBottom = subtitle.y + subLines.length * subLh;
+    const ctaY = Math.max(
+        subBottom + ctaH * 0.5,
+        Math.min(subBottom + ctaH * 0.7, ctaLimit - ctaH - (rows.length - 1) * (ctaH + rowGap)),
     );
     const ctas = [];
     rows.forEach((row, ri) => {
@@ -408,8 +420,12 @@ export const heroLayout = ({ pw, ph, S, portrait, content, measure }) => {
         });
     });
 
+    // No retrato a foto começa logo abaixo das CTAs: começando na metade do painel, o rosto (no topo da
+    // foto) ficava sob a peça do texto.
+    const ctaBottom = Math.max(...ctas.map((c) => c.y + c.h));
+    const imageY = Math.max(ph * 0.5, ctaBottom + 36);
     const image = portrait
-        ? { x: 0, y: ph * 0.5, w: pw, h: ph * 0.5 }
+        ? { x: 0, y: imageY, w: pw, h: ph - imageY }
         : { x: pw * 0.5, y: 0, w: pw * 0.5, h: ph };
 
     const keepout = [

@@ -11,7 +11,8 @@ const props = defineProps({
     canonical: { type: String, default: null },
     canLogin: Boolean,
     canRegister: Boolean,
-    redesign: Boolean,
+    /** Cabeçalho de vidro (Home); as demais páginas da landing seguem com o cabeçalho atual. */
+    glassHeader: Boolean,
 });
 
 const mobileOpen = ref(false);
@@ -82,7 +83,7 @@ defineExpose({ openContact });
 
     <div class="app-shell min-h-screen scroll-smooth text-slate-900">
         <LandingHeaderGlass
-            v-if="redesign"
+            v-if="glassHeader"
             v-model:open="mobileOpen"
             :nav-links="navLinks"
             :can-login="canLogin"
@@ -92,7 +93,7 @@ defineExpose({ openContact });
         <header v-else class="landing-header">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
                 <Link href="/" class="inline-flex shrink-0 items-center">
-                    <img src="/images/logo.png" alt="Talents — Gestão de Pessoas" class="h-14 w-auto md:h-16" />
+                    <img src="/images/logo.png" alt="Talents — Gestão de Pessoas" width="483" height="190" class="h-14 w-auto md:h-16" />
                 </Link>
 
                 <nav class="hidden items-center gap-1 lg:flex">
