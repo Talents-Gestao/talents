@@ -13,9 +13,8 @@ import {
     UserPlusIcon,
 } from '@heroicons/vue/24/outline';
 import { Link } from '@inertiajs/vue3';
-import { computed, defineAsyncComponent } from 'vue';
+import { computed } from 'vue';
 import HeroGlass from '@/Components/Landing/HeroGlass.vue';
-import HeroStagePlaceholder from '@/Components/Landing/hero/HeroStagePlaceholder.vue';
 import LandingAlem from '@/Components/Landing/LandingAlem.vue';
 import LandingFrentes from '@/Components/Landing/LandingFrentes.vue';
 import LandingPilaresBento from '@/Components/Landing/LandingPilaresBento.vue';
@@ -26,19 +25,10 @@ import LandingHeroTypewriter from '@/Components/Landing/LandingHeroTypewriter.vu
 import LandingLayout from '@/Components/Landing/LandingLayout.vue';
 import LandingRecruitmentPhaseCard from '@/Components/Landing/LandingRecruitmentPhaseCard.vue';
 
-// Direções da Hero (só em ambiente local): chunk próprio, carregado sob demanda.
-const HeroStage = defineAsyncComponent({
-    loader: () => import('@/Components/Landing/hero/HeroStage.vue'),
-    loadingComponent: HeroStagePlaceholder,
-    delay: 0,
-});
-
 defineProps({
     canLogin: Boolean,
     canRegister: Boolean,
     heroGlass: Boolean,
-    heroDirection: { type: String, default: null },
-    heroPerf: Boolean,
     redesign: Boolean,
 });
 
@@ -253,12 +243,9 @@ const organizationJsonLd = computed(() =>
             <component :is="'script'" type="application/ld+json" head-key="jsonld-org">
                 {{ organizationJsonLd }}
             </component>
-            <!-- Direções da Hero: a foto (elemento de LCP) só seria pedida depois do chunk e do layout -->
-            <link v-if="heroDirection" head-key="hero-image" rel="preload" as="image" href="/images/hero-home.png" fetchpriority="high" />
         </template>
 
-        <HeroStage v-if="heroDirection" :direction="heroDirection" :perf="heroPerf" />
-        <HeroGlass v-else :enabled="heroGlass">
+        <HeroGlass :enabled="heroGlass">
         <section class="relative overflow-hidden lg:min-h-[560px]">
             <div class="relative z-10 mx-auto max-w-6xl px-4 py-10 md:py-24 lg:py-28">
                 <div class="lg:max-w-[46%]">
@@ -278,6 +265,8 @@ const organizationJsonLd = computed(() =>
                 src="/images/hero-home.png"
                 alt="Profissional apresentando perfis comportamentais: Executor, Comunicador, Planejador e Analista"
                 class="hidden h-auto w-full object-cover lg:absolute lg:inset-y-0 lg:right-0 lg:block lg:h-full lg:w-1/2 lg:object-[78%_8%]"
+                width="760"
+                height="593"
                 fetchpriority="high"
             />
         </section>

@@ -119,6 +119,37 @@ describe('heroLayout', () => {
         assert.equal(L.ctas.length, 3);
     });
 
+    // Geometria do painel como no resize() da HeroGlass; altura do .hero-glass:
+    // clamp(620px, 50vw, 780px) + 48px (desktop/tablet) e 780px + 32px (retrato).
+    const panel = (W) => {
+        const portrait = W < 700;
+        const H = W < 768 ? 812 : Math.min(780, Math.max(620, W / 2)) + 48;
+        const fade = portrait ? 32 : 48;
+        const mx = portrait ? 16 : W * 0.055;
+        const my = portrait ? 16 : (H - fade) * 0.085;
+        const pw = W - mx * 2;
+        return { pw, ph: H - fade - my * 2, S: pw / 1730, portrait };
+    };
+
+    it('subtítulo e CTAs não se sobrepõem e a foto do retrato começa abaixo das CTAs, de 320 a 1600px', () => {
+        const full = { ...content, eyebrow: 'Consultoria estratégica em gestão de pessoas' };
+        // a segunda medida é mais larga que a Figtree real, para cobrir o pior caso de quebra
+        const measures = [(t, size, w, tr = 0) => t.length * (size * 0.53 + tr), (t, size, w, tr = 0) => t.length * (size * (w >= 600 ? 0.58 : 0.55) + tr)];
+        for (let W = 320; W <= 1600; W += 8) {
+            measures.forEach((m) => {
+                const g = panel(W);
+                const L = heroLayout({ ...g, content: full, measure: m });
+                const subBottom = L.subtitle.y + L.subtitle.lines.length * L.subtitle.lh;
+                assert.ok(L.subtitle.y >= L.headline.y + L.headline.lines.length * L.headline.lh, `${W}px: subtítulo sobre o título`);
+                L.ctas.forEach((c) => {
+                    assert.ok(c.y >= subBottom + 8, `${W}px: CTA "${c.label}" sobre o subtítulo`);
+                    assert.ok(c.y + c.h <= g.ph, `${W}px: CTA "${c.label}" fora do painel`);
+                    if (g.portrait) assert.ok(L.image.y >= c.y + c.h + 24, `${W}px: foto começa sob as CTAs`);
+                });
+            });
+        }
+    });
+
     it('retrato empilha texto e imagem', () => {
         const L = heroLayout({ pw: 358, ph: 720, S: 0.2, portrait: true, content, measure });
         assert.ok(L.image.y > L.ctas[0].y);
