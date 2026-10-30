@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Survey;
 use App\Models\SurveyAnswer;
 use App\Models\SurveyResult;
+use App\Support\Nr1BandLabels;
 use App\Support\Nr1GroupPrivacy;
 
 class SurveyResultsPresenter
@@ -80,6 +81,7 @@ class SurveyResultsPresenter
 
         return [
             'survey' => $survey,
+            'bandLabels' => Nr1BandLabels::forSurvey($survey),
             'overall' => $overall,
             'bySection' => $bySection,
             'deptOveralls' => $deptOveralls->map(function ($r) {

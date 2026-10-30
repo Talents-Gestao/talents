@@ -19,6 +19,7 @@ use App\Services\Nr1\Nr1JourneyBuilder;
 use App\Services\Psychosocial\InternalReviewService;
 use App\Services\PsychosocialDashboardBuilder;
 use App\Services\PsychosocialDashboardExtras;
+use App\Support\Nr1BandLabels;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1InstrumentMatrix;
 use App\Support\PsychosocialMeasurePresenter;
@@ -62,7 +63,7 @@ class Nr1ShellPageData
         return [
             'hasResults' => true,
             'cards' => [
-                'overall' => $cards['overall'],
+                'overall' => $cards['overall'] + ['band_labels' => Nr1BandLabels::forSurvey($survey)],
                 'participation' => $hideParticipation
                     ? ['hidden' => true, 'message' => $insufficientMessage]
                     : ['hidden' => false, 'percent_label' => $cards['participation']['percent_label'], 'respondents' => $respondents, 'eligible' => $cards['participation']['eligible']],
@@ -119,9 +120,6 @@ class Nr1ShellPageData
         ];
     }
 
-    /** Rótulos de faixa adotados (Caderno): vêm do nível, nunca do texto antigo do painel. */
-    public const BAND_LABELS = ['green' => 'Menor sinalização', 'yellow' => 'Atenção', 'red' => 'Maior sinalização'];
-
     /**
      * Resultados da pesquisa: dimensões, setores (com «Outros Setores» e a regra de privacidade), 39 perguntas e a
      * Revisão interna (só a consultoria). Os setores e as perguntas vêm do painel, já filtrados pelo grupo mínimo.
@@ -136,7 +134,8 @@ class Nr1ShellPageData
         }
 
         $dashboard = $this->dashboard->build($survey);
-        $band = fn (string $risk): string => self::BAND_LABELS[$risk] ?? $risk;
+        $methodCode = Nr1BandLabels::methodCode($survey);
+        $band = fn (string $risk): string => Nr1BandLabels::label($risk, $methodCode);
         $dimensions = fn (array $rows) => collect($rows)->map(fn (array $row) => [
             'title' => $row['title'],
             'score_label' => $row['score_label'],
@@ -180,11 +179,7 @@ class Nr1ShellPageData
             'groupsNote' => $dashboard['groups']['note'] ?? null,
             'minGroupSize' => $dashboard['min_group_size'] ?? 5,
             'insufficientMessage' => $hideParticipation ? $insufficientMessage : null,
-            'bands' => [
-                ['risk' => 'green', 'label' => self::BAND_LABELS['green'], 'range' => '1,00–2,33', 'text' => 'Menor sinalização de fatores desfavoráveis.'],
-                ['risk' => 'yellow', 'label' => self::BAND_LABELS['yellow'], 'range' => '2,34–3,66', 'text' => 'Priorizar a investigação e o acompanhamento.'],
-                ['risk' => 'red', 'label' => self::BAND_LABELS['red'], 'range' => '3,67–5,00', 'text' => 'Requer análise prioritária dos fatores sinalizados.'],
-            ],
+            'bands' => Nr1BandLabels::bands($methodCode),
             'internalReview' => $review,
         ];
     }
@@ -222,7 +217,7 @@ class Nr1ShellPageData
                 'effectiveness' => ['result_label' => $present['effectiveness']['result_label'], 'note' => $present['effectiveness']['note']],
                 'score_label' => $score['score_label'] ?? null,
                 'risk_level' => $score['risk_level'] ?? null,
-                'band_label' => isset($score['risk_level']) ? (self::BAND_LABELS[$score['risk_level']] ?? null) : null,
+                'band_label' => $score['band_label'] ?? null,
                 'timeline' => $this->timeline($measure),
                 'urls' => [
                     'suggestion' => $canEditSuggestion ? route('admin.companies.surveys.measures.suggestion', [$survey->company_id, $survey->id, $measure->id]) : null,

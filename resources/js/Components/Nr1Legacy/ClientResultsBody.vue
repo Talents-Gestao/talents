@@ -8,6 +8,7 @@ marked.setOptions({ breaks: true, gfm: true });
 
 const props = defineProps({
     survey: Object,
+    bandLabels: { type: Object, required: true },
     overall: Object,
     bySection: Array,
     deptOveralls: Array,
@@ -308,6 +309,7 @@ onUnmounted(() => {
 
     <Nr1SurveyResultsPanel
         :survey="survey"
+        :band-labels="bandLabels"
         :overall="overall"
         :by-section="bySection"
         :dept-overalls="deptOveralls"

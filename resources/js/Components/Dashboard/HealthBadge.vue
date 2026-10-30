@@ -6,14 +6,14 @@ const props = defineProps({
         type: String,
         default: '',
     },
+    /** Rótulos da campanha, enviados pelo backend (green/yellow/red). */
+    bandLabels: {
+        type: Object,
+        required: true,
+    },
 });
 
-const label = computed(() => {
-    if (props.riskLevel === 'green') return 'Leve';
-    if (props.riskLevel === 'yellow') return 'Moderado';
-    if (props.riskLevel === 'red') return 'Grave';
-    return '—';
-});
+const label = computed(() => props.bandLabels[props.riskLevel] ?? '—');
 
 const classes = computed(() => {
     if (props.riskLevel === 'green') return 'bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200';
@@ -27,7 +27,7 @@ const classes = computed(() => {
     <span
         class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
         :class="classes"
-        :aria-label="`Nível de risco: ${label}`"
+        :aria-label="`Faixa: ${label}`"
     >
         {{ label }}
     </span>

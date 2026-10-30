@@ -8,6 +8,7 @@ use App\Models\ActionPlan;
 use App\Models\ActionPlanItem;
 use App\Models\User;
 use App\Services\ReportGenerator;
+use App\Support\Nr1BandLabels;
 use App\Support\Nr1RiskScenarioResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesSurveyFixtures;
@@ -34,7 +35,8 @@ class ActionPlanPdfExportTest extends TestCase
             'survey' => $survey,
             'scenario' => $scenario,
             'scenarioConfig' => Nr1RiskScenarioResolver::scenarioConfig($scenario),
-            'riskLevelLabel' => fn (?string $l) => config('nr1.risk_labels.'.$l, $l),
+            'bandLabels' => Nr1BandLabels::LEGACY,
+            'riskLevelLabel' => fn (?string $l) => Nr1BandLabels::label($l),
             'riskColor' => fn (?string $l) => '#000',
             'logoBase64' => null,
             'plan' => $plan,

@@ -5,7 +5,6 @@ import LegacyNotice from './LegacyNotice.vue';
 import LevelPill from './LevelPill.vue';
 import Nr1Button from './Nr1Button.vue';
 import Nr1OverviewCards from './Nr1OverviewCards.vue';
-import { BAND_BY_RISK } from './nr1Theme';
 
 /**
  * Visão geral de uma campanha do modelo anterior: cabeçalho do laudo (período, cenário de risco, mínimo por setor,
@@ -68,11 +67,11 @@ const SURVEY_STATUS = { active: 'Em coleta', closed: 'Encerrada', draft: 'Rascun
                 </div>
                 <div v-for="dimension in overview.dimensions" :key="dimension.title" class="n1-dimhead" style="cursor: default">
                     <span class="n1-dimname"><DimensionBadge :title="dimension.title" :size="26" />{{ dimension.title }}</span>
-                    <span class="n1-track" role="img" :aria-label="`${dimension.title}: índice ${dimension.score_label} de 5, faixa ${BAND_BY_RISK[dimension.risk_level]}`">
+                    <span class="n1-track" role="img" :aria-label="`${dimension.title}: índice ${dimension.score_label} de 5, faixa ${dimension.band_label}`">
                         <span class="n1-fill" :class="fillClass(dimension.risk_level)" :style="{ width: dimension.bar_percent + '%' }"></span>
                     </span>
                     <b class="n1-score">{{ dimension.score_label }}</b>
-                    <LevelPill :risk="dimension.risk_level" :label="BAND_BY_RISK[dimension.risk_level]" />
+                    <LevelPill :risk="dimension.risk_level" :label="dimension.band_label" />
                     <span></span>
                 </div>
             </div>

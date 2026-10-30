@@ -46,6 +46,7 @@ const recalculate = () => router.post(props.results.recalculateUrl, {}, { preser
             <ClientResultsBody v-if="results.client" v-bind="{ ...results.panel, ...results.client }" />
             <Nr1SurveyResultsPanel v-else v-bind="{
                 survey: results.panel.survey,
+                bandLabels: results.panel.bandLabels,
                 overall: results.panel.overall,
                 bySection: results.panel.bySection,
                 deptOveralls: results.panel.deptOveralls,

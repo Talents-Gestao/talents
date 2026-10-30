@@ -13,7 +13,7 @@ import {
 
 /**
  * Paletas do shell NR-1 (valores espelhados em nr1-shell-pages.css).
- * (a) Níveis: verde / âmbar / vermelho suave, sempre com texto e ícone. Só «Elevado» usa vermelho.
+ * (a) Níveis: verde / âmbar / vermelho suave, sempre com texto e ícone. Só a faixa mais alta usa vermelho.
  * (b) Dimensões e grupos: família roxo, azul, rosa e turquesa da marca, sem conotação de risco.
  */
 export const LEVELS = {
@@ -23,7 +23,6 @@ export const LEVELS = {
 };
 
 /** Rótulos de faixa adotados (Caderno), por nível. */
-export const BAND_BY_RISK = { green: 'Menor sinalização', yellow: 'Atenção', red: 'Maior sinalização' };
 
 export const levelOf = (risk) => LEVELS[risk] ?? LEVELS.yellow;
 
