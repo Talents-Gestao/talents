@@ -13,6 +13,7 @@ use App\Models\StrategicCalendarItem;
 use App\Models\Survey;
 use App\Models\SurveyResult;
 use App\Models\TaskCard;
+use App\Support\Nr1BandLabels;
 use App\Support\StrategicCalendarClientEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Support\StrategicCalendarPeriod;
@@ -224,6 +225,7 @@ class DashboardController extends Controller
         return Inertia::render('Client/Dashboard', [
             'activeSurveys' => $activeSurveys,
             'lastSurvey' => $lastSurvey,
+            'bandLabels' => $lastSurvey ? Nr1BandLabels::forSurvey($lastSurvey) : Nr1BandLabels::labels(),
             'overallRisk' => $overall,
             'lastCampaign' => [
                 'completion_rate' => $completionRate,

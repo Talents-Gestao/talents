@@ -29,7 +29,7 @@ const participationPercent = computed(() => parseFloat(String(props.cards.partic
                 <div class="n1-big"><CountUp :value="cards.overall.score_label" /> <small>/ 5</small></div>
                 <LevelPill :risk="cards.overall.risk_level" :label="cards.overall.band_label" />
             </div>
-            <ScoreGauge :score="score" :score-label="cards.overall.score_label" :risk="cards.overall.risk_level" :band-label="cards.overall.band_label" />
+            <ScoreGauge :score="score" :score-label="cards.overall.score_label" :risk="cards.overall.risk_level" :band-label="cards.overall.band_label" :band-labels="cards.overall.band_labels" />
         </div>
     </div>
 

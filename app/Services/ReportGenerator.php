@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ActionPlan;
 use App\Models\Survey;
 use App\Models\SurveyResult;
+use App\Support\Nr1BandLabels;
 use App\Support\Nr1RiskScenarioResolver;
 use App\Support\TalentsLogoDataUri;
 use App\Support\TechnicalOpinionDisclaimerStripper;
@@ -22,23 +23,15 @@ class ReportGenerator
         $resolved = Nr1RiskScenarioResolver::resolve($survey);
         $scenario = $resolved['scenario'] ?? 'green';
         $scenarioConfig = Nr1RiskScenarioResolver::scenarioConfig($scenario);
+        $bandLabels = Nr1BandLabels::forSurvey($survey);
 
         return [
             'survey' => $survey,
             'scenario' => $scenario,
             'scenarioConfig' => $scenarioConfig,
-            'riskLevelLabel' => fn (?string $l) => match ($l) {
-                'green' => config('nr1.risk_labels.green'),
-                'yellow' => config('nr1.risk_labels.yellow'),
-                'red' => config('nr1.risk_labels.red'),
-                default => strtoupper((string) $l),
-            },
-            'healthLevelLabel' => fn (?string $l) => match ($l) {
-                'green' => config('nr1.risk_labels.green'),
-                'yellow' => config('nr1.risk_labels.yellow'),
-                'red' => config('nr1.risk_labels.red'),
-                default => strtoupper((string) $l),
-            },
+            'bandLabels' => $bandLabels,
+            'riskLevelLabel' => fn (?string $l) => $bandLabels[$l] ?? strtoupper((string) $l),
+            'healthLevelLabel' => fn (?string $l) => $bandLabels[$l] ?? strtoupper((string) $l),
             'riskColor' => fn (?string $l) => match ($l) {
                 'green' => '#10b981',
                 'yellow' => '#f59e0b',

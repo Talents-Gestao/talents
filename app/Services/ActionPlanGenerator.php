@@ -6,6 +6,7 @@ use App\Models\ActionPlan;
 use App\Models\ActionPlanItem;
 use App\Models\Survey;
 use App\Models\SurveyResult;
+use App\Support\Nr1BandLabels;
 use App\Support\Nr1RiskScenarioResolver;
 
 class ActionPlanGenerator
@@ -15,6 +16,7 @@ class ActionPlanGenerator
         $survey->load('template.sections', 'company');
 
         $scenario = Nr1RiskScenarioResolver::forSurvey($survey) ?? 'green';
+        $methodCode = Nr1BandLabels::methodCode($survey);
         $scenarioConfig = Nr1RiskScenarioResolver::scenarioConfig($scenario);
         $itemKind = $scenarioConfig['action_plan']['item_kind'] ?? 'preventiva';
 
@@ -46,7 +48,8 @@ class ActionPlanGenerator
                 $title,
                 $itemKind,
                 $row->risk_level,
-                (float) $row->average_score
+                (float) $row->average_score,
+                $methodCode
             );
 
             ActionPlanItem::create([
@@ -63,7 +66,7 @@ class ActionPlanGenerator
                 'action_plan_id' => $plan->id,
                 'title' => 'Manter práticas e monitorar indicadores',
                 'description' => implode("\n\n", [
-                    'Contexto: os indicadores desta campanha permaneceram na faixa leve. O objetivo agora é consolidar o que funciona e evitar o retrocesso silencioso dos fatores psicossociais.',
+                    'Contexto: os indicadores desta campanha permaneceram na faixa '.mb_strtolower(Nr1BandLabels::label('green', $methodCode)).'. O objetivo agora é consolidar o que funciona e evitar o retrocesso silencioso dos fatores psicossociais.',
                     'O que deve ser feito: (1) manter pesquisas periódicas NR-1 e comparar a evolução de cada dimensão com esta linha de base; (2) registrar no PGR as práticas já adotadas (comunicação, reconhecimento, equilíbrio de demandas e recursos); (3) identificar as duas dimensões com maior potencial de melhoria, mesmo em faixa leve, e definir uma ação preventiva leve para cada uma; (4) comunicar os resultados à liderança e aos trabalhadores, reforçando canais de escuta (CIPA, RH, canal de denúncias).',
                     'Como conduzir: RH e SST revisam o inventário de riscos psicossociais, validam controles existentes e incluem este monitoramento no ciclo do PGR. A liderança imediata deve continuar feedback regular e acompanhamento de carga e clima.',
                     'Acompanhamento: responsável (RH/SST), prazo trimestral e indicador = média geral e por dimensão na próxima pesquisa. Qualquer piora deve reabrir o plano de ação.',
@@ -79,11 +82,11 @@ class ActionPlanGenerator
     /**
      * @return array{0: string, 1: string}
      */
-    private function buildItem(string $sectionTitle, string $itemKind, ?string $riskLevel, float $averageScore): array
+    private function buildItem(string $sectionTitle, string $itemKind, ?string $riskLevel, float $averageScore, ?string $methodCode): array
     {
         $playbook = $this->playbookForSection($sectionTitle);
         $scoreLabel = number_format($averageScore, 2, ',', '.');
-        $riskLabel = $this->riskLabel($riskLevel);
+        $riskLabel = $this->riskLabel($riskLevel, $methodCode);
 
         $title = $this->titlePrefix($itemKind).' '.$playbook['title'];
         if (mb_strlen($title) > 255) {
@@ -118,14 +121,11 @@ class ActionPlanGenerator
         };
     }
 
-    private function riskLabel(?string $level): string
+    private function riskLabel(?string $level, ?string $methodCode): string
     {
-        return match ($level) {
-            'green' => 'leve',
-            'yellow' => 'moderado',
-            'red' => 'grave',
-            default => 'nível a confirmar',
-        };
+        return in_array($level, ['green', 'yellow', 'red'], true)
+            ? mb_strtolower(Nr1BandLabels::label($level, $methodCode))
+            : 'nível a confirmar';
     }
 
     /**

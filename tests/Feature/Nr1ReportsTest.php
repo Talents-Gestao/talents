@@ -6,6 +6,7 @@ use App\Models\ActionPlan;
 use App\Models\ActionPlanItem;
 use App\Models\SurveyNr1Report;
 use App\Models\User;
+use App\Support\Nr1BandLabels;
 use App\Support\Nr1RiskScenarioResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -32,7 +33,8 @@ class Nr1ReportsTest extends TestCase
             'survey' => $survey,
             'scenario' => $scenario,
             'scenarioConfig' => Nr1RiskScenarioResolver::scenarioConfig($scenario),
-            'riskLevelLabel' => fn (?string $l) => config('nr1.risk_labels.'.$l, $l),
+            'bandLabels' => Nr1BandLabels::LEGACY,
+            'riskLevelLabel' => fn (?string $l) => Nr1BandLabels::label($l),
         ])->render();
 
         $this->assertStringContainsString('Cenário geral: Alto risco', $html);
@@ -51,7 +53,8 @@ class Nr1ReportsTest extends TestCase
             'survey' => $survey,
             'scenario' => $scenario,
             'scenarioConfig' => Nr1RiskScenarioResolver::scenarioConfig($scenario),
-            'riskLevelLabel' => fn (?string $l) => config('nr1.risk_labels.'.$l, $l),
+            'bandLabels' => Nr1BandLabels::LEGACY,
+            'riskLevelLabel' => fn (?string $l) => Nr1BandLabels::label($l),
         ])->render();
 
         $this->assertStringContainsString('Cenário geral: Atenção', $html);

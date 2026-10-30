@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     survey: Object,
+    bandLabels: { type: Object, required: true },
     overall: Object,
     bySection: Array,
     deptOveralls: Array,
@@ -117,11 +118,7 @@ const riskLevelFromScore = (score) => {
 
 const resolveRiskLevel = (row) => row?.risk_level || riskLevelFromScore(row?.average_score);
 
-const healthLevelLabel = (level) => {
-    if (level === 'green') return 'Leve';
-    if (level === 'yellow') return 'Moderado';
-    return 'Grave';
-};
+const healthLevelLabel = (level) => props.bandLabels[level] ?? '—';
 
 const buildDimensionRadarOptions = (sections) => {
     const rows = sections ?? [];
@@ -612,7 +609,7 @@ const scrollToSection = (event, sectionId) => {
         >
             <h3 class="text-lg font-semibold text-talents-900">Dimensões — {{ selectedDepartmentName }}</h3>
             <div class="mt-3">
-                <Nr1RiskLevelLegend :with-ranges="false" />
+                <Nr1RiskLevelLegend :labels="bandLabels" :with-ranges="false" />
             </div>
             <div class="mt-4 grid gap-8 xl:grid-cols-5">
                 <div class="min-h-[34rem] xl:col-span-3">
@@ -650,7 +647,7 @@ const scrollToSection = (event, sectionId) => {
                         Média ponderada das respostas Likert. Quanto maior, maior o risco.
                     </p>
                 </div>
-                <Nr1RiskLevelLegend />
+                <Nr1RiskLevelLegend :labels="bandLabels" />
             </div>
             <div class="mt-4 flex flex-wrap items-center gap-4">
                 <span class="text-4xl font-bold text-talents-800 tabular-nums">{{ formatLikertScore(overall.average_score) }}</span>
@@ -669,7 +666,7 @@ const scrollToSection = (event, sectionId) => {
         >
             <h3 class="text-lg font-semibold text-talents-900">Dimensões</h3>
             <div class="mt-3">
-                <Nr1RiskLevelLegend />
+                <Nr1RiskLevelLegend :labels="bandLabels" />
             </div>
             <div class="mt-4 grid gap-8 xl:grid-cols-5">
                 <div class="min-h-[34rem] xl:col-span-3">
@@ -759,7 +756,7 @@ const scrollToSection = (event, sectionId) => {
                 Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato). Cores conforme faixa de risco.
             </p>
             <div class="mt-3">
-                <Nr1RiskLevelLegend />
+                <Nr1RiskLevelLegend :labels="bandLabels" />
             </div>
             <div class="mt-4 min-h-[26rem]">
                 <ApexChart height="420" :options="deptBarChart" :series="deptBarSeries" />
@@ -773,7 +770,7 @@ const scrollToSection = (event, sectionId) => {
             <h3 class="text-lg font-semibold text-talents-900">Dimensões por setor</h3>
             <p class="mt-1 text-sm text-gray-500">Comparação lado a lado das dimensões em cada setor.</p>
             <div class="mt-3">
-                <Nr1RiskLevelLegend />
+                <Nr1RiskLevelLegend :labels="bandLabels" />
             </div>
             <div class="mt-4 min-h-[30rem]">
                 <ApexChart height="460" :options="deptGroupedBar" :series="deptGroupedSeries" />
@@ -787,7 +784,7 @@ const scrollToSection = (event, sectionId) => {
             <h3 class="text-lg font-semibold text-talents-900">Tabela de risco por setor e dimensão</h3>
             <p class="mt-1 text-sm text-gray-500">Valores numéricos complementares aos gráficos acima.</p>
             <div class="mt-3">
-                <Nr1RiskLevelLegend />
+                <Nr1RiskLevelLegend :labels="bandLabels" />
             </div>
             <table class="mt-4 min-w-full border-collapse text-sm">
                 <thead>
@@ -846,13 +843,13 @@ const scrollToSection = (event, sectionId) => {
                         </template>
                     </p>
                     <div class="mt-3">
-                        <Nr1RiskLevelLegend />
+                        <Nr1RiskLevelLegend :labels="bandLabels" />
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
                         <input v-model="showCriticalQuestionsOnly" type="checkbox" class="rounded border-gray-300 text-talents-700 focus:ring-talents-500" />
-                        Só moderado/grave
+                        Só {{ bandLabels.yellow.toLocaleLowerCase('pt-BR') }}/{{ bandLabels.red.toLocaleLowerCase('pt-BR') }}
                     </label>
                     <button
                         type="button"

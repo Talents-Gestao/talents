@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Survey;
 use App\Models\SurveyInsight;
+use App\Models\SurveyMethodVersion;
 use App\Models\SurveyResult;
+use App\Support\Nr1BandLabels;
 use App\Support\Nr1Scoring;
 
 class InsightGenerator
@@ -25,11 +27,15 @@ class InsightGenerator
             return;
         }
 
+        $methodCode = Nr1BandLabels::methodCode($survey);
+
         if ($overall->risk_level === 'red') {
             SurveyInsight::create([
                 'survey_id' => $survey->id,
                 'type' => 'alert',
-                'message' => 'Risco psicossocial grave no indicador geral. Priorize ações imediatas com SESMT/RH e liderança.',
+                'message' => ($methodCode === SurveyMethodVersion::CODE_TALENTS39_V1
+                    ? Nr1BandLabels::label('red', $methodCode).' no indicador geral.'
+                    : 'Risco psicossocial grave no indicador geral.').' Priorize ações imediatas com SESMT/RH e liderança.',
                 'meta' => ['average_score' => $overall->average_score],
             ]);
         }
@@ -54,7 +60,7 @@ class InsightGenerator
         foreach ($sections as $row) {
             if (in_array($row->risk_level, ['red', 'yellow'], true)) {
                 $title = $row->meta['section_title'] ?? 'Dimensão';
-                $levelLabel = Nr1Scoring::riskLabel($row->risk_level);
+                $levelLabel = Nr1Scoring::riskLabel($row->risk_level, $methodCode);
                 SurveyInsight::create([
                     'survey_id' => $survey->id,
                     'type' => 'alert',

@@ -6,7 +6,6 @@ import EmptyState from './EmptyState.vue';
 import LegacyNotice from './LegacyNotice.vue';
 import LevelPill from './LevelPill.vue';
 import Nr1Button from './Nr1Button.vue';
-import { BAND_BY_RISK } from './nr1Theme';
 import { useNr1Toast } from './useNr1Toast';
 
 /**
@@ -62,7 +61,7 @@ const request = (item) => {
                     <article v-for="item in solutions.recommendations" :key="item.id" class="n1-offer c6 n1-lift" :style="{ '--dim': '#7c4dbd' }">
                         <div class="n1-row" style="justify-content: flex-start; flex-wrap: wrap; gap: 8px">
                             <DimensionBadge :title="item.factor" :size="26" />
-                            <LevelPill :risk="item.risk_level" :label="`${item.factor} · ${item.score_label}/5 · ${BAND_BY_RISK[item.risk_level]}`" />
+                            <LevelPill :risk="item.risk_level" :label="`${item.factor} · ${item.score_label}/5 · ${item.band_label}`" />
                         </div>
                         <h3>{{ item.service_name }}</h3>
                         <p>{{ item.text }}</p>
