@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Support\Finance\FinancePaymentDate;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Corrige a data de pagamento de um lançamento já baixado.
@@ -33,6 +34,14 @@ final class ChangeFinancePaymentDate
     ): bool {
         if (! $entry->isPaid() || FinancePaymentDate::sameDay($entry->paid_at, $paidAt)) {
             return false;
+        }
+
+        // Saída gerada por pagamento de comissão: data só muda refazendo o pagamento em Comissões.
+        if ($entry instanceof FinancePayable && $entry->isCommissionOrigin()) {
+            throw ValidationException::withMessages([
+                'paid_at' => 'A data deste lançamento vem do pagamento de comissão. '
+                    .'Para corrigir, exclua o último pagamento da comissão em Financeiro → Comissões.',
+            ]);
         }
 
         $reason = filled($reason) ? trim((string) $reason) : null;

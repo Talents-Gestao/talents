@@ -115,6 +115,7 @@ class SaleController extends Controller
                 ->map(fn (CommercialCommission $c) => CommissionPayoutCalculator::present($c, $canDelete))
                 ->values()
                 ->all(),
+            'commissionBankAccounts' => CommissionController::bankAccountOptions(),
             'commission_can' => [
                 'register_payment' => $canRegister,
                 'delete_payment' => $canDelete,

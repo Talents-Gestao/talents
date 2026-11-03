@@ -113,7 +113,13 @@ class RecalculateCommercialSaleStatusesCommand extends Command
                 ]);
             }
 
-            $saleIds = array_unique(array_column($commissionChanges, 'sale_id'));
+            // O update acima é por query builder (não dispara o evento de CommercialSale):
+            // recalcula o teto de toda venda cujo total mudou, além das comissões divergentes.
+            $totalChanged = array_column(
+                array_filter($saleChanges, fn (array $c) => $c['total_from'] !== $c['total_to']),
+                'id',
+            );
+            $saleIds = array_values(array_unique([...array_column($commissionChanges, 'sale_id'), ...$totalChanged]));
             CommercialSale::query()->whereKey($saleIds)->get()
                 ->each(fn (CommercialSale $sale) => $refresh->forSale($sale));
         });

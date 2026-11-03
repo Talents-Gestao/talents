@@ -95,6 +95,22 @@ final class CommissionPayoutCalculator
     }
 
     /**
+     * Perda assumida pela empresa: Σ (pago − teto) das comissões pagas acima do teto.
+     *
+     * @param  Builder<CommercialCommission>  $query
+     * @return array{loss_assumed_cents: int, loss_assumed_count: int}
+     */
+    public static function lossAssumedTotals(Builder $query): array
+    {
+        $inLoss = (clone $query)->whereColumn('paid_cents', '>', 'amount_cents');
+
+        return [
+            'loss_assumed_cents' => (int) (clone $inLoss)->sum(DB::raw('paid_cents - amount_cents')),
+            'loss_assumed_count' => (int) (clone $inLoss)->count(),
+        ];
+    }
+
+    /**
      * Totais em aberto de um conjunto de comissões (KPI do Resumo e cartões da tela de Comissões).
      * Pendente = Σ max(0, teto − pago); liberável = Σ liberável agora.
      *
@@ -151,8 +167,9 @@ final class CommissionPayoutCalculator
             'paid_cents' => $paid,
             'remaining_cents' => max(0, $amount - $paid),
             'releasable_cents' => $sale ? self::releasableCents($commission, $sale, $installments) : 0,
-            'over_ceiling' => $paid > $amount,
-            'over_ceiling_cents' => max(0, $paid - $amount),
+            // Teto abaixo do já pago: a empresa assume a diferença (sem cobrança do vendedor).
+            'loss_assumed' => $paid > $amount,
+            'loss_assumed_cents' => max(0, $paid - $amount),
             'status' => (string) $commission->status,
             'status_label' => CommercialCommission::statusLabels()[$commission->status] ?? (string) $commission->status,
             'paid_at' => $commission->paid_at?->toIso8601String(),
@@ -174,6 +191,9 @@ final class CommissionPayoutCalculator
                 'paid_at' => $p->paid_at?->toIso8601String(),
                 'notes' => $p->notes,
                 'paid_by' => $p->payer?->name,
+                // Sem conta a pagar vinculada = pagamento anterior à Fase 2, sem movimento de saldo.
+                'is_legacy' => $p->payable === null,
+                'bank_account' => $p->payable?->bankAccount?->name,
                 'can_delete' => $canDeletePayment && (int) $p->id === (int) $latestId,
             ])->values()->all(),
         ];

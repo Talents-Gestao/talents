@@ -137,6 +137,27 @@ class PublishCommercialNotice
         );
     }
 
+    /**
+     * Teto da comissão caiu abaixo do já pago (parcela cancelada depois do repasse):
+     * a empresa assume a diferença. Disparado uma vez por entrada nessa situação.
+     */
+    public function commissionLossAssumed(CommercialCommission $commission): void
+    {
+        $sale = $commission->sale;
+        $seller = $commission->seller;
+        $loss = max(0, (int) $commission->paid_cents - (int) $commission->amount_cents);
+
+        $this->talents(
+            title: 'Perda de comissão assumida',
+            body: "Na venda {$sale?->code}, a comissão de «{$seller?->name}» já paga ficou acima do novo teto. "
+                ."Perda assumida pela empresa: {$this->money($loss)}.",
+            eventKind: CompanyNoticeEventKind::CommissionLossAssumed,
+            sourceId: (int) $commission->id,
+            sourceType: 'commercial_commission',
+            dedupeWithinMinutes: null,
+        );
+    }
+
     private function talents(
         string $title,
         string $body,

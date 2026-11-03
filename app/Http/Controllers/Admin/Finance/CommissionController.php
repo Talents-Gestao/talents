@@ -9,12 +9,14 @@ use App\Enums\PermissionAction;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialCommission;
 use App\Models\CommercialCommissionPayment;
+use App\Models\FinanceBankAccount;
 use App\Models\User;
 use App\Services\Commercial\CommissionPayoutCalculator;
-use Carbon\Carbon;
+use App\Support\Finance\FinancePaymentDate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,6 +26,9 @@ use Inertia\Response;
  */
 class CommissionController extends Controller
 {
+    /** Filtro de listagem: a_pagar + parcial (link «Comissões a pagar» do Resumo). */
+    public const FILTER_PENDENTES = 'pendentes';
+
     public function index(Request $request): Response
     {
         $q = CommercialCommission::query();
@@ -45,7 +50,9 @@ class CommissionController extends Controller
 
         if ($request->filled('status')) {
             $status = $request->string('status')->toString();
-            if (array_key_exists($status, CommercialCommission::statusLabels())) {
+            if ($status === self::FILTER_PENDENTES) {
+                $q->whereIn('status', [CommercialCommission::STATUS_A_PAGAR, CommercialCommission::STATUS_PARCIAL]);
+            } elseif (array_key_exists($status, CommercialCommission::statusLabels())) {
                 $q->where('status', $status);
             }
         }
@@ -76,7 +83,11 @@ class CommissionController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name'])
                 ->all(),
-            'statusOptions' => CommercialCommission::statusLabels(),
+            'statusOptions' => [
+                self::FILTER_PENDENTES => 'Pendentes (a pagar + parcial)',
+                ...CommercialCommission::statusLabels(),
+            ],
+            'bankAccounts' => self::bankAccountOptions(),
             'can' => [
                 'register_payment' => $this->can($request, PermissionAction::Create),
                 'delete_payment' => $canDelete,
@@ -107,21 +118,27 @@ class CommissionController extends Controller
     ): RedirectResponse {
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'gt:0'],
-            'paid_at' => ['required', 'date', 'before_or_equal:today'],
+            'paid_at' => FinancePaymentDate::rules(required: true),
+            'bank_account_id' => [
+                'required',
+                Rule::exists('finance_bank_accounts', 'id')->where('is_active', true),
+            ],
             'notes' => ['nullable', 'string', 'max:2000'],
         ], [
+            'bank_account_id.required' => 'Selecione a conta bancária de onde sai o pagamento.',
+            'bank_account_id.exists' => 'Selecione uma conta bancária ativa.',
+            ...FinancePaymentDate::messages(),
             'amount.required' => 'Informe o valor do pagamento.',
             'amount.numeric' => 'Informe um valor válido.',
             'amount.gt' => 'Informe um valor maior que zero.',
             'paid_at.required' => 'Informe a data do pagamento.',
-            'paid_at.date' => 'Informe uma data válida.',
-            'paid_at.before_or_equal' => 'A data do pagamento não pode ser futura.',
         ]);
 
         $register->handle(
             $commission,
             (int) round(((float) $data['amount']) * 100),
-            Carbon::parse($data['paid_at'])->startOfDay(),
+            FinancePaymentDate::toPaidAt($data['paid_at']),
+            (int) $data['bank_account_id'],
             $data['notes'] ?? null,
             $request->user(),
         );
@@ -155,6 +172,8 @@ class CommissionController extends Controller
             'seller:id,name',
             'payments' => fn ($query) => $query->orderBy('id'),
             'payments.payer:id,name',
+            'payments.payable:id,commission_payment_id,bank_account_id',
+            'payments.payable.bankAccount:id,name',
         ];
 
         if ($withSale) {
@@ -167,15 +186,32 @@ class CommissionController extends Controller
 
     /**
      * @param  Builder<CommercialCommission>  $query
-     * @return array{pending_cents: int, paid_cents: int, releasable_cents: int, pending_count: int, over_ceiling_count: int}
+     * @return array{pending_cents: int, paid_cents: int, releasable_cents: int, pending_count: int, loss_assumed_cents: int, loss_assumed_count: int}
      */
     private function summary(Builder $query): array
     {
         return [
             ...CommissionPayoutCalculator::openTotals($query),
+            ...CommissionPayoutCalculator::lossAssumedTotals($query),
             'paid_cents' => (int) (clone $query)->sum('paid_cents'),
-            'over_ceiling_count' => (int) (clone $query)->whereColumn('paid_cents', '>', 'amount_cents')->count(),
         ];
+    }
+
+    /**
+     * Contas ativas para a saída do pagamento de comissão.
+     *
+     * @return list<array{id: int, name: string}>
+     */
+    public static function bankAccountOptions(): array
+    {
+        return FinanceBankAccount::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (FinanceBankAccount $a) => ['id' => (int) $a->id, 'name' => (string) $a->name])
+            ->values()
+            ->all();
     }
 
     private function can(Request $request, PermissionAction $action): bool

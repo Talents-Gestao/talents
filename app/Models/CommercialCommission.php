@@ -40,6 +40,7 @@ class CommercialCommission extends Model
             'amount_cents' => 'integer',
             'paid_cents' => 'integer',
             'paid_at' => 'datetime',
+            'loss_notified_at' => 'datetime',
         ];
     }
 

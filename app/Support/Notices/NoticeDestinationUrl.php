@@ -11,9 +11,9 @@ use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
 use App\Models\CompanyNotice;
 use App\Models\Complaint;
+use App\Models\FeedbackSession;
 use App\Models\Nr1Opportunity;
 use App\Models\PsychosocialReviewRound;
-use App\Models\FeedbackSession;
 use App\Models\StrategicCalendarItem;
 
 /**
@@ -43,7 +43,8 @@ class NoticeDestinationUrl
             CompanyNoticeEventKind::SaleCreated => $this->saleUrl($sourceId),
             CompanyNoticeEventKind::InstallmentPaid,
             CompanyNoticeEventKind::InstallmentOverdue => $this->saleUrlFromInstallment($sourceId),
-            CompanyNoticeEventKind::CommissionPaid => $this->saleUrlFromCommission($sourceId),
+            CompanyNoticeEventKind::CommissionPaid,
+            CompanyNoticeEventKind::CommissionLossAssumed => $this->saleUrlFromCommission($sourceId),
             CompanyNoticeEventKind::LeadReceived => route('admin.landing-interest.index'),
             CompanyNoticeEventKind::Created,
             CompanyNoticeEventKind::Updated,
