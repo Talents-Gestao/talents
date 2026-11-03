@@ -9,8 +9,6 @@ use App\Support\TechnicalOpinionDisclaimerStripper;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Inertia\Inertia;
-use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ActionPlanController extends Controller
@@ -27,7 +25,12 @@ class ActionPlanController extends Controller
         return $survey;
     }
 
-    public function show(Request $request, Survey $survey): Response
+    /**
+     * Parecer publicado para a empresa, exibido no painel NR-1.
+     *
+     * @return array<string, mixed>
+     */
+    public function opinionProps(Request $request, Survey $survey): array
     {
         $survey = $this->findSurvey($request, $survey);
 
@@ -39,11 +42,13 @@ class ActionPlanController extends Controller
 
         $hasOpinionFile = $plan !== null && filled($plan->technical_opinion_file_path);
 
-        $visible = $plan !== null
+        // V11: o parecer fica com a Talents e a PASSEG até a decisão da responsável técnica.
+        $visible = ! $survey->usesReviewFlow()
+            && $plan !== null
             && $plan->admin_published_at !== null
             && ($hasOpinion || $hasOpinionFile);
 
-        return Inertia::render('Client/Surveys/ActionPlan', [
+        return [
             'survey' => $survey,
             'plan' => $visible ? [
                 'id' => $plan->id,
@@ -54,12 +59,13 @@ class ActionPlanController extends Controller
                     : null,
             ] : null,
             'actionPlanLocked' => ! $visible,
-        ]);
+        ];
     }
 
     public function downloadTechnicalOpinionFile(Request $request, Survey $survey): StreamedResponse
     {
         $survey = $this->findSurvey($request, $survey);
+        abort_if($survey->usesReviewFlow(), 404);
 
         $plan = $survey->actionPlans()->latest()->first();
 

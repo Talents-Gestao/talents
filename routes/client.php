@@ -77,7 +77,6 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
 
     Route::middleware('can.module:pesquisas')->group(function () {
         Route::resource('surveys', SurveyController::class)->except(['destroy']);
-        Route::get('surveys/{survey}/results', [SurveyResultsController::class, 'show'])->middleware('survey.published')->name('surveys.results');
         Route::get('surveys/{survey}/audiencias/{link}/qr', [SurveyAudienceController::class, 'qr'])->name('surveys.audiences.qr');
 
         Route::get('mapa-proposito', [PurposeMapCampaignController::class, 'index'])->name('mapa-proposito.index');
@@ -103,10 +102,8 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
     });
 
     Route::middleware(['can.module:planos_acao', 'survey.published'])->group(function () {
-        Route::get('surveys/{survey}/action-plan', [ActionPlanController::class, 'show'])->name('surveys.action-plan');
         Route::get('surveys/{survey}/action-plan/technical-opinion-file', [ActionPlanController::class, 'downloadTechnicalOpinionFile'])->name('surveys.action-plan.technical-opinion-file');
         Route::patch('action-plan-items/{item}', [ActionPlanController::class, 'updateItem'])->name('action-plan-items.update');
-        Route::get('surveys/{survey}/plano-de-acao', [ActionPlanMeasureController::class, 'show'])->name('surveys.measures.index');
         Route::get('surveys/{survey}/plano-de-acao/{measure}/evidencias/{evidence}', [ActionPlanMeasureController::class, 'downloadEvidence'])
             ->whereNumber(['measure', 'evidence'])->name('surveys.measures.evidences.download');
     });
@@ -129,7 +126,6 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('surveys/{survey}/reports/action-plan', [ReportController::class, 'actionPlan'])->name('surveys.reports.action-plan');
         Route::get('surveys/{survey}/export/json', [ExportController::class, 'json'])->name('surveys.export.json');
         Route::get('surveys/{survey}/export/csv', [ExportController::class, 'csv'])->name('surveys.export.csv');
-        Route::get('surveys/{survey}/painel-psicossocial', [PsychosocialDashboardController::class, 'show'])->name('surveys.psychosocial-dashboard');
         Route::get('surveys/{survey}/painel-psicossocial/export/csv', [PsychosocialDashboardController::class, 'exportCsv'])->name('surveys.psychosocial-dashboard.export.csv');
         Route::get('surveys/{survey}/painel-psicossocial/export/json', [PsychosocialDashboardController::class, 'exportJson'])->name('surveys.psychosocial-dashboard.export.json');
         Route::get('surveys/{survey}/painel-psicossocial/export/perguntas', [PsychosocialDashboardController::class, 'exportItemsCsv'])->name('surveys.psychosocial-dashboard.export.items');

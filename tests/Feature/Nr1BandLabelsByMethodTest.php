@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\Department;
-use App\Models\Survey;
 use App\Models\SurveyAnswer;
 use App\Models\SurveyMethodVersion;
 use App\Models\SurveyResponse;
@@ -94,7 +93,7 @@ class Nr1BandLabelsByMethodTest extends TestCase
             $this->assertScreenHasNo(self::V11_ONLY, $this->actingAs($owner)->get(route($screen, $query)), $screen);
         }
 
-        $this->assertScreenHasNo(self::V11_ONLY, $this->actingAs($admin)->get(route('client.surveys.results', $survey)), 'resultados da empresa');
+        $this->assertScreenHasNo(self::V11_ONLY, $this->actingAs($admin)->get(route('nr1.resultados', ['campanha' => $survey->id])), 'resultados da empresa');
         $this->assertScreenHasNo(self::V11_ONLY, $this->actingAs($admin)->get(route('client.dashboard')), 'painel da empresa');
     }
 

@@ -63,7 +63,7 @@ class DeleteCompanySurveyTest extends TestCase
             ->assertNotFound();
 
         $this->actingAs($client)
-            ->get(route('client.surveys.results', $fx->survey))
+            ->get(url('/client/surveys/'.$fx->survey->id.'/results'))
             ->assertNotFound();
     }
 

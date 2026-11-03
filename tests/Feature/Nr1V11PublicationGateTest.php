@@ -54,13 +54,13 @@ class Nr1V11PublicationGateTest extends TestCase
     private function resultRoutes(Survey $survey): array
     {
         return [
-            ['get', route('client.surveys.results', $survey)],
-            ['get', route('client.surveys.psychosocial-dashboard', $survey)],
+            ['get', url('/client/surveys/'.$survey->id.'/results')],
+            ['get', url('/client/surveys/'.$survey->id.'/painel-psicossocial')],
             ['get', route('client.surveys.psychosocial-dashboard.print', $survey)],
             ['get', route('client.surveys.psychosocial-dashboard.export.csv', $survey)],
             ['get', route('client.surveys.psychosocial-dashboard.export.json', $survey)],
             ['get', route('client.surveys.psychosocial-dashboard.export.items', $survey)],
-            ['get', route('client.surveys.action-plan', $survey)],
+            ['get', url('/client/surveys/'.$survey->id.'/action-plan')],
             ['get', route('client.surveys.action-plan.technical-opinion-file', $survey)],
             ['get', route('client.surveys.reports.executive', $survey)],
             ['get', route('client.surveys.reports.technical', $survey)],
@@ -92,12 +92,12 @@ class Nr1V11PublicationGateTest extends TestCase
         $admin = User::factory()->companyAdmin($campaign->company->id)->create();
 
         foreach ([
-            route('client.surveys.psychosocial-dashboard', $campaign->survey),
+            url('/client/surveys/'.$campaign->survey->id.'/painel-psicossocial'),
             route('client.surveys.psychosocial-dashboard.print', $campaign->survey),
-            route('client.surveys.results', $campaign->survey),
-            route('client.surveys.action-plan', $campaign->survey),
+            url('/client/surveys/'.$campaign->survey->id.'/results'),
+            url('/client/surveys/'.$campaign->survey->id.'/action-plan'),
         ] as $url) {
-            $this->actingAs($admin)->get($url)->assertOk();
+            $this->actingAs($admin)->followingRedirects()->get($url)->assertOk();
         }
         $this->actingAs($admin)->get(route('client.surveys.psychosocial-dashboard.export.csv', $campaign->survey))->assertOk()->streamedContent();
     }
@@ -108,7 +108,7 @@ class Nr1V11PublicationGateTest extends TestCase
         $this->assertFalse((bool) $campaign->survey->fresh()->requires_publication);
         $admin = User::factory()->companyAdmin($campaign->company->id)->create();
 
-        $this->actingAs($admin)->get(route('client.surveys.psychosocial-dashboard', $campaign->survey))->assertOk();
+        $this->actingAs($admin)->get(route('nr1.resultados', ['campanha' => $campaign->survey->id]))->assertOk();
         $this->actingAs($admin)->get(route('client.surveys.psychosocial-dashboard.print', $campaign->survey))->assertOk();
         $this->assertTrue(SurveyPublicationGate::allows($campaign->survey->fresh()));
     }
@@ -197,7 +197,7 @@ class Nr1V11PublicationGateTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('overallRisk.average_score', fn ($score) => (float) $score > 0)
                 ->has('lastCampaign.section_results')
-                ->where('actionPlanHref', route('client.surveys.action-plan', $campaign->survey)));
+                ->where('actionPlanHref', route('nr1.plano-de-acao', ['campanha' => $campaign->survey->id])));
     }
 
     public function test_open_plan_items_of_unpublished_campaigns_do_not_reach_the_home(): void

@@ -63,7 +63,7 @@ const labelClass = 'block text-sm font-medium text-slate-700';
     <AdminLayout>
         <template #header>
             <FormPageHeader
-                :back-href="route('admin.companies.surveys.action-plan.edit', [company.id, survey.id])"
+                :back-href="route('nr1.parecer', { empresa: company.id, campanha: survey.id })"
                 back-label="Voltar ao parecer e plano de ação"
                 title="Cadastro técnico da campanha"
                 :subtitle="`${company.name} — ${survey.title}`"

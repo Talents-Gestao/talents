@@ -33,7 +33,7 @@ const request = (recommendation) => {
                     <h2 class="text-xl font-semibold leading-tight text-talents-900">Soluções conectadas às necessidades.</h2>
                     <p class="text-sm text-gray-600">Serviços que podem apoiar o plano de ação, a partir dos fatores sinalizados na pesquisa · {{ survey.title }}</p>
                 </div>
-                <Link :href="route('client.surveys.psychosocial-dashboard', survey.id)" class="text-sm text-talents-700 hover:underline">Voltar ao painel</Link>
+                <Link :href="route('nr1.resultados', { campanha: survey.id })" class="text-sm text-talents-700 hover:underline">Voltar ao painel</Link>
             </div>
         </template>
 

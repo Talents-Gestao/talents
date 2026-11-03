@@ -85,6 +85,10 @@ PROMPT;
         AiSetting $setting,
         string $type = self::TYPE_NR1_GUIDANCE
     ): array {
+        if (! Nr1GroupPrivacy::hasMinimumSample($survey)) {
+            throw new RuntimeException('Amostra abaixo do grupo mínimo: nenhum dado segue para a IA.');
+        }
+
         $payload = $this->buildAggregatedPayload($survey);
         $userContent = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         $systemPrompt = $this->systemPromptForType($type);

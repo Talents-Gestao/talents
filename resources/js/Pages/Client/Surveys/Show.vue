@@ -152,13 +152,13 @@ const saveAudienceLink = (link) =>
             </p>
             <div v-else class="mt-6 flex flex-wrap gap-3">
                 <Link
-                    :href="route('client.surveys.results', survey.id)"
+                    :href="route('nr1.resultados', { campanha: survey.id })"
                     class="rounded-md bg-talents-700 px-4 py-2 text-sm font-semibold text-white"
                 >
                     Resultados e gráficos
                 </Link>
                 <Link
-                    :href="route('client.surveys.action-plan', survey.id)"
+                    :href="route('nr1.plano-de-acao', { campanha: survey.id })"
                     class="rounded-md border border-talents-300 px-4 py-2 text-sm font-semibold text-talents-900"
                 >
                     Plano de ação

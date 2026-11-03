@@ -96,7 +96,7 @@ class EvidenceDossierAndMeasuresPhaseTenElevenTest extends TestCase
 
         $this->actingAs($campaign->admin)
             ->post(route('admin.companies.surveys.evidence-dossier.release', [$campaign->fx->company->id, $campaign->fx->survey->id]))
-            ->assertRedirect(route('admin.companies.surveys.action-plan.edit', [$campaign->fx->company->id, $campaign->fx->survey->id]))
+            ->assertRedirect(route('nr1.parecer', ['empresa' => $campaign->fx->company->id, 'campanha' => $campaign->fx->survey->id]))
             ->assertSessionHas('error');
 
         $this->assertSame(0, PsychosocialDocument::query()->where('type', PsychosocialDocument::TYPE_EVIDENCE_DOSSIER)->count());

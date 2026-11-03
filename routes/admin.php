@@ -176,8 +176,6 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('companies/{company}/rhid-metrics', [RhidPortfolioController::class, 'companyMetrics'])
             ->name('companies.rhid-metrics');
         Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');
-        Route::get('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'edit'])
-            ->name('companies.surveys.action-plan.edit');
         Route::get('companies/{company}/surveys/{survey}/cadastro-tecnico', [SurveyCampaignRegistrationAdminController::class, 'edit'])
             ->name('companies.surveys.registration.edit');
         Route::put('companies/{company}/surveys/{survey}/cadastro-tecnico', [SurveyCampaignRegistrationAdminController::class, 'update'])
@@ -256,6 +254,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.action-plan.update');
         Route::post('companies/{company}/surveys/{survey}/action-plan/generate-suggested', [ActionPlanAdminController::class, 'generateSuggestedPlan'])
             ->name('companies.surveys.action-plan.generate-suggested');
+        Route::post('companies/{company}/surveys/{survey}/recalcular', [ActionPlanAdminController::class, 'recalculate'])
+            ->middleware('mfa:stepup')->name('companies.surveys.recalculate');
         Route::post('companies/{company}/surveys/{survey}/ai-analysis', [ActionPlanAdminController::class, 'generateAiAnalysis'])
             ->name('companies.surveys.ai-analysis');
         Route::post('companies/{company}/surveys/{survey}/technical-opinion', [ActionPlanAdminController::class, 'generateTechnicalOpinion'])

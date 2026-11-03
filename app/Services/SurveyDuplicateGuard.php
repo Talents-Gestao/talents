@@ -8,6 +8,7 @@ use App\Models\Survey;
 use App\Models\SurveyAudienceLink;
 use App\Models\SurveyInvitationToken;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Cookie;
 
 /**
@@ -44,6 +45,41 @@ final class SurveyDuplicateGuard
         return $survey->uses_invitations ? self::POLICY_ONE_TIME_TOKEN : self::policy();
     }
 
+    /**
+     * Idempotência do envio, valha qual for a política: duplo clique ou nova tentativa com a mesma chave não grava de
+     * novo. Guarda só o hash de uma chave aleatória do formulário, por 24 horas; nada identifica a pessoa.
+     */
+    public static function claimSubmission(Survey $survey, ?string $key): bool
+    {
+        return $key === null || $key === '' || Cache::add(self::submissionKey($survey, $key), true, now()->addDay());
+    }
+
+    public static function releaseSubmission(Survey $survey, ?string $key): void
+    {
+        if ($key !== null && $key !== '') {
+            Cache::forget(self::submissionKey($survey, $key));
+        }
+    }
+
+    private static function submissionKey(Survey $survey, string $key): string
+    {
+        return 'survey-submission:'.hash('sha256', $survey->id.'|'.$key);
+    }
+
+    /**
+     * Mesma sessão do navegador e mesmo link: reenvio bloqueado sem identificador no servidor. Não vale para o convite
+     * único, que já controla o uso e permite várias pessoas no mesmo dispositivo.
+     */
+    private static function sentInSession(Request $request, Survey $survey, ?SurveyAudienceLink $link): bool
+    {
+        return self::policyFor($survey) !== self::POLICY_ONE_TIME_TOKEN && $request->session()->has(self::sessionKey($survey, $link));
+    }
+
+    private static function sessionKey(Survey $survey, ?SurveyAudienceLink $link): string
+    {
+        return 'nr1_sent.'.$survey->id.'.'.($link?->id ?? 'geral');
+    }
+
     public static function cookieName(Survey $survey): string
     {
         return 'nr1_sent_'.$survey->id;
@@ -56,6 +92,10 @@ final class SurveyDuplicateGuard
      */
     public static function blockReasonForView(Request $request, Survey $survey, ?SurveyAudienceLink $link, ?string $invitation): ?string
     {
+        if (self::sentInSession($request, $survey, $link)) {
+            return self::BLOCK_ALREADY_SENT;
+        }
+
         return match (self::policyFor($survey)) {
             self::POLICY_DEVICE_COOKIE => $request->cookies->has(self::cookieName($survey)) ? self::BLOCK_ALREADY_SENT : null,
             self::POLICY_ONE_TIME_TOKEN => self::findUsableInvitation($survey, $link, $invitation) === null ? self::BLOCK_INVITATION : null,
@@ -71,6 +111,10 @@ final class SurveyDuplicateGuard
      */
     public static function consume(Request $request, Survey $survey, ?SurveyAudienceLink $link, ?string $invitation): ?string
     {
+        if (self::sentInSession($request, $survey, $link)) {
+            return self::BLOCK_ALREADY_SENT;
+        }
+
         switch (self::policyFor($survey)) {
             case self::POLICY_DEVICE_COOKIE:
                 return $request->cookies->has(self::cookieName($survey)) ? self::BLOCK_ALREADY_SENT : null;
@@ -96,8 +140,10 @@ final class SurveyDuplicateGuard
     /**
      * Depois de gravar a resposta: no modo de cookie, marca o navegador (sem identificador no servidor).
      */
-    public static function markSent(Survey $survey): void
+    public static function markSent(Request $request, Survey $survey, ?SurveyAudienceLink $link): void
     {
+        $request->session()->put(self::sessionKey($survey, $link), true);
+
         if (self::policyFor($survey) === self::POLICY_DEVICE_COOKIE) {
             Cookie::queue(Cookie::make(self::cookieName($survey), '1', 60 * 24 * 365));
         }

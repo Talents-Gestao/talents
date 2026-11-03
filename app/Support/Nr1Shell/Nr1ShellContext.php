@@ -52,6 +52,7 @@ final class Nr1ShellContext
         $companies = Company::query()
             ->whereHas('surveys')
             ->orderBy('name')
+            ->orderBy('id')
             ->get(['id', 'name']);
 
         $companyId = (int) ($request->query('empresa') ?? $request->session()->get(self::SESSION_COMPANY) ?? 0);

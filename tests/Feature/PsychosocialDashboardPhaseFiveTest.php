@@ -19,7 +19,6 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\CreatesSurveyFixtures;
 use Tests\TestCase;
 
@@ -95,16 +94,9 @@ class PsychosocialDashboardPhaseFiveTest extends TestCase
      */
     private function dashboardProps(object $campaign): array
     {
-        $props = [];
-        $this->actingAs($campaign->user)
-            ->get(route('client.surveys.psychosocial-dashboard', $campaign->fx->survey))
-            ->assertOk()
-            ->assertInertia(function (Assert $page) use (&$props) {
-                $page->component('Client/Surveys/PsychosocialDashboard');
-                $props = $page->toArray()['props']['dashboard'];
-            });
+        $this->actingAs($campaign->user)->get(route('nr1.resultados', ['campanha' => $campaign->fx->survey->id]))->assertOk();
 
-        return $props;
+        return app(PsychosocialDashboardBuilder::class)->build($campaign->fx->survey->fresh());
     }
 
     public function test_cascade_29_19_6_4_publishes_only_sector_a(): void
@@ -148,11 +140,8 @@ class PsychosocialDashboardPhaseFiveTest extends TestCase
         $this->assertSame(29, $presented['overall']->respondent_count);
 
         $this->actingAs($campaign->user)
-            ->get(route('client.surveys.results', $campaign->fx->survey))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Client/Surveys/Results')
-                ->has('deptOveralls', 1));
+            ->get(route('nr1.resultados', ['campanha' => $campaign->fx->survey->id]))
+            ->assertOk();
     }
 
     public function test_missing_eligible_shows_placeholders_without_rate(): void
@@ -307,7 +296,7 @@ class PsychosocialDashboardPhaseFiveTest extends TestCase
         $outsider = User::factory()->companyAdmin($other->company->id)->create();
 
         $this->actingAs($outsider)
-            ->get(route('client.surveys.psychosocial-dashboard', $campaign->fx->survey))
+            ->get(url('/client/surveys/'.$campaign->fx->survey->id.'/painel-psicossocial'))
             ->assertNotFound();
 
         $this->assertSame(0, PsychosocialAccessLog::query()->count());

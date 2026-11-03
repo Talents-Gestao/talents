@@ -95,7 +95,7 @@ class ExecutiveBriefPhaseEightTest extends TestCase
     {
         $this->actingAs($campaign->admin)
             ->post(route('admin.companies.surveys.executive-brief.release', [$campaign->fx->company->id, $campaign->fx->survey->id]))
-            ->assertRedirect(route('admin.companies.surveys.action-plan.edit', [$campaign->fx->company->id, $campaign->fx->survey->id]));
+            ->assertRedirect(route('nr1.parecer', ['empresa' => $campaign->fx->company->id, 'campanha' => $campaign->fx->survey->id]));
 
         return PsychosocialDocumentVersion::query()->latest('id')->firstOrFail();
     }
@@ -354,9 +354,9 @@ class ExecutiveBriefPhaseEightTest extends TestCase
 
         $this->clientDownload($campaign)->assertNotFound();
         $this->actingAs($campaign->client)
-            ->get(route('client.surveys.psychosocial-dashboard', $campaign->fx->survey))
+            ->get(route('nr1.documentos', ['campanha' => $campaign->fx->survey->id]))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->where('executiveBrief', null));
+            ->assertInertia(fn ($page) => $page->where('section.legacy.central.released.briefUrl', null));
     }
 
     public function test_other_company_cannot_release_or_download(): void

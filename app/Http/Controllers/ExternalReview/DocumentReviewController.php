@@ -14,6 +14,7 @@ use App\Policies\PsychosocialDocumentVersionPolicy;
 use App\Services\Psychosocial\DocumentShareService;
 use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\Psychosocial\ReviewRoundService;
+use App\Support\TechnicalOpinionDisclaimerStripper;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -62,8 +63,20 @@ class DocumentReviewController extends Controller
                 ])->values(),
                 'approved' => $share->reviews->contains('kind', DocumentShareReview::KIND_APPROVAL),
                 'round' => $this->roundPayload($model),
+                'technicalOpinion' => $this->technicalOpinion($model),
             ]),
         ]);
+    }
+
+    /** Parecer técnico da campanha V11 do documento compartilhado (a empresa não o recebe). */
+    private function technicalOpinion(PsychosocialDocumentVersion $version): ?string
+    {
+        $survey = $version->document->survey;
+        if (! $survey->usesReviewFlow()) {
+            return null;
+        }
+
+        return TechnicalOpinionDisclaimerStripper::strip($survey->actionPlans()->latest()->value('technical_opinion'));
     }
 
     public function download(Request $request, int $version): SymfonyResponse

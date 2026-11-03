@@ -190,6 +190,8 @@ class Nr1V11CollectionTest extends TestCase
 
         $fx = $this->createSurveyFixture();
         $this->post(route('survey.public.submit', $fx->survey->public_token), $this->answers($fx))->assertRedirect();
+        // Outro navegador: a política formal segue sem bloqueio; só a mesma sessão não reenvia.
+        $this->flushSession();
         $this->post(route('survey.public.submit', $fx->survey->public_token), $this->answers($fx))->assertRedirect();
 
         $this->assertSame(2, SurveyResponse::query()->count());
@@ -213,6 +215,7 @@ class Nr1V11CollectionTest extends TestCase
         $first->assertCookie($cookie);
 
         // Outro navegador (sem o cookie) continua podendo abrir o questionário.
+        $this->flushSession();
         $this->get(route('survey.public', $fx->survey->public_token))
             ->assertInertia(fn (Assert $page) => $page->component('Survey/Take'));
 

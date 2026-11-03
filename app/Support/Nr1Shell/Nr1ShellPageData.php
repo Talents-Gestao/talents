@@ -10,6 +10,7 @@ use App\Enums\PermissionModule;
 use App\Models\Company;
 use App\Models\PsychosocialInternalReview;
 use App\Models\PsychosocialMeasure;
+use App\Models\PsychosocialMeasureEvidence;
 use App\Models\Survey;
 use App\Models\SurveyAudienceLink;
 use App\Models\SurveyCampaignRegistration;
@@ -23,6 +24,8 @@ use App\Support\Nr1BandLabels;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1InstrumentMatrix;
 use App\Support\PsychosocialMeasurePresenter;
+use App\Support\SurveyPublicationGate;
+use Illuminate\Http\Request;
 
 /**
  * Dados das telas do shell NR-1 que reproduzem o HTML aprovado (Etapa B: Visão geral, Campanha NR-1 e Minha jornada).
@@ -98,6 +101,7 @@ class Nr1ShellPageData
                 'counts' => $row['counts'],
                 'distribution' => $row['distribution'],
                 'statement' => $row['statement'],
+                'quality_alert' => (bool) ($row['quality_alert'] ?? false),
                 'favorable_pct' => (float) $row['favorable_pct'],
                 'unfavorable_pct' => (float) $row['unfavorable_pct'],
                 'favorable_pct_label' => $row['favorable_pct_label'],
@@ -126,7 +130,7 @@ class Nr1ShellPageData
      *
      * @return array<string, mixed>
      */
-    public function results(Survey $survey, bool $hideParticipation, string $insufficientMessage, ?Company $company, bool $forTalents): array
+    public function results(Request $request, Survey $survey, bool $hideParticipation, string $insufficientMessage, ?Company $company, bool $forTalents): array
     {
         $base = $this->overview($survey, $hideParticipation, $insufficientMessage);
         if (! ($base['hasResults'] ?? false)) {
@@ -180,6 +184,19 @@ class Nr1ShellPageData
             'minGroupSize' => $dashboard['min_group_size'] ?? 5,
             'insufficientMessage' => $hideParticipation ? $insufficientMessage : null,
             'bands' => Nr1BandLabels::bands($methodCode),
+            'legend' => $dashboard['method']['legend'] ?? null,
+            'disclaimer' => $dashboard['band_disclaimer'] ?? null,
+            'unitName' => $dashboard['header']['unit_name'] ?? null,
+            'campaigns' => $this->extras->campaigns($survey, ! $forTalents, fn (Survey $item) => Nr1Shell::campaignUrl('resultados', $item)),
+            'warnings' => array_values(array_filter([$dashboard['polarity_warning'] ?? null, $dashboard['eligible']['alert'] ?? null])),
+            // Mesmas regras das telas antigas; a empresa não pede análise de uma amostra abaixo do grupo mínimo.
+            'ai' => $hideParticipation ? null : Nr1ShellAi::payload($survey, $forTalents, $request->user()),
+            'recalculateUrl' => match (true) {
+                $forTalents => route('admin.companies.surveys.recalculate', [$survey->company_id, $survey->id]),
+                ! SurveyPublicationGate::isPublished($survey) && $request->user()->canAccess(PermissionModule::Pesquisas, PermissionAction::Edit) => route('client.surveys.recalculate', $survey->id),
+                default => null,
+            },
+            'exports' => $forTalents ? [] : Nr1ShellLegacy::panelExports($survey),
             'internalReview' => $review,
         ];
     }
@@ -199,9 +216,15 @@ class Nr1ShellPageData
         $canEditSuggestion = $forTalents && ! $published && $user->canAccessAdmin(AdminPermissionModule::Companies, PermissionAction::Edit);
         $canAct = ! $forTalents && $user->canAccess(PermissionModule::PlanosAcao, PermissionAction::Edit);
 
-        $measures = $rows->map(function (PsychosocialMeasure $measure) use ($survey, $scores, $canEditSuggestion, $canAct): array {
-            $present = PsychosocialMeasurePresenter::present($measure);
+        $measures = $rows->map(function (PsychosocialMeasure $measure) use ($survey, $scores, $canEditSuggestion, $canAct, $forTalents): array {
+            $downloads = $forTalents ? [] : $measure->evidences
+                ->where('kind', PsychosocialMeasureEvidence::KIND_FILE)
+                ->mapWithKeys(fn (PsychosocialMeasureEvidence $evidence) => [$evidence->id => route('client.surveys.measures.evidences.download', [$survey->id, $measure->id, $evidence->id])])
+                ->all();
+            $present = PsychosocialMeasurePresenter::present($measure, $downloads);
             $score = $scores->get($measure->factor_label);
+            $next = PsychosocialMeasure::PLAN_TRANSITIONS[$measure->status] ?? [];
+            $action = fn (string $name, bool $allowed) => $canAct && $allowed ? route("client.surveys.measures.{$name}", [$survey->id, $measure->id]) : null;
 
             return [
                 'id' => $present['id'],
@@ -214,7 +237,9 @@ class Nr1ShellPageData
                 'indicator' => $present['indicator'],
                 'suggested' => $present['suggested'],
                 'confirmed' => $present['confirmed'],
-                'effectiveness' => ['result_label' => $present['effectiveness']['result_label'], 'note' => $present['effectiveness']['note']],
+                'effectiveness' => $present['effectiveness'],
+                'evidences' => $present['evidences'],
+                'history' => $present['history'],
                 'score_label' => $score['score_label'] ?? null,
                 'risk_level' => $score['risk_level'] ?? null,
                 'band_label' => $score['band_label'] ?? null,
@@ -224,6 +249,10 @@ class Nr1ShellPageData
                     'confirm' => $canAct && $measure->status === PsychosocialMeasure::STATUS_TO_APPROVE ? route('client.surveys.measures.confirm', [$survey->id, $measure->id]) : null,
                     'start' => $canAct && $measure->status === PsychosocialMeasure::STATUS_PENDING ? route('client.surveys.measures.start', [$survey->id, $measure->id]) : null,
                     'complete' => $canAct && $measure->status === PsychosocialMeasure::STATUS_IN_PROGRESS ? route('client.surveys.measures.complete', [$survey->id, $measure->id]) : null,
+                    'adjust' => $action('adjust', $present['confirmed'] !== null && $measure->status !== PsychosocialMeasure::STATUS_IMPLEMENTED),
+                    'replan' => $action('replan', in_array(PsychosocialMeasure::STATUS_REPLANNED, $next, true)),
+                    'evidence' => $action('evidences.store', $measure->status !== PsychosocialMeasure::STATUS_TO_APPROVE),
+                    'effectiveness' => $action('effectiveness', $measure->status === PsychosocialMeasure::STATUS_IMPLEMENTED),
                 ],
             ];
         })->all();
@@ -238,9 +267,8 @@ class Nr1ShellPageData
             'users' => $canAct ? User::query()
                 ->whereHas('workspaces', fn ($q) => $q->where('company_id', $survey->company_id)->where('is_active', true))
                 ->orderBy('name')->get(['id', 'name'])->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name])->all() : [],
-            'fullUrl' => $forTalents
-                ? route('admin.companies.surveys.measures.edit', [$survey->company_id, $survey->id])
-                : route('client.surveys.measures.index', $survey->id),
+            'effectivenessResults' => PsychosocialMeasure::EFFECTIVENESS_RESULTS,
+            'fullUrl' => $forTalents ? route('admin.companies.surveys.measures.edit', [$survey->company_id, $survey->id]) : null,
         ];
     }
 

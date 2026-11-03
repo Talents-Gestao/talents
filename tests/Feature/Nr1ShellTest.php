@@ -98,7 +98,7 @@ class Nr1ShellTest extends TestCase
         $owner = User::factory()->talentsOwner()->create();
 
         $this->actingAs($admin)->get(route('client.surveys.index'))->assertOk();
-        $this->actingAs($admin)->get(route('client.surveys.psychosocial-dashboard', $c->survey))->assertOk();
+        $this->actingAs($admin)->get(route('nr1.resultados', ['campanha' => $c->survey->id]))->assertOk();
         $this->actingAs($admin)->get(route('client.surveys.documents.index', $c->survey))->assertOk();
         $this->actingAs($owner)->get(route('admin.companies.surveys.results.show', [$c->company->id, $c->survey->id]))->assertOk();
         $this->actingAs($owner)->get(route('admin.nr1-opportunities.index'))->assertOk();

@@ -221,20 +221,19 @@ class Nr1V11DashboardOverviewTest extends TestCase
         $user = User::factory()->companyAdmin($campaign->company->id)->create();
 
         $this->actingAs($user)
-            ->get(route('client.surveys.psychosocial-dashboard', $campaign->survey))
+            ->get(route('nr1.visao-geral', ['campanha' => $campaign->survey->id]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Client/Surveys/PsychosocialDashboard')
-                ->has('dashboard.header')
-                ->has('dashboard.cards')
-                ->has('dashboard.attention', 6)
-                ->has('dashboard.dimensions', 7)
-                ->where('dashboard.cards.overall.score_label', '2,60'));
+                ->component('Nr1/Section')
+                ->has('section.overview.cards')
+                ->has('section.overview.attention', 6)
+                ->has('section.overview.dimensions', 7)
+                ->where('section.overview.cards.overall.score_label', '2,60'));
 
         $other = $this->createSurveyFixture();
         $outsider = User::factory()->companyAdmin($other->company->id)->create();
         $this->actingAs($outsider)
-            ->get(route('client.surveys.psychosocial-dashboard', $campaign->survey))
+            ->get(url('/client/surveys/'.$campaign->survey->id.'/painel-psicossocial'))
             ->assertNotFound();
     }
 

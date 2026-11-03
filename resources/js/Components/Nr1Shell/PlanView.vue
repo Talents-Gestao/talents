@@ -42,10 +42,9 @@ const print = () => window.print();
                     <span class="n1-pill blue">Prazo sugerido editável</span>
                 </div>
                 <EmptyState v-if="!plan.measures.length" title="Ainda não há medidas no plano" text="As ações sugeridas para cada prioridade aparecem aqui assim que o plano for gerado." />
-                <MeasureCard v-for="measure in plan.measures" :key="measure.id" :measure="measure" :users="plan.users" />
-                <p v-if="plan.measures.length" class="n1-tiny no-print">
-                    Para registrar evidências, eficácia ou replanejar uma medida, use a
-                    <a :href="plan.fullUrl">tela completa do plano</a>.
+                <MeasureCard v-for="measure in plan.measures" :key="measure.id" :measure="measure" :users="plan.users" :effectiveness-results="plan.effectivenessResults" />
+                <p v-if="plan.fullUrl" class="n1-tiny no-print">
+                    Para incluir medidas e registrar a revisão da Talents, use o <a :href="plan.fullUrl">cadastro de medidas</a>.
                 </p>
             </div>
         </div>

@@ -6,6 +6,7 @@ import Nr1Button from './Nr1Button.vue';
 import PublicationChecklist from './PublicationChecklist.vue';
 import ReviewStepper from './ReviewStepper.vue';
 import ReviewTimeline from './ReviewTimeline.vue';
+import TechnicalOpinionCard from './TechnicalOpinionCard.vue';
 import { useNr1Toast } from './useNr1Toast';
 
 /**
@@ -202,6 +203,8 @@ const confirmPgr = () => pgrForm.post(props.documents.urls.pgrIntegration, { pre
                     <p class="n1-tiny no-print" style="margin-top: 10px">Tela completa com todos os campos: <a :href="documents.urls.full">Central de documentos atual</a>.</p>
                 </section>
             </template>
+
+            <TechnicalOpinionCard v-if="documents.opinion" :opinion="documents.opinion" />
         </div>
     </div>
 </template>

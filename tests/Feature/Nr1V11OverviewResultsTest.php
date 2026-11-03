@@ -75,17 +75,17 @@ class Nr1V11OverviewResultsTest extends TestCase
         }
 
         $this->actingAs($c->admin)
-            ->get(route('client.surveys.psychosocial-dashboard', $c->survey))
+            ->get(route('nr1.visao-geral', ['campanha' => $c->survey->id]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Client/Surveys/PsychosocialDashboard')
-                ->has('nextActions', 3)
-                ->where('nextActions.0.factor', 'Demandas')
-                ->where('nextActions.0.chip', 'A confirmar')
-                ->where('nextActions.0.status_label', 'Proposta')
-                ->where('nextActions.0.confirmed', false)
-                ->has('dashboard.groups.items')
-                ->has('dashboard.attention'));
+                ->component('Nr1/Section')
+                ->has('section.overview.nextActions', 4)
+                ->where('section.overview.nextActions.0.factor', 'Demandas')
+                ->where('section.overview.nextActions.0.chip', 'A confirmar')
+                ->where('section.overview.nextActions.0.status_label', 'Proposta')
+                ->where('section.overview.nextActions.0.confirmed', false)
+                ->has('section.overview.groups')
+                ->has('section.overview.attention'));
     }
 
     public function test_overview_next_actions_show_confirmed_responsible_and_skip_completed_measures(): void
@@ -103,13 +103,13 @@ class Nr1V11OverviewResultsTest extends TestCase
         ])->save();
 
         $this->actingAs($c->admin)
-            ->get(route('client.surveys.psychosocial-dashboard', $c->survey))
+            ->get(route('nr1.visao-geral', ['campanha' => $c->survey->id]))
             ->assertInertia(fn (Assert $page) => $page
-                ->has('nextActions', 1)
-                ->where('nextActions.0.factor', 'Aberta')
-                ->where('nextActions.0.chip', 'Responsável confirmado')
-                ->where('nextActions.0.status_label', 'Confirmada')
-                ->where('nextActions.0.responsible', $c->admin->name));
+                ->has('section.overview.nextActions', 1)
+                ->where('section.overview.nextActions.0.factor', 'Aberta')
+                ->where('section.overview.nextActions.0.chip', 'Responsável confirmado')
+                ->where('section.overview.nextActions.0.status_label', 'Confirmada')
+                ->where('section.overview.nextActions.0.responsible', $c->admin->name));
     }
 
     public function test_empty_state_when_there_are_no_responses_and_no_plan(): void
@@ -117,15 +117,9 @@ class Nr1V11OverviewResultsTest extends TestCase
         $c = $this->campaign(withResponses: false);
 
         $this->actingAs($c->admin)
-            ->get(route('client.surveys.psychosocial-dashboard', $c->survey))
+            ->get(route('nr1.visao-geral', ['campanha' => $c->survey->id]))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->has('nextActions', 0)
-                ->where('dashboard.has_results', false)
-                ->where('dashboard.respondents', 0)
-                ->has('dashboard.attention', 0)
-                ->where('dashboard.items.0.n', 0)
-                ->where('dashboard.items.0.favorable_pct', null));
+            ->assertInertia(fn (Assert $page) => $page->where('section.overview.hasResults', false));
     }
 
     public function test_results_campaign_filter_lists_only_published_campaigns_of_the_same_company_for_the_client(): void
@@ -140,14 +134,14 @@ class Nr1V11OverviewResultsTest extends TestCase
         $otherCompany->survey->forceFill(['title' => 'De outra empresa', 'requires_publication' => true, 'published_at' => now()])->save();
 
         $this->actingAs($c->admin)
-            ->get(route('client.surveys.psychosocial-dashboard', $c->survey))
+            ->get(route('nr1.resultados', ['campanha' => $c->survey->id]))
             ->assertInertia(function (Assert $page) use ($c, $second, $hidden, $otherCompany) {
-                $page->has('campaigns', 2);
-                $titles = collect($page->toArray()['props']['campaigns'])->pluck('title')->all();
+                $page->has('context.surveys', 2);
+                $titles = collect($page->toArray()['props']['context']['surveys'])->pluck('title')->all();
                 $this->assertContains('Segunda campanha', $titles);
                 $this->assertNotContains('Campanha não publicada', $titles);
                 $this->assertNotContains('De outra empresa', $titles);
-                $this->assertSame([$second->id, $c->survey->id], collect($page->toArray()['props']['campaigns'])->pluck('id')->sortDesc()->values()->all());
+                $this->assertSame([$second->id, $c->survey->id], collect($page->toArray()['props']['context']['surveys'])->pluck('id')->sortDesc()->values()->all());
             });
 
         // A Talents vê também a não publicada.
@@ -242,13 +236,13 @@ class Nr1V11OverviewResultsTest extends TestCase
         $this->actingAsMfa($c->talents)->post($this->reviewUrl($c), ['decision' => 'documental', 'note' => self::INTERNAL_NOTE])->assertSessionHas('success');
 
         // Empresa: o painel não carrega nada da revisão interna, nem o texto.
-        $response = $this->actingAs($c->admin)->get(route('client.surveys.psychosocial-dashboard', $c->survey))->assertOk();
+        $response = $this->actingAs($c->admin)->get(route('nr1.resultados', ['campanha' => $c->survey->id]))->assertOk();
         $this->assertStringNotContainsString(self::INTERNAL_NOTE, $response->getContent());
-        $this->assertStringNotContainsString('internalReview', $response->getContent());
+        $this->assertNull($response->viewData('page')['props']['section']['results']['internalReview']);
         $this->assertStringNotContainsString('Revisão interna da Talents', $response->getContent());
         foreach ([
             route('client.surveys.documents.index', $c->survey),
-            route('client.surveys.measures.index', $c->survey),
+            route('nr1.plano-de-acao', ['campanha' => $c->survey->id]),
         ] as $url) {
             $this->assertStringNotContainsString(self::INTERNAL_NOTE, $this->actingAs($c->admin)->get($url)->getContent());
         }

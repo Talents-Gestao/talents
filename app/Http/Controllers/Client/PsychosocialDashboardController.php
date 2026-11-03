@@ -4,24 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Client;
 
-use App\Enums\PermissionAction;
-use App\Enums\PermissionModule;
 use App\Http\Controllers\Controller;
 use App\Models\PsychosocialAccessLog;
 use App\Models\Survey;
-use App\Services\ExecutiveBriefService;
-use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\PsychosocialDashboardBuilder;
-use App\Services\PsychosocialDashboardExtras;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
-use Inertia\Inertia;
-use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Painel gerencial novo de riscos psicossociais. Só leitura; convive com a tela de Resultados.
+ * Exportações e impressão do painel psicossocial, oferecidas em Resultados do painel NR-1. Só leitura.
  */
 class PsychosocialDashboardController extends Controller
 {
@@ -31,35 +24,7 @@ class PsychosocialDashboardController extends Controller
 
     public function __construct(
         private readonly PsychosocialDashboardBuilder $builder,
-        private readonly PsychosocialDashboardExtras $extras,
     ) {}
-
-    public function show(
-        Request $request,
-        Survey $survey,
-        ExecutiveBriefService $executiveBriefService,
-        PsychosocialDocumentService $documents,
-    ): Response {
-        $this->authorizeSurvey($request, $survey);
-        $this->logAccess($request, $survey, 'dashboard');
-
-        $user = $request->user();
-        $canValidate = $user->canAccess(PermissionModule::Relatorios, PermissionAction::Validate)
-            && ! $user->isSuperAdmin()
-            && ! $user->isOwner();
-
-        return Inertia::render('Client/Surveys/PsychosocialDashboard', [
-            'dashboard' => $this->builder->build($survey),
-            'nextActions' => $this->extras->nextActions($survey),
-            'campaigns' => $this->extras->campaigns($survey, true, fn (Survey $s) => route('client.surveys.psychosocial-dashboard', $s)),
-            'executiveBrief' => $executiveBriefService->currentVersionSummary($survey),
-            'psychosocialDocuments' => $documents->documentsSummary($survey),
-            'documentsUrl' => $survey->usesReviewFlow() ? route('client.surveys.documents.index', $survey) : null,
-            'solutionsUrl' => $survey->usesReviewFlow() && $user->canAccess(PermissionModule::Pesquisas, PermissionAction::View) ? route('client.surveys.solutions', $survey) : null,
-            'canValidate' => $canValidate,
-            'validationDeclaration' => PsychosocialDocumentService::IN_SYSTEM_DECLARATION,
-        ]);
-    }
 
     public function exportCsv(Request $request, Survey $survey): StreamedResponse
     {

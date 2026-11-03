@@ -16,6 +16,13 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class SurveyPublicationGate
 {
+    /** «Publicado» para a empresa: pela publicação da campanha ou, no modelo anterior, pelo parecer publicado. */
+    public static function isPublished(Survey $survey): bool
+    {
+        return $survey->published_at !== null
+            || $survey->actionPlans()->whereNotNull('admin_published_at')->exists();
+    }
+
     public static function allows(Survey $survey): bool
     {
         return ! $survey->requires_publication || $survey->published_at !== null;

@@ -3,6 +3,7 @@ import { router, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import DimensionBadge from './DimensionBadge.vue';
 import LevelPill from './LevelPill.vue';
+import MeasureDetails from './MeasureDetails.vue';
 import Nr1Button from './Nr1Button.vue';
 import { useNr1Toast } from './useNr1Toast';
 
@@ -13,6 +14,7 @@ import { useNr1Toast } from './useNr1Toast';
 const props = defineProps({
     measure: { type: Object, required: true },
     users: { type: Array, default: () => [] },
+    effectivenessResults: { type: Object, default: () => ({}) },
 });
 
 const { push } = useNr1Toast();
@@ -39,10 +41,10 @@ const saveSuggestion = () => {
 };
 
 // Empresa: confirmar responsável (usuário da empresa ou texto) e prazo.
-const confirmForm = useForm({ responsible_user_id: '', responsible_text: '', due_date: props.measure.suggested.due_date ?? '' });
+const confirmForm = useForm({ responsible_user_id: '', responsible_text: '', due_date: props.measure.suggested.due_date ?? '', reason: '' });
 const confirmAction = () => {
     confirmForm
-        .transform((data) => ({ responsible_user_id: data.responsible_user_id || null, responsible_text: data.responsible_user_id ? null : data.responsible_text || null, due_date: data.due_date }))
+        .transform((data) => ({ responsible_user_id: data.responsible_user_id || null, responsible_text: data.responsible_user_id ? null : data.responsible_text || null, due_date: data.due_date, reason: data.reason || null }))
         .post(props.measure.urls.confirm, { preserveScroll: true, onSuccess: () => push('Responsável e prazo confirmados.') });
 };
 const step = (url, message) => router.post(url, {}, { preserveScroll: true, onSuccess: () => push(message) });
@@ -125,7 +127,10 @@ const dateBr = (iso) => (iso ? iso.split('-').reverse().join('/') : '—');
                 <template v-if="measure.effectiveness.result_label"> <b>Eficácia:</b> {{ measure.effectiveness.result_label }}.</template>
             </div>
             <Nr1Button v-if="editableSuggestion" variant="primary" size="sm" :loading="suggestion.processing" @click="saveSuggestion">Salvar sugestão</Nr1Button>
-            <Nr1Button v-else-if="canConfirm" variant="primary" size="sm" :loading="confirmForm.processing" :disabled="!confirmForm.due_date" @click="confirmAction">Confirmar ação</Nr1Button>
+            <input v-if="canConfirm" v-model="confirmForm.reason" type="text" class="n1-field" style="max-width: 260px" placeholder="Observação (opcional)" aria-label="Observação da confirmação" />
+            <Nr1Button v-if="!editableSuggestion && canConfirm" variant="primary" size="sm" :loading="confirmForm.processing" :disabled="!confirmForm.due_date" @click="confirmAction">Confirmar ação</Nr1Button>
         </div>
+
+        <MeasureDetails :measure="measure" :users="users" :effectiveness-results="effectivenessResults" />
     </article>
 </template>

@@ -377,7 +377,7 @@ class Nr1V11ExternalReviewTest extends TestCase
 
         $forbidden = [
             ['get', route('client.dashboard')],
-            ['get', route('client.surveys.psychosocial-dashboard', $fx->survey->id)],
+            ['get', url('/client/surveys/'.$fx->survey->id.'/painel-psicossocial')],
             ['get', route('client.surveys.psychosocial-documents.download', [$fx->survey->id, 'pgr_subsidy'])],
             ['get', route('admin.dashboard')],
             ['get', route('admin.companies.surveys.psychosocial-documents.download', [$fx->company->id, $fx->survey->id, 'pgr_subsidy'])],

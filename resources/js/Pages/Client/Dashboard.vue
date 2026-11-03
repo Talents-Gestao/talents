@@ -280,7 +280,7 @@ const attentionHref = computed(() => {
                 <div class="flex shrink-0 flex-col gap-2">
                     <Link
                         v-if="lastSurvey"
-                        :href="nr1ShellUrl ? '/nr1/resultados' : route('client.surveys.results', lastSurvey.id)"
+                        :href="route('nr1.resultados', { campanha: lastSurvey.id })"
                         class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-talents-900 shadow-sm transition hover:bg-slate-100"
                     >
                         Ver resultados

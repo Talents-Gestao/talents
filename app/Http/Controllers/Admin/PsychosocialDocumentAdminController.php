@@ -13,6 +13,7 @@ use App\Models\PsychosocialDocumentAttachment;
 use App\Models\PsychosocialDocumentVersion;
 use App\Models\Survey;
 use App\Services\Psychosocial\PsychosocialDocumentService;
+use App\Support\Nr1Shell\Nr1Shell;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -25,9 +26,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class PsychosocialDocumentAdminController extends Controller
 {
-    public function __construct(private readonly PsychosocialDocumentService $documents)
-    {
-    }
+    public function __construct(private readonly PsychosocialDocumentService $documents) {}
 
     public function releaseSubsidy(Company $company, Survey $survey): RedirectResponse
     {
@@ -173,7 +172,7 @@ class PsychosocialDocumentAdminController extends Controller
 
     private function backToPlan(Company $company, Survey $survey): RedirectResponse
     {
-        return redirect()->route('admin.companies.surveys.action-plan.edit', [$company->id, $survey->id]);
+        return redirect(Nr1Shell::parecerUrl($survey));
     }
 
     private function assertSurveyBelongsToCompany(Company $company, Survey $survey): void

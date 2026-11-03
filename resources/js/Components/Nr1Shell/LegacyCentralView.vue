@@ -1,4 +1,5 @@
 <script setup>
+import { useForm } from '@inertiajs/vue3';
 import EmptyState from './EmptyState.vue';
 import LegacyNotice from './LegacyNotice.vue';
 import Nr1Button from './Nr1Button.vue';
@@ -12,6 +13,9 @@ defineProps({
     central: { type: Object, required: true },
     notice: { type: String, default: 'Pesquisa no modelo anterior' },
 });
+
+const validation = useForm({ declaration_accepted: false });
+const validateDocument = (url) => validation.post(url, { preserveScroll: true, onSuccess: () => validation.reset() });
 </script>
 
 <template>
@@ -63,6 +67,28 @@ defineProps({
                         <span>{{ row.label }}</span>
                     </li>
                 </ul>
+            </section>
+
+            <section v-if="central.released && (central.released.documents.length || central.released.briefUrl)" class="n1-card" aria-labelledby="released-title">
+                <h2 id="released-title">Documentos liberados pela Talents</h2>
+                <div class="n1-tools no-print">
+                    <template v-for="doc in central.released.documents" :key="doc.type">
+                        <Nr1Button v-if="doc.download_url" size="sm" :href="doc.download_url" external>Baixar {{ doc.label }}</Nr1Button>
+                    </template>
+                    <Nr1Button v-if="central.released.briefUrl" size="sm" :href="central.released.briefUrl" external>Baixar resumo executivo</Nr1Button>
+                </div>
+                <template v-if="central.released.canValidate">
+                    <div v-for="doc in central.released.documents.filter((item) => item.validatable)" :key="doc.type" class="no-print" style="margin-top: 14px">
+                        <h3>Validar {{ doc.label }} · versão {{ doc.version_number }}</h3>
+                        <p class="n1-tiny">A validação se refere ao conteúdo congelado da versão atual. O PDF original não é refeito.</p>
+                        <label class="n1-tiny" style="display: flex; gap: 8px; align-items: flex-start">
+                            <input v-model="validation.declaration_accepted" type="checkbox" />
+                            <span>{{ central.released.declaration }}</span>
+                        </label>
+                        <p v-if="validation.errors.declaration_accepted" class="n1-tiny" role="alert">{{ validation.errors.declaration_accepted }}</p>
+                        <Nr1Button size="sm" variant="primary" :loading="validation.processing" @click="validateDocument(doc.validate_url)">Validar {{ doc.label }}</Nr1Button>
+                    </div>
+                </template>
             </section>
         </div>
     </div>

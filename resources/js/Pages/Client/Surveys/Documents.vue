@@ -39,7 +39,7 @@ const confirmPgr = () => {
                     <h2 class="text-xl font-semibold leading-tight text-talents-900">Documentos oficiais</h2>
                     <p class="text-sm text-gray-600">{{ survey.title }}</p>
                 </div>
-                <Link :href="route('client.surveys.psychosocial-dashboard', survey.id)" class="text-sm text-talents-700 hover:underline">
+                <Link :href="route('nr1.resultados', { campanha: survey.id })" class="text-sm text-talents-700 hover:underline">
                     Voltar ao painel
                 </Link>
             </div>
