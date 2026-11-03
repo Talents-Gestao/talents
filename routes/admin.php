@@ -583,6 +583,12 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::get('comissoes', [FinanceCommissionController::class, 'index'])->name('comissoes.index');
             Route::patch('comissoes/{commission}', [FinanceCommissionController::class, 'update'])
                 ->name('comissoes.update');
+            // POST = permissão create; DELETE = permissão delete (ação deduzida do verbo HTTP).
+            Route::post('comissoes/{commission}/pagamentos', [FinanceCommissionController::class, 'storePayment'])
+                ->name('comissoes.pagamentos.store');
+            Route::delete('comissoes/{commission}/pagamentos/{payment}', [FinanceCommissionController::class, 'destroyPayment'])
+                ->scopeBindings()
+                ->name('comissoes.pagamentos.destroy');
         });
 
         Route::middleware('admin.can:financeiro_contas_bancarias')->group(function () {

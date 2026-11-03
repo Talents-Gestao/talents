@@ -1,11 +1,14 @@
 <script setup>
+import CommissionPaymentModal from '@/Components/Finance/CommissionPaymentModal.vue';
+import CommissionPaymentsHistory from '@/Components/Finance/CommissionPaymentsHistory.vue';
+import CommissionStatusBadge from '@/Components/Finance/CommissionStatusBadge.vue';
 import SaleInstallmentEditModal from '@/Components/Finance/SaleInstallmentEditModal.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { PencilSquareIcon } from '@heroicons/vue/24/outline';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -15,22 +18,9 @@ const props = defineProps({
     installmentMethodOptions: { type: Array, default: () => [] },
     installmentStatusOptions: { type: Array, default: () => [] },
     bankAccounts: { type: Array, default: () => [] },
-});
-
-const localTodayDate = () => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-};
-
-const commissionForm = useForm({
-    status: props.sale.commission?.status ?? 'a_pagar',
-    paid_at: props.sale.commission?.paid_at
-        ? String(props.sale.commission.paid_at).slice(0, 10)
-        : localTodayDate(),
-    notes: props.sale.commission?.notes ?? '',
+    commission_payouts: { type: Array, default: () => [] },
+    commission_can: { type: Object, default: () => ({ register_payment: false, delete_payment: false }) },
+    destroyBlockedMessage: { type: String, default: '' },
 });
 
 const editModalOpen = ref(false);
@@ -98,27 +88,17 @@ const paidTotalCents = computed(() =>
         .reduce((acc, i) => acc + (i.paid_amount_cents ?? i.amount_cents ?? 0), 0),
 );
 
-const saleIsQuitada = computed(() => props.sale.status === 'quitada');
-const saleCommissions = computed(() => {
-    if (Array.isArray(props.sale.commissions) && props.sale.commissions.length) {
-        return props.sale.commissions;
-    }
+// Valores prontos do servidor (CommissionPayoutCalculator): total, pago, liberável, status, histórico.
+const saleCommissions = computed(() => props.commission_payouts ?? []);
 
-    return props.sale.commission ? [props.sale.commission] : [];
-});
-const canMarkCommissionPaid = computed(
-    () => saleIsQuitada.value || props.sale.commission?.status === 'paga',
-);
-
-const submitCommission = () => {
-    if (!props.sale.commission) return;
-    commissionForm.patch(route('admin.financeiro.comissoes.update', props.sale.commission.id), {
-        preserveScroll: true,
-    });
-};
+const paymentTargetId = ref(null);
+const paymentTarget = () => saleCommissions.value.find((c) => c.id === paymentTargetId.value) ?? null;
 
 const destroyModalOpen = ref(false);
 const destroying = ref(false);
+const destroyError = ref('');
+
+const hasPaidCommission = computed(() => saleCommissions.value.some((item) => Number(item.paid_cents) > 0));
 
 const destroyImpactItems = computed(() => {
     const total = Number(props.sale.installments_count) || (props.sale.installments?.length ?? 0);
@@ -159,6 +139,7 @@ const destroyImpactItems = computed(() => {
 });
 
 const openDestroy = () => {
+    destroyError.value = hasPaidCommission.value ? props.destroyBlockedMessage : '';
     destroyModalOpen.value = true;
 };
 
@@ -170,14 +151,21 @@ const closeDestroyModal = () => {
 };
 
 const confirmDestroy = () => {
-    if (destroying.value) {
+    if (destroying.value || hasPaidCommission.value) {
         return;
     }
     destroying.value = true;
+    destroyError.value = '';
     router.delete(route('admin.financeiro.vendas.destroy', props.sale.id), {
+        onSuccess: () => {
+            destroyModalOpen.value = false;
+        },
+        // Mantém o modal aberto com a mensagem do servidor (ex.: comissão paga).
+        onError: (errors) => {
+            destroyError.value = errors.sale ?? Object.values(errors)[0] ?? 'Não foi possível excluir a venda.';
+        },
         onFinish: () => {
             destroying.value = false;
-            destroyModalOpen.value = false;
         },
     });
 };
@@ -247,74 +235,57 @@ const confirmDestroy = () => {
                 <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
                     {{ saleCommissions.length > 1 ? 'Comissões' : 'Comissão' }}
                 </h3>
-                <ul class="mt-3 space-y-3">
-                    <li v-for="item in saleCommissions" :key="item.id">
-                        <p class="text-xl font-bold tabular-nums">{{ formatBRL(item.amount_cents) }}</p>
-                        <p class="text-sm text-slate-600">
-                            {{ item.percent }}% sobre {{ formatBRL(item.base_cents) }}
+                <ul class="mt-3 divide-y divide-slate-100">
+                    <li v-for="item in saleCommissions" :key="item.id" class="py-3 first:pt-0 last:pb-0">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <p class="text-sm font-semibold text-slate-900">{{ item.seller?.name ?? '—' }}</p>
+                                <p class="text-xs text-slate-500">{{ item.percent }}% sobre {{ formatBRL(item.base_cents) }}</p>
+                            </div>
+                            <CommissionStatusBadge :status="item.status" :label="item.status_label" />
+                        </div>
+                        <dl class="mt-2 grid grid-cols-3 gap-2 text-sm">
+                            <div>
+                                <dt class="text-xs uppercase tracking-wide text-slate-500">Total</dt>
+                                <dd class="font-semibold tabular-nums">{{ formatBRL(item.amount_cents) }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-xs uppercase tracking-wide text-slate-500">Pago</dt>
+                                <dd class="font-semibold tabular-nums">{{ formatBRL(item.paid_cents) }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-xs uppercase tracking-wide text-slate-500">Liberável</dt>
+                                <dd class="font-semibold tabular-nums text-talents-700">{{ formatBRL(item.releasable_cents) }}</dd>
+                            </div>
+                        </dl>
+                        <p v-if="item.over_ceiling" class="mt-1 text-xs font-medium text-rose-700">
+                            Pago acima do teto: {{ formatBRL(item.over_ceiling_cents) }}
                         </p>
-                        <p class="mt-1 text-sm text-slate-600">
-                            {{ item.seller?.name ?? '—' }}
-                            <span class="text-slate-400"> · {{ statusLabel(item.status) }}</span>
-                        </p>
+                        <button
+                            v-if="commission_can.register_payment"
+                            type="button"
+                            class="mt-3 w-full rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            :disabled="item.releasable_cents < 1"
+                            @click="paymentTargetId = item.id"
+                        >
+                            {{ item.releasable_cents < 1 ? 'Nada liberável agora' : 'Registrar pagamento' }}
+                        </button>
+                        <details class="mt-2">
+                            <summary class="cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-900">
+                                Pagamentos ({{ item.payments.length }})
+                            </summary>
+                            <div class="mt-2">
+                                <CommissionPaymentsHistory :commission="item" />
+                            </div>
+                        </details>
                     </li>
                 </ul>
                 <Link
                     :href="route('admin.financeiro.comissoes.index', { search: sale.client_name })"
-                    class="mt-2 inline-block text-xs font-medium text-talents-700 hover:underline"
+                    class="mt-3 inline-block text-xs font-medium text-talents-700 hover:underline"
                 >
                     Ver no índice de comissões
                 </Link>
-
-                <p v-if="saleCommissions.length > 1" class="mt-3 text-xs text-slate-500">
-                    Para marcar cada comissão como paga, use o índice de comissões.
-                </p>
-
-                <form
-                    v-if="sale.commission && saleCommissions.length === 1"
-                    class="mt-4 space-y-3"
-                    @submit.prevent="submitCommission"
-                >
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
-                        <select
-                            v-model="commissionForm.status"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        >
-                            <option value="a_pagar">A pagar</option>
-                            <option value="paga" :disabled="!canMarkCommissionPaid">Paga</option>
-                        </select>
-                        <p v-if="!saleIsQuitada" class="mt-1 text-xs text-amber-700">
-                            A venda precisa estar quitada antes de marcar a comissão como paga.
-                        </p>
-                        <p v-if="commissionForm.errors.status" class="mt-1 text-xs text-rose-600">
-                            {{ commissionForm.errors.status }}
-                        </p>
-                    </div>
-                    <div v-if="commissionForm.status === 'paga'">
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Paga em</label>
-                        <input
-                            v-model="commissionForm.paid_at"
-                            type="date"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        />
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
-                        <textarea
-                            v-model="commissionForm.notes"
-                            rows="2"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        class="w-full rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:opacity-50"
-                        :disabled="commissionForm.processing"
-                    >
-                        Salvar comissão
-                    </button>
-                </form>
             </div>
             <div v-else class="surface-card p-6">
                 <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Comissão</h3>
@@ -400,6 +371,12 @@ const confirmDestroy = () => {
             @close="closeEditInstallment"
         />
 
+        <CommissionPaymentModal
+            :show="paymentTargetId !== null"
+            :commission="paymentTarget()"
+            @close="paymentTargetId = null"
+        />
+
         <Modal :show="destroyModalOpen" max-width="lg" @close="closeDestroyModal">
             <div class="p-6">
                 <h2 class="text-lg font-semibold text-slate-900">Excluir venda?</h2>
@@ -431,6 +408,13 @@ const confirmDestroy = () => {
                         </li>
                     </ul>
                 </template>
+                <p
+                    v-if="destroyError"
+                    role="alert"
+                    class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-800"
+                >
+                    {{ destroyError }}
+                </p>
                 <div class="mt-6 flex justify-end gap-2">
                     <button
                         type="button"
@@ -443,7 +427,7 @@ const confirmDestroy = () => {
                     <button
                         type="button"
                         class="inline-flex items-center rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-60"
-                        :disabled="destroying"
+                        :disabled="destroying || hasPaidCommission"
                         @click="confirmDestroy"
                     >
                         {{ destroying ? 'Excluindo…' : 'Excluir venda' }}

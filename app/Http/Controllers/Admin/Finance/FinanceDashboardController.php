@@ -8,6 +8,7 @@ use App\Models\CommercialCommission;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
 use App\Models\FinanceReceivable;
+use App\Services\Commercial\CommissionPayoutCalculator;
 use App\Support\Finance\FinanceCashflowMetrics;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -108,8 +109,7 @@ class FinanceDashboardController extends Controller
             ->values()
             ->all();
 
-        $commissionsQuery = CommercialCommission::query()
-            ->where('status', CommercialCommission::STATUS_A_PAGAR);
+        $commissionsQuery = CommercialCommission::query();
 
         if ($start) {
             $commissionsQuery->where('created_at', '>=', $start);
@@ -118,7 +118,8 @@ class FinanceDashboardController extends Controller
             $commissionsQuery->where('created_at', '<=', $end);
         }
 
-        $commissionsPendingCents = (int) $commissionsQuery->sum('amount_cents');
+        // Pendente = Σ (teto − pago); inclui comissões parcialmente pagas.
+        $commissionTotals = CommissionPayoutCalculator::openTotals($commissionsQuery);
 
         $recentSales = CommercialSale::query()
             ->with('seller:id,name')
@@ -136,7 +137,8 @@ class FinanceDashboardController extends Controller
                 'receivable_cents' => $this->cashflow->toReceiveCents(),
                 'received_cents' => $this->cashflow->receivedInPeriodCents($start, $end),
                 'overdue_cents' => $this->cashflow->overdueCents(),
-                'commissions_pending_cents' => $commissionsPendingCents,
+                'commissions_pending_cents' => $commissionTotals['pending_cents'],
+                'commissions_releasable_cents' => $commissionTotals['releasable_cents'],
                 'bank_balance_cents' => $this->cashflow->activeBankAccountsBalanceCents(),
                 'bank_accounts_count' => $this->cashflow->activeBankAccountsCount(),
             ],

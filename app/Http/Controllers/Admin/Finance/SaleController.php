@@ -3,22 +3,32 @@
 namespace App\Http\Controllers\Admin\Finance;
 
 use App\Actions\Notices\PublishCommercialNotice;
+use App\Enums\AdminPermissionModule;
+use App\Enums\PermissionAction;
 use App\Http\Controllers\Controller;
+use App\Models\CommercialCommission;
+use App\Models\CommercialCommissionPayment;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
 use App\Models\FinanceBankAccount;
 use App\Models\User;
+use App\Services\Commercial\CommissionPayoutCalculator;
 use App\Services\Commercial\ProposalSaleConversionService;
 use App\Support\Commercial\CommercialCodeSearch;
 use App\Support\Commercial\OptionalCommission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class SaleController extends Controller
 {
+    public const PAID_COMMISSION_DESTROY_MESSAGE = 'Esta venda não pode ser excluída porque já há pagamento de comissão registrado. '
+        .'Se o repasse foi lançado por engano, exclua os pagamentos em Financeiro → Comissões e tente de novo.';
+
     public function __construct(
         private readonly ProposalSaleConversionService $conversion,
     ) {}
@@ -36,6 +46,8 @@ class SaleController extends Controller
                     ->where('status', 'pendente'),
                 'commissions as payable_commissions_count' => fn ($query) => $query
                     ->where('amount_cents', '>', 0),
+                'commissions as paid_commissions_count' => fn ($query) => $query
+                    ->whereHas('payments'),
             ])
             ->orderByDesc('sold_at');
 
@@ -61,7 +73,7 @@ class SaleController extends Controller
         return Inertia::render('Admin/Finance/Sales/Index', [
             'sales' => $sales,
             'filters' => $request->only(['search', 'status', 'seller_id']),
-            'sellers' => \App\Models\User::query()
+            'sellers' => User::query()
                 ->where('is_commercial', true)
                 ->where('is_active', true)
                 ->orderBy('name')
@@ -73,21 +85,41 @@ class SaleController extends Controller
                 CommercialSale::STATUS_QUITADA => 'Quitada',
                 CommercialSale::STATUS_CANCELADA => 'Cancelada',
             ],
+            'destroyBlockedMessage' => self::PAID_COMMISSION_DESTROY_MESSAGE,
         ]);
     }
 
-    public function show(CommercialSale $sale): Response
+    public function show(Request $request, CommercialSale $sale): Response
     {
         $sale->load([
             'seller:id,name,email',
             'proposal:id,code',
             'installments' => fn ($q) => $q->orderBy('number'),
             'commission.seller:id,name',
-            'commissions.seller:id,name',
         ]);
+
+        // Carregadas à parte (sem virar relação de $sale) para não serializar venda ↔ comissão em ciclo.
+        $commissions = $sale->commissions()
+            ->orderBy('id')
+            ->with(CommissionController::payoutRelations(withSale: false))
+            ->get()
+            ->each(fn (CommercialCommission $c) => $c->setRelation('sale', $sale));
+
+        $user = $request->user();
+        $canRegister = (bool) $user?->canAccessAdmin(AdminPermissionModule::FinanceiroComissoes, PermissionAction::Create);
+        $canDelete = (bool) $user?->canAccessAdmin(AdminPermissionModule::FinanceiroComissoes, PermissionAction::Delete);
 
         return Inertia::render('Admin/Finance/Sales/Show', [
             'sale' => $sale,
+            'commission_payouts' => $commissions
+                ->map(fn (CommercialCommission $c) => CommissionPayoutCalculator::present($c, $canDelete))
+                ->values()
+                ->all(),
+            'commission_can' => [
+                'register_payment' => $canRegister,
+                'delete_payment' => $canDelete,
+            ],
+            'destroyBlockedMessage' => self::PAID_COMMISSION_DESTROY_MESSAGE,
             'finance_impact' => $this->financeImpactPayload($sale),
             'paymentMethods' => [
                 'pix' => 'PIX',
@@ -189,10 +221,25 @@ class SaleController extends Controller
 
     public function destroy(CommercialSale $sale): RedirectResponse
     {
+        // O cascade apagaria também o histórico de repasses já feitos ao vendedor.
+        if ($sale->commissions()->whereHas('payments')->exists()) {
+            throw ValidationException::withMessages([
+                'sale' => self::PAID_COMMISSION_DESTROY_MESSAGE,
+            ]);
+        }
+
         $code = (string) $sale->code;
         $proposalId = $sale->proposal_id ? (int) $sale->proposal_id : null;
 
-        $sale->delete();
+        DB::transaction(function () use ($sale): void {
+            // Pagamentos já desfeitos (exclusão lógica) não bloqueiam; saem junto com a venda
+            // (a FK de pagamentos é restrict, para nunca sumir com repasse ativo).
+            CommercialCommissionPayment::onlyTrashed()
+                ->whereIn('commission_id', $sale->commissions()->select('id'))
+                ->forceDelete();
+
+            $sale->delete();
+        });
 
         // Proposta permanece (fechada, sem venda) — pode reconverter depois.
         $redirect = redirect()

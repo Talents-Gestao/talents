@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Admin\Finance;
 
-use App\Actions\Notices\PublishCommercialNotice;
+use App\Actions\Finance\ChangeFinancePaymentDate;
+use App\Actions\Finance\RegisterFinancePayment;
 use App\Http\Controllers\Controller;
+use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
+use App\Support\Finance\FinancePaymentDate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -15,7 +19,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class InstallmentController extends Controller
 {
     public function __construct(
-        private readonly PublishCommercialNotice $notices,
+        private readonly RegisterFinancePayment $registerPayment,
+        private readonly ChangeFinancePaymentDate $changePaymentDate,
     ) {}
 
     public function registerPayment(Request $request, CommercialSaleInstallment $installment): RedirectResponse
@@ -26,10 +31,13 @@ class InstallmentController extends Controller
                 CommercialSaleInstallment::STATUS_PAGO,
                 CommercialSaleInstallment::STATUS_CANCELADO,
             ])],
-            'paid_at' => ['nullable', 'date'],
+            'paid_at' => FinancePaymentDate::rules(),
+            'payment_date_reason' => FinancePaymentDate::reasonRules(),
             'paid_amount_cents' => ['nullable', 'integer', 'min:0'],
             'bank_account_id' => [
-                Rule::requiredIf(fn () => $request->input('status') === CommercialSaleInstallment::STATUS_PAGO),
+                // Exigida só na baixa nova: parcela já paga sem conta (legado) pode ter a data corrigida.
+                Rule::requiredIf(fn () => $request->input('status') === CommercialSaleInstallment::STATUS_PAGO
+                    && ! $installment->isPaid()),
                 'nullable',
                 'exists:finance_bank_accounts,id',
             ],
@@ -37,29 +45,30 @@ class InstallmentController extends Controller
             'receipt' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
         ], [
             'bank_account_id.required' => 'Selecione a conta de destino/recebimento.',
+            ...FinancePaymentDate::messages(),
         ]);
 
-        $update = [
-            'status' => $data['status'],
-            'notes' => $data['notes'] ?? $installment->notes,
-        ];
+        $wasPaid = $installment->isPaid();
+        $isPaid = $data['status'] === CommercialSaleInstallment::STATUS_PAGO;
 
-        if ($data['status'] === CommercialSaleInstallment::STATUS_PAGO) {
-            $paidAmountCents = $this->assertPaidAmountMatchesInstallment(
-                $installment,
-                isset($data['paid_amount_cents']) ? (int) $data['paid_amount_cents'] : null,
-            );
-            $update['paid_at'] = isset($data['paid_at'])
-                ? \Carbon\Carbon::parse($data['paid_at'])
-                : now();
-            $update['paid_amount_cents'] = $paidAmountCents;
-            $update['bank_account_id'] = (int) $data['bank_account_id'];
-        } else {
-            $update['paid_at'] = null;
-            $update['paid_amount_cents'] = null;
-            $update['bank_account_id'] = null;
+        // Mesma regra da baixa manual e da conta a pagar: cancelada não recebe baixa direta.
+        // Para receber, reative a parcela pela edição.
+        if ($isPaid && $installment->status === CommercialSaleInstallment::STATUS_CANCELADO) {
+            return back()->with('error', 'Não é possível receber uma parcela cancelada.');
         }
 
+        $cancellationChanged = ($installment->status === CommercialSaleInstallment::STATUS_CANCELADO)
+            !== ($data['status'] === CommercialSaleInstallment::STATUS_CANCELADO);
+        $paidAmountCents = $isPaid
+            ? $this->assertPaidAmountMatchesInstallment(
+                $installment,
+                isset($data['paid_amount_cents']) ? (int) $data['paid_amount_cents'] : null,
+            )
+            : null;
+
+        $update = ['notes' => $data['notes'] ?? $installment->notes];
+
+        // O comprovante só é trocado quando vem um arquivo novo.
         if ($request->hasFile('receipt')) {
             if ($installment->receipt_path && Storage::disk('local')->exists($installment->receipt_path)) {
                 Storage::disk('local')->delete($installment->receipt_path);
@@ -71,15 +80,45 @@ class InstallmentController extends Controller
             );
         }
 
-        $wasPaid = $installment->getOriginal('status') === CommercialSaleInstallment::STATUS_PAGO;
+        DB::transaction(function () use ($request, $installment, $data, $update, $wasPaid, $isPaid, $paidAmountCents, $cancellationChanged): void {
+            if (! $isPaid) {
+                $installment->update([
+                    ...$update,
+                    'status' => $data['status'],
+                    'paid_at' => null,
+                    'paid_amount_cents' => null,
+                    'bank_account_id' => null,
+                ]);
+                $installment->sale->recalculateStatus();
+            } elseif ($wasPaid) {
+                $installment->update([...$update, 'bank_account_id' => $this->bankAccountFor($installment, $data)]);
 
-        $installment->update($update);
+                // Já baixada: só corrige a data (auditada), sem reenviar o aviso.
+                if (filled($data['paid_at'] ?? null)) {
+                    $this->changePaymentDate->handle(
+                        $installment,
+                        FinancePaymentDate::toPaidAt($data['paid_at']),
+                        $request->user(),
+                        $data['payment_date_reason'] ?? null,
+                    );
+                }
+            } else {
+                $installment->update([...$update, 'bank_account_id' => (int) $data['bank_account_id']]);
+                $this->registerPayment->handle(
+                    $installment,
+                    FinancePaymentDate::toPaidAt($data['paid_at'] ?? null),
+                    (int) $data['bank_account_id'],
+                    paidAmountCents: $paidAmountCents,
+                    actor: $request->user(),
+                );
+            }
 
-        $installment->sale->recalculateStatus();
-
-        if ($data['status'] === CommercialSaleInstallment::STATUS_PAGO && ! $wasPaid) {
-            $this->notices->installmentPaid($installment->fresh('sale'), $request->user());
-        }
+            // Cancelar/reativar parcela muda o valor da venda (canceladas não entram no total).
+            // Na mesma transação da baixa: status e total da venda nunca ficam divergentes.
+            if ($cancellationChanged) {
+                $this->syncSaleTotalFromInstallments($installment);
+            }
+        });
 
         return redirect()
             ->back()
@@ -98,10 +137,14 @@ class InstallmentController extends Controller
                 CommercialSaleInstallment::STATUS_CANCELADO,
             ])],
             'bank_account_id' => [
-                Rule::requiredIf(fn () => $request->input('status') === CommercialSaleInstallment::STATUS_PAGO),
+                // Exigida só na baixa nova: parcela já paga sem conta (legado) pode ter a data corrigida.
+                Rule::requiredIf(fn () => $request->input('status') === CommercialSaleInstallment::STATUS_PAGO
+                    && ! $installment->isPaid()),
                 'nullable',
                 'exists:finance_bank_accounts,id',
             ],
+            'paid_at' => FinancePaymentDate::rules(),
+            'payment_date_reason' => FinancePaymentDate::reasonRules(),
             'notes' => ['nullable', 'string', 'max:2000'],
         ], [
             'due_date.required' => 'Informe o vencimento.',
@@ -109,10 +152,11 @@ class InstallmentController extends Controller
             'method.required' => 'Selecione o método.',
             'status.required' => 'Selecione o status.',
             'bank_account_id.required' => 'Selecione a conta de destino/recebimento.',
+            ...FinancePaymentDate::messages(),
         ]);
 
         $amountCents = (int) round(((float) $data['amount_reais']) * 100);
-        $wasPaid = $installment->status === CommercialSaleInstallment::STATUS_PAGO;
+        $wasPaid = $installment->isPaid();
 
         if ($wasPaid) {
             $amountCents = (int) $installment->amount_cents;
@@ -128,27 +172,43 @@ class InstallmentController extends Controller
             'due_date' => $data['due_date'],
             'amount_cents' => $amountCents,
             'method' => $data['method'],
-            'status' => $data['status'],
             'notes' => $data['notes'] ?? null,
         ];
 
-        if ($data['status'] === CommercialSaleInstallment::STATUS_PAGO) {
-            $update['paid_at'] = $installment->paid_at ?? now();
-            $update['paid_amount_cents'] = $amountCents;
-            $update['bank_account_id'] = (int) $data['bank_account_id'];
-        } else {
-            $update['paid_at'] = null;
-            $update['paid_amount_cents'] = null;
-            $update['bank_account_id'] = null;
-        }
+        DB::transaction(function () use ($request, $installment, $data, $update, $wasPaid, $amountCents): void {
+            if ($data['status'] !== CommercialSaleInstallment::STATUS_PAGO) {
+                $installment->update([
+                    ...$update,
+                    'status' => $data['status'],
+                    'paid_at' => null,
+                    'paid_amount_cents' => null,
+                    'bank_account_id' => null,
+                ]);
+            } elseif ($wasPaid) {
+                $installment->update([...$update, 'bank_account_id' => $this->bankAccountFor($installment, $data)]);
 
-        $installment->update($update);
-        $this->syncSaleTotalFromInstallments($installment);
-        $installment->sale->recalculateStatus();
+                if (filled($data['paid_at'] ?? null)) {
+                    $this->changePaymentDate->handle(
+                        $installment,
+                        FinancePaymentDate::toPaidAt($data['paid_at']),
+                        $request->user(),
+                        $data['payment_date_reason'] ?? null,
+                    );
+                }
+            } else {
+                $installment->update($update);
+                $this->registerPayment->handle(
+                    $installment,
+                    FinancePaymentDate::toPaidAt($data['paid_at'] ?? null),
+                    (int) $data['bank_account_id'],
+                    paidAmountCents: $amountCents,
+                    actor: $request->user(),
+                );
+            }
 
-        if ($data['status'] === CommercialSaleInstallment::STATUS_PAGO && ! $wasPaid) {
-            $this->notices->installmentPaid($installment->fresh('sale'), $request->user());
-        }
+            $this->syncSaleTotalFromInstallments($installment);
+            $installment->sale->recalculateStatus();
+        });
 
         return redirect()
             ->back()
@@ -197,11 +257,26 @@ class InstallmentController extends Controller
         return $paid;
     }
 
+    /**
+     * Parcela já paga: conta informada ou, sem ela, a atual (inclusive nula, no legado).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function bankAccountFor(CommercialSaleInstallment $installment, array $data): ?int
+    {
+        return filled($data['bank_account_id'] ?? null)
+            ? (int) $data['bank_account_id']
+            : $installment->bank_account_id;
+    }
+
+    /**
+     * Parcelas canceladas não compõem o valor da venda (mesma regra de CommercialSale::recalculateStatus).
+     */
     private function syncSaleTotalFromInstallments(CommercialSaleInstallment $installment): void
     {
         $sale = $installment->sale;
         $sale->update([
-            'total_cents' => (int) $sale->installments()->sum('amount_cents'),
+            'total_cents' => CommercialSale::totalFromInstallments($sale->installments()->get()),
         ]);
     }
 }

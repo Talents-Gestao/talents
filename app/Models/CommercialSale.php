@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Actions\Commercial\RefreshCommissionPayout;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Collection;
 
 class CommercialSale extends Model
 {
@@ -18,6 +20,19 @@ class CommercialSale extends Model
     public const STATUS_CANCELADA = 'cancelada';
 
     protected $guarded = ['id'];
+
+    /**
+     * Teto das comissões acompanha o valor da venda (cancelar/reativar/editar parcela),
+     * venha a mudança de onde vier.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (self $sale): void {
+            if ($sale->wasChanged('total_cents')) {
+                app(RefreshCommissionPayout::class)->forSale($sale);
+            }
+        });
+    }
 
     protected function casts(): array
     {
@@ -75,23 +90,51 @@ class CommercialSale extends Model
             return;
         }
 
-        $installments = $this->installments()->get();
-        if ($installments->isEmpty()) {
+        $newStatus = self::statusFromInstallments($this->installments()->get());
+        if ($newStatus === null) {
             return;
         }
-
-        $paidCount = $installments->where('status', CommercialSaleInstallment::STATUS_PAGO)->count();
-        $totalCount = $installments->count();
-
-        $newStatus = match (true) {
-            $paidCount === 0 => self::STATUS_ABERTA,
-            $paidCount >= $totalCount => self::STATUS_QUITADA,
-            default => self::STATUS_PARCIAL,
-        };
 
         if ($this->status !== $newStatus) {
             $this->update(['status' => $newStatus]);
         }
+    }
+
+    /**
+     * Status derivado das parcelas. Parcelas canceladas não entram no total nem no pago.
+     *
+     * Todas canceladas: «aberta» (nada recebido nem a receber; nunca «quitada»).
+     * Não vira «cancelada» sozinha: esse status é terminal e não volta a ser recalculado.
+     * Sem parcelas: null (mantém o status atual).
+     *
+     * @param  Collection<int, CommercialSaleInstallment>  $installments
+     */
+    public static function statusFromInstallments(Collection $installments): ?string
+    {
+        if ($installments->isEmpty()) {
+            return null;
+        }
+
+        $active = $installments->where('status', '!=', CommercialSaleInstallment::STATUS_CANCELADO);
+        $paidCount = $active->where('status', CommercialSaleInstallment::STATUS_PAGO)->count();
+
+        return match (true) {
+            $paidCount === 0 => self::STATUS_ABERTA,
+            $paidCount >= $active->count() => self::STATUS_QUITADA,
+            default => self::STATUS_PARCIAL,
+        };
+    }
+
+    /**
+     * Valor da venda = soma das parcelas não canceladas.
+     *
+     * @param  Collection<int, CommercialSaleInstallment>  $installments
+     */
+    public static function totalFromInstallments(Collection $installments): int
+    {
+        return (int) $installments
+            ->where('status', '!=', CommercialSaleInstallment::STATUS_CANCELADO)
+            ->sum('amount_cents');
     }
 
     public static function nextCode(): string

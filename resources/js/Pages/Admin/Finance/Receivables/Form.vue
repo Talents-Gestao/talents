@@ -7,6 +7,8 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import MoneyInput from '@/Components/MoneyInput.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { todayIsoInSaoPaulo } from '@/utils/financeLedger';
 
 const props = defineProps({
     mode: { type: String, required: true },
@@ -14,6 +16,18 @@ const props = defineProps({
     statusOptions: { type: Array, default: () => [] },
     paymentMethods: { type: Array, default: () => [] },
     bankAccounts: { type: Array, default: () => [] },
+    today: { type: String, default: '' },
+});
+
+const maxPaidDate = computed(() => props.today || todayIsoInSaoPaulo());
+/** Já recebida ao abrir: mudar a data é uma correção auditada (com motivo opcional). */
+const wasPaid = computed(() => props.receivable?.status === 'paid');
+/** Conta exigida só na baixa nova; já recebida sem conta (legado) mantém a conta como está. */
+const bankPlaceholder = computed(() => {
+    if (form.status !== 'paid') {
+        return 'Opcional (pendente)';
+    }
+    return wasPaid.value && !props.receivable?.bank_account_id ? 'Sem conta registrada (mantém)' : 'Selecione a conta';
 });
 
 const fieldClass =
@@ -28,9 +42,18 @@ const form = useForm({
     payment_method_id: props.receivable?.payment_method_id ?? '',
     bank_account_id: props.receivable?.bank_account_id ?? '',
     notes: props.receivable?.notes ?? '',
+    // Recebida sem data (legado): campo vazio e obrigatório, para não gravar «hoje» sem querer.
+    paid_at: wasPaid.value ? (props.receivable?.paid_at ?? '') : maxPaidDate.value,
+    payment_date_reason: '',
 });
 
 const submit = () => {
+    form.transform((data) => ({
+        ...data,
+        paid_at: data.status === 'paid' ? data.paid_at : null,
+        payment_date_reason: data.status === 'paid' && wasPaid.value ? data.payment_date_reason : null,
+    }));
+
     if (props.mode === 'edit') {
         form.put(route('admin.financeiro.contas-a-receber.update', props.receivable.id));
     } else {
@@ -105,16 +128,49 @@ const submit = () => {
                 <select
                     id="bank_account_id"
                     v-model="form.bank_account_id"
-                    :required="form.status === 'paid'"
+                    :required="form.status === 'paid' && !wasPaid"
                     :class="fieldClass"
                 >
-                    <option value="">{{ form.status === 'paid' ? 'Selecione a conta' : 'Opcional (pendente)' }}</option>
+                    <option value="">{{ bankPlaceholder }}</option>
                     <option v-for="a in bankAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
                 </select>
                 <p class="mt-1 text-xs text-slate-500">
                     Obrigatória ao marcar como recebida — é onde o valor foi creditado.
                 </p>
                 <InputError class="mt-1" :message="form.errors.bank_account_id" />
+            </div>
+
+            <div v-if="form.status === 'paid'" class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <InputLabel for="paid_at" value="Data do recebimento" />
+                    <input
+                        id="paid_at"
+                        v-model="form.paid_at"
+                        type="date"
+                        :max="maxPaidDate"
+                        required
+                        :class="fieldClass"
+                    />
+                    <p v-if="wasPaid && !form.paid_at" class="mt-1 text-xs text-amber-700">
+                        Recebida sem data registrada: informe a data do recebimento.
+                    </p>
+                    <InputError class="mt-1" :message="form.errors.paid_at" />
+                </div>
+                <div v-if="wasPaid">
+                    <InputLabel for="payment_date_reason" value="Motivo da alteração da data (opcional)" />
+                    <input
+                        id="payment_date_reason"
+                        v-model="form.payment_date_reason"
+                        type="text"
+                        maxlength="500"
+                        placeholder="Ex.: recebimento lançado com atraso"
+                        :class="fieldClass"
+                    />
+                    <InputError class="mt-1" :message="form.errors.payment_date_reason" />
+                </div>
+                <p v-if="wasPaid" class="text-xs text-slate-500 sm:col-span-2">
+                    A alteração da data fica registrada no histórico financeiro.
+                </p>
             </div>
 
             <div>
