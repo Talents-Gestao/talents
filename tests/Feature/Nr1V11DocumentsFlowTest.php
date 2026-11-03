@@ -521,11 +521,10 @@ class Nr1V11DocumentsFlowTest extends TestCase
         $this->actingAs($flow->admin)
             ->get(route('client.surveys.psychosocial-documents.download', [$flow->survey, 'evidence_dossier']))->assertNotFound();
         $this->actingAs($flow->admin)
-            ->get(route('client.surveys.psychosocial-dashboard', $flow->survey))
+            ->get(route('nr1.documentos', ['campanha' => $flow->survey->id]))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('psychosocialDocuments', [])
-                ->where('executiveBrief', null)
-                ->where('documentsUrl', route('client.surveys.documents.index', $flow->survey)));
+                ->where('section.documents.mode', 'company')
+                ->missing('section.legacy'));
         $this->assertNotNull($published->protocol);
 
         // Campanha antiga (método antigo): continua com os três documentos de sempre.

@@ -165,7 +165,7 @@ class Nr1V11ActionPlanTest extends TestCase
     {
         $plan = $this->plan();
 
-        $this->actingAs($plan->admin)->get(route('client.surveys.measures.index', $plan->survey))->assertNotFound();
+        $this->actingAs($plan->admin)->get(url('/client/surveys/'.$plan->survey->id.'/plano-de-acao'))->assertNotFound();
         $this->actingAs($plan->admin)->post($this->url('confirm', $plan), [
             'responsible_text' => 'Coordenação',
             'due_date' => now()->addDays(10)->toDateString(),
@@ -395,10 +395,10 @@ class Nr1V11ActionPlanTest extends TestCase
 
         // Leitura: administrador, quem edita e quem só vê.
         foreach ([$plan->admin, $editor, $viewer] as $user) {
-            $this->actingAs($user)->get(route('client.surveys.measures.index', $plan->survey))->assertOk();
+            $this->actingAs($user)->get(route('nr1.plano-de-acao', ['campanha' => $plan->survey->id]))->assertOk();
         }
         // Sem o módulo: 403.
-        $this->actingAs($none)->get(route('client.surveys.measures.index', $plan->survey))->assertForbidden();
+        $this->actingAs($none)->get(url('/client/surveys/'.$plan->survey->id.'/plano-de-acao'))->assertForbidden();
         $this->actingAs($none)->post($this->url('confirm', $plan), $confirm)->assertForbidden();
 
         // Só quem tem a ação `edit` escreve.
@@ -409,7 +409,7 @@ class Nr1V11ActionPlanTest extends TestCase
 
         // Talents (owner) e comercial não usam a tela da empresa.
         foreach ([$plan->talents, User::factory()->superAdmin()->create()] as $user) {
-            $status = $this->actingAs($user)->get(route('client.surveys.measures.index', $plan->survey))->getStatusCode();
+            $status = $this->actingAs($user)->get(url('/client/surveys/'.$plan->survey->id.'/plano-de-acao'))->getStatusCode();
             $this->assertContains($status, [302, 403, 404]);
         }
     }
@@ -419,17 +419,16 @@ class Nr1V11ActionPlanTest extends TestCase
         $plan = $this->plan(published: true);
         $this->service->confirm($plan->measure, $plan->admin, null, 'Coordenação de RH', now()->addDays(10)->toDateString());
 
-        $this->actingAs($plan->admin)->get(route('client.surveys.measures.index', $plan->survey))
+        $this->actingAs($plan->admin)->get(route('nr1.plano-de-acao', ['campanha' => $plan->survey->id]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Client/Surveys/ActionPlanMeasures')
-                ->where('canEdit', true)
-                ->where('cardLabel', 'Medidas com responsável confirmado')
-                ->has('measures', 1)
-                ->where('measures.0.status_label', 'Confirmada')
-                ->where('measures.0.suggested.responsible', 'Gestão de operações')
-                ->where('measures.0.confirmed.responsible', 'Coordenação de RH')
-                ->has('measures.0.history'));
+                ->component('Nr1/Section')
+                ->where('section.plan.canAct', true)
+                ->has('section.plan.measures', 1)
+                ->where('section.plan.measures.0.status_label', 'Confirmada')
+                ->where('section.plan.measures.0.suggested.responsible', 'Gestão de operações')
+                ->where('section.plan.measures.0.confirmed.responsible', 'Coordenação de RH')
+                ->has('section.plan.measures.0.history'));
     }
 
     public function test_idor_measures_of_other_surveys_or_companies_are_not_found(): void
@@ -446,7 +445,7 @@ class Nr1V11ActionPlanTest extends TestCase
         $this->actingAs($plan->admin)
             ->post(route('client.surveys.measures.confirm', [$other->survey->id, $plan->measure->id]), $confirm)
             ->assertNotFound();
-        $this->actingAs($plan->admin)->get(route('client.surveys.measures.index', $other->survey))->assertNotFound();
+        $this->actingAs($plan->admin)->get(url('/client/surveys/'.$other->survey->id.'/plano-de-acao'))->assertNotFound();
 
         $this->assertNull($other->measure->fresh()->confirmed_at);
         $this->assertNull($plan->measure->fresh()->confirmed_at);

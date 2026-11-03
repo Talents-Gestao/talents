@@ -143,10 +143,7 @@ class ActionPlanPdfExportTest extends TestCase
             ]), [
                 'technical_opinion' => '<p>Conclusão da análise do cenário.</p><h2>Disclaimer</h2><p>O parecer é apoio à gestão de riscos psicossociais e não dispensa obrigações legais nem avaliação por equipe técnica competente quando exigida.</p>',
             ])
-            ->assertRedirect(route('admin.companies.surveys.action-plan.edit', [
-                $fx->company->id,
-                $fx->survey->id,
-            ]));
+            ->assertRedirect(route('nr1.parecer', ['empresa' => $fx->company->id, 'campanha' => $fx->survey->id]));
 
         $plan = ActionPlan::query()->where('survey_id', $fx->survey->id)->firstOrFail();
 

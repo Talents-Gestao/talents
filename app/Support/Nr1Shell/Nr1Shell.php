@@ -8,6 +8,7 @@ use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Enums\PermissionModule;
 use App\Enums\UserRole;
+use App\Models\Survey;
 use App\Models\User;
 use App\Services\Psychosocial\DocumentShareService;
 
@@ -153,6 +154,18 @@ final class Nr1Shell
         }
 
         return route('nr1.oportunidades', absolute: false);
+    }
+
+    /** Seção do painel com a empresa e a campanha em foco (a empresa ignora `empresa`: só enxerga a própria). */
+    public static function campaignUrl(string $section, Survey $survey): string
+    {
+        return route('nr1.'.$section, ['empresa' => $survey->company_id, 'campanha' => $survey->id]);
+    }
+
+    /** Onde o parecer vive: «Parecer e publicação» no modelo anterior; Documentos na V11. */
+    public static function parecerUrl(Survey $survey): string
+    {
+        return self::campaignUrl($survey->usesReviewFlow() ? 'documentos' : 'parecer', $survey);
     }
 
     /** URL do item único «NR-1» do menu principal, ou null (sem acesso). */

@@ -63,9 +63,6 @@ const view = computed(() => {
             <LegacyPlanView v-else-if="section.key === 'plano-de-acao'" :plan="section.legacy.plan" :notice="section.legacy.notice" />
             <LegacyCentralView v-else-if="section.key === 'documentos'" :central="section.legacy.central" :notice="section.legacy.notice" />
             <LegacyDocumentsView v-else-if="section.key === 'parecer'" :documents="section.legacy.documents" :notice="section.legacy.notice" />
-            <div class="n1-tools" style="margin-top: 16px">
-                <Nr1Button variant="secondary" :href="section.legacy.fullUrl">{{ section.legacy.fullLabel }} →</Nr1Button>
-            </div>
         </template>
 
         <OverviewView v-else-if="view === 'overview'" :overview="section.overview" :plan-url="planUrl" />
@@ -95,7 +92,7 @@ const view = computed(() => {
 
             <section v-if="section.links.length" class="n1-card" aria-label="Tela completa">
                 <p class="n1-tiny" style="margin-bottom: 12px">
-                    Esta seção reaproveita a tela atual, que continua disponível. O visual do fluxo NR-1 será aplicado por etapas.
+                    Abra a tela de apoio desta seção.
                 </p>
                 <div style="display: flex; gap: 9px; flex-wrap: wrap">
                     <Nr1Button variant="primary" v-for="link in section.links" :key="link.href" :href="link.href">{{ link.label }} →</Nr1Button>

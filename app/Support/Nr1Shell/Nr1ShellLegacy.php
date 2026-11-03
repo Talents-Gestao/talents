@@ -17,19 +17,20 @@ use App\Models\PsychosocialDocumentVersion;
 use App\Models\Survey;
 use App\Models\SurveyCampaignRegistration;
 use App\Models\User;
+use App\Services\ExecutiveBriefService;
 use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\SurveyResultsPresenter;
-use App\Support\Nr1BandLabels;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1RiskScenarioResolver;
+use App\Support\SurveyPublicationGate;
 use Illuminate\Http\Request;
 use Inertia\Response as InertiaResponse;
 use ReflectionProperty;
 
 /**
- * Campanhas do modelo anterior (sem fluxo de revisão) dentro do shell NR-1. Reaproveita os controllers e as props das
- * telas antigas: as regras de acesso, publicação, MFA e o fluxo Diagnóstico/Parecer/Publicar continuam exatamente os mesmos.
- * Nada aqui grava dado; as ações do laudo seguem postando para as rotas antigas.
+ * Campanhas do modelo anterior (sem fluxo de revisão) dentro do shell NR-1, única tela delas: as regras de acesso,
+ * publicação, MFA e o fluxo Diagnóstico/Parecer/Publicar são os do Laudo. Nada aqui grava dado; as ações do laudo postam
+ * para as rotas de ação.
  */
 final class Nr1ShellLegacy
 {
@@ -41,7 +42,7 @@ final class Nr1ShellLegacy
     }
 
     /**
-     * Props que o controller antigo entregaria à página antiga (já resolvidas), sem as props compartilhadas do Inertia.
+     * Props resolvidas de um controller que ainda responde com Inertia, sem as props compartilhadas.
      *
      * @param  callable(): InertiaResponse  $call
      * @return array<string, mixed>
@@ -66,11 +67,6 @@ final class Nr1ShellLegacy
             'notice' => self::NOTICE,
             'minPerSector' => (int) $survey->min_responses_for_breakdown,
             'forTalents' => $forTalents,
-            // O caminho direto antigo («Parecer e plano» no Admin; resultados na empresa) segue acessível de dentro do painel.
-            'fullUrl' => $forTalents && $company !== null
-                ? route('admin.companies.surveys.action-plan.edit', [$company->id, $survey->id])
-                : route('client.surveys.results', $survey->id),
-            'fullLabel' => $forTalents ? 'Abrir Parecer e plano (tela completa)' : 'Abrir resultados (tela completa)',
         ];
 
         // A empresa precisa dos mesmos módulos das rotas antigas (Resultados: pesquisas; Plano/Parecer: planos_acao;
@@ -89,7 +85,7 @@ final class Nr1ShellLegacy
             'campanha' => ['campaign' => $this->campaign($survey, $forTalents)],
             'resultados' => ['results' => $this->results($request, $survey, $company, $forTalents)],
             'plano-de-acao' => ['plan' => $this->plan($survey, $company, $forTalents)],
-            'documentos' => ['central' => $this->central($survey, $company, $forTalents)],
+            'documentos' => ['central' => $this->central($request, $survey, $company, $forTalents)],
             'parecer' => ['documents' => $this->documents($request, $survey, $company, $forTalents)],
             default => [],
         };
@@ -226,8 +222,8 @@ final class Nr1ShellLegacy
     private function results(Request $request, Survey $survey, ?Company $company, bool $forTalents): array
     {
         $props = $forTalents && $company !== null
-            ? self::capture(fn () => app(ActionPlanAdminController::class)->edit($company, $survey), $request)
-            : self::capture(fn () => app(SurveyResultsController::class)->show($request, $survey), $request);
+            ? app(ActionPlanAdminController::class)->laudoProps($company, $survey)
+            : app(SurveyResultsController::class)->resultsProps($request, $survey);
 
         $panel = array_intersect_key($props, array_flip([
             'survey', 'bandLabels', 'overall', 'bySection', 'deptOveralls', 'deptSectionsByDepartment', 'insights',
@@ -236,9 +232,14 @@ final class Nr1ShellLegacy
 
         return [
             'panel' => $panel,
-            // Mia e relatórios só existem na tela da empresa (props de Resultados).
+            // Empresa: a Mia vem no corpo de Resultados; Talents usa o cartão do painel.
+            'ai' => $forTalents ? Nr1ShellAi::payload($survey, true, $request->user()) : null,
             'client' => $forTalents ? null : array_intersect_key($props, array_flip(['aiEnabled', 'aiAnalysis', 'aiAnalysisPending', 'riskScenarioLabel', 'actionPlanPublished'])),
-            'recalculateUrl' => $forTalents ? null : route('client.surveys.recalculate', $survey->id),
+            'recalculateUrl' => match (true) {
+                $forTalents => route('admin.companies.surveys.recalculate', [$survey->company_id, $survey->id]),
+                SurveyPublicationGate::isPublished($survey) => null,
+                default => route('client.surveys.recalculate', $survey->id),
+            },
             'reports' => $forTalents ? [] : $this->clientReports($survey, (bool) ($props['actionPlanPublished'] ?? false)),
             'nextUrl' => route('nr1.parecer'),
         ];
@@ -288,7 +289,7 @@ final class Nr1ShellLegacy
      *
      * @return array<string, mixed>
      */
-    private function central(Survey $survey, ?Company $company, bool $forTalents): array
+    private function central(Request $request, Survey $survey, ?Company $company, bool $forTalents): array
     {
         $plan = ActionPlan::query()->where('survey_id', $survey->id)->where('company_id', $survey->company_id)->first();
         $published = $plan?->admin_published_at !== null;
@@ -356,10 +357,55 @@ final class Nr1ShellLegacy
                 default => 'Documento em revisão pela Talents.',
             },
             'parecerUrl' => $staff ? route('nr1.parecer') : null,
+            'released' => $forTalents ? null : $this->releasedDocuments($request, $survey),
             'history' => $history->sortByDesc('at')->map(fn (array $row) => [
                 'at' => $row['at']?->format('d/m/Y H:i'),
                 'label' => $row['label'],
             ])->values()->all(),
+        ];
+    }
+
+    /**
+     * Empresa: versões liberadas pela Talents (resumo, subsídio, dossiê) com download e a validação no sistema.
+     *
+     * @return array<string, mixed>
+     */
+    private function releasedDocuments(Request $request, Survey $survey): array
+    {
+        $user = $request->user();
+        $documents = app(PsychosocialDocumentService::class)->documentsSummary($survey);
+        $brief = app(ExecutiveBriefService::class)->currentVersionSummary($survey);
+        $hasExecutive = collect($documents)->contains(fn (array $doc) => $doc['type'] === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF && $doc['pdf_status'] === PsychosocialDocumentVersion::PDF_READY);
+
+        return [
+            'documents' => collect($documents)
+                ->filter(fn (array $doc) => $doc['pdf_status'] === PsychosocialDocumentVersion::PDF_READY || ($doc['validatable'] ?? false))
+                ->map(fn (array $doc) => [
+                    'type' => $doc['type'],
+                    'label' => $doc['label'],
+                    'version_number' => $doc['version_number'],
+                    'validatable' => (bool) ($doc['validatable'] ?? false),
+                    'download_url' => $doc['pdf_status'] === PsychosocialDocumentVersion::PDF_READY
+                        ? route('client.surveys.psychosocial-documents.download', [$survey->id, $doc['type']])
+                        : null,
+                    'validate_url' => route('client.surveys.psychosocial-documents.validate', [$survey->id, $doc['type']]),
+                ])->values()->all(),
+            'briefUrl' => ! $hasExecutive && ($brief['pdf_status'] ?? null) === PsychosocialDocumentVersion::PDF_READY
+                ? route('client.surveys.executive-brief.download', $survey->id)
+                : null,
+            'canValidate' => $user->canAccess(PermissionModule::Relatorios, PermissionAction::Validate) && ! $user->isSuperAdmin() && ! $user->isOwner(),
+            'declaration' => PsychosocialDocumentService::IN_SYSTEM_DECLARATION,
+        ];
+    }
+
+    /** Exportações agregadas e impressão do painel (mesmas rotas e mesmo registro de acesso). */
+    public static function panelExports(Survey $survey): array
+    {
+        return [
+            ['label' => 'Imprimir panorama', 'href' => route('client.surveys.psychosocial-dashboard.print', $survey->id)],
+            ['label' => 'Exportar perguntas (CSV)', 'href' => route('client.surveys.psychosocial-dashboard.export.items', $survey->id)],
+            ['label' => 'Exportar CSV agregado', 'href' => route('client.surveys.psychosocial-dashboard.export.csv', $survey->id)],
+            ['label' => 'Exportar JSON agregado', 'href' => route('client.surveys.psychosocial-dashboard.export.json', $survey->id)],
         ];
     }
 
@@ -384,17 +430,17 @@ final class Nr1ShellLegacy
     private function documents(Request $request, Survey $survey, ?Company $company, bool $forTalents): array
     {
         if ($forTalents && $company !== null) {
-            return ['laudo' => self::capture(fn () => app(ActionPlanAdminController::class)->edit($company, $survey), $request)];
+            return ['laudo' => app(ActionPlanAdminController::class)->laudoProps($company, $survey)];
         }
 
-        $plan = self::capture(fn () => app(ActionPlanController::class)->show($request, $survey), $request);
+        $plan = app(ActionPlanController::class)->opinionProps($request, $survey);
         $published = ! ($plan['actionPlanLocked'] ?? true);
 
         return ['actionPlan' => $plan, 'reports' => $this->clientReports($survey, $published)];
     }
 
     /**
-     * Relatórios automáticos e exportações que a tela antiga de Resultados oferece (mesmas rotas e mesma regra).
+     * Relatórios automáticos e exportações da empresa no modelo anterior.
      *
      * @return list<array{label: string, href: string}>
      */
@@ -412,6 +458,6 @@ final class Nr1ShellLegacy
             ['label' => 'Dados técnicos (RH)', 'href' => route('client.surveys.reports.technical', $survey->id)],
             ['label' => 'Exportar JSON (agregado)', 'href' => route('client.surveys.export.json', $survey->id)],
             ['label' => 'Exportar CSV (agregado)', 'href' => route('client.surveys.export.csv', $survey->id)],
-        ]);
+        ], self::panelExports($survey));
     }
 }

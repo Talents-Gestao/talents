@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\Nr1OpportunityController;
 use App\Http\Controllers\Admin\ReviewRoundAdminController;
 use App\Http\Controllers\Client\DocumentsController;
 use App\Http\Controllers\Client\SolutionsController;
+use App\Models\ActionPlan;
 use App\Models\Company;
 use App\Models\Nr1Opportunity;
 use App\Models\Nr1OpportunityEvent;
@@ -16,6 +17,7 @@ use App\Models\User;
 use App\Services\Nr1\Nr1OpportunityService;
 use App\Services\Nr1\Nr1SolutionService;
 use App\Support\Nr1ServiceCards;
+use App\Support\TechnicalOpinionDisclaimerStripper;
 use Illuminate\Http\Request;
 
 /**
@@ -60,6 +62,7 @@ final class Nr1ShellStageD
                     'registration' => route('admin.companies.surveys.registration.edit', $base),
                     'full' => route('admin.companies.surveys.documents.index', $base),
                 ],
+                'opinion' => $this->opinionForTalents($survey, $company),
             ];
         }
 
@@ -74,6 +77,23 @@ final class Nr1ShellStageD
                 'acknowledge' => route('client.surveys.documents.acknowledge', $survey->id),
                 'pgrIntegration' => route('client.surveys.documents.pgr-integration', $survey->id),
             ],
+        ];
+    }
+
+    /**
+     * Parecer técnico da V11 (texto da Talents, com apoio da Mia): só Talents e PASSEG até a decisão da responsável técnica.
+     *
+     * @return array<string, mixed>
+     */
+    private function opinionForTalents(Survey $survey, Company $company): array
+    {
+        $plan = ActionPlan::query()->where('company_id', $company->id)->where('survey_id', $survey->id)->first();
+
+        return [
+            'html' => TechnicalOpinionDisclaimerStripper::strip($plan?->technical_opinion) ?? '',
+            'publishedAt' => $plan?->admin_published_at?->format('d/m/Y H:i'),
+            'saveUrl' => route('admin.companies.surveys.action-plan.update', [$company->id, $survey->id]),
+            'ai' => Nr1ShellAi::technicalOpinion($survey, $company),
         ];
     }
 

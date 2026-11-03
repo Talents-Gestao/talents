@@ -211,7 +211,7 @@ class DashboardController extends Controller
             ];
         }
 
-        $actionPlanHref = $resultsVisible ? route('client.surveys.action-plan', $lastSurvey->id) : null;
+        $actionPlanHref = $resultsVisible ? route('nr1.'.($lastSurvey->usesReviewFlow() ? 'plano-de-acao' : 'parecer'), ['campanha' => $lastSurvey->id]) : null;
 
         $activeHiringProcessesCount = 0;
         $user = $request->user();

@@ -153,3 +153,16 @@
 @media (max-width: 860px) {
     .nr1-shell .n1-docgrid { grid-template-columns: 1fr; }
 }
+
+/* Execução da medida, Mia e parecer técnico */
+.nr1-shell .n1-measure-more { margin-top: 12px; border-top: 1px solid var(--n1-line); padding-top: 10px; }
+.nr1-shell .n1-measure-more summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #4a2070; }
+.nr1-shell .n1-measure-more h4 { margin: 14px 0 6px; font-size: 13px; }
+.nr1-shell .n1-measure-facts { display: grid; gap: 8px; margin: 10px 0 0; font-size: 12.5px; }
+.nr1-shell .n1-measure-facts dt { font-weight: 700; }
+.nr1-shell .n1-measure-facts dd { margin: 0; }
+.nr1-shell .n1-measure-form { display: grid; gap: 6px; max-width: 520px; margin-top: 10px; justify-items: start; }
+.nr1-shell .n1-measure-form .n1-field { width: 100%; }
+.nr1-shell .n1-mia-text { margin-top: 10px; font-size: 14px; line-height: 1.6; }
+.nr1-shell .n1-editor { min-height: 180px; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--n1-line); border-radius: 10px; font-size: 14px; line-height: 1.6; background: #fff; }
+.nr1-shell .n1-editor:focus-visible { outline: 2px solid #7c4dbd; outline-offset: 2px; }

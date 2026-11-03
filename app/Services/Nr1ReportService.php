@@ -61,7 +61,7 @@ class Nr1ReportService
         abort_unless($plan !== null && $plan->admin_published_at !== null, 404);
 
         return $this->generator
-            ->actionPlanDocumentPdf($survey, ['is_draft' => false])
+            ->actionPlanDocumentPdf($survey, ['is_draft' => false] + ($survey->usesReviewFlow() ? ['technical_opinion' => null] : []))
             ->stream('plano-de-acao-'.$survey->id.'.pdf');
     }
 

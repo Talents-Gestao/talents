@@ -85,6 +85,12 @@ const approve = () => {
             <button type="submit" class="rounded border px-3 py-2 text-sm" :disabled="changesForm.processing">Solicitar alteração</button>
         </form>
 
+        <section v-if="share.technicalOpinion" class="mt-8" aria-labelledby="opinion-title">
+            <h2 id="opinion-title" class="mb-2 font-medium">Parecer técnico da Talents</h2>
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <div class="prose prose-sm max-w-none" v-html="share.technicalOpinion"></div>
+        </section>
+
         <section class="mt-8">
             <h2 class="mb-2 font-medium">Comentários</h2>
             <p v-if="!share.reviews.length" class="text-sm opacity-70">Nenhum registro ainda.</p>

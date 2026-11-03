@@ -90,6 +90,7 @@ const isDefault = computed(() => dimension.value === 'all' && sort.value === 'or
                     <b style="color: #17765f">✓ {{ item.favorable_pct_label }} favoráveis</b>
                     <span class="n1-q-unfav">{{ item.unfavorable_pct_label }} desfavoráveis</span>
                 </div>
+                <p v-if="item.quality_alert" class="n1-notice warn" style="margin-top: 6px">Alerta de qualidade: esta pergunta tem N = {{ item.n }}, diferente do total de respondentes.</p>
                 <div class="n1-tiny" style="margin-top: 5px">
                     {{ item.statement === 'unfavorable' ? 'Enunciado desfavorável: resposta favorável = Nunca/Raramente.' : 'Enunciado favorável: resposta favorável = Frequentemente/Sempre.' }}
                 </div>

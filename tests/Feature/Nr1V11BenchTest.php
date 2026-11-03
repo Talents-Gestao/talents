@@ -151,7 +151,7 @@ class Nr1V11BenchTest extends TestCase
 
         // Controle: o dono da campanha acessa a mesma tela (o teste não é vazio).
         $this->actingAs($a->admin)->get(route('client.surveys.show', $a->survey))->assertOk();
-        $this->actingAs($a->admin)->get(route('client.surveys.psychosocial-dashboard', $a->survey))->assertOk();
+        $this->actingAs($a->admin)->get(route('nr1.resultados', ['campanha' => $a->survey->id]))->assertOk();
     }
 
     public function test_t01_public_links_of_one_campaign_never_serve_files_of_another(): void
@@ -218,7 +218,7 @@ class Nr1V11BenchTest extends TestCase
         }
 
         $outputs = [
-            'página' => json_encode($this->actingAs($user)->get(route('client.surveys.psychosocial-dashboard', $survey))->assertOk()->viewData('page')['props'], JSON_UNESCAPED_UNICODE),
+            'página' => json_encode($this->actingAs($user)->get(route('nr1.resultados', ['campanha' => $survey->id]))->assertOk()->viewData('page')['props'], JSON_UNESCAPED_UNICODE),
             'impressão' => $this->actingAs($user)->get(route('client.surveys.psychosocial-dashboard.print', $survey))->assertOk()->getContent(),
             'CSV' => $this->actingAs($user)->get(route('client.surveys.psychosocial-dashboard.export.csv', $survey))->assertOk()->streamedContent(),
             'JSON' => $this->actingAs($user)->get(route('client.surveys.psychosocial-dashboard.export.json', $survey))->assertOk()->getContent(),

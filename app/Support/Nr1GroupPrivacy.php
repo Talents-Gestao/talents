@@ -66,6 +66,18 @@ final class Nr1GroupPrivacy
         return self::publishableDepartmentIds($counts, self::minFor($survey));
     }
 
+    /** A campanha inteira alcança o grupo mínimo: abaixo disso, nenhum agregado sai para a IA. */
+    public static function hasMinimumSample(Survey $survey): bool
+    {
+        $respondents = SurveyResult::query()
+            ->where('survey_id', $survey->id)
+            ->whereNull('department_id')
+            ->whereNull('survey_template_section_id')
+            ->value('respondent_count');
+
+        return (int) $respondents >= self::minFor($survey);
+    }
+
     /**
      * Mês de conclusão ("2026-10"): única granularidade de data que sai do sistema.
      */

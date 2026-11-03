@@ -66,8 +66,8 @@ const send = () => {
                 <div class="flex flex-wrap gap-3">
                     <Link v-if="campaignUrl" :href="campaignUrl" class="text-sm text-talents-700 underline">Campanha NR-1</Link>
                     <Link v-if="resultsUrl" :href="resultsUrl" class="text-sm text-talents-700 underline">Resultados e revisão interna</Link>
-                    <Link :href="route('admin.companies.surveys.action-plan.edit', [company.id, survey.id])" class="text-sm text-talents-700 underline">
-                        Voltar ao parecer
+                    <Link :href="route('nr1.documentos', { empresa: company.id, campanha: survey.id })" class="text-sm text-talents-700 underline">
+                        Voltar ao painel NR-1
                     </Link>
                 </div>
             </div>

@@ -55,6 +55,8 @@ const form = useForm({
     age_range: null,
     tenure_range: null,
     invitation: props.invitation,
+    // Chave aleatória deste formulário: evita gravar de novo em duplo clique; não identifica ninguém.
+    submission_key: window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
 });
 
 const draftKey = `nr1-draft-${props.entryToken}`;
@@ -142,6 +144,7 @@ const next = () => {
 const previous = () => goTo(Math.max(0, step.value - 1));
 
 const submit = () => {
+    if (form.processing) return;
     for (let i = 0; i < reviewStep; i++) {
         if (!stepIsValid(i)) {
             goTo(i).then(() => {

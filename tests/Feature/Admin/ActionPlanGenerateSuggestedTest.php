@@ -31,13 +31,13 @@ class ActionPlanGenerateSuggestedTest extends TestCase
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
         $this->actingAs($admin)
-            ->get(route('admin.companies.surveys.action-plan.edit', [$fx->company, $fx->survey]))
+            ->get(route('nr1.parecer', ['empresa' => $fx->company->id, 'campanha' => $fx->survey->id]))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('Admin/ActionPlan/Edit')
-                ->missing('items')
-                ->missing('generateSuggestedPlanUrl')
-                ->has('technical_opinion')
+                ->component('Nr1/Section')
+                ->missing('section.legacy.documents.laudo.items')
+                ->missing('section.legacy.documents.laudo.generateSuggestedPlanUrl')
+                ->has('section.legacy.documents.laudo.technical_opinion')
             );
     }
 }

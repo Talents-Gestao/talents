@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Nr1;
 
 use App\Http\Controllers\Controller;
+use App\Models\PsychosocialAccessLog;
 use App\Models\PsychosocialReviewRound;
 use App\Models\Survey;
 use App\Models\SurveyMethodVersion;
@@ -26,8 +27,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Shell NR-1 (/nr1): navegação e apresentação próprias. Não recalcula nada: lê os mesmos serviços das telas antigas
- * (PsychosocialDashboardBuilder, gate de publicação, matriz de permissões) e as telas antigas seguem valendo por URL.
+ * Shell NR-1 (/nr1): navegação e apresentação próprias. Não recalcula nada: lê PsychosocialDashboardBuilder, o gate de
+ * publicação e a matriz de permissões.
  */
 class ShellController extends Controller
 {
@@ -125,7 +126,19 @@ class ShellController extends Controller
         if ($section === 'solucoes' && $survey !== null && Nr1ShellLegacy::isLegacy($survey)) {
             return ['solutions' => $stageD->solutionsForLegacy($profile)];
         }
-        // Campanha do modelo anterior: o legado integrado (mesmas props e regras das telas antigas).
+        // Trilha do painel gerencial: cada leitura de resultados pela empresa fica registrada.
+        if ($survey !== null && $profile === Nr1Shell::PROFILE_EMPRESA && $this->readsResults($section)) {
+            PsychosocialAccessLog::query()->create([
+                'user_id' => $user->id,
+                'company_id' => $survey->company_id,
+                'survey_id' => $survey->id,
+                'resource' => 'dashboard',
+                'document_version_id' => null,
+                'ip' => $request->ip(),
+            ]);
+        }
+
+        // Campanha do modelo anterior: o legado integrado (mesmas regras do Laudo).
         if ($survey !== null && Nr1ShellLegacy::isLegacy($survey)) {
             return ['legacy' => app(Nr1ShellLegacy::class)->section($request, $user, $profile, $section, $survey, $context->company)];
         }
@@ -140,7 +153,7 @@ class ShellController extends Controller
         return match ($section) {
             'visao-geral' => ['overview' => $pages->overview($survey, $hide, $this->insufficientMessage($survey))],
             'campanha' => ['campaign' => $pages->campaign($survey, $user, $profile === Nr1Shell::PROFILE_TALENTS, $hide)],
-            'resultados' => ['results' => $pages->results($survey, $hide, $this->insufficientMessage($survey), $context->company, $profile === Nr1Shell::PROFILE_TALENTS)],
+            'resultados' => ['results' => $pages->results($request, $survey, $hide, $this->insufficientMessage($survey), $context->company, $profile === Nr1Shell::PROFILE_TALENTS)],
             'plano-de-acao' => ['plan' => $pages->plan($survey, $user, $profile === Nr1Shell::PROFILE_TALENTS)],
             'documentos' => ['documents' => $stageD->documents($request, $user, $profile, $survey, $context->company)],
             'solucoes' => ['solutions' => $stageD->solutions($request, $profile, $survey)],
@@ -284,7 +297,7 @@ class ShellController extends Controller
     }
 
     /**
-     * Números reais do painel (os mesmos das telas antigas); a empresa só chega aqui com a campanha já publicada.
+     * Números reais do painel; a empresa só chega aqui com a campanha já publicada.
      *
      * @return list<array{label: string, value: string, hint: string|null}>
      */
@@ -309,7 +322,7 @@ class ShellController extends Controller
     }
 
     /**
-     * Telas atuais de cada seção (as rotas antigas seguem valendo): o shell encaixa o contexto e leva até elas.
+     * Telas de apoio de cada seção: o shell encaixa o contexto e leva até elas.
      *
      * @return list<array{label: string, href: string}>
      */
@@ -332,9 +345,7 @@ class ShellController extends Controller
 
         if ($profile === Nr1Shell::PROFILE_EMPRESA && $survey) {
             $links = match ($section) {
-                'visao-geral', 'resultados' => [['Abrir o painel psicossocial', route('client.surveys.psychosocial-dashboard', $survey)]],
                 'campanha' => [['Abrir a campanha', route('client.surveys.show', $survey)]],
-                'plano-de-acao' => [['Abrir o plano de ação', route('client.surveys.measures.index', $survey)]],
                 'documentos' => [['Abrir os documentos', route('client.surveys.documents.index', $survey)]],
                 'solucoes' => [['Abrir as Soluções Talents', route('client.surveys.solutions', $survey)]],
                 default => [],

@@ -77,17 +77,9 @@ class Nr1ShellLegacyTest extends TestCase
             ->where('section.legacy.results.nextUrl', route('nr1.parecer'))->missing('section.results'));
 
         // O Laudo (parecer técnico e publicação) saiu de Documentos para «Parecer e publicação».
-        $page = $this->actingAs($c->owner)->get(route('nr1.parecer', $q))->assertOk()->assertInertia(fn (Assert $p) => $p
+        $this->actingAs($c->owner)->get(route('nr1.parecer', $q))->assertOk()->assertInertia(fn (Assert $p) => $p
             ->has('section.legacy.documents.laudo.technicalOpinionGeneratePostUrl')->has('section.legacy.documents.laudo.publication')
             ->where('section.legacy.documents.laudo.company.id', $c->company->id));
-
-        // As props do laudo no shell são as MESMAS que a página antiga recebe (mesmo controller).
-        $old = $this->actingAs($c->owner)->get(route('admin.companies.surveys.action-plan.edit', [$c->company->id, $c->survey->id]))->assertOk()
-            ->viewData('page')['props'];
-        $laudo = $page->viewData('page')['props']['section']['legacy']['documents']['laudo'];
-        foreach (['survey', 'overall', 'plan', 'publication', 'riskScenarioLabel', 'technical_opinion'] as $key) {
-            $this->assertEquals($old[$key], $laudo[$key], "prop {$key}");
-        }
 
         $this->actingAs($c->owner)->get(route('nr1.campanha', $q))->assertInertia(fn (Assert $p) => $p
             ->where('section.legacy.campaign.completed', 6)->has('section.legacy.campaign.period')->missing('section.campaign'));
@@ -115,12 +107,12 @@ class Nr1ShellLegacyTest extends TestCase
         // Parecer e plano: nada antes de publicar (a tela antiga mostra o bloqueio) e só os relatórios automáticos.
         $this->actingAs($c->admin)->get(route('nr1.parecer'))->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('section.legacy.documents.actionPlan.actionPlanLocked', true)->where('section.legacy.documents.actionPlan.plan', null)
-            ->has('section.legacy.documents.reports', 5)->missing('section.legacy.documents.laudo'));
+            ->has('section.legacy.documents.reports', 9)->missing('section.legacy.documents.laudo'));
 
         ActionPlan::query()->create(['company_id' => $c->company->id, 'survey_id' => $c->survey->id, 'technical_opinion' => '<p>Parecer publicado</p>', 'admin_published_at' => now()]);
         $this->actingAs($c->admin)->get(route('nr1.parecer'))->assertInertia(fn (Assert $p) => $p
             ->where('section.legacy.documents.actionPlan.actionPlanLocked', false)->where('section.legacy.documents.actionPlan.plan.technical_opinion', '<p>Parecer publicado</p>')
-            ->has('section.legacy.documents.reports', 6));
+            ->has('section.legacy.documents.reports', 10));
 
         // Nada do Talents chega à empresa.
         $json = (string) json_encode($this->actingAs($c->admin)->get(route('nr1.parecer'))->viewData('page')['props']['section']);
@@ -144,18 +136,6 @@ class Nr1ShellLegacyTest extends TestCase
         $this->actingAs($companyUser)->get(route('nr1.documentos'))->assertForbidden();
     }
 
-    public function test_old_screens_and_routes_keep_working_next_to_the_shell(): void
-    {
-        $c = $this->legacy();
-
-        $this->actingAs($c->owner)->get(route('admin.companies.surveys.action-plan.edit', [$c->company->id, $c->survey->id]))->assertOk()
-            ->assertInertia(fn (Assert $p) => $p->component('Admin/ActionPlan/Edit')->has('technicalOpinionGeneratePostUrl')->where('company.id', $c->company->id));
-        $this->actingAs($c->admin)->get(route('client.surveys.results', $c->survey->id))->assertOk()
-            ->assertInertia(fn (Assert $p) => $p->component('Client/Surveys/Results')->has('overall'));
-        $this->actingAs($c->admin)->get(route('client.surveys.action-plan', $c->survey->id))->assertOk()
-            ->assertInertia(fn (Assert $p) => $p->component('Client/Surveys/ActionPlan')->where('actionPlanLocked', true));
-    }
-
     public function test_every_survey_of_the_company_page_opens_the_panel_and_the_menu_follows_for_legacy_only_companies(): void
     {
         $c = $this->legacy();
@@ -170,13 +150,13 @@ class Nr1ShellLegacyTest extends TestCase
             ->where('nr1ShellUrls.'.$legacySame->id, '/nr1/visao-geral?empresa='.$company->id.'&campanha='.$legacySame->id));
         $show = (string) file_get_contents(resource_path('js/Pages/Admin/Companies/Show.vue'));
         $this->assertStringContainsString('Abrir painel NR-1', $show);
-        $this->assertStringNotContainsString("route('admin.companies.surveys.action-plan.edit'", $show);
+        $this->assertStringNotContainsString('action-plan', $show);
 
         // Empresa só com pesquisa antiga também abre o shell pelo menu.
         $this->actingAs($c->admin)->get(route('client.dashboard'))->assertInertia(fn (Assert $p) => $p->where('nr1Shell.url', '/nr1'));
     }
 
-    public function test_a_legacy_campaign_shows_only_what_applies_and_keeps_the_old_full_screen_reachable(): void
+    public function test_a_legacy_campaign_shows_only_what_applies_without_a_way_back_to_the_old_screens(): void
     {
         $c = $this->legacy();
         $q = ['empresa' => $c->company->id, 'campanha' => $c->survey->id];
@@ -184,18 +164,13 @@ class Nr1ShellLegacyTest extends TestCase
         foreach (['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'parecer'] as $section) {
             $this->actingAs($c->owner)->get('/nr1/'.$section.'?'.http_build_query($q))->assertOk()->assertInertia(fn (Assert $p) => $p
                 ->where('section.legacy.notice', 'Pesquisa no modelo anterior')
-                ->where('section.legacy.fullUrl', route('admin.companies.surveys.action-plan.edit', [$c->company->id, $c->survey->id]))
-                ->where('section.legacy.fullLabel', 'Abrir Parecer e plano (tela completa)')
+                ->missing('section.legacy.fullUrl')
                 ->missing('section.overview')->where('section.kpis', []));
         }
 
         // Menu do legado: todas as seções do Talents, com «Parecer e publicação» logo depois de Documentos.
         $menu = $this->actingAs($c->owner)->get('/nr1/visao-geral?'.http_build_query($q))->viewData('page')['props']['shell']['menu'];
         $this->assertSame(['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'parecer', 'solucoes', 'oportunidades'], array_column($menu, 'key'));
-
-        // Empresa: a tela de Resultados como caminho direto.
-        $this->actingAs($c->admin)->get(route('nr1.documentos'))->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('section.legacy.fullUrl', route('client.surveys.results', $c->survey->id)));
 
         // O seletor de campanha marca as antigas.
         $this->actingAs($c->owner)->get(route('nr1.visao-geral', $q))->assertInertia(fn (Assert $p) => $p
@@ -225,8 +200,8 @@ class Nr1ShellLegacyTest extends TestCase
         $this->actingAs($noPermission)->get(route('nr1.resultados'))->assertForbidden();
         $this->actingAs($noPermission)->get(route('nr1.documentos'))->assertForbidden();
         // Empresa não abre o painel do Talents (Resultados do admin) nem o Laudo da outra empresa.
-        $this->actingAs($intruder)->get(route('admin.companies.surveys.action-plan.edit', [$a->company->id, $a->survey->id]))->assertForbidden();
-        $this->actingAs($intruder)->get(route('client.surveys.results', $a->survey->id))->assertNotFound();
+        $this->actingAs($intruder)->get(url('/admin/companies/'.$a->company->id.'/surveys/'.$a->survey->id.'/action-plan'))->assertForbidden();
+        $this->actingAs($intruder)->get(url('/client/surveys/'.$a->survey->id.'/results'))->assertNotFound();
     }
 
     public function test_a_legacy_campaign_without_answers_opens_every_section_without_error_and_without_v11_data(): void
@@ -251,20 +226,9 @@ class Nr1ShellLegacyTest extends TestCase
         }
     }
 
-    public function test_the_legacy_pages_were_split_into_layout_free_bodies_without_changing_their_pages(): void
+    public function test_the_laudo_body_knows_no_layout(): void
     {
-        $edit = (string) file_get_contents(resource_path('js/Pages/Admin/ActionPlan/Edit.vue'));
-        $results = (string) file_get_contents(resource_path('js/Pages/Client/Surveys/Results.vue'));
-        $plan = (string) file_get_contents(resource_path('js/Pages/Client/Surveys/ActionPlan.vue'));
         $laudo = (string) file_get_contents(resource_path('js/Components/Nr1Legacy/LaudoBody.vue'));
-
-        // A página antiga segue com o layout antigo e usa o corpo extraído.
-        $this->assertStringContainsString('<AdminLayout>', $edit);
-        $this->assertStringContainsString('<LaudoBody ref="body"', $edit);
-        $this->assertStringContainsString('<ClientLayout>', $results);
-        $this->assertStringContainsString('<ClientResultsBody', $results);
-        $this->assertStringContainsString('<ClientLayout>', $plan);
-        $this->assertStringContainsString('<ClientActionPlanBody', $plan);
 
         // O corpo não conhece layout e só muda de comportamento com a prop do shell (padrão: desligada).
         $this->assertStringNotContainsString('AdminLayout', $laudo);

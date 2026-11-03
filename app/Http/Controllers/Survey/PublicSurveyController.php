@@ -149,6 +149,7 @@ class PublicSurveyController extends Controller
             'age_range' => ['nullable', 'string', 'max:32'],
             'tenure_range' => ['nullable', 'string', 'max:32'],
             'invitation' => ['nullable', 'string', 'max:128'],
+            'submission_key' => ['nullable', 'string', 'max:64'],
         ];
 
         foreach ($questionIds as $qid) {
@@ -166,6 +167,12 @@ class PublicSurveyController extends Controller
 
         $collectsDemographics = $survey->collectsDemographics();
         $invitation = $data['invitation'] ?? null;
+        $submissionKey = $data['submission_key'] ?? null;
+
+        // Duplo clique ou reenvio da mesma tela: a primeira resposta vale e nada é gravado de novo.
+        if (! SurveyDuplicateGuard::claimSubmission($survey, $submissionKey)) {
+            return redirect()->route('survey.public.thanks', ['token' => $token]);
+        }
 
         // Convite consumido e resposta gravada na mesma transação: se algo falhar, o convite não se perde.
         $blocked = DB::transaction(function () use ($request, $survey, $link, $invitation, $data, $collectsDemographics): ?string {
@@ -197,12 +204,14 @@ class PublicSurveyController extends Controller
         });
 
         if ($blocked !== null) {
+            SurveyDuplicateGuard::releaseSubmission($survey, $submissionKey);
+
             // A página pública mostra o aviso adequado (convite inválido ou dispositivo que já respondeu).
             return redirect()->route('survey.public', array_filter(['token' => $token, 'convite' => $invitation]));
         }
 
         $calculator->recalculate($survey->fresh());
-        SurveyDuplicateGuard::markSent($survey);
+        SurveyDuplicateGuard::markSent($request, $survey, $link);
 
         return redirect()->route('survey.public.thanks', ['token' => $token]);
     }

@@ -10,29 +10,27 @@ use App\Models\Company;
 use App\Models\PsychosocialDocumentVersion;
 use App\Models\Survey;
 use App\Services\ExecutiveBriefService;
+use App\Support\Nr1Shell\Nr1Shell;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class ExecutiveBriefAdminController extends Controller
 {
-    public function __construct(private readonly ExecutiveBriefService $service)
-    {
-    }
+    public function __construct(private readonly ExecutiveBriefService $service) {}
 
     public function release(Company $company, Survey $survey): RedirectResponse
     {
         $this->assertSurveyBelongsToCompany($company, $survey);
 
         if ($survey->usesReviewFlow()) {
-            return redirect()
-                ->route('admin.companies.surveys.action-plan.edit', [$company->id, $survey->id])
+            return redirect(Nr1Shell::parecerUrl($survey))
                 ->with('error', 'Nesta campanha os documentos seguem o fluxo de revisão, em Documentos.');
         }
 
         $version = $this->service->release($survey);
 
-        $redirect = redirect()->route('admin.companies.surveys.action-plan.edit', [$company->id, $survey->id]);
+        $redirect = redirect(Nr1Shell::parecerUrl($survey));
 
         return $version->pdf_status === PsychosocialDocumentVersion::PDF_READY
             ? $redirect->with('success', "Resumo executivo liberado (versão {$version->version_number}).")
@@ -49,9 +47,7 @@ class ExecutiveBriefAdminController extends Controller
         try {
             return $this->service->download($version, $request->user(), $request->ip());
         } catch (PsychosocialDocumentException $exception) {
-            return redirect()
-                ->route('admin.companies.surveys.action-plan.edit', [$company->id, $survey->id])
-                ->with('error', $exception->getMessage());
+            return redirect(Nr1Shell::parecerUrl($survey))->with('error', $exception->getMessage());
         }
     }
 

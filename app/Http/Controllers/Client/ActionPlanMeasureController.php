@@ -4,21 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Client;
 
-use App\Enums\PermissionAction;
-use App\Enums\PermissionModule;
 use App\Exceptions\PsychosocialMeasureException;
 use App\Http\Controllers\Controller;
 use App\Models\PsychosocialMeasure;
 use App\Models\PsychosocialMeasureEvidence;
 use App\Models\Survey;
-use App\Models\User;
 use App\Services\PsychosocialMeasureService;
-use App\Support\PsychosocialMeasurePresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Inertia\Inertia;
-use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -28,43 +22,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ActionPlanMeasureController extends Controller
 {
     public function __construct(private readonly PsychosocialMeasureService $measures) {}
-
-    public function show(Request $request, Survey $survey): Response
-    {
-        $this->authorizeSurvey($request, $survey);
-
-        $rows = PsychosocialMeasure::query()
-            ->where('survey_id', $survey->id)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
-
-        $downloads = [];
-        foreach ($rows as $measure) {
-            foreach ($measure->evidences as $evidence) {
-                if ($evidence->kind === PsychosocialMeasureEvidence::KIND_FILE) {
-                    $downloads[$evidence->id] = route('client.surveys.measures.evidences.download', [$survey, $measure, $evidence]);
-                }
-            }
-        }
-
-        $companyId = (int) $survey->company_id;
-
-        return Inertia::render('Client/Surveys/ActionPlanMeasures', [
-            'survey' => ['id' => $survey->id, 'title' => $survey->title],
-            'measures' => $rows->map(fn (PsychosocialMeasure $measure) => PsychosocialMeasurePresenter::present($measure, $downloads))->all(),
-            'canEdit' => $this->canEdit($request->user()),
-            'users' => User::query()
-                ->whereHas('workspaces', fn ($q) => $q->where('company_id', $companyId)->where('is_active', true))
-                ->orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn (User $user) => ['id' => $user->id, 'name' => $user->name])
-                ->all(),
-            'transitions' => PsychosocialMeasure::PLAN_TRANSITIONS,
-            'effectivenessResults' => PsychosocialMeasure::EFFECTIVENESS_RESULTS,
-            'cardLabel' => 'Medidas com responsável confirmado',
-        ]);
-    }
 
     public function confirm(Request $request, Survey $survey, PsychosocialMeasure $measure): RedirectResponse
     {
@@ -216,10 +173,5 @@ class ActionPlanMeasureController extends Controller
     {
         $this->authorizeSurvey($request, $survey);
         abort_unless((int) $measure->survey_id === (int) $survey->id, 404);
-    }
-
-    private function canEdit(User $user): bool
-    {
-        return ! $user->isSuperAdmin() && ! $user->isOwner() && $user->canAccess(PermissionModule::PlanosAcao, PermissionAction::Edit);
     }
 }

@@ -169,12 +169,12 @@ class Nr1V11DashboardResultsTest extends TestCase
         $user = User::factory()->companyAdmin($campaign->company->id)->create();
 
         $page = $this->actingAs($user)
-            ->get(route('client.surveys.psychosocial-dashboard', $campaign->survey))
+            ->get(route('nr1.visao-geral', ['campanha' => $campaign->survey->id]))
             ->assertOk()
             ->assertInertia(fn (Assert $p) => $p
-                ->has('dashboard.groups.items', 2)
-                ->where('dashboard.groups.items.0.name', 'Grande')
-                ->where('dashboard.groups.items.1.n', 7));
+                ->has('section.overview.groups', 2)
+                ->where('section.overview.groups.0.name', 'Grande')
+                ->where('section.overview.groups.1.n', 7));
         $props = json_encode($page->viewData('page')['props'], JSON_UNESCAPED_UNICODE);
 
         $csv = $this->actingAs($user)
@@ -202,13 +202,12 @@ class Nr1V11DashboardResultsTest extends TestCase
         $user = User::factory()->companyAdmin($campaign->company->id)->create();
 
         $this->actingAs($user)
-            ->get(route('client.surveys.psychosocial-dashboard', $campaign->survey))
+            ->get(route('nr1.resultados', ['campanha' => $campaign->survey->id]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('dashboard.groups.items')
-                ->has('dashboard.items', 39)
-                ->has('dashboard.items.0', fn (Assert $item) => $item
-                    ->hasAll(['id', 'position', 'section_id', 'section_title', 'body', 'n', 'quality_alert', 'counts', 'statement', 'favorable_pct', 'unfavorable_pct', 'favorable_pct_label', 'unfavorable_pct_label', 'distribution'])));
+                ->has('section.results.items', 39)
+                ->has('section.results.items.0', fn (Assert $item) => $item
+                    ->hasAll(['position', 'section_id', 'body', 'n', 'counts', 'distribution', 'statement', 'quality_alert', 'favorable_pct', 'unfavorable_pct', 'favorable_pct_label', 'unfavorable_pct_label'])));
     }
 
     public function test_v11_aggregates_keep_sum_and_n_so_four_decimals_can_be_audited(): void

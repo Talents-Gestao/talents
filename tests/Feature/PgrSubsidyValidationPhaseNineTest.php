@@ -97,7 +97,7 @@ class PgrSubsidyValidationPhaseNineTest extends TestCase
     {
         $this->actingAs($campaign->admin)
             ->post(route('admin.companies.surveys.pgr-subsidy.release', [$campaign->fx->company->id, $campaign->fx->survey->id]))
-            ->assertRedirect(route('admin.companies.surveys.action-plan.edit', [$campaign->fx->company->id, $campaign->fx->survey->id]))
+            ->assertRedirect(route('nr1.parecer', ['empresa' => $campaign->fx->company->id, 'campanha' => $campaign->fx->survey->id]))
             ->assertSessionHasNoErrors();
 
         return PsychosocialDocumentVersion::query()->latest('id')->firstOrFail();
@@ -154,7 +154,7 @@ class PgrSubsidyValidationPhaseNineTest extends TestCase
 
         $this->actingAs($campaign->admin)
             ->post(route('admin.companies.surveys.pgr-subsidy.release', [$campaign->fx->company->id, $campaign->fx->survey->id]))
-            ->assertRedirect(route('admin.companies.surveys.action-plan.edit', [$campaign->fx->company->id, $campaign->fx->survey->id]))
+            ->assertRedirect(route('nr1.parecer', ['empresa' => $campaign->fx->company->id, 'campanha' => $campaign->fx->survey->id]))
             ->assertSessionHas('error');
 
         $this->assertSame(0, PsychosocialDocument::query()->count());
@@ -227,7 +227,7 @@ class PgrSubsidyValidationPhaseNineTest extends TestCase
         $releasedState = $released->only(['snapshot_sha256', 'content_sha256', 'pdf_path', 'pdf_sha256', 'pdf_status', 'seal', 'kind']);
 
         $this->actingAs($campaign->client)
-            ->from(route('client.surveys.psychosocial-dashboard', $campaign->fx->survey))
+            ->from(route('nr1.resultados', ['campanha' => $campaign->fx->survey->id]))
             ->post(route('client.surveys.psychosocial-documents.validate', [
                 $campaign->fx->survey->id,
                 PsychosocialDocument::TYPE_PGR_SUBSIDY,
@@ -268,7 +268,7 @@ class PgrSubsidyValidationPhaseNineTest extends TestCase
         ]);
 
         $this->actingAs($campaign->client)->post($url, ['declaration_accepted' => '1'])->assertSessionHasNoErrors();
-        $this->actingAs($campaign->client)->from(route('client.surveys.psychosocial-dashboard', $campaign->fx->survey))
+        $this->actingAs($campaign->client)->from(route('nr1.resultados', ['campanha' => $campaign->fx->survey->id]))
             ->post($url, ['declaration_accepted' => '1'])
             ->assertRedirect()
             ->assertSessionHas('error');
@@ -283,7 +283,7 @@ class PgrSubsidyValidationPhaseNineTest extends TestCase
         $this->releaseSubsidy($campaign);
 
         $this->actingAs($campaign->admin)
-            ->from(route('admin.companies.surveys.action-plan.edit', [$campaign->fx->company->id, $campaign->fx->survey->id]))
+            ->from(route('nr1.parecer', ['empresa' => $campaign->fx->company->id, 'campanha' => $campaign->fx->survey->id]))
             ->post(route('admin.companies.surveys.psychosocial-documents.validate-informed', [
                 $campaign->fx->company->id,
                 $campaign->fx->survey->id,
@@ -318,7 +318,7 @@ class PgrSubsidyValidationPhaseNineTest extends TestCase
                 'date' => now()->toDateString(),
                 'proof' => $proof,
             ])
-            ->assertRedirect(route('admin.companies.surveys.action-plan.edit', [$campaign->fx->company->id, $campaign->fx->survey->id]))
+            ->assertRedirect(route('nr1.parecer', ['empresa' => $campaign->fx->company->id, 'campanha' => $campaign->fx->survey->id]))
             ->assertSessionHasNoErrors();
 
         $validated = PsychosocialDocumentVersion::query()->where('kind', PsychosocialDocumentVersion::KIND_VALIDATED)->sole();
@@ -435,7 +435,7 @@ class PgrSubsidyValidationPhaseNineTest extends TestCase
         $this->releaseSubsidy($campaign);
 
         $this->actingAs($campaign->client)
-            ->from(route('client.surveys.psychosocial-dashboard', $campaign->fx->survey))
+            ->from(route('nr1.resultados', ['campanha' => $campaign->fx->survey->id]))
             ->post(route('client.surveys.psychosocial-documents.validate', [
                 $campaign->fx->survey->id,
                 PsychosocialDocument::TYPE_PGR_SUBSIDY,

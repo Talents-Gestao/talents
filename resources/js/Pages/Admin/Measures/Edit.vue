@@ -61,7 +61,7 @@ const saveStatus = (measure) => {
         <Head :title="`Medidas — ${survey.title}`" />
 
         <FormPageHeader
-            :back-href="route('admin.companies.surveys.action-plan.edit', [company.id, survey.id])"
+            :back-href="route('nr1.parecer', { empresa: company.id, campanha: survey.id })"
             back-label="Voltar ao parecer"
             title="Medidas da campanha"
             :subtitle="`${company.name} — ${survey.title}`"

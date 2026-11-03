@@ -1,10 +1,11 @@
 <?php
 
+use App\Http\Controllers\Nr1\LegacyUrlRedirectController;
 use App\Http\Controllers\Nr1\ShellController;
 use App\Support\Nr1Shell\Nr1Shell;
 use Illuminate\Support\Facades\Route;
 
-// Shell NR-1: navegação própria, padrão em todos os ambientes (sem flag). As rotas antigas (admin e client) seguem valendo por URL.
+// Shell NR-1: navegação própria, única interface do NR-1.
 Route::middleware(['web'])->prefix('nr1')->name('nr1.')->group(function () {
     // Colaborador: link da campanha, sem login.
     Route::get('jornada/{token}/{section?}', [ShellController::class, 'jornada'])
@@ -23,4 +24,13 @@ Route::middleware(['web'])->prefix('nr1')->name('nr1.')->group(function () {
             Route::get($section, [ShellController::class, 'show'])->defaults('section', $section)->name($section);
         }
     });
+});
+
+// Compatibilidade: favoritos e e-mails já enviados das telas removidas. Único vestígio delas; só redireciona.
+Route::middleware(['web', 'auth', 'verified'])->controller(LegacyUrlRedirectController::class)->group(function () {
+    Route::get('admin/companies/{company}/surveys/{survey}/action-plan', 'adminLaudo');
+    Route::get('client/surveys/{survey}/results', 'clientResults');
+    Route::get('client/surveys/{survey}/painel-psicossocial', 'clientResults');
+    Route::get('client/surveys/{survey}/action-plan', 'clientPlan');
+    Route::get('client/surveys/{survey}/plano-de-acao', 'clientPlan');
 });

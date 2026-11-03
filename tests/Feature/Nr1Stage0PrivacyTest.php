@@ -130,9 +130,10 @@ class Nr1Stage0PrivacyTest extends TestCase
         $campaign->fx->survey->update(['min_group_size' => 20]);
 
         $this->actingAs($campaign->user)
-            ->get(route('client.surveys.psychosocial-dashboard', $campaign->fx->survey))
+            ->get(route('nr1.resultados', ['campanha' => $campaign->fx->survey->id]))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->where('dashboard.sectors', []));
+            ->assertInertia(fn (Assert $page) => $page->has('section'));
+        $this->assertSame([], app(\App\Services\PsychosocialDashboardBuilder::class)->build($campaign->fx->survey->fresh())['sectors']);
     }
 
     public function test_company_csv_export_is_aggregated_only(): void
@@ -285,6 +286,8 @@ class Nr1Stage0PrivacyTest extends TestCase
         $this->assertSame('25-34', $legacyRow->age_range);
         $this->assertSame('1-3', $legacyRow->tenure_range);
 
+        // Nova sessão: quem acabou de responder não vê o formulário de novo.
+        $this->flushSession();
         $this->get(route('survey.public', $v11->survey->public_token))
             ->assertInertia(fn (Assert $page) => $page->where('collectDemographics', false));
         $this->get(route('survey.public', $legacy->survey->public_token))

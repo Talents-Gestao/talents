@@ -11,13 +11,13 @@ use App\Models\Survey;
 use App\Services\Nr1AiAnalyzer;
 use App\Services\SurveyResultCalculator;
 use App\Services\SurveyResultsPresenter;
+use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1RiskScenarioResolver;
+use App\Support\SurveyPublicationGate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class SurveyResultsController extends Controller
 {
@@ -33,7 +33,12 @@ class SurveyResultsController extends Controller
         return $survey;
     }
 
-    public function show(Request $request, Survey $survey): Response
+    /**
+     * Dados de Resultados do modelo anterior no painel NR-1.
+     *
+     * @return array<string, mixed>
+     */
+    public function resultsProps(Request $request, Survey $survey): array
     {
         $survey = $this->findSurvey($request, $survey);
 
@@ -52,8 +57,8 @@ class SurveyResultsController extends Controller
 
         $aiAnalysisPending = Cache::has(Nr1AiAnalyzer::pendingCacheKey($survey->id, Nr1AiAnalyzer::TYPE_NR1_GUIDANCE));
 
-        return Inertia::render('Client/Surveys/Results', array_merge($presented, [
-            'aiEnabled' => $aiEnabled,
+        return array_merge($presented, [
+            'aiEnabled' => $aiEnabled && Nr1GroupPrivacy::hasMinimumSample($survey),
             'aiAnalysis' => $latestAi ? [
                 'content' => $latestAi->content,
             ] : null,
@@ -66,7 +71,7 @@ class SurveyResultsController extends Controller
                 ->where('company_id', $survey->company_id)
                 ->whereNotNull('admin_published_at')
                 ->exists(),
-        ]));
+        ]);
     }
 
     public function generateAiAnalysis(Request $request, Survey $survey): RedirectResponse
@@ -81,6 +86,8 @@ class SurveyResultsController extends Controller
         if (! $survey->results()->exists()) {
             return back()->with('error', 'Não há resultados calculados para esta pesquisa. Use Recalcular primeiro.');
         }
+
+        abort_unless(Nr1GroupPrivacy::hasMinimumSample($survey), 403);
 
         $rateKey = 'ai-analysis:'.$survey->id.':'.$request->user()->id;
         if (RateLimiter::tooManyAttempts($rateKey, 8)) {
@@ -103,6 +110,8 @@ class SurveyResultsController extends Controller
     public function recalculate(Request $request, Survey $survey, SurveyResultCalculator $calculator): RedirectResponse
     {
         $survey = $this->findSurvey($request, $survey);
+        // Publicado, os números da empresa só mudam com nova versão, pela Talents.
+        abort_if(SurveyPublicationGate::isPublished($survey), 403);
 
         $calculator->recalculate($survey);
 

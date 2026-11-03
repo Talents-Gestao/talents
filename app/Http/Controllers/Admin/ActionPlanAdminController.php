@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\PsychosocialDocumentException;
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateAiAnalysisJob;
 use App\Models\ActionPlan;
@@ -14,10 +15,14 @@ use App\Services\ActionPlanGenerator;
 use App\Services\ExecutiveBriefService;
 use App\Services\Nr1AiAnalyzer;
 use App\Services\Psychosocial\PsychosocialDocumentService;
+use App\Services\Psychosocial\ReviewRoundService;
 use App\Services\ReportGenerator;
+use App\Services\SurveyResultCalculator;
 use App\Services\SurveyResultsPresenter;
 use App\Support\HtmlSanitizer;
+use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1RiskScenarioResolver;
+use App\Support\Nr1Shell\Nr1Shell;
 use App\Support\TechnicalOpinionDisclaimerStripper;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,8 +30,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
-use Inertia\Inertia;
-use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -71,7 +74,12 @@ class ActionPlanAdminController extends Controller
             ->stream('plano-de-acao-'.$survey->id.'.pdf');
     }
 
-    public function edit(Company $company, Survey $survey): Response
+    /**
+     * Dados do Laudo («Parecer e publicação» no painel NR-1).
+     *
+     * @return array<string, mixed>
+     */
+    public function laudoProps(Company $company, Survey $survey): array
     {
         $this->assertSurveyBelongsToCompany($company, $survey);
 
@@ -106,7 +114,7 @@ class ActionPlanAdminController extends Controller
 
         $nr1Reports = $this->nr1ReportsPayload($company, $survey);
 
-        return Inertia::render('Admin/ActionPlan/Edit', array_merge($presented, [
+        return array_merge($presented, [
             'company' => $company->only(['id', 'name']),
             'riskScenario' => Nr1RiskScenarioResolver::forSurvey($survey),
             'riskScenarioLabel' => Nr1RiskScenarioResolver::scenarioConfig(
@@ -119,7 +127,7 @@ class ActionPlanAdminController extends Controller
                 // Campanha V11: documentos e publicação vivem na Central de documentos (fluxo de revisão).
                 'uses_review_flow' => $survey->usesReviewFlow(),
                 'documents_url' => $survey->usesReviewFlow()
-                    ? route('admin.companies.surveys.documents.index', [$company->id, $survey->id])
+                    ? Nr1Shell::campaignUrl('documentos', $survey)
                     : null,
             ],
             'executiveBrief' => app(ExecutiveBriefService::class)->currentVersionSummary($survey),
@@ -145,7 +153,7 @@ class ActionPlanAdminController extends Controller
             'technicalOpinionAiPending' => $technicalOpinionAiPending,
             'aiGeneratePostUrl' => url('/admin/companies/'.$company->getKey().'/surveys/'.$survey->getKey().'/ai-analysis'),
             'technicalOpinionGeneratePostUrl' => url('/admin/companies/'.$company->getKey().'/surveys/'.$survey->getKey().'/technical-opinion'),
-        ]));
+        ]);
     }
 
     /**
@@ -193,8 +201,7 @@ class ActionPlanAdminController extends Controller
 
         $plan = $generator->generate($survey);
 
-        return redirect()
-            ->route('admin.companies.surveys.action-plan.edit', [$company, $survey])
+        return redirect(Nr1Shell::parecerUrl($survey))
             ->with('success', 'Plano sugerido gerado com '.$plan->items->count().' ação(ões) conforme o cenário de risco. Revise e salve para publicar.');
     }
 
@@ -241,6 +248,10 @@ class ActionPlanAdminController extends Controller
             return back()->with('error', 'Não há resultados calculados para esta pesquisa.');
         }
 
+        if (! Nr1GroupPrivacy::hasMinimumSample($survey)) {
+            return back()->with('error', 'Amostra abaixo do grupo mínimo: a Mia não analisa esta campanha.');
+        }
+
         $rateKey = $rateKeyPrefix.$survey->id.':'.$request->user()->id;
         if (RateLimiter::tooManyAttempts($rateKey, 8)) {
             return back()->with('error', 'Limite de gerações por hora atingido. Tente mais tarde.');
@@ -256,9 +267,32 @@ class ActionPlanAdminController extends Controller
 
         GenerateAiAnalysisJob::dispatch($survey->id, (int) $request->user()->id, $type);
 
-        return redirect()
-            ->route('admin.companies.surveys.action-plan.edit', [$company, $survey])
-            ->with('success', $successMessage);
+        return back(fallback: Nr1Shell::parecerUrl($survey))->with('success', $successMessage);
+    }
+
+    /**
+     * Recálculo pela Talents. Com a campanha publicada (V11), abre a revisão e gera novas versões em edição: o que a
+     * empresa vê continua sendo a versão publicada até a próxima publicação.
+     */
+    public function recalculate(Request $request, Company $company, Survey $survey, SurveyResultCalculator $calculator, ReviewRoundService $rounds): RedirectResponse
+    {
+        $this->assertSurveyBelongsToCompany($company, $survey);
+
+        $calculator->recalculate($survey);
+
+        if (! $survey->usesReviewFlow() || $survey->published_at === null) {
+            return back(fallback: Nr1Shell::campaignUrl('resultados', $survey))->with('success', 'Resultados recalculados.');
+        }
+
+        try {
+            $current = $rounds->currentRound($survey);
+            $round = $current === null || $current->isPublished() ? $rounds->start($survey, $request->user()) : $current;
+            $rounds->regenerate($round, $request->user());
+        } catch (PsychosocialDocumentException $exception) {
+            return back(fallback: Nr1Shell::campaignUrl('documentos', $survey))->with('error', 'Resultados recalculados, mas a nova versão não foi gerada: '.$exception->getMessage());
+        }
+
+        return back(fallback: Nr1Shell::campaignUrl('documentos', $survey))->with('success', 'Resultados recalculados. Nova versão dos documentos em edição; a publicada não mudou.');
     }
 
     public function update(Request $request, Company $company, Survey $survey): RedirectResponse
@@ -346,10 +380,9 @@ class ActionPlanAdminController extends Controller
             'remove_technical_referral_file'
         );
 
-        return redirect()
-            ->route('admin.companies.surveys.action-plan.edit', [$company, $survey])
+        return redirect(Nr1Shell::parecerUrl($survey))
             ->with('success', $hasPublishableContent
-                ? 'Parecer técnico salvo e disponibilizado para a empresa.'
+                ? ($survey->usesReviewFlow() ? 'Parecer técnico salvo. Ele fica visível só para a Talents e a PASSEG.' : 'Parecer técnico salvo e disponibilizado para a empresa.')
                 : 'Conteúdo removido — a empresa não verá o parecer até você publicar novamente.');
     }
 
