@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\FinancePayableStatus;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -73,14 +74,23 @@ class FinancePayable extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function isPaid(): bool
+    {
+        return $this->status === FinancePayableStatus::Paid;
+    }
+
+    /**
+     * @param  CarbonInterface  $paidAt  Ver App\Support\Finance\FinancePaymentDate::toPaidAt().
+     */
     public function markPaid(
+        CarbonInterface $paidAt,
         ?int $paidAmountCents = null,
         ?int $paymentMethodId = null,
         ?int $bankAccountId = null,
     ): void {
         $this->update([
             'status' => FinancePayableStatus::Paid,
-            'paid_at' => now(),
+            'paid_at' => $paidAt,
             'paid_amount_cents' => $paidAmountCents ?? $this->amount_cents,
             'payment_method_id' => $paymentMethodId ?? $this->payment_method_id,
             'bank_account_id' => $bankAccountId ?? $this->bank_account_id,

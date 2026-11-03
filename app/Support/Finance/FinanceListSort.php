@@ -6,13 +6,14 @@ namespace App\Support\Finance;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 
 /**
- * Ordenação partilhada das listagens de contas a pagar e a receber.
+ * Ordenação partilhada das listagens de contas a pagar e a receber (em SQL).
  *
- * Default: vencimento (mais próximos primeiro). A opção «data de pagamento /
- * recebimento» usa paid_at; itens sem data efetiva ficam no fim, desempate por vencimento ASC.
+ * - Vencimento: due_date crescente, sem data no fim.
+ * - Data de pagamento/recebimento: dia de paid_at decrescente; itens sem pagamento
+ *   (pendentes/cancelados) sempre no fim, entre si por vencimento crescente.
+ * Desempate determinístico: (origem, id).
  */
 final class FinanceListSort
 {
@@ -26,11 +27,21 @@ final class FinanceListSort
         return [self::DUE_DATE, self::PAID_AT];
     }
 
+    /**
+     * Ordem padrão por aba: Pendentes e Todas = vencimento crescente;
+     * Pagas/Recebidas = data de pagamento decrescente.
+     */
+    public static function defaultForStatus(?string $status): string
+    {
+        return $status === 'paid' ? self::PAID_AT : self::DUE_DATE;
+    }
+
     public static function fromRequest(Request $request): string
     {
-        $sort = (string) $request->input('sort', self::DUE_DATE);
+        $default = self::defaultForStatus($request->string('status')->toString());
+        $sort = (string) $request->input('sort', $default);
 
-        return in_array($sort, self::values(), true) ? $sort : self::DUE_DATE;
+        return in_array($sort, self::values(), true) ? $sort : $default;
     }
 
     /**
@@ -57,105 +68,32 @@ final class FinanceListSort
 
     public static function applyToQuery(Builder $query, string $sort): void
     {
-        if ($sort === self::PAID_AT) {
-            $query
-                ->orderByRaw('CASE WHEN paid_at IS NULL THEN 1 ELSE 0 END')
-                ->orderByDesc('paid_at')
-                ->orderBy('due_date')
-                ->orderBy('id');
-
-            return;
+        foreach (self::orderBySql($sort) as $expression) {
+            $query->orderByRaw($expression);
         }
-
-        $query
-            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
-            ->orderBy('due_date')
-            ->orderBy('id');
+        $query->orderBy('id');
     }
 
     /**
-     * @param  Collection<int, array<string, mixed>>  $items
-     * @return Collection<int, array<string, mixed>>
-     */
-    public static function sortRows(Collection $items, string $sort): Collection
-    {
-        $column = in_array($sort, self::values(), true) ? $sort : self::DUE_DATE;
-
-        return $items
-            ->sort(function (array $a, array $b) use ($column): int {
-                if ($column === self::PAID_AT) {
-                    $aNull = ! self::hasDate($a['paid_at'] ?? null);
-                    $bNull = ! self::hasDate($b['paid_at'] ?? null);
-                    if ($aNull !== $bNull) {
-                        return $aNull <=> $bNull;
-                    }
-                    if (! $aNull) {
-                        $cmp = self::sortKey($b['paid_at'] ?? null) <=> self::sortKey($a['paid_at'] ?? null);
-                        if ($cmp !== 0) {
-                            return $cmp;
-                        }
-                    }
-
-                    $dueCmp = self::compareDueDatesAscending($a, $b);
-                    if ($dueCmp !== 0) {
-                        return $dueCmp;
-                    }
-
-                    return self::rowId($a) <=> self::rowId($b);
-                }
-
-                $dueCmp = self::compareDueDatesAscending($a, $b);
-                if ($dueCmp !== 0) {
-                    return $dueCmp;
-                }
-
-                return self::rowId($a) <=> self::rowId($b);
-            })
-            ->values();
-    }
-
-    /**
-     * Vencimentos mais próximos primeiro; sem data no fim.
+     * Expressões ORDER BY (sem o desempate final), válidas em Postgres e SQLite.
+     * date(paid_at) compara só o dia, como a coluna exibida.
      *
-     * @param  array<string, mixed>  $a
-     * @param  array<string, mixed>  $b
+     * @return list<string>
      */
-    private static function compareDueDatesAscending(array $a, array $b): int
+    public static function orderBySql(string $sort, string $dueColumn = 'due_date', string $paidColumn = 'paid_at'): array
     {
-        $aNull = ! self::hasDate($a['due_date'] ?? null);
-        $bNull = ! self::hasDate($b['due_date'] ?? null);
-        if ($aNull !== $bNull) {
-            return $aNull <=> $bNull;
+        if ($sort === self::PAID_AT) {
+            return [
+                "CASE WHEN {$paidColumn} IS NULL THEN 1 ELSE 0 END",
+                "date({$paidColumn}) DESC",
+                "CASE WHEN {$dueColumn} IS NULL THEN 1 ELSE 0 END",
+                "{$dueColumn} ASC",
+            ];
         }
 
-        return self::sortKey($a['due_date'] ?? null) <=> self::sortKey($b['due_date'] ?? null);
-    }
-
-    private static function hasDate(mixed $value): bool
-    {
-        return is_string($value) && $value !== '';
-    }
-
-    private static function sortKey(mixed $value): string
-    {
-        if (! self::hasDate($value)) {
-            return '0000-01-01';
-        }
-
-        return substr((string) $value, 0, 10);
-    }
-
-    /**
-     * @param  array<string, mixed>  $row
-     */
-    private static function rowId(array $row): int
-    {
-        foreach (['receivable_id', 'installment_id', 'id'] as $key) {
-            if (isset($row[$key]) && is_numeric($row[$key])) {
-                return (int) $row[$key];
-            }
-        }
-
-        return 0;
+        return [
+            "CASE WHEN {$dueColumn} IS NULL THEN 1 ELSE 0 END",
+            "{$dueColumn} ASC",
+        ];
     }
 }

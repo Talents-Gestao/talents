@@ -622,7 +622,7 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
             );
     }
 
-    public function test_receivables_keep_sale_installments_together_across_pages(): void
+    public function test_receivables_list_is_chronological_across_sales_by_default(): void
     {
         $this->withoutVite();
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
@@ -631,21 +631,32 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
             '2026-01-01',
             '2026-06-01',
         ]);
-        $this->saleWithInstallments($admin, 'VENDA-GRUPO-B', 'Cliente B', [
+        $other = $this->saleWithInstallments($admin, 'VENDA-GRUPO-B', 'Cliente B', [
             '2026-02-01',
         ]);
 
+        // Lista corrida (padrão): jan (A) → fev (B) → jun (A).
         $this->actingAs($admin)
-            ->get(route('admin.financeiro.contas-a-receber.index', [
-                'origin' => 'sale',
-                'sort' => 'due_date',
-            ]))
+            ->get(route('admin.financeiro.contas-a-receber.index', ['origin' => 'sale']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('items.data.0.sale_id', $early->id)
-                ->where('items.data.1.sale_id', $early->id)
+                ->where('filters.group', '')
+                ->where('items.data.0.installment_id', $early->installments[0]->id)
+                ->where('items.data.1.installment_id', $other->installments[0]->id)
+                ->where('items.data.2.installment_id', $early->installments[1]->id)
+                ->where('items.data.0.sale_code', 'VENDA-GRUPO-A')
+                ->where('items.data.0.installments_count', 2)
+            );
+
+        // Agrupado por venda: o grupo A entra pela melhor linha (jan) e traz junho junto.
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.contas-a-receber.index', ['origin' => 'sale', 'group' => 'sale']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.group', 'sale')
                 ->where('items.data.0.installment_id', $early->installments[0]->id)
                 ->where('items.data.1.installment_id', $early->installments[1]->id)
+                ->where('items.data.2.installment_id', $other->installments[0]->id)
             );
     }
 
@@ -676,43 +687,44 @@ class BankAccountsAndReceivablesModuleTest extends TestCase
             ]);
         }
 
-        return $sale->load(['installments' => fn ($q) => $q->orderBy('number')]            );
+        return $sale->load(['installments' => fn ($q) => $q->orderBy('number')]);
     }
 
-    public function test_receivables_page_does_not_split_a_sale_group(): void
+    public function test_grouped_mode_never_splits_a_sale_across_pages(): void
     {
         $this->withoutVite();
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $month = fn (int $i) => now()->startOfYear()->addMonths($i)->toDateString();
 
-        $dates = [];
-        for ($i = 0; $i < 18; $i++) {
-            $dates[] = now()->startOfYear()->addMonths($i)->toDateString();
-        }
+        $block = $this->saleWithInstallments($admin, 'VENDA-BLOCO', 'Cliente Bloco', array_map($month, range(0, 17)));
+        $this->saleWithInstallments($admin, 'VENDA-SEGUINTE', 'Cliente Seguinte', [$month(2), $month(20), $month(21)]);
+        $this->saleWithInstallments($admin, 'VENDA-FINAL', 'Cliente Final', [$month(22), $month(23), $month(24)]);
 
-        $grouped = $this->saleWithInstallments($admin, 'VENDA-BLOCO', 'Cliente Bloco', $dates);
-        $this->saleWithInstallments($admin, 'VENDA-SEGUINTE', 'Cliente Seguinte', [
-            now()->startOfYear()->addMonths(2)->toDateString(),
-            now()->startOfYear()->addMonths(20)->toDateString(),
-            now()->startOfYear()->addMonths(21)->toDateString(),
-        ]);
-
+        // Página 1: bloco (18) + «Seguinte» inteiro (3), mesmo passando de 20 linhas.
         $this->actingAs($admin)
-            ->get(route('admin.financeiro.contas-a-receber.index', ['origin' => 'sale']))
+            ->get(route('admin.financeiro.contas-a-receber.index', ['origin' => 'sale', 'group' => 'sale']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('items.data', 18)
-                ->where('items.data.0.sale_id', $grouped->id)
-                ->where('items.data.17.sale_id', $grouped->id)
+                ->has('items.data', 21)
+                ->where('items.data.0.sale_id', $block->id)
+                ->where('items.data.17.sale_id', $block->id)
+                ->where('items.data.18.counterparty', 'Cliente Seguinte')
+                ->where('items.data.20.counterparty', 'Cliente Seguinte')
                 ->where('items.last_page', 2)
+                ->where('items.from', 1)
+                ->where('items.to', 21)
+                ->where('items.total', 24)
             );
 
         $this->actingAs($admin)
-            ->get(route('admin.financeiro.contas-a-receber.index', ['origin' => 'sale', 'page' => 2]))
+            ->get(route('admin.financeiro.contas-a-receber.index', ['origin' => 'sale', 'group' => 'sale', 'page' => 2]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('items.data', 3)
-                ->where('items.data.0.counterparty', 'Cliente Seguinte')
-                ->where('items.data.2.counterparty', 'Cliente Seguinte')
+                ->where('items.data.0.counterparty', 'Cliente Final')
+                ->where('items.data.2.counterparty', 'Cliente Final')
+                ->where('items.from', 22)
+                ->where('items.to', 24)
             );
     }
 

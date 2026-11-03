@@ -1,11 +1,14 @@
 <script setup>
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
+import PaymentDateFields from '@/Components/Finance/PaymentDateFields.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref, watch } from 'vue';
 import { confirmDialog } from '@/composables/useConfirmDialog';
+import { useListNavigation } from '@/composables/useListNavigation';
+import { defaultSortForStatus, todayIsoInSaoPaulo } from '@/utils/financeLedger';
 
 const props = defineProps({
     payables: { type: Object, required: true },
@@ -14,7 +17,12 @@ const props = defineProps({
     statusOptions: { type: Array, default: () => [] },
     paymentMethods: { type: Array, default: () => [] },
     bankAccounts: { type: Array, default: () => [] },
+    today: { type: String, default: '' },
 });
+
+const maxPaidDate = computed(() => props.today || todayIsoInSaoPaulo());
+/** Visita da própria lista em andamento: controles desabilitados e tabela esmaecida. */
+const { navigating } = useListNavigation();
 
 const page = usePage();
 const flashSuccess = computed(() => page.props.flash?.success);
@@ -23,7 +31,7 @@ const flashError = computed(() => page.props.flash?.error);
 const localFilters = reactive({
     q: props.filters.q ?? '',
     status: props.filters.status ?? '',
-    sort: props.filters.sort ?? 'due_date',
+    sort: props.filters.sort ?? defaultSortForStatus(props.filters.status),
 });
 
 watch(
@@ -31,18 +39,21 @@ watch(
     (value) => {
         localFilters.q = value?.q ?? '';
         localFilters.status = value?.status ?? '';
-        localFilters.sort = value?.sort ?? 'due_date';
+        localFilters.sort = value?.sort ?? defaultSortForStatus(value?.status);
     },
     { deep: true },
 );
 
 const applyFilters = () => {
+    if (navigating.value) {
+        return;
+    }
     router.get(
         route('admin.financeiro.contas-a-pagar.index'),
         {
             q: localFilters.q || undefined,
             status: localFilters.status || undefined,
-            sort: localFilters.sort || 'due_date',
+            sort: localFilters.sort || defaultSortForStatus(localFilters.status),
         },
         { preserveState: true, replace: true },
     );
@@ -66,6 +77,7 @@ const statusClass = (status) =>
 const payModalOpen = ref(false);
 const payItem = ref(null);
 const payForm = useForm({
+    paid_at: '',
     bank_account_id: '',
     payment_method_id: '',
 });
@@ -73,6 +85,7 @@ const payForm = useForm({
 const openPayModal = (item) => {
     payItem.value = item;
     payForm.clearErrors();
+    payForm.paid_at = maxPaidDate.value;
     payForm.bank_account_id = item.bank_account_id ?? '';
     payForm.payment_method_id = item.payment_method_id ?? '';
     payModalOpen.value = true;
@@ -145,6 +158,7 @@ const remove = async (id) => {
             />
             <select
                 v-model="localFilters.status"
+                @change="localFilters.sort = defaultSortForStatus(localFilters.status)"
                 class="rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/60"
             >
                 <option value="">Todos os status</option>
@@ -154,17 +168,24 @@ const remove = async (id) => {
                 v-model="localFilters.sort"
                 aria-label="Ordenar por"
                 title="Ordenar por"
-                class="rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/60"
+                class="rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-talents-400 focus:outline-none focus:ring-2 focus:ring-talents-200/60 disabled:cursor-wait disabled:opacity-60"
+                :disabled="navigating"
                 @change="applyFilters"
             >
                 <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
                     Ordenar por {{ opt.label.toLowerCase() }}
                 </option>
             </select>
-            <PrimaryButton type="submit">Filtrar</PrimaryButton>
+            <PrimaryButton type="submit" class="disabled:cursor-wait disabled:opacity-60" :disabled="navigating">
+                {{ navigating ? 'Carregando…' : 'Filtrar' }}
+            </PrimaryButton>
         </form>
 
-        <div class="surface-card overflow-hidden">
+        <div
+            class="surface-card overflow-hidden transition-opacity duration-150"
+            :class="navigating ? 'pointer-events-none opacity-60' : ''"
+            :aria-busy="navigating"
+        >
             <div v-if="!payables.data?.length" class="px-5 py-10 text-center text-sm text-slate-600">
                 Nenhuma conta a pagar encontrada.
             </div>
@@ -238,13 +259,21 @@ const remove = async (id) => {
                 v-if="payables.links?.length > 3"
                 class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-4 py-3 text-sm"
             >
-                <p class="text-xs text-slate-500">
+                <p class="text-xs text-slate-500" role="status" aria-live="polite">
                     {{ payables.from }}–{{ payables.to }} de {{ payables.total }}
+                    <span v-if="navigating" class="ml-2 text-slate-400">Carregando…</span>
                 </p>
                 <div class="flex flex-wrap items-center justify-end gap-1">
                     <template v-for="link in payables.links" :key="link.label">
+                        <span
+                            v-if="link.url && navigating"
+                            class="cursor-wait rounded-lg px-3 py-1 text-slate-400"
+                            :class="link.active ? 'bg-talents-600/60 text-white' : ''"
+                            aria-disabled="true"
+                            v-html="link.label"
+                        />
                         <Link
-                            v-if="link.url"
+                            v-else-if="link.url"
                             :href="link.url"
                             class="rounded-lg px-3 py-1 text-slate-700 transition hover:bg-white"
                             :class="link.active ? 'bg-talents-600 text-white hover:bg-talents-600' : ''"
@@ -258,41 +287,53 @@ const remove = async (id) => {
         </div>
 
         <FullScreenOverlay :show="payModalOpen && !!payItem" @close="closePayModal">
-            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-                <h3 class="text-lg font-semibold text-slate-900">Registrar pagamento</h3>
-                <p class="mt-1 text-sm text-slate-600">{{ payItem?.title }}</p>
-                <p class="mt-1 text-sm text-slate-600">Valor: {{ formatBRL(payItem?.amount_cents ?? 0) }}</p>
+            <div
+                class="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl supports-[height:100dvh]:max-h-[calc(100dvh-2rem)]"
+            >
+                <div class="shrink-0 border-b border-slate-100 px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Registrar pagamento</h3>
+                    <p class="mt-1 text-sm text-slate-600">{{ payItem?.title }}</p>
+                    <p class="mt-1 text-sm text-slate-600">Valor: {{ formatBRL(payItem?.amount_cents ?? 0) }}</p>
+                </div>
 
-                <form class="mt-4 space-y-4" @submit.prevent="submitPay">
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                            Conta de origem
-                        </label>
-                        <select
-                            v-model="payForm.bank_account_id"
-                            required
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        >
-                            <option value="" disabled>Selecione a conta</option>
-                            <option v-for="a in bankAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
-                        </select>
-                        <p v-if="payForm.errors.bank_account_id" class="mt-1 text-xs text-rose-600">
-                            {{ payForm.errors.bank_account_id }}
-                        </p>
+                <form class="flex min-h-0 flex-1 flex-col" @submit.prevent="submitPay">
+                    <div class="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
+                        <PaymentDateFields
+                            v-model:date="payForm.paid_at"
+                            :max="maxPaidDate"
+                            :date-error="payForm.errors.paid_at"
+                        />
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                Conta de origem
+                            </label>
+                            <select
+                                v-model="payForm.bank_account_id"
+                                required
+                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            >
+                                <option value="" disabled>Selecione a conta</option>
+                                <option v-for="a in bankAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                            </select>
+                            <p v-if="payForm.errors.bank_account_id" class="mt-1 text-xs text-rose-600">
+                                {{ payForm.errors.bank_account_id }}
+                            </p>
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                Forma de pagamento
+                            </label>
+                            <select
+                                v-model="payForm.payment_method_id"
+                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            >
+                                <option value="">Não informado</option>
+                                <option v-for="m in paymentMethods" :key="m.id" :value="m.id">{{ m.name }}</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                            Forma de pagamento
-                        </label>
-                        <select
-                            v-model="payForm.payment_method_id"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        >
-                            <option value="">Não informado</option>
-                            <option v-for="m in paymentMethods" :key="m.id" :value="m.id">{{ m.name }}</option>
-                        </select>
-                    </div>
-                    <div class="flex justify-end gap-2 pt-2">
+
+                    <div class="flex shrink-0 justify-end gap-2 border-t border-slate-100 px-5 py-4 sm:px-6">
                         <button
                             type="button"
                             class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
