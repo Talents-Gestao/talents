@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Commercial;
 
+use App\Actions\Notices\PublishCommercialNotice;
 use App\Models\CommercialCommission;
 use App\Models\CommercialSale;
 use App\Services\Commercial\CommissionPayoutCalculator;
@@ -12,11 +13,16 @@ use App\Services\Commercial\CommissionPayoutCalculator;
  * Recalcula os campos derivados das comissões de uma venda:
  * teto (base/amount) a partir das parcelas não canceladas, paid_cents, status e paid_at.
  *
- * Teto menor que o já pago não estorna nada: a tela sinaliza «pago acima do teto».
+ * Teto menor que o já pago não estorna nem cobra o vendedor: a empresa assume a diferença
+ * («perda assumida»), com um aviso interno a cada entrada nessa situação (loss_notified_at).
  * Comissão sem percentual (legado) mantém o valor gravado.
  */
 final class RefreshCommissionPayout
 {
+    public function __construct(
+        private readonly PublishCommercialNotice $notices,
+    ) {}
+
     public function forSale(CommercialSale $sale): void
     {
         $installments = $sale->installments()->get();
@@ -56,8 +62,20 @@ final class RefreshCommissionPayout
             (int) $commission->amount_cents,
         );
 
+        $inLoss = (int) $commission->paid_cents > (int) $commission->amount_cents;
+        $enteredLoss = $inLoss && $commission->loss_notified_at === null;
+        if ($enteredLoss) {
+            $commission->loss_notified_at = now();
+        } elseif (! $inLoss && $commission->loss_notified_at !== null) {
+            $commission->loss_notified_at = null;
+        }
+
         if ($commission->isDirty()) {
             $commission->save();
+        }
+
+        if ($enteredLoss) {
+            $this->notices->commissionLossAssumed($commission->fresh(['sale', 'seller']));
         }
     }
 }

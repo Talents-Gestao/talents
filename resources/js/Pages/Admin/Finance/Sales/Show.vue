@@ -19,6 +19,7 @@ const props = defineProps({
     installmentStatusOptions: { type: Array, default: () => [] },
     bankAccounts: { type: Array, default: () => [] },
     commission_payouts: { type: Array, default: () => [] },
+    commissionBankAccounts: { type: Array, default: () => [] },
     commission_can: { type: Object, default: () => ({ register_payment: false, delete_payment: false }) },
     destroyBlockedMessage: { type: String, default: '' },
 });
@@ -258,8 +259,8 @@ const confirmDestroy = () => {
                                 <dd class="font-semibold tabular-nums text-talents-700">{{ formatBRL(item.releasable_cents) }}</dd>
                             </div>
                         </dl>
-                        <p v-if="item.over_ceiling" class="mt-1 text-xs font-medium text-rose-700">
-                            Pago acima do teto: {{ formatBRL(item.over_ceiling_cents) }}
+                        <p v-if="item.loss_assumed" class="mt-1 text-xs font-medium text-rose-700">
+                            Perda assumida pela empresa: {{ formatBRL(item.loss_assumed_cents) }}
                         </p>
                         <button
                             v-if="commission_can.register_payment"
@@ -374,6 +375,7 @@ const confirmDestroy = () => {
         <CommissionPaymentModal
             :show="paymentTargetId !== null"
             :commission="paymentTarget()"
+            :bank-accounts="commissionBankAccounts"
             @close="paymentTargetId = null"
         />
 

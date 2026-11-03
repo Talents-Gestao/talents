@@ -213,6 +213,12 @@ const remove = async (id) => {
                                 >
                                     {{ item.recurring_label }}
                                 </span>
+                                <span
+                                    v-if="item.commission_href"
+                                    class="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200"
+                                >
+                                    Origem: comissão
+                                </span>
                             </td>
                             <td class="px-4 py-3 text-slate-700">{{ formatDate(item.due_date) }}</td>
                             <td class="px-4 py-3 text-slate-700">{{ formatDate(item.paid_at) }}</td>
@@ -229,27 +235,38 @@ const remove = async (id) => {
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <button
-                                    v-if="item.can_mark_paid"
-                                    type="button"
-                                    class="font-medium text-emerald-700 hover:underline"
-                                    @click="openPayModal(item)"
-                                >
-                                    Pagar
-                                </button>
+                                <!-- Origem comissão: travado aqui; correção excluindo o último pagamento em Comissões. -->
                                 <Link
-                                    :href="route('admin.financeiro.contas-a-pagar.edit', item.id)"
-                                    class="ml-3 font-medium text-talents-700 hover:underline"
+                                    v-if="item.commission_href"
+                                    :href="item.commission_href"
+                                    class="font-medium text-talents-700 hover:underline"
+                                    title="Lançamento gerado por pagamento de comissão: corrija em Financeiro → Comissões"
                                 >
-                                    Editar
+                                    Ver comissão
                                 </Link>
-                                <button
-                                    type="button"
-                                    class="ml-3 font-medium text-red-600 hover:underline"
-                                    @click="remove(item.id)"
-                                >
-                                    Excluir
-                                </button>
+                                <template v-else>
+                                    <button
+                                        v-if="item.can_mark_paid"
+                                        type="button"
+                                        class="font-medium text-emerald-700 hover:underline"
+                                        @click="openPayModal(item)"
+                                    >
+                                        Pagar
+                                    </button>
+                                    <Link
+                                        :href="route('admin.financeiro.contas-a-pagar.edit', item.id)"
+                                        class="ml-3 font-medium text-talents-700 hover:underline"
+                                    >
+                                        Editar
+                                    </Link>
+                                    <button
+                                        type="button"
+                                        class="ml-3 font-medium text-red-600 hover:underline"
+                                        @click="remove(item.id)"
+                                    >
+                                        Excluir
+                                    </button>
+                                </template>
                             </td>
                         </tr>
                     </tbody>

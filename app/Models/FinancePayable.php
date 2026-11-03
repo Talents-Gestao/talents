@@ -74,6 +74,20 @@ class FinancePayable extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * Origem comissão: lançamento gerado por um pagamento de comissão. Fica travado em
+     * Contas a pagar; correção só excluindo o último pagamento em Financeiro → Comissões.
+     */
+    public function commissionPayment(): BelongsTo
+    {
+        return $this->belongsTo(CommercialCommissionPayment::class, 'commission_payment_id');
+    }
+
+    public function isCommissionOrigin(): bool
+    {
+        return $this->commission_payment_id !== null;
+    }
+
     public function isPaid(): bool
     {
         return $this->status === FinancePayableStatus::Paid;

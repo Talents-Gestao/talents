@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin\Finance;
 use App\Actions\SyncAdminUserPermissions;
 use App\Enums\AdminPermissionModule;
 use App\Enums\CompanyNoticeEventKind;
+use App\Enums\FinanceBankAccountType;
 use App\Enums\PermissionAction;
 use App\Models\CommercialCommission;
 use App\Models\CommercialCommissionPayment;
@@ -12,6 +13,7 @@ use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
 use App\Models\CompanyNotice;
+use App\Models\FinanceBankAccount;
 use App\Models\User;
 use App\Services\Commercial\CommissionPayoutCalculator;
 use App\Services\Commercial\ProposalSaleConversionService;
@@ -30,12 +32,20 @@ class CommissionIndexTest extends TestCase
 
     private User $seller;
 
+    private FinanceBankAccount $account;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->withoutVite();
         $this->admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $this->seller = User::factory()->create(['is_commercial' => true, 'name' => 'Vendedor A']);
+        $this->account = FinanceBankAccount::query()->create([
+            'name' => 'Conta Comissões',
+            'type' => FinanceBankAccountType::Checking,
+            'initial_balance_cents' => 0,
+            'is_active' => true,
+        ]);
     }
 
     public function test_commissions_index_lists_open_first_with_totals(): void
@@ -220,15 +230,16 @@ class CommissionIndexTest extends TestCase
         $this->assertSame(1, $fresh->payments()->count(), 'Nada é estornado automaticamente.');
 
         $payload = CommissionPayoutCalculator::present($fresh);
-        $this->assertTrue($payload['over_ceiling']);
-        $this->assertSame(1_000, $payload['over_ceiling_cents']);
+        $this->assertTrue($payload['loss_assumed']);
+        $this->assertSame(1_000, $payload['loss_assumed_cents']);
         $this->assertSame(0, $payload['releasable_cents']);
 
         $this->actingAs($this->admin)
             ->get(route('admin.financeiro.comissoes.index'))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('summary.over_ceiling_count', 1)
-                ->where('commissions.data.0.over_ceiling', true));
+                ->where('summary.loss_assumed_count', 1)
+                ->where('summary.loss_assumed_cents', 1_000)
+                ->where('commissions.data.0.loss_assumed', true));
     }
 
     public function test_multiple_payments_derive_status(): void
@@ -333,7 +344,7 @@ class CommissionIndexTest extends TestCase
                 ->where('can.delete_payment', false)
                 ->where('commissions.data.0.payments.0.can_delete', false));
         $this->actingAs($viewer)->post(route('admin.financeiro.comissoes.pagamentos.store', $commission), [
-            'amount' => '1.00', 'paid_at' => now()->toDateString(),
+            'amount' => '1.00', 'paid_at' => now()->toDateString(), 'bank_account_id' => $this->account->id,
         ])->assertForbidden();
         $this->actingAs($viewer)
             ->delete(route('admin.financeiro.comissoes.pagamentos.destroy', [$commission, $payment]))
@@ -342,7 +353,7 @@ class CommissionIndexTest extends TestCase
         $payer = User::factory()->superAdmin()->create(['is_owner' => false]);
         $this->grant($payer, [PermissionAction::View, PermissionAction::Create]);
         $this->actingAs($payer)->post(route('admin.financeiro.comissoes.pagamentos.store', $commission), [
-            'amount' => '1.00', 'paid_at' => now()->toDateString(),
+            'amount' => '1.00', 'paid_at' => now()->toDateString(), 'bank_account_id' => $this->account->id,
         ])->assertSessionHasNoErrors();
         $this->assertSame($payer->id, (int) $commission->payments()->latest('id')->value('paid_by'));
         $this->actingAs($payer)
@@ -467,6 +478,7 @@ class CommissionIndexTest extends TestCase
             ->post(route('admin.financeiro.comissoes.pagamentos.store', $commission), [
                 'amount' => $amount,
                 'paid_at' => $paidAt ?? now()->toDateString(),
+                'bank_account_id' => $this->account->id,
                 'notes' => 'PIX',
             ]);
     }

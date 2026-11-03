@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin\Commercial;
 
+use App\Enums\FinanceBankAccountType;
 use App\Models\CommercialCommission;
 use App\Models\CommercialProposal;
 use App\Models\CommercialProposalExtraCommission;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
+use App\Models\FinanceBankAccount;
 use App\Models\User;
 use App\Services\Commercial\ProposalSaleConversionService;
 use App\Support\Commercial\ProposalListStatus;
@@ -462,6 +464,12 @@ class ProposalExtraCommissionTest extends TestCase
         ]);
         $extra = $sale->commissions()->where('seller_id', $isa->id)->first();
         $this->assertNotNull($extra);
+        $account = FinanceBankAccount::query()->create([
+            'name' => 'Conta Comissões',
+            'type' => FinanceBankAccountType::Checking,
+            'initial_balance_cents' => 0,
+            'is_active' => true,
+        ]);
 
         // Nada recebido: liberável zero.
         $this->actingAs($admin)
@@ -469,6 +477,7 @@ class ProposalExtraCommissionTest extends TestCase
             ->post(route('admin.financeiro.comissoes.pagamentos.store', $extra), [
                 'amount' => '1.00',
                 'paid_at' => now()->toDateString(),
+                'bank_account_id' => $account->id,
             ])
             ->assertRedirect(route('admin.financeiro.comissoes.index'))
             ->assertSessionHasErrors('amount');
@@ -481,6 +490,7 @@ class ProposalExtraCommissionTest extends TestCase
             ->post(route('admin.financeiro.comissoes.pagamentos.store', $extra), [
                 'amount' => '5.01',
                 'paid_at' => now()->toDateString(),
+                'bank_account_id' => $account->id,
             ])
             ->assertSessionHasErrors('amount');
 
@@ -489,6 +499,7 @@ class ProposalExtraCommissionTest extends TestCase
             ->post(route('admin.financeiro.comissoes.pagamentos.store', $extra), [
                 'amount' => '5.00',
                 'paid_at' => now()->toDateString(),
+                'bank_account_id' => $account->id,
             ])
             ->assertRedirect(route('admin.financeiro.comissoes.index'))
             ->assertSessionHas('success');

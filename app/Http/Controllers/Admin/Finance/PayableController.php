@@ -26,6 +26,9 @@ use Inertia\Response;
 
 class PayableController extends Controller
 {
+    public const COMMISSION_ORIGIN_LOCKED_MESSAGE = 'Este lançamento foi gerado por um pagamento de comissão e não pode ser alterado em Contas a pagar. '
+        .'Para corrigir, exclua o último pagamento da comissão em Financeiro → Comissões.';
+
     public function __construct(
         private readonly RegisterFinancePayment $registerPayment,
         private readonly ChangeFinancePaymentDate $changePaymentDate,
@@ -38,7 +41,13 @@ class PayableController extends Controller
         $sort = FinanceListSort::fromRequest($request);
 
         $query = FinancePayable::query()
-            ->with(['paymentMethod:id,name', 'bankAccount:id,name', 'createdBy:id,name']);
+            ->with([
+                'paymentMethod:id,name',
+                'bankAccount:id,name',
+                'createdBy:id,name',
+                'commissionPayment:id,commission_id',
+                'commissionPayment.commission:id,sale_id',
+            ]);
 
         FinanceListSort::applyToQuery($query, $sort);
 
@@ -72,7 +81,9 @@ class PayableController extends Controller
                 'bank_account_id' => $p->bank_account_id,
                 'is_recurring' => (bool) $p->is_recurring,
                 'recurring_label' => $p->recurringLabel(),
-                'can_mark_paid' => $p->status === FinancePayableStatus::Pending,
+                'can_mark_paid' => $p->status === FinancePayableStatus::Pending && ! $p->isCommissionOrigin(),
+                // Origem comissão: sem Pagar/Editar/Excluir aqui; link para a venda (Comissões).
+                'commission_href' => self::commissionHref($p),
             ]);
 
         return Inertia::render('Admin/Finance/Payables/Index', [
@@ -176,8 +187,12 @@ class PayableController extends Controller
             ->with('success', "Série recorrente cadastrada: {$months} lançamentos mensais.");
     }
 
-    public function edit(FinancePayable $payable): Response
+    public function edit(Request $request, FinancePayable $payable): Response|RedirectResponse
     {
+        if ($blocked = $this->blockCommissionOrigin($request, $payable)) {
+            return $blocked;
+        }
+
         return Inertia::render('Admin/Finance/Payables/Form', [
             'mode' => 'edit',
             'payable' => [
@@ -203,6 +218,10 @@ class PayableController extends Controller
 
     public function update(Request $request, FinancePayable $payable): RedirectResponse
     {
+        if ($blocked = $this->blockCommissionOrigin($request, $payable)) {
+            return $blocked;
+        }
+
         $data = $this->validated(
             $request,
             allowRecurrence: false,
@@ -252,6 +271,10 @@ class PayableController extends Controller
 
     public function destroy(Request $request, FinancePayable $payable): RedirectResponse
     {
+        if ($blocked = $this->blockCommissionOrigin($request, $payable)) {
+            return $blocked;
+        }
+
         $payable->delete();
 
         return FinanceListReturn::redirect($request, FinanceListReturn::PAYABLES)
@@ -260,6 +283,10 @@ class PayableController extends Controller
 
     public function markPaid(Request $request, FinancePayable $payable): RedirectResponse
     {
+        if ($blocked = $this->blockCommissionOrigin($request, $payable)) {
+            return $blocked;
+        }
+
         $data = $request->validate([
             'paid_at' => FinancePaymentDate::rules(),
             'payment_method_id' => ['nullable', 'exists:finance_payment_methods,id'],
@@ -287,6 +314,29 @@ class PayableController extends Controller
         );
 
         return back()->with('success', 'Conta marcada como paga.');
+    }
+
+    /**
+     * Conta a pagar gerada por pagamento de comissão não é editada, paga nem excluída aqui:
+     * a correção é excluir o último pagamento da comissão (desfaz o lançamento e o saldo juntos).
+     */
+    private function blockCommissionOrigin(Request $request, FinancePayable $payable): ?RedirectResponse
+    {
+        if (! $payable->isCommissionOrigin()) {
+            return null;
+        }
+
+        return FinanceListReturn::redirect($request, FinanceListReturn::PAYABLES)
+            ->with('error', self::COMMISSION_ORIGIN_LOCKED_MESSAGE);
+    }
+
+    private static function commissionHref(FinancePayable $payable): ?string
+    {
+        $saleId = $payable->commissionPayment?->commission?->sale_id;
+
+        return $payable->isCommissionOrigin() && $saleId
+            ? route('admin.financeiro.vendas.show', $saleId)
+            : null;
     }
 
     /**

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Actions\Commercial;
 
 use App\Actions\Notices\PublishCommercialNotice;
+use App\Enums\FinancePayableStatus;
 use App\Models\CommercialCommission;
 use App\Models\CommercialCommissionPayment;
 use App\Models\CommercialSale;
+use App\Models\FinancePayable;
 use App\Models\User;
 use App\Services\Commercial\CommissionPayoutCalculator;
 use Carbon\CarbonInterface;
@@ -16,7 +18,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Registra um repasse de comissão limitado ao valor liberável no momento
- * (proporcional ao recebido; total quando a venda está quitada).
+ * (proporcional ao recebido; total quando a venda está quitada) e, na mesma
+ * transação, a conta a pagar baixada que tira o valor da conta bancária escolhida.
  */
 final class RegisterCommissionPayment
 {
@@ -29,10 +32,11 @@ final class RegisterCommissionPayment
         CommercialCommission $commission,
         int $amountCents,
         CarbonInterface $paidAt,
+        int $bankAccountId,
         ?string $notes,
         ?User $actor,
     ): CommercialCommissionPayment {
-        $payment = DB::transaction(function () use ($commission, $amountCents, $paidAt, $notes, $actor): CommercialCommissionPayment {
+        $payment = DB::transaction(function () use ($commission, $amountCents, $paidAt, $bankAccountId, $notes, $actor): CommercialCommissionPayment {
             $locked = CommercialCommission::query()->whereKey($commission->id)->lockForUpdate()->firstOrFail();
             $this->refresh->forCommission($locked);
             $locked->refresh();
@@ -60,13 +64,32 @@ final class RegisterCommissionPayment
                 ]);
             }
 
+            $notes = filled($notes) ? trim((string) $notes) : null;
+
             $payment = CommercialCommissionPayment::query()->create([
                 'commission_id' => $locked->id,
                 'amount_cents' => $amountCents,
                 'paid_at' => $paidAt,
                 'paid_by' => $actor?->id,
-                'notes' => filled($notes) ? trim((string) $notes) : null,
+                'notes' => $notes,
             ]);
+
+            // Saída de caixa: conta a pagar já baixada, que o saldo bancário já considera.
+            $sellerName = $locked->seller()->value('name');
+            (new FinancePayable)->forceFill([
+                'title' => 'Comissão · '.($sellerName ?? 'sem beneficiário').' · '.$sale->code,
+                'supplier_name' => $sellerName,
+                'amount_cents' => $amountCents,
+                'due_date' => $paidAt->toDateString(),
+                'status' => FinancePayableStatus::Paid,
+                'paid_at' => $paidAt,
+                'paid_amount_cents' => $amountCents,
+                'bank_account_id' => $bankAccountId,
+                'notes' => $notes,
+                'created_by' => $actor?->id,
+                'is_recurring' => false,
+                'commission_payment_id' => $payment->id,
+            ])->save();
 
             $this->refresh->forCommission($locked);
 

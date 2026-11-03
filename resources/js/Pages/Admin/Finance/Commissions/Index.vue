@@ -15,6 +15,7 @@ const props = defineProps({
     filters: { type: Object, default: () => ({}) },
     sellers: { type: Array, default: () => [] },
     statusOptions: { type: Object, default: () => ({}) },
+    bankAccounts: { type: Array, default: () => [] },
     can: { type: Object, default: () => ({ register_payment: false, delete_payment: false }) },
 });
 
@@ -106,8 +107,9 @@ const submitNotes = () => {
             <div class="surface-card p-5">
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Pagas (filtro atual)</p>
                 <p class="mt-2 text-2xl font-bold tabular-nums text-emerald-800">{{ formatBRL(summary.paid_cents) }}</p>
-                <p v-if="summary.over_ceiling_count" class="mt-1 text-sm font-medium text-rose-700">
-                    {{ summary.over_ceiling_count }} comissão(ões) pagas acima do teto
+                <p v-if="summary.loss_assumed_count" class="mt-1 text-sm font-medium text-rose-700">
+                    Perda assumida pela empresa: {{ formatBRL(summary.loss_assumed_cents) }}
+                    ({{ summary.loss_assumed_count }} comissão(ões))
                 </p>
             </div>
         </div>
@@ -210,8 +212,8 @@ const submitNotes = () => {
                                 <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ formatBRL(c.amount_cents) }}</td>
                                 <td class="px-4 py-3 text-right tabular-nums text-slate-700">
                                     {{ formatBRL(c.paid_cents) }}
-                                    <p v-if="c.over_ceiling" class="text-xs font-medium text-rose-700">
-                                        Pago acima do teto: {{ formatBRL(c.over_ceiling_cents) }}
+                                    <p v-if="c.loss_assumed" class="text-xs font-medium text-rose-700">
+                                        Perda assumida pela empresa: {{ formatBRL(c.loss_assumed_cents) }}
                                     </p>
                                 </td>
                                 <td class="px-4 py-3 text-right tabular-nums font-semibold text-talents-700">
@@ -279,6 +281,7 @@ const submitNotes = () => {
         <CommissionPaymentModal
             :show="paymentTargetId !== null"
             :commission="paymentTarget()"
+            :bank-accounts="bankAccounts"
             @close="paymentTargetId = null"
         />
 

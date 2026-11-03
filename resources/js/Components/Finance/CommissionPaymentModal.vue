@@ -11,6 +11,7 @@ import { computed, watch } from 'vue';
 const props = defineProps({
     show: { type: Boolean, default: false },
     commission: { type: Object, default: null },
+    bankAccounts: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(['close']);
@@ -25,6 +26,7 @@ const centsToInput = (cents) => (Number(cents || 0) / 100).toFixed(2);
 const form = useForm({
     amount: '',
     paid_at: todayIso(),
+    bank_account_id: '',
     notes: '',
 });
 
@@ -37,6 +39,7 @@ watch(
         form.clearErrors();
         form.amount = centsToInput(releasableCents.value);
         form.paid_at = todayIso();
+        form.bank_account_id = props.bankAccounts.length === 1 ? props.bankAccounts[0].id : '';
         form.notes = '';
     },
     { immediate: true },
@@ -115,6 +118,25 @@ const submit = () => {
                     <p v-if="form.errors.paid_at" class="mt-1 text-xs text-rose-600">{{ form.errors.paid_at }}</p>
                 </div>
                 <div>
+                    <label for="commission-payment-account" class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        Conta bancária de saída
+                    </label>
+                    <select
+                        id="commission-payment-account"
+                        v-model="form.bank_account_id"
+                        required
+                        class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    >
+                        <option value="" disabled>Selecione a conta</option>
+                        <option v-for="account in bankAccounts" :key="account.id" :value="account.id">{{ account.name }}</option>
+                    </select>
+                    <p class="mt-1 text-xs text-slate-500">O valor sai do saldo desta conta e aparece em Contas a pagar.</p>
+                    <p v-if="!bankAccounts.length" class="mt-1 text-xs text-amber-700">
+                        Nenhuma conta bancária ativa. Cadastre uma em Financeiro → Contas bancárias.
+                    </p>
+                    <p v-if="form.errors.bank_account_id" class="mt-1 text-xs text-rose-600">{{ form.errors.bank_account_id }}</p>
+                </div>
+                <div>
                     <label for="commission-payment-notes" class="text-xs font-medium uppercase tracking-wide text-slate-500">
                         Observação
                     </label>
@@ -138,7 +160,7 @@ const submit = () => {
                     <button
                         type="submit"
                         class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
-                        :disabled="form.processing || releasableCents < 1"
+                        :disabled="form.processing || releasableCents < 1 || !form.bank_account_id"
                     >
                         {{ form.processing ? 'Salvando…' : 'Registrar pagamento' }}
                     </button>

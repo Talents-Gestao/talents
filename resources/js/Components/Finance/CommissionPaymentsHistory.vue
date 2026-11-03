@@ -18,7 +18,7 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '
 
 const destroy = (payment) => {
     if (deleting.value) return;
-    if (!window.confirm(`Excluir o pagamento de ${formatBRL(payment.amount_cents)}? O valor volta a ficar liberável.`)) {
+    if (!window.confirm(`Excluir o pagamento de ${formatBRL(payment.amount_cents)}? O lançamento em Contas a pagar também é desfeito e o valor volta ao saldo da conta.`)) {
         return;
     }
     deleting.value = true;
@@ -52,6 +52,9 @@ const destroy = (payment) => {
                     <p class="text-xs text-slate-500">
                         {{ formatDate(payment.paid_at) }}
                         <template v-if="payment.paid_by"> · por {{ payment.paid_by }}</template>
+                        ·
+                        <template v-if="payment.is_legacy">sem conta (legado)</template>
+                        <template v-else>{{ payment.bank_account ?? 'conta removida' }}</template>
                     </p>
                     <p v-if="payment.notes" class="mt-0.5 text-xs text-slate-600">{{ payment.notes }}</p>
                 </div>

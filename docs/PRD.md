@@ -175,13 +175,16 @@ Regras de bloqueio: campanha com **auditoria pendente** (ex.: instrumento HSE-IT
 | Capacidade | Estado |
 |------------|--------|
 | **Resumo** (`FinanceCashflowMetrics`), alimentando também a Home | Implementado |
-| **Vendas**: conversão de proposta, lançamento manual, edição/exclusão com impacto nas parcelas, parcelas com baixa e comprovante | Implementado |
-| **Comissões** por vendedor (várias por venda, percentual por usuário) | Implementado |
+| **Vendas**: conversão de proposta, lançamento manual, edição/exclusão com impacto nas parcelas, parcelas com baixa e comprovante. Parcelas canceladas não entram no total nem no status (todas canceladas → «aberta»). Venda com pagamento de comissão registrado não pode ser excluída | Implementado |
+| **Comissões** por vendedor (várias por venda, percentual por usuário), **proporcionais ao recebido**: teto = percentual × parcelas não canceladas (recalculado quando o total da venda muda); liberável = percentual × valor recebido − já pago (na venda quitada, teto − pago); vários pagamentos por comissão (status a pagar / parcial / paga), limitados ao liberável, sem liberação antecipada; só o último pagamento pode ser excluído (exclusão lógica com autoria). Cálculo centralizado em `CommissionPayoutCalculator` | Implementado |
+| **Pagamento de comissão pela conta bancária**: cada pagamento exige conta ativa e gera uma conta a pagar já baixada (origem comissão), que baixa o saldo da conta; esse lançamento fica travado em Contas a pagar (sem editar, pagar, excluir ou trocar a data) e é desfeito junto ao excluir o último pagamento da comissão. Pagamentos anteriores (legado) aparecem como «sem conta (legado)», sem movimento retroativo. Não entra em `FinanceCashflowMetrics` (o fluxo do Resumo segue só com entradas) | Implementado |
+| **Perda assumida**: se o teto cair abaixo do já pago (parcela cancelada depois do repasse), a comissão fica paga e a diferença é exibida como perda assumida pela empresa, sem cobrança do vendedor; aviso interno `commission_loss_assumed` uma vez por entrada nessa situação; total no período no Resumo e em Comissões | Implementado |
 | **Contas bancárias** (CRUD, saldo, transferência entre contas) | Implementado |
-| **Contas a pagar** (recorrência mensal, baixa, conta vinculada) | Implementado |
+| **Contas a pagar** (recorrência mensal, baixa, conta vinculada; lançamentos de origem comissão travados) | Implementado |
 | **Contas a receber** (ledger unificado: parcelas de venda + recebimentos manuais) | Implementado |
 | **Formas de pagamento** | Implementado |
 | Comando diário `commercial:notify-overdue-installments` (08:15) gera aviso de parcela vencida | Implementado |
+| Comando `commercial:recalculate-sale-statuses` (dry-run por padrão; `--apply` grava): realinha status/total das vendas e teto das comissões de dados legados. **No deploy**: `migrate --force`, rodar o comando sem `--apply`, conferir e então com `--apply` | Implementado |
 
 ### 2.10 Configuração
 

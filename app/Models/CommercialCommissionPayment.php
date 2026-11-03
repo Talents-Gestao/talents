@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -40,5 +41,14 @@ class CommercialCommissionPayment extends Model
     public function deleter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'deleted_by');
+    }
+
+    /**
+     * Conta a pagar baixada que move o saldo bancário. Nula nos pagamentos legados
+     * (anteriores à Fase 2), que não geram movimento retroativo.
+     */
+    public function payable(): HasOne
+    {
+        return $this->hasOne(FinancePayable::class, 'commission_payment_id');
     }
 }

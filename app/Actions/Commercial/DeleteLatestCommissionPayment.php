@@ -6,13 +6,15 @@ namespace App\Actions\Commercial;
 
 use App\Models\CommercialCommission;
 use App\Models\CommercialCommissionPayment;
+use App\Models\FinancePayable;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Desfaz o pagamento mais recente de uma comissão (correção de lançamento).
- * Exclusão lógica: guarda deleted_by e deleted_at para auditoria.
+ * Exclusão lógica: guarda deleted_by e deleted_at para auditoria. A conta a pagar
+ * baixada gerada pelo pagamento é removida na mesma transação (o saldo volta).
  */
 final class DeleteLatestCommissionPayment
 {
@@ -31,6 +33,9 @@ final class DeleteLatestCommissionPayment
                     'payment' => 'Só é possível excluir o pagamento mais recente desta comissão.',
                 ]);
             }
+
+            // Desfaz a saída de caixa junto: a conta a pagar de origem comissão some com o lançamento.
+            FinancePayable::query()->where('commission_payment_id', $payment->id)->delete();
 
             $payment->forceFill(['deleted_by' => $actor?->id])->save();
             $payment->delete();

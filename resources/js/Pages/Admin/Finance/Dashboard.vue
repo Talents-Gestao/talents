@@ -147,6 +147,12 @@ const statusClass = (s) =>
                 :hint="`Liberável agora: ${formatBRL(kpis.commissions_releasable_cents ?? 0)}`"
             />
             <StatCard
+                v-if="(kpis.commissions_loss_assumed_cents ?? 0) > 0"
+                label="Perda assumida (comissões)"
+                :value="formatBRL(kpis.commissions_loss_assumed_cents)"
+                hint="Comissão já paga acima do novo teto no período"
+            />
+            <StatCard
                 label="Saldo em contas"
                 :value="formatBRL(kpis.bank_balance_cents ?? 0)"
                 :hint="`${kpis.bank_accounts_count ?? 0} conta(s) ativa(s)`"
@@ -155,7 +161,7 @@ const statusClass = (s) =>
 
         <div class="mb-8 mt-4 flex flex-wrap gap-4">
             <Link
-                :href="route('admin.financeiro.comissoes.index', { status: 'a_pagar' })"
+                :href="route('admin.financeiro.comissoes.index', { status: 'pendentes' })"
                 class="text-sm font-semibold text-talents-700 hover:underline"
             >
                 Ver comissões pendentes →
