@@ -7,6 +7,7 @@ namespace App\Actions\Notices;
 use App\Enums\CompanyNoticeAudience;
 use App\Enums\CompanyNoticeEventKind;
 use App\Models\CommercialCommission;
+use App\Models\CommercialCommissionPayment;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
@@ -111,19 +112,28 @@ class PublishCommercialNotice
         );
     }
 
-    public function commissionPaid(CommercialCommission $commission, ?User $actor = null): void
-    {
+    /**
+     * Um aviso por pagamento registrado (sem dedupe: dois repasses seguidos são eventos distintos).
+     */
+    public function commissionPaid(
+        CommercialCommission $commission,
+        CommercialCommissionPayment $payment,
+        ?User $actor = null,
+    ): void {
         $sale = $commission->sale;
         $seller = $commission->seller;
+        $remaining = max(0, (int) $commission->amount_cents - (int) $commission->paid_cents);
 
         $this->talents(
-            title: 'Comissão paga',
-            body: "Comissão de «{$seller?->name}» na venda {$sale?->code} foi paga: "
-                .$this->money($commission->amount_cents).'.',
+            title: $remaining === 0 ? 'Comissão paga' : 'Pagamento parcial de comissão',
+            body: "Pagamento de {$this->money($payment->amount_cents)} da comissão de «{$seller?->name}» "
+                ."na venda {$sale?->code}. "
+                .($remaining === 0 ? 'Comissão quitada.' : "Restante: {$this->money($remaining)}."),
             eventKind: CompanyNoticeEventKind::CommissionPaid,
             sourceId: (int) $commission->id,
             actor: $actor,
             sourceType: 'commercial_commission',
+            dedupeWithinMinutes: null,
         );
     }
 

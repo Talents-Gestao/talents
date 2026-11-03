@@ -367,13 +367,15 @@ class ProposalExtraCommissionTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Finance/Sales/Show')
-                ->has('sale.commissions', 2)
-                ->where('sale.commissions', function ($commissions) use ($fernanda, $isa) {
-                    $bySeller = collect($commissions)->keyBy('seller_id');
+                ->has('commission_payouts', 2)
+                ->where('commission_payouts', function ($commissions) use ($fernanda, $isa) {
+                    $bySeller = collect($commissions)->keyBy(fn ($c) => $c['seller']['id']);
 
                     return (int) ($bySeller[$fernanda->id]['amount_cents'] ?? 0) === 1_000
-                        && (int) ($bySeller[$isa->id]['amount_cents'] ?? 0) === 500;
-                }));
+                        && (int) ($bySeller[$isa->id]['amount_cents'] ?? 0) === 500
+                        && (int) $bySeller[$isa->id]['releasable_cents'] === 0;
+                })
+                ->where('commission_can.register_payment', true));
     }
 
     public function test_sales_index_counts_all_payable_commissions_for_destroy_warning(): void
@@ -441,7 +443,7 @@ class ProposalExtraCommissionTest extends TestCase
                 ->where('summary.pending_cents', 500));
     }
 
-    public function test_extra_commission_cannot_be_marked_paid_until_sale_is_settled(): void
+    public function test_extra_commission_payment_is_limited_to_releasable_amount(): void
     {
         [$admin, $fernanda, $isa] = $this->team();
         $proposal = $this->closedProposal($fernanda, [
@@ -461,27 +463,38 @@ class ProposalExtraCommissionTest extends TestCase
         $extra = $sale->commissions()->where('seller_id', $isa->id)->first();
         $this->assertNotNull($extra);
 
+        // Nada recebido: liberável zero.
         $this->actingAs($admin)
             ->from(route('admin.financeiro.comissoes.index'))
-            ->patch(route('admin.financeiro.comissoes.update', $extra), [
-                'status' => CommercialCommission::STATUS_PAGA,
+            ->post(route('admin.financeiro.comissoes.pagamentos.store', $extra), [
+                'amount' => '1.00',
                 'paid_at' => now()->toDateString(),
             ])
             ->assertRedirect(route('admin.financeiro.comissoes.index'))
-            ->assertSessionHasErrors('status');
+            ->assertSessionHasErrors('amount');
 
         $this->settleSale($sale);
 
+        // Acima do liberável (R$ 5,00): recusado.
         $this->actingAs($admin)
             ->from(route('admin.financeiro.comissoes.index'))
-            ->patch(route('admin.financeiro.comissoes.update', $extra), [
-                'status' => CommercialCommission::STATUS_PAGA,
+            ->post(route('admin.financeiro.comissoes.pagamentos.store', $extra), [
+                'amount' => '5.01',
+                'paid_at' => now()->toDateString(),
+            ])
+            ->assertSessionHasErrors('amount');
+
+        $this->actingAs($admin)
+            ->from(route('admin.financeiro.comissoes.index'))
+            ->post(route('admin.financeiro.comissoes.pagamentos.store', $extra), [
+                'amount' => '5.00',
                 'paid_at' => now()->toDateString(),
             ])
             ->assertRedirect(route('admin.financeiro.comissoes.index'))
             ->assertSessionHas('success');
 
         $this->assertSame(CommercialCommission::STATUS_PAGA, $extra->fresh()->status);
+        $this->assertSame(500, (int) $extra->fresh()->paid_cents);
         $this->assertSame(
             CommercialCommission::STATUS_A_PAGAR,
             $sale->commissions()->where('seller_id', $fernanda->id)->value('status'),

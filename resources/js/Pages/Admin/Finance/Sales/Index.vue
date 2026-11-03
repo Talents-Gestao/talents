@@ -13,6 +13,7 @@ const props = defineProps({
     filters: { type: Object, default: () => ({}) },
     sellers: { type: Array, default: () => [] },
     statusOptions: { type: Object, default: () => ({}) },
+    destroyBlockedMessage: { type: String, default: '' },
 });
 
 const page = usePage();
@@ -55,6 +56,10 @@ const statusClass = (s) =>
 const destroyModalOpen = ref(false);
 const destroyTarget = ref(null);
 const destroying = ref(false);
+const destroyError = ref('');
+
+// paid_commissions_count = comissões com algum pagamento registrado (servidor).
+const targetHasPaidCommission = computed(() => Number(destroyTarget.value?.paid_commissions_count ?? 0) > 0);
 
 const destroyImpactItems = computed(() => {
     const sale = destroyTarget.value;
@@ -103,6 +108,7 @@ const destroyImpactItems = computed(() => {
 
 const openDestroy = (sale) => {
     destroyTarget.value = sale;
+    destroyError.value = Number(sale.paid_commissions_count ?? 0) > 0 ? props.destroyBlockedMessage : '';
     destroyModalOpen.value = true;
 };
 
@@ -116,16 +122,23 @@ const closeDestroyModal = () => {
 
 const confirmDestroy = () => {
     const sale = destroyTarget.value;
-    if (!sale || destroying.value) {
+    if (!sale || destroying.value || targetHasPaidCommission.value) {
         return;
     }
     destroying.value = true;
+    destroyError.value = '';
     router.delete(route('admin.financeiro.vendas.destroy', sale.id), {
         preserveScroll: true,
-        onFinish: () => {
-            destroying.value = false;
+        onSuccess: () => {
             destroyModalOpen.value = false;
             destroyTarget.value = null;
+        },
+        // Mantém o modal aberto com a mensagem do servidor (ex.: comissão paga).
+        onError: (errors) => {
+            destroyError.value = errors.sale ?? Object.values(errors)[0] ?? 'Não foi possível excluir a venda.';
+        },
+        onFinish: () => {
+            destroying.value = false;
         },
     });
 };
@@ -329,6 +342,13 @@ const confirmDestroy = () => {
                         </li>
                     </ul>
                 </template>
+                <p
+                    v-if="destroyError"
+                    role="alert"
+                    class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-800"
+                >
+                    {{ destroyError }}
+                </p>
                 <div class="mt-6 flex justify-end gap-2">
                     <button
                         type="button"
@@ -341,7 +361,7 @@ const confirmDestroy = () => {
                     <button
                         type="button"
                         class="inline-flex items-center rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-60"
-                        :disabled="destroying"
+                        :disabled="destroying || targetHasPaidCommission"
                         @click="confirmDestroy"
                     >
                         {{ destroying ? 'Excluindo…' : 'Excluir venda' }}

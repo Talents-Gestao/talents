@@ -141,7 +141,11 @@ const statusClass = (s) =>
             <StatCard label="A receber" :value="formatBRL(kpis.receivable_cents)" />
             <StatCard label="Recebido no período" :value="formatBRL(kpis.received_cents)" />
             <StatCard label="Vencidos" :value="formatBRL(kpis.overdue_cents)" />
-            <StatCard label="Comissões a pagar" :value="formatBRL(kpis.commissions_pending_cents)" />
+            <StatCard
+                label="Comissões a pagar"
+                :value="formatBRL(kpis.commissions_pending_cents)"
+                :hint="`Liberável agora: ${formatBRL(kpis.commissions_releasable_cents ?? 0)}`"
+            />
             <StatCard
                 label="Saldo em contas"
                 :value="formatBRL(kpis.bank_balance_cents ?? 0)"

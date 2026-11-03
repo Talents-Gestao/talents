@@ -1,9 +1,12 @@
 <script setup>
+import CommissionPaymentModal from '@/Components/Finance/CommissionPaymentModal.vue';
+import CommissionPaymentsHistory from '@/Components/Finance/CommissionPaymentsHistory.vue';
+import CommissionStatusBadge from '@/Components/Finance/CommissionStatusBadge.vue';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { PencilSquareIcon } from '@heroicons/vue/24/outline';
+import { ChevronDownIcon, ChevronRightIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
 import { reactive, ref } from 'vue';
 
 const props = defineProps({
@@ -12,6 +15,7 @@ const props = defineProps({
     filters: { type: Object, default: () => ({}) },
     sellers: { type: Array, default: () => [] },
     statusOptions: { type: Object, default: () => ({}) },
+    can: { type: Object, default: () => ({ register_payment: false, delete_payment: false }) },
 });
 
 const filterState = reactive({
@@ -35,52 +39,40 @@ const clearFilters = () => {
     applyFilters();
 };
 
-const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
-
-const statusLabel = (s) => props.statusOptions[s] ?? s;
-
-const statusClass = (s) =>
-    ({
-        a_pagar: 'bg-amber-100 text-amber-800',
-        paga: 'bg-emerald-100 text-emerald-800',
-    }[s] ?? 'bg-slate-100 text-slate-600');
-
-const editModalOpen = ref(false);
-const selectedCommission = ref(null);
-
-const editForm = useForm({
-    status: 'a_pagar',
-    paid_at: new Date().toISOString().slice(0, 10),
-    notes: '',
-});
-
-const openEditModal = (commission) => {
-    selectedCommission.value = commission;
-    editForm.status = commission.status;
-    editForm.paid_at = commission.paid_at
-        ? new Date(commission.paid_at).toISOString().slice(0, 10)
-        : new Date().toISOString().slice(0, 10);
-    editForm.notes = commission.notes ?? '';
-    editModalOpen.value = true;
+const expanded = ref(new Set());
+const toggleHistory = (id) => {
+    const next = new Set(expanded.value);
+    next.has(id) ? next.delete(id) : next.add(id);
+    expanded.value = next;
 };
 
-const closeEditModal = () => {
-    editModalOpen.value = false;
-    selectedCommission.value = null;
-    editForm.reset();
+// Guarda só o id: depois de registrar/excluir, a linha é recarregada do servidor.
+const paymentTargetId = ref(null);
+const paymentTarget = () => props.commissions.data?.find((c) => c.id === paymentTargetId.value) ?? null;
+
+const notesModalOpen = ref(false);
+const notesTarget = ref(null);
+const notesForm = useForm({ notes: '' });
+
+const openNotes = (commission) => {
+    notesTarget.value = commission;
+    notesForm.notes = commission.notes ?? '';
+    notesForm.clearErrors();
+    notesModalOpen.value = true;
 };
 
-const submitEdit = () => {
-    if (!selectedCommission.value) return;
-    editForm.patch(route('admin.financeiro.comissoes.update', selectedCommission.value.id), {
+const closeNotes = () => {
+    notesModalOpen.value = false;
+    notesTarget.value = null;
+};
+
+const submitNotes = () => {
+    if (!notesTarget.value) return;
+    notesForm.patch(route('admin.financeiro.comissoes.update', notesTarget.value.id), {
         preserveScroll: true,
-        onSuccess: () => closeEditModal(),
+        onSuccess: () => closeNotes(),
     });
 };
-
-const canMarkSelectedCommissionPaid = () =>
-    selectedCommission.value?.sale?.status === 'quitada'
-    || selectedCommission.value?.status === 'paga';
 </script>
 
 <template>
@@ -93,7 +85,8 @@ const canMarkSelectedCommissionPaid = () =>
                     <p class="text-sm text-slate-500">Financeiro</p>
                     <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Comissões</h2>
                     <p class="mt-1 max-w-2xl text-sm text-slate-600">
-                        Visão central das comissões geradas na conversão de propostas em vendas.
+                        O repasse acompanha o recebimento: o liberável é o percentual sobre o que a venda já recebeu,
+                        menos o que já foi pago.
                     </p>
                 </div>
             </div>
@@ -103,15 +96,18 @@ const canMarkSelectedCommissionPaid = () =>
             <div class="surface-card p-5">
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-500">A pagar</p>
                 <p class="mt-2 text-2xl font-bold tabular-nums text-amber-800">{{ formatBRL(summary.pending_cents) }}</p>
-                <p class="mt-1 text-sm text-slate-600">{{ summary.pending_count }} comissão(ões) pendente(s)</p>
+                <p class="mt-1 text-sm text-slate-600">{{ summary.pending_count }} comissão(ões) com saldo</p>
+            </div>
+            <div class="surface-card p-5">
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Liberável agora</p>
+                <p class="mt-2 text-2xl font-bold tabular-nums text-talents-700">{{ formatBRL(summary.releasable_cents) }}</p>
+                <p class="mt-1 text-sm text-slate-600">Proporcional ao que já foi recebido</p>
             </div>
             <div class="surface-card p-5">
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Pagas (filtro atual)</p>
                 <p class="mt-2 text-2xl font-bold tabular-nums text-emerald-800">{{ formatBRL(summary.paid_cents) }}</p>
-            </div>
-            <div class="surface-card flex items-center p-5">
-                <p class="text-sm text-slate-600">
-                    Marque como <strong>paga</strong> ao efetuar o repasse ao vendedor, depois que a venda estiver quitada.
+                <p v-if="summary.over_ceiling_count" class="mt-1 text-sm font-medium text-rose-700">
+                    {{ summary.over_ceiling_count }} comissão(ões) pagas acima do teto
                 </p>
             </div>
         </div>
@@ -170,51 +166,92 @@ const canMarkSelectedCommissionPaid = () =>
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                         <tr>
+                            <th class="w-8 px-2 py-3"><span class="sr-only">Histórico</span></th>
                             <th class="px-4 py-3 text-left font-medium">Cliente</th>
                             <th class="px-4 py-3 text-left font-medium">Vendedor</th>
-                            <th class="px-4 py-3 text-right font-medium">Base</th>
                             <th class="px-4 py-3 text-right font-medium">%</th>
-                            <th class="px-4 py-3 text-right font-medium">Comissão</th>
+                            <th class="px-4 py-3 text-right font-medium">Total</th>
+                            <th class="px-4 py-3 text-right font-medium">Pago</th>
+                            <th class="px-4 py-3 text-right font-medium">Liberável</th>
                             <th class="px-4 py-3 text-left font-medium">Status</th>
-                            <th class="px-4 py-3 text-right font-medium">Gerada</th>
-                            <th class="px-4 py-3 text-right font-medium">Paga em</th>
                             <th class="px-4 py-3 text-right font-medium">Ações</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white">
-                        <tr v-for="c in commissions.data" :key="c.id" class="hover:bg-slate-50">
-                            <td class="px-4 py-3 font-medium">
-                                <Link
-                                    v-if="c.sale"
-                                    :href="route('admin.financeiro.vendas.show', c.sale.id)"
-                                    class="text-talents-700 hover:underline"
-                                >
-                                    {{ c.sale.client_name ?? 'Ver venda' }}
-                                </Link>
-                                <span v-else>{{ c.sale?.client_name ?? '—' }}</span>
-                            </td>
-                            <td class="px-4 py-3 text-slate-600">{{ c.seller?.name ?? '—' }}</td>
-                            <td class="px-4 py-3 text-right tabular-nums text-slate-600">{{ formatBRL(c.base_cents) }}</td>
-                            <td class="px-4 py-3 text-right tabular-nums text-slate-600">{{ c.percent }}%</td>
-                            <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ formatBRL(c.amount_cents) }}</td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium" :class="statusClass(c.status)">
-                                    {{ statusLabel(c.status) }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3 text-right text-xs text-slate-500">{{ formatDate(c.created_at) }}</td>
-                            <td class="px-4 py-3 text-right text-xs text-slate-500">{{ formatDate(c.paid_at) }}</td>
-                            <td class="px-4 py-3 text-right">
-                                <button
-                                    type="button"
-                                    class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-                                    title="Atualizar comissão"
-                                    @click="openEditModal(c)"
-                                >
-                                    <PencilSquareIcon class="h-4 w-4" />
-                                </button>
-                            </td>
-                        </tr>
+                        <template v-for="c in commissions.data" :key="c.id">
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-2 py-3">
+                                    <button
+                                        type="button"
+                                        class="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                                        :aria-expanded="expanded.has(c.id)"
+                                        :aria-label="expanded.has(c.id) ? 'Ocultar histórico de pagamentos' : 'Ver histórico de pagamentos'"
+                                        @click="toggleHistory(c.id)"
+                                    >
+                                        <ChevronDownIcon v-if="expanded.has(c.id)" class="h-4 w-4" />
+                                        <ChevronRightIcon v-else class="h-4 w-4" />
+                                    </button>
+                                </td>
+                                <td class="px-4 py-3 font-medium">
+                                    <Link
+                                        v-if="c.sale"
+                                        :href="route('admin.financeiro.vendas.show', c.sale.id)"
+                                        class="text-talents-700 hover:underline"
+                                    >
+                                        {{ c.sale.client_name || 'Ver venda' }}
+                                    </Link>
+                                    <span v-else>—</span>
+                                    <p v-if="c.sale" class="text-xs font-normal text-slate-500">
+                                        {{ c.sale.code }} · recebido {{ formatBRL(c.sale.received_cents) }} de {{ formatBRL(c.sale.total_cents) }}
+                                    </p>
+                                </td>
+                                <td class="px-4 py-3 text-slate-600">{{ c.seller?.name ?? '—' }}</td>
+                                <td class="px-4 py-3 text-right tabular-nums text-slate-600">{{ c.percent }}%</td>
+                                <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ formatBRL(c.amount_cents) }}</td>
+                                <td class="px-4 py-3 text-right tabular-nums text-slate-700">
+                                    {{ formatBRL(c.paid_cents) }}
+                                    <p v-if="c.over_ceiling" class="text-xs font-medium text-rose-700">
+                                        Pago acima do teto: {{ formatBRL(c.over_ceiling_cents) }}
+                                    </p>
+                                </td>
+                                <td class="px-4 py-3 text-right tabular-nums font-semibold text-talents-700">
+                                    {{ formatBRL(c.releasable_cents) }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <CommissionStatusBadge :status="c.status" :label="c.status_label" />
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center justify-end gap-1">
+                                        <button
+                                            v-if="can.register_payment"
+                                            type="button"
+                                            class="rounded-lg bg-talents-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-talents-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                            :disabled="c.releasable_cents < 1"
+                                            :title="c.releasable_cents < 1 ? 'Nada liberável agora' : 'Registrar pagamento'"
+                                            @click="paymentTargetId = c.id"
+                                        >
+                                            Registrar pagamento
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                                            title="Observações"
+                                            aria-label="Editar observações"
+                                            @click="openNotes(c)"
+                                        >
+                                            <PencilSquareIcon class="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr v-if="expanded.has(c.id)" class="bg-slate-50/60">
+                                <td />
+                                <td colspan="8" class="px-4 py-3">
+                                    <p class="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Pagamentos</p>
+                                    <CommissionPaymentsHistory :commission="c" />
+                                </td>
+                            </tr>
+                        </template>
                         <tr v-if="!commissions.data?.length">
                             <td colspan="9" class="px-4 py-10 text-center text-slate-500">Nenhuma comissão encontrada.</td>
                         </tr>
@@ -239,66 +276,39 @@ const canMarkSelectedCommissionPaid = () =>
             </div>
         </div>
 
-        <FullScreenOverlay
-            :show="editModalOpen && !!selectedCommission"
-            @close="closeEditModal"
-        >
-            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-                <h3 class="text-lg font-semibold text-slate-900">Atualizar comissão</h3>
-                <p class="mt-1 text-sm text-slate-600">
-                    {{ selectedCommission.sale?.client_name ?? 'Comissão' }} — {{ formatBRL(selectedCommission.amount_cents) }}
-                </p>
+        <CommissionPaymentModal
+            :show="paymentTargetId !== null"
+            :commission="paymentTarget()"
+            @close="paymentTargetId = null"
+        />
 
-                <form class="mt-4 space-y-4" @submit.prevent="submitEdit">
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
-                        <select
-                            v-model="editForm.status"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        >
-                            <option value="a_pagar">A pagar</option>
-                            <option value="paga" :disabled="!canMarkSelectedCommissionPaid()">Paga</option>
-                        </select>
-                        <p
-                            v-if="selectedCommission.sale?.status !== 'quitada' && selectedCommission.status !== 'paga'"
-                            class="mt-1 text-xs text-amber-700"
-                        >
-                            A venda precisa estar quitada antes de marcar a comissão como paga.
-                        </p>
-                        <p v-if="editForm.errors.status" class="mt-1 text-xs text-rose-600">
-                            {{ editForm.errors.status }}
-                        </p>
-                    </div>
-                    <div v-if="editForm.status === 'paga'">
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Paga em</label>
-                        <input
-                            v-model="editForm.paid_at"
-                            type="date"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        />
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Observações</label>
-                        <textarea
-                            v-model="editForm.notes"
-                            rows="2"
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        />
-                    </div>
-                    <div class="flex justify-end gap-2 pt-2">
+        <FullScreenOverlay :show="notesModalOpen && !!notesTarget" @close="closeNotes">
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                <h3 class="text-lg font-semibold text-slate-900">Observações da comissão</h3>
+                <p class="mt-1 text-sm text-slate-600">
+                    {{ notesTarget?.sale?.client_name ?? 'Comissão' }} — {{ notesTarget?.seller?.name ?? '—' }}
+                </p>
+                <form class="mt-4 space-y-4" @submit.prevent="submitNotes">
+                    <textarea
+                        v-model="notesForm.notes"
+                        rows="3"
+                        class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    />
+                    <p v-if="notesForm.errors.notes" class="text-xs text-rose-600">{{ notesForm.errors.notes }}</p>
+                    <div class="flex justify-end gap-2">
                         <button
                             type="button"
                             class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                            @click="closeEditModal"
+                            @click="closeNotes"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             class="rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-700 disabled:opacity-50"
-                            :disabled="editForm.processing"
+                            :disabled="notesForm.processing"
                         >
-                            {{ editForm.processing ? 'Salvando…' : 'Salvar' }}
+                            {{ notesForm.processing ? 'Salvando…' : 'Salvar' }}
                         </button>
                     </div>
                 </form>

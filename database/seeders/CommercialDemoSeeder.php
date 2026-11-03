@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Actions\Commercial\RefreshCommissionPayout;
 use App\Models\CommercialCommission;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
@@ -393,15 +394,19 @@ class CommercialDemoSeeder extends Seeder
             return;
         }
 
-        $commission->update([
-            'status' => $status,
-            'paid_at' => $status === CommercialCommission::STATUS_PAGA ? ($paidAt ?? now()) : null,
-            'notes' => $notes ?? $commission->notes,
-        ]);
+        $commission->update(['notes' => $notes ?? $commission->notes]);
 
-        if ($status === CommercialCommission::STATUS_A_PAGAR) {
-            $commission->update(['paid_at' => null]);
+        // Status e paid_cents são derivados dos pagamentos (comissão proporcional).
+        $commission->payments()->withTrashed()->forceDelete();
+        if ($status === CommercialCommission::STATUS_PAGA) {
+            $commission->payments()->create([
+                'amount_cents' => (int) $commission->amount_cents,
+                'paid_at' => $paidAt ?? now(),
+                'notes' => $notes,
+            ]);
         }
+
+        app(RefreshCommissionPayout::class)->forCommission($commission);
     }
 
     private function touchCommissionCreatedAt(CommercialSale $sale, Carbon $createdAt): void

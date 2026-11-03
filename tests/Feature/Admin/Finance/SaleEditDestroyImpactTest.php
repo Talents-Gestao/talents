@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin\Finance;
 
+use App\Actions\Commercial\RefreshCommissionPayout;
+use App\Http\Controllers\Admin\Finance\SaleController;
 use App\Models\CommercialCommission;
+use App\Models\CommercialCommissionPayment;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
@@ -62,12 +65,13 @@ class SaleEditDestroyImpactTest extends TestCase
         $this->assertTrue($fresh->installments()->where('status', CommercialSaleInstallment::STATUS_PAGO)->exists());
     }
 
-    public function test_can_delete_sale_removes_installments_and_commission_keeps_proposal(): void
+    public function test_can_delete_sale_with_unpaid_commission_removes_installments_and_commission_keeps_proposal(): void
     {
         $this->withoutVite();
 
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
         $sale = $this->saleWithProposalAndCommission();
+        $this->assertSame(CommercialCommission::STATUS_A_PAGAR, $sale->commission->status);
         $saleId = $sale->id;
         $proposalId = (int) $sale->proposal_id;
         $installmentId = (int) $sale->installments()->value('id');
@@ -87,6 +91,115 @@ class SaleEditDestroyImpactTest extends TestCase
         $this->assertNotNull($proposal);
         $this->assertTrue((bool) $proposal->is_closed);
         $this->assertFalse($proposal->sale()->exists());
+    }
+
+    public function test_cannot_delete_sale_with_fully_paid_commission(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $sale = $this->saleWithProposalAndCommission();
+        $this->addPayment($sale->commission, 1_200);
+
+        $this->actingAs($admin)
+            ->from(route('admin.financeiro.vendas.show', $sale))
+            ->delete(route('admin.financeiro.vendas.destroy', $sale))
+            ->assertRedirect(route('admin.financeiro.vendas.show', $sale))
+            ->assertSessionHasErrors(['sale' => SaleController::PAID_COMMISSION_DESTROY_MESSAGE]);
+
+        $this->assertTrue(CommercialSale::query()->whereKey($sale->id)->exists());
+        $this->assertSame(1, CommercialSaleInstallment::query()->where('sale_id', $sale->id)->count());
+        $this->assertSame(
+            CommercialCommission::STATUS_PAGA,
+            CommercialCommission::query()->whereKey($sale->commission->id)->value('status'),
+        );
+    }
+
+    public function test_cannot_delete_sale_with_partially_paid_commission(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $sale = $this->saleWithProposalAndCommission();
+        $this->addPayment($sale->commission, 100);
+        $this->assertSame(CommercialCommission::STATUS_PARCIAL, $sale->commission->fresh()->status);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.financeiro.vendas.destroy', $sale))
+            ->assertSessionHasErrors(['sale' => SaleController::PAID_COMMISSION_DESTROY_MESSAGE]);
+
+        $this->assertTrue(CommercialSale::query()->whereKey($sale->id)->exists());
+    }
+
+    public function test_cannot_delete_sale_when_only_extra_commission_has_payment(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $sale = $this->saleWithProposalAndCommission();
+        $extra = User::factory()->superAdmin()->create(['commission_percent' => 5]);
+        $extraCommission = CommercialCommission::query()->create([
+            'sale_id' => $sale->id,
+            'seller_id' => $extra->id,
+            'amount_cents' => 600,
+            'status' => CommercialCommission::STATUS_A_PAGAR,
+        ]);
+        $this->addPayment($extraCommission, 300);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.financeiro.vendas.destroy', $sale))
+            ->assertSessionHasErrors('sale');
+
+        $this->assertTrue(CommercialSale::query()->whereKey($sale->id)->exists());
+        $this->assertSame(2, CommercialCommission::query()->where('sale_id', $sale->id)->count());
+    }
+
+    public function test_can_delete_sale_whose_commission_payments_were_all_undone(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $sale = $this->saleWithProposalAndCommission();
+        $payment = $this->addPayment($sale->commission, 1_200);
+        $payment->forceFill(['deleted_by' => $admin->id])->save();
+        $payment->delete();
+
+        $this->actingAs($admin)
+            ->delete(route('admin.financeiro.vendas.destroy', $sale))
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.financeiro.vendas.index'));
+
+        $this->assertFalse(CommercialSale::query()->whereKey($sale->id)->exists());
+        $this->assertFalse(CommercialCommissionPayment::withTrashed()->whereKey($payment->id)->exists());
+    }
+
+    public function test_sales_index_exposes_paid_commissions_count(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $sale = $this->saleWithProposalAndCommission();
+        $this->addPayment($sale->commission, 100);
+
+        $this->actingAs($admin)
+            ->get(route('admin.financeiro.vendas.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Finance/Sales/Index')
+                ->where('sales.data.0.id', $sale->id)
+                ->where('sales.data.0.paid_commissions_count', 1)
+                ->where('destroyBlockedMessage', SaleController::PAID_COMMISSION_DESTROY_MESSAGE));
+    }
+
+    private function addPayment(CommercialCommission $commission, int $cents): CommercialCommissionPayment
+    {
+        $payment = $commission->payments()->create([
+            'amount_cents' => $cents,
+            'paid_at' => now(),
+        ]);
+        app(RefreshCommissionPayout::class)->forCommission($commission);
+
+        return $payment;
     }
 
     private function saleWithProposalAndCommission(): CommercialSale
