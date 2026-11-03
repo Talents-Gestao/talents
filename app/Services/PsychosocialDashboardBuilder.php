@@ -25,17 +25,6 @@ class PsychosocialDashboardBuilder
 
     public const POLARITY_WARNING = 'Polaridade não revalidada';
 
-    public const BAND_LABELS = [
-        'green' => 'Leve',
-        'yellow' => 'Moderado',
-        'red' => 'Grave',
-    ];
-
-    public const LEGENDS = [
-        SurveyMethodVersion::CODE_PRODUCTION_V1 => 'até 2,33 Leve · acima de 2,33 até 3,66 Moderado · acima de 3,66 Grave',
-        SurveyMethodVersion::CODE_TALENTS39_V1 => '1,00–2,33 Menor sinalização · 2,34–3,66 Atenção · 3,67–5,00 Maior sinalização',
-    ];
-
     /** Método da campanha em montagem; define os rótulos de exibição das faixas. */
     private string $methodCode = SurveyMethodVersion::CODE_PRODUCTION_V1;
 
@@ -111,7 +100,7 @@ class PsychosocialDashboardBuilder
             'method' => [
                 'code' => $methodCode,
                 'label' => $survey->methodVersion?->label,
-                'legend' => self::LEGENDS[$methodCode] ?? self::LEGENDS[SurveyMethodVersion::CODE_PRODUCTION_V1],
+                'legend' => Nr1BandLabels::legend($methodCode),
             ],
             'band_disclaimer' => self::BAND_DISCLAIMER,
             'polarity_warning' => $survey->instrumentVersion?->isPolarityAuditPending() ? self::POLARITY_WARNING : null,

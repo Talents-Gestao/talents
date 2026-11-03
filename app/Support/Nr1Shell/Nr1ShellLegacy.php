@@ -19,6 +19,7 @@ use App\Models\SurveyCampaignRegistration;
 use App\Models\User;
 use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\SurveyResultsPresenter;
+use App\Support\Nr1BandLabels;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1RiskScenarioResolver;
 use Illuminate\Http\Request;
@@ -103,6 +104,7 @@ final class Nr1ShellLegacy
     {
         $presented = SurveyResultsPresenter::forSurvey($survey);
         $overall = $presented['overall'];
+        $bandLabels = $presented['bandLabels'];
         $plan = ActionPlan::query()->where('survey_id', $survey->id)->where('company_id', $survey->company_id)->first();
         $published = $plan?->admin_published_at !== null;
 
@@ -120,7 +122,8 @@ final class Nr1ShellLegacy
             'overall' => [
                 'score_label' => number_format((float) $overall->average_score, 2, ',', ''),
                 'risk_level' => (string) $overall->risk_level,
-                'band_label' => Nr1ShellPageData::BAND_LABELS[$overall->risk_level] ?? (string) $overall->risk_level,
+                'band_label' => $bandLabels[$overall->risk_level] ?? (string) $overall->risk_level,
+                'band_labels' => $bandLabels,
             ],
             'participation' => $hideParticipation
                 ? ['hidden' => true, 'message' => self::insufficient($minGroup)]
@@ -166,6 +169,7 @@ final class Nr1ShellLegacy
                 'title' => $row->meta['section_title'] ?? $row->section?->title ?? '—',
                 'score_label' => number_format((float) $row->average_score, 2, ',', ''),
                 'risk_level' => $row->risk_level,
+                'band_label' => $bandLabels[$row->risk_level] ?? (string) $row->risk_level,
                 'bar_percent' => round(((float) $row->average_score - 1) / 4 * 100, 1),
             ])->values()->all(),
         ];
@@ -226,7 +230,7 @@ final class Nr1ShellLegacy
             : self::capture(fn () => app(SurveyResultsController::class)->show($request, $survey), $request);
 
         $panel = array_intersect_key($props, array_flip([
-            'survey', 'overall', 'bySection', 'deptOveralls', 'deptSectionsByDepartment', 'insights',
+            'survey', 'bandLabels', 'overall', 'bySection', 'deptOveralls', 'deptSectionsByDepartment', 'insights',
             'questionDistributions', 'departmentParticipation', 'questionDistributionsByDepartment',
         ]));
 

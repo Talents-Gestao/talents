@@ -119,7 +119,7 @@
             </span>
             <p class="muted" style="margin: 6px 0 0;">
                 Respondentes: {{ $overall['respondent_count'] }}
-                · Faixas: 1,00–2,33 leve · 2,34–3,66 moderado · 3,67–5,00 grave
+                · Faixas: 1,00–2,33 {{ mb_strtolower($bandLabels['green']) }} · 2,34–3,66 {{ mb_strtolower($bandLabels['yellow']) }} · 3,67–5,00 {{ mb_strtolower($bandLabels['red']) }}
             </p>
         </div>
     @else

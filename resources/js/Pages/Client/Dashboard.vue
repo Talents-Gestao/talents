@@ -23,6 +23,7 @@ const greeting = useDashboardGreeting();
 const props = defineProps({
     activeSurveys: Number,
     lastSurvey: Object,
+    bandLabels: { type: Object, required: true },
     overallRisk: Object,
     lastCampaign: {
         type: Object,
@@ -262,7 +263,7 @@ const attentionHref = computed(() => {
                         <span class="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white ring-1 ring-white/20">
                             Média {{ Number(overallRisk.average_score).toFixed(2) }} / 5
                         </span>
-                        <HealthBadge :risk-level="overallRisk.risk_level" />
+                        <HealthBadge :risk-level="overallRisk.risk_level" :band-labels="bandLabels" />
                     </div>
                     <div v-if="lastCampaign.completion_rate !== null && lastCampaign.completion_rate !== undefined" class="mt-5 max-w-md">
                         <p class="text-xs font-medium text-slate-400">Taxa de conclusão das respostas</p>
@@ -331,7 +332,7 @@ const attentionHref = computed(() => {
                     <li v-for="(row, idx) in lastCampaign.section_results" :key="idx" class="dashboard-inset-list-item">
                         <div class="flex items-start justify-between gap-2">
                             <p class="text-sm font-semibold text-slate-900">{{ row.section_name }}</p>
-                            <HealthBadge :risk-level="row.risk_level" />
+                            <HealthBadge :risk-level="row.risk_level" :band-labels="bandLabels" />
                         </div>
                         <p class="mt-1 text-xs text-slate-600">Média {{ Number(row.average_score).toFixed(1) }}</p>
                     </li>

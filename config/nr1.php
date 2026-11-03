@@ -28,12 +28,6 @@ return [
         'yellow_max' => 3.66,
     ],
 
-    'risk_labels' => [
-        'green' => 'Leve',
-        'yellow' => 'Moderado',
-        'red' => 'Grave',
-    ],
-
     /*
     | Benchmark médio de risco estimado por segmento (escala Likert 1–5).
     */

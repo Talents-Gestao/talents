@@ -13,6 +13,7 @@ use App\Models\SurveyResult;
 use App\Models\User;
 use App\Services\PsychosocialDashboardBuilder;
 use App\Services\SurveyResultsPresenter;
+use App\Support\Nr1BandLabels;
 use App\Support\Nr1InstrumentMatrix;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -208,7 +209,7 @@ class PsychosocialDashboardPhaseFiveTest extends TestCase
         $this->assertSame('2.414', $dashboard['overall']['score']);
         $this->assertSame('Moderado', $dashboard['overall']['band_label']);
         $this->assertSame(PsychosocialDashboardBuilder::BAND_DISCLAIMER, $dashboard['band_disclaimer']);
-        $this->assertSame(PsychosocialDashboardBuilder::LEGENDS['production_v1'], $dashboard['method']['legend']);
+        $this->assertSame(Nr1BandLabels::legend('production_v1'), $dashboard['method']['legend']);
     }
 
     public function test_age_and_tenure_never_reach_payload_or_new_exports(): void

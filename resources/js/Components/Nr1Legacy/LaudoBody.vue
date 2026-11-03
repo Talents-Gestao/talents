@@ -23,6 +23,7 @@ marked.setOptions({ breaks: true, gfm: true });
 const props = defineProps({
     company: Object,
     survey: Object,
+    bandLabels: { type: Object, required: true },
     overall: { type: Object, default: null },
     bySection: { type: Array, default: () => [] },
     deptOveralls: { type: Array, default: () => [] },
@@ -554,6 +555,7 @@ defineExpose({
 
         <Nr1SurveyResultsPanel
             :survey="survey"
+            :band-labels="bandLabels"
             :overall="overall"
             :by-section="bySection"
             :dept-overalls="deptOveralls"

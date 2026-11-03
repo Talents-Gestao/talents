@@ -14,6 +14,7 @@ use App\Models\SurveyTemplateSection;
 use App\Services\PsychosocialDashboardBuilder;
 use App\Services\SurveyResultCalculator;
 use App\Services\SurveyResultsPresenter;
+use App\Support\Nr1BandLabels;
 use App\Support\Nr1PooledItemScore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -292,7 +293,7 @@ class Nr1Talents39CalculationPhaseSixTest extends TestCase
         $this->assertSame((float) $presented['overall']->average_score, (float) $dashboard['overall']['score']);
         $this->assertSame(2.6, (float) $dashboard['overall']['score']);
         $this->assertSame('Atenção', $dashboard['overall']['band_label']);
-        $this->assertSame(PsychosocialDashboardBuilder::LEGENDS[SurveyMethodVersion::CODE_TALENTS39_V1], $dashboard['method']['legend']);
+        $this->assertSame(Nr1BandLabels::legend(SurveyMethodVersion::CODE_TALENTS39_V1), $dashboard['method']['legend']);
     }
 
     public function test_new_campaign_without_explicit_method_is_born_production_v1(): void
