@@ -61,3 +61,13 @@ docker compose --profile tools run --rm node npm run test:js # testes JS (node -
 - PHPUnit: `tests/Feature` e `tests/Unit`, SQLite em memória; `QUEUE_CONNECTION=sync`, então testes que disparam jobs de IA precisam de `Queue::fake()`. Chaves de IA/ZapSign/Solides são forçadas a valores falsos/vazios em `phpunit.xml`.
 - JS: apenas lógica pura em `tests/JavaScript/*.test.mjs` (runner nativo `node --test`); não há E2E.
 - Checklist manual de go-live em `SMOKE_CHECKLIST.md`; usuários de demonstração em `USUARIOS_DEMO.md` (após `migrate --seed`).
+
+# Regra de entrega (obrigatória)
+REGRA DE ENTREGA: sem feature flags em implementações e ajustes novos.
+1. O código novo vai direto ao comportamento final; o fluxo é validar localmente, passar nos testes, PR e deploy.
+2. Não criar variável de ambiente, entrada em config ou parâmetro de URL para ligar/desligar funcionalidade nova.
+3. A reversão é por rollback do deploy anterior no Coolify ou revert do PR, e isso consta na descrição do PR.
+4. Fallbacks técnicos de compatibilidade (sem WebGL, movimento reduzido, navegador antigo) são permitidos, pois não são interruptores de produto.
+5. Nada experimental vai para a main: seletores de teste, comparações A/B/C e parâmetros de depuração ficam só na branch local e são removidos antes do PR.
+
+EXCEÇÕES (só com ordem explícita do usuário): módulos que dependem de homologação, migrations pesadas ou decisão jurídica (NR-1: NR1_SHELL_ENABLED, revisão externa); mudanças que podem bloquear acesso (MFA_REQUIRED_AT_LOGIN); operações irreversíveis com dados reais ou dependentes de integração inexistente. As flags existentes da NR-1 e do MFA permanecem como estão.
