@@ -869,7 +869,7 @@ Lead incluído manualmente também gera aviso «novo lead».
 | **Colaboradores** | Lista de colaboradores da empresa e atalho para o cadastro (7.3.4) |
 | **Regulamento interno** | Regulamentos publicados (7.3.5) |
 
-**Painel operacional (aba Empresa):** prop Inertia `dashboard` com contagens leves (usuários, campanhas NR-1, plano ativo, colaboradores, regulamentos, flags RHID/denúncias), atalhos tipados e listas curtas de campanhas/mapas. UI em `CompanyDashboardSummary` + `CompanyShortcutGrid`.
+**Painel operacional (aba Empresa):** prop Inertia `dashboard` com contagens leves (usuários, campanhas NR-1, plano ativo, colaboradores, regulamentos, flags RHID/denúncias), atalhos tipados e listas curtas de campanhas/mapas. UI em `CompanyDashboardSummary` + `CompanyShortcutGrid`. Os atalhos incluem também os blocos de gestão (Dados, Assinaturas, Direcionamento, Mapeamentos, Pesquisas, Mapa de Propósito, Usuários, Excluir), que abrem o acordeão correspondente na mesma página.
 
 Acordeões da aba Empresa (secção «Gestão e configuração»):
 

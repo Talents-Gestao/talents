@@ -116,6 +116,8 @@ class CompanyShowTabsTest extends TestCase
         $this->assertStringContainsString('CompanyDashboardSummary', $show);
         $this->assertStringContainsString('CompanyShortcutGrid', $show);
         $this->assertStringContainsString('Gestão e configuração', $show);
+        $this->assertStringContainsString('company-section-dados', $show);
+        $this->assertStringContainsString('configShortcuts', $show);
         $this->assertStringNotContainsString('default-open', $show);
     }
 
