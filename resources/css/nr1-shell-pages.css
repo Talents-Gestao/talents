@@ -45,7 +45,7 @@
     height: 100px;
     background: #ffffff55;
 }
-.nr1-shell .n1-stat .n1-big { position: relative; z-index: 1; }
+.nr1-shell .n1-stat .n1-big { position: relative; z-index: 1; white-space: nowrap; }
 .nr1-shell .n1-stat.purple { background: linear-gradient(125deg, #eee1f9, #faf6ff); border-color: #e8d2f3; }
 .nr1-shell .n1-stat.teal { background: linear-gradient(125deg, #d9f5ee, #effcfa); border-color: #d5eee9; }
 .nr1-shell .n1-stat.rose { background: linear-gradient(125deg, #fce2eb, #fff4f8); border-color: #f3dbe5; }
@@ -133,12 +133,12 @@
 .nr1-shell .n1-emp-card p { color: #776c80; font-size: 12px; line-height: 1.65; margin: 14px 0; }
 .nr1-shell .n1-banner { background: #eaf8f2; color: #1e745d; border: 1px solid #ceeadd; border-radius: 11px; padding: 12px 15px; font-size: 12px; line-height: 1.55; }
 
-@media (max-width: 1110px) {
+@container nr1 (max-width: 860px) {
     .nr1-shell .c3, .nr1-shell .c4 { grid-column: span 6; }
     .nr1-shell .c5, .nr1-shell .c7, .nr1-shell .c8 { grid-column: span 12; }
     .nr1-shell .n1-metricbar { grid-template-columns: 160px 1fr 44px 104px; }
 }
-@media (max-width: 780px) {
+@container nr1 (max-width: 700px) {
     .nr1-shell .c3, .nr1-shell .c4, .nr1-shell .c5, .nr1-shell .c6, .nr1-shell .c7, .nr1-shell .c8 { grid-column: span 12; }
     .nr1-shell .n1-hero h1 { font-size: 25px; }
     .nr1-shell .n1-hero { padding: 22px 20px; }
@@ -150,5 +150,19 @@
     .nr1-shell .n1-intro h1 { font-size: 25px; }
 }
 @media print {
-    .nr1-shell .n1-sidebar, .nr1-shell .n1-top, .nr1-shell .no-print { display: none !important; }
+    .nr1-shell .no-print { display: none !important; }
+
+    /* Painel NR-1 no layout padrão: imprime só cabeçalho e conteúdo. O :has(.nr1-shell) restringe estas regras às
+       páginas do NR-1, então a impressão das outras telas não muda. */
+    .app-shell:has(.nr1-shell) [data-shell-sidebar],
+    .app-shell:has(.nr1-shell) [data-shell-mobilebar],
+    .app-shell:has(.nr1-shell) [data-shell-topbar],
+    .app-shell:has(.nr1-shell) [data-skip-link],
+    .nr1-frame [data-nr1-subnav] { display: none !important; }
+    .app-shell:has(.nr1-shell) { background: #fff !important; min-height: 0 !important; }
+    .app-shell:has(.nr1-shell) [data-shell-column] { margin-left: 0 !important; min-height: 0 !important; display: block !important; }
+    .app-shell:has(.nr1-shell) .app-shell-panel { display: block !important; margin: 0 !important; min-height: 0 !important; overflow: visible !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important; }
+    .app-shell:has(.nr1-shell) [data-shell-main-row] { display: block !important; overflow: visible !important; }
+    .app-shell:has(.nr1-shell) .app-shell-main-scroll { overflow: visible !important; padding: 0 !important; }
+    .nr1-frame { display: block !important; }
 }

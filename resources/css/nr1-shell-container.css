@@ -1,0 +1,117 @@
+/*
+ * Painel NR-1: o miolo responde à largura do próprio container (sidebar global + sub-navegação abertas ou não), não à
+ * janela. O container é .n1-cq (cabeçalho + conteúdo); as quebras de layout usam @container nr1. Escopado em .nr1-shell.
+ * Só layout: cores, textos e componentes ficam como estão.
+ */
+.nr1-shell .n1-cq {
+    container: nr1 / inline-size;
+    min-width: 0;
+}
+
+/* Filhos de grid/flex nunca forçam largura (sem vazamento). */
+.nr1-shell .n1-g12 > *,
+.nr1-shell .n1-kpis > *,
+.nr1-shell .n1-positive > *,
+.nr1-shell .n1-laudo-grid > *,
+.nr1-shell .n1-row > *,
+.nr1-shell .n1-stat-row > *,
+.nr1-shell .n1-docgrid > *,
+.nr1-shell .n1-docmeta > *,
+.nr1-shell .n1-oppgrid > *,
+.nr1-shell .n1-fields > *,
+.nr1-shell .n1-qgrid > *,
+.nr1-shell .n1-sectorgrid > *,
+.nr1-shell .n1-action-cols > * {
+    min-width: 0;
+}
+
+/* Cabeçalho da empresa ----------------------------------------------------------------------------------------- */
+.nr1-shell .n1-header-main { flex: 1 1 0; }
+.nr1-shell .n1-header-title,
+.nr1-shell .n1-header-context {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+/* Sem espaço para nome e ações na mesma linha: as ações descem para uma linha própria, à esquerda, com espaçamento
+   uniforme (nunca sobrepõem nem cortam). */
+@container nr1 (max-width: 1040px) {
+    .nr1-shell .n1-header { flex-wrap: wrap; }
+    .nr1-shell .n1-header-main { flex: 1 1 100%; }
+    .nr1-shell .n1-header-controls { flex: 1 1 100%; justify-content: flex-start; flex-wrap: wrap; gap: 10px; }
+}
+@container nr1 (max-width: 700px) {
+    .nr1-shell .n1-header-title,
+    .nr1-shell .n1-header-context { max-width: 100%; }
+}
+
+/* Cards de KPI (Visão geral) ---------------------------------------------------------------------------------- */
+.nr1-shell .n1-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+}
+.nr1-shell .n1-kpis > .n1-card {
+    grid-column: auto;
+    container: n1stat / inline-size;
+}
+/* Índice geral: o gauge escala dentro do card e, com o card estreito, vai para baixo do número. */
+.nr1-shell .n1-gauge { width: auto; max-width: 100%; flex: 0 1 132px; min-width: 96px; }
+.nr1-shell .n1-gauge svg { width: 100%; max-width: 132px; height: auto; margin: 0 auto; }
+.nr1-shell .n1-gauge figcaption { white-space: normal; overflow-wrap: break-word; }
+@container n1stat (max-width: 260px) {
+    .nr1-shell .n1-stat-row { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; }
+    .nr1-shell .n1-stat-row .n1-gauge { flex: none; width: 100%; max-width: 180px; }
+    .nr1-shell .n1-stat-row .n1-gauge svg { max-width: 150px; }
+}
+
+/* Seções da Visão geral e das demais telas --------------------------------------------------------------------- */
+.nr1-shell .n1-positive { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.nr1-shell .n1-row { flex-wrap: wrap; }
+
+/* Cabeçalho do laudo (modelo anterior): 5 campos em auto-fit; o período fica numa linha. */
+.nr1-shell .n1-laudo-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.nr1-shell .n1-laudo-grid > :first-child dd { white-space: nowrap; }
+
+/* Documentos e Oportunidades: metadados e grades em auto-fit. */
+.nr1-shell .n1-docmeta { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.nr1-shell .n1-oppgrid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+
+/* Grid de 12 colunas (KPIs de Plano/Oportunidades em c4 e blocos lado a lado): quebra pela largura do miolo. */
+@container nr1 (max-width: 1000px) {
+    .nr1-shell .c3 { grid-column: span 6; }
+    .nr1-shell .c5, .nr1-shell .c7 { grid-column: span 12; }
+}
+@container nr1 (max-width: 760px) {
+    .nr1-shell .c4 { grid-column: span 6; }
+    .nr1-shell .c6, .nr1-shell .c8 { grid-column: span 12; }
+}
+@container nr1 (max-width: 520px) {
+    .nr1-shell .c3, .nr1-shell .c4 { grid-column: span 12; }
+}
+
+/* Formulários: campos lado a lado viram coluna única quando falta espaço. */
+@container nr1 (max-width: 760px) {
+    .nr1-shell .n1-fields { grid-template-columns: 1fr; }
+}
+
+/* Gráficos e mídias acompanham o container. */
+.nr1-shell .n1-cq svg { max-width: 100%; }
+.nr1-shell .n1-cq img { max-width: 100%; height: auto; }
+
+/* Tabelas largas: rolagem horizontal dentro do próprio card, nunca na página. */
+.nr1-shell .n1-card { overflow-wrap: break-word; }
+.nr1-shell .n1-card:has(> table),
+.nr1-shell .n1-card .n1-table-wrap { overflow-x: auto; }
+
+/* Parecer e publicação (modelo anterior, Tailwind por janela): mesmas grades, pela largura do miolo. */
+@container nr1 (max-width: 900px) {
+    .nr1-shell .lg\:grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container nr1 (max-width: 560px) {
+    .nr1-shell .lg\:grid-cols-4,
+    .nr1-shell .sm\:grid-cols-2,
+    .nr1-shell .sm\:grid-cols-3 { grid-template-columns: minmax(0, 1fr); }
+}
+/* A barra fixa de ações do parecer ficaria presa ao container (contenção de layout): passa a fixar no fim do miolo. */
+.nr1-shell .n1-cq .fixed.inset-x-0.bottom-0 { position: sticky; }

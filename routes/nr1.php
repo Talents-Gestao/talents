@@ -15,6 +15,8 @@ Route::middleware(['web'])->prefix('nr1')->name('nr1.')->group(function () {
 
     Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [ShellController::class, 'index'])->name('index');
+        // Talents: escolha de empresa quando não há uma em foco (só nome e quantidade de campanhas).
+        Route::get('empresas', [ShellController::class, 'companies'])->name('empresas');
 
         foreach (array_keys(Nr1Shell::SECTIONS) as $section) {
             if ($section === 'minha-jornada') {

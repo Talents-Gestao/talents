@@ -100,7 +100,7 @@
 @keyframes n1-pop { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes n1-load { from { background-position: 0 0; } to { background-position: 200% 0; } }
 
-@media (max-width: 780px) {
+@container nr1 (max-width: 700px) {
     .nr1-shell .n1-dimhead { grid-template-columns: 1fr 40px 14px; row-gap: 6px; }
     .nr1-shell .n1-dimhead .n1-track { grid-column: 1 / -1; grid-row: 2; }
     .nr1-shell .n1-dimhead .n1-level { grid-column: 1; grid-row: 3; justify-self: start; }

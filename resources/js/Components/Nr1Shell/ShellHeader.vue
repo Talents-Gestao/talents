@@ -12,9 +12,7 @@ import StatusChip from './StatusChip.vue';
 const props = defineProps({
     shell: { type: Object, required: true },
     context: { type: Object, required: true },
-    menuOpen: { type: Boolean, default: false },
 });
-defineEmits(['toggle-menu']);
 
 const PRINTABLE = ['visao-geral', 'resultados', 'plano-de-acao', 'documentos'];
 const canPrint = computed(() => !props.context.collaborator && PRINTABLE.includes(props.shell.current));
@@ -38,9 +36,6 @@ const title = computed(() => (props.context.collaborator ? 'Campanha NR-1' : (pr
 <template>
     <header class="n1-header">
         <div class="n1-header-main">
-            <Nr1Button variant="secondary" size="sm" class="n1-menu-toggle" type="button" :aria-expanded="menuOpen" aria-controls="nr1-menu" aria-label="Abrir o menu do NR-1" @click="$emit('toggle-menu')">
-                ☰
-            </Nr1Button>
             <CompanyAvatar v-if="!context.collaborator && context.company" :name="context.company.name" :logo-url="context.company.logo_url" />
             <CompanyAvatar v-else name="NR" />
             <div class="n1-header-titles">
@@ -52,7 +47,7 @@ const title = computed(() => (props.context.collaborator ? 'Campanha NR-1' : (pr
 
         <div class="n1-header-controls" role="group" aria-label="Contexto da campanha">
             <Nr1Button v-if="shell.backUrl" variant="ghost-on-light" size="sm" :href="shell.backUrl">{{ shell.backLabel ?? '← Voltar ao Talents' }}</Nr1Button>
-            <CampaignSelect v-if="context.survey && !context.collaborator" :context="context" />
+            <CampaignSelect v-if="context.survey && !context.collaborator" :context="context" :shell="shell" />
             <StatusChip v-if="context.survey?.statusBadge" :label="context.survey.statusBadge.label" :tone="context.survey.statusBadge.tone" />
             <Nr1Button v-if="canPrint" variant="ghost-on-light" size="sm" class="no-print" @click="print">Imprimir ↓</Nr1Button>
         </div>

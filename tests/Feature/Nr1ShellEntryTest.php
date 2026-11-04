@@ -17,8 +17,8 @@ use Tests\Support\CreatesV11Campaign;
 use Tests\TestCase;
 
 /**
- * Entrada do shell NR-1: pelo bloco «Pesquisas e parecer» da página da empresa (Talents) e por «Pesquisas NR1» (Empresa).
- * Sem item «NR-1» no menu principal e sem seletor de empresa no cabeçalho do shell.
+ * Entrada do painel NR-1: item «NR-1» do Admin e bloco «Pesquisas e parecer» da página da empresa (Talents), «Pesquisas
+ * NR1» (Empresa, sem item novo) e «Oportunidades NR-1» (Comercial). Sem seletor de empresa no cabeçalho do painel.
  */
 class Nr1ShellEntryTest extends TestCase
 {
@@ -59,17 +59,18 @@ class Nr1ShellEntryTest extends TestCase
             ->assertInertia(fn (Assert $p) => $p->where('shell.backLabel', '← Voltar à empresa')->where('shell.backUrl', route('client.dashboard')));
     }
 
-    public function test_menus_have_no_nr1_item_and_the_company_menu_keeps_pesquisas_nr1_pointing_to_the_shell(): void
+    public function test_only_the_admin_gets_an_nr1_item_and_the_company_menu_keeps_pesquisas_nr1_pointing_to_the_panel(): void
     {
         $admin = (string) file_get_contents(resource_path('js/Layouts/AdminLayout.vue'));
         $client = (string) file_get_contents(resource_path('js/Layouts/ClientLayout.vue'));
-        $layout = (string) file_get_contents(resource_path('js/Layouts/Nr1Layout.vue'));
+        $frame = (string) file_get_contents(resource_path('js/Components/Nr1Shell/Nr1Frame.vue'));
 
-        $this->assertStringNotContainsString('label="NR-1"', $admin);
+        $this->assertStringContainsString('label="NR-1"', $admin);
         $this->assertStringNotContainsString('label="NR-1"', $client);
         $this->assertStringContainsString('label="Pesquisas NR1"', $client);
         $this->assertStringContainsString("nr1ShellUrl ?? route('client.surveys.index')", $client);
-        $this->assertStringNotContainsString('Nr1ContextBar', $layout);
+        $this->assertStringContainsString('isNr1Path(page.url)', $client);
+        $this->assertStringNotContainsString('Nr1ContextBar', $frame);
     }
 
     public function test_the_commercial_menu_item_exists_only_with_the_permission(): void

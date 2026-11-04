@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Nr1;
 
 use App\Http\Controllers\Controller;
 use App\Models\PsychosocialAccessLog;
-use App\Models\PsychosocialReviewRound;
 use App\Models\Survey;
 use App\Models\SurveyMethodVersion;
 use App\Models\SurveyResponse;
@@ -16,6 +15,8 @@ use App\Services\PsychosocialDashboardBuilder;
 use App\Services\SurveyPublicEntry;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1Shell\Nr1Shell;
+use App\Support\Nr1Shell\Nr1ShellCampaignStatus;
+use App\Support\Nr1Shell\Nr1ShellCompanyPicker;
 use App\Support\Nr1Shell\Nr1ShellContext;
 use App\Support\Nr1Shell\Nr1ShellLegacy;
 use App\Support\Nr1Shell\Nr1ShellPageData;
@@ -49,7 +50,26 @@ class ShellController extends Controller
         $section = $user ? Nr1Shell::landingSection($user) : null;
         abort_if($section === null, 403);
 
-        return redirect()->route('nr1.'.$section);
+        // Talents sem empresa em foco (nem na sessão) e com mais de uma empresa: escolhe antes de abrir o painel.
+        if (Nr1Shell::profileFor($user) === Nr1Shell::PROFILE_TALENTS && $section !== 'oportunidades'
+            && ! Nr1ShellContext::hasTalentsFocus($request) && count(Nr1ShellContext::companiesForPicker()) !== 1) {
+            return redirect()->route('nr1.empresas');
+        }
+
+        return redirect()->route('nr1.'.$section, $request->query());
+    }
+
+    /** Escolha de empresa do painel (Talents): nome e quantidade de campanhas NR-1, com busca na própria tela. */
+    public function companies(Request $request): Response
+    {
+        $user = $request->user();
+        abort_unless($user !== null && Nr1Shell::canPickCompany($user), 403);
+
+        return Inertia::render('Nr1/Companies', [
+            // Adiado: a tela abre com o skeleton e recebe os cartões em seguida (com estado de erro se falhar).
+            'companies' => Inertia::defer(fn () => Nr1ShellCompanyPicker::cards()),
+            'recentIds' => Nr1ShellContext::recentCompanyIds($request),
+        ]);
     }
 
     public function show(Request $request, string $section, Nr1ShellPageData $pages): Response|RedirectResponse
@@ -85,6 +105,7 @@ class ShellController extends Controller
                     array_filter(Nr1Shell::sectionsFor($user), fn (array $item) => $legacy || ! in_array($item['key'], self::ONLY_LEGACY, true)),
                 )),
                 'current' => $section,
+                'pickerUrl' => Nr1Shell::canPickCompany($user) ? route('nr1.empresas', absolute: false) : null,
                 'backUrl' => match (true) {
                     $profile === Nr1Shell::PROFILE_EMPRESA => route('client.dashboard'),
                     $profile === Nr1Shell::PROFILE_TALENTS && $context->company !== null => route('admin.companies.show', $context->company),
@@ -268,23 +289,16 @@ class ShellController extends Controller
 
     /**
      * Estado do cabeçalho com tom: Publicado (verde), Em revisão (âmbar), Em edição (cinza). Campanha sem publicação:
-     * Ativa (verde) ou Encerrada (cinza). Só leitura: nada aqui muda o fluxo de revisão.
+     * Ativa (verde) ou Encerrada (cinza). Regra única em Nr1ShellCampaignStatus (também na escolha de empresa).
      *
      * @return array{label: string, tone: 'ok'|'warn'|'gray'}
      */
     private function statusBadge(Survey $survey): array
     {
-        if (! $survey->requires_publication) {
-            return $survey->status === 'closed' ? ['label' => 'Encerrada', 'tone' => 'gray'] : ['label' => 'Ativa', 'tone' => 'ok'];
-        }
-        if ($survey->published_at !== null) {
-            return ['label' => 'Publicado', 'tone' => 'ok'];
-        }
+        $v11 = $survey->usesReviewFlow();
+        $round = $v11 && $survey->requires_publication && $survey->published_at === null ? app(ReviewRoundService::class)->currentRound($survey) : null;
 
-        $round = $survey->usesReviewFlow() ? app(ReviewRoundService::class)->currentRound($survey) : null;
-        $inReview = $round !== null && in_array($round->status, [PsychosocialReviewRound::STATUS_IN_REVIEW, PsychosocialReviewRound::STATUS_CHANGES_REQUESTED, PsychosocialReviewRound::STATUS_APPROVED], true);
-
-        return $inReview ? ['label' => 'Em revisão', 'tone' => 'warn'] : ['label' => 'Em edição', 'tone' => 'gray'];
+        return Nr1ShellCampaignStatus::badge($survey, $v11, $round?->status);
     }
 
     private function statusLabel(Survey $survey): string

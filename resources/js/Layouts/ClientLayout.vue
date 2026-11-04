@@ -5,6 +5,7 @@ import SidebarNavItem from '@/Components/SidebarNavItem.vue';
 import SidebarNavSection from '@/Components/SidebarNavSection.vue';
 import SidebarUserCard from '@/Components/SidebarUserCard.vue';
 import DailyQuoteCard from '@/Components/Dashboard/DailyQuoteCard.vue';
+import { isNr1Path } from '@/Components/Nr1Shell/nr1SubNav';
 import { usePermissions } from '@/composables/usePermissions';
 import {
     ArrowRightOnRectangleIcon,
@@ -30,7 +31,7 @@ import { computed } from 'vue';
 import { brandThemeStyle } from '@/utils/brandTheme';
 
 const page = usePage();
-/** Com o shell NR-1 ligado, «Pesquisas NR1» abre o shell NR-1 (a lista antiga segue valendo por URL direta). */
+/** «Pesquisas NR1» é a entrada do painel NR-1 (dentro deste layout); ativo em qualquer /nr1/*. */
 const nr1ShellUrl = computed(() => page.props.nr1Shell?.url ?? null);
 const { can } = usePermissions();
 
@@ -108,7 +109,7 @@ const mapaPropositoActive = computed(() =>
                 <SidebarNavItem
                     v-if="can('pesquisas', 'view')"
                     :href="nr1ShellUrl ?? route('client.surveys.index')"
-                    :active="route().current('client.surveys.*') || String(page.url ?? '').startsWith('/nr1')"
+                    :active="route().current('client.surveys.*') || isNr1Path(page.url)"
                     :icon="ClipboardDocumentListIcon"
                     label="Pesquisas NR1"
                     :collapsed="collapsed"

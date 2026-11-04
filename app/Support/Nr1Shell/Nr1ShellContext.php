@@ -21,6 +21,11 @@ final class Nr1ShellContext
 
     private const SESSION_SURVEY = 'nr1_shell.survey_id';
 
+    /** Empresas abertas no painel nesta sessão (mais recente primeiro), para «Abertas recentemente». */
+    private const SESSION_RECENT = 'nr1_shell.recent_company_ids';
+
+    private const RECENT_LIMIT = 6;
+
     /**
      * @param  Collection<int, Company>  $companies
      * @param  Collection<int, Survey>  $surveys
@@ -47,6 +52,38 @@ final class Nr1ShellContext
         return new self(null, null, collect(), collect(), false, false);
     }
 
+    /** Talents já tem empresa em foco (query `empresa` ou a última lembrada na sessão). */
+    public static function hasTalentsFocus(Request $request): bool
+    {
+        return $request->query('empresa') !== null || $request->session()->get(self::SESSION_COMPANY) !== null;
+    }
+
+    /** @return list<int> */
+    public static function recentCompanyIds(Request $request): array
+    {
+        $ids = $request->session()->get(self::SESSION_RECENT, []);
+
+        return array_values(array_map('intval', is_array($ids) ? $ids : []));
+    }
+
+    /**
+     * Escolha de empresa (Talents): só nome e quantidade de campanhas; nenhum resultado nem contagem de respostas.
+     *
+     * @return list<array{id: int, name: string, campaigns: int}>
+     */
+    public static function companiesForPicker(): array
+    {
+        return Company::query()
+            ->whereHas('surveys')
+            ->withCount('surveys')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get(['id', 'name'])
+            ->map(fn (Company $company) => ['id' => (int) $company->id, 'name' => (string) $company->name, 'campaigns' => (int) $company->surveys_count])
+            ->values()
+            ->all();
+    }
+
     private static function forTalents(Request $request): self
     {
         $companies = Company::query()
@@ -64,6 +101,10 @@ final class Nr1ShellContext
 
         $request->session()->put(self::SESSION_COMPANY, $company?->id);
         $request->session()->put(self::SESSION_SURVEY, $survey?->id);
+        if ($company !== null) {
+            $recent = array_values(array_filter(self::recentCompanyIds($request), fn (int $id) => $id !== (int) $company->id));
+            $request->session()->put(self::SESSION_RECENT, array_slice([(int) $company->id, ...$recent], 0, self::RECENT_LIMIT));
+        }
 
         return new self($company, $survey, $companies, $surveys, true, false);
     }

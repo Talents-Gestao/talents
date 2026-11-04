@@ -15,7 +15,9 @@ import OverviewView from '@/Components/Nr1Shell/OverviewView.vue';
 import PlanView from '@/Components/Nr1Shell/PlanView.vue';
 import ResultsView from '@/Components/Nr1Shell/ResultsView.vue';
 import SolutionsView from '@/Components/Nr1Shell/SolutionsView.vue';
-import Nr1Layout from '@/Layouts/Nr1Layout.vue';
+import Nr1Frame from '@/Components/Nr1Shell/Nr1Frame.vue';
+import AdminLayout from '@/Layouts/AdminLayout.vue';
+import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
@@ -24,6 +26,13 @@ const props = defineProps({
     context: { type: Object, required: true },
     section: { type: Object, required: true },
 });
+
+/**
+ * O painel vive no layout padrão do perfil: empresa no portal (ClientLayout, com a marca dela), Talents e Comercial no
+ * Admin. O colaborador (link da campanha, sem login) fica numa moldura mínima, sem sidebar nem links de gestão.
+ */
+const isPublic = computed(() => props.shell.profile === 'colaborador');
+const layout = computed(() => (props.shell.profile === 'empresa' ? ClientLayout : AdminLayout));
 
 const menuUrl = (key) => props.shell.menu.find((item) => item.key === key)?.href ?? null;
 const planUrl = computed(() => props.shell.menu.find((item) => item.key === 'plano-de-acao')?.href ?? null);
@@ -46,61 +55,71 @@ const view = computed(() => {
 <template>
     <Head :title="`${section.label} · NR-1`" />
 
-    <Nr1Layout :shell="shell" :context="context">
-        <p
-            v-if="context.awaitingPublication"
-            class="n1-card"
-            role="status"
-            style="margin-bottom: 17px; background: #fff1d7; border-color: #f0d9a8; color: #925d0c"
-        >
-            Os resultados desta campanha ficam disponíveis assim que a Talents publicar. Você será avisado.
-        </p>
+    <main v-if="isPublic" id="conteudo-principal" tabindex="-1" class="min-h-screen bg-[#f7f6fb] px-4 py-5 focus:outline-none sm:px-6 sm:py-6">
+        <div class="mx-auto max-w-[1180px]">
+            <Nr1Frame public :shell="shell" :context="context">
+                <JourneyView v-if="view === 'journey'" :journey="section.journey" :mode="section.key" />
+            </Nr1Frame>
+        </div>
+    </main>
 
-        <template v-if="section.legacy">
-            <LegacyOverviewView v-if="section.key === 'visao-geral'" :overview="section.legacy.overview" :notice="section.legacy.notice" :results-url="menuUrl('resultados')" :documents-url="menuUrl('parecer')" />
-            <LegacyCampaignView v-else-if="section.key === 'campanha'" :campaign="section.legacy.campaign" :notice="section.legacy.notice" />
-            <LegacyResultsView v-else-if="section.key === 'resultados'" :results="section.legacy.results" :notice="section.legacy.notice" :min-per-sector="section.legacy.minPerSector" :for-talents="section.legacy.forTalents" />
-            <LegacyPlanView v-else-if="section.key === 'plano-de-acao'" :plan="section.legacy.plan" :notice="section.legacy.notice" />
-            <LegacyCentralView v-else-if="section.key === 'documentos'" :central="section.legacy.central" :notice="section.legacy.notice" />
-            <LegacyDocumentsView v-else-if="section.key === 'parecer'" :documents="section.legacy.documents" :notice="section.legacy.notice" />
-        </template>
+    <component :is="layout" v-else>
+        <Nr1Frame :shell="shell" :context="context">
+            <p
+                v-if="context.awaitingPublication"
+                class="n1-card"
+                role="status"
+                style="margin-bottom: 17px; background: #fff1d7; border-color: #f0d9a8; color: #925d0c"
+            >
+                Os resultados desta campanha ficam disponíveis assim que a Talents publicar. Você será avisado.
+            </p>
 
-        <OverviewView v-else-if="view === 'overview'" :overview="section.overview" :plan-url="planUrl" />
-        <CampaignView v-else-if="view === 'campaign'" :campaign="section.campaign" :company-name="context.company?.name ?? ''" />
-        <ResultsView v-else-if="view === 'results'" :results="section.results" />
-        <PlanView v-else-if="view === 'plan'" :plan="section.plan" />
-        <DocumentsView v-else-if="view === 'documents'" :documents="section.documents" />
-        <SolutionsView v-else-if="view === 'solutions'" :solutions="section.solutions" :opportunities-url="menuUrl('oportunidades')" />
-        <OpportunitiesView v-else-if="view === 'opportunities'" :opportunities="section.opportunities" />
-        <JourneyView v-else-if="view === 'journey'" :journey="section.journey" :mode="section.key" />
+            <template v-if="section.legacy">
+                <LegacyOverviewView v-if="section.key === 'visao-geral'" :overview="section.legacy.overview" :notice="section.legacy.notice" :results-url="menuUrl('resultados')" :documents-url="menuUrl('parecer')" />
+                <LegacyCampaignView v-else-if="section.key === 'campanha'" :campaign="section.legacy.campaign" :notice="section.legacy.notice" />
+                <LegacyResultsView v-else-if="section.key === 'resultados'" :results="section.legacy.results" :notice="section.legacy.notice" :min-per-sector="section.legacy.minPerSector" :for-talents="section.legacy.forTalents" />
+                <LegacyPlanView v-else-if="section.key === 'plano-de-acao'" :plan="section.legacy.plan" :notice="section.legacy.notice" />
+                <LegacyCentralView v-else-if="section.key === 'documentos'" :central="section.legacy.central" :notice="section.legacy.notice" />
+                <LegacyDocumentsView v-else-if="section.key === 'parecer'" :documents="section.legacy.documents" :notice="section.legacy.notice" />
+            </template>
 
-        <template v-else>
-            <div style="display: flex; justify-content: space-between; gap: 15px; margin-bottom: 20px; flex-wrap: wrap">
-                <div>
-                    <div class="n1-eyebrow">{{ shell.profileLabel }}</div>
-                    <h1 style="font-size: 29px; font-weight: 800; letter-spacing: -0.045em; margin: 7px 0">{{ section.label }}</h1>
+            <OverviewView v-else-if="view === 'overview'" :overview="section.overview" :plan-url="planUrl" />
+            <CampaignView v-else-if="view === 'campaign'" :campaign="section.campaign" :company-name="context.company?.name ?? ''" />
+            <ResultsView v-else-if="view === 'results'" :results="section.results" />
+            <PlanView v-else-if="view === 'plan'" :plan="section.plan" />
+            <DocumentsView v-else-if="view === 'documents'" :documents="section.documents" />
+            <SolutionsView v-else-if="view === 'solutions'" :solutions="section.solutions" :opportunities-url="menuUrl('oportunidades')" />
+            <OpportunitiesView v-else-if="view === 'opportunities'" :opportunities="section.opportunities" />
+            <JourneyView v-else-if="view === 'journey'" :journey="section.journey" :mode="section.key" />
+
+            <template v-else>
+                <div style="display: flex; justify-content: space-between; gap: 15px; margin-bottom: 20px; flex-wrap: wrap">
+                    <div>
+                        <div class="n1-eyebrow">{{ shell.profileLabel }}</div>
+                        <h1 style="font-size: 29px; font-weight: 800; letter-spacing: -0.045em; margin: 7px 0">{{ section.label }}</h1>
+                    </div>
                 </div>
-            </div>
 
-            <section v-if="section.kpis.length" class="n1-grid" style="margin-bottom: 17px" aria-label="Indicadores da campanha">
-                <div v-for="kpi in section.kpis" :key="kpi.label" class="n1-card">
-                    <div class="n1-cap">{{ kpi.label }}</div>
-                    <div class="n1-big">{{ kpi.value }}</div>
-                    <p v-if="kpi.hint" class="n1-tiny">{{ kpi.hint }}</p>
-                </div>
-            </section>
+                <section v-if="section.kpis.length" class="n1-grid" style="margin-bottom: 17px" aria-label="Indicadores da campanha">
+                    <div v-for="kpi in section.kpis" :key="kpi.label" class="n1-card">
+                        <div class="n1-cap">{{ kpi.label }}</div>
+                        <div class="n1-big">{{ kpi.value }}</div>
+                        <p v-if="kpi.hint" class="n1-tiny">{{ kpi.hint }}</p>
+                    </div>
+                </section>
 
-            <section v-if="section.links.length" class="n1-card" aria-label="Tela completa">
-                <p class="n1-tiny" style="margin-bottom: 12px">
-                    Abra a tela de apoio desta seção.
-                </p>
-                <div style="display: flex; gap: 9px; flex-wrap: wrap">
-                    <Nr1Button variant="primary" v-for="link in section.links" :key="link.href" :href="link.href">{{ link.label }} →</Nr1Button>
-                </div>
-            </section>
-            <section v-else-if="!context.awaitingPublication" class="n1-card">
-                <p class="n1-tiny">Nenhuma campanha disponível para exibir nesta seção.</p>
-            </section>
-        </template>
-    </Nr1Layout>
+                <section v-if="section.links.length" class="n1-card" aria-label="Tela completa">
+                    <p class="n1-tiny" style="margin-bottom: 12px">
+                        Abra a tela de apoio desta seção.
+                    </p>
+                    <div style="display: flex; gap: 9px; flex-wrap: wrap">
+                        <Nr1Button variant="primary" v-for="link in section.links" :key="link.href" :href="link.href">{{ link.label }} →</Nr1Button>
+                    </div>
+                </section>
+                <section v-else-if="!context.awaitingPublication" class="n1-card">
+                    <p class="n1-tiny">Nenhuma campanha disponível para exibir nesta seção.</p>
+                </section>
+            </template>
+        </Nr1Frame>
+    </component>
 </template>

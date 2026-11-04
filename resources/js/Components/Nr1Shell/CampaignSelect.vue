@@ -3,13 +3,16 @@ import { router } from '@inertiajs/vue3';
 import { CalendarDaysIcon, CheckIcon, ChevronUpDownIcon } from '@heroicons/vue/24/outline';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import Nr1Button from './Nr1Button.vue';
+import { campaignSwitchVisit } from './nr1SubNav';
 
 /**
  * Seletor de campanha (dentro da mesma empresa): botão com rótulo «Campanha», lista suspensa estilizada com a campanha
  * ativa marcada e teclado completo (setas, Home, End, Enter, Esc). Com uma só campanha fica só de leitura.
+ * A troca mantém a seção atual (ou cai em «Visão geral» se ela não existir para a nova campanha) e volta ao topo.
  */
 const props = defineProps({
     context: { type: Object, required: true },
+    shell: { type: Object, default: () => ({}) },
 });
 
 const open = ref(false);
@@ -30,14 +33,19 @@ const toggle = async () => {
     if (open.value) {
         highlighted.value = Math.max(0, surveys.value.findIndex((survey) => survey.id === current.value?.id));
         await nextTick();
-        list.value?.focus();
+        // preventScroll: o foco não rola o cabeçalho por dentro (ele ficava em branco/cortado).
+        list.value?.focus({ preventScroll: true });
     }
 };
 const choose = (survey) => {
     close();
-    if (survey.id !== current.value?.id) {
-        router.get(window.location.pathname, { empresa: props.context.company?.id, campanha: survey.id }, { preserveScroll: true });
-    }
+    if (!survey || survey.id === current.value?.id) return;
+    const visit = campaignSwitchVisit(props.shell, props.context, survey);
+    router.get(visit.href ?? window.location.pathname, visit.query, {
+        preserveScroll: true,
+        // O conteúdo rola no <main> do layout padrão: volta ao topo sem mexer na moldura.
+        onSuccess: () => document.getElementById('conteudo-principal')?.scrollTo({ top: 0, behavior: 'auto' }),
+    });
 };
 const onKey = (event) => {
     const last = surveys.value.length - 1;
@@ -48,7 +56,10 @@ const onKey = (event) => {
         End: () => (highlighted.value = last),
         Enter: () => choose(surveys.value[highlighted.value]),
         ' ': () => choose(surveys.value[highlighted.value]),
-        Escape: close,
+        Escape: () => {
+            close();
+            root.value?.querySelector('.n1-campsel-btn')?.focus({ preventScroll: true });
+        },
         Tab: close,
     };
     if (keys[event.key]) {

@@ -4,6 +4,7 @@ import SidebarLayout from '@/Components/SidebarLayout.vue';
 import SidebarNavGroup from '@/Components/SidebarNavGroup.vue';
 import SidebarNavItem from '@/Components/SidebarNavItem.vue';
 import SidebarUserCard from '@/Components/SidebarUserCard.vue';
+import { isNr1Path } from '@/Components/Nr1Shell/nr1SubNav';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -18,14 +19,20 @@ import {
     MegaphoneIcon,
     MicrophoneIcon,
     PresentationChartLineIcon,
+    ShieldCheckIcon,
     UserPlusIcon,
     ViewColumnsIcon,
 } from '@heroicons/vue/24/outline';
 
 const { canAdmin, canAdminAny } = useAdminPermissions();
 const page = usePage();
-/** «Oportunidades NR-1» (Comercial): só com o shell NR-1 ligado e a permissão nr1_oportunidades:view. */
+/** «Oportunidades NR-1» (grupo Comercial): só com a permissão nr1_oportunidades:view. */
 const nr1OpportunitiesUrl = computed(() => page.props.nr1Shell?.opportunitiesUrl ?? null);
+/** Item «NR-1» (perfil Talents, Nr1Shell::adminMenuUrl): ativo em qualquer /nr1/*. */
+const nr1AdminUrl = computed(() => page.props.nr1Shell?.adminUrl ?? null);
+const nr1Active = computed(() => isNr1Path(page.url));
+/** Sem o item «NR-1» (perfil só-Comercial), a entrada ativa em /nr1/* é «Oportunidades NR-1». */
+const nr1OpportunitiesActive = computed(() => nr1AdminUrl.value === null && nr1Active.value);
 
 const activeHiringProcessesCount = computed(
     () => Number(page.props.nav?.active_hiring_processes_count ?? 0) || 0,
@@ -350,7 +357,7 @@ const isComercialSettingsTab = (tab) => {
                 <SidebarNavItem
                     v-if="nr1OpportunitiesUrl"
                     :href="nr1OpportunitiesUrl"
-                    :active="String(page.url ?? '').startsWith('/nr1/oportunidades')"
+                    :active="nr1OpportunitiesActive"
                     label="Oportunidades NR-1"
                     variant="nested"
                     :collapsed="collapsed"
@@ -413,6 +420,16 @@ const isComercialSettingsTab = (tab) => {
                     :compact="compact"
                 />
             </SidebarNavGroup>
+
+            <SidebarNavItem
+                v-if="nr1AdminUrl"
+                :href="nr1AdminUrl"
+                :active="nr1Active"
+                :icon="ShieldCheckIcon"
+                label="NR-1"
+                :collapsed="collapsed"
+                :compact="compact"
+            />
 
             <SidebarNavGroup
                 v-if="showContratacao"
