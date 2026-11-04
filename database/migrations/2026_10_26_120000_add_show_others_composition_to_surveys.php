@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * D8: exibir os nomes dos setores reunidos em "Outros Setores". Desligado por padrão em toda campanha.
  * Mesmo ligado, só vale com pelo menos 3 setores no grupo e o grupo no piso de respondentes.
- * Depende de confirmação da responsável técnica e do jurídico (ver docs/nr1-v11/NOTAS.md).
+ * Depende de confirmação da responsável técnica e do jurídico (ver PRD.md, 8.5).
  */
 return new class extends Migration
 {

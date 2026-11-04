@@ -33,7 +33,7 @@ use Tests\Support\CreatesV11Campaign;
 use Tests\TestCase;
 
 /**
- * Bancada V11: lacunas da matriz T01 a T25 do Caderno (ver docs/nr1-v11/NOTAS.md, «Bancada de testes»).
+ * Bancada V11: lacunas da matriz T01 a T25 do Caderno (ver PRD.md, 8.14).
  * T01 isolamento entre empresas em TODAS as rotas com {survey}; T06 orientação também para Líderes; T13 filtro por
  * dimensão e demais saídas sem reidentificar setor pequeno; T15 dados dos 39 cartões; T22 recusa comercial não altera resultado.
  */

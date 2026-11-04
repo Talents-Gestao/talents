@@ -139,4 +139,4 @@ Esconder item de menu nunca é a única barreira: a rota precisa recusar (403/40
 
 - `PRD.md` é o documento de produto. Quando uma entrega mudar comportamento, tela, rota, permissão ou regra, atualize a seção correspondente do PRD na mesma tarefa (e os apêndices quando a mudança afetar rotas, tabelas ou enums).
 - Não criar novos arquivos de documentação ou relatório em `docs/` sem pedido; o contexto de trabalho fica no próprio PRD e nesta conversa.
-- Documentos com afirmações desatualizadas (corrigir quando a tarefa for de documentação): `README.md` e `.cursor/rules/Talents-Structure.mdc` dizem que a matriz de permissões do admin foi removida (ela está em uso); `Talents-Structure.mdc` lista contas bancárias/a receber como «em breve» (estão implementadas); `docs/nr1-v11/NOTAS.md` é histórico de etapas com flags que já não existem.
+- Documentos com afirmações desatualizadas (corrigir quando a tarefa for de documentação): `README.md` e `.cursor/rules/Talents-Structure.mdc` dizem que a matriz de permissões do admin foi removida (ela está em uso); `Talents-Structure.mdc` lista contas bancárias/a receber como «em breve» (estão implementadas).
