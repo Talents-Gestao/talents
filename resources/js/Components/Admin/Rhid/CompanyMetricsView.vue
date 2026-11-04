@@ -2,7 +2,6 @@
 import InfoTooltip from '@/Components/InfoTooltip.vue';
 import PontoPeopleSnapshot from '@/Components/Rhid/PontoPeopleSnapshot.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -23,15 +22,14 @@ const props = defineProps({
     showMonthPicker: { type: Boolean, default: false },
     monthValue: { type: String, default: '' },
     monthMax: { type: String, default: '' },
-    showImportAction: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['refresh', 'month-change', 'import-now']);
+const emit = defineEmits(['refresh', 'month-change']);
 
 const periodHint = computed(() => {
     const label = props.metrics?.period?.month_label;
     if (label) {
-        return `Mês de referência: ${label}. Só entram dias já fechados (até ontem). Feriados, atestados e férias saem do denominador de pontualidade.`;
+        return `Mês de referência: ${label}. Só entram dias já fechados (até ontem). Feriados, atestados e férias saem do denominador de pontualidade. Ao trocar o mês sem espelhos, a importação começa sozinha.`;
     }
     return props.description;
 });
@@ -49,12 +47,6 @@ const apiErrorMessage = computed(() => {
 const showMetricsContent = computed(() => props.metrics?.status === 'ok');
 
 const showLoadingSkeleton = computed(() => props.loading && !props.metrics);
-
-const hasPeopleData = computed(() => Boolean(props.metrics?.people?.has_data));
-
-const canImportNow = computed(
-    () => props.showImportAction && props.rhidConfigured && showMetricsContent.value && !hasPeopleData.value,
-);
 
 const onMonthChange = (event) => {
     emit('month-change', event?.target?.value);
@@ -119,18 +111,6 @@ const onMonthChange = (event) => {
         </div>
 
         <template v-else-if="rhidConfigured && showMetricsContent">
-            <p
-                v-if="importMessage"
-                class="mt-4 rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-900 ring-1 ring-sky-100"
-            >
-                {{ importMessage }}
-            </p>
-            <p
-                v-if="metrics?.adherence?.diagnostics_hint"
-                class="mt-4 text-xs text-amber-800"
-            >
-                {{ metrics.adherence.diagnostics_hint }}
-            </p>
             <span
                 v-if="metrics && !metrics.integration?.ok"
                 class="mt-3 inline-block text-xs text-amber-800"
@@ -138,29 +118,21 @@ const onMonthChange = (event) => {
                 Última falha API: {{ metrics.integration?.last_error || 'verifique credenciais' }}
             </span>
 
-            <div
-                v-if="canImportNow"
-                class="mt-4 flex flex-col gap-2 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-                <p class="text-sm text-amber-950">
-                    Sem espelhos neste período. Enfileire a importação do dia fechado (com backfill do mês, se ainda estiver vazio).
-                </p>
-                <SecondaryButton
-                    type="button"
-                    class="shrink-0"
-                    :disabled="importing || loading"
-                    @click="emit('import-now')"
-                >
-                    {{ importing ? 'Enfileirando…' : 'Importar espelhos agora' }}
-                </SecondaryButton>
-            </div>
-
             <div class="mt-5">
                 <PontoPeopleSnapshot
                     :people="metrics.people"
                     :loading="loading"
                     :month-label="metrics.period?.month_label || ''"
-                    :diagnostics-hint="''"
+                    :diagnostics-hint="metrics?.diagnostics?.hint || metrics?.adherence?.diagnostics_hint || ''"
+                    :detail-url="
+                        metrics?.company_id
+                            ? route('admin.ponto.companies.monthly-compliance.detail', metrics.company_id)
+                            : null
+                    "
+                    :period-ini="metrics?.period?.month_ini || metrics?.people?.resumo?.ini || ''"
+                    :period-fim="metrics?.period?.month_fim || metrics?.people?.resumo?.fim || ''"
+                    :importing-month="importing"
+                    :import-status-message="importMessage || ''"
                 />
             </div>
 

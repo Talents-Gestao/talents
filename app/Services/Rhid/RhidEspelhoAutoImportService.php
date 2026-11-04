@@ -73,6 +73,74 @@ class RhidEspelhoAutoImportService
     }
 
     /**
+     * Enfileira importação de um mês civil completo (até o dia fechado) — jul/ago/set e meses sem espelho.
+     *
+     * @return list<array{
+     *     company_id: int,
+     *     company_name: string,
+     *     action: string,
+     *     reason: ?string,
+     *     batch_id: ?int,
+     *     people: int,
+     *     backfill: bool,
+     *     ini: ?string,
+     *     fim: ?string
+     * }>
+     */
+    public function enqueueMonth(?int $companyId, string $yearMonth): array
+    {
+        $tz = (string) config('app.timezone', 'America/Sao_Paulo');
+        if (! preg_match('/^\d{4}-\d{2}$/', $yearMonth)) {
+            return [[
+                'company_id' => (int) ($companyId ?? 0),
+                'company_name' => '',
+                'action' => 'failed',
+                'reason' => 'Mês inválido. Use o formato AAAA-MM.',
+                'batch_id' => null,
+                'people' => 0,
+                'backfill' => false,
+                'ini' => null,
+                'fim' => null,
+            ]];
+        }
+
+        $monthStart = Carbon::createFromFormat('Y-m-d', $yearMonth.'-01', $tz)->startOfDay();
+        $today = Carbon::now($tz)->startOfDay();
+        $closedEnd = $today->copy()->subDay();
+        $monthEnd = $monthStart->copy()->endOfMonth()->startOfDay();
+        $fim = $monthEnd->lt($closedEnd) ? $monthEnd : $closedEnd;
+
+        if ($monthStart->gt($fim)) {
+            return [[
+                'company_id' => (int) ($companyId ?? 0),
+                'company_name' => '',
+                'action' => 'failed',
+                'reason' => 'Não há dia fechado neste mês para importar.',
+                'batch_id' => null,
+                'people' => 0,
+                'backfill' => false,
+                'ini' => $monthStart->toDateString(),
+                'fim' => null,
+            ]];
+        }
+
+        $results = [];
+        foreach ($this->eligibleCompanies($companyId) as $company) {
+            $results[] = $this->enqueueMonthForCompany($company, $monthStart, $fim);
+        }
+
+        if ($companyId !== null && $results === []) {
+            $company = Company::query()->find($companyId);
+            $results[] = $this->skipped(
+                $company,
+                $company === null ? 'Empresa não encontrada.' : 'Empresa sem módulo RHID ligado ou sem credenciais.',
+            );
+        }
+
+        return $results;
+    }
+
+    /**
      * @return list<Company>
      */
     private function eligibleCompanies(?int $companyId): array
@@ -177,6 +245,87 @@ class RhidEspelhoAutoImportService
             'backfill' => $needsBackfill,
             'ini' => $ini->toDateString(),
             'fim' => $closedDay->toDateString(),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     company_id: int,
+     *     company_name: string,
+     *     action: string,
+     *     reason: ?string,
+     *     batch_id: ?int,
+     *     people: int,
+     *     backfill: bool,
+     *     ini: ?string,
+     *     fim: ?string
+     * }
+     */
+    private function enqueueMonthForCompany(
+        Company $company,
+        CarbonInterface $ini,
+        CarbonInterface $fim,
+    ): array {
+        if ($this->hasOpenBatch($company)) {
+            return $this->skipped($company, 'Já existe um lote de espelho em andamento.');
+        }
+
+        try {
+            $personIds = $this->people
+                ->fetchActivePersons($company)
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->filter(fn (int $id): bool => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+        } catch (Throwable $e) {
+            report($e);
+
+            return $this->skipped($company, 'Falha ao listar colaboradores na RHID: '.$e->getMessage());
+        }
+
+        if ($personIds === []) {
+            return $this->skipped($company, 'Nenhum colaborador ativo encontrado.');
+        }
+
+        $batch = RhidEspelhoBatch::query()->create([
+            'company_id' => $company->id,
+            'user_id' => null,
+            'status' => RhidEspelhoBatch::STATUS_PENDING,
+            'total' => count($personIds),
+            'processed' => 0,
+            'succeeded' => 0,
+            'skipped' => 0,
+            'current_id_person' => null,
+            'skipped_person_ids' => [],
+            'meta_json' => [
+                'person_ids' => $personIds,
+                'ini' => $ini->format('Ymd'),
+                'fim' => $fim->format('Ymd'),
+                'rhid_status' => '1',
+                'list_columns' => ['TODAS_MARCACOES', 'ENTRADAS_SAIDAS'],
+                'filters' => [],
+                'source' => RhidEspelhoBatch::SOURCE_AUTOMATIC,
+                'closed_day' => $fim->toDateString(),
+                'backfill' => true,
+                'month_import' => true,
+            ],
+            'message' => null,
+        ]);
+
+        ProcessRhidEspelhoBatchJob::dispatch($batch->id);
+
+        return [
+            'company_id' => $company->id,
+            'company_name' => (string) $company->name,
+            'action' => 'queued',
+            'reason' => 'Importação do mês enfileirada ('.$ini->toDateString().' a '.$fim->toDateString().').',
+            'batch_id' => $batch->id,
+            'people' => count($personIds),
+            'backfill' => true,
+            'ini' => $ini->toDateString(),
+            'fim' => $fim->toDateString(),
         ];
     }
 

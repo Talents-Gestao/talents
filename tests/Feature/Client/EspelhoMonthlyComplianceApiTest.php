@@ -157,9 +157,12 @@ class EspelhoMonthlyComplianceApiTest extends TestCase
 
         $this->seedMondaySchedule($company);
         // Período com 2 segundas: 06 e 13.
+        // Ze: 2 dias completos. Maria/Pedro: 1 completo + 1 incompleto (falta real, não lacuna de import).
         $this->seedEspelhoDays($company, $admin, 1, 'Ze Cem', ['2026-04-06', '2026-04-13']);
-        $this->seedEspelhoDay($company, $admin, 2, 'Maria Meio', '2026-04-06');
-        $this->seedEspelhoDay($company, $admin, 3, 'Pedro Um', '2026-04-06');
+        $this->seedEspelhoDays($company, $admin, 2, 'Maria Meio', ['2026-04-06']);
+        $this->seedIncompleteEspelhoDay($company, $admin, 2, 'Maria Meio', '2026-04-13');
+        $this->seedEspelhoDays($company, $admin, 3, 'Pedro Um', ['2026-04-06']);
+        $this->seedIncompleteEspelhoDay($company, $admin, 3, 'Pedro Um', '2026-04-13');
 
         $mock = Mockery::mock(RhidComplianceService::class);
         $mock->shouldReceive('listJustificationTypes')->never();
@@ -198,6 +201,70 @@ class EspelhoMonthlyComplianceApiTest extends TestCase
         $this->assertSame(2, $people['unjustified_absence_days']);
         $this->assertSame([2, 3], array_column($people['ranking_faltas'], 'id_person'));
         $this->assertSame([], $people['ranking_atestados']);
+    }
+
+    public function test_missing_espelho_day_is_not_counted_as_falta(): void
+    {
+        $company = Company::query()->create(['name' => 'Emp Lacuna']);
+        $this->subscribeCompanyToNr1($company);
+        $admin = User::factory()->companyAdmin($company->id)->create();
+
+        $this->seedMondaySchedule($company);
+        // Só um dia importado: o outro útil (13) é lacuna — não falta.
+        $this->seedEspelhoDay($company, $admin, 10, 'Ana Lacuna', '2026-04-06');
+
+        $mock = Mockery::mock(RhidComplianceService::class);
+        $mock->shouldReceive('listJustificationTypes')->never();
+        $mock->shouldReceive('listJustifications')->never();
+        $this->app->instance(RhidComplianceService::class, $mock);
+
+        $payload = $this->actingAs($admin)
+            ->getJson(route('client.rhid.api.espelhos.monthly-compliance', [
+                'ini' => '2026-04-06',
+                'fim' => '2026-04-13',
+            ]))
+            ->assertOk()
+            ->json();
+
+        $ana = collect($payload['ranking_cumprimento_mes'])->firstWhere('id_person', 10);
+        $this->assertNotNull($ana);
+        $this->assertSame(1, $ana['dias_esperados']);
+        $this->assertSame(1, $ana['dias_cumpridos']);
+        $this->assertSame(0, $ana['dias_faltas_nao_justificadas']);
+        $this->assertSame(100.0, (float) $ana['percentual']);
+        $this->assertSame(0, $payload['people']['unjustified_absence_days']);
+    }
+
+    public function test_monthly_compliance_detail_lists_day_status(): void
+    {
+        $company = Company::query()->create(['name' => 'Emp Detalhe']);
+        $this->subscribeCompanyToNr1($company);
+        $admin = User::factory()->companyAdmin($company->id)->create();
+
+        $this->seedMondaySchedule($company);
+        $this->seedEspelhoDay($company, $admin, 7, 'Detail User', '2026-04-06');
+        $this->seedIncompleteEspelhoDay($company, $admin, 7, 'Detail User', '2026-04-13');
+
+        $mock = Mockery::mock(RhidComplianceService::class);
+        $mock->shouldReceive('listJustificationTypes')->never();
+        $mock->shouldReceive('listJustifications')->never();
+        $this->app->instance(RhidComplianceService::class, $mock);
+
+        $payload = $this->actingAs($admin)
+            ->getJson(route('client.rhid.api.espelhos.monthly-compliance.detail', [
+                'ini' => '2026-04-06',
+                'fim' => '2026-04-13',
+                'id_person' => 7,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('id_person', 7)
+            ->assertJsonPath('resumo.dias_cumpridos', 1)
+            ->assertJsonPath('resumo.dias_faltas_nao_justificadas', 1)
+            ->json();
+
+        $byDate = collect($payload['dias'])->keyBy('ref_date');
+        $this->assertSame('cumprido', $byDate['2026-04-06']['status']);
+        $this->assertSame('falta', $byDate['2026-04-13']['status']);
     }
 
     public function test_espelho_atestado_marker_feeds_atestado_ranking(): void
@@ -311,5 +378,42 @@ class EspelhoMonthlyComplianceApiTest extends TestCase
     private function seedEspelhoDay(Company $company, User $admin, int $idPerson, string $nome, string $refDate): void
     {
         $this->seedEspelhoDays($company, $admin, $idPerson, $nome, [$refDate]);
+    }
+
+    private function seedIncompleteEspelhoDay(Company $company, User $admin, int $idPerson, string $nome, string $refDate): void
+    {
+        $import = RhidEspelhoImport::query()
+            ->where('company_id', $company->id)
+            ->where('id_person', $idPerson)
+            ->first();
+
+        if ($import === null) {
+            $import = RhidEspelhoImport::query()->create([
+                'company_id' => $company->id,
+                'user_id' => $admin->id,
+                'id_person' => $idPerson,
+                'period_ini' => $refDate,
+                'period_fim' => $refDate,
+                'guid' => 'g-mc-inc-'.$idPerson.'-'.$refDate,
+                'storage_path' => 'rhid/inc-'.$idPerson.'-'.$refDate.'.pdf',
+                'parse_status' => 'ok',
+                'parsed_at' => now(),
+            ]);
+        }
+
+        RhidEspelhoDay::query()->create([
+            'import_id' => $import->id,
+            'ref_date' => $refDate,
+            'row_json' => [
+                'colaboradores' => [[
+                    'nome' => $nome,
+                    'id_person' => $idPerson,
+                    'ent_1' => '08:00',
+                    'sai_1' => null,
+                    'ent_2' => null,
+                    'sai_2' => null,
+                ]],
+            ],
+        ]);
     }
 }

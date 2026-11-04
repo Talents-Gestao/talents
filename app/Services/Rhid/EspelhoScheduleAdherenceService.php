@@ -285,12 +285,15 @@ class EspelhoScheduleAdherenceService
                 'dias_feriado_no_periodo' => 0,
                 'colaboradores_avaliados' => 0,
                 'justificativas_carregadas' => false,
+                'dias_uteis_sem_espelho_pessoa' => 0,
             ];
+            $diagnostics = $this->buildDiagnostics($company, $ini, $fim, $settings, null, 0, 0, 0);
 
             return [
                 'resumo' => $resumo,
                 'ranking_cumprimento_mes' => [],
                 'people' => PontoPeopleSnapshot::fromComplianceRanking([], $resumo),
+                'diagnostics' => $diagnostics,
             ];
         }
 
@@ -332,24 +335,32 @@ class EspelhoScheduleAdherenceService
             }
 
             $fragment = $this->pickFragment($rowJson, $idPersonRow);
-            if ($fragment === null) {
-                continue;
-            }
-
-            $nome = trim((string) ($fragment['nome'] ?? ''));
-            if ($nome === '') {
-                $nome = '—';
+            $nome = '—';
+            if ($fragment !== null) {
+                $n = trim((string) ($fragment['nome'] ?? ''));
+                if ($n !== '') {
+                    $nome = $n;
+                }
             }
 
             if (! isset($byPerson[$idPersonRow])) {
                 $byPerson[$idPersonRow] = [
                     'id_person' => $idPersonRow,
                     'nome' => $nome,
+                    'datas_com_espelho' => [],
                     'datas_cumpridas' => [],
                     'total_atraso_entrada_minutos' => 0,
                 ];
             }
-            $byPerson[$idPersonRow]['nome'] = $nome;
+            if ($nome !== '—') {
+                $byPerson[$idPersonRow]['nome'] = $nome;
+            }
+            // Só dias com espelho importado entram no denominador — dia sem PDF não é falta.
+            $byPerson[$idPersonRow]['datas_com_espelho'][$dateStr] = true;
+
+            if ($fragment === null) {
+                continue;
+            }
 
             $hasManualPref = array_key_exists($idPersonRow, $prefMap);
             $useSecond = $prefMap[$idPersonRow] ?? false;
@@ -364,6 +375,7 @@ class EspelhoScheduleAdherenceService
         }
 
         $ranking = [];
+        $diasSemEspelhoTotal = 0;
         foreach ($byPerson as $idPerson => $agg) {
             $excluded = [];
             foreach ($feriadoDates as $d => $_) {
@@ -378,9 +390,14 @@ class EspelhoScheduleAdherenceService
 
             $diasEsperadosSet = [];
             foreach ($workingDates as $d => $_) {
-                if (! isset($excluded[$d])) {
-                    $diasEsperadosSet[$d] = true;
+                if (isset($excluded[$d])) {
+                    continue;
                 }
+                if (empty($agg['datas_com_espelho'][$d])) {
+                    $diasSemEspelhoTotal++;
+                    continue;
+                }
+                $diasEsperadosSet[$d] = true;
             }
             $diasEsperados = count($diasEsperadosSet);
             if ($diasEsperados === 0) {
@@ -457,13 +474,29 @@ class EspelhoScheduleAdherenceService
         }
         unset($row);
 
+        $diagnostics = $this->buildDiagnostics(
+            $company,
+            $ini,
+            $fim,
+            $settings,
+            null,
+            count($workingDates),
+            0,
+            count($byPerson),
+        );
+        if ($diasSemEspelhoTotal > 0 && ($diagnostics['hint'] ?? null) === null && $ranking !== []) {
+            $diagnostics['hint'] = 'Há dias úteis do período ainda sem espelho importado. Eles não entram no cálculo de pontualidade nem de faltas. Use «Importar este mês» para preencher meses anteriores.';
+        }
+        $diagnostics['dias_uteis_sem_espelho_pessoa'] = $diasSemEspelhoTotal;
+
         $resumo = [
             'ini' => $ini->toDateString(),
             'fim' => $fim->toDateString(),
             'dias_uteis_no_periodo' => count($workingDates),
             'dias_feriado_no_periodo' => count(array_intersect_key($feriadoDates, $workingDates)),
-            'colaboradores_avaliados' => count($byPerson),
+            'colaboradores_avaliados' => count($ranking),
             'justificativas_carregadas' => $justificationsLoaded,
+            'dias_uteis_sem_espelho_pessoa' => $diasSemEspelhoTotal,
         ];
 
         $rankingValues = array_values($ranking);
@@ -472,6 +505,7 @@ class EspelhoScheduleAdherenceService
             'resumo' => $resumo,
             'ranking_cumprimento_mes' => $rankingValues,
             'people' => PontoPeopleSnapshot::fromComplianceRanking($rankingValues, $resumo),
+            'diagnostics' => $diagnostics,
         ];
     }
 
@@ -971,6 +1005,195 @@ class EspelhoScheduleAdherenceService
             'tolerancia_minutos' => $tolerance,
             'preferencia_almoco' => $hasManualPref ? ($useSecond ? 'segundo' : 'primeiro') : 'auto',
             'dias' => $rows,
+        ];
+    }
+
+    /**
+     * Detalhe diário de cumprimento do mês (modal «mais pontuais» / faltas).
+     *
+     * @return array<string, mixed>
+     */
+    public function personMonthlyComplianceDetail(
+        Company $company,
+        CarbonInterface $ini,
+        CarbonInterface $fim,
+        int $idPerson,
+        ?User $user = null,
+    ): array {
+        [$ini, $fim] = $this->clampPeriodToClosedDays($ini, $fim);
+        $settings = $this->scheduleSettings->getForCompany($company);
+        $tolerance = $this->toleranceMinutes($settings);
+        $workingDates = $this->workingDatesInPeriod($ini, $fim, $settings);
+
+        $prefMap = $this->personSchedulePreferences->secondLunchMapForCompany($company->id);
+        $hasManualPref = array_key_exists($idPerson, $prefMap);
+        $useSecond = $prefMap[$idPerson] ?? false;
+        $allowAuto = ! empty($settings['segundo_almoco']) && ! $hasManualPref;
+
+        [$feriadoDates, $atestadoDatesByPerson, $justificationsLoaded] = $this->loadJustificationExclusions(
+            $company,
+            $user,
+            $ini,
+            $fim,
+        );
+        $feriasDatesByPerson = $this->loadFeriasDatesByPerson($company->id, $ini, $fim);
+        $days = $this->loadDedupedDays($company->id, $ini, $fim, $idPerson);
+        $atestadoDatesByPerson = $this->mergeEspelhoAtestadoMarkers($days, $atestadoDatesByPerson);
+
+        /** @var array<string, array{day: RhidEspelhoDay, id_person: int}> $daysByDate */
+        $daysByDate = [];
+        $nome = '—';
+        foreach ($days as $item) {
+            /** @var RhidEspelhoDay $day */
+            $day = $item['day'];
+            $dateStr = Carbon::parse($day->ref_date)->toDateString();
+            $daysByDate[$dateStr] = $item;
+            $rowJson = is_array($day->row_json) ? $day->row_json : [];
+            $fragment = $this->pickFragment($rowJson, $idPerson);
+            if ($fragment !== null) {
+                $n = trim((string) ($fragment['nome'] ?? ''));
+                if ($n !== '') {
+                    $nome = $n;
+                }
+            }
+        }
+
+        $dias = [];
+        $diasEsperados = 0;
+        $diasCumpridos = 0;
+        $diasFaltas = 0;
+        $diasAtestado = 0;
+        $diasFerias = 0;
+        $diasFeriado = 0;
+        $diasSemEspelho = 0;
+
+        $cursor = $ini->copy()->startOfDay();
+        $end = $fim->copy()->startOfDay();
+        while ($cursor->lte($end)) {
+            $dateStr = $cursor->toDateString();
+            $isoDow = (int) $cursor->format('N');
+            $dayKey = self::DAY_KEY_BY_ISO[$isoDow] ?? null;
+            $daySchedule = ($dayKey !== null) ? ($settings['dias'][$dayKey] ?? null) : null;
+            $escalaAtiva = is_array($daySchedule) && ! empty($daySchedule['ativo']);
+            $isWorking = isset($workingDates[$dateStr]);
+
+            $item = $daysByDate[$dateStr] ?? null;
+            $fragment = null;
+            $ent1 = $sai1 = $ent2 = $sai2 = null;
+            $analysis = null;
+            if ($item !== null) {
+                $rowJson = is_array($item['day']->row_json) ? $item['day']->row_json : [];
+                $fragment = $this->pickFragment($rowJson, $idPerson);
+                $ent1 = $fragment !== null ? $this->normalizeSlot($fragment['ent_1'] ?? null) : null;
+                $sai1 = $fragment !== null ? $this->normalizeSlot($fragment['sai_1'] ?? null) : null;
+                $ent2 = $fragment !== null ? $this->normalizeSlot($fragment['ent_2'] ?? null) : null;
+                $sai2 = $fragment !== null ? $this->normalizeSlot($fragment['sai_2'] ?? null) : null;
+                if ($escalaAtiva && $fragment !== null) {
+                    $analysis = $this->analyzeDayFragment(
+                        $fragment,
+                        $daySchedule,
+                        $tolerance,
+                        $settings,
+                        $useSecond,
+                        $allowAuto,
+                    );
+                }
+            }
+
+            $status = 'fora';
+            $statusLabel = 'Fora da escala';
+            $explicacao = 'Dia sem jornada esperada na escala da empresa.';
+            $contaNoDenominador = false;
+
+            if (! $isWorking) {
+                // já definido
+            } elseif (isset($feriadoDates[$dateStr])) {
+                $status = 'feriado';
+                $statusLabel = 'Feriado';
+                $explicacao = 'Excluído do cálculo (feriado).';
+                $diasFeriado++;
+            } elseif (isset($atestadoDatesByPerson[$idPerson][$dateStr])) {
+                $status = 'atestado';
+                $statusLabel = 'Atestado';
+                $explicacao = 'Excluído do cálculo (atestado).';
+                $diasAtestado++;
+            } elseif (isset($feriasDatesByPerson[$idPerson][$dateStr])) {
+                $status = 'ferias';
+                $statusLabel = 'Férias';
+                $explicacao = 'Excluído do cálculo (férias).';
+                $diasFerias++;
+            } elseif ($item === null) {
+                $status = 'sem_espelho';
+                $statusLabel = 'Sem espelho';
+                $explicacao = 'Espelho ainda não importado — não conta como falta nem como cumprimento.';
+                $diasSemEspelho++;
+            } elseif ($analysis !== null) {
+                $status = 'cumprido';
+                $statusLabel = 'Jornada completa';
+                $explicacao = 'Quatro marcações analisáveis; conta como dia cumprido no denominador.';
+                $contaNoDenominador = true;
+                $diasEsperados++;
+                $diasCumpridos++;
+            } else {
+                $status = 'falta';
+                $statusLabel = 'Falta não justificada';
+                $explicacao = 'Dia útil com espelho, sem jornada completa (faltam batidas) e sem atestado/férias/feriado.';
+                $contaNoDenominador = true;
+                $diasEsperados++;
+                $diasFaltas++;
+            }
+
+            if ($isWorking || $item !== null) {
+                $dias[] = [
+                    'ref_date' => $dateStr,
+                    'label' => $cursor->format('d/m/Y'),
+                    'status' => $status,
+                    'status_label' => $statusLabel,
+                    'explicacao' => $explicacao,
+                    'conta_no_denominador' => $contaNoDenominador,
+                    'ent_1' => $ent1,
+                    'sai_1' => $sai1,
+                    'ent_2' => $ent2,
+                    'sai_2' => $sai2,
+                    'atraso_entrada_minutos' => $analysis['atraso_entrada_minutos'] ?? null,
+                    'lunch_interval_used' => $analysis['lunch_interval_used'] ?? null,
+                ];
+            }
+
+            $cursor->addDay();
+        }
+
+        $percentual = $diasEsperados > 0 ? round(($diasCumpridos / $diasEsperados) * 100, 1) : null;
+
+        return [
+            'id_person' => $idPerson,
+            'nome' => $nome,
+            'periodo' => [
+                'ini' => $ini->toDateString(),
+                'fim' => $fim->toDateString(),
+            ],
+            'tolerancia_minutos' => $tolerance,
+            'justificativas_carregadas' => $justificationsLoaded,
+            'preferencia_almoco' => $hasManualPref ? ($useSecond ? 'segundo' : 'primeiro') : 'auto',
+            'resumo' => [
+                'percentual' => $percentual,
+                'dias_esperados' => $diasEsperados,
+                'dias_cumpridos' => $diasCumpridos,
+                'dias_faltas_nao_justificadas' => $diasFaltas,
+                'dias_atestado' => $diasAtestado,
+                'dias_ferias' => $diasFerias,
+                'dias_feriado' => $diasFeriado,
+                'dias_sem_espelho' => $diasSemEspelho,
+            ],
+            'regras' => [
+                'Pontualidade média (cumprimento) = dias com jornada completa ÷ dias úteis com espelho importado.',
+                'Só entram dias já fechados (até ontem) e com espelho importado.',
+                'Feriado, atestado e férias saem do denominador.',
+                'Falta não justificada = dia útil com espelho, sem 4 batidas analisáveis e sem exclusão válida.',
+                'Dia sem espelho importado não conta como falta (lacuna de dados).',
+                'Atraso na entrada não vira falta: o dia ainda conta como cumprido se houver as 4 marcações.',
+            ],
+            'dias' => $dias,
         ];
     }
 

@@ -45,6 +45,8 @@ const props = defineProps({
     overviewMonthlyCompliance: { type: [Object, null], default: null },
     overviewMonthlyComplianceMonth: { type: String, required: true },
     overviewMonthlyComplianceLoading: { type: Boolean, required: true },
+    overviewMonthlyImporting: { type: Boolean, default: false },
+    overviewMonthlyImportMessage: { type: String, default: '' },
     overviewJustTotal: { type: [Number, null], default: null },
     overviewJustAtestados: { type: [Number, null], default: null },
     overviewJustNote: { type: String, default: '' },
@@ -69,6 +71,7 @@ const emit = defineEmits([
 const autoImportStatusUrl = computed(() => route('client.rhid.api.espelhos.auto-import'));
 const autoImportRunUrl = computed(() => route('client.rhid.api.espelhos.auto-import.run'));
 const rhidSettingsHref = computed(() => route('client.rhid.settings.edit'));
+const monthlyDetailUrl = computed(() => route('client.rhid.api.espelhos.monthly-compliance.detail'));
 
 const onAutoImported = () => {
     emit('import-auto');
@@ -92,6 +95,35 @@ const onMonthlyComplianceMonthInput = (value) => {
 };
 
 const overviewPeople = computed(() => props.overviewMonthlyCompliance?.people ?? null);
+
+const overviewMonthlyMonthLabel = computed(() => {
+    const ym = String(props.overviewMonthlyComplianceMonth || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(ym)) {
+        return props.overviewCalendarRangeLabel;
+    }
+    const [y, m] = ym.split('-').map((n) => Number(n));
+    const dt = new Date(y, m - 1, 1);
+    const label = dt.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+});
+
+const overviewMonthlyPeriodIni = computed(
+    () => props.overviewMonthlyCompliance?.resumo?.ini
+        || props.overviewMonthlyCompliance?.people?.resumo?.ini
+        || '',
+);
+
+const overviewMonthlyPeriodFim = computed(
+    () => props.overviewMonthlyCompliance?.resumo?.fim
+        || props.overviewMonthlyCompliance?.people?.resumo?.fim
+        || '',
+);
+
+const overviewMonthlyDiagnosticsHint = computed(
+    () => props.overviewMonthlyCompliance?.diagnostics?.hint
+        || props.overviewMonthlyCompliance?.people?.resumo?.hint
+        || '',
+);
 
 const barWorstBankChart = computed(() => {
     const rows = props.overviewBankWorstThree || [];
@@ -211,12 +243,18 @@ const barWorstBankChart = computed(() => {
             <PontoPeopleSnapshot
                 :people="overviewPeople"
                 :loading="overviewMonthlyComplianceLoading || overviewLoading"
-                :month-label="overviewCalendarRangeLabel"
+                :month-label="overviewMonthlyMonthLabel"
+                :diagnostics-hint="overviewMonthlyDiagnosticsHint"
                 :show-month-picker="true"
                 :month-value="overviewMonthlyComplianceMonth"
                 :month-max="overviewMonthlyComplianceMonthMax"
-                :month-disabled="overviewLoading || overviewMonthlyComplianceLoading"
+                :month-disabled="overviewLoading || overviewMonthlyComplianceLoading || overviewMonthlyImporting"
                 :link-collaborators="true"
+                :detail-url="monthlyDetailUrl"
+                :period-ini="overviewMonthlyPeriodIni"
+                :period-fim="overviewMonthlyPeriodFim"
+                :importing-month="overviewMonthlyImporting"
+                :import-status-message="overviewMonthlyImportMessage"
                 @month-change="onMonthlyComplianceMonthInput"
             />
         </div>

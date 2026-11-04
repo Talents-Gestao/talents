@@ -218,6 +218,87 @@ const loadCompanyMetrics = async (refresh = false) => {
     }
 };
 
+const metricsNeedsImport = (data) => {
+    if (!data || data.status !== 'ok') {
+        return false;
+    }
+    const imports = data?.diagnostics?.imports_no_periodo;
+    if (imports === 0) {
+        return true;
+    }
+    return !data?.people?.has_data;
+};
+
+const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const waitAdminAutoImportBatch = async (companyId, batchId) => {
+    if (!companyId || !batchId) {
+        return null;
+    }
+    const maxAttempts = 36;
+    for (let i = 0; i < maxAttempts; i++) {
+        await sleepMs(5000);
+        try {
+            const { data } = await axios.get(
+                route('admin.ponto.companies.espelhos.auto-import', companyId),
+            );
+            const batch = data?.batch;
+            if (!batch || Number(batch.id) !== Number(batchId)) {
+                continue;
+            }
+            if (['completed', 'failed'].includes(batch.status)) {
+                return batch;
+            }
+        } catch {
+            // Mantém tentando até o limite.
+        }
+    }
+    return null;
+};
+
+const importEspelhosForSelectedMonthIfNeeded = async () => {
+    if (!selectedCompanyId.value || metricsImporting.value || !isCompanyConfigured(selectedCompany.value)) {
+        return;
+    }
+    if (!metricsNeedsImport(companyMetrics.value)) {
+        return;
+    }
+
+    const month = String(metricsMonth.value || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+        return;
+    }
+
+    metricsImporting.value = true;
+    metricsImportMessage.value = null;
+    try {
+        const { data } = await axios.post(
+            route('admin.ponto.companies.espelhos.auto-import.run', selectedCompanyId.value),
+            { month },
+            { timeout: 60000 },
+        );
+        const result = data?.result;
+        if (result?.action === 'queued') {
+            const batchId = result?.batch_id ?? data?.batch?.id ?? null;
+            await waitAdminAutoImportBatch(selectedCompanyId.value, batchId);
+            await loadCompanyMetrics(true);
+            metricsImportMessage.value = companyMetrics.value?.people?.has_data
+                ? 'Espelhos do mês importados. Indicadores atualizados.'
+                : 'Importação concluída, mas ainda sem dias analisáveis.';
+        } else if (result?.action === 'skipped') {
+            metricsImportMessage.value = result.reason || 'Nada a importar neste momento.';
+            await loadCompanyMetrics(true);
+        } else {
+            metricsImportMessage.value = result?.reason || 'Não foi possível enfileirar a importação.';
+        }
+    } catch (e) {
+        metricsImportMessage.value =
+            e?.response?.data?.message || e?.response?.data?.result?.reason || 'Falha ao enfileirar a importação automática.';
+    } finally {
+        metricsImporting.value = false;
+    }
+};
+
 const onMetricsMonthChange = async (next) => {
     if (!/^\d{4}-\d{2}$/.test(next || '') || next === metricsMonth.value) {
         return;
@@ -225,37 +306,7 @@ const onMetricsMonthChange = async (next) => {
     metricsMonth.value = next;
     metricsImportMessage.value = null;
     await loadCompanyMetrics(true);
-};
-
-const importEspelhosNow = async () => {
-    if (!selectedCompanyId.value || metricsImporting.value) {
-        return;
-    }
-    metricsImporting.value = true;
-    metricsImportMessage.value = null;
-    try {
-        const { data } = await axios.post(
-            route('admin.ponto.companies.espelhos.auto-import.run', selectedCompanyId.value),
-            {},
-            { timeout: 60000 },
-        );
-        const result = data?.result;
-        if (result?.action === 'queued') {
-            metricsImportMessage.value = result.backfill
-                ? 'Importação enfileirada com backfill do mês. Aguarde a fila processar e clique em Atualizar.'
-                : 'Importação do dia fechado enfileirada. Aguarde a fila processar e clique em Atualizar.';
-        } else if (result?.action === 'skipped') {
-            metricsImportMessage.value = result.reason || 'Nada a importar neste momento.';
-        } else {
-            metricsImportMessage.value = result?.reason || 'Não foi possível enfileirar a importação.';
-        }
-        await loadCompanyMetrics(true);
-    } catch (e) {
-        metricsImportMessage.value =
-            e?.response?.data?.message || e?.response?.data?.result?.reason || 'Falha ao enfileirar a importação automática.';
-    } finally {
-        metricsImporting.value = false;
-    }
+    await importEspelhosForSelectedMonthIfNeeded();
 };
 
 const loadPeople = async () => {
@@ -463,9 +514,7 @@ onMounted(async () => {
                     :show-month-picker="true"
                     :month-value="metricsMonth"
                     :month-max="currentYearMonth()"
-                    :show-import-action="true"
                     @month-change="onMetricsMonthChange"
-                    @import-now="importEspelhosNow"
                 />
 
                 <div v-if="selectedCompany" class="surface-card">
