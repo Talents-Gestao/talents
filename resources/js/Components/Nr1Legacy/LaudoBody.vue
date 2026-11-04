@@ -647,6 +647,9 @@ defineExpose({
                     Relatório técnico + plano de ação
                 </SecondaryButton>
                 <SecondaryButton type="button" @click="openPgrSubsidyModal">Subsídio AEP/PGR</SecondaryButton>
+                <SecondaryButton type="button" @click="openExportPdfModal">
+                    Plano com resultados + parecer
+                </SecondaryButton>
             </div>
 
             <div class="surface-card space-y-4 p-6 text-slate-900">
@@ -1051,13 +1054,13 @@ defineExpose({
 
     <Modal :show="showExportPdfModal" max-width="md" @close="showExportPdfModal = false">
         <div class="p-6">
-            <h2 class="text-lg font-medium text-gray-900">Exportar PDF dos resultados</h2>
+            <h2 class="text-lg font-medium text-gray-900">Plano com resultados + parecer</h2>
             <p class="mt-2 text-sm text-gray-600">
-                Gera o relatório com indicadores e gráficos da pesquisa.
+                Gera o PDF com indicadores, gráficos e o parecer técnico gravado nesta campanha.
             </p>
             <div class="mt-6 flex justify-end gap-2">
                 <SecondaryButton type="button" @click="showExportPdfModal = false">Cancelar</SecondaryButton>
-                <PrimaryButton type="button" @click="confirmExportPdf">Gerar PDF</PrimaryButton>
+                <PrimaryButton type="button" @click="confirmExportPdf">Abrir PDF</PrimaryButton>
             </div>
         </div>
     </Modal>

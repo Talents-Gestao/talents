@@ -53,7 +53,9 @@ const laudo = computed(() => props.documents.laudo ?? null);
                     Relatório técnico + plano de ação
                 </Nr1Button>
                 <Nr1Button size="sm" @click="body?.openPgrSubsidyModal()">Subsídio AEP/PGR</Nr1Button>
-                <Nr1Button size="sm" @click="body?.openExportPdfModal()">Exportar resultados</Nr1Button>
+                <Nr1Button size="sm" @click="body?.openExportPdfModal()">
+                    Plano com resultados + parecer
+                </Nr1Button>
             </div>
 
             <div class="nr1-theme">
