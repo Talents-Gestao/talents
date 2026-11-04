@@ -190,10 +190,16 @@ class PgrSubsidyValidationPhaseNineTest extends TestCase
         $this->assertSame(array_fill_keys(array_keys(PgrSubsidySnapshotBuilder::INVENTORY_FIELDS), null), $version->snapshot['inventory']);
 
         $html = app(PsychosocialDocumentService::class)->renderHtml(PsychosocialDocument::TYPE_PGR_SUBSIDY, $version->snapshot);
+        $this->assertArrayHasKey('pgr', $version->snapshot);
+        $this->assertNotEmpty($version->snapshot['pgr']['priorities'] ?? []);
+        $this->assertStringContainsString('Prioridades para o inventário', $html);
+        $this->assertStringContainsString('Pendências do cadastro técnico', $html);
         $this->assertStringContainsString('Origem dos elegíveis', $html);
-        $this->assertStringContainsString('Não informado', $html);
+        $this->assertStringContainsString('Avaliar inclusão deste fator no inventário', $html);
         $this->assertStringContainsString('A aprovar', $html);
         $this->assertStringContainsString('Faixa do questionário. Não é classificação de risco ocupacional do PGR.', $html);
+        $this->assertStringNotContainsString('n gravado =', $html);
+        $this->assertStringNotContainsString('Decisão do responsável técnico ainda não registrada.', $html);
         $this->assertStringNotContainsString('HSE validado', $html);
         $this->assertStringNotContainsString('COPSOQ validado', $html);
         $this->assertSame(1, PsychosocialMeasure::query()->count());
