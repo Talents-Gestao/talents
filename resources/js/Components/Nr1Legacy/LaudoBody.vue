@@ -614,7 +614,7 @@ defineExpose({
     </div>
 
     <form class="space-y-8" @submit.prevent="openPublishConfirmModal">
-        <div v-show="activeStep === 'opinion'" class="space-y-8 pb-28">
+        <div v-show="activeStep === 'opinion'" class="space-y-8 pb-8">
             <div>
                 <h3 class="text-lg font-semibold text-talents-900">02 · Parecer técnico</h3>
                 <p class="mt-1 text-sm text-gray-600">
@@ -680,132 +680,144 @@ defineExpose({
                     {{ form.errors.technical_opinion }}
                 </div>
 
-                <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
-                    <h4 class="text-sm font-semibold text-gray-900">Anexar arquivo do parecer (opcional)</h4>
-                    <p class="mt-1 text-xs text-gray-600">PDF, DOC ou DOCX · máximo 20 MB.</p>
-
-                    <div
-                        v-if="existingOpinionFileName"
-                        class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                    >
-                        <div class="flex items-center gap-2 text-gray-800">
-                            <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
-                            <a
-                                v-if="existingOpinionFileUrl"
-                                :href="existingOpinionFileUrl"
-                                class="font-medium text-talents-800 hover:underline"
-                            >
-                                {{ existingOpinionFileName }}
-                            </a>
-                            <span v-else class="font-medium">{{ existingOpinionFileName }}</span>
-                        </div>
-                        <button
-                            type="button"
-                            class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                            @click="removeExistingOpinionFile"
-                        >
-                            Remover arquivo
-                        </button>
+                <div class="space-y-4 rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-900">Anexos (opcional)</h4>
+                        <p class="mt-1 text-xs text-gray-600">
+                            Arquivo do parecer, relatório executivo ou encaminhamento técnico · PDF, DOC ou DOCX · máximo 20 MB.
+                        </p>
                     </div>
 
-                    <div class="mt-3">
-                        <input
-                            ref="opinionFileInput"
-                            type="file"
-                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                            class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-talents-800"
-                            @change="onOpinionFileChange"
-                        />
-                        <p v-if="form.technical_opinion_file" class="mt-2 text-xs text-emerald-700">
-                            Novo arquivo selecionado: {{ form.technical_opinion_file.name }}
-                            <button type="button" class="ml-2 text-red-600 hover:underline" @click="clearSelectedOpinionFile">
-                                cancelar
+                    <div class="rounded-lg border border-gray-200 bg-white p-3">
+                        <h5 class="text-sm font-medium text-gray-900">Arquivo do parecer</h5>
+                        <div
+                            v-if="existingOpinionFileName"
+                            class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
+                        >
+                            <div class="flex items-center gap-2 text-gray-800">
+                                <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
+                                <a
+                                    v-if="existingOpinionFileUrl"
+                                    :href="existingOpinionFileUrl"
+                                    class="font-medium text-talents-800 hover:underline"
+                                >
+                                    {{ existingOpinionFileName }}
+                                </a>
+                                <span v-else class="font-medium">{{ existingOpinionFileName }}</span>
+                            </div>
+                            <button
+                                type="button"
+                                class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                                @click="removeExistingOpinionFile"
+                            >
+                                Remover arquivo
                             </button>
-                        </p>
-                        <p v-if="form.errors.technical_opinion_file" class="mt-2 text-sm text-red-600">
-                            {{ form.errors.technical_opinion_file }}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="surface-card space-y-6 p-6 text-slate-900">
-                <div>
-                    <h3 class="font-semibold text-talents-800">Relatórios NR-1 personalizados (opcional)</h3>
-                    <p class="mt-1 text-sm text-gray-600">
-                        Envie versões revisadas do relatório executivo ou do encaminhamento técnico.
-                    </p>
-                </div>
-
-                <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
-                    <h4 class="text-sm font-semibold text-gray-900">Relatório executivo</h4>
-                    <div
-                        v-if="existingExecutiveFileName"
-                        class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                    >
-                        <div class="flex items-center gap-2 text-gray-800">
-                            <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
-                            <a
-                                v-if="existingExecutiveFileUrl"
-                                :href="existingExecutiveFileUrl"
-                                class="font-medium text-talents-800 hover:underline"
-                            >
-                                {{ existingExecutiveFileName }}
-                            </a>
-                            <span v-else class="font-medium">{{ existingExecutiveFileName }}</span>
                         </div>
-                        <button
-                            type="button"
-                            class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                            @click="removeExistingExecutiveFile"
-                        >
-                            Remover
-                        </button>
-                    </div>
-                    <div class="mt-3">
-                        <input
-                            ref="executiveFileInput"
-                            type="file"
-                            accept=".pdf,.doc,.docx"
-                            class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
-                            @change="onExecutiveFileChange"
-                        />
-                    </div>
-                </div>
-
-                <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
-                    <h4 class="text-sm font-semibold text-gray-900">Encaminhamento técnico</h4>
-                    <div
-                        v-if="existingReferralFileName"
-                        class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                    >
-                        <div class="flex items-center gap-2 text-gray-800">
-                            <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
-                            <a
-                                v-if="existingReferralFileUrl"
-                                :href="existingReferralFileUrl"
-                                class="font-medium text-talents-800 hover:underline"
-                            >
-                                {{ existingReferralFileName }}
-                            </a>
-                            <span v-else class="font-medium">{{ existingReferralFileName }}</span>
+                        <div class="mt-3">
+                            <input
+                                ref="opinionFileInput"
+                                type="file"
+                                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-talents-800"
+                                @change="onOpinionFileChange"
+                            />
+                            <p v-if="form.technical_opinion_file" class="mt-2 text-xs text-emerald-700">
+                                Novo arquivo selecionado: {{ form.technical_opinion_file.name }}
+                                <button type="button" class="ml-2 text-red-600 hover:underline" @click="clearSelectedOpinionFile">
+                                    cancelar
+                                </button>
+                            </p>
+                            <p v-if="form.errors.technical_opinion_file" class="mt-2 text-sm text-red-600">
+                                {{ form.errors.technical_opinion_file }}
+                            </p>
                         </div>
-                        <button
-                            type="button"
-                            class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                            @click="removeExistingReferralFile"
-                        >
-                            Remover
-                        </button>
                     </div>
-                    <div class="mt-3">
-                        <input
-                            ref="referralFileInput"
-                            type="file"
-                            accept=".pdf,.doc,.docx"
-                            class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
-                            @change="onReferralFileChange"
-                        />
+
+                    <div class="rounded-lg border border-gray-200 bg-white p-3">
+                        <h5 class="text-sm font-medium text-gray-900">Relatório executivo</h5>
+                        <p class="mt-1 text-xs text-gray-600">Substitua a versão gerada automaticamente, se precisar.</p>
+                        <div
+                            v-if="existingExecutiveFileName"
+                            class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
+                        >
+                            <div class="flex items-center gap-2 text-gray-800">
+                                <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
+                                <a
+                                    v-if="existingExecutiveFileUrl"
+                                    :href="existingExecutiveFileUrl"
+                                    class="font-medium text-talents-800 hover:underline"
+                                >
+                                    {{ existingExecutiveFileName }}
+                                </a>
+                                <span v-else class="font-medium">{{ existingExecutiveFileName }}</span>
+                            </div>
+                            <button
+                                type="button"
+                                class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                                @click="removeExistingExecutiveFile"
+                            >
+                                Remover
+                            </button>
+                        </div>
+                        <div class="mt-3">
+                            <input
+                                ref="executiveFileInput"
+                                type="file"
+                                accept=".pdf,.doc,.docx"
+                                class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
+                                @change="onExecutiveFileChange"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg border border-gray-200 bg-white p-3">
+                        <h5 class="text-sm font-medium text-gray-900">Encaminhamento técnico</h5>
+                        <p class="mt-1 text-xs text-gray-600">Substitua a versão gerada automaticamente, se precisar.</p>
+                        <div
+                            v-if="existingReferralFileName"
+                            class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
+                        >
+                            <div class="flex items-center gap-2 text-gray-800">
+                                <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
+                                <a
+                                    v-if="existingReferralFileUrl"
+                                    :href="existingReferralFileUrl"
+                                    class="font-medium text-talents-800 hover:underline"
+                                >
+                                    {{ existingReferralFileName }}
+                                </a>
+                                <span v-else class="font-medium">{{ existingReferralFileName }}</span>
+                            </div>
+                            <button
+                                type="button"
+                                class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                                @click="removeExistingReferralFile"
+                            >
+                                Remover
+                            </button>
+                        </div>
+                        <div class="mt-3">
+                            <input
+                                ref="referralFileInput"
+                                type="file"
+                                accept=".pdf,.doc,.docx"
+                                class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
+                                @change="onReferralFileChange"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 pt-4">
+                        <SecondaryButton
+                            v-if="!shellMode"
+                            type="button"
+                            @click="selectStep('results')"
+                        >
+                            Voltar
+                        </SecondaryButton>
+                        <PrimaryButton type="button" @click="selectStep('publish')">
+                            Revisar e publicar
+                        </PrimaryButton>
                     </div>
                 </div>
             </div>
@@ -885,20 +897,12 @@ defineExpose({
         </div>
 
         <div
-            v-show="activeStep === 'opinion' || activeStep === 'publish'"
-            class="z-30 border-t border-slate-200 bg-white px-4 py-3"
-            :class="
-                activeStep === 'publish'
-                    ? 'relative mt-2 rounded-xl border border-slate-200 shadow-sm'
-                    : 'fixed inset-x-0 bottom-0 bg-white/95 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-white/80'
-            "
+            v-show="activeStep === 'publish'"
+            class="relative z-30 mt-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
         >
             <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
                 <p class="text-xs text-slate-500 sm:text-sm">
-                    <template v-if="activeStep === 'opinion'">
-                        Revise o texto e avance para publicar quando estiver pronto.
-                    </template>
-                    <template v-else-if="!canPublishParecer">
+                    <template v-if="!canPublishParecer">
                         Valide o resumo executivo antes de publicar o parecer.
                     </template>
                     <template v-else>
@@ -906,21 +910,10 @@ defineExpose({
                     </template>
                 </p>
                 <div class="flex flex-wrap gap-2">
-                    <SecondaryButton
-                        v-if="activeStep === 'opinion' && !shellMode"
-                        type="button"
-                        @click="selectStep('results')"
-                    >
+                    <SecondaryButton type="button" @click="selectStep('opinion')">
                         Voltar
                     </SecondaryButton>
-                    <SecondaryButton v-if="activeStep === 'publish'" type="button" @click="selectStep('opinion')">
-                        Voltar
-                    </SecondaryButton>
-                    <PrimaryButton v-if="activeStep === 'opinion'" type="button" @click="selectStep('publish')">
-                        Revisar e publicar
-                    </PrimaryButton>
                     <PrimaryButton
-                        v-else
                         type="button"
                         :disabled="form.processing || previewingPlanPdf || !canPublishParecer"
                         @click="openPublishConfirmModal"
@@ -935,7 +928,6 @@ defineExpose({
     <div
         v-if="canAdmin('companies', 'delete')"
         class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white"
-        :class="activeStep === 'opinion' ? 'mb-28' : ''"
     >
         <button
             type="button"
