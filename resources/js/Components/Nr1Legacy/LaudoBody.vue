@@ -50,6 +50,7 @@ const props = defineProps({
     riskScenarioLabel: { type: String, default: null },
     nr1Reports: { type: Object, default: () => ({ executive: null, technical_referral: null }) },
     executiveBrief: { type: Object, default: null },
+    technicalReport: { type: Object, default: null },
     pgrSubsidy: { type: Object, default: null },
     psychosocialDocuments: { type: Array, default: () => [] },
     /** Shell NR-1: sem cabeçalho do laudo e sem a etapa 01 (Diagnóstico). A página antiga não passa esta prop. */
@@ -60,7 +61,7 @@ const { canAdmin } = useAdminPermissions();
 const showDeleteSurveyModal = ref(false);
 const showExportPdfModal = ref(false);
 const showPublishConfirmModal = ref(false);
-const showExecutiveBriefModal = ref(false);
+const showTechnicalReportModal = ref(false);
 const showPgrSubsidyModal = ref(false);
 const previewingPlanPdf = ref(false);
 const publishPreviewPdfUrl = ref(null);
@@ -84,37 +85,45 @@ const publicationStatusLabel = computed(() =>
     isPublished.value ? 'Publicado para a empresa' : 'Rascunho — ainda não enviado',
 );
 
-const executiveBriefValidated = computed(() => Boolean(props.executiveBrief?.validated));
+const technicalReportValidated = computed(() => Boolean(props.technicalReport?.validated));
 
 const canPublishParecer = computed(() => {
     if (props.publication?.uses_review_flow) {
         return true;
     }
-    return executiveBriefValidated.value;
+    return technicalReportValidated.value;
 });
 
-const executiveBriefReleaseUrl = computed(
+const technicalReportReleaseUrl = computed(
     () =>
-        props.executiveBrief?.urls?.release ??
-        route('admin.companies.surveys.executive-brief.release', [props.company.id, props.survey.id]),
+        props.technicalReport?.urls?.release ??
+        route('admin.companies.surveys.technical-report.release', [props.company.id, props.survey.id]),
 );
 
-const executiveBriefDownloadUrl = computed(
+const technicalReportDownloadUrl = computed(
     () =>
-        props.executiveBrief?.urls?.download ??
-        route('admin.companies.surveys.executive-brief.download', [props.company.id, props.survey.id]),
+        props.technicalReport?.urls?.download ??
+        route('admin.companies.surveys.psychosocial-documents.download', [
+            props.company.id,
+            props.survey.id,
+            'technical_report',
+        ]),
 );
 
-const executiveBriefPreviewUrl = computed(
+const technicalReportPreviewUrl = computed(
     () =>
-        props.executiveBrief?.urls?.preview ??
-        route('admin.companies.surveys.executive-brief.preview', [props.company.id, props.survey.id]),
+        props.technicalReport?.urls?.preview ??
+        route('admin.companies.surveys.psychosocial-documents.preview', [
+            props.company.id,
+            props.survey.id,
+            'technical_report',
+        ]),
 );
 
-const executiveBriefValidateUrl = computed(
+const technicalReportValidateUrl = computed(
     () =>
-        props.executiveBrief?.urls?.validate ??
-        route('admin.companies.surveys.executive-brief.validate', [props.company.id, props.survey.id]),
+        props.technicalReport?.urls?.validate ??
+        route('admin.companies.surveys.technical-report.validate', [props.company.id, props.survey.id]),
 );
 
 const pgrSubsidyReleaseUrl = computed(
@@ -152,8 +161,8 @@ const restoreDocModalAfterRedirect = () => {
         return;
     }
     sessionStorage.removeItem('nr1-legacy-doc-modal');
-    if (key === 'executive_brief') {
-        showExecutiveBriefModal.value = true;
+    if (key === 'technical_report') {
+        showTechnicalReportModal.value = true;
     } else if (key === 'pgr_subsidy') {
         showPgrSubsidyModal.value = true;
     }
@@ -287,8 +296,8 @@ const registrationUrl = computed(() =>
     route('admin.companies.surveys.registration.edit', [props.company.id, props.survey.id]),
 );
 
-const openExecutiveBriefModal = () => {
-    showExecutiveBriefModal.value = true;
+const openTechnicalReportModal = () => {
+    showTechnicalReportModal.value = true;
 };
 
 const openPgrSubsidyModal = () => {
@@ -396,7 +405,7 @@ const startTechnicalPollIfPending = () => {
                     'section',
                     'technicalOpinionAi',
                     'technicalOpinionAiPending',
-                    'executiveBrief',
+                    'technicalReport',
                     'pgrSubsidy',
                     'flash',
                 ],
@@ -462,7 +471,7 @@ const submit = () => {
 };
 
 defineExpose({
-    openExecutiveBriefModal,
+    openTechnicalReportModal,
     openPgrSubsidyModal,
     openExportPdfModal,
 });
@@ -634,7 +643,9 @@ defineExpose({
             </div>
 
             <div class="flex flex-wrap gap-2">
-                <SecondaryButton type="button" @click="openExecutiveBriefModal">Resumo executivo</SecondaryButton>
+                <SecondaryButton type="button" @click="openTechnicalReportModal">
+                    Relatório técnico + plano de ação
+                </SecondaryButton>
                 <SecondaryButton type="button" @click="openPgrSubsidyModal">Subsídio AEP/PGR</SecondaryButton>
             </div>
 
@@ -836,8 +847,8 @@ defineExpose({
                 class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
             >
                 Publique o parecer só depois de liberar e
-                <button type="button" class="font-semibold underline" @click="openExecutiveBriefModal">
-                    validar o resumo executivo
+                <button type="button" class="font-semibold underline" @click="openTechnicalReportModal">
+                    validar o relatório técnico e plano de ação
                 </button>
                 .
             </div>
@@ -881,16 +892,18 @@ defineExpose({
                     </p>
                 </div>
                 <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Resumo executivo</p>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Relatório técnico + plano de ação
+                    </p>
                     <p class="mt-2 text-base font-semibold text-slate-900">
-                        {{ executiveBriefValidated ? 'Validado' : 'Pendente de validação' }}
+                        {{ technicalReportValidated ? 'Validado' : 'Pendente de validação' }}
                     </p>
                     <button
                         type="button"
                         class="mt-2 text-sm font-medium text-talents-800 underline"
-                        @click="openExecutiveBriefModal"
+                        @click="openTechnicalReportModal"
                     >
-                        Abrir resumo executivo
+                        Abrir relatório técnico
                     </button>
                 </div>
             </div>
@@ -903,7 +916,7 @@ defineExpose({
             <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
                 <p class="text-xs text-slate-500 sm:text-sm">
                     <template v-if="!canPublishParecer">
-                        Valide o resumo executivo antes de publicar o parecer.
+                        Valide o relatório técnico e plano de ação antes de publicar o parecer.
                     </template>
                     <template v-else>
                         A confirmação no modal publica o parecer para a empresa.
@@ -996,18 +1009,18 @@ defineExpose({
     </Modal>
 
     <Nr1DocumentPreviewModal
-        :show="showExecutiveBriefModal"
-        title="Resumo executivo"
-        description="O PDF abre na hora, sem liberar. Razão social e CNPJ vêm da empresa; os demais campos do cadastro técnico precisam estar preenchidos. Liberar só congela a versão para validação."
-        :document="executiveBrief"
-        :download-url="executiveBriefDownloadUrl"
-        :preview-url="executiveBriefPreviewUrl"
-        :release-url="executiveBriefReleaseUrl"
-        :validate-url="executiveBriefValidateUrl"
-        :can-validate="Boolean(executiveBrief?.validatable)"
+        :show="showTechnicalReportModal"
+        title="Relatório técnico + plano de ação"
+        description="O PDF abre na hora, sem liberar. Inclui achados, prioridades e plano de ação. Liberar congela a versão para validação antes de publicar o parecer."
+        :document="technicalReport"
+        :download-url="technicalReportDownloadUrl"
+        :preview-url="technicalReportPreviewUrl"
+        :release-url="technicalReportReleaseUrl"
+        :validate-url="technicalReportValidateUrl"
+        :can-validate="Boolean(technicalReport?.validatable)"
         :registration-url="registrationUrl"
-        persist-key="executive_brief"
-        @close="showExecutiveBriefModal = false"
+        persist-key="technical_report"
+        @close="showTechnicalReportModal = false"
     />
 
     <Nr1DocumentPreviewModal

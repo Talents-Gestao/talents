@@ -79,17 +79,17 @@ class LegacyParecerPublicationGateTest extends TestCase
         ];
     }
 
-    private function releaseAndValidateBrief(object $campaign): PsychosocialDocumentVersion
+    private function releaseAndValidateTechnicalReport(object $campaign): PsychosocialDocumentVersion
     {
         $this->actingAs($campaign->admin)
-            ->post(route('admin.companies.surveys.executive-brief.release', [
+            ->post(route('admin.companies.surveys.technical-report.release', [
                 $campaign->fx->company->id,
                 $campaign->fx->survey->id,
             ]))
             ->assertRedirect();
 
         $this->actingAs($campaign->admin)
-            ->post(route('admin.companies.surveys.executive-brief.validate', [
+            ->post(route('admin.companies.surveys.technical-report.validate', [
                 $campaign->fx->company->id,
                 $campaign->fx->survey->id,
             ]), ['declaration_accepted' => '1'])
@@ -102,7 +102,7 @@ class LegacyParecerPublicationGateTest extends TestCase
             ->firstOrFail();
     }
 
-    public function test_publishing_parecer_without_validated_brief_is_rejected(): void
+    public function test_publishing_parecer_without_validated_technical_report_is_rejected(): void
     {
         $campaign = $this->seedLegacyCampaign();
 
@@ -111,7 +111,7 @@ class LegacyParecerPublicationGateTest extends TestCase
                 $campaign->fx->company->id,
                 $campaign->fx->survey->id,
             ]), [
-                'technical_opinion' => '<p>Parecer sem resumo validado.</p>',
+                'technical_opinion' => '<p>Parecer sem relatório técnico validado.</p>',
             ])
             ->assertSessionHasErrors('technical_opinion');
 
@@ -120,12 +120,12 @@ class LegacyParecerPublicationGateTest extends TestCase
         );
     }
 
-    public function test_publishing_parecer_with_released_but_unvalidated_brief_is_rejected(): void
+    public function test_publishing_parecer_with_released_but_unvalidated_technical_report_is_rejected(): void
     {
         $campaign = $this->seedLegacyCampaign();
 
         $this->actingAs($campaign->admin)
-            ->post(route('admin.companies.surveys.executive-brief.release', [
+            ->post(route('admin.companies.surveys.technical-report.release', [
                 $campaign->fx->company->id,
                 $campaign->fx->survey->id,
             ]))
@@ -141,22 +141,22 @@ class LegacyParecerPublicationGateTest extends TestCase
                 $campaign->fx->company->id,
                 $campaign->fx->survey->id,
             ]), [
-                'technical_opinion' => '<p>Parecer com resumo só liberado.</p>',
+                'technical_opinion' => '<p>Parecer com relatório só liberado.</p>',
             ])
             ->assertSessionHasErrors('technical_opinion');
     }
 
-    public function test_publishing_parecer_with_validated_brief_succeeds(): void
+    public function test_publishing_parecer_with_validated_technical_report_succeeds(): void
     {
         $campaign = $this->seedLegacyCampaign();
-        $this->releaseAndValidateBrief($campaign);
+        $this->releaseAndValidateTechnicalReport($campaign);
 
         $this->actingAs($campaign->admin)
             ->put(route('admin.companies.surveys.action-plan.update', [
                 $campaign->fx->company->id,
                 $campaign->fx->survey->id,
             ]), [
-                'technical_opinion' => '<p>Parecer com resumo validado.</p>',
+                'technical_opinion' => '<p>Parecer com relatório técnico validado.</p>',
             ])
             ->assertRedirect(route('nr1.parecer', [
                 'empresa' => $campaign->fx->company->id,
@@ -166,22 +166,22 @@ class LegacyParecerPublicationGateTest extends TestCase
 
         $plan = ActionPlan::query()->where('survey_id', $campaign->fx->survey->id)->firstOrFail();
         $this->assertNotNull($plan->admin_published_at);
-        $this->assertStringContainsString('Parecer com resumo validado.', (string) $plan->technical_opinion);
+        $this->assertStringContainsString('Parecer com relatório técnico validado.', (string) $plan->technical_opinion);
     }
 
-    public function test_talents_can_validate_executive_brief_in_system_without_proof(): void
+    public function test_talents_can_validate_technical_report_in_system_without_proof(): void
     {
         $campaign = $this->seedLegacyCampaign();
 
         $this->actingAs($campaign->admin)
-            ->post(route('admin.companies.surveys.executive-brief.release', [
+            ->post(route('admin.companies.surveys.technical-report.release', [
                 $campaign->fx->company->id,
                 $campaign->fx->survey->id,
             ]))
             ->assertRedirect();
 
         $this->actingAs($campaign->admin)
-            ->post(route('admin.companies.surveys.executive-brief.validate', [
+            ->post(route('admin.companies.surveys.technical-report.validate', [
                 $campaign->fx->company->id,
                 $campaign->fx->survey->id,
             ]), ['declaration_accepted' => '1'])
@@ -192,17 +192,19 @@ class LegacyParecerPublicationGateTest extends TestCase
             ->where('kind', PsychosocialDocumentVersion::KIND_VALIDATED)
             ->sole();
         $this->assertSame(PsychosocialDocumentVersion::SEAL_VALIDATED, $validated->seal);
+        $this->assertSame(PsychosocialDocument::TYPE_TECHNICAL_REPORT, $validated->document->type);
     }
 
-    public function test_legacy_parecer_shell_exposes_brief_validation_flags_without_dossier_toolbar(): void
+    public function test_legacy_parecer_shell_exposes_technical_report_validation_flags_without_dossier_toolbar(): void
     {
         $campaign = $this->seedLegacyCampaign();
-        $this->releaseAndValidateBrief($campaign);
+        $this->releaseAndValidateTechnicalReport($campaign);
 
         $legacy = (string) file_get_contents(resource_path('js/Components/Nr1Shell/LegacyDocumentsView.vue'));
         $this->assertStringNotContainsString('Liberar resumo executivo', $legacy);
-        $this->assertStringContainsString('openExecutiveBriefModal', $legacy);
+        $this->assertStringContainsString('openTechnicalReportModal', $legacy);
         $this->assertStringContainsString('openPgrSubsidyModal', $legacy);
+        $this->assertStringNotContainsString('openExecutiveBriefModal', $legacy);
 
         $this->actingAs($campaign->admin)
             ->get(route('nr1.parecer', [
@@ -211,10 +213,11 @@ class LegacyParecerPublicationGateTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('section.legacy.documents.laudo.executiveBrief.validated', true)
-                ->where('section.legacy.documents.laudo.executiveBrief.ready', true)
-                ->where('section.legacy.documents.laudo.executiveBrief.validatable', false)
-                ->has('section.legacy.documents.laudo.executiveBrief.urls.validate')
+                ->where('section.legacy.documents.laudo.executiveBrief', null)
+                ->where('section.legacy.documents.laudo.technicalReport.validated', true)
+                ->where('section.legacy.documents.laudo.technicalReport.ready', true)
+                ->where('section.legacy.documents.laudo.technicalReport.validatable', false)
+                ->has('section.legacy.documents.laudo.technicalReport.urls.validate')
                 ->has('section.legacy.documents.laudo.pgrSubsidy.urls.release')
             );
     }

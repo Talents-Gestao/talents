@@ -190,6 +190,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.executive-brief.validate');
         Route::post('companies/{company}/surveys/{survey}/subsidio-pgr/liberar', [PsychosocialDocumentAdminController::class, 'releaseSubsidy'])
             ->name('companies.surveys.pgr-subsidy.release');
+        Route::post('companies/{company}/surveys/{survey}/relatorio-tecnico/liberar', [PsychosocialDocumentAdminController::class, 'releaseTechnicalReport'])
+            ->name('companies.surveys.technical-report.release');
+        Route::post('companies/{company}/surveys/{survey}/relatorio-tecnico/validar', [PsychosocialDocumentAdminController::class, 'validateTechnicalReportInSystem'])
+            ->name('companies.surveys.technical-report.validate');
         Route::post('companies/{company}/surveys/{survey}/dossie/liberar', [PsychosocialDocumentAdminController::class, 'releaseDossier'])
             ->name('companies.surveys.evidence-dossier.release');
         Route::get('companies/{company}/surveys/{survey}/dossie/anexos/{attachment}', [PsychosocialDocumentAdminController::class, 'downloadAttachment'])
@@ -206,13 +210,13 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier', 'technical_report'])
             ->name('companies.surveys.psychosocial-documents.preview');
         Route::get('companies/{company}/surveys/{survey}/documentos/{type}/download', [PsychosocialDocumentAdminController::class, 'download'])
-            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier', 'technical_report'])
             ->name('companies.surveys.psychosocial-documents.download');
         Route::post('companies/{company}/surveys/{survey}/documentos/{type}/validacao-informada', [PsychosocialDocumentAdminController::class, 'validateInformed'])
-            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier', 'technical_report'])
             ->name('companies.surveys.psychosocial-documents.validate-informed');
         Route::post('companies/{company}/surveys/{survey}/documentos/{type}/compartilhar', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'store'])
-            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier', 'technical_report'])
             ->name('companies.surveys.psychosocial-documents.share');
         // Campanha NR-1 V11: treinamentos contratados por público e total de elegíveis (só a Talents).
         Route::get('companies/{company}/surveys/{survey}/campanha-nr1', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'show'])

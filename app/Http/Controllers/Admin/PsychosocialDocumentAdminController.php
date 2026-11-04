@@ -21,8 +21,8 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Admin Talents: libera o subsídio AEP/PGR, baixa os documentos e registra a validação informada.
- * O Admin Talents não valida no sistema.
+ * Admin Talents: libera o subsídio AEP/PGR e o relatório técnico (parecer legado),
+ * baixa os documentos e registra validação informada ou in-system do relatório técnico.
  */
 class PsychosocialDocumentAdminController extends Controller
 {
@@ -45,6 +45,58 @@ class PsychosocialDocumentAdminController extends Controller
         return $version->pdf_status === PsychosocialDocumentVersion::PDF_READY
             ? $this->backToPlan($company, $survey)->with('success', "Subsídio AEP/PGR liberado (versão {$version->version_number}).")
             : $this->backToPlan($company, $survey)->with('error', "A versão {$version->version_number} foi registrada, mas o PDF não foi gerado: {$version->pdf_error}");
+    }
+
+    /**
+     * Liberação do relatório técnico + plano de ação no parecer legado (substitui o resumo executivo na UI).
+     */
+    public function releaseTechnicalReport(Company $company, Survey $survey): RedirectResponse
+    {
+        $this->assertSurveyBelongsToCompany($company, $survey);
+
+        if ($survey->usesReviewFlow()) {
+            return $this->backToPlan($company, $survey)->with('error', 'Nesta campanha os documentos seguem o fluxo de revisão, em Documentos.');
+        }
+
+        try {
+            $version = $this->documents->release($survey, PsychosocialDocument::TYPE_TECHNICAL_REPORT);
+        } catch (PsychosocialDocumentException $exception) {
+            return $this->backToPlan($company, $survey)->with('error', $exception->getMessage());
+        }
+
+        return $version->pdf_status === PsychosocialDocumentVersion::PDF_READY
+            ? $this->backToPlan($company, $survey)->with('success', "Relatório técnico liberado (versão {$version->version_number}).")
+            : $this->backToPlan($company, $survey)->with('error', "A versão {$version->version_number} foi registrada, mas o PDF não foi gerado: {$version->pdf_error}");
+    }
+
+    /**
+     * Validação in-system pela Talents no modal do parecer legado.
+     */
+    public function validateTechnicalReportInSystem(Request $request, Company $company, Survey $survey): RedirectResponse
+    {
+        $this->assertSurveyBelongsToCompany($company, $survey);
+
+        if ($survey->usesReviewFlow()) {
+            return $this->backToPlan($company, $survey)->with('error', 'Nesta campanha os documentos seguem o fluxo de revisão, em Documentos.');
+        }
+
+        $request->validate([
+            'declaration_accepted' => ['accepted'],
+        ], [
+            'declaration_accepted.accepted' => 'Confirme que revisou o relatório técnico para validar.',
+        ]);
+
+        $version = $this->documents->currentVersion($survey, PsychosocialDocument::TYPE_TECHNICAL_REPORT);
+        abort_if($version === null, 404);
+
+        try {
+            $validated = $this->documents->validateInSystem($version, $request->user(), true);
+        } catch (PsychosocialDocumentException $exception) {
+            return $this->backToPlan($company, $survey)->with('error', $exception->getMessage());
+        }
+
+        return $this->backToPlan($company, $survey)
+            ->with('success', "Relatório técnico validado (versão {$validated->version_number}).");
     }
 
     public function releaseDossier(Request $request, Company $company, Survey $survey): RedirectResponse
