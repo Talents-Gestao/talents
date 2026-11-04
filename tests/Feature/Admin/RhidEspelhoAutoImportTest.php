@@ -178,6 +178,23 @@ class RhidEspelhoAutoImportTest extends TestCase
             ->assertJsonPath('batch.succeeded', 2);
     }
 
+    public function test_admin_can_enqueue_automatic_import_now(): void
+    {
+        Bus::fake();
+        $this->mockActivePeople([10, 20]);
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = $this->rhidCompany();
+
+        $this->actingAs($admin)
+            ->postJson(route('admin.ponto.companies.espelhos.auto-import.run', $company))
+            ->assertOk()
+            ->assertJsonPath('result.action', 'queued')
+            ->assertJsonPath('result.backfill', true)
+            ->assertJsonPath('batch.status', RhidEspelhoBatch::STATUS_PENDING);
+
+        Bus::assertDispatched(ProcessRhidEspelhoBatchJob::class);
+    }
+
     /**
      * @param  list<int>  $ids
      */

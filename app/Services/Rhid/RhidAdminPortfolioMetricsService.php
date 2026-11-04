@@ -31,8 +31,12 @@ class RhidAdminPortfolioMetricsService
     /**
      * @return array<string, mixed>
      */
-    public function metricsForCompany(Company $company, ?User $user, bool $refresh = false): array
-    {
+    public function metricsForCompany(
+        Company $company,
+        ?User $user,
+        bool $refresh = false,
+        ?string $monthYm = null,
+    ): array {
         if (! $company->rhidConfigured()) {
             return [
                 'company_id' => $company->id,
@@ -45,7 +49,7 @@ class RhidAdminPortfolioMetricsService
             ];
         }
 
-        $period = $this->currentPeriod();
+        $period = $this->currentPeriod($monthYm);
         $results = $this->fetchMetricsForCompanies(collect([$company]), $user, $period, $refresh);
 
         return $results[0] ?? [
@@ -217,7 +221,10 @@ class RhidAdminPortfolioMetricsService
                 'bank_reference_label' => $period['bank_date_reference_label'],
                 'bank_mom_date' => $period['bank_date_mom'],
                 'bank_mom_label' => $period['bank_date_mom_label'],
+                'month' => $period['month'],
                 'month_label' => $period['label_current'],
+                'month_ini' => $period['month_ini'],
+                'month_fim' => $period['month_fim'],
             ],
             'nr1' => $nr1,
             'bank' => [
@@ -269,18 +276,36 @@ class RhidAdminPortfolioMetricsService
     /**
      * @return array<string, string>
      */
-    protected function currentPeriod(): array
+    protected function currentPeriod(?string $monthYm = null): array
     {
-        $now = Carbon::now();
+        $tz = (string) config('app.timezone', 'America/Sao_Paulo');
+        $now = Carbon::now($tz);
         $referenceDay = $now->copy()->subDay()->startOfDay();
         $bankMomDay = $referenceDay->copy()->subMonth();
+
         $monthStart = $now->copy()->startOfMonth();
-        $monthEnd = $now->copy()->endOfMonth();
+        if (is_string($monthYm) && preg_match('/^\d{4}-\d{2}$/', $monthYm) === 1) {
+            try {
+                $parsed = Carbon::createFromFormat('!Y-m', $monthYm, $tz);
+                if ($parsed !== false) {
+                    $monthStart = $parsed->startOfMonth();
+                }
+            } catch (\Throwable) {
+                // mantém o mês corrente
+            }
+        }
+
+        if ($monthStart->gt($now->copy()->startOfMonth())) {
+            $monthStart = $now->copy()->startOfMonth();
+        }
+
+        $monthEnd = $monthStart->copy()->endOfMonth();
         $prevStart = $monthStart->copy()->subMonth()->startOfMonth();
         $prevEnd = $monthStart->copy()->subMonth()->endOfMonth();
 
         return [
             'cache_key' => $monthStart->format('Y-m').'_ref_'.$referenceDay->format('Ymd'),
+            'month' => $monthStart->format('Y-m'),
             'month_ini' => $monthStart->toDateString(),
             'month_fim' => $monthEnd->toDateString(),
             'prev_month_ini' => $prevStart->toDateString(),
@@ -604,7 +629,7 @@ class RhidAdminPortfolioMetricsService
 
         $imports = (int) ($diagnostics['imports_no_periodo'] ?? 0);
         if ($imports === 0) {
-            return 'Sem espelhos importados no período. Importe o PDF no painel do cliente (Marcações → Espelho); a aderência Admin usa esse histórico.';
+            return 'Sem espelhos importados no período. Use «Importar espelhos agora» (Admin ou portal do cliente) ou aguarde a importação automática após 00:30.';
         }
 
         return null;

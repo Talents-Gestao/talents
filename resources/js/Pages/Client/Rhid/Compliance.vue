@@ -1,5 +1,6 @@
 <script setup>
 import ApexChart from '@/Components/Charts/ApexChart.vue';
+import EspelhoAutoImportPanel from '@/Components/Rhid/EspelhoAutoImportPanel.vue';
 import RhidResponsePanel from '@/Components/Rhid/RhidResponsePanel.vue';
 import OverviewSection from '@/Pages/Client/Rhid/Compliance/OverviewSection.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
@@ -2899,6 +2900,7 @@ const justDeptBarChart = computed(() => {
 
             <OverviewSection
                 v-show="tab === 'overview'"
+                :configured="configured"
                 :overview-loading="overviewLoading"
                 :overview-loaded-at="overviewLoadedAt"
                 :overview-calendar-range-label="overviewCalendarRangeLabel"
@@ -2942,6 +2944,7 @@ const justDeptBarChart = computed(() => {
                 :rhid-person-id="rhidPersonId"
                 @refresh="loadOverviewData"
                 @monthly-compliance-month-change="onOverviewMonthlyComplianceMonthChange"
+                @import-auto="loadOverviewData"
                 @go-punches-adherence="tab = 'punches'; punchesSubTab = 'adherence'"
                 @go-bank="tab = 'bank'"
                 @go-justifications="tab = 'justifications'"
@@ -2973,7 +2976,7 @@ const justDeptBarChart = computed(() => {
                         "
                         @click="punchesSubTab = 'espelho'"
                     >
-                        Espelho e importação
+                        Espelho
                     </button>
                     <button
                         type="button"
@@ -3951,9 +3954,25 @@ const justDeptBarChart = computed(() => {
             </div>
 
             <div v-show="tab === 'punches' && punchesSubTab === 'espelho'" class="space-y-3">
+                <EspelhoAutoImportPanel
+                    :configured="configured"
+                    :status-url="route('client.rhid.api.espelhos.auto-import')"
+                    :run-url="route('client.rhid.api.espelhos.auto-import.run')"
+                    :settings-href="route('client.rhid.settings.edit')"
+                    @imported="loadEspelhoImports"
+                />
+
+                <details class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <summary class="cursor-pointer text-sm font-semibold text-talents-800">
+                        Opção avançada · gerar e importar PDF manualmente
+                    </summary>
+                    <p class="mt-2 text-xs text-slate-500">
+                        Use só se precisar de um período específico. No dia a dia, a importação automática já cobre o
+                        dia fechado.
+                    </p>
                 <div
                     v-if="espelhoShowProcessingBanner"
-                    class="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm"
+                    class="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm"
                     role="status"
                 >
                     <span
@@ -4270,6 +4289,7 @@ const justDeptBarChart = computed(() => {
                         </table>
                     </div>
                 </div>
+                </details>
             </div>
 
             <div v-show="tab === 'punches' && punchesSubTab === 'export'" class="space-y-3">

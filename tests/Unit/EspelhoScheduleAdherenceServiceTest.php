@@ -6,6 +6,7 @@ use App\Services\Rhid\EspelhoScheduleAdherenceService;
 use App\Services\Rhid\PunchScheduleSettingsService;
 use App\Services\Rhid\RhidComplianceService;
 use App\Services\Rhid\RhidPersonSchedulePreferenceService;
+use Carbon\Carbon;
 use PHPUnit\Framework\TestCase;
 
 class EspelhoScheduleAdherenceServiceTest extends TestCase
@@ -239,5 +240,20 @@ class EspelhoScheduleAdherenceServiceTest extends TestCase
         $this->assertArrayNotHasKey('2026-04-11', $dates); // sab
         $this->assertArrayNotHasKey('2026-04-12', $dates); // dom
         $this->assertCount(5, $dates);
+    }
+
+    public function test_clamp_period_stops_at_yesterday(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-04 10:00:00'));
+
+        [$ini, $fim] = $this->svc->clampPeriodToClosedDays(
+            Carbon::parse('2026-11-01'),
+            Carbon::parse('2026-11-30'),
+        );
+
+        $this->assertSame('2026-11-01', $ini->toDateString());
+        $this->assertSame('2026-11-03', $fim->toDateString());
+
+        Carbon::setTestNow();
     }
 }

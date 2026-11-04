@@ -215,6 +215,8 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
             Route::post('espelhos/store', [RhidApiController::class, 'storeEspelhoPdf'])->name('espelhos.store');
             Route::post('espelhos/batch', [RhidApiController::class, 'startEspelhoBatch'])->name('espelhos.batch.start');
             Route::get('espelhos/batch/{batch}', [RhidApiController::class, 'showEspelhoBatch'])->name('espelhos.batch.show')->whereNumber('batch');
+            Route::get('espelhos/auto-import', [RhidApiController::class, 'autoImportStatus'])->name('espelhos.auto-import');
+            Route::post('espelhos/auto-import', [RhidApiController::class, 'runAutoImport'])->name('espelhos.auto-import.run');
             Route::get('espelhos/imports', [RhidApiController::class, 'listEspelhoImports'])->name('espelhos.imports.index');
             Route::get('espelhos/imports/{import}', [RhidApiController::class, 'showEspelhoImport'])->name('espelhos.imports.show')->whereNumber('import');
             Route::post('espelhos/imports/{import}/reparse', [RhidApiController::class, 'reparseEspelhoImport'])->name('espelhos.imports.reparse')->whereNumber('import');

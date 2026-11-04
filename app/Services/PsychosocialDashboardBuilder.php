@@ -498,6 +498,7 @@ class PsychosocialDashboardBuilder
             ->take($limit)
             ->map(fn (array $item) => [
                 'id' => $item['id'],
+                'position' => (int) $item['position'],
                 'body' => $item['body'],
                 'section_title' => $item['section_title'],
                 'favorable_pct' => $item['favorable_pct'],

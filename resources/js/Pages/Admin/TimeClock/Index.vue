@@ -63,10 +63,19 @@ const activeTab = ref('aderencia');
     }
 })();
 
+const currentYearMonth = () => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+};
+
 const companyLoading = ref(false);
 const companyError = ref(null);
 const companyMetrics = ref(null);
 const companyLoadedAt = ref(null);
+const metricsMonth = ref(currentYearMonth());
+const metricsImporting = ref(false);
+const metricsImportMessage = ref(null);
 
 const peopleLoading = ref(false);
 const peopleError = ref(null);
@@ -180,12 +189,21 @@ const loadCompanyMetrics = async (refresh = false) => {
     companyError.value = null;
 
     try {
+        const params = {
+            month: metricsMonth.value,
+        };
+        if (refresh) {
+            params.refresh = 1;
+        }
         const { data } = await axios.get(route('admin.ponto.companies.metrics', selectedCompanyId.value), {
-            params: refresh ? { refresh: 1 } : {},
+            params,
             timeout: 120000,
         });
         companyMetrics.value = data;
         companyLoadedAt.value = new Date();
+        if (data?.period?.month) {
+            metricsMonth.value = data.period.month;
+        }
 
         if (data?.status === 'error') {
             companyError.value = data.error || 'Falha ao carregar indicadores da empresa.';
@@ -197,6 +215,46 @@ const loadCompanyMetrics = async (refresh = false) => {
         companyError.value = e?.response?.data?.message || 'Falha ao carregar indicadores da empresa.';
     } finally {
         companyLoading.value = false;
+    }
+};
+
+const onMetricsMonthChange = async (next) => {
+    if (!/^\d{4}-\d{2}$/.test(next || '') || next === metricsMonth.value) {
+        return;
+    }
+    metricsMonth.value = next;
+    metricsImportMessage.value = null;
+    await loadCompanyMetrics(true);
+};
+
+const importEspelhosNow = async () => {
+    if (!selectedCompanyId.value || metricsImporting.value) {
+        return;
+    }
+    metricsImporting.value = true;
+    metricsImportMessage.value = null;
+    try {
+        const { data } = await axios.post(
+            route('admin.ponto.companies.espelhos.auto-import.run', selectedCompanyId.value),
+            {},
+            { timeout: 60000 },
+        );
+        const result = data?.result;
+        if (result?.action === 'queued') {
+            metricsImportMessage.value = result.backfill
+                ? 'Importação enfileirada com backfill do mês. Aguarde a fila processar e clique em Atualizar.'
+                : 'Importação do dia fechado enfileirada. Aguarde a fila processar e clique em Atualizar.';
+        } else if (result?.action === 'skipped') {
+            metricsImportMessage.value = result.reason || 'Nada a importar neste momento.';
+        } else {
+            metricsImportMessage.value = result?.reason || 'Não foi possível enfileirar a importação.';
+        }
+        await loadCompanyMetrics(true);
+    } catch (e) {
+        metricsImportMessage.value =
+            e?.response?.data?.message || e?.response?.data?.result?.reason || 'Falha ao enfileirar a importação automática.';
+    } finally {
+        metricsImporting.value = false;
     }
 };
 
@@ -224,6 +282,8 @@ const loadPeople = async () => {
 watch(selectedCompanyId, async (companyId) => {
     syncHubQuery(companyId, activeTab.value);
     peopleRows.value = [];
+    metricsMonth.value = currentYearMonth();
+    metricsImportMessage.value = null;
     await loadCompanyMetrics(false);
     if (isCompanyConfigured(selectedCompany.value) && activeTab.value === 'equipe') {
         await loadPeople();
@@ -395,9 +455,17 @@ onMounted(async () => {
                     description="Pontualidade, faltas não justificadas e atestados do mês, a partir dos espelhos importados."
                     :rhid-configured="isCompanyConfigured(selectedCompany)"
                     :loading="companyLoading"
+                    :importing="metricsImporting"
+                    :import-message="metricsImportMessage"
                     :error="companyError"
                     :metrics="companyMetrics"
                     :loaded-at="companyLoadedAt"
+                    :show-month-picker="true"
+                    :month-value="metricsMonth"
+                    :month-max="currentYearMonth()"
+                    :show-import-action="true"
+                    @month-change="onMetricsMonthChange"
+                    @import-now="importEspelhosNow"
                 />
 
                 <div v-if="selectedCompany" class="surface-card">

@@ -163,6 +163,8 @@ class Nr1ShellPanelsTest extends TestCase
     private function legacyCampaign(array $overrides = []): object
     {
         $f = $this->createSurveyFixture($overrides);
+        // Enunciado positivo: respostas altas entram no % favorável dos pontos fortes.
+        $f->question->update(['reverse_score' => true, 'body' => 'Você se sente reconhecido pelo trabalho que realiza?']);
         $department = Department::query()->create(['company_id' => $f->company->id, 'name' => 'Produção']);
         for ($i = 0; $i < 6; $i++) {
             $response = SurveyResponse::query()->create(['survey_id' => $f->survey->id, 'session_token' => (string) Str::uuid(), 'department_id' => $department->id, 'completed_at' => now()]);
@@ -175,10 +177,11 @@ class Nr1ShellPanelsTest extends TestCase
             'survey' => $f->survey->fresh(),
             'owner' => User::factory()->talentsOwner()->create(),
             'admin' => User::factory()->companyAdmin($f->company->id)->create(),
+            'question' => $f->question->fresh(),
         ];
     }
 
-    public function test_legacy_overview_has_the_four_cards_and_an_honest_strengths_state(): void
+    public function test_legacy_overview_has_the_four_cards_and_strengths_from_the_survey(): void
     {
         $c = $this->legacyCampaign();
 
@@ -189,7 +192,14 @@ class Nr1ShellPanelsTest extends TestCase
             ->where('section.legacy.overview.cards.attention.total', 1)
             ->where('section.legacy.overview.cards.plan', null)
             ->where('section.legacy.overview.cards.planMessage', 'Plano de ação ainda não elaborado no parecer.')
-            ->where('section.legacy.overview.strengthsEmpty', fn ($text) => str_contains($text, 'modelo anterior')));
+            ->where('section.legacy.overview.strengthsEmpty', null)
+            ->has('section.legacy.overview.strengths', 1)
+            ->where('section.legacy.overview.strengths.0.item', 1)
+            ->where('section.legacy.overview.strengths.0.body', 'Você se sente reconhecido pelo trabalho que realiza?')
+            ->where('section.legacy.overview.strengths.0.pct_label', '100,0%')
+            ->where('section.legacy.overview.strengths.0.favorable', 6)
+            ->where('section.legacy.overview.strengths.0.n', 6)
+            ->where('section.legacy.overview.strengthsBase', 6));
 
         // Plano do parecer com 2 itens, 1 com responsável: «1 / 2».
         $plan = ActionPlan::query()->create(['company_id' => $c->company->id, 'survey_id' => $c->survey->id]);

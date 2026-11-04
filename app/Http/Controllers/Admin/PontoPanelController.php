@@ -77,9 +77,17 @@ class PontoPanelController extends Controller
     {
         $this->assertCompanyRhidReady($company);
 
-        $refresh = $request->boolean('refresh');
+        $validated = $request->validate([
+            'refresh' => ['nullable', 'boolean'],
+            'month' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}$/'],
+        ]);
 
-        return response()->json($metrics->metricsForCompany($company, $request->user(), $refresh));
+        return response()->json($metrics->metricsForCompany(
+            $company,
+            $request->user(),
+            (bool) ($validated['refresh'] ?? false),
+            isset($validated['month']) ? (string) $validated['month'] : null,
+        ));
     }
 
     public function lastPunches(Request $request, Company $company, RhidMonitoringService $monitoring): JsonResponse|SymfonyResponse

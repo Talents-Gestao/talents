@@ -1,4 +1,5 @@
 <script setup>
+import CountUp from './CountUp.vue';
 import DimensionBadge from './DimensionBadge.vue';
 import EmptyState from './EmptyState.vue';
 import LegacyNotice from './LegacyNotice.vue';
@@ -7,9 +8,8 @@ import Nr1Button from './Nr1Button.vue';
 import Nr1OverviewCards from './Nr1OverviewCards.vue';
 
 /**
- * Visão geral de uma campanha do modelo anterior: cabeçalho do laudo (período, cenário de risco, mínimo por setor,
- * última publicação), os quatro cartões (índice, participação, dimensões em atenção, plano do parecer) e as dimensões.
- * Pontos fortes: estado honesto (dependem do sentido dos enunciados do questionário de 39 perguntas).
+ * Visão geral de uma campanha do modelo anterior: cabeçalho do laudo, os quatro cartões, pontos fortes
+ * (com base nas respostas favoráveis da pesquisa efetuada) e as dimensões.
  */
 defineProps({
     overview: { type: Object, required: true },
@@ -20,6 +20,7 @@ defineProps({
 
 const fillClass = (risk) => (risk === 'green' ? 'ok' : risk === 'yellow' ? 'warn' : 'high');
 const SURVEY_STATUS = { active: 'Em coleta', closed: 'Encerrada', draft: 'Rascunho' };
+const STRENGTH_TONES = ['ok', 'purple', 'blue'];
 </script>
 
 <template>
@@ -57,7 +58,33 @@ const SURVEY_STATUS = { active: 'Em coleta', closed: 'Encerrada', draft: 'Rascun
                     <h2>O que a equipe reconhece como positivo</h2>
                     <span class="n1-pill ok">Pontos fortes da pesquisa</span>
                 </div>
-                <EmptyState title="Pontos fortes indisponíveis nesta pesquisa" :text="overview.strengthsEmpty" />
+                <EmptyState
+                    v-if="!(overview.strengths || []).length"
+                    title="Pontos fortes indisponíveis"
+                    :text="overview.strengthsEmpty ?? 'Ainda não há respostas suficientes para calcular os pontos fortes.'"
+                />
+                <template v-else>
+                    <div class="n1-positive">
+                        <div
+                            v-for="(strength, index) in overview.strengths"
+                            :key="`${strength.item}-${index}`"
+                            class="n1-tile n1-strength n1-lift"
+                            :class="STRENGTH_TONES[index % STRENGTH_TONES.length]"
+                        >
+                            <span class="n1-overline">Ponto forte · Pergunta {{ strength.item }}</span>
+                            <div style="margin-top: 6px"><strong><CountUp :value="strength.pct_label" /></strong></div>
+                            <p>{{ strength.body }}</p>
+                            <div class="n1-progress">
+                                <span :style="{ width: String(strength.pct_label || '').replace(',', '.').replace('%', '') + '%' }" />
+                            </div>
+                            <small>{{ strength.favorable }} de {{ strength.n }} respostas favoráveis</small>
+                        </div>
+                    </div>
+                    <p class="n1-tiny" style="margin-top: 13px">
+                        Percentuais de respostas favoráveis: “Frequentemente” ou “Sempre” nos enunciados positivos; “Nunca” ou “Raramente” nos enunciados desfavoráveis.
+                        <template v-if="overview.strengthsBase">Base: {{ overview.strengthsBase }} respostas por pergunta.</template>
+                    </p>
+                </template>
             </div>
 
             <div class="n1-card c12">

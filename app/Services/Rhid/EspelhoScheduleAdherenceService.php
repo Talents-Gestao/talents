@@ -56,8 +56,37 @@ class EspelhoScheduleAdherenceService
         CarbonInterface $fim,
         ?int $idPerson = null,
     ): array {
+        [$ini, $fim] = $this->clampPeriodToClosedDays($ini, $fim);
         $settings = $this->scheduleSettings->getForCompany($company);
         $tolerance = $this->toleranceMinutes($settings);
+
+        if ($ini->gt($fim)) {
+            return [
+                'resumo' => [
+                    'ini' => $ini->toDateString(),
+                    'fim' => $fim->toDateString(),
+                    'dias_analisados_total' => 0,
+                    'dias_calendario_distintos' => 0,
+                    'dias_insuficientes_total' => 0,
+                    'colaboradores_com_dados' => 0,
+                    'tolerancia_minutos' => $tolerance,
+                ],
+                'ranking_atrasos_entrada' => [],
+                'ranking_infracoes_almoco' => [],
+                'ranking_pior_aderencia_marcacoes' => [],
+                'ranking_melhor_aderencia_marcacoes' => [],
+                'diagnostics' => [
+                    'imports_no_periodo' => 0,
+                    'imports_por_status' => ['ok' => 0, 'pending' => 0, 'failed' => 0],
+                    'ultimos_problemas' => [],
+                    'horarios_configurados' => true,
+                    'dias_uteis_configurados' => 0,
+                    'dias_uteis_no_periodo' => 0,
+                    'tolerancia_minutos' => $tolerance,
+                    'hint' => 'Ainda não há dia fechado neste mês. Os indicadores usam apenas dias até ontem.',
+                ],
+            ];
+        }
 
         $days = $this->loadDedupedDays($company->id, $ini, $fim, $idPerson);
 
@@ -244,8 +273,27 @@ class EspelhoScheduleAdherenceService
         CarbonInterface $fim,
         ?User $user = null,
     ): array {
+        [$ini, $fim] = $this->clampPeriodToClosedDays($ini, $fim);
         $settings = $this->scheduleSettings->getForCompany($company);
         $tolerance = $this->toleranceMinutes($settings);
+
+        if ($ini->gt($fim)) {
+            $resumo = [
+                'ini' => $ini->toDateString(),
+                'fim' => $fim->toDateString(),
+                'dias_uteis_no_periodo' => 0,
+                'dias_feriado_no_periodo' => 0,
+                'colaboradores_avaliados' => 0,
+                'justificativas_carregadas' => false,
+            ];
+
+            return [
+                'resumo' => $resumo,
+                'ranking_cumprimento_mes' => [],
+                'people' => PontoPeopleSnapshot::fromComplianceRanking([], $resumo),
+            ];
+        }
+
         $workingDates = $this->workingDatesInPeriod($ini, $fim, $settings);
 
         $prefMap = $this->personSchedulePreferences->secondLunchMapForCompany($company->id);
@@ -776,7 +824,7 @@ class EspelhoScheduleAdherenceService
         int $colaboradoresAtingidos,
     ): ?string {
         if ($importsCount === 0) {
-            return 'Nenhum espelho importado para este período. Importe PDFs na sub-aba "Espelho e importação".';
+            return 'Nenhum espelho importado para este período. A importação automática roda após 00:30 (dia já fechado). Use «Importar espelhos agora» no Admin ou no portal do cliente.';
         }
         if ($porStatus['pending'] > 0 && $porStatus['ok'] === 0) {
             return $porStatus['pending'].' import(s) ainda em processamento (fila). Confirme que o worker da fila está ativo no servidor (queue:work) e aguarde alguns segundos, ou use "Reprocessar agora" para parsear sob demanda.';
@@ -1243,6 +1291,24 @@ class EspelhoScheduleAdherenceService
         }
 
         return is_array($cols[0]) ? $cols[0] : null;
+    }
+
+    /**
+     * Indicadores de pontualidade/aderência só usam dias já fechados (até ontem).
+     * Dias futuros do mês corrente não entram no denominador nem na leitura de espelhos.
+     *
+     * @return array{0: CarbonInterface, 1: CarbonInterface}
+     */
+    public function clampPeriodToClosedDays(CarbonInterface $ini, CarbonInterface $fim): array
+    {
+        $closedEnd = Carbon::yesterday()->startOfDay();
+        $iniDay = $ini->copy()->startOfDay();
+        $fimDay = $fim->copy()->startOfDay();
+        if ($fimDay->gt($closedEnd)) {
+            $fimDay = $closedEnd->copy();
+        }
+
+        return [$iniDay, $fimDay];
     }
 
     /**

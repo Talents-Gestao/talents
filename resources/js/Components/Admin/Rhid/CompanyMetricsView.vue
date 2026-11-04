@@ -2,6 +2,7 @@
 import InfoTooltip from '@/Components/InfoTooltip.vue';
 import PontoPeopleSnapshot from '@/Components/Rhid/PontoPeopleSnapshot.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -12,19 +13,25 @@ const props = defineProps({
     },
     rhidConfigured: { type: Boolean, default: false },
     loading: { type: Boolean, default: false },
+    importing: { type: Boolean, default: false },
+    importMessage: { type: String, default: null },
     error: { type: String, default: null },
     metrics: { type: Object, default: null },
     loadedAt: { type: Date, default: null },
     refreshLabel: { type: String, default: 'Atualizar' },
     showRefresh: { type: Boolean, default: false },
+    showMonthPicker: { type: Boolean, default: false },
+    monthValue: { type: String, default: '' },
+    monthMax: { type: String, default: '' },
+    showImportAction: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['refresh']);
+const emit = defineEmits(['refresh', 'month-change', 'import-now']);
 
 const periodHint = computed(() => {
     const label = props.metrics?.period?.month_label;
     if (label) {
-        return `Mês de referência: ${label}. Feriados, atestados e férias saem do denominador de pontualidade.`;
+        return `Mês de referência: ${label}. Só entram dias já fechados (até ontem). Feriados, atestados e férias saem do denominador de pontualidade.`;
     }
     return props.description;
 });
@@ -42,6 +49,16 @@ const apiErrorMessage = computed(() => {
 const showMetricsContent = computed(() => props.metrics?.status === 'ok');
 
 const showLoadingSkeleton = computed(() => props.loading && !props.metrics);
+
+const hasPeopleData = computed(() => Boolean(props.metrics?.people?.has_data));
+
+const canImportNow = computed(
+    () => props.showImportAction && props.rhidConfigured && showMetricsContent.value && !hasPeopleData.value,
+);
+
+const onMonthChange = (event) => {
+    emit('month-change', event?.target?.value);
+};
 </script>
 
 <template>
@@ -50,21 +67,37 @@ const showLoadingSkeleton = computed(() => props.loading && !props.metrics);
             <div>
                 <h3 class="flex items-center gap-1.5 font-semibold text-talents-700">
                     {{ title }}
-                    <InfoTooltip text="Pontualidade média, faltas sem justificativa e atestados do mês, calculados só com os dias de espelho já importados." />
+                    <InfoTooltip text="Pontualidade média, faltas sem justificativa e atestados do mês, calculados só com os dias de espelho já importados (até o dia fechado)." />
                 </h3>
                 <p class="mt-1 text-xs text-slate-500">
                     {{ periodHint }}
                 </p>
             </div>
-            <PrimaryButton
-                v-if="showRefresh && rhidConfigured"
-                type="button"
-                :disabled="loading"
-                class="shrink-0"
-                @click="emit('refresh')"
-            >
-                {{ loading ? 'Atualizando...' : refreshLabel }}
-            </PrimaryButton>
+            <div class="flex shrink-0 flex-wrap items-center gap-2">
+                <label
+                    v-if="showMonthPicker"
+                    class="inline-flex items-center gap-2 text-xs font-medium text-slate-600"
+                >
+                    <span class="sr-only">Mês de referência</span>
+                    <input
+                        type="month"
+                        class="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 shadow-sm focus:border-talents-400 focus:outline-none focus:ring-1 focus:ring-talents-400"
+                        :value="monthValue"
+                        :max="monthMax"
+                        :disabled="loading || importing"
+                        @change="onMonthChange"
+                    >
+                </label>
+                <PrimaryButton
+                    v-if="showRefresh && rhidConfigured"
+                    type="button"
+                    :disabled="loading || importing"
+                    class="shrink-0"
+                    @click="emit('refresh')"
+                >
+                    {{ loading ? 'Atualizando...' : refreshLabel }}
+                </PrimaryButton>
+            </div>
         </div>
 
         <p v-if="!rhidConfigured" class="mt-4 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-100">
@@ -87,6 +120,12 @@ const showLoadingSkeleton = computed(() => props.loading && !props.metrics);
 
         <template v-else-if="rhidConfigured && showMetricsContent">
             <p
+                v-if="importMessage"
+                class="mt-4 rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-900 ring-1 ring-sky-100"
+            >
+                {{ importMessage }}
+            </p>
+            <p
                 v-if="metrics?.adherence?.diagnostics_hint"
                 class="mt-4 text-xs text-amber-800"
             >
@@ -98,6 +137,23 @@ const showLoadingSkeleton = computed(() => props.loading && !props.metrics);
             >
                 Última falha API: {{ metrics.integration?.last_error || 'verifique credenciais' }}
             </span>
+
+            <div
+                v-if="canImportNow"
+                class="mt-4 flex flex-col gap-2 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+                <p class="text-sm text-amber-950">
+                    Sem espelhos neste período. Enfileire a importação do dia fechado (com backfill do mês, se ainda estiver vazio).
+                </p>
+                <SecondaryButton
+                    type="button"
+                    class="shrink-0"
+                    :disabled="importing || loading"
+                    @click="emit('import-now')"
+                >
+                    {{ importing ? 'Enfileirando…' : 'Importar espelhos agora' }}
+                </SecondaryButton>
+            </div>
 
             <div class="mt-5">
                 <PontoPeopleSnapshot
