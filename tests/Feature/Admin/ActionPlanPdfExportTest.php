@@ -137,6 +137,16 @@ class ActionPlanPdfExportTest extends TestCase
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
         $this->actingAs($admin)
+            ->post(route('admin.companies.surveys.executive-brief.release', [$fx->company->id, $fx->survey->id]))
+            ->assertRedirect();
+        $this->actingAs($admin)
+            ->post(route('admin.companies.surveys.executive-brief.validate', [$fx->company->id, $fx->survey->id]), [
+                'declaration_accepted' => '1',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($admin)
             ->put(route('admin.companies.surveys.action-plan.update', [
                 'company' => $fx->company->id,
                 'survey' => $fx->survey->id,

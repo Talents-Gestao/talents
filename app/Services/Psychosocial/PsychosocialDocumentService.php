@@ -297,7 +297,7 @@ class PsychosocialDocumentService
     }
 
     /**
-     * @return array{type: string, label: string, version_number: int, kind: string, seal: string, pdf_status: ?string, released_at: ?string, validatable: bool}|null
+     * @return array{type: string, label: string, version_number: int, kind: string, seal: string, pdf_status: ?string, released_at: ?string, ready: bool, validated: bool, validatable: bool}|null
      */
     public function currentVersionSummary(Survey $survey, string $type): ?array
     {
@@ -311,6 +311,8 @@ class PsychosocialDocumentService
             'seal' => $version->seal,
             'pdf_status' => $version->pdf_status,
             'released_at' => $version->created_at?->toIso8601String(),
+            'ready' => $version->pdf_status === PsychosocialDocumentVersion::PDF_READY,
+            'validated' => $version->kind === PsychosocialDocumentVersion::KIND_VALIDATED,
             'validatable' => $this->isValidatable($version),
             'attachments' => $type === PsychosocialDocument::TYPE_EVIDENCE_DOSSIER
                 ? $version->attachments->map(fn (PsychosocialDocumentAttachment $attachment): array => [
@@ -345,6 +347,8 @@ class PsychosocialDocumentService
                 'seal' => null,
                 'pdf_status' => null,
                 'released_at' => null,
+                'ready' => false,
+                'validated' => false,
                 'validatable' => false,
                 'attachments' => [],
             ],

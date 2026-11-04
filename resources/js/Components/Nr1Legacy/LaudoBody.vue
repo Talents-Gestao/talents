@@ -1,21 +1,17 @@
 <script setup>
 import InfoTooltip from '@/Components/InfoTooltip.vue';
 import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
-import MiaNr1AdminPanel from '@/Components/MiaNr1AdminPanel.vue';
 import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
-import PsychosocialDocumentsAdminPanel from '@/Components/PsychosocialDocumentsAdminPanel.vue';
+import Nr1DocumentPreviewModal from '@/Components/Nr1Legacy/Nr1DocumentPreviewModal.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { confirmDialog } from '@/composables/useConfirmDialog';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
-import { EditorContent, useEditor } from '@tiptap/vue-3';
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
+import { DocumentTextIcon } from '@heroicons/vue/24/outline';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import { marked } from 'marked';
-import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { formatDateNumeric, formatDateTime } from '@/utils/dateOnly';
 
 marked.setOptions({ breaks: true, gfm: true });
@@ -33,7 +29,15 @@ const props = defineProps({
     departmentParticipation: { type: Array, default: () => [] },
     questionDistributionsByDepartment: { type: Array, default: () => [] },
     plan: { type: Object, default: null },
-    publication: { type: Object, default: () => ({ requires_publication: false, published_at: null, uses_review_flow: false, documents_url: null }) },
+    publication: {
+        type: Object,
+        default: () => ({
+            requires_publication: false,
+            published_at: null,
+            uses_review_flow: false,
+            documents_url: null,
+        }),
+    },
     technical_opinion: { type: String, default: '' },
     aiEnabled: { type: Boolean, default: false },
     aiAnalysis: { type: Object, default: null },
@@ -46,74 +50,24 @@ const props = defineProps({
     riskScenarioLabel: { type: String, default: null },
     nr1Reports: { type: Object, default: () => ({ executive: null, technical_referral: null }) },
     executiveBrief: { type: Object, default: null },
+    pgrSubsidy: { type: Object, default: null },
     psychosocialDocuments: { type: Array, default: () => [] },
     /** Shell NR-1: sem cabeçalho do laudo e sem a etapa 01 (Diagnóstico). A página antiga não passa esta prop. */
     shellMode: { type: Boolean, default: false },
 });
 
-const releasingExecutiveBrief = ref(false);
-const releasingPgrSubsidy = ref(false);
-
-const pgrSubsidy = computed(() => props.psychosocialDocuments.find((doc) => doc.type === 'pgr_subsidy') ?? null);
-
-const releasePgrSubsidy = async () => {
-    const version = pgrSubsidy.value?.version_number;
-    const confirmed = await confirmDialog({
-        title: version ? 'Liberar nova versão do subsídio AEP/PGR?' : 'Liberar o subsídio AEP/PGR?',
-        message: version
-            ? `A versão ${version} continua registrada. O conteúdo novo fica congelado nesta versão.`
-            : 'O conteúdo fica congelado nesta versão.',
-        confirmLabel: 'Liberar',
-        cancelLabel: 'Cancelar',
-        variant: 'primary',
-    });
-    if (!confirmed) {
-        return;
-    }
-    router.post(
-        route('admin.companies.surveys.pgr-subsidy.release', [props.company.id, props.survey.id]),
-        {},
-        {
-            preserveScroll: true,
-            onStart: () => (releasingPgrSubsidy.value = true),
-            onFinish: () => (releasingPgrSubsidy.value = false),
-        },
-    );
-};
-
-const releaseExecutiveBrief = async () => {
-    const version = props.executiveBrief?.version_number;
-    const confirmed = await confirmDialog({
-        title: version ? 'Liberar nova versão do resumo executivo?' : 'Liberar o resumo executivo?',
-        message: version
-            ? `A versão ${version} continua registrada. O conteúdo novo fica congelado nesta versão.`
-            : 'O conteúdo fica congelado nesta versão.',
-        confirmLabel: 'Liberar',
-        cancelLabel: 'Cancelar',
-        variant: 'primary',
-    });
-    if (!confirmed) {
-        return;
-    }
-    router.post(
-        route('admin.companies.surveys.executive-brief.release', [props.company.id, props.survey.id]),
-        {},
-        {
-            preserveScroll: true,
-            onStart: () => (releasingExecutiveBrief.value = true),
-            onFinish: () => (releasingExecutiveBrief.value = false),
-        },
-    );
-};
-
 const { canAdmin } = useAdminPermissions();
 const showDeleteSurveyModal = ref(false);
 const showExportPdfModal = ref(false);
 const showPublishConfirmModal = ref(false);
+const showExecutiveBriefModal = ref(false);
+const showPgrSubsidyModal = ref(false);
 const previewingPlanPdf = ref(false);
 const publishPreviewPdfUrl = ref(null);
 const publishPreviewError = ref(null);
 const showDangerZone = ref(false);
+const opinionEditable = ref(null);
+const appliedAiContent = ref(null);
 
 const activeStep = ref(props.shellMode ? 'opinion' : 'results');
 const steps = [
@@ -129,6 +83,15 @@ const isPublished = computed(() => Boolean(props.plan?.admin_published_at));
 const publicationStatusLabel = computed(() =>
     isPublished.value ? 'Publicado para a empresa' : 'Rascunho — ainda não enviado',
 );
+
+const executiveBriefValidated = computed(() => Boolean(props.executiveBrief?.validated));
+
+const canPublishParecer = computed(() => {
+    if (props.publication?.uses_review_flow) {
+        return true;
+    }
+    return executiveBriefValidated.value;
+});
 
 const selectStep = (stepId) => {
     activeStep.value = stepId;
@@ -150,8 +113,66 @@ const closePublishConfirmModal = () => {
     revokePublishPreviewUrl();
 };
 
+const initialOpinionHtml =
+    props.technical_opinion?.trim() || props.plan?.technical_opinion?.trim() || '<p></p>';
+
+const form = useForm({
+    technical_opinion: initialOpinionHtml === '<p></p>' ? '' : initialOpinionHtml,
+    technical_opinion_file: null,
+    remove_technical_opinion_file: false,
+    executive_report_file: null,
+    remove_executive_report_file: false,
+    technical_referral_file: null,
+    remove_technical_referral_file: false,
+});
+
+const existingOpinionFileName = ref(props.plan?.technical_opinion_file_name ?? null);
+const existingOpinionFileUrl = ref(props.plan?.technical_opinion_file_url ?? null);
+const opinionFileInput = ref(null);
+
+const existingExecutiveFileName = ref(props.nr1Reports?.executive?.file_name ?? null);
+const existingExecutiveFileUrl = ref(props.nr1Reports?.executive?.download_url ?? null);
+const executiveFileInput = ref(null);
+
+const existingReferralFileName = ref(props.nr1Reports?.technical_referral?.file_name ?? null);
+const existingReferralFileUrl = ref(props.nr1Reports?.technical_referral?.download_url ?? null);
+const referralFileInput = ref(null);
+
+const markdownToHtml = (text) => {
+    if (!text) {
+        return '';
+    }
+    try {
+        return marked.parse(text);
+    } catch {
+        return `<p>${String(text).replace(/\n/g, '<br>')}</p>`;
+    }
+};
+
+const syncEditableToForm = () => {
+    const html = opinionEditable.value?.innerHTML ?? '';
+    form.technical_opinion = html === '<p></p>' || html === '<br>' ? '' : html;
+};
+
+const setOpinionHtml = async (html) => {
+    const normalized = !html || html === '<p></p>' ? '' : html;
+    form.technical_opinion = normalized;
+    await nextTick();
+    if (opinionEditable.value) {
+        opinionEditable.value.innerHTML = normalized || '<p><br></p>';
+    }
+};
+
+const applyAiContentToEditor = async (content) => {
+    if (!content || content === appliedAiContent.value) {
+        return;
+    }
+    appliedAiContent.value = content;
+    await setOpinionHtml(markdownToHtml(content));
+};
+
 const loadPublishPreviewPdf = async () => {
-    syncEditorToForm();
+    syncEditableToForm();
     previewingPlanPdf.value = true;
     publishPreviewError.value = null;
     revokePublishPreviewUrl();
@@ -180,6 +201,9 @@ const loadPublishPreviewPdf = async () => {
 };
 
 const openPublishConfirmModal = async () => {
+    if (!canPublishParecer.value) {
+        return;
+    }
     showPublishConfirmModal.value = true;
     await loadPublishPreviewPdf();
 };
@@ -191,6 +215,14 @@ const confirmPublish = () => {
 
 const openExportPdfModal = () => {
     showExportPdfModal.value = true;
+};
+
+const openExecutiveBriefModal = () => {
+    showExecutiveBriefModal.value = true;
+};
+
+const openPgrSubsidyModal = () => {
+    showPgrSubsidyModal.value = true;
 };
 
 const confirmExportPdf = () => {
@@ -209,31 +241,6 @@ const deleteSurvey = () => {
         },
     });
 };
-
-const initialOpinionHtml =
-    props.technical_opinion?.trim() || props.plan?.technical_opinion?.trim() || '<p></p>';
-
-const form = useForm({
-    technical_opinion: initialOpinionHtml === '<p></p>' ? '' : initialOpinionHtml,
-    technical_opinion_file: null,
-    remove_technical_opinion_file: false,
-    executive_report_file: null,
-    remove_executive_report_file: false,
-    technical_referral_file: null,
-    remove_technical_referral_file: false,
-});
-
-const existingOpinionFileName = ref(props.plan?.technical_opinion_file_name ?? null);
-const existingOpinionFileUrl = ref(props.plan?.technical_opinion_file_url ?? null);
-const opinionFileInput = ref(null);
-
-const existingExecutiveFileName = ref(props.nr1Reports?.executive?.file_name ?? null);
-const existingExecutiveFileUrl = ref(props.nr1Reports?.executive?.download_url ?? null);
-const executiveFileInput = ref(null);
-
-const existingReferralFileName = ref(props.nr1Reports?.technical_referral?.file_name ?? null);
-const existingReferralFileUrl = ref(props.nr1Reports?.technical_referral?.download_url ?? null);
-const referralFileInput = ref(null);
 
 const onOpinionFileChange = (event) => {
     const file = event.target.files?.[0] ?? null;
@@ -301,54 +308,8 @@ const removeExistingReferralFile = () => {
     clearSelectedReferralFile();
 };
 
-const opinionEditor = useEditor({
-    extensions: [StarterKit.configure({ heading: { levels: [2, 3, 4] } }), Underline],
-    content: initialOpinionHtml,
-    editorProps: {
-        attributes: {
-            class: 'min-h-[280px] px-3 py-2 focus:outline-none border border-gray-200 rounded-b-xl rounded-t-none text-sm prose prose-sm max-w-none',
-        },
-    },
-});
-
-onBeforeUnmount(() => {
-    opinionEditor.value?.destroy();
-});
-
-const syncEditorToForm = () => {
-    const html = opinionEditor.value?.getHTML() ?? '';
-    form.technical_opinion = html === '<p></p>' ? '' : html;
-};
-
-const technicalOpinionPreviewHtml = computed(() => {
-    const text = props.technicalOpinionAi?.content ?? '';
-    if (!text) {
-        return '';
-    }
-    try {
-        return marked.parse(text);
-    } catch {
-        return '';
-    }
-});
-
 const requestTechnicalOpinionAi = () => {
     router.post(props.technicalOpinionGeneratePostUrl);
-};
-
-const insertTechnicalOpinionFromAi = () => {
-    const text = props.technicalOpinionAi?.content;
-    if (!text || !opinionEditor.value) {
-        return;
-    }
-    try {
-        const html = marked.parse(text);
-        opinionEditor.value.commands.setContent(html);
-        syncEditorToForm();
-    } catch {
-        opinionEditor.value.commands.setContent(`<p>${text.replace(/\n/g, '<br>')}</p>`);
-        syncEditorToForm();
-    }
 };
 
 let technicalPollTimer = null;
@@ -361,13 +322,24 @@ const startTechnicalPollIfPending = () => {
     if (props.technicalOpinionAiPending) {
         technicalPollTimer = setInterval(() => {
             router.reload({
-                only: ['technicalOpinionAi', 'technicalOpinionAiPending', 'flash'],
+                only: [
+                    'section',
+                    'technicalOpinionAi',
+                    'technicalOpinionAiPending',
+                    'executiveBrief',
+                    'pgrSubsidy',
+                    'flash',
+                ],
             });
         }, 5000);
     }
 };
 
-onMounted(() => {
+onMounted(async () => {
+    await setOpinionHtml(form.technical_opinion || '');
+    if (props.technicalOpinionAi?.content) {
+        await applyAiContentToEditor(props.technicalOpinionAi.content);
+    }
     startTechnicalPollIfPending();
 });
 
@@ -375,6 +347,15 @@ watch(
     () => props.technicalOpinionAiPending,
     () => {
         startTechnicalPollIfPending();
+    },
+);
+
+watch(
+    () => props.technicalOpinionAi?.content,
+    async (content) => {
+        if (content && !props.technicalOpinionAiPending) {
+            await applyAiContentToEditor(content);
+        }
     },
 );
 
@@ -386,7 +367,7 @@ onUnmounted(() => {
 });
 
 const submit = () => {
-    syncEditorToForm();
+    syncEditableToForm();
     form
         .transform((data) => ({
             technical_opinion: data.technical_opinion || null,
@@ -409,18 +390,14 @@ const submit = () => {
         });
 };
 
-// Ações que a página antiga mostra no cabeçalho e o shell mostra em «Documentos».
 defineExpose({
-    releasingExecutiveBrief,
-    releaseExecutiveBrief,
-    releasingPgrSubsidy,
-    releasePgrSubsidy,
+    openExecutiveBriefModal,
+    openPgrSubsidyModal,
     openExportPdfModal,
 });
 </script>
 
 <template>
-
     <div
         v-if="$page.props.flash?.success"
         class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
@@ -453,14 +430,7 @@ defineExpose({
             Abrir a Central de documentos
         </Link>
     </section>
-    <PsychosocialDocumentsAdminPanel
-        v-else
-        :company-id="company.id"
-        :survey-id="survey.id"
-        :documents="psychosocialDocuments"
-    />
 
-    <!-- Cabeçalho de laudo -->
     <section v-if="!shellMode" class="mb-6 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm">
         <div class="border-b border-slate-100 bg-gradient-to-r from-talents-50/70 via-white to-white px-5 py-4 sm:px-6">
             <div class="flex flex-wrap items-start justify-between gap-3">
@@ -501,12 +471,13 @@ defineExpose({
             </div>
             <div>
                 <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Última publicação</dt>
-                <dd class="mt-1 text-slate-800">{{ plan?.admin_published_at ? formatDateTime(plan.admin_published_at) : 'Ainda não publicada' }}</dd>
+                <dd class="mt-1 text-slate-800">
+                    {{ plan?.admin_published_at ? formatDateTime(plan.admin_published_at) : 'Ainda não publicada' }}
+                </dd>
             </div>
         </dl>
     </section>
 
-    <!-- Stepper -->
     <nav class="mb-8" aria-label="Etapas do parecer">
         <ol class="grid gap-2 sm:grid-cols-3">
             <li v-for="step in visibleSteps" :key="step.id">
@@ -523,11 +494,7 @@ defineExpose({
                 >
                     <span
                         class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                        :class="
-                            activeStep === step.id
-                                ? 'bg-talents-700 text-white'
-                                : 'bg-slate-100 text-slate-600'
-                        "
+                        :class="activeStep === step.id ? 'bg-talents-700 text-white' : 'bg-slate-100 text-slate-600'"
                     >
                         {{ step.number }}
                     </span>
@@ -535,7 +502,7 @@ defineExpose({
                         <span class="block text-sm font-semibold text-slate-900">{{ step.label }}</span>
                         <span class="block text-xs text-slate-500">
                             <template v-if="step.id === 'results'">Indicadores e detalhe</template>
-                            <template v-else-if="step.id === 'opinion'">Texto, IA e anexos</template>
+                            <template v-else-if="step.id === 'opinion'">Texto e IA</template>
                             <template v-else>Revisar e enviar</template>
                         </span>
                     </span>
@@ -544,7 +511,6 @@ defineExpose({
         </ol>
     </nav>
 
-    <!-- Etapa 01: Diagnóstico -->
     <div v-if="!shellMode" v-show="activeStep === 'results'" class="pb-8">
         <div class="mb-4">
             <h3 class="text-lg font-semibold text-talents-900">Diagnóstico dos resultados</h3>
@@ -567,8 +533,8 @@ defineExpose({
         />
 
         <div v-if="!overall" class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-            Ainda não há resultados agregados para esta pesquisa. Verifique se há respostas concluídas e se o recálculo foi feito no portal da
-            empresa.
+            Ainda não há resultados agregados para esta pesquisa. Verifique se há respostas concluídas e se o recálculo foi
+            feito no portal da empresa.
         </div>
 
         <div class="mt-8 flex justify-end">
@@ -581,7 +547,7 @@ defineExpose({
             <div>
                 <h3 class="text-lg font-semibold text-talents-900">02 · Parecer técnico</h3>
                 <p class="mt-1 text-sm text-gray-600">
-                    Elabore o documento entregue à empresa. Use a Mia para rascunho e revise antes de publicar.
+                    Elabore o documento entregue à empresa. Use a Mia para rascunho — o texto entra direto na área editável.
                 </p>
             </div>
 
@@ -592,283 +558,205 @@ defineExpose({
                 <strong>{{ riskScenarioLabel }}</strong>
                 <span class="mt-1 block text-violet-900/90">
                     Os relatórios NR-1 (executivo e encaminhamento técnico) são gerados automaticamente conforme este cenário.
-                    Você pode substituir o executivo ou o encaminhamento por arquivos personalizados abaixo.
+                    Você pode substituí-los por arquivos personalizados abaixo.
                 </span>
             </div>
 
-            <MiaNr1AdminPanel
-                v-if="aiEnabled"
-                :generate-post-url="aiGeneratePostUrl"
-                :ai-enabled="aiEnabled"
-                :ai-analysis="aiAnalysis"
-                :ai-analysis-pending="aiAnalysisPending"
-            />
-            <div v-else class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                A Mia não está disponível (API desativada ou sem chave). Configure em
-                <Link :href="route('admin.settings.edit')" class="font-medium text-talents-800 underline">Configurações</Link>
-                para gerar análise automática e apoiar o preenchimento do parecer técnico.
+            <div class="flex flex-wrap gap-2">
+                <SecondaryButton type="button" @click="openExecutiveBriefModal">Resumo executivo</SecondaryButton>
+                <SecondaryButton type="button" @click="openPgrSubsidyModal">Subsídio AEP/PGR</SecondaryButton>
             </div>
 
-        <div class="surface-card space-y-6 p-6 text-slate-900">
-            <div>
-                <h3 class="font-semibold text-talents-800">Relatórios NR-1 personalizados (opcional)</h3>
-                <p class="mt-1 text-sm text-gray-600">
-                    Envie versões revisadas do relatório executivo ou do encaminhamento técnico. Quando publicados, a empresa baixa estes
-                    arquivos em vez do PDF gerado automaticamente.
-                </p>
-            </div>
-
-            <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
-                <h4 class="text-sm font-semibold text-gray-900">Relatório executivo</h4>
-                <div
-                    v-if="existingExecutiveFileName"
-                    class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                >
-                    <div class="flex items-center gap-2 text-gray-800">
-                        <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
-                        <a
-                            v-if="existingExecutiveFileUrl"
-                            :href="existingExecutiveFileUrl"
-                            class="font-medium text-talents-800 hover:underline"
-                        >
-                            {{ existingExecutiveFileName }}
-                        </a>
-                        <span v-else class="font-medium">{{ existingExecutiveFileName }}</span>
-                        <span v-if="nr1Reports?.executive?.published_at" class="text-xs text-gray-500">
-                            (publicado em {{ formatDateTime(nr1Reports.executive.published_at) }})
-                        </span>
+            <div class="surface-card space-y-4 p-6 text-slate-900">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-semibold text-talents-800">Parecer técnico</h3>
+                        <p class="mt-1 text-sm text-gray-600">Edite o texto abaixo. A Mia preenche esta mesma área.</p>
                     </div>
-                    <button
-                        type="button"
-                        class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                        @click="removeExistingExecutiveFile"
-                    >
-                        Remover
-                    </button>
-                </div>
-                <div class="mt-3">
-                    <input
-                        ref="executiveFileInput"
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-talents-800"
-                        @change="onExecutiveFileChange"
-                    />
-                    <p v-if="form.errors.executive_report_file" class="mt-2 text-sm text-red-600">
-                        {{ form.errors.executive_report_file }}
-                    </p>
-                </div>
-            </div>
-
-            <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
-                <h4 class="text-sm font-semibold text-gray-900">Encaminhamento técnico</h4>
-                <div
-                    v-if="existingReferralFileName"
-                    class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                >
-                    <div class="flex items-center gap-2 text-gray-800">
-                        <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
-                        <a
-                            v-if="existingReferralFileUrl"
-                            :href="existingReferralFileUrl"
-                            class="font-medium text-talents-800 hover:underline"
+                    <div class="flex flex-wrap items-center gap-2">
+                        <InfoTooltip
+                            text="A Mia gera um rascunho com base nos resultados da campanha. Revise antes de publicar."
+                        />
+                        <PrimaryButton
+                            type="button"
+                            :disabled="!aiEnabled || technicalOpinionAiPending"
+                            @click="requestTechnicalOpinionAi"
                         >
-                            {{ existingReferralFileName }}
-                        </a>
-                        <span v-else class="font-medium">{{ existingReferralFileName }}</span>
-                        <span v-if="nr1Reports?.technical_referral?.published_at" class="text-xs text-gray-500">
-                            (publicado em {{ formatDateTime(nr1Reports.technical_referral.published_at) }})
-                        </span>
+                            {{ technicalOpinionAiPending ? 'Gerando…' : 'Gerar parecer com IA' }}
+                        </PrimaryButton>
                     </div>
-                    <button
-                        type="button"
-                        class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                        @click="removeExistingReferralFile"
-                    >
-                        Remover
-                    </button>
                 </div>
-                <div class="mt-3">
-                    <input
-                        ref="referralFileInput"
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-talents-800"
-                        @change="onReferralFileChange"
-                    />
-                    <p v-if="form.errors.technical_referral_file" class="mt-2 text-sm text-red-600">
-                        {{ form.errors.technical_referral_file }}
-                    </p>
-                </div>
-            </div>
-        </div>
 
-        <div class="surface-card p-6 text-slate-900">
-            <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <h3 class="font-semibold text-talents-800">Parecer técnico</h3>
-                    <p class="mt-1 text-sm text-gray-600">
-                        Documento entregue à empresa. Use a Mia para gerar um rascunho com recomendações e edite antes de publicar.
-                    </p>
-                </div>
-                <div v-if="aiEnabled" class="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        class="rounded-full bg-talents-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-talents-800 disabled:opacity-50"
-                        :disabled="technicalOpinionAiPending"
-                        @click="requestTechnicalOpinionAi"
-                    >
-                        {{ technicalOpinionAi ? 'Gerar novo parecer com IA' : 'Gerar parecer com IA' }}
-                    </button>
-                    <button
-                        v-if="technicalOpinionAiPending"
-                        type="button"
-                        class="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        @click="router.reload({ only: ['technicalOpinionAi', 'technicalOpinionAiPending', 'flash'] })"
-                    >
-                        Atualizar agora
-                    </button>
-                    <button
-                        v-if="technicalOpinionAi && !technicalOpinionAiPending"
-                        type="button"
-                        class="rounded-full border border-talents-300 bg-white px-4 py-2 text-sm font-medium text-talents-800 hover:bg-talents-50"
-                        @click="insertTechnicalOpinionFromAi"
-                    >
-                        Inserir no editor
-                    </button>
-                </div>
-            </div>
-
-            <div
-                v-if="technicalOpinionAiPending"
-                class="mt-4 flex items-center gap-3 rounded-xl border border-talents-100 bg-talents-50/50 px-4 py-3 text-sm text-talents-900"
-            >
-                Mia está elaborando o parecer técnico…
-            </div>
-
-            <div v-else-if="technicalOpinionAi" class="mt-4">
-                <p class="mb-2 text-xs font-medium text-gray-500">
-                    Pré-visualização do rascunho da IA (clique em Inserir no editor):
+                <p v-if="!aiEnabled" class="text-sm text-amber-900">
+                    A Mia não está disponível (API desativada ou sem chave). Configure em
+                    <Link :href="route('admin.settings.edit')" class="font-medium text-talents-800 underline">Configurações</Link>.
                 </p>
+                <p v-else-if="technicalOpinionAiPending" class="text-sm text-sky-800">
+                    Geração em andamento — o texto será aplicado automaticamente nesta área.
+                </p>
+
                 <div
-                    class="mia-prose max-h-[min(70vh,40rem)] overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 text-sm leading-relaxed text-gray-800 shadow-sm sm:p-6 sm:text-[15px] sm:leading-7"
-                >
+                    ref="opinionEditable"
+                    class="min-h-[280px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm prose prose-sm max-w-none focus:outline-none focus:ring-2 focus:ring-talents-500/30"
+                    contenteditable="true"
+                    role="textbox"
+                    aria-label="Parecer técnico"
+                    @input="syncEditableToForm"
+                    @blur="syncEditableToForm"
+                />
+
+                <div v-if="form.errors.technical_opinion" class="text-sm text-red-600">
+                    {{ form.errors.technical_opinion }}
+                </div>
+
+                <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
+                    <h4 class="text-sm font-semibold text-gray-900">Anexar arquivo do parecer (opcional)</h4>
+                    <p class="mt-1 text-xs text-gray-600">PDF, DOC ou DOCX · máximo 20 MB.</p>
+
                     <div
-                        class="[&_h1]:mb-3 [&_h1]:mt-5 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:text-slate-900 [&_h2]:mb-2.5 [&_h2]:mt-5 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-slate-900 [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-slate-900 [&_li]:my-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2.5 [&_strong]:font-semibold [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_h1:first-child]:mt-0 [&_h2:first-child]:mt-0 [&_h3:first-child]:mt-0 [&_p:first-child]:mt-0"
-                        v-html="technicalOpinionPreviewHtml"
-                    />
-                </div>
-            </div>
-
-            <div v-if="opinionEditor" class="mt-4">
-                <div class="flex flex-wrap gap-1 rounded-t-xl border border-b-0 border-gray-200 bg-gray-50 p-2">
-                    <button
-                        type="button"
-                        class="rounded px-2 py-1 text-xs font-medium text-gray-700 hover:bg-white"
-                        @click="opinionEditor.chain().focus().toggleBold().run()"
+                        v-if="existingOpinionFileName"
+                        class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
                     >
-                        Negrito
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded px-2 py-1 text-xs font-medium text-gray-700 hover:bg-white"
-                        @click="opinionEditor.chain().focus().toggleItalic().run()"
-                    >
-                        Itálico
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded px-2 py-1 text-xs font-medium text-gray-700 hover:bg-white"
-                        @click="opinionEditor.chain().focus().toggleUnderline().run()"
-                    >
-                        Sublinhado
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded px-2 py-1 text-xs font-medium text-gray-700 hover:bg-white"
-                        @click="opinionEditor.chain().focus().toggleHeading({ level: 2 }).run()"
-                    >
-                        Título
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded px-2 py-1 text-xs font-medium text-gray-700 hover:bg-white"
-                        @click="opinionEditor.chain().focus().toggleBulletList().run()"
-                    >
-                        Lista
-                    </button>
-                </div>
-                <editor-content :editor="opinionEditor" />
-            </div>
-
-            <div v-if="form.errors.technical_opinion" class="mt-2 text-sm text-red-600">
-                {{ form.errors.technical_opinion }}
-            </div>
-
-            <div class="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
-                <h4 class="text-sm font-semibold text-gray-900">Anexar arquivo do parecer (opcional)</h4>
-                <p class="mt-1 text-xs text-gray-600">
-                    Em vez de (ou além de) digitar acima, você pode enviar um arquivo PDF, DOC ou DOCX. A empresa poderá baixá-lo na
-                    página Plano de ação. Tamanho máximo: 20 MB.
-                </p>
-
-                <div
-                    v-if="existingOpinionFileName"
-                    class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                >
-                    <div class="flex items-center gap-2 text-gray-800">
-                        <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
-                        <a
-                            v-if="existingOpinionFileUrl"
-                            :href="existingOpinionFileUrl"
-                            class="font-medium text-talents-800 hover:underline"
+                        <div class="flex items-center gap-2 text-gray-800">
+                            <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
+                            <a
+                                v-if="existingOpinionFileUrl"
+                                :href="existingOpinionFileUrl"
+                                class="font-medium text-talents-800 hover:underline"
+                            >
+                                {{ existingOpinionFileName }}
+                            </a>
+                            <span v-else class="font-medium">{{ existingOpinionFileName }}</span>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                            @click="removeExistingOpinionFile"
                         >
-                            {{ existingOpinionFileName }}
-                        </a>
-                        <span v-else class="font-medium">{{ existingOpinionFileName }}</span>
-                        <span class="text-xs text-gray-500">(arquivo atual)</span>
+                            Remover arquivo
+                        </button>
                     </div>
-                    <button
-                        type="button"
-                        class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                        @click="removeExistingOpinionFile"
-                    >
-                        Remover arquivo
-                    </button>
+
+                    <div class="mt-3">
+                        <input
+                            ref="opinionFileInput"
+                            type="file"
+                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-talents-800"
+                            @change="onOpinionFileChange"
+                        />
+                        <p v-if="form.technical_opinion_file" class="mt-2 text-xs text-emerald-700">
+                            Novo arquivo selecionado: {{ form.technical_opinion_file.name }}
+                            <button type="button" class="ml-2 text-red-600 hover:underline" @click="clearSelectedOpinionFile">
+                                cancelar
+                            </button>
+                        </p>
+                        <p v-if="form.errors.technical_opinion_file" class="mt-2 text-sm text-red-600">
+                            {{ form.errors.technical_opinion_file }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="surface-card space-y-6 p-6 text-slate-900">
+                <div>
+                    <h3 class="font-semibold text-talents-800">Relatórios NR-1 personalizados (opcional)</h3>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Envie versões revisadas do relatório executivo ou do encaminhamento técnico.
+                    </p>
                 </div>
 
-                <div class="mt-3">
-                    <input
-                        ref="opinionFileInput"
-                        type="file"
-                        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-talents-800"
-                        @change="onOpinionFileChange"
-                    />
-                    <p v-if="form.technical_opinion_file" class="mt-2 text-xs text-emerald-700">
-                        Novo arquivo selecionado: {{ form.technical_opinion_file.name }}
-                        <button type="button" class="ml-2 text-red-600 hover:underline" @click="clearSelectedOpinionFile">
-                            cancelar
+                <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
+                    <h4 class="text-sm font-semibold text-gray-900">Relatório executivo</h4>
+                    <div
+                        v-if="existingExecutiveFileName"
+                        class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                    >
+                        <div class="flex items-center gap-2 text-gray-800">
+                            <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
+                            <a
+                                v-if="existingExecutiveFileUrl"
+                                :href="existingExecutiveFileUrl"
+                                class="font-medium text-talents-800 hover:underline"
+                            >
+                                {{ existingExecutiveFileName }}
+                            </a>
+                            <span v-else class="font-medium">{{ existingExecutiveFileName }}</span>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                            @click="removeExistingExecutiveFile"
+                        >
+                            Remover
                         </button>
-                    </p>
-                    <p v-if="form.progress" class="mt-2 text-xs text-gray-500">
-                        Enviando… {{ form.progress.percentage }}%
-                    </p>
-                    <p v-if="form.errors.technical_opinion_file" class="mt-2 text-sm text-red-600">
-                        {{ form.errors.technical_opinion_file }}
-                    </p>
+                    </div>
+                    <div class="mt-3">
+                        <input
+                            ref="executiveFileInput"
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
+                            @change="onExecutiveFileChange"
+                        />
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
+                    <h4 class="text-sm font-semibold text-gray-900">Encaminhamento técnico</h4>
+                    <div
+                        v-if="existingReferralFileName"
+                        class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                    >
+                        <div class="flex items-center gap-2 text-gray-800">
+                            <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
+                            <a
+                                v-if="existingReferralFileUrl"
+                                :href="existingReferralFileUrl"
+                                class="font-medium text-talents-800 hover:underline"
+                            >
+                                {{ existingReferralFileName }}
+                            </a>
+                            <span v-else class="font-medium">{{ existingReferralFileName }}</span>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                            @click="removeExistingReferralFile"
+                        >
+                            Remover
+                        </button>
+                    </div>
+                    <div class="mt-3">
+                        <input
+                            ref="referralFileInput"
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
+                            @change="onReferralFileChange"
+                        />
+                    </div>
                 </div>
             </div>
         </div>
-        </div>
 
-        <!-- Etapa 03: Publicar -->
         <div v-show="activeStep === 'publish'" class="space-y-6">
             <div>
                 <h3 class="text-lg font-semibold text-talents-900">03 · Revisar e publicar</h3>
                 <p class="mt-1 text-sm text-gray-600">
                     Ao salvar, você verá o PDF do parecer como a empresa receberá e poderá confirmar o envio.
                 </p>
+            </div>
+
+            <div
+                v-if="!publication.uses_review_flow && !canPublishParecer"
+                class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            >
+                Publique o parecer só depois de liberar e
+                <button type="button" class="font-semibold underline" @click="openExecutiveBriefModal">
+                    validar o resumo executivo
+                </button>
+                .
             </div>
 
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -884,14 +772,17 @@ defineExpose({
                     <p class="mt-2 text-base font-semibold text-slate-900">
                         {{ publication.published_at ? `Publicado em ${publication.published_at}` : 'Não publicado' }}
                     </p>
-                    <p v-if="!publication.published_at" class="mt-1 text-sm text-slate-600">
-                        Enquanto não for publicado, a empresa não vê resultados, impressão, exportações, plano nem documentos desta campanha.
-                    </p>
                     <PrimaryButton
                         v-if="!publication.published_at"
                         type="button"
                         class="mt-3"
-                        @click="router.post(route('admin.companies.surveys.publication.store', [company.id, survey.id]), {}, { preserveScroll: true })"
+                        @click="
+                            router.post(
+                                route('admin.companies.surveys.publication.store', [company.id, survey.id]),
+                                {},
+                                { preserveScroll: true },
+                            )
+                        "
                     >
                         Publicar resultados para a empresa
                     </PrimaryButton>
@@ -907,28 +798,21 @@ defineExpose({
                     </p>
                 </div>
                 <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Entrega à empresa</p>
-                    <ul class="mt-2 space-y-1 text-sm text-slate-700">
-                        <li>· Parecer em texto (HTML) na página do cliente</li>
-                        <li>· PDF do plano gerado a partir deste parecer</li>
-                        <li v-if="existingOpinionFileName || form.technical_opinion_file">· Arquivo anexo do parecer</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="rounded-xl border border-talents-200 bg-talents-50/50 p-5 text-sm text-talents-950">
-                <p class="font-medium">Próximo passo</p>
-                <p class="mt-1 text-talents-900/90">
-                    Clique em <strong>Salvar e publicar para a empresa</strong> no rodapé. Um modal mostrará a
-                    pré-visualização do PDF; só após confirmar o parecer será enviado.
-                </p>
-                <div class="mt-4">
-                    <SecondaryButton type="button" @click="selectStep('opinion')">Voltar ao editor</SecondaryButton>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Resumo executivo</p>
+                    <p class="mt-2 text-base font-semibold text-slate-900">
+                        {{ executiveBriefValidated ? 'Validado' : 'Pendente de validação' }}
+                    </p>
+                    <button
+                        type="button"
+                        class="mt-2 text-sm font-medium text-talents-800 underline"
+                        @click="openExecutiveBriefModal"
+                    >
+                        Abrir resumo executivo
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Sticky actions -->
         <div
             v-show="activeStep === 'opinion' || activeStep === 'publish'"
             class="z-30 border-t border-slate-200 bg-white px-4 py-3"
@@ -943,36 +827,31 @@ defineExpose({
                     <template v-if="activeStep === 'opinion'">
                         Revise o texto e avance para publicar quando estiver pronto.
                     </template>
+                    <template v-else-if="!canPublishParecer">
+                        Valide o resumo executivo antes de publicar o parecer.
+                    </template>
                     <template v-else>
                         A confirmação no modal publica o parecer para a empresa.
                     </template>
                 </p>
                 <div class="flex flex-wrap gap-2">
                     <SecondaryButton
-                        v-if="activeStep === 'opinion'"
+                        v-if="activeStep === 'opinion' && !shellMode"
                         type="button"
                         @click="selectStep('results')"
                     >
                         Voltar
                     </SecondaryButton>
-                    <SecondaryButton
-                        v-if="activeStep === 'publish'"
-                        type="button"
-                        @click="selectStep('opinion')"
-                    >
+                    <SecondaryButton v-if="activeStep === 'publish'" type="button" @click="selectStep('opinion')">
                         Voltar
                     </SecondaryButton>
-                    <PrimaryButton
-                        v-if="activeStep === 'opinion'"
-                        type="button"
-                        @click="selectStep('publish')"
-                    >
+                    <PrimaryButton v-if="activeStep === 'opinion'" type="button" @click="selectStep('publish')">
                         Revisar e publicar
                     </PrimaryButton>
                     <PrimaryButton
                         v-else
                         type="button"
-                        :disabled="form.processing || previewingPlanPdf"
+                        :disabled="form.processing || previewingPlanPdf || !canPublishParecer"
                         @click="openPublishConfirmModal"
                     >
                         Salvar e publicar para a empresa
@@ -999,8 +878,8 @@ defineExpose({
         <div v-show="showDangerZone" class="border-t border-red-100 bg-red-50/50 px-5 py-5">
             <h3 class="font-semibold text-red-900">Excluir pesquisa</h3>
             <p class="mt-2 text-sm text-red-900/80">
-                Excluir a pesquisa e todos os resultados. A empresa deixará de ver esta pesquisa; os dados serão
-                arquivados internamente.
+                Excluir a pesquisa e todos os resultados. A empresa deixará de ver esta pesquisa; os dados serão arquivados
+                internamente.
             </p>
             <DangerButton type="button" class="mt-4" @click="showDeleteSurveyModal = true">
                 Excluir pesquisa
@@ -1036,31 +915,15 @@ defineExpose({
                     title="Pré-visualização do PDF do parecer técnico"
                     class="h-[min(60vh,36rem)] w-full rounded-xl border border-slate-200 bg-white"
                 />
-                <div
-                    v-else
-                    class="flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500"
-                >
-                    Nenhuma pré-visualização disponível.
-                </div>
-
-                <ul class="mt-4 space-y-1 text-sm text-slate-600">
-                    <li>· A empresa verá o parecer na página Plano de ação.</li>
-                    <li>· O PDF do plano será gerado a partir deste conteúdo.</li>
-                    <li v-if="existingOpinionFileName || form.technical_opinion_file">
-                        · O arquivo anexo do parecer também ficará disponível para download.
-                    </li>
-                </ul>
             </div>
 
-            <div
-                class="sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-white px-6 py-4"
-            >
+            <div class="sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-white px-6 py-4">
                 <SecondaryButton type="button" :disabled="form.processing" @click="closePublishConfirmModal">
                     Cancelar
                 </SecondaryButton>
                 <PrimaryButton
                     type="button"
-                    :disabled="form.processing || previewingPlanPdf"
+                    :disabled="form.processing || previewingPlanPdf || !canPublishParecer"
                     @click="confirmPublish"
                 >
                     {{ form.processing ? 'Publicando…' : 'Confirmar e publicar' }}
@@ -1069,12 +932,33 @@ defineExpose({
         </div>
     </Modal>
 
+    <Nr1DocumentPreviewModal
+        :show="showExecutiveBriefModal"
+        title="Resumo executivo"
+        description="Pré-visualização, liberação e validação pela Talents. Sem validação, o parecer não pode ser publicado."
+        :document="executiveBrief"
+        :download-url="executiveBrief?.urls?.download"
+        :release-url="executiveBrief?.urls?.release"
+        :validate-url="executiveBrief?.urls?.validate"
+        :can-validate="Boolean(executiveBrief?.validatable)"
+        @close="showExecutiveBriefModal = false"
+    />
+
+    <Nr1DocumentPreviewModal
+        :show="showPgrSubsidyModal"
+        title="Subsídio AEP/PGR"
+        description="Pré-visualização e liberação do subsídio para a empresa."
+        :document="pgrSubsidy"
+        :download-url="pgrSubsidy?.urls?.download"
+        :release-url="pgrSubsidy?.urls?.release"
+        @close="showPgrSubsidyModal = false"
+    />
+
     <Modal :show="showDeleteSurveyModal" @close="showDeleteSurveyModal = false">
         <div class="p-6">
             <h2 class="text-lg font-medium text-gray-900">Confirmar exclusão</h2>
             <p class="mt-2 text-sm text-gray-600">
-                Excluir a pesquisa <strong>{{ survey.title }}</strong> e todos os resultados? A empresa deixará de
-                ver esta pesquisa. Os dados serão arquivados internamente.
+                Excluir a pesquisa <strong>{{ survey.title }}</strong> e todos os resultados?
             </p>
             <div class="mt-6 flex justify-end gap-2">
                 <SecondaryButton type="button" @click="showDeleteSurveyModal = false">Cancelar</SecondaryButton>
@@ -1087,8 +971,7 @@ defineExpose({
         <div class="p-6">
             <h2 class="text-lg font-medium text-gray-900">Exportar PDF dos resultados</h2>
             <p class="mt-2 text-sm text-gray-600">
-                Gera o relatório com indicadores e gráficos da pesquisa. Diferente do PDF do parecer técnico, que é
-                confirmado no fluxo de publicação.
+                Gera o relatório com indicadores e gráficos da pesquisa.
             </p>
             <div class="mt-6 flex justify-end gap-2">
                 <SecondaryButton type="button" @click="showExportPdfModal = false">Cancelar</SecondaryButton>
@@ -1097,18 +980,3 @@ defineExpose({
         </div>
     </Modal>
 </template>
-
-
-<style scoped>
-.mia-prose :deep(h2) {
-    margin-top: 1em;
-    margin-bottom: 0.4em;
-    font-weight: 700;
-    font-size: 1rem;
-}
-.mia-prose :deep(p) {
-    margin-top: 0.5em;
-    line-height: 1.5;
-    font-size: 0.875rem;
-}
-</style>
