@@ -14,6 +14,7 @@ use App\Models\RhidEspelhoBatch;
 use App\Models\RhidEspelhoImport;
 use App\Services\Rhid\EspelhoPdfIngestService;
 use App\Services\Rhid\PunchScheduleSettingsService;
+use App\Services\Rhid\RhidEspelhoAutoImportService;
 use App\Services\Rhid\RhidEspelhoService;
 use App\Services\Rhid\RhidPersonSchedulePreferenceService;
 use App\Services\Rhid\RhidReportService;
@@ -220,6 +221,38 @@ class PontoEspelhoController extends Controller
 
         return response()->json([
             'batch' => $row ? $this->espelhoBatchPayload($row) : null,
+        ]);
+    }
+
+    public function runAutoImport(Company $company, RhidEspelhoAutoImportService $imports): JsonResponse
+    {
+        $this->assertCompanyRhidReady($company);
+
+        $results = $imports->enqueueClosedDay($company->id);
+        $result = $results[0] ?? [
+            'company_id' => $company->id,
+            'company_name' => (string) $company->name,
+            'action' => 'failed',
+            'reason' => 'Não foi possível enfileirar a importação automática.',
+            'batch_id' => null,
+            'people' => 0,
+            'backfill' => false,
+            'ini' => null,
+            'fim' => null,
+        ];
+
+        $batch = null;
+        if (! empty($result['batch_id'])) {
+            $row = RhidEspelhoBatch::query()
+                ->where('company_id', $company->id)
+                ->whereKey((int) $result['batch_id'])
+                ->first();
+            $batch = $row ? $this->espelhoBatchPayload($row) : null;
+        }
+
+        return response()->json([
+            'result' => $result,
+            'batch' => $batch,
         ]);
     }
 

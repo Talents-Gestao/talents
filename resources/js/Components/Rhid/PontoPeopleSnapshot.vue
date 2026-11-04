@@ -202,7 +202,7 @@ watch(
             >
                 <p class="text-sm font-medium text-slate-700">Sem dados de cumprimento neste período</p>
                 <p class="mt-1 text-xs text-slate-500">
-                    Importe os espelhos de ponto e configure a escala da empresa para ver pontualidade, faltas e atestados.
+                    Importe os espelhos do dia fechado (automático após 00:30 ou «Importar espelhos agora») e configure a escala da empresa para ver pontualidade, faltas e atestados.
                 </p>
             </div>
 
