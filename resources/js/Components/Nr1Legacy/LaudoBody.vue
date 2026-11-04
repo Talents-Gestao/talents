@@ -93,6 +93,56 @@ const canPublishParecer = computed(() => {
     return executiveBriefValidated.value;
 });
 
+const executiveBriefReleaseUrl = computed(
+    () =>
+        props.executiveBrief?.urls?.release ??
+        route('admin.companies.surveys.executive-brief.release', [props.company.id, props.survey.id]),
+);
+
+const executiveBriefDownloadUrl = computed(
+    () =>
+        props.executiveBrief?.urls?.download ??
+        route('admin.companies.surveys.executive-brief.download', [props.company.id, props.survey.id]),
+);
+
+const executiveBriefValidateUrl = computed(
+    () =>
+        props.executiveBrief?.urls?.validate ??
+        route('admin.companies.surveys.executive-brief.validate', [props.company.id, props.survey.id]),
+);
+
+const pgrSubsidyReleaseUrl = computed(
+    () =>
+        props.pgrSubsidy?.urls?.release ??
+        route('admin.companies.surveys.pgr-subsidy.release', [props.company.id, props.survey.id]),
+);
+
+const pgrSubsidyDownloadUrl = computed(
+    () =>
+        props.pgrSubsidy?.urls?.download ??
+        route('admin.companies.surveys.psychosocial-documents.download', [
+            props.company.id,
+            props.survey.id,
+            'pgr_subsidy',
+        ]),
+);
+
+const restoreDocModalAfterRedirect = () => {
+    if (typeof sessionStorage === 'undefined') {
+        return;
+    }
+    const key = sessionStorage.getItem('nr1-legacy-doc-modal');
+    if (!key) {
+        return;
+    }
+    sessionStorage.removeItem('nr1-legacy-doc-modal');
+    if (key === 'executive_brief') {
+        showExecutiveBriefModal.value = true;
+    } else if (key === 'pgr_subsidy') {
+        showPgrSubsidyModal.value = true;
+    }
+};
+
 const selectStep = (stepId) => {
     activeStep.value = stepId;
     if (typeof window !== 'undefined') {
@@ -341,6 +391,7 @@ onMounted(async () => {
         await applyAiContentToEditor(props.technicalOpinionAi.content);
     }
     startTechnicalPollIfPending();
+    restoreDocModalAfterRedirect();
 });
 
 watch(
@@ -935,22 +986,24 @@ defineExpose({
     <Nr1DocumentPreviewModal
         :show="showExecutiveBriefModal"
         title="Resumo executivo"
-        description="Pré-visualização, liberação e validação pela Talents. Sem validação, o parecer não pode ser publicado."
+        description="Pré-visualização, liberação e validação pela Talents neste modal. Sem validação, o parecer não pode ser publicado."
         :document="executiveBrief"
-        :download-url="executiveBrief?.urls?.download"
-        :release-url="executiveBrief?.urls?.release"
-        :validate-url="executiveBrief?.urls?.validate"
+        :download-url="executiveBriefDownloadUrl"
+        :release-url="executiveBriefReleaseUrl"
+        :validate-url="executiveBriefValidateUrl"
         :can-validate="Boolean(executiveBrief?.validatable)"
+        persist-key="executive_brief"
         @close="showExecutiveBriefModal = false"
     />
 
     <Nr1DocumentPreviewModal
         :show="showPgrSubsidyModal"
         title="Subsídio AEP/PGR"
-        description="Pré-visualização e liberação do subsídio para a empresa."
+        description="Pré-visualização e liberação do subsídio neste modal — sem sair do parecer."
         :document="pgrSubsidy"
-        :download-url="pgrSubsidy?.urls?.download"
-        :release-url="pgrSubsidy?.urls?.release"
+        :download-url="pgrSubsidyDownloadUrl"
+        :release-url="pgrSubsidyReleaseUrl"
+        persist-key="pgr_subsidy"
         @close="showPgrSubsidyModal = false"
     />
 
