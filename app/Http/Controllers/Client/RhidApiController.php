@@ -17,6 +17,7 @@ use App\Services\Rhid\PunchScheduleSettingsService;
 use App\Services\Rhid\RhidAuthService;
 use App\Services\Rhid\RhidComplianceService;
 use App\Services\Rhid\RhidDeviceService;
+use App\Services\Rhid\RhidEspelhoAutoImportService;
 use App\Services\Rhid\RhidEspelhoService;
 use App\Services\Rhid\RhidMonitoringService;
 use App\Services\Rhid\RhidPersonSchedulePreferenceService;
@@ -777,6 +778,59 @@ class RhidApiController extends Controller
         ]);
     }
 
+    public function autoImportStatus(Request $request): JsonResponse
+    {
+        $company = $this->company($request);
+
+        $row = RhidEspelhoBatch::query()
+            ->where('company_id', $company->id)
+            ->orderByDesc('id')
+            ->get()
+            ->first(fn (RhidEspelhoBatch $batch): bool => ($batch->meta_json['source'] ?? null) === RhidEspelhoBatch::SOURCE_AUTOMATIC);
+
+        return response()->json([
+            'batch' => $row ? $this->espelhoBatchPayload($row) : null,
+        ]);
+    }
+
+    public function runAutoImport(Request $request, RhidEspelhoAutoImportService $imports): JsonResponse
+    {
+        $company = $this->company($request);
+
+        if (! $company->rhidConfigured()) {
+            return response()->json([
+                'message' => 'Integração RHID não configurada para esta empresa.',
+            ], 422);
+        }
+
+        $results = $imports->enqueueClosedDay($company->id);
+        $result = $results[0] ?? [
+            'company_id' => $company->id,
+            'company_name' => (string) $company->name,
+            'action' => 'failed',
+            'reason' => 'Não foi possível enfileirar a importação automática.',
+            'batch_id' => null,
+            'people' => 0,
+            'backfill' => false,
+            'ini' => null,
+            'fim' => null,
+        ];
+
+        $batch = null;
+        if (! empty($result['batch_id'])) {
+            $row = RhidEspelhoBatch::query()
+                ->where('company_id', $company->id)
+                ->whereKey((int) $result['batch_id'])
+                ->first();
+            $batch = $row ? $this->espelhoBatchPayload($row) : null;
+        }
+
+        return response()->json([
+            'result' => $result,
+            'batch' => $batch,
+        ]);
+    }
+
     public function listEspelhoImports(Request $request): JsonResponse|Response
     {
         $company = $this->company($request);
@@ -867,6 +921,7 @@ class RhidApiController extends Controller
         $total = max(0, (int) $b->total);
         $processed = max(0, (int) $b->processed);
         $remaining = max(0, $total - $processed);
+        $meta = is_array($b->meta_json) ? $b->meta_json : [];
 
         return [
             'id' => $b->id,
@@ -879,6 +934,10 @@ class RhidApiController extends Controller
             'current_id_person' => $b->current_id_person,
             'message' => $b->message,
             'skipped_person_ids' => $b->skipped_person_ids ?? [],
+            'source' => is_string($meta['source'] ?? null) ? $meta['source'] : null,
+            'closed_day' => is_string($meta['closed_day'] ?? null) ? $meta['closed_day'] : null,
+            'backfill' => (bool) ($meta['backfill'] ?? false),
+            'created_at' => $b->created_at?->toIso8601String(),
             'updated_at' => $b->updated_at?->toIso8601String(),
         ];
     }

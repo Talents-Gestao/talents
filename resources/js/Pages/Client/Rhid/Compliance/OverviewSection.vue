@@ -1,11 +1,13 @@
 <script setup>
 import ApexChart from '@/Components/Charts/ApexChart.vue';
+import EspelhoAutoImportPanel from '@/Components/Rhid/EspelhoAutoImportPanel.vue';
 import PontoPeopleSnapshot from '@/Components/Rhid/PontoPeopleSnapshot.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const props = defineProps({
+    configured: { type: Boolean, required: true },
     overviewLoading: { type: Boolean, required: true },
     overviewLoadedAt: { type: Object, default: null },
     overviewCalendarRangeLabel: { type: String, required: true },
@@ -56,12 +58,21 @@ const props = defineProps({
 const emit = defineEmits([
     'refresh',
     'monthly-compliance-month-change',
+    'import-auto',
     'go-punches-adherence',
     'go-bank',
     'go-justifications',
     'go-espelho',
     'go-collaborators',
 ]);
+
+const autoImportStatusUrl = computed(() => route('client.rhid.api.espelhos.auto-import'));
+const autoImportRunUrl = computed(() => route('client.rhid.api.espelhos.auto-import.run'));
+const rhidSettingsHref = computed(() => route('client.rhid.settings.edit'));
+
+const onAutoImported = () => {
+    emit('import-auto');
+};
 
 const PALETTE = {
     veryLight: '#f5f0fa',
@@ -149,7 +160,7 @@ const barWorstBankChart = computed(() => {
                 <p class="mt-0.5 text-xs leading-relaxed text-slate-600">
                     Pontualidade, faltas não justificadas e atestados no mês
                     <span class="font-medium text-talents-700">{{ overviewCalendarRangeLabel }}</span>
-                    · a partir dos espelhos importados.
+                    · a partir dos espelhos importados automaticamente.
                 </p>
                 <p class="mt-0.5 text-[11px] leading-relaxed text-slate-500">
                     Banco de horas e marcações ficam abaixo, como apoio operacional.
@@ -187,6 +198,14 @@ const barWorstBankChart = computed(() => {
                 </PrimaryButton>
             </div>
         </div>
+
+        <EspelhoAutoImportPanel
+            :configured="configured"
+            :status-url="autoImportStatusUrl"
+            :run-url="autoImportRunUrl"
+            :settings-href="rhidSettingsHref"
+            @imported="onAutoImported"
+        />
 
         <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <PontoPeopleSnapshot

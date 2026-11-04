@@ -824,7 +824,7 @@ class EspelhoScheduleAdherenceService
         int $colaboradoresAtingidos,
     ): ?string {
         if ($importsCount === 0) {
-            return 'Nenhum espelho importado para este período. A importação automática roda após 00:30 (dia já fechado). Use «Importar espelhos agora» nos indicadores ou confira o status em Configuração RHID; no portal do cliente também dá para importar em Marcações → Espelho.';
+            return 'Nenhum espelho importado para este período. A importação automática roda após 00:30 (dia já fechado). Use «Importar espelhos agora» no Admin ou no portal do cliente.';
         }
         if ($porStatus['pending'] > 0 && $porStatus['ok'] === 0) {
             return $porStatus['pending'].' import(s) ainda em processamento (fila). Confirme que o worker da fila está ativo no servidor (queue:work) e aguarde alguns segundos, ou use "Reprocessar agora" para parsear sob demanda.';

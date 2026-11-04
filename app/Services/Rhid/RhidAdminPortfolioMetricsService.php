@@ -629,7 +629,7 @@ class RhidAdminPortfolioMetricsService
 
         $imports = (int) ($diagnostics['imports_no_periodo'] ?? 0);
         if ($imports === 0) {
-            return 'Sem espelhos importados no período. Use «Importar espelhos agora», aguarde a importação automática após 00:30, ou importe no portal do cliente (Marcações → Espelho).';
+            return 'Sem espelhos importados no período. Use «Importar espelhos agora» (Admin ou portal do cliente) ou aguarde a importação automática após 00:30.';
         }
 
         return null;
