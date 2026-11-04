@@ -1711,7 +1711,7 @@ Origens (`Nr1Opportunity`): Treinamento, Solução sugerida, Solução solicitad
 |------|------|--------|-----|
 | `executive_brief` | Resumo executivo / Relatório executivo | V11 e legado | Campanha, adesão, panorama das 7 dimensões, pontos fortes, atenções, ações com responsável e prazo; 1–2 páginas |
 | `technical_report` | Relatório técnico + plano de ação | V11 | Identificação, metodologia (versão, 39 itens, 7 dimensões, frequências, polaridade, regras), elegíveis e base, resultados, grupos agregados, pontos positivos, prioridades, plano completo e revisão documental; 3–5 páginas de síntese |
-| `pgr_subsidy` | Subsídio AEP/PGR | legado | Mesma base do resumo; gravidade, probabilidade, nível de risco e assinatura ficam para o responsável técnico |
+| `pgr_subsidy` | Subsídio AEP/PGR | legado | Panorama + prioridades (dimensões/setores em atenção ou grave) com decisão solicitada ao RT; cadastro técnico só imprime o preenchido e lista pendências; gravidade, probabilidade, nível de risco do inventário e assinatura ficam em branco para o responsável técnico |
 | `evidence_dossier` | Dossiê de evidências | legado | Anexos (AEP, observação, inventário, outros) e lista congelada; bloqueado com polaridade pendente |
 
 #### 8.11.2 Versões, snapshot e hash
