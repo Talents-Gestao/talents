@@ -27,6 +27,7 @@ use App\Support\Finance\FinanceCashflowMetrics;
 use App\Support\StrategicCalendarLeaveEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 
 final class AdminHomeDashboardBuilder
 {
@@ -186,6 +187,20 @@ final class AdminHomeDashboardBuilder
         ];
     }
 
+    /**
+     * Funil comercial num intervalo informado pelo usuário (inclusive as duas datas), com a mesma
+     * regra de contagens independentes de «Neste mês» e «Total».
+     *
+     * @return array{
+     *     stages: list<array{key: string, label: string, count: int, href: string}>,
+     *     lost: array{count: int, href: string, items: list<array{key: string, name: string, count: int, responses: list<array<string, mixed>>}>}
+     * }
+     */
+    public function funnelForRange(Carbon $start, Carbon $end): array
+    {
+        return $this->proposalFunnelForPeriod($start->copy()->startOfDay(), $end->copy()->endOfDay());
+    }
+
     private function adminOpenTasksCount(): int
     {
         $boardIds = TaskBoard::query()->whereNull('company_id')->pluck('id');
@@ -258,7 +273,7 @@ final class AdminHomeDashboardBuilder
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder<CommercialSaleInstallment>
+     * @return Builder<CommercialSaleInstallment>
      */
     private function monthlyGoalPaidInstallmentsQuery(Carbon $monthStart, Carbon $monthEnd)
     {

@@ -13,11 +13,12 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import MoneyInput from '@/Components/MoneyInput.vue';
+import TextInput from '@/Components/TextInput.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { useAdminDashboardLayout } from '@/composables/useAdminDashboardLayout';
 import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
 import { centsToMoneyModel } from '@/utils/moneyMask';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import {
     ArrowPathIcon,
     BanknotesIcon,
@@ -67,6 +68,10 @@ const props = defineProps({
         }),
     },
     monthlyGoal: { type: Object, required: true },
+    /** Filtro por período do funil: só vem preenchido quando `data_inicio` e `data_fim` são enviados. */
+    funnelRange: { type: Array, default: null },
+    funnelLostRange: { type: Object, default: null },
+    funnelRangePeriod: { type: Object, default: null },
 });
 
 const dailyQuote = computed(() => page.props.dailyQuote ?? null);
@@ -75,22 +80,132 @@ const userId = computed(() => page.props.auth?.user?.id ?? null);
 /** Visão do funil: mês corrente ou histórico completo. */
 const funnelScope = ref('month');
 
-const activeFunnel = computed(() =>
-    funnelScope.value === 'all' ? (props.funnelAll || []) : (props.funnel || []),
+/** Período aplicado ao funil ({ start, end } em aaaa-mm-dd) ou null. */
+const funnelRangeActive = computed(() =>
+    Boolean(props.funnelRangePeriod?.start && props.funnelRangePeriod?.end),
 );
 
-const activeFunnelLost = computed(() =>
-    funnelScope.value === 'all' ? (props.funnelLostAll || {}) : (props.funnelLost || {}),
-);
+const activeFunnel = computed(() => {
+    if (funnelRangeActive.value) {
+        return props.funnelRange || [];
+    }
+    return funnelScope.value === 'all' ? (props.funnelAll || []) : (props.funnel || []);
+});
 
-const funnelScopeLabel = computed(() =>
-    funnelScope.value === 'all'
+const activeFunnelLost = computed(() => {
+    if (funnelRangeActive.value) {
+        return props.funnelLostRange || {};
+    }
+    return funnelScope.value === 'all' ? (props.funnelLostAll || {}) : (props.funnelLost || {});
+});
+
+/** aaaa-mm-dd → dd/mm/aaaa (sem passar por Date, para não deslocar o dia pelo fuso). */
+const formatIsoDate = (iso) => {
+    const [y, m, d] = String(iso || '').split('-');
+    return y && m && d ? `${d}/${m}/${y}` : '';
+};
+
+const funnelScopeLabel = computed(() => {
+    if (funnelRangeActive.value) {
+        return `Volume por etapa · contagens independentes, criados entre ${formatIsoDate(props.funnelRangePeriod.start)} e ${formatIsoDate(props.funnelRangePeriod.end)}`;
+    }
+    return funnelScope.value === 'all'
         ? 'Volume por etapa · contagens independentes, criados no total'
-        : 'Volume por etapa · contagens independentes, criados neste mês',
-);
+        : 'Volume por etapa · contagens independentes, criados neste mês';
+});
 
-const funnelInfoText =
-    'Leads, qualificação, propostas e vendas são contagens independentes do período: não acompanham o mesmo lead.';
+const funnelRangeModalOpen = ref(false);
+const funnelRangeLoading = ref(false);
+const funnelRangeForm = ref({ start: '', end: '' });
+const funnelRangeErrors = ref({ start: '', end: '' });
+
+const openFunnelRangeModal = () => {
+    funnelRangeForm.value = {
+        start: props.funnelRangePeriod?.start || '',
+        end: props.funnelRangePeriod?.end || '',
+    };
+    funnelRangeErrors.value = { start: '', end: '' };
+    funnelRangeModalOpen.value = true;
+};
+
+const closeFunnelRangeModal = () => {
+    if (funnelRangeLoading.value) {
+        return;
+    }
+    funnelRangeModalOpen.value = false;
+};
+
+const funnelVisitOptions = {
+    preserveState: true,
+    preserveScroll: true,
+    replace: true,
+};
+
+/** Remove o período (visita completa sem parâmetros: o payload volta a ser o de sempre). */
+const clearFunnelRange = (onDone) => {
+    if (!funnelRangeActive.value) {
+        onDone?.();
+        return;
+    }
+    funnelRangeLoading.value = true;
+    router.get(route('admin.dashboard'), {}, {
+        ...funnelVisitOptions,
+        onSuccess: () => onDone?.(),
+        onFinish: () => {
+            funnelRangeLoading.value = false;
+        },
+    });
+};
+
+const resetFunnelRange = () => {
+    clearFunnelRange(() => {
+        funnelRangeModalOpen.value = false;
+    });
+};
+
+const applyFunnelRange = () => {
+    const { start, end } = funnelRangeForm.value;
+    const errors = { start: '', end: '' };
+    if (!start) {
+        errors.start = 'Informe a data inicial.';
+    }
+    if (!end) {
+        errors.end = 'Informe a data final.';
+    }
+    if (start && end && end < start) {
+        errors.end = 'A data final deve ser igual ou posterior à data inicial.';
+    }
+    funnelRangeErrors.value = errors;
+    if (errors.start || errors.end) {
+        return;
+    }
+
+    funnelRangeLoading.value = true;
+    router.get(route('admin.dashboard'), { data_inicio: start, data_fim: end }, {
+        ...funnelVisitOptions,
+        only: ['funnelRange', 'funnelLostRange', 'funnelRangePeriod', 'errors'],
+        onSuccess: (visit) => {
+            const serverErrors = visit.props.errors || {};
+            if (serverErrors.data_inicio || serverErrors.data_fim) {
+                funnelRangeErrors.value = {
+                    start: serverErrors.data_inicio || '',
+                    end: serverErrors.data_fim || '',
+                };
+                return;
+            }
+            funnelRangeModalOpen.value = false;
+        },
+        onFinish: () => {
+            funnelRangeLoading.value = false;
+        },
+    });
+};
+
+/** Toggle «Neste mês / Total»: com período ativo, a escolha remove o período e volta ao comportamento atual. */
+const selectFunnelScope = (scope) => {
+    funnelScope.value = scope;
+    clearFunnelRange();
+};
 
 const { layout, resetLayout, dragAnimationMs } = useAdminDashboardLayout(userId);
 
@@ -618,41 +733,42 @@ const submitGoal = () => {
                                     </span>
                                     <div class="min-w-0">
                                         <h3 class="home-card__title">Funil comercial</h3>
-                                        <p class="home-card__sub flex items-start gap-1">
-                                            <span>{{ funnelScopeLabel }}</span>
-                                            <span
-                                                class="mt-px inline-flex h-4 w-4 shrink-0 cursor-help items-center justify-center rounded-full border border-ink-subtle text-[10px] font-semibold leading-none text-ink-muted"
-                                                role="img"
-                                                tabindex="0"
-                                                :title="funnelInfoText"
-                                                :aria-label="funnelInfoText"
-                                            >i</span>
-                                        </p>
+                                        <p class="home-card__sub">{{ funnelScopeLabel }}</p>
                                     </div>
                                 </div>
-                                <div class="mt-3">
+                                <div class="mt-3 flex items-center gap-2">
                                     <div class="home-seg" role="group" aria-label="Período do funil">
                                         <button
                                             type="button"
-                                            :aria-pressed="funnelScope === 'month'"
-                                            @click="funnelScope = 'month'"
+                                            :aria-pressed="!funnelRangeActive && funnelScope === 'month'"
+                                            @click="selectFunnelScope('month')"
                                         >
                                             Neste mês
                                         </button>
                                         <button
                                             type="button"
-                                            :aria-pressed="funnelScope === 'all'"
-                                            @click="funnelScope = 'all'"
+                                            :aria-pressed="!funnelRangeActive && funnelScope === 'all'"
+                                            @click="selectFunnelScope('all')"
                                         >
                                             Total
                                         </button>
                                     </div>
+                                    <button
+                                        type="button"
+                                        class="home-seg-icon"
+                                        title="Filtrar por período"
+                                        aria-label="Filtrar por período"
+                                        :aria-pressed="funnelRangeActive"
+                                        @click="openFunnelRangeModal"
+                                    >
+                                        <CalendarDaysIcon class="h-4 w-4" aria-hidden="true" />
+                                    </button>
                                 </div>
                                 <div class="mt-4">
                                     <DashboardSalesFunnel
                                         :funnel="activeFunnel"
                                         :lost="activeFunnelLost"
-                                        :scope="funnelScope"
+                                        :scope="funnelRangeActive ? 'range' : funnelScope"
                                     />
                                 </div>
                             </section>
@@ -777,6 +893,60 @@ const submitGoal = () => {
                             </SecondaryButton>
                             <PrimaryButton type="submit" :disabled="goalForm.processing">
                                 {{ goalForm.processing ? 'Salvando…' : 'Salvar' }}
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </div>
+            </FullScreenOverlay>
+
+            <FullScreenOverlay :show="funnelRangeModalOpen" @close="closeFunnelRangeModal">
+                <div
+                    class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="funnel-range-modal-title"
+                >
+                    <h3 id="funnel-range-modal-title" class="text-lg font-semibold text-slate-900">
+                        Filtrar por período
+                    </h3>
+                    <p class="mt-1 text-sm text-slate-600">
+                        O funil conta os leads e as propostas criados entre as duas datas, inclusive.
+                    </p>
+
+                    <form class="mt-5 space-y-4" novalidate @submit.prevent="applyFunnelRange">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <InputLabel for="funnel_range_start" value="Data inicial" />
+                                <TextInput
+                                    id="funnel_range_start"
+                                    v-model="funnelRangeForm.start"
+                                    type="date"
+                                    class="mt-1 block w-full"
+                                    :max="funnelRangeForm.end || undefined"
+                                    required
+                                />
+                                <InputError class="mt-1" :message="funnelRangeErrors.start" />
+                            </div>
+                            <div>
+                                <InputLabel for="funnel_range_end" value="Data final" />
+                                <TextInput
+                                    id="funnel_range_end"
+                                    v-model="funnelRangeForm.end"
+                                    type="date"
+                                    class="mt-1 block w-full"
+                                    :min="funnelRangeForm.start || undefined"
+                                    required
+                                />
+                                <InputError class="mt-1" :message="funnelRangeErrors.end" />
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-2 pt-2">
+                            <SecondaryButton type="button" :disabled="funnelRangeLoading" @click="resetFunnelRange">
+                                Limpar
+                            </SecondaryButton>
+                            <PrimaryButton type="submit" :disabled="funnelRangeLoading">
+                                {{ funnelRangeLoading ? 'Aplicando…' : 'Aplicar' }}
                             </PrimaryButton>
                         </div>
                     </form>

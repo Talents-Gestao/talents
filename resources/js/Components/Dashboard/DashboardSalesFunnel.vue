@@ -46,18 +46,21 @@ const props = defineProps({
             items: [],
         }),
     },
-    /** 'month' | 'all' — textos do bloco Perdido e tooltips. */
+    /** 'month' | 'all' | 'range' (período filtrado) — textos do bloco Perdido e tooltips. */
     scope: {
         type: String,
         default: 'month',
-        validator: (value) => ['month', 'all'].includes(value),
+        validator: (value) => ['month', 'all', 'range'].includes(value),
     },
 });
 
 const intro = useHomeIntro();
 
-const scopePhrase = computed(() => (props.scope === 'all' ? 'no total' : 'neste mês'));
-const scopeShort = computed(() => (props.scope === 'all' ? 'no total' : 'no mês'));
+const SCOPE_PHRASES = { month: 'neste mês', all: 'no total', range: 'no período' };
+const SCOPE_SHORT = { month: 'no mês', all: 'no total', range: 'no período' };
+
+const scopePhrase = computed(() => SCOPE_PHRASES[props.scope] ?? SCOPE_PHRASES.month);
+const scopeShort = computed(() => SCOPE_SHORT[props.scope] ?? SCOPE_SHORT.month);
 
 /**
  * Contagens independentes por etapa. Leitura principal: % dos leads (contagem ÷ leads);
