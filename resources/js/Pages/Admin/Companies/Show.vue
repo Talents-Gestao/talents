@@ -1,4 +1,6 @@
 <script setup>
+import CompanyDashboardSummary from '@/Components/Admin/Companies/CompanyDashboardSummary.vue';
+import CompanyShortcutGrid from '@/Components/Admin/Companies/CompanyShortcutGrid.vue';
 import CompanyShowAccordion from '@/Components/Admin/Companies/CompanyShowAccordion.vue';
 import CompanyShowTabFrame from '@/Components/Admin/Companies/CompanyShowTabFrame.vue';
 import CompanyRhidCredentialsForm from '@/Components/Admin/Rhid/CompanyRhidCredentialsForm.vue';
@@ -58,6 +60,26 @@ const props = defineProps({
     methodologyTemplates: { type: Array, default: () => [] },
     employees: { type: Array, default: () => [] },
     regulations: { type: Array, default: () => [] },
+    dashboard: {
+        type: Object,
+        default: () => ({
+            users_count: 0,
+            active_users_count: 0,
+            surveys_count: 0,
+            active_surveys_count: 0,
+            latest_survey: null,
+            has_active_subscription: false,
+            active_plan_name: null,
+            employees_count: 0,
+            regulations_count: 0,
+            purpose_maps_count: 0,
+            rhid_enabled: false,
+            rhid_configured: false,
+            recent_surveys: [],
+            recent_purpose_maps: [],
+            shortcuts: [],
+        }),
+    },
 });
 
 const { canAdmin } = useAdminPermissions();
@@ -408,9 +430,9 @@ const removeRegulation = async (id) => {
             <div v-if="activeTab === 'empresa'">
                 <CompanyShowTabFrame
                     accent="slate"
-                    eyebrow="Ficha cadastral"
+                    eyebrow="Painel operacional"
                     title="Empresa"
-                    description="Dados, planos, pesquisas e usuários vinculados a esta empresa."
+                    description="Indicadores, atalhos e configuração desta empresa."
                 >
                     <template #icon>
                         <BuildingOffice2Icon class="h-6 w-6" aria-hidden="true" />
@@ -423,8 +445,22 @@ const removeRegulation = async (id) => {
                             Editar empresa
                         </Link>
                     </template>
-                    <div class="space-y-4">
-                <CompanyShowAccordion title="Dados" description="Informações cadastrais da empresa" default-open>
+                    <div class="space-y-8">
+                <CompanyDashboardSummary
+                    :dashboard="dashboard"
+                    :registration-admin-email="registrationAdminEmail"
+                    @resend-invitation="resendInvitation"
+                />
+                <CompanyShortcutGrid :shortcuts="dashboard.shortcuts || []" />
+
+                <div class="space-y-4">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-900">Gestão e configuração</h3>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Dados cadastrais, planos, pesquisas e usuários — abra cada bloco conforme necessário.
+                    </p>
+                </div>
+                <CompanyShowAccordion title="Dados" description="Informações cadastrais da empresa">
                     <template #icon>
                         <BuildingOffice2Icon class="h-5 w-5" />
                     </template>
@@ -718,6 +754,7 @@ const removeRegulation = async (id) => {
                         Excluir empresa
                     </DangerButton>
                 </CompanyShowAccordion>
+                </div>
                     </div>
                 </CompanyShowTabFrame>
             </div>

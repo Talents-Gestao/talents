@@ -15,6 +15,7 @@ use App\Models\Subscription;
 use App\Models\SurveyTemplate;
 use App\Models\User;
 use App\Services\ReceitaWsService;
+use App\Support\Admin\CompanyShowDashboardBuilder;
 use App\Support\InvitationPassword;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\JsonResponse;
@@ -245,6 +246,11 @@ class CompanyController extends Controller
             'employees' => [],
             'regulations' => [],
         ];
+
+        $payload['dashboard'] = app(CompanyShowDashboardBuilder::class)->build(
+            $company,
+            $payload['nr1ShellUrls']
+        );
 
         if ($tab === 'colaboradores') {
             $payload['employees'] = CompanyEmployee::query()

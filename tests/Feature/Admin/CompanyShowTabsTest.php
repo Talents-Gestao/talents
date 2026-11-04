@@ -84,6 +84,41 @@ class CompanyShowTabsTest extends TestCase
             );
     }
 
+    public function test_empresa_tab_exposes_operational_dashboard_props(): void
+    {
+        $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
+        $company = Company::query()->create([
+            'name' => 'Empresa Dashboard',
+            'is_active' => true,
+        ]);
+
+        User::factory()->companyAdmin($company->id)->create(['is_active' => true]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.companies.show', ['company' => $company->id, 'tab' => 'empresa']))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Admin/Companies/Show')
+                ->where('tab', 'empresa')
+                ->has('dashboard')
+                ->where('dashboard.users_count', 1)
+                ->where('dashboard.active_users_count', 1)
+                ->where('dashboard.surveys_count', 0)
+                ->where('dashboard.employees_count', 0)
+                ->where('dashboard.regulations_count', 0)
+                ->where('dashboard.has_active_subscription', false)
+                ->has('dashboard.shortcuts')
+                ->has('dashboard.recent_surveys')
+                ->has('dashboard.recent_purpose_maps')
+            );
+
+        $show = (string) file_get_contents(resource_path('js/Pages/Admin/Companies/Show.vue'));
+        $this->assertStringContainsString('CompanyDashboardSummary', $show);
+        $this->assertStringContainsString('CompanyShortcutGrid', $show);
+        $this->assertStringContainsString('Gestão e configuração', $show);
+        $this->assertStringNotContainsString('default-open', $show);
+    }
+
     public function test_companies_index_paginates_after_first_page(): void
     {
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);

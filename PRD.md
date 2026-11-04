@@ -864,12 +864,14 @@ Lead incluído manualmente também gera aviso «novo lead».
 
 | Aba | Conteúdo |
 |-----|----------|
-| **Empresa** | Acordeões (abaixo) |
+| **Empresa** | Painel operacional (alertas, KPIs, atalhos, atividade recente) + acordeões de gestão (abaixo), fechados por padrão |
 | **Gestão de ponto** | Credenciais RHID da empresa (`CompanyRhidCredentialsForm`) e métricas (`GET …/rhid-metrics`); exige `rhid` |
 | **Colaboradores** | Lista de colaboradores da empresa e atalho para o cadastro (7.3.4) |
 | **Regulamento interno** | Regulamentos publicados (7.3.5) |
 
-Acordeões da aba Empresa:
+**Painel operacional (aba Empresa):** prop Inertia `dashboard` com contagens leves (usuários, campanhas NR-1, plano ativo, colaboradores, regulamentos, flags RHID/denúncias), atalhos tipados e listas curtas de campanhas/mapas. UI em `CompanyDashboardSummary` + `CompanyShortcutGrid`.
+
+Acordeões da aba Empresa (secção «Gestão e configuração»):
 
 | Acordeão | Conteúdo e ações |
 |----------|------------------|
