@@ -105,6 +105,12 @@ const executiveBriefDownloadUrl = computed(
         route('admin.companies.surveys.executive-brief.download', [props.company.id, props.survey.id]),
 );
 
+const executiveBriefPreviewUrl = computed(
+    () =>
+        props.executiveBrief?.urls?.preview ??
+        route('admin.companies.surveys.executive-brief.preview', [props.company.id, props.survey.id]),
+);
+
 const executiveBriefValidateUrl = computed(
     () =>
         props.executiveBrief?.urls?.validate ??
@@ -121,6 +127,16 @@ const pgrSubsidyDownloadUrl = computed(
     () =>
         props.pgrSubsidy?.urls?.download ??
         route('admin.companies.surveys.psychosocial-documents.download', [
+            props.company.id,
+            props.survey.id,
+            'pgr_subsidy',
+        ]),
+);
+
+const pgrSubsidyPreviewUrl = computed(
+    () =>
+        props.pgrSubsidy?.urls?.preview ??
+        route('admin.companies.surveys.psychosocial-documents.preview', [
             props.company.id,
             props.survey.id,
             'pgr_subsidy',
@@ -266,6 +282,10 @@ const confirmPublish = () => {
 const openExportPdfModal = () => {
     showExportPdfModal.value = true;
 };
+
+const registrationUrl = computed(() =>
+    route('admin.companies.surveys.registration.edit', [props.company.id, props.survey.id]),
+);
 
 const openExecutiveBriefModal = () => {
     showExecutiveBriefModal.value = true;
@@ -986,12 +1006,14 @@ defineExpose({
     <Nr1DocumentPreviewModal
         :show="showExecutiveBriefModal"
         title="Resumo executivo"
-        description="Pré-visualização, liberação e validação pela Talents neste modal. Sem validação, o parecer não pode ser publicado."
+        description="O PDF abre na hora, sem liberar. Razão social e CNPJ vêm da empresa; os demais campos do cadastro técnico precisam estar preenchidos. Liberar só congela a versão para validação."
         :document="executiveBrief"
         :download-url="executiveBriefDownloadUrl"
+        :preview-url="executiveBriefPreviewUrl"
         :release-url="executiveBriefReleaseUrl"
         :validate-url="executiveBriefValidateUrl"
         :can-validate="Boolean(executiveBrief?.validatable)"
+        :registration-url="registrationUrl"
         persist-key="executive_brief"
         @close="showExecutiveBriefModal = false"
     />
@@ -999,10 +1021,12 @@ defineExpose({
     <Nr1DocumentPreviewModal
         :show="showPgrSubsidyModal"
         title="Subsídio AEP/PGR"
-        description="Pré-visualização e liberação do subsídio neste modal — sem sair do parecer."
+        description="O PDF abre na hora, sem liberar. Complete o cadastro técnico para preencher Unidade, AEP e responsável. Liberar congela a versão oficial."
         :document="pgrSubsidy"
         :download-url="pgrSubsidyDownloadUrl"
+        :preview-url="pgrSubsidyPreviewUrl"
         :release-url="pgrSubsidyReleaseUrl"
+        :registration-url="registrationUrl"
         persist-key="pgr_subsidy"
         @close="showPgrSubsidyModal = false"
     />

@@ -188,13 +188,58 @@ class ExecutiveBriefPhaseEightTest extends TestCase
         $this->assertNull($eligible['participation_label']);
         $this->assertSame('Aguardando total elegível', $eligible['hint']);
         $this->assertSame('Elegíveis não informados', $eligible['respondents_hint']);
-        $this->assertSame([], array_filter($version->snapshot['registration'], fn ($value) => $value !== null));
+
+        // Razão social e CNPJ caem da empresa quando o cadastro técnico ainda não foi gravado.
+        $registration = $version->snapshot['registration'];
+        $this->assertSame($campaign->fx->company->name, $registration['legal_name_snapshot']);
+        $this->assertSame($campaign->fx->company->cnpj, $registration['cnpj_snapshot']);
+        $manualFields = collect($registration)
+            ->except(['legal_name_snapshot', 'cnpj_snapshot'])
+            ->filter(fn ($value) => $value !== null)
+            ->all();
+        $this->assertSame([], $manualFields);
 
         $html = $this->html($version);
         $this->assertStringContainsString('Aguardando total elegível', $html);
         $this->assertStringContainsString('Elegíveis não informados', $html);
         $this->assertStringNotContainsString(' de 29', $html);
         $this->assertStringContainsString(ExecutiveBriefSnapshotBuilder::NO_MEASURES, $html);
+        $this->assertStringContainsString($campaign->fx->company->name, $html);
+        $this->assertStringContainsString($campaign->fx->company->cnpj, $html);
+    }
+
+    public function test_preview_returns_inline_pdf_without_releasing(): void
+    {
+        $campaign = $this->seedCascadeCampaign();
+
+        $response = $this->actingAs($campaign->admin)
+            ->get(route('admin.companies.surveys.executive-brief.preview', [
+                $campaign->fx->company->id,
+                $campaign->fx->survey->id,
+            ]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('Content-Type'));
+        $this->assertStringContainsString('inline', (string) $response->headers->get('Content-Disposition'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+        $this->assertSame(0, PsychosocialDocument::query()->count());
+    }
+
+    public function test_download_inline_serves_frozen_pdf_in_browser(): void
+    {
+        $campaign = $this->seedCascadeCampaign();
+        $version = $this->release($campaign);
+
+        $response = $this->actingAs($campaign->admin)
+            ->get(route('admin.companies.surveys.executive-brief.download', [
+                $campaign->fx->company->id,
+                $campaign->fx->survey->id,
+                'inline' => 1,
+            ]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('inline', (string) $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString($version->public_identifier, (string) $response->headers->get('Content-Disposition'));
     }
 
     public function test_eligible_below_respondents_records_alert_without_rate(): void

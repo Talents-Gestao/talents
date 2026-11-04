@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -364,9 +365,15 @@ class PsychosocialDocumentService
 
     /**
      * Entrega o arquivo gravado de uma versão. Nunca chama o DomPDF nem regenera.
+     *
+     * @param  bool  $inline  true = visualizar no navegador/modal; false = forçar download
      */
-    public function download(PsychosocialDocumentVersion $version, User $user, ?string $ip): StreamedResponse
-    {
+    public function download(
+        PsychosocialDocumentVersion $version,
+        User $user,
+        ?string $ip,
+        bool $inline = false,
+    ): StreamedResponse {
         if ($version->pdf_status === PsychosocialDocumentVersion::PDF_QUEUED) {
             throw new PsychosocialDocumentException('O PDF desta versão está em preparação.');
         }
@@ -395,13 +402,46 @@ class PsychosocialDocumentService
             'ip' => $ip,
         ]);
 
-        return response()->streamDownload(
+        $filename = self::TYPES[$document->type]['file'].'-'.$version->public_identifier.'.pdf';
+        $disposition = ($inline ? 'inline' : 'attachment').'; filename="'.$filename.'"';
+
+        return response()->stream(
             function () use ($bytes): void {
                 echo $bytes;
             },
-            self::TYPES[$document->type]['file'].'-'.$version->public_identifier.'.pdf',
-            ['Content-Type' => 'application/pdf'],
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => $disposition,
+            ],
         );
+    }
+
+    /**
+     * PDF ao vivo a partir do snapshot atual (sem congelar versão) — para o modal de pré-visualização.
+     */
+    public function preview(Survey $survey, string $type): SymfonyResponse
+    {
+        $config = $this->config($type);
+        $builder = $this->builder($type);
+        $snapshot = $builder->build($survey);
+
+        $pdf = Pdf::loadView($config['view'], [
+            'snapshot' => $snapshot,
+            'validation' => null,
+            'meta' => [
+                'version_number' => null,
+                'public_identifier' => 'prévia',
+            ],
+        ])->setPaper('a4');
+        $bytes = $this->reportGenerator->applyDompdfOptions($pdf)->output();
+        $filename = $config['file'].'-previa.pdf';
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Cache-Control' => 'no-store, private',
+        ]);
     }
 
     /**

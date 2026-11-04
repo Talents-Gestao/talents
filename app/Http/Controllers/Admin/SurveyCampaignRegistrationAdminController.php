@@ -44,12 +44,27 @@ class SurveyCampaignRegistrationAdminController extends Controller
             ->with('updatedBy:id,name')
             ->first();
 
+        $defaults = array_fill_keys(self::CONTENT_FIELDS, null);
+        $defaults['legal_name_snapshot'] = $company->legal_name ?: $company->name;
+        $defaults['cnpj_snapshot'] = $company->cnpj;
+
+        $registrationPayload = $registration
+            ? $registration->only(self::CONTENT_FIELDS)
+            : $defaults;
+
+        if ($registration !== null) {
+            if (! filled($registrationPayload['legal_name_snapshot'] ?? null)) {
+                $registrationPayload['legal_name_snapshot'] = $defaults['legal_name_snapshot'];
+            }
+            if (! filled($registrationPayload['cnpj_snapshot'] ?? null)) {
+                $registrationPayload['cnpj_snapshot'] = $defaults['cnpj_snapshot'];
+            }
+        }
+
         return Inertia::render('Admin/CampaignRegistration/Edit', [
             'company' => $company->only(['id', 'name', 'legal_name', 'cnpj']),
             'survey' => $survey->only(['id', 'title']),
-            'registration' => $registration
-                ? $registration->only(self::CONTENT_FIELDS)
-                : array_fill_keys(self::CONTENT_FIELDS, null),
+            'registration' => $registrationPayload,
             'lastUpdate' => $registration ? [
                 'at' => $registration->updated_at?->toIso8601String(),
                 'by' => $registration->updatedBy?->name,

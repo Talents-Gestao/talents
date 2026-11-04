@@ -144,7 +144,7 @@
         <tbody>
             <tr><th>Unidade</th><td>{{ $orGap($registration['unit_name']) }}</td></tr>
             <tr><th>Processo</th><td>{{ $orGap($registration['process_name']) }}</td></tr>
-            <tr><th>Razão social</th><td>{{ $orGap($registration['legal_name_snapshot']) }}</td></tr>
+            <tr><th>Razão social</th><td>{{ $orGap($registration['legal_name_snapshot'] ?? ($snapshot['company']['name'] ?? null)) }}</td></tr>
             <tr><th>CNPJ</th><td>{{ $orGap($registration['cnpj_snapshot']) }}</td></tr>
             <tr><th>Grupos de exposição</th><td>{{ $registration['exposure_groups'] ? implode(', ', $registration['exposure_groups']) : 'Não informado' }}</td></tr>
             <tr><th>Resumo da AEP</th><td>{{ $orGap($registration['aep_summary']) }}</td></tr>

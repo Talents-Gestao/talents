@@ -55,7 +55,7 @@
         <tbody>
             <tr><th>Unidade</th><td>{{ $orGap($registration['unit_name']) }}</td></tr>
             <tr><th>Processo</th><td>{{ $orGap($registration['process_name']) }}</td></tr>
-            <tr><th>Razão social</th><td>{{ $orGap($registration['legal_name_snapshot']) }}</td></tr>
+            <tr><th>Razão social</th><td>{{ $orGap($registration['legal_name_snapshot'] ?? ($snapshot['company']['name'] ?? null)) }}</td></tr>
             <tr><th>CNPJ</th><td>{{ $orGap($registration['cnpj_snapshot']) }}</td></tr>
             <tr><th>Total de elegíveis</th><td>{{ $eligible['value_label'] }}@if($eligible['hint']) &mdash; {{ $eligible['hint'] }}@endif</td></tr>
             <tr><th>Origem dos elegíveis</th><td>{{ $orGap($registration['eligible_source']) }}</td></tr>
