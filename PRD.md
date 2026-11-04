@@ -1630,7 +1630,7 @@ Só aparece em campanhas do modelo anterior; na V11 a URL redireciona para Docum
 | 01 Diagnóstico | na seção Resultados (painel do legado) com «Continuar para o parecer» |
 | 02 Parecer | texto do parecer técnico, análise da Mia, anexos (parecer técnico, relatório executivo, encaminhamento técnico; até 20 MB cada), relatórios automáticos por cenário de risco e arquivos personalizados |
 | 03 Publicar | publica parecer e plano para a empresa |
-| Documentos liberados | resumo executivo, subsídio AEP/PGR e dossiê de evidências (8.11.4) |
+| Documentos liberados | no parecer legado: relatório técnico + plano de ação (resumo executivo inativo na UI) e subsídio AEP/PGR; dossiê fora desta tela (8.11.4) |
 | Empresa | parecer e plano publicados, PDFs e anexos |
 
 Rotas de ação do legado (admin): `PUT …/action-plan` (parecer e anexos), `POST …/action-plan/generate-suggested` (plano sugerido), `GET|POST …/action-plan/document-pdf` e `…/pdf`, `POST …/technical-opinion`, `GET …/technical-opinion-file`, `GET …/nr1-reports/{type}` (relatório executivo e encaminhamento técnico). Itens do plano legado: `PATCH /client/action-plan-items/{item}` (responsável, prazo, status `pending|in_progress|done`).
@@ -1751,9 +1751,10 @@ Ações do revisor (em `/revisao`): comentar, aprovar, solicitar alteração (te
 
 | Ação | Rota (admin) | Regra |
 |------|--------------|-------|
-| Prévia do resumo (modal) | `GET …/resumo-executivo/previa` | PDF ao vivo no modal do parecer; **não** exige liberar; razão social/CNPJ caem da empresa se o cadastro técnico ainda não tiver |
+| Prévia do resumo (modal) | `GET …/resumo-executivo/previa` | PDF ao vivo; rotas mantidas, mas o botão do resumo está **inativo** no parecer legado |
+| Prévia / liberar / validar relatório técnico (legado) | `GET …/documentos/technical_report/previa` · `POST …/relatorio-tecnico/liberar` · `POST …/relatorio-tecnico/validar` | substitui o resumo no parecer legado; publicação do parecer exige este documento validado |
 | Prévia do documento | `GET …/documentos/{type}/previa` | mesma regra para subsídio AEP/PGR e demais tipos do modal |
-| Liberar resumo executivo | `POST …/resumo-executivo/liberar` | congela versão para validação; pode ser validado mesmo com auditoria pendente |
+| Liberar resumo executivo | `POST …/resumo-executivo/liberar` | congela versão (V11 / API); UI do parecer legado não usa mais este botão |
 | Liberar subsídio AEP/PGR | `POST …/subsidio-pgr/liberar` | bloqueado com auditoria pendente (ex.: instrumento HSE-IT) ou polaridade não homologada |
 | Liberar dossiê | `POST …/dossie/liberar` | até 20 anexos (tipo AEP, observação, inventário, outros; 20 MB cada); mesmo bloqueio |
 | Validação informada | `POST …/documentos/{type}/validacao-informada` | nome, função, registro, data e prova (até 10 MB) |
@@ -2686,6 +2687,8 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | GET | `/admin/companies/{company}/surveys/{survey}/resumo-executivo/download` | `admin.companies.surveys.executive-brief.download` | auth · admin.can:companies | — |
 | GET | `/admin/companies/{company}/surveys/{survey}/resumo-executivo/previa` | `admin.companies.surveys.executive-brief.preview` | auth · admin.can:companies | — |
 | POST | `/admin/companies/{company}/surveys/{survey}/resumo-executivo/liberar` | `admin.companies.surveys.executive-brief.release` | auth · admin.can:companies | — |
+| POST | `/admin/companies/{company}/surveys/{survey}/relatorio-tecnico/liberar` | `admin.companies.surveys.technical-report.release` | auth · admin.can:companies | — |
+| POST | `/admin/companies/{company}/surveys/{survey}/relatorio-tecnico/validar` | `admin.companies.surveys.technical-report.validate` | auth · admin.can:companies | — |
 | POST | `/admin/companies/{company}/surveys/{survey}/revisao-interna` | `admin.companies.surveys.internal-review.store` | auth · admin.can:companies | — |
 | POST | `/admin/companies/{company}/surveys/{survey}/subsidio-pgr/liberar` | `admin.companies.surveys.pgr-subsidy.release` | auth · admin.can:companies | — |
 | POST | `/admin/companies/{company}/surveys/{survey}/technical-opinion` | `admin.companies.surveys.technical-opinion` | auth · admin.can:companies | — |

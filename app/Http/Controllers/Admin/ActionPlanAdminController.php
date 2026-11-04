@@ -14,7 +14,6 @@ use App\Models\PsychosocialDocumentVersion;
 use App\Models\Survey;
 use App\Models\SurveyNr1Report;
 use App\Services\ActionPlanGenerator;
-use App\Services\ExecutiveBriefService;
 use App\Services\Nr1AiAnalyzer;
 use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\Psychosocial\ReviewRoundService;
@@ -133,11 +132,16 @@ class ActionPlanAdminController extends Controller
                     ? Nr1Shell::campaignUrl('documentos', $survey)
                     : null,
             ],
-            'executiveBrief' => $this->legacyDocumentUiPayload(
+            // Resumo executivo permanece no backend (V11 / rotas), mas a UI do parecer legado usa o relatório técnico.
+            'executiveBrief' => null,
+            'technicalReport' => $this->legacyDocumentUiPayload(
                 $company,
                 $survey,
-                PsychosocialDocument::TYPE_EXECUTIVE_BRIEF,
-                app(ExecutiveBriefService::class)->currentVersionSummary($survey),
+                PsychosocialDocument::TYPE_TECHNICAL_REPORT,
+                app(PsychosocialDocumentService::class)->currentVersionSummary(
+                    $survey,
+                    PsychosocialDocument::TYPE_TECHNICAL_REPORT
+                ),
             ),
             'pgrSubsidy' => $this->legacyDocumentUiPayload(
                 $company,
@@ -365,7 +369,7 @@ class ActionPlanAdminController extends Controller
             || $newFilePath !== null;
 
         if ($hasPublishableContent && ! $survey->usesReviewFlow()) {
-            $this->assertLegacyExecutiveBriefValidatedForPublish($survey);
+            $this->assertLegacyTechnicalReportValidatedForPublish($survey);
         }
 
         DB::transaction(function () use ($plan, $technicalOpinion, $hasPublishableContent, $newFilePath, $newFileName) {
@@ -543,9 +547,23 @@ class ActionPlanAdminController extends Controller
         $companyId = $company->id;
         $surveyId = $survey->id;
 
-        $releaseRoute = $type === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
-            ? 'admin.companies.surveys.executive-brief.release'
-            : 'admin.companies.surveys.pgr-subsidy.release';
+        [$releaseRoute, $releaseParams, $validateRoute] = match ($type) {
+            PsychosocialDocument::TYPE_EXECUTIVE_BRIEF => [
+                'admin.companies.surveys.executive-brief.release',
+                [$companyId, $surveyId],
+                'admin.companies.surveys.executive-brief.validate',
+            ],
+            PsychosocialDocument::TYPE_TECHNICAL_REPORT => [
+                'admin.companies.surveys.technical-report.release',
+                [$companyId, $surveyId],
+                'admin.companies.surveys.technical-report.validate',
+            ],
+            default => [
+                'admin.companies.surveys.pgr-subsidy.release',
+                [$companyId, $surveyId],
+                null,
+            ],
+        };
 
         $downloadRoute = $type === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
             ? 'admin.companies.surveys.executive-brief.download'
@@ -568,24 +586,25 @@ class ActionPlanAdminController extends Controller
             'validated' => (bool) ($base['validated'] ?? false),
             'validatable' => (bool) ($base['validatable'] ?? false),
             'urls' => [
-                'release' => route($releaseRoute, [$companyId, $surveyId]),
+                'release' => route($releaseRoute, $releaseParams),
                 'download' => route($downloadRoute, $downloadParams),
                 'preview' => route($previewRoute, $previewParams),
-                'validate' => $type === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
-                    ? route('admin.companies.surveys.executive-brief.validate', [$companyId, $surveyId])
+                'validate' => $validateRoute !== null
+                    ? route($validateRoute, [$companyId, $surveyId])
                     : null,
             ],
         ]);
     }
 
     /**
-     * No modelo anterior, publicar o parecer exige resumo executivo liberado e validado pela Talents.
+     * No modelo anterior, publicar o parecer exige relatório técnico liberado e validado pela Talents.
+     * (O resumo executivo ficou inativo na UI do parecer legado.)
      */
-    private function assertLegacyExecutiveBriefValidatedForPublish(Survey $survey): void
+    private function assertLegacyTechnicalReportValidatedForPublish(Survey $survey): void
     {
         $version = app(PsychosocialDocumentService::class)->currentVersion(
             $survey,
-            PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
+            PsychosocialDocument::TYPE_TECHNICAL_REPORT
         );
 
         if ($version !== null && $version->kind === PsychosocialDocumentVersion::KIND_VALIDATED) {
@@ -593,7 +612,7 @@ class ActionPlanAdminController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'technical_opinion' => 'Para publicar o parecer, libere e valide o resumo executivo nesta campanha.',
+            'technical_opinion' => 'Para publicar o parecer, libere e valide o relatório técnico e plano de ação nesta campanha.',
         ]);
     }
 }

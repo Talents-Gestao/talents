@@ -7,7 +7,8 @@ import Nr1Button from './Nr1Button.vue';
 
 /**
  * Parecer e publicação (modelo anterior): Laudo 02 Parecer + 03 Publicar.
- * Resumo executivo e subsídio AEP/PGR abrem em modais no corpo; o dossiê não aparece nesta tela.
+ * Relatório técnico + plano de ação e subsídio AEP/PGR abrem em modais; o dossiê não aparece nesta tela.
+ * O resumo executivo fica inativo na UI do parecer legado.
  */
 const props = defineProps({
     documents: { type: Object, required: true },
@@ -25,8 +26,8 @@ const laudo = computed(() => props.documents.laudo ?? null);
                 <div class="n1-eyebrow">Parecer e publicação</div>
                 <h1>Parecer técnico e publicação.</h1>
                 <p>
-                    Parecer técnico com a Mia, resumo executivo e subsídio AEP/PGR. A publicação do parecer exige o resumo
-                    validado pela Talents.
+                    Parecer técnico com a Mia, relatório técnico + plano de ação e subsídio AEP/PGR. A publicação do
+                    parecer exige o relatório técnico validado pela Talents.
                 </p>
             </div>
             <LegacyNotice :text="notice" />
@@ -48,7 +49,9 @@ const laudo = computed(() => props.documents.laudo ?? null);
                 >
                     Medidas
                 </Nr1Button>
-                <Nr1Button size="sm" @click="body?.openExecutiveBriefModal()">Resumo executivo</Nr1Button>
+                <Nr1Button size="sm" @click="body?.openTechnicalReportModal()">
+                    Relatório técnico + plano de ação
+                </Nr1Button>
                 <Nr1Button size="sm" @click="body?.openPgrSubsidyModal()">Subsídio AEP/PGR</Nr1Button>
                 <Nr1Button size="sm" @click="body?.openExportPdfModal()">Exportar resultados</Nr1Button>
             </div>
