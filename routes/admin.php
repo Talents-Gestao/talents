@@ -184,6 +184,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.executive-brief.release');
         Route::get('companies/{company}/surveys/{survey}/resumo-executivo/download', [ExecutiveBriefAdminController::class, 'download'])
             ->name('companies.surveys.executive-brief.download');
+        Route::post('companies/{company}/surveys/{survey}/resumo-executivo/validar', [ExecutiveBriefAdminController::class, 'validateInSystem'])
+            ->name('companies.surveys.executive-brief.validate');
         Route::post('companies/{company}/surveys/{survey}/subsidio-pgr/liberar', [PsychosocialDocumentAdminController::class, 'releaseSubsidy'])
             ->name('companies.surveys.pgr-subsidy.release');
         Route::post('companies/{company}/surveys/{survey}/dossie/liberar', [PsychosocialDocumentAdminController::class, 'releaseDossier'])

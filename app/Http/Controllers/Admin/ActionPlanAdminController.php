@@ -9,6 +9,8 @@ use App\Models\ActionPlan;
 use App\Models\AiAnalysis;
 use App\Models\AiSetting;
 use App\Models\Company;
+use App\Models\PsychosocialDocument;
+use App\Models\PsychosocialDocumentVersion;
 use App\Models\Survey;
 use App\Models\SurveyNr1Report;
 use App\Services\ActionPlanGenerator;
@@ -30,6 +32,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -130,7 +133,22 @@ class ActionPlanAdminController extends Controller
                     ? Nr1Shell::campaignUrl('documentos', $survey)
                     : null,
             ],
-            'executiveBrief' => app(ExecutiveBriefService::class)->currentVersionSummary($survey),
+            'executiveBrief' => $this->legacyDocumentUiPayload(
+                $company,
+                $survey,
+                PsychosocialDocument::TYPE_EXECUTIVE_BRIEF,
+                app(ExecutiveBriefService::class)->currentVersionSummary($survey),
+            ),
+            'pgrSubsidy' => $this->legacyDocumentUiPayload(
+                $company,
+                $survey,
+                PsychosocialDocument::TYPE_PGR_SUBSIDY,
+                app(PsychosocialDocumentService::class)->currentVersionSummary(
+                    $survey,
+                    PsychosocialDocument::TYPE_PGR_SUBSIDY
+                ),
+            ),
+            // Mantido para compatibilidade; a UI do parecer legado não exibe o dossiê.
             'psychosocialDocuments' => app(PsychosocialDocumentService::class)->documentsSummary($survey),
             'plan' => $plan ? [
                 'id' => $plan->id,
@@ -346,6 +364,10 @@ class ActionPlanAdminController extends Controller
         $hasPublishableContent = ($technicalOpinion !== null && trim(strip_tags($technicalOpinion)) !== '')
             || $newFilePath !== null;
 
+        if ($hasPublishableContent && ! $survey->usesReviewFlow()) {
+            $this->assertLegacyExecutiveBriefValidatedForPublish($survey);
+        }
+
         DB::transaction(function () use ($plan, $technicalOpinion, $hasPublishableContent, $newFilePath, $newFileName) {
             $plan->update([
                 'technical_opinion' => $technicalOpinion,
@@ -491,5 +513,78 @@ class ActionPlanAdminController extends Controller
                 'uploaded_by' => null,
             ]);
         }
+    }
+
+    /**
+     * Props de UI do resumo / AEP-PGR no parecer legado (sem dossiê).
+     *
+     * @param  array<string, mixed>|null  $summary
+     * @return array<string, mixed>
+     */
+    private function legacyDocumentUiPayload(
+        Company $company,
+        Survey $survey,
+        string $type,
+        ?array $summary,
+    ): array {
+        $base = $summary ?? [
+            'type' => $type,
+            'label' => PsychosocialDocumentService::label($type),
+            'version_number' => null,
+            'kind' => null,
+            'seal' => null,
+            'pdf_status' => null,
+            'released_at' => null,
+            'ready' => false,
+            'validated' => false,
+            'validatable' => false,
+        ];
+
+        $companyId = $company->id;
+        $surveyId = $survey->id;
+
+        $releaseRoute = $type === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
+            ? 'admin.companies.surveys.executive-brief.release'
+            : 'admin.companies.surveys.pgr-subsidy.release';
+
+        $downloadRoute = $type === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
+            ? 'admin.companies.surveys.executive-brief.download'
+            : 'admin.companies.surveys.psychosocial-documents.download';
+
+        $downloadParams = $type === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
+            ? [$companyId, $surveyId]
+            : [$companyId, $surveyId, $type];
+
+        return array_merge($base, [
+            'ready' => (bool) ($base['ready'] ?? false),
+            'validated' => (bool) ($base['validated'] ?? false),
+            'validatable' => (bool) ($base['validatable'] ?? false),
+            'urls' => [
+                'release' => route($releaseRoute, [$companyId, $surveyId]),
+                'download' => route($downloadRoute, $downloadParams),
+                'validate' => $type === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
+                    ? route('admin.companies.surveys.executive-brief.validate', [$companyId, $surveyId])
+                    : null,
+            ],
+        ]);
+    }
+
+    /**
+     * No modelo anterior, publicar o parecer exige resumo executivo liberado e validado pela Talents.
+     */
+    private function assertLegacyExecutiveBriefValidatedForPublish(Survey $survey): void
+    {
+        $version = app(PsychosocialDocumentService::class)->currentVersion(
+            $survey,
+            PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
+        );
+
+        if ($version !== null && $version->kind === PsychosocialDocumentVersion::KIND_VALIDATED) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'technical_opinion' => 'Para publicar o parecer, libere e valide o resumo executivo nesta campanha.',
+        ]);
     }
 }

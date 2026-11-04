@@ -234,8 +234,12 @@ class Nr1ShellLegacyTest extends TestCase
         $this->assertStringNotContainsString('AdminLayout', $laudo);
         $this->assertStringContainsString('shellMode: { type: Boolean, default: false }', $laudo);
         $this->assertStringContainsString("const activeStep = ref(props.shellMode ? 'opinion' : 'results');", $laudo);
-        foreach (['releaseExecutiveBrief', 'releasePgrSubsidy', 'openExportPdfModal'] as $exposed) {
+        foreach (['openExecutiveBriefModal', 'openPgrSubsidyModal', 'openExportPdfModal'] as $exposed) {
             $this->assertStringContainsString($exposed.',', $laudo);
         }
+        $this->assertStringNotContainsString('PsychosocialDocumentsAdminPanel', $laudo);
+        $this->assertStringNotContainsString('MiaNr1AdminPanel', $laudo);
+        $this->assertStringNotContainsString('useEditor', $laudo);
+        $this->assertStringContainsString('executiveBriefValidated', $laudo);
     }
 }
