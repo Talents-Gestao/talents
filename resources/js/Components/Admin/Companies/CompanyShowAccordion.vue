@@ -5,6 +5,8 @@ import { onMounted, ref } from 'vue';
 const props = defineProps({
     title: { type: String, required: true },
     description: { type: String, default: '' },
+    /** Âncora para atalhos do painel (ex.: dados → #company-section-dados). */
+    sectionId: { type: String, default: null },
     defaultOpen: { type: Boolean, default: false },
     tone: {
         type: String,
@@ -20,12 +22,21 @@ onMounted(() => {
         detailsRef.value.open = true;
     }
 });
+
+defineExpose({
+    open: () => {
+        if (detailsRef.value) {
+            detailsRef.value.open = true;
+        }
+    },
+});
 </script>
 
 <template>
     <details
+        :id="sectionId || undefined"
         ref="detailsRef"
-        class="group overflow-hidden rounded-3xl border shadow-sm open:shadow-md"
+        class="group scroll-mt-24 overflow-hidden rounded-3xl border shadow-sm open:shadow-md"
         :class="
             tone === 'danger'
                 ? 'border-red-200/80 bg-red-50/40 open:border-red-300'

@@ -1,4 +1,6 @@
 <script setup>
+import CompanyDashboardSummary from '@/Components/Admin/Companies/CompanyDashboardSummary.vue';
+import CompanyShortcutGrid from '@/Components/Admin/Companies/CompanyShortcutGrid.vue';
 import CompanyShowAccordion from '@/Components/Admin/Companies/CompanyShowAccordion.vue';
 import CompanyShowTabFrame from '@/Components/Admin/Companies/CompanyShowTabFrame.vue';
 import CompanyRhidCredentialsForm from '@/Components/Admin/Rhid/CompanyRhidCredentialsForm.vue';
@@ -29,7 +31,7 @@ import {
     UserGroupIcon,
 } from '@heroicons/vue/24/outline';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { collectiveBargainingMonthLabel } from '@/utils/collectiveBargainingMonths';
 import { formatCnpj } from '@/utils/formatCnpj';
 import { confirmDialog } from '@/composables/useConfirmDialog';
@@ -58,6 +60,26 @@ const props = defineProps({
     methodologyTemplates: { type: Array, default: () => [] },
     employees: { type: Array, default: () => [] },
     regulations: { type: Array, default: () => [] },
+    dashboard: {
+        type: Object,
+        default: () => ({
+            users_count: 0,
+            active_users_count: 0,
+            surveys_count: 0,
+            active_surveys_count: 0,
+            latest_survey: null,
+            has_active_subscription: false,
+            active_plan_name: null,
+            employees_count: 0,
+            regulations_count: 0,
+            purpose_maps_count: 0,
+            rhid_enabled: false,
+            rhid_configured: false,
+            recent_surveys: [],
+            recent_purpose_maps: [],
+            shortcuts: [],
+        }),
+    },
 });
 
 const { canAdmin } = useAdminPermissions();
@@ -66,6 +88,79 @@ const showDeleteModal = ref(false);
 const showDeleteSurveyModal = ref(false);
 const surveyToDelete = ref(null);
 const resendingInvitation = ref(false);
+
+/** Atalhos que abrem os acordeões de «Gestão e configuração» na mesma página. */
+const configShortcuts = [
+    {
+        key: 'dados',
+        label: 'Dados',
+        hint: 'Informações cadastrais da empresa',
+        section: 'dados',
+        enabled: true,
+    },
+    {
+        key: 'assinaturas',
+        label: 'Assinaturas',
+        hint: 'Planos vinculados a esta empresa',
+        section: 'assinaturas',
+        enabled: true,
+    },
+    {
+        key: 'direcionamento',
+        label: 'Direcionamento Estratégico',
+        hint: 'Acesso e templates de satisfação',
+        section: 'direcionamento',
+        enabled: true,
+    },
+    {
+        key: 'mapeamentos',
+        label: 'Mapeamentos disponíveis',
+        hint: 'Templates de pesquisa NR-1',
+        section: 'mapeamentos',
+        enabled: true,
+    },
+    {
+        key: 'pesquisas',
+        label: 'Pesquisas e parecer',
+        hint: 'Campanhas e painel NR-1',
+        section: 'pesquisas',
+        enabled: true,
+    },
+    {
+        key: 'mapa_proposito',
+        label: 'Mapa de Propósito',
+        hint: 'Perguntas anónimas e resultados',
+        section: 'mapa_proposito',
+        enabled: true,
+    },
+    {
+        key: 'usuarios_gestao',
+        label: 'Usuários',
+        hint: 'Usuários vinculados a esta empresa',
+        section: 'usuarios',
+        enabled: true,
+    },
+    {
+        key: 'excluir',
+        label: 'Excluir empresa',
+        hint: 'Ação irreversível',
+        section: 'excluir',
+        tone: 'danger',
+        enabled: true,
+    },
+];
+
+const allShortcuts = computed(() => [...(props.dashboard?.shortcuts || []), ...configShortcuts]);
+
+const openConfigSection = async (section) => {
+    const el = document.getElementById(`company-section-${section}`);
+    if (!el) {
+        return;
+    }
+    el.open = true;
+    await nextTick();
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
 
 const tabs = computed(() => {
     const items = [{ id: 'empresa', label: 'Empresa' }];
@@ -408,9 +503,9 @@ const removeRegulation = async (id) => {
             <div v-if="activeTab === 'empresa'">
                 <CompanyShowTabFrame
                     accent="slate"
-                    eyebrow="Ficha cadastral"
+                    eyebrow="Painel operacional"
                     title="Empresa"
-                    description="Dados, planos, pesquisas e usuários vinculados a esta empresa."
+                    description="Indicadores, atalhos e configuração desta empresa."
                 >
                     <template #icon>
                         <BuildingOffice2Icon class="h-6 w-6" aria-hidden="true" />
@@ -423,8 +518,27 @@ const removeRegulation = async (id) => {
                             Editar empresa
                         </Link>
                     </template>
-                    <div class="space-y-4">
-                <CompanyShowAccordion title="Dados" description="Informações cadastrais da empresa" default-open>
+                    <div class="space-y-8">
+                <CompanyDashboardSummary
+                    :dashboard="dashboard"
+                    :registration-admin-email="registrationAdminEmail"
+                    @resend-invitation="resendInvitation"
+                />
+                <CompanyShortcutGrid :shortcuts="allShortcuts" @open-section="openConfigSection" />
+
+                <div class="space-y-4">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-900">Gestão e configuração</h3>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Dados cadastrais, planos, pesquisas e usuários — use os atalhos acima ou abra cada bloco
+                        conforme necessário.
+                    </p>
+                </div>
+                <CompanyShowAccordion
+                    section-id="company-section-dados"
+                    title="Dados"
+                    description="Informações cadastrais da empresa"
+                >
                     <template #icon>
                         <BuildingOffice2Icon class="h-5 w-5" />
                     </template>
@@ -500,7 +614,11 @@ const removeRegulation = async (id) => {
                     />
                 </CompanyShowAccordion>
 
-                <CompanyShowAccordion title="Assinaturas" description="Planos vinculados a esta empresa">
+                <CompanyShowAccordion
+                    section-id="company-section-assinaturas"
+                    title="Assinaturas"
+                    description="Planos vinculados a esta empresa"
+                >
                     <template #icon>
                         <CreditCardIcon class="h-5 w-5" />
                     </template>
@@ -523,6 +641,7 @@ const removeRegulation = async (id) => {
                 </CompanyShowAccordion>
 
                 <CompanyShowAccordion
+                    section-id="company-section-direcionamento"
                     title="Direcionamento Estratégico"
                     description="Acesso e templates de satisfação definidos pelo plano"
                 >
@@ -583,7 +702,11 @@ const removeRegulation = async (id) => {
                     </p>
                 </CompanyShowAccordion>
 
-                <CompanyShowAccordion title="Mapeamentos disponíveis" description="Templates de pesquisa NR-1">
+                <CompanyShowAccordion
+                    section-id="company-section-mapeamentos"
+                    title="Mapeamentos disponíveis"
+                    description="Templates de pesquisa NR-1"
+                >
                     <template #icon>
                         <MapIcon class="h-5 w-5" />
                     </template>
@@ -616,6 +739,7 @@ const removeRegulation = async (id) => {
                 </CompanyShowAccordion>
 
                 <CompanyShowAccordion
+                    section-id="company-section-pesquisas"
                     title="Pesquisas e parecer"
                     description="Parecer e plano ficam visíveis para a empresa após publicação"
                 >
@@ -652,6 +776,7 @@ const removeRegulation = async (id) => {
                 </CompanyShowAccordion>
 
                 <CompanyShowAccordion
+                    section-id="company-section-mapa_proposito"
                     title="Mapa de Propósito"
                     description="Perguntas anónimas e dashboard de resultados"
                 >
@@ -668,7 +793,11 @@ const removeRegulation = async (id) => {
                     </div>
                 </CompanyShowAccordion>
 
-                <CompanyShowAccordion title="Usuários" description="Usuários vinculados a esta empresa">
+                <CompanyShowAccordion
+                    section-id="company-section-usuarios"
+                    title="Usuários"
+                    description="Usuários vinculados a esta empresa"
+                >
                     <template #icon>
                         <UserGroupIcon class="h-5 w-5" />
                     </template>
@@ -703,6 +832,7 @@ const removeRegulation = async (id) => {
                 </CompanyShowAccordion>
 
                 <CompanyShowAccordion
+                    section-id="company-section-excluir"
                     title="Excluir empresa"
                     description="Ação irreversível — remove empresa e dados associados"
                     tone="danger"
@@ -718,6 +848,7 @@ const removeRegulation = async (id) => {
                         Excluir empresa
                     </DangerButton>
                 </CompanyShowAccordion>
+                </div>
                     </div>
                 </CompanyShowTabFrame>
             </div>
