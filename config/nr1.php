@@ -65,7 +65,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | DESLIGADO por padrão. Só ligar em produção depois do teste manual do MFA com um aplicativo
-    | autenticador real e do OK do responsável (ver docs/nr1-v11/NOTAS.md).
+    | autenticador real e do OK do responsável (ver PRD.md, cap. 11).
     | Desligado: compartilhar é recusado, o revisor recebe 404 e nenhum compartilhamento vale.
     |
     | mfa_required: com a revisão ligada e este flag true, o middleware EnsureExternalReviewer exige
@@ -84,7 +84,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | require_review: a empresa só vê uma regra «dimensão → serviço» depois que a Talents revisa o texto. Os textos
-    | iniciais vêm do HTML aprovado e a aprovação deles é a pergunta 11 da Suzane (ver docs/nr1-v11/NOTAS.md).
+    | iniciais vêm do HTML aprovado e a aprovação deles é a pergunta 11 da Suzane (ver PRD.md, 8.9.8 e 19.2).
     */
     'solutions' => [
         'require_review' => (bool) env('NR1_SOLUTIONS_REQUIRE_REVIEW', true),

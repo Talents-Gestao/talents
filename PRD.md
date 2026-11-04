@@ -2473,7 +2473,7 @@ Critério de pronto para qualquer entrega: testes verdes, build do frontend sem 
 | 20.2 | `.cursor/rules/Talents-Structure.mdc` | contas bancárias e a receber «em breve» | ambas implementadas |
 | 20.3 | `CLAUDE.md` anterior | flags `NR1_SHELL_ENABLED` e revisão externa como exceções vigentes; PRD em `PRD.md` com alterações não commitadas | `NR1_SHELL_ENABLED` não existe mais; só a revisão externa e o MFA mantêm interruptores |
 | 20.4 | `ClientLayout.vue` | item «Direcionamento Estratégico» aponta para `client.metodologia.index` | a rota está comentada; o item só aparece com `metodologia:view`, que depende do módulo `metodologia` no plano. Com o módulo ativo no plano, o link quebraria. Remover o item ou reativar as rotas juntos |
-| 20.5 | `docs/nr1-v11/NOTAS.md` | descreve etapas com flags e telas antigas | parte do conteúdo é histórico; vale o código e este PRD |
+| 20.5 | `docs/nr1-v11/NOTAS.md` | descreve etapas com flags e telas antigas | arquivo removido em 04/11/2026; vale o código e este PRD |
 | 20.6 | PRD de 22/10/2026 | painel psicossocial em `/client/surveys/{id}/painel-psicossocial` e Laudo próprio | substituídos pelo painel NR-1 (`/nr1`) |
 
 Corrigir as fontes 20.1 a 20.4 é parte da próxima tarefa de documentação.
