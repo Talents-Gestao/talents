@@ -19,6 +19,7 @@ use App\Models\SurveyCampaignRegistration;
 use App\Models\User;
 use App\Services\ExecutiveBriefService;
 use App\Services\Psychosocial\PsychosocialDocumentService;
+use App\Services\PsychosocialDashboardBuilder;
 use App\Services\SurveyResultsPresenter;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1RiskScenarioResolver;
@@ -145,10 +146,13 @@ final class Nr1ShellLegacy
             },
         ];
 
+        $strengthsPayload = $this->strengthsFromSurvey($survey, $respondents, $minGroup, $hideParticipation);
+
         return [
             'cards' => $cards,
-            // Pontos fortes dependem do sentido de cada enunciado do questionário de 39 perguntas (V11).
-            'strengthsEmpty' => 'Os pontos fortes são calculados no questionário NR-1 de 39 perguntas. Esta pesquisa está no modelo anterior, sem essa leitura.',
+            'strengths' => $strengthsPayload['strengths'],
+            'strengthsEmpty' => $strengthsPayload['strengthsEmpty'],
+            'strengthsBase' => $strengthsPayload['strengthsBase'],
             'title' => $survey->title,
             'period' => ($survey->starts_at?->format('d/m/Y') ?? '—').' — '.($survey->ends_at?->format('d/m/Y') ?? '—'),
             'surveyStatus' => $survey->status,
@@ -168,6 +172,58 @@ final class Nr1ShellLegacy
                 'band_label' => $bandLabels[$row->risk_level] ?? (string) $row->risk_level,
                 'bar_percent' => round(((float) $row->average_score - 1) / 4 * 100, 1),
             ])->values()->all(),
+        ];
+    }
+
+    /**
+     * Pontos fortes da pesquisa efetuada (qualquer modelo): as perguntas com maior % de respostas favoráveis,
+     * com a mesma polaridade e o mesmo piso de anonimato da V11.
+     *
+     * @return array{strengths: list<array<string, mixed>>, strengthsEmpty: ?string, strengthsBase: ?int}
+     */
+    private function strengthsFromSurvey(
+        Survey $survey,
+        int $respondents,
+        int $minGroup,
+        bool $hideParticipation,
+    ): array {
+        if ($respondents === 0) {
+            return [
+                'strengths' => [],
+                'strengthsEmpty' => 'Ainda não há respostas para destacar pontos fortes.',
+                'strengthsBase' => null,
+            ];
+        }
+
+        if ($hideParticipation || $respondents < $minGroup) {
+            return [
+                'strengths' => [],
+                'strengthsEmpty' => "Pontos fortes aparecem quando a campanha tiver ao menos {$minGroup} respostas, para proteger o anonimato.",
+                'strengthsBase' => null,
+            ];
+        }
+
+        $dashboard = app(PsychosocialDashboardBuilder::class)->build($survey);
+        $rows = collect($dashboard['strengths'] ?? [])->take(3)->values();
+        if ($rows->isEmpty()) {
+            return [
+                'strengths' => [],
+                'strengthsEmpty' => 'Ainda não há respostas para destacar pontos fortes.',
+                'strengthsBase' => null,
+            ];
+        }
+
+        return [
+            'strengths' => $rows->map(fn (array $row) => [
+                'item' => (int) ($row['position'] ?? 0),
+                'dimension' => $row['section_title'] ?? null,
+                'body' => (string) ($row['body'] ?? ''),
+                'pct_label' => (string) ($row['favorable_pct_label'] ?? ''),
+                'favorable' => (int) ($row['favorable'] ?? 0),
+                'n' => (int) ($row['n'] ?? 0),
+            ])->values()->all(),
+            'strengthsEmpty' => null,
+            'strengthsBase' => (int) ($rows->max('n') ?? $respondents),
         ];
     }
 
