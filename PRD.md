@@ -2016,7 +2016,9 @@ Credenciais da empresa na Control iD, teste de conexão e configuração de hor�
 #### 9.15.5 Regras
 
 - Parser de espelho em Python (`tools/rhid-espelho-parser`), executado na fila (`ProcessRhidEspelhoParseJob`, `ProcessRhidEspelhoBatchJob`).
-- Importação automática do dia fechado (ontem, após 23h59) às 00:30, horário de São Paulo.
+- Importação automática do dia fechado (ontem, após 23h59) às 00:30, horário de São Paulo. Ao selecionar um mês sem espelhos no seletor da visão geral, o sistema enfileira sozinho a importação do mês (`POST …/espelhos/auto-import` com `month=AAAA-MM`) e atualiza os indicadores ao concluir a fila.
+- **Pontualidade média / faltas:** só dias úteis **com espelho importado** entram no denominador. Feriado, atestado e férias saem. Falta não justificada = dia com espelho sem jornada completa (4 batidas analisáveis). Dia sem espelho é lacuna de dados, não falta. Atraso na entrada não vira falta se as 4 marcações existirem.
+- UI (`PontoPeopleSnapshot`): card/modal com regras; clique em «Mais pontuais»/faltas abre detalhe dia a dia (`GET …/espelhos/monthly-compliance/detail`).
 - Saldos formatados como no espelho RHID (horas:minutos com sinal).
 - Toda chamada à Control iD fica em `rhid_audit_logs`; senha criptografada.
 - Empresa de QA visual usa dados locais (`PontoLocalFixtureService`), sem chamar a Control iD.
@@ -3294,6 +3296,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/client/rhid/api/espelhos/imports/{import}/parse-sync` | `client.rhid.api.espelhos.imports.parse-sync` | auth · can.module:rhid | — |
 | POST | `/client/rhid/api/espelhos/imports/{import}/reparse` | `client.rhid.api.espelhos.imports.reparse` | auth · can.module:rhid | — |
 | GET | `/client/rhid/api/espelhos/monthly-compliance` | `client.rhid.api.espelhos.monthly-compliance` | auth · can.module:rhid | — |
+| GET | `/client/rhid/api/espelhos/monthly-compliance/detail` | `client.rhid.api.espelhos.monthly-compliance.detail` | auth · can.module:rhid | — |
 | GET | `/client/rhid/api/espelhos/schedule-adherence` | `client.rhid.api.espelhos.schedule-adherence` | auth · can.module:rhid | — |
 | GET | `/client/rhid/api/espelhos/schedule-adherence/marks` | `client.rhid.api.espelhos.schedule-adherence.marks` | auth · can.module:rhid | — |
 | POST | `/client/rhid/api/espelhos/store` | `client.rhid.api.espelhos.store` | auth · can.module:rhid | — |

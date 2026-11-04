@@ -326,6 +326,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('companies/{company}/people', [PontoPanelController::class, 'people'])->name('companies.people');
         Route::get('companies/{company}/schedule-adherence', [PontoPanelController::class, 'scheduleAdherence'])
             ->name('companies.schedule-adherence');
+        Route::get('companies/{company}/monthly-compliance/detail', [PontoPanelController::class, 'monthlyComplianceDetail'])
+            ->name('companies.monthly-compliance.detail');
         Route::get('companies/{company}/justification-types', [PontoPanelController::class, 'justificationTypes'])
             ->name('companies.justification-types');
         Route::post('companies/{company}/justifications/list', [PontoPanelController::class, 'listJustifications'])

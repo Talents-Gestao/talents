@@ -558,6 +558,33 @@ class RhidApiController extends Controller
         );
     }
 
+    public function espelhoMonthlyComplianceDetail(Request $request, EspelhoScheduleAdherenceService $adherence): JsonResponse
+    {
+        $company = $this->company($request);
+        $v = $request->validate([
+            'ini' => ['required', 'date'],
+            'fim' => ['required', 'date', 'after_or_equal:ini'],
+            'id_person' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $ini = Carbon::parse($v['ini'])->startOfDay();
+        $fim = Carbon::parse($v['fim'])->startOfDay();
+        $span = $ini->diffInDays($fim) + 1;
+        if ($span > EspelhoScheduleAdherenceService::MAX_RANGE_DAYS) {
+            return response()->json([
+                'message' => 'Período máximo de '.EspelhoScheduleAdherenceService::MAX_RANGE_DAYS.' dias.',
+            ], 422);
+        }
+
+        return response()->json($adherence->personMonthlyComplianceDetail(
+            $company,
+            $ini,
+            $fim,
+            (int) $v['id_person'],
+            $request->user(),
+        ));
+    }
+
     public function espelhoScheduleAdherenceMarks(Request $request, EspelhoScheduleAdherenceService $adherence): JsonResponse
     {
         $company = $this->company($request);
@@ -803,7 +830,13 @@ class RhidApiController extends Controller
             ], 422);
         }
 
-        $results = $imports->enqueueClosedDay($company->id);
+        $v = $request->validate([
+            'month' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}$/'],
+        ]);
+
+        $results = ! empty($v['month'])
+            ? $imports->enqueueMonth($company->id, (string) $v['month'])
+            : $imports->enqueueClosedDay($company->id);
         $result = $results[0] ?? [
             'company_id' => $company->id,
             'company_name' => (string) $company->name,
