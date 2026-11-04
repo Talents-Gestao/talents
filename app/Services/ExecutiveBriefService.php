@@ -9,6 +9,7 @@ use App\Models\PsychosocialDocumentVersion;
 use App\Models\Survey;
 use App\Models\User;
 use App\Services\Psychosocial\PsychosocialDocumentService;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -49,9 +50,18 @@ class ExecutiveBriefService
         return $this->documents->currentVersionSummary($survey, self::TYPE);
     }
 
-    public function download(PsychosocialDocumentVersion $version, User $user, ?string $ip): StreamedResponse
+    public function download(
+        PsychosocialDocumentVersion $version,
+        User $user,
+        ?string $ip,
+        bool $inline = false,
+    ): StreamedResponse {
+        return $this->documents->download($version, $user, $ip, $inline);
+    }
+
+    public function preview(Survey $survey): SymfonyResponse
     {
-        return $this->documents->download($version, $user, $ip);
+        return $this->documents->preview($survey, self::TYPE);
     }
 
     /**

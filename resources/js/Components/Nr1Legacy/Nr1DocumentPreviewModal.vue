@@ -2,7 +2,7 @@
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { computed, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -10,10 +10,15 @@ const props = defineProps({
     title: { type: String, required: true },
     description: { type: String, default: '' },
     document: { type: Object, default: null },
+    /** Download da versão congelada (attachment). */
     downloadUrl: { type: String, default: null },
+    /** Pré-visualização ao vivo (inline) — o modal sempre usa esta URL para exibir o PDF. */
+    previewUrl: { type: String, default: null },
     releaseUrl: { type: String, default: null },
     validateUrl: { type: String, default: null },
     canValidate: { type: Boolean, default: false },
+    /** Link opcional para completar o cadastro técnico (campos do PDF). */
+    registrationUrl: { type: String, default: null },
     /** Chave em sessionStorage para reabrir o modal após o redirect da liberação. */
     persistKey: { type: String, default: null },
     declarationText: {
@@ -27,6 +32,9 @@ const emit = defineEmits(['close', 'released', 'validated']);
 
 const releasing = ref(false);
 const declarationAccepted = ref(false);
+const loadingPdf = ref(false);
+const pdfError = ref(null);
+const pdfObjectUrl = ref(null);
 
 const validateForm = useForm({
     declaration_accepted: false,
@@ -38,7 +46,7 @@ const versionNumber = computed(() => props.document?.version_number ?? null);
 
 const statusLabel = computed(() => {
     if (!hasVersion.value) {
-        return 'Ainda não liberado';
+        return 'Prévia ao vivo';
     }
     if (props.document.validated) {
         return `Validado · versão ${versionNumber.value}`;
@@ -51,7 +59,7 @@ const statusLabel = computed(() => {
 
 const statusToneClass = computed(() => {
     if (!hasVersion.value) {
-        return 'bg-amber-50 text-amber-950 ring-amber-200';
+        return 'bg-slate-100 text-slate-800 ring-slate-200';
     }
     if (props.document?.validated) {
         return 'bg-emerald-50 text-emerald-900 ring-emerald-200';
@@ -67,19 +75,91 @@ const releaseLabel = computed(() => {
     if (releasing.value) {
         return 'Liberando…';
     }
-    return hasVersion.value ? 'Liberar nova versão' : 'Liberar documento';
+    return hasVersion.value ? 'Liberar nova versão' : 'Liberar para validação';
 });
+
+const revokePdfUrl = () => {
+    if (pdfObjectUrl.value) {
+        URL.revokeObjectURL(pdfObjectUrl.value);
+        pdfObjectUrl.value = null;
+    }
+};
+
+/** Sempre prévia ao vivo no iframe — evita attachment no modal e não exige liberar para ver. */
+const pdfSourceUrl = computed(() => props.previewUrl || null);
+
+const loadPdf = async () => {
+    const url = pdfSourceUrl.value;
+    if (!url) {
+        pdfError.value = 'Não há URL de pré-visualização disponível.';
+        return;
+    }
+
+    loadingPdf.value = true;
+    pdfError.value = null;
+    revokePdfUrl();
+
+    try {
+        const response = await window.axios.get(url, {
+            responseType: 'blob',
+            headers: { Accept: 'application/pdf' },
+        });
+        const contentType = String(response.headers['content-type'] ?? '');
+        if (!contentType.includes('pdf')) {
+            throw new Error('Resposta inválida ao gerar o PDF.');
+        }
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        pdfObjectUrl.value = URL.createObjectURL(blob);
+    } catch (e) {
+        let message =
+            e?.message || 'Não foi possível carregar o PDF. Tente de novo.';
+        try {
+            const data = e?.response?.data;
+            if (data instanceof Blob) {
+                const text = await data.text();
+                const parsed = JSON.parse(text);
+                if (parsed?.message) {
+                    message = parsed.message;
+                }
+            } else if (data?.message) {
+                message = data.message;
+            }
+        } catch {
+            // mantém message padrão
+        }
+        pdfError.value = message;
+    } finally {
+        loadingPdf.value = false;
+    }
+};
 
 watch(
     () => props.show,
-    (open) => {
+    async (open) => {
         if (!open) {
             declarationAccepted.value = false;
             validateForm.reset();
             validateForm.clearErrors();
+            pdfError.value = null;
+            revokePdfUrl();
+            return;
+        }
+        await loadPdf();
+    },
+);
+
+watch(
+    () => [props.previewUrl, props.document?.version_number, props.document?.ready, props.document?.pdf_status],
+    async () => {
+        if (props.show) {
+            await loadPdf();
         }
     },
 );
+
+onUnmounted(() => {
+    revokePdfUrl();
+});
 
 const close = () => emit('close');
 
@@ -156,20 +236,20 @@ const validate = () => {
                     <div class="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2">
                         <dt class="text-[11px] font-medium uppercase tracking-wide text-slate-500">Versão</dt>
                         <dd class="mt-0.5 text-sm font-semibold text-slate-900">
-                            {{ hasVersion ? `v${versionNumber}` : '—' }}
+                            {{ hasVersion ? `v${versionNumber}` : 'Prévia' }}
                         </dd>
                     </div>
                     <div class="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2">
                         <dt class="text-[11px] font-medium uppercase tracking-wide text-slate-500">PDF</dt>
                         <dd class="mt-0.5 text-sm font-semibold text-slate-900">
                             {{
-                                !hasVersion
-                                    ? 'Não gerado'
-                                    : pdfReady
-                                      ? 'Pronto'
-                                      : document?.pdf_status === 'failed'
-                                        ? 'Falhou'
-                                        : 'Em preparação'
+                                loadingPdf
+                                    ? 'Carregando…'
+                                    : pdfObjectUrl
+                                      ? 'Visível'
+                                      : pdfReady
+                                        ? 'Pronto'
+                                        : 'Prévia ao vivo'
                             }}
                         </dd>
                     </div>
@@ -178,7 +258,7 @@ const validate = () => {
                         <dd class="mt-0.5 text-sm font-semibold text-slate-900">
                             {{
                                 !hasVersion
-                                    ? '—'
+                                    ? 'Liberar para validar'
                                     : document?.validated
                                       ? 'Validado'
                                       : document?.validatable
@@ -191,51 +271,28 @@ const validate = () => {
             </div>
 
             <div class="min-h-0 flex-1 overflow-auto px-6 py-4">
+                <div
+                    v-if="loadingPdf"
+                    class="flex h-[min(55vh,32rem)] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-600"
+                >
+                    Gerando pré-visualização do PDF…
+                </div>
+                <div
+                    v-else-if="pdfError"
+                    class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+                >
+                    <p>{{ pdfError }}</p>
+                    <SecondaryButton type="button" class="mt-3" @click="loadPdf">Tentar de novo</SecondaryButton>
+                </div>
                 <iframe
-                    v-if="pdfReady && downloadUrl"
-                    :src="downloadUrl"
+                    v-else-if="pdfObjectUrl"
+                    :src="pdfObjectUrl"
                     :title="title"
                     class="h-[min(55vh,32rem)] w-full rounded-xl border border-slate-200 bg-white"
                 />
-                <div
-                    v-else
-                    class="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center"
-                >
-                    <template v-if="!hasVersion">
-                        <p class="max-w-md text-sm text-slate-600">
-                            Ainda não há versão liberada. Gere o documento aqui neste modal — não é preciso sair desta
-                            tela.
-                        </p>
-                        <PrimaryButton
-                            v-if="canRelease"
-                            type="button"
-                            :disabled="releasing"
-                            @click="release"
-                        >
-                            {{ releaseLabel }}
-                        </PrimaryButton>
-                        <p v-else class="text-sm text-amber-800">
-                            Não foi possível obter o link de liberação. Recarregue a página e tente de novo.
-                        </p>
-                    </template>
-                    <template v-else>
-                        <p class="max-w-md text-sm text-slate-600">
-                            A versão {{ versionNumber }} foi registrada, mas o PDF ainda não está pronto. Você pode
-                            tentar liberar novamente.
-                        </p>
-                        <PrimaryButton
-                            v-if="canRelease"
-                            type="button"
-                            :disabled="releasing"
-                            @click="release"
-                        >
-                            {{ releasing ? 'Liberando…' : 'Tentar liberar de novo' }}
-                        </PrimaryButton>
-                    </template>
-                </div>
 
                 <div
-                    v-if="canValidate && validateUrl"
+                    v-if="canValidate && validateUrl && hasVersion"
                     class="mt-4 rounded-xl border border-talents-200 bg-talents-50/60 p-4"
                 >
                     <p class="text-sm font-semibold text-talents-950">Validar (Talents)</p>
@@ -261,32 +318,29 @@ const validate = () => {
             >
                 <SecondaryButton type="button" @click="close">Fechar</SecondaryButton>
                 <a
-                    v-if="pdfReady && downloadUrl"
-                    :href="downloadUrl"
-                    target="_blank"
-                    rel="noopener"
+                    v-if="registrationUrl"
+                    :href="registrationUrl"
                     class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
-                    Baixar PDF
+                    Cadastro técnico
+                </a>
+                <a
+                    v-if="pdfReady && downloadUrl"
+                    :href="downloadUrl"
+                    class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                    Baixar PDF liberado
                 </a>
                 <SecondaryButton
-                    v-if="canRelease && hasVersion && pdfReady"
-                    type="button"
-                    :disabled="releasing"
-                    @click="release"
-                >
-                    {{ releasing ? 'Liberando…' : 'Liberar nova versão' }}
-                </SecondaryButton>
-                <PrimaryButton
-                    v-if="canRelease && !hasVersion"
+                    v-if="canRelease"
                     type="button"
                     :disabled="releasing"
                     @click="release"
                 >
                     {{ releaseLabel }}
-                </PrimaryButton>
+                </SecondaryButton>
                 <PrimaryButton
-                    v-if="canValidate && validateUrl"
+                    v-if="canValidate && validateUrl && hasVersion"
                     type="button"
                     :disabled="!declarationAccepted || validateForm.processing"
                     @click="validate"

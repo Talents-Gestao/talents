@@ -32,7 +32,7 @@ const form = useForm({
 });
 
 const useCurrentCompanyData = () => {
-    form.legal_name_snapshot = props.company.legal_name ?? '';
+    form.legal_name_snapshot = props.company.legal_name || props.company.name || '';
     form.cnpj_snapshot = props.company.cnpj ?? '';
 };
 

@@ -551,7 +551,15 @@ class ActionPlanAdminController extends Controller
             ? 'admin.companies.surveys.executive-brief.download'
             : 'admin.companies.surveys.psychosocial-documents.download';
 
+        $previewRoute = $type === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
+            ? 'admin.companies.surveys.executive-brief.preview'
+            : 'admin.companies.surveys.psychosocial-documents.preview';
+
         $downloadParams = $type === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
+            ? [$companyId, $surveyId]
+            : [$companyId, $surveyId, $type];
+
+        $previewParams = $type === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
             ? [$companyId, $surveyId]
             : [$companyId, $surveyId, $type];
 
@@ -562,6 +570,7 @@ class ActionPlanAdminController extends Controller
             'urls' => [
                 'release' => route($releaseRoute, [$companyId, $surveyId]),
                 'download' => route($downloadRoute, $downloadParams),
+                'preview' => route($previewRoute, $previewParams),
                 'validate' => $type === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF
                     ? route('admin.companies.surveys.executive-brief.validate', [$companyId, $surveyId])
                     : null,

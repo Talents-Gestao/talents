@@ -184,6 +184,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.executive-brief.release');
         Route::get('companies/{company}/surveys/{survey}/resumo-executivo/download', [ExecutiveBriefAdminController::class, 'download'])
             ->name('companies.surveys.executive-brief.download');
+        Route::get('companies/{company}/surveys/{survey}/resumo-executivo/previa', [ExecutiveBriefAdminController::class, 'preview'])
+            ->name('companies.surveys.executive-brief.preview');
         Route::post('companies/{company}/surveys/{survey}/resumo-executivo/validar', [ExecutiveBriefAdminController::class, 'validateInSystem'])
             ->name('companies.surveys.executive-brief.validate');
         Route::post('companies/{company}/surveys/{survey}/subsidio-pgr/liberar', [PsychosocialDocumentAdminController::class, 'releaseSubsidy'])
@@ -200,6 +202,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.measures.suggestion');
         Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateStatus'])
             ->name('companies.surveys.measures.status');
+        Route::get('companies/{company}/surveys/{survey}/documentos/{type}/previa', [PsychosocialDocumentAdminController::class, 'preview'])
+            ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier', 'technical_report'])
+            ->name('companies.surveys.psychosocial-documents.preview');
         Route::get('companies/{company}/surveys/{survey}/documentos/{type}/download', [PsychosocialDocumentAdminController::class, 'download'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier'])
             ->name('companies.surveys.psychosocial-documents.download');

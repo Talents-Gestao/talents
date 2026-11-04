@@ -48,11 +48,27 @@ class ExecutiveBriefAdminController extends Controller
         $version = $this->service->currentVersion($survey);
         abort_if($version === null, 404);
 
+        $inline = $request->boolean('inline');
+
         try {
-            return $this->service->download($version, $request->user(), $request->ip());
+            return $this->service->download($version, $request->user(), $request->ip(), $inline);
         } catch (PsychosocialDocumentException $exception) {
+            if ($inline || $request->expectsJson()) {
+                abort(422, $exception->getMessage());
+            }
+
             return redirect(Nr1Shell::parecerUrl($survey))->with('error', $exception->getMessage());
         }
+    }
+
+    /**
+     * Pré-visualização ao vivo (sem liberar versão) para o modal do parecer.
+     */
+    public function preview(Company $company, Survey $survey): SymfonyResponse
+    {
+        $this->assertSurveyBelongsToCompany($company, $survey);
+
+        return $this->service->preview($survey);
     }
 
     /**

@@ -1751,13 +1751,16 @@ Ações do revisor (em `/revisao`): comentar, aprovar, solicitar alteração (te
 
 | Ação | Rota (admin) | Regra |
 |------|--------------|-------|
-| Liberar resumo executivo | `POST …/resumo-executivo/liberar` | pode ser validado mesmo com auditoria pendente |
+| Prévia do resumo (modal) | `GET …/resumo-executivo/previa` | PDF ao vivo no modal do parecer; **não** exige liberar; razão social/CNPJ caem da empresa se o cadastro técnico ainda não tiver |
+| Prévia do documento | `GET …/documentos/{type}/previa` | mesma regra para subsídio AEP/PGR e demais tipos do modal |
+| Liberar resumo executivo | `POST …/resumo-executivo/liberar` | congela versão para validação; pode ser validado mesmo com auditoria pendente |
 | Liberar subsídio AEP/PGR | `POST …/subsidio-pgr/liberar` | bloqueado com auditoria pendente (ex.: instrumento HSE-IT) ou polaridade não homologada |
 | Liberar dossiê | `POST …/dossie/liberar` | até 20 anexos (tipo AEP, observação, inventário, outros; 20 MB cada); mesmo bloqueio |
 | Validação informada | `POST …/documentos/{type}/validacao-informada` | nome, função, registro, data e prova (até 10 MB) |
 | Validação no sistema | `POST /client/surveys/{s}/documentos/{type}/validar` | declaração do usuário com `relatorios:validate` |
 | Compartilhar com revisor | `POST …/documentos/{type}/compartilhar` | revisor e expiração (máx. 90 dias); exige revisão externa ligada |
-| Download | `GET …/documentos/{type}/download` e `/client/surveys/{s}/documentos/{type}/download` | registrado no log de acesso |
+| Download | `GET …/documentos/{type}/download` e `/client/surveys/{s}/documentos/{type}/download` | versão congelada; `?inline=1` para visualizar no navegador; registrado no log de acesso |
+| Download do resumo | `GET …/resumo-executivo/download` | mesma regra; o modal do parecer usa a prévia, não este download |
 
 Caminhos de validação (`PsychosocialDocumentValidation`): `in_system` (no sistema) e `informed` (informada, com prova anexa).
 
@@ -2668,6 +2671,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | GET | `/admin/companies/{company}/surveys/{survey}/documentos/versoes/{version}/download` | `admin.companies.surveys.documents.download` | auth · admin.can:companies | — |
 | POST | `/admin/companies/{company}/surveys/{survey}/documentos/{type}/compartilhar` | `admin.companies.surveys.psychosocial-documents.share` | auth · admin.can:companies | — |
 | GET | `/admin/companies/{company}/surveys/{survey}/documentos/{type}/download` | `admin.companies.surveys.psychosocial-documents.download` | auth · admin.can:companies | — |
+| GET | `/admin/companies/{company}/surveys/{survey}/documentos/{type}/previa` | `admin.companies.surveys.psychosocial-documents.preview` | auth · admin.can:companies | — |
 | POST | `/admin/companies/{company}/surveys/{survey}/documentos/{type}/validacao-informada` | `admin.companies.surveys.psychosocial-documents.validate-informed` | auth · admin.can:companies | — |
 | GET | `/admin/companies/{company}/surveys/{survey}/dossie/anexos/{attachment}` | `admin.companies.surveys.evidence-dossier.attachments.download` | auth · admin.can:companies | — |
 | POST | `/admin/companies/{company}/surveys/{survey}/dossie/liberar` | `admin.companies.surveys.evidence-dossier.release` | auth · admin.can:companies | — |
@@ -2680,6 +2684,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/admin/companies/{company}/surveys/{survey}/recalcular` | `admin.companies.surveys.recalculate` | auth · admin.can:companies | — |
 | GET | `/admin/companies/{company}/surveys/{survey}/resultados-psicossociais` | `admin.companies.surveys.results.show` | auth · admin.can:companies | `Admin/Surveys/PsychosocialResults` |
 | GET | `/admin/companies/{company}/surveys/{survey}/resumo-executivo/download` | `admin.companies.surveys.executive-brief.download` | auth · admin.can:companies | — |
+| GET | `/admin/companies/{company}/surveys/{survey}/resumo-executivo/previa` | `admin.companies.surveys.executive-brief.preview` | auth · admin.can:companies | — |
 | POST | `/admin/companies/{company}/surveys/{survey}/resumo-executivo/liberar` | `admin.companies.surveys.executive-brief.release` | auth · admin.can:companies | — |
 | POST | `/admin/companies/{company}/surveys/{survey}/revisao-interna` | `admin.companies.surveys.internal-review.store` | auth · admin.can:companies | — |
 | POST | `/admin/companies/{company}/surveys/{survey}/subsidio-pgr/liberar` | `admin.companies.surveys.pgr-subsidy.release` | auth · admin.can:companies | — |

@@ -127,11 +127,24 @@ class PsychosocialDocumentAdminController extends Controller
         $version = $this->documents->currentVersion($survey, $type);
         abort_if($version === null, 404);
 
+        $inline = $request->boolean('inline');
+
         try {
-            return $this->documents->download($version, $request->user(), $request->ip());
+            return $this->documents->download($version, $request->user(), $request->ip(), $inline);
         } catch (PsychosocialDocumentException $exception) {
+            if ($inline || $request->expectsJson()) {
+                abort(422, $exception->getMessage());
+            }
+
             return $this->backToPlan($company, $survey)->with('error', $exception->getMessage());
         }
+    }
+
+    public function preview(Company $company, Survey $survey, string $type): SymfonyResponse
+    {
+        $this->assertSurveyBelongsToCompany($company, $survey);
+
+        return $this->documents->preview($survey, $type);
     }
 
     public function validateInformed(Request $request, Company $company, Survey $survey, string $type): RedirectResponse

@@ -92,14 +92,38 @@ class ExecutiveBriefSnapshotBuilder implements DocumentSnapshotBuilder
             'dimensions' => $dashboard['dimensions'],
             'sectors' => $dashboard['sectors'],
             'findings' => $this->findings($dashboard),
-            'registration' => array_combine(
-                self::REGISTRATION_FIELDS,
-                array_map(fn (string $field) => $registration?->getAttribute($field), self::REGISTRATION_FIELDS),
-            ),
+            'registration' => $this->registrationPayload($survey, $registration),
             'measures' => $this->measures($survey),
             'measures_empty_text' => self::NO_MEASURES,
             'reference' => self::REFERENCE,
         ] + ($survey->usesReviewFlow() ? ['document_flow' => 'review_round'] : []);
+    }
+
+    /**
+     * Cadastro técnico da campanha, com fallback da empresa para razão social e CNPJ
+     * quando o cadastro ainda não foi gravado (evita «Não informado» no PDF).
+     *
+     * @return array<string, mixed>
+     */
+    private function registrationPayload(Survey $survey, ?SurveyCampaignRegistration $registration): array
+    {
+        $company = $survey->company;
+        $payload = [];
+        foreach (self::REGISTRATION_FIELDS as $field) {
+            $payload[$field] = $registration?->getAttribute($field);
+        }
+
+        if (! filled($payload['legal_name_snapshot'] ?? null)) {
+            $payload['legal_name_snapshot'] = filled($company?->legal_name)
+                ? (string) $company->legal_name
+                : ($company?->name !== null ? (string) $company->name : null);
+        }
+
+        if (! filled($payload['cnpj_snapshot'] ?? null) && filled($company?->cnpj)) {
+            $payload['cnpj_snapshot'] = (string) $company->cnpj;
+        }
+
+        return $payload;
     }
 
     /**
