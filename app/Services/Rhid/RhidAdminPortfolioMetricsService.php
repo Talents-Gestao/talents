@@ -164,6 +164,7 @@ class RhidAdminPortfolioMetricsService
         }
 
         $people = PontoPeopleSnapshot::empty();
+        $peopleDiagnostics = null;
         try {
             $monthly = $this->adherence->monthlyComplianceRanking(
                 $company,
@@ -177,6 +178,7 @@ class RhidAdminPortfolioMetricsService
                     is_array($monthly['ranking_cumprimento_mes'] ?? null) ? $monthly['ranking_cumprimento_mes'] : [],
                     is_array($monthly['resumo'] ?? null) ? $monthly['resumo'] : [],
                 );
+            $peopleDiagnostics = is_array($monthly['diagnostics'] ?? null) ? $monthly['diagnostics'] : null;
         } catch (\Throwable $e) {
             report($e);
         }
@@ -267,6 +269,7 @@ class RhidAdminPortfolioMetricsService
                 'items' => $this->formatPunchRowsList(is_array($punches) ? $punches : []),
             ],
             'people' => $people,
+            'diagnostics' => $peopleDiagnostics,
             'operational_alert' => $operationalAlert,
             'dual_risk' => $dualRisk,
             'integration' => $integration,

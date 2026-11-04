@@ -141,6 +141,37 @@ class PontoPanelController extends Controller
         return response()->json($adherence->aggregateForCompany($company, $ini, $fim, $idPerson));
     }
 
+    public function monthlyComplianceDetail(
+        Request $request,
+        Company $company,
+        EspelhoScheduleAdherenceService $adherence,
+    ): JsonResponse {
+        $this->assertCompanyRhidReady($company);
+
+        $v = $request->validate([
+            'ini' => ['required', 'date'],
+            'fim' => ['required', 'date', 'after_or_equal:ini'],
+            'id_person' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $ini = Carbon::parse($v['ini'])->startOfDay();
+        $fim = Carbon::parse($v['fim'])->startOfDay();
+        $span = $ini->diffInDays($fim) + 1;
+        if ($span > EspelhoScheduleAdherenceService::MAX_RANGE_DAYS) {
+            return response()->json([
+                'message' => 'Período máximo de '.EspelhoScheduleAdherenceService::MAX_RANGE_DAYS.' dias.',
+            ], 422);
+        }
+
+        return response()->json($adherence->personMonthlyComplianceDetail(
+            $company,
+            $ini,
+            $fim,
+            (int) $v['id_person'],
+            $request->user(),
+        ));
+    }
+
     public function justificationTypes(Request $request, Company $company, RhidComplianceService $compliance): JsonResponse|SymfonyResponse
     {
         $this->assertCompanyRhidReady($company);

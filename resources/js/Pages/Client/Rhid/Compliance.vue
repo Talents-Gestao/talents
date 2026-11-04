@@ -79,6 +79,8 @@ const overviewAdherence = ref(null);
 const overviewMonthlyCompliance = ref(null);
 const overviewMonthlyComplianceMonth = ref(currentYearMonthHtml());
 const overviewMonthlyComplianceLoading = ref(false);
+const overviewMonthlyImporting = ref(false);
+const overviewMonthlyImportMessage = ref('');
 const overviewJustTotal = ref(null);
 const overviewJustAtestados = ref(null);
 const overviewJustNote = ref('');
@@ -1114,6 +1116,42 @@ const syncBankFiltersFromSelectors = () => {
     bankFilterPersonroles.value = String(bankSelPersonRole.value ?? '').trim();
 };
 
+const monthlyComplianceNeedsImport = (data) => {
+    if (!data || typeof data !== 'object') {
+        return true;
+    }
+    const imports = data?.diagnostics?.imports_no_periodo;
+    if (imports === 0) {
+        return true;
+    }
+    return !data?.people?.has_data;
+};
+
+const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const waitOverviewAutoImportBatch = async (batchId) => {
+    if (!batchId) {
+        return;
+    }
+    const maxAttempts = 36;
+    for (let i = 0; i < maxAttempts; i++) {
+        await sleepMs(5000);
+        try {
+            const { data } = await axios.get(route('client.rhid.api.espelhos.auto-import'));
+            const batch = data?.batch;
+            if (!batch || Number(batch.id) !== Number(batchId)) {
+                continue;
+            }
+            if (['completed', 'failed'].includes(batch.status)) {
+                return batch;
+            }
+        } catch {
+            // Mantém tentando até o limite.
+        }
+    }
+    return null;
+};
+
 const loadOverviewMonthlyCompliance = async () => {
     if (!props.configured) {
         return;
@@ -1133,13 +1171,60 @@ const loadOverviewMonthlyCompliance = async () => {
     }
 };
 
+const importOverviewSelectedMonthIfNeeded = async () => {
+    if (!props.configured || overviewMonthlyImporting.value) {
+        return;
+    }
+    const month = String(overviewMonthlyComplianceMonth.value || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+        return;
+    }
+    if (!monthlyComplianceNeedsImport(overviewMonthlyCompliance.value)) {
+        overviewMonthlyImportMessage.value = '';
+        return;
+    }
+
+    overviewMonthlyImporting.value = true;
+    overviewMonthlyImportMessage.value = '';
+    clearErr();
+    try {
+        const { data } = await axios.post(
+            route('client.rhid.api.espelhos.auto-import.run'),
+            { month },
+            { timeout: 60000 },
+        );
+        const result = data?.result;
+        if (result?.action === 'queued') {
+            const batchId = result?.batch_id ?? data?.batch?.id ?? null;
+            await waitOverviewAutoImportBatch(batchId);
+            await loadOverviewMonthlyCompliance();
+            overviewMonthlyImportMessage.value = overviewMonthlyCompliance.value?.people?.has_data
+                ? 'Espelhos do mês importados. Indicadores atualizados.'
+                : 'Importação concluída, mas ainda sem dias analisáveis. Confira a escala e a fila.';
+        } else if (result?.action === 'skipped') {
+            overviewMonthlyImportMessage.value = result?.reason || 'Nada a importar para este mês.';
+            await loadOverviewMonthlyCompliance();
+        } else {
+            handleError({
+                response: { data: { message: result?.reason || 'Não foi possível enfileirar a importação do mês.' } },
+            });
+        }
+    } catch (e) {
+        handleError(e);
+    } finally {
+        overviewMonthlyImporting.value = false;
+    }
+};
+
 const onOverviewMonthlyComplianceMonthChange = async (ym) => {
     const next = String(ym ?? '').trim();
     if (!/^\d{4}-\d{2}$/.test(next) || next === overviewMonthlyComplianceMonth.value) {
         return;
     }
     overviewMonthlyComplianceMonth.value = next;
+    overviewMonthlyImportMessage.value = '';
     await loadOverviewMonthlyCompliance();
+    await importOverviewSelectedMonthIfNeeded();
 };
 
 const loadOverviewData = async () => {
@@ -2934,6 +3019,8 @@ const justDeptBarChart = computed(() => {
                 :overview-monthly-compliance="overviewMonthlyCompliance"
                 :overview-monthly-compliance-month="overviewMonthlyComplianceMonth"
                 :overview-monthly-compliance-loading="overviewMonthlyComplianceLoading"
+                :overview-monthly-importing="overviewMonthlyImporting"
+                :overview-monthly-import-message="overviewMonthlyImportMessage"
                 :overview-just-total="overviewJustTotal"
                 :overview-just-atestados="overviewJustAtestados"
                 :overview-just-note="overviewJustNote"

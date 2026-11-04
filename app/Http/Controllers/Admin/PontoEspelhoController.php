@@ -224,11 +224,17 @@ class PontoEspelhoController extends Controller
         ]);
     }
 
-    public function runAutoImport(Company $company, RhidEspelhoAutoImportService $imports): JsonResponse
+    public function runAutoImport(Request $request, Company $company, RhidEspelhoAutoImportService $imports): JsonResponse
     {
         $this->assertCompanyRhidReady($company);
 
-        $results = $imports->enqueueClosedDay($company->id);
+        $v = $request->validate([
+            'month' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}$/'],
+        ]);
+
+        $results = ! empty($v['month'])
+            ? $imports->enqueueMonth($company->id, (string) $v['month'])
+            : $imports->enqueueClosedDay($company->id);
         $result = $results[0] ?? [
             'company_id' => $company->id,
             'company_name' => (string) $company->name,
