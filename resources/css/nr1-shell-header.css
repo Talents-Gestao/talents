@@ -4,8 +4,11 @@
     top: 0;
     z-index: 3;
     background: #fff;
-    border-bottom: 1px solid var(--n1-line);
-    padding: 15px 29px 14px;
+    border: 1px solid #e7e0ed;
+    border-radius: 17px;
+    box-shadow: var(--n1-shadow);
+    margin-bottom: 18px;
+    padding: 15px 22px 14px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -19,6 +22,7 @@
     right: 0;
     top: 0;
     height: 3px;
+    border-radius: 17px 17px 0 0;
     background: linear-gradient(90deg, #5a2d75, #9455ae 55%, #56aa93);
 }
 .nr1-shell .n1-header-main {
@@ -177,13 +181,15 @@
 .nr1-shell .n1-campsel-check { width: 16px; height: 16px; color: #168a80; }
 
 /* Mobile: nome na 1ª linha; controles na 2ª, roláveis */
-@media (max-width: 780px) {
+@container nr1 (max-width: 700px) {
     .nr1-shell .n1-header { padding: 14px 15px 10px; gap: 10px; }
     .nr1-shell .n1-header-main { flex-basis: 100%; }
     .nr1-shell .n1-header-title { font-size: 20px; max-width: 58vw; }
     .nr1-shell .n1-header-context { max-width: 58vw; }
-    .nr1-shell .n1-header-controls { flex-basis: 100%; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+    /* Sem overflow: a lista do seletor de campanha não pode ser cortada; os controles quebram linha. */
+    .nr1-shell .n1-header-controls { flex-basis: 100%; flex-wrap: wrap; justify-content: flex-start; padding-bottom: 4px; }
     .nr1-shell .n1-header-controls > * { flex: 0 0 auto; }
+    .nr1-shell .n1b.n1-campsel-btn { min-width: 0; max-width: calc(100vw - 90px); }
 }
 @media print {
     .nr1-shell .n1-header-controls { display: none !important; }

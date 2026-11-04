@@ -3,7 +3,7 @@ import { reactive } from 'vue';
 const state = reactive({ items: [] });
 let next = 1;
 
-/** Toasts do shell NR-1 (estado do módulo; o ToastHost fica no Nr1Layout). */
+/** Toasts do shell NR-1 (estado do módulo; o ToastHost fica no Nr1Frame). */
 export function useNr1Toast() {
     const push = (message, tone = 'ok') => {
         const id = next++;

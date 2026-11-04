@@ -58,7 +58,7 @@ docker compose --profile tools run --rm node npm run test:js  # node --test em t
 | Landing | `/`, `/para-empresas`, `/nr-1`… | público | `Landing/LandingLayout` |
 | Admin Talents | `/admin/*` | `super_admin` | `AdminLayout` |
 | Portal da empresa | `/client/*` | `company_admin`, `company_user` | `ClientLayout` (marca da empresa) |
-| Painel NR-1 | `/nr1/*` | Talents, Empresa, Comercial; colaborador em `/nr1/jornada/{token}` | `Nr1Layout` |
+| Painel NR-1 | `/nr1/*` | Talents, Empresa, Comercial; colaborador em `/nr1/jornada/{token}` | `AdminLayout`/`ClientLayout` + moldura `Nr1Frame` (jornada: só a moldura mínima) |
 | Revisão externa | `/revisao/*` | `external_reviewer` (desligado) | páginas `ExternalReview/*` |
 | Públicas por token | `/pesquisa`, `/denuncia`, `/sugestoes`, `/desligamento`, `/mapa-proposito`, `/avaliacao`, `/feedback/assinar`, `/satisfacao` | sem login | páginas públicas |
 
@@ -87,15 +87,15 @@ Esconder item de menu nunca é a única barreira: a rota precisa recusar (403/40
 **Frontend (`resources/js`)**
 - `Pages/{Admin,Client,Auth,Nr1,…}` (Inertia), `Layouts/`, `Components/` por domínio (`Nr1Shell/*`, `Nr1Campaign/*`, `Nr1Documents/*`, `Nr1Plan/*`, `Finance/*`, `Commercial/*`, `Tasks/*`, `Feedback/*`, `Rhid/*`, `AdminHome/*`, `Landing/*`), `composables/` (`usePermissions`…), `utils/`.
 - Alias `@` → `resources/js`; rotas no JS via Ziggy (`route()`); ApexCharts, TipTap, vue-draggable-plus, PWA.
-- Menus: `AdminLayout.vue` (itens condicionados por `canAdmin`), `ClientLayout.vue` (por `can`), `Nr1Layout.vue` (menu vem do servidor). Reuniões e Assinaturas estão ocultas no menu do admin por constante.
-- Tema do painel NR-1 escopado em `.nr1-shell` (`resources/css/nr1-shell*.css`); botões do painel só com `Nr1Button`.
+- Menus: `AdminLayout.vue` (itens condicionados por `canAdmin`), `ClientLayout.vue` (por `can`), sub-navegação do NR-1 em `Components/Nr1Shell/Nr1SubNav.vue` (itens vêm do servidor, `shell.menu`). Reuniões e Assinaturas estão ocultas no menu do admin por constante.
+- Tema do painel NR-1 escopado em `.nr1-shell` (`resources/css/nr1-shell*.css`, carregado só pelo `Nr1Frame`), aplicado ao cabeçalho e ao conteúdo; a moldura (sidebar principal e sub-navegação) usa os tokens do Talents. Botões do painel só com `Nr1Button`.
 - Animações respeitam `prefers-reduced-motion`.
 
 # 7. Domínios e invariantes
 
 ## 7.1 NR-1 (PRD cap. 8) — o domínio mais sensível
 
-- **Painel `/nr1` é a única interface do NR-1.** Telas antigas foram removidas; `LegacyUrlRedirectController` só redireciona URLs antigas. Perfis e seções em `App\Support\Nr1Shell\Nr1Shell` (`MATRIX`, `allows()`); contexto em `Nr1ShellContext`; página única `Pages/Nr1/Section.vue`. Entrada: Talents pela empresa («Pesquisas e parecer» → «Abrir painel NR-1»), Empresa pelo menu «Pesquisas NR1», Comercial por «Oportunidades NR-1».
+- **Painel `/nr1` é a única interface do NR-1.** Telas antigas foram removidas; `LegacyUrlRedirectController` só redireciona URLs antigas. Perfis e seções em `App\Support\Nr1Shell\Nr1Shell` (`MATRIX`, `allows()`); contexto em `Nr1ShellContext`; página única `Pages/Nr1/Section.vue`, dentro do `AdminLayout` (Talents, Comercial) ou `ClientLayout` (Empresa), com a sub-navegação à esquerda do conteúdo (`Nr1Frame`/`Nr1SubNav`). Entrada: Talents pelo item «NR-1» do Admin (empresa lembrada ou escolha em `/nr1/empresas`) ou pela empresa («Pesquisas e parecer» → «Abrir painel NR-1»), Empresa pelo menu «Pesquisas NR1», Comercial por «Oportunidades NR-1».
 - **Dois métodos:** `production_v1` (modelo anterior, COPSOQ, Laudo; padrão de toda campanha nova) e `talents39_v1` (V11: 39 itens, 7 dimensões, fluxo de revisão). `Survey::usesReviewFlow()` separa os dois. Não há campo na criação para escolher V11 (pendência).
 - **Cálculo:** escore direto ou `6 − resposta` pela polaridade; índice V11 = soma dos escores ÷ respostas válidas, arredondado meio para cima, faixa decidida depois (`Nr1PooledItemScore`); cortes 2,33 / 3,66. Telas e documentos **leem** `survey_results`; nunca recalculam nem gravam índice/faixa fora de `SurveyResultCalculator`.
 - **Rótulos de faixa** só por `Nr1BandLabels` (V11: Menor sinalização / Atenção / Maior sinalização; legado: Leve / Moderado / Grave). O banco guarda `green|yellow|red`.

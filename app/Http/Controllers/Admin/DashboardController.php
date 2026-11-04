@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AdminDashboardSettings;
 use App\Support\Admin\AdminHomeDashboardBuilder;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,9 +17,38 @@ class DashboardController extends Controller
 {
     public function index(Request $request, AdminHomeDashboardBuilder $builder): Response
     {
+        $range = $request->validate([
+            'data_inicio' => ['nullable', 'required_with:data_fim', 'date_format:Y-m-d'],
+            'data_fim' => ['nullable', 'required_with:data_inicio', 'date_format:Y-m-d', 'after_or_equal:data_inicio'],
+        ], [
+            'data_inicio.required_with' => 'Informe a data inicial.',
+            'data_inicio.date_format' => 'Data inicial inválida.',
+            'data_fim.required_with' => 'Informe a data final.',
+            'data_fim.date_format' => 'Data final inválida.',
+            'data_fim.after_or_equal' => 'A data final deve ser igual ou posterior à data inicial.',
+        ]);
+
         $home = $builder->build($request->user());
 
+        // Filtro opcional do card «Funil comercial»: só entra no payload quando o período é informado.
+        $funnelRangeProps = [];
+        if (! empty($range['data_inicio']) && ! empty($range['data_fim'])) {
+            $start = Carbon::createFromFormat('Y-m-d', $range['data_inicio'])->startOfDay();
+            $end = Carbon::createFromFormat('Y-m-d', $range['data_fim'])->startOfDay();
+            $funnelRange = $builder->funnelForRange($start, $end);
+
+            $funnelRangeProps = [
+                'funnelRange' => $funnelRange['stages'],
+                'funnelLostRange' => $funnelRange['lost'],
+                'funnelRangePeriod' => [
+                    'start' => $start->toDateString(),
+                    'end' => $end->toDateString(),
+                ],
+            ];
+        }
+
         return Inertia::render('Admin/Dashboard', [
+            ...$funnelRangeProps,
             'finance' => $home['finance'],
             'operationToday' => $home['operation_today'],
             'tasksToday' => $home['tasks_today'],

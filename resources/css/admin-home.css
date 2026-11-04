@@ -567,6 +567,46 @@
     box-shadow: 0 1px 3px rgb(15 23 42 / 0.12);
 }
 
+/*
+ * Botão de período ao lado do toggle: quadrado com a altura do `.home-seg`
+ * (0,2rem + 0,3rem + 1rem de linha + 0,3rem + 0,2rem = 2rem), mesma borda, raio e fundo.
+ * Ativo (período aplicado): mesmo visual da opção selecionada do toggle.
+ */
+.admin-home .home-seg-icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.75rem;
+    background: rgb(var(--primary) / 0.08);
+    box-shadow: inset 0 0 0 1px rgb(var(--primary) / 0.12);
+    color: rgb(var(--ink-muted));
+    transition: color 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+.admin-home .home-seg-icon:hover {
+    color: rgb(var(--primary-text));
+}
+
+.admin-home .home-seg-icon[aria-pressed='true'] {
+    background: rgb(var(--surface));
+    color: rgb(var(--primary-text));
+    box-shadow: inset 0 0 0 1px rgb(var(--primary) / 0.12), 0 1px 3px rgb(15 23 42 / 0.12);
+}
+
+.admin-home .home-seg-icon:focus-visible {
+    outline: 2px solid rgb(var(--primary-ring));
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-home .home-seg-icon {
+        transition: none;
+    }
+}
+
 /* ---------- Meta mensal ---------- */
 
 .admin-home .home-card--goal {

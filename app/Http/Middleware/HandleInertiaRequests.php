@@ -106,9 +106,10 @@ class HandleInertiaRequests extends Middleware
                 'sale_code' => fn () => $request->session()->get('sale_code'),
                 'suggest_updated_contract' => fn () => $request->session()->get('suggest_updated_contract'),
             ],
-            // Item único «NR-1» do menu principal: null com a flag desligada ou sem acesso (o menu não muda).
+            // Entradas do painel NR-1: «Pesquisas NR1» (empresa), item «NR-1» do Admin (Talents) e «Oportunidades NR-1» (Comercial); null sem acesso.
             'nr1Shell' => [
                 'url' => fn () => Nr1Shell::menuUrl($user),
+                'adminUrl' => fn () => Nr1Shell::adminMenuUrl($user),
                 'opportunitiesUrl' => fn () => Nr1Shell::opportunitiesMenuUrl($user),
             ],
             'sessionExpiry' => Inertia::always(fn () => $this->sessionMetaForFrontend($request)),

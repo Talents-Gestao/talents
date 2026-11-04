@@ -333,13 +333,14 @@ class Nr1ShellTest extends TestCase
 
     public function test_the_shell_menu_is_a_labelled_nav_with_aria_current_and_visible_focus(): void
     {
-        $layout = (string) file_get_contents(resource_path('js/Layouts/Nr1Layout.vue'));
+        $nav = (string) file_get_contents(resource_path('js/Components/Nr1Shell/Nr1SubNav.vue'));
         $css = (string) file_get_contents(resource_path('css/nr1-shell.css'));
 
-        $this->assertStringContainsString('<nav aria-label=', $layout);
-        $this->assertStringContainsString(":aria-current=\"shell.current === item.key ? 'page' : undefined\"", $layout);
-        // Itens são links reais (teclado nativo: Tab/Enter) e o foco visível está definido.
-        $this->assertStringContainsString('<Link', $layout);
+        $this->assertStringContainsString('aria-label="Navegação do NR-1"', $nav);
+        $this->assertStringContainsString(":aria-current=\"item.active ? 'page' : undefined\"", $nav);
+        // Itens são links reais (teclado nativo: Tab/Enter) e o foco visível está definido (sub-navegação e conteúdo).
+        $this->assertStringContainsString('<Link', $nav);
+        $this->assertStringContainsString('focus-visible:ring-2', $nav);
         $this->assertStringContainsString('a:focus-visible', $css);
     }
 }

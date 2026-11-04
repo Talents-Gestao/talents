@@ -269,6 +269,13 @@ const pinButtonTitle = computed(() =>
 
 <template>
     <div :class="shellClass" :style="shellStyle">
+        <a
+            href="#conteudo-principal"
+            data-skip-link
+            class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-xl focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-talents-800 focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-talents-500"
+        >
+            Pular para o conteúdo
+        </a>
         <div
             v-show="mobileOpen"
             class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
@@ -277,6 +284,7 @@ const pinButtonTitle = computed(() =>
         />
 
         <aside
+            data-shell-sidebar
             :class="[
                 asideWidthClass,
                 asideTransformClass,
@@ -323,6 +331,7 @@ const pinButtonTitle = computed(() =>
                 <div class="relative min-h-0 flex-1">
                     <nav
                         ref="navEl"
+                        aria-label="Menu principal"
                         class="h-full overflow-y-auto overflow-x-hidden overscroll-y-contain py-4 scrollbar-none"
                         @scroll.passive="updateScrollHints"
                     >
@@ -376,11 +385,12 @@ const pinButtonTitle = computed(() =>
             </div>
         </aside>
 
-        <div :class="['flex min-h-screen flex-1 flex-col', mainTransitionClass, mainMarginClass]">
+        <div data-shell-column :class="['flex min-h-screen flex-1 flex-col', mainTransitionClass, mainMarginClass]">
             <div
                 class="app-shell-panel mx-3 mb-4 mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden shadow-shell-inner sm:mx-4 lg:mx-4 lg:mb-6 lg:mt-4 lg:min-h-[calc(100vh-2rem)]"
             >
                 <div
+                    data-shell-mobilebar
                     class="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200/60 bg-white/90 px-4 backdrop-blur-md lg:hidden"
                 >
                     <button
@@ -401,6 +411,7 @@ const pinButtonTitle = computed(() =>
                 <slot v-if="$slots.topbar" name="topbar" />
                 <AppTopBar
                     v-else-if="showTopBar"
+                    data-shell-topbar
                     class="hidden lg:flex"
                     :title="topBarTitle"
                     :show-actions="topBarShowActions"
@@ -413,8 +424,12 @@ const pinButtonTitle = computed(() =>
                     <slot name="header" />
                 </header>
 
-                <div class="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-                    <main class="app-shell-main-scroll min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+                <div data-shell-main-row class="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+                    <main
+                        id="conteudo-principal"
+                        tabindex="-1"
+                        class="app-shell-main-scroll min-h-0 flex-1 overflow-y-auto px-4 py-6 focus:outline-none sm:px-6 lg:px-8 lg:py-8"
+                    >
                         <slot />
                     </main>
 

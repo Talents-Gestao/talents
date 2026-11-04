@@ -83,16 +83,6 @@
 .nr1-shell .n1b--chip { --b-bg: #f5ecfa; --b-fg: #5b2a73; --b-bd: #e3d3ee; --b-bg-h: #ebdcf5; --b-fg-h: #4a2160; --b-bd-h: #d3bde4; border-radius: 99px; padding: 5px 11px; font-size: 11px; }
 .nr1-shell .n1b--chip.is-selected { --b-bg: #5b2a73; --b-fg: #fff; --b-bd: #5b2a73; --b-bg-h: #4a2160; --b-fg-h: #fff; --b-bd-h: #4a2160; --b-bg-a: #3a1750; }
 
-/* Menu lateral (sobre fundo escuro): botão «Voltar ao Talents» usa ghost-on-dark; itens do menu têm estados próprios abaixo */
-.nr1-shell .n1-nav:focus-visible { outline: 3px solid #fff; outline-offset: -3px; }
-.nr1-shell .n1-nav:active { background: #ffffff30; }
-
 @media (prefers-reduced-motion: reduce) {
     .nr1-shell .n1b, .nr1-shell .n1b.is-loading::after { transition: none !important; animation: none !important; transform: none !important; }
-}
-
-/* Botão do menu recolhível: só aparece no mobile */
-.nr1-shell .n1b.n1-menu-toggle { display: none; }
-@media (max-width: 780px) {
-    .nr1-shell .n1b.n1-menu-toggle { display: inline-flex; }
 }

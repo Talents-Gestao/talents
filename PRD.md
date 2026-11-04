@@ -113,7 +113,7 @@ A **Talents Gestão de Pessoas** é uma consultoria estratégica em gestão de p
 | Autenticação e conta | `/login`, `/entrar/{slug}`, `/mfa/*`, `/profile` | Todos os perfis com login | `GuestLayout` / `AuthenticatedLayout` |
 | Admin Talents | `/admin/*` | `super_admin` | `AdminLayout` |
 | Portal da empresa | `/client/*` | `company_admin`, `company_user` | `ClientLayout` (com marca da empresa) |
-| Painel NR-1 (shell) | `/nr1/*` | Talents, Empresa, Comercial, colaborador (jornada) | `Nr1Layout` |
+| Painel NR-1 | `/nr1/*` | Talents, Empresa, Comercial, colaborador (jornada) | dentro do layout padrão: `AdminLayout` (Talents, Comercial) ou `ClientLayout` (Empresa), com a moldura `Nr1Frame`; a jornada do colaborador usa só a moldura mínima, sem login |
 | Revisão externa | `/revisao/*` | `external_reviewer` | layout próprio das páginas `ExternalReview/*` |
 | Superfícies públicas por token | `/pesquisa`, `/denuncia`, `/sugestoes`, `/desligamento`, `/mapa-proposito`, `/avaliacao`, `/feedback/assinar`, `/satisfacao` | Colaboradores e clientes sem login | páginas públicas próprias |
 
@@ -367,6 +367,10 @@ flowchart LR
     SEL --> ADM & CLI & REV
     LOGIN2 --> CLI
     ADM -->|Empresa → Pesquisas e parecer → Abrir painel NR-1| NR1[/nr1/visao-geral/]
+    ADM -->|NR-1| NR1I[/nr1/]
+    NR1I -->|empresa lembrada ou só uma| NR1
+    NR1I -->|várias empresas, nenhuma em foco| NR1E[/nr1/empresas/]
+    NR1E --> NR1
     ADM -->|Comercial → Oportunidades NR-1| NR1O[/nr1/oportunidades/]
     CLI -->|Voz do Time → Pesquisas NR1| NR1
     LINK[Link da campanha] --> JOR[/nr1/jornada/token/]
@@ -385,13 +389,14 @@ A sidebar só mostra o que o usuário pode abrir. Um grupo aparece se houver ao 
 | ↳ Assinaturas | `admin.plans.index` | **Oculto** (`showAssinaturasMenu = false`), mesmo com `plans` |
 | ↳ Gestão | `admin.comercial.propostas.index` | `comercial_propostas` |
 | ↳ Contrato | `admin.comercial.settings.edit?tab=contratos` | `comercial_valores_contratos` |
-| ↳ Oportunidades NR-1 | `/nr1/oportunidades` | `nr1_oportunidades:view` |
+| ↳ Oportunidades NR-1 | `/nr1/oportunidades` | `nr1_oportunidades:view` (marcado como ativo em `/nr1/*` só quando o item «NR-1» não aparece) |
 | **Clientes** (grupo) | — | algum item abaixo |
 | ↳ Leads | `admin.landing-interest.index` | `landing_interest` |
 | ↳ Clientes | `admin.companies.index` | `companies` |
 | ↳ Avaliações | `admin.client-evaluations.index` | `companies` |
 | ↳ Diagnóstico empresarial | `admin.diagnostico-empresarial.index` | `companies_diagnostico` |
 | ↳ Contratos fechados | `admin.contratos-fechados.index` | `companies_contratos_fechados` |
+| **NR-1** | `/nr1` (painel NR-1 no próprio layout do Admin; ativo em qualquer `/nr1/*`) | perfil Talents do painel (`companies:view`, `Nr1Shell::adminMenuUrl`); o perfil só-Comercial não vê e entra por «Oportunidades NR-1» |
 | **Contratação** (grupo) | — | algum item abaixo |
 | ↳ Banco de talentos | `admin.solides.curriculos.index` | `solides_banco_talentos` |
 | ↳ Acompanhamento | `admin.acompanhamento.index` | `solides_acompanhamento` |
@@ -428,7 +433,7 @@ Título da barra: nome da marca do portal ou «Área do cliente». Logo e cor v�
 | Painel | `client.dashboard` | sempre |
 | **Voz do Time** (seção) | — | `pesquisas` ou `denuncias` ou `sugestoes` ou `desligamento` (view) |
 | ↳ Visão geral | `client.voz-do-time.index` | idem |
-| ↳ Pesquisas NR1 | `/nr1` (shell) | `pesquisas:view` |
+| ↳ Pesquisas NR1 | `/nr1` (painel NR-1 dentro do portal; ativo em qualquer `/nr1/*`) | `pesquisas:view` |
 | ↳ Mapa de Propósito | `/client/mapa-proposito` | `pesquisas:view` |
 | ↳ Denúncias | `client.complaints.index` | `denuncias:view` |
 | ↳ Sugestões e dúvidas | `client.suggestions.index` | `sugestoes:view` |
@@ -448,7 +453,9 @@ Título da barra: nome da marca do portal ou «Área do cliente». Logo e cor v�
 
 No Painel, o cartão «Frase do dia» aparece acima do conteúdo (`DailyQuoteCard`).
 
-### 4.4 Sidebar do Painel NR-1 (`Nr1Layout`)
+### 4.4 Sub-navegação do Painel NR-1 (`Nr1Frame` + `Nr1SubNav`)
+
+O painel NR-1 não tem layout próprio: abre dentro do layout padrão do perfil (sidebar principal do Talents ou do portal, com a marca da empresa) e, na área de conteúdo, fica `[sidebar principal] | [sub-navegação do NR-1] | [cabeçalho e conteúdo do NR-1]`. A sub-navegação é uma trilha vertical integrada ao conteúdo (sem cartão nem sombra): título «Inteligência organizacional», um filete fino ligando as etapas, ícone de cada seção num quadrado pastel (acentos dos cartões do painel: lilás, verde, dourado, coral) e o item ativo com barra de 3 px à esquerda na cor da marca (`primary`, que segue o tema da empresa) e tinta suave de fundo (`aria-current`, landmark «Navegação do NR-1»; a sidebar principal é «Menu principal»). Selos só com o estado que já vem no cabeçalho: Publicado / Em revisão / Em edição em Documentos (V11) ou em Parecer e publicação (modelo anterior); Ativa / Encerrada em Campanha NR-1 quando a campanha não exige publicação. Em telas abaixo de `xl` vira uma barra de abas horizontal rolável acima do cabeçalho, com o mesmo ícone pastel e barra inferior no ativo (a aba ativa rola para a vista). **Troca de campanha no cabeçalho:** mantém a seção atual; se ela não existir para a nova campanha (ex.: Parecer e publicação indo para uma V11), cai em Visão geral; o conteúdo volta ao topo. A URL direta `/nr1/parecer` de uma campanha V11 continua levando a Documentos. Os itens vêm só do servidor (`shell.menu`, montado por `Nr1Shell::SECTIONS`/`MATRIX`/`allows()`), então uma seção nova entra sem mexer no layout. Cada item troca só o conteúdo (navegação Inertia; a moldura não recarrega). O Talents vê ainda «Trocar empresa» (`/nr1/empresas`). Na impressão, as duas sidebars, a barra de topo e as abas não aparecem (regra `:has(.nr1-shell)`, só nas páginas do NR-1). O layout padrão tem o link «Pular para o conteúdo», oculto até receber foco.
 
 | Ordem | Seção | Rota | Ícone |
 |-------|-------|------|-------|
@@ -462,7 +469,7 @@ No Painel, o cartão «Frase do dia» aparece acima do conteúdo (`DailyQuoteCar
 | 8 | Soluções Talents | `/nr1/solucoes` | ✦ |
 | 9 | Oportunidades | `/nr1/oportunidades` | ↗ |
 
-Rodapé: «← Voltar à empresa» (Talents com empresa em foco → página da empresa; Empresa → Painel) ou «← Voltar ao Talents» (Comercial). Cabeçalho: monograma/logo da empresa, «NR-1 · PESQUISA PSICOSSOCIAL», nome da empresa, linha de contexto (respostas · campanha) e seletor de campanha quando há mais de uma. Não há seletor de empresa: a empresa vem da entrada (`?empresa=&campanha=`, lembrada na sessão).
+Ícones: os da sub-navegação são Heroicons do sistema por seção; o glifo da tabela é a reserva para uma seção sem ícone mapeado. Cabeçalho (inalterado, dentro do conteúdo): «← Voltar à empresa» (Talents com empresa em foco → página da empresa; Empresa → Painel) ou «← Voltar ao Talents» (Comercial), monograma/logo da empresa, «NR-1 · PESQUISA PSICOSSOCIAL», nome da empresa, linha de contexto (respostas · campanha) e seletor de campanha quando há mais de uma. Não há seletor de empresa: a empresa vem da entrada (`?empresa=&campanha=`, lembrada na sessão).
 
 ### 4.5 Superfícies públicas (sem login)
 
@@ -706,6 +713,7 @@ Todas as rotas do capítulo exigem login, workspace Talents e `super_admin` ativ
 | Cartões do topo | **Financeiro** (com links para Contas a pagar e Contas a receber), **Tarefas · hoje**, **Calendário · hoje** |
 | Indicadores (grade de 3 colunas) | Clientes ativos, Novos clientes (mês), MRR (mensal), Faturamento (mês), Contratações abertas, Tempo médio de contratação, Direcionamento ativo |
 | Gráficos | Leads por origem no mês (`LeadsSourceDonut`), Funil comercial (`DashboardSalesFunnel`), Meta mensal (`MonthlyGoalGauge`) |
+| Filtro do funil | Toggle «Neste mês / Total» e ícone de calendário «Filtrar por período» (data inicial e final, inclusive; final ≥ inicial). Com período aplicado, o funil conta leads e propostas criados no intervalo (mesmas contagens independentes), o toggle fica sem seleção e o subtítulo mostra as datas; «Limpar» ou clicar no toggle remove o período. Backend: `GET /admin/dashboard?data_inicio=aaaa-mm-dd&data_fim=aaaa-mm-dd` acrescenta `funnelRange`, `funnelLostRange` e `funnelRangePeriod`; sem os parâmetros o payload não muda |
 | Estados vazios | Ilustrados (`HomeEmptyState`), nunca zeros falsos |
 
 #### Regras
@@ -1480,7 +1488,7 @@ Gravação em transação: consome o convite e cria `survey_responses` (com `ses
 
 ### 8.8 Painel NR-1 (`/nr1`) — estrutura comum
 
-**Entrada:** Talents pela empresa («Pesquisas e parecer» → «Abrir painel NR-1»); Comercial pelo menu Comercial → Oportunidades NR-1; Empresa pelo menu Voz do Time → Pesquisas NR1; colaborador pelo link da jornada. `GET /nr1` redireciona para a seção inicial do perfil (403 se não houver nenhuma).
+**Entrada:** Talents pelo item «NR-1» da sidebar do Admin ou pela empresa («Pesquisas e parecer» → «Abrir painel NR-1», já com `?empresa=&campanha=`); Comercial pelo menu Comercial → Oportunidades NR-1; Empresa pelo menu Voz do Time → Pesquisas NR1 (sem item novo); colaborador pelo link da jornada. `GET /nr1` redireciona para a seção inicial do perfil (403 se não houver nenhuma), repassando a query. Talents sem empresa em foco (nem na URL nem lembrada na sessão) e com mais de uma empresa com campanha vai antes para **`/nr1/empresas`**: faixa de destaque no estilo do banner do painel («NR-1 · Escolha a empresa»), busca por nome sem acento (com destaque do trecho e contador «N empresas», atalho «/»), filtros rápidos (Todas / Com campanha ativa / Em revisão / Publicadas / Modelo anterior / V11) e cartões em grade (3/2/1 colunas) com monograma na cor da marca da empresa, chip de estado da campanha mais recente (os mesmos do cabeçalho), chip do método, «N campanhas NR-1», nome e período da campanha mais recente e «Outras campanhas» quando houver mais de uma. «Abertas recentemente» (empresas abertas no painel nesta sessão) vem primeiro; depois, ordem alfabética. Os cartões chegam como prop adiada (skeleton, estado de erro com «Tentar de novo», vazio e sem resultado). Payload só com identificação (nome, marca, estado, método, quantidade, título e período das campanhas), em consultas fixas (`Nr1ShellCompanyPicker`, sem N+1); nenhum resultado, índice, resposta, setor ou dado de colaborador. O cartão inteiro abre a Visão geral da campanha mais recente. Só o perfil Talents com `companies:view` abre (`Nr1Shell::canPickCompany`); empresa, Comercial e Admin sem permissão recebem 403.
 
 **Contexto (`Nr1ShellContext`):**
 
@@ -1488,7 +1496,7 @@ Gravação em transação: consome o convite e cria `survey_responses` (com `ses
 - Empresa: entra direto na própria empresa (ignora `empresa` da URL) e só enxerga campanhas **publicadas** (ou que não exigem publicação). Padrão: a mais recente publicada. Uma campanha mais nova ainda não publicada nunca é padrão, não entra no seletor, não abre por `?campanha=` e o nome dela não vai no payload.
 - Comercial e revisor: sem empresa em foco.
 
-**Página única:** `Pages/Nr1/Section.vue` renderiza a seção pelo `section.key`, com componentes em `Components/Nr1Shell/*` (V11) e `Legacy*View` (modelo anterior). Tema escopado em `.nr1-shell` (`resources/css/nr1-shell*.css`), botões padronizados (`Nr1Button`: primary, secondary, inverse, ghost-on-dark, ghost-on-light, link, icon, chip) e toasts (`ToastHost`).
+**Página única:** `Pages/Nr1/Section.vue` renderiza a seção pelo `section.key` dentro do `AdminLayout` (Talents, Comercial) ou do `ClientLayout` (Empresa), na moldura `Components/Nr1Shell/Nr1Frame.vue` (sub-navegação `Nr1SubNav`, cabeçalho `ShellHeader`, `ToastHost` e barra de carregamento entre seções), com componentes em `Components/Nr1Shell/*` (V11) e `Legacy*View` (modelo anterior). A jornada do colaborador usa só a moldura mínima (abas da jornada, sem sidebar, marca nem links de gestão). Tema escopado em `.nr1-shell` (`resources/css/nr1-shell*.css`, carregado só pelo `Nr1Frame`), aplicado ao cabeçalho e ao conteúdo; a moldura usa os tokens do Talents. Botões padronizados (`Nr1Button`: primary, secondary, inverse, ghost-on-dark, ghost-on-light, link, icon, chip).
 
 **Matriz seção × modelo da campanha:**
 
@@ -2321,11 +2329,11 @@ Proteção de chamadas de saída: URLs externas configuráveis passam por `SafeE
 | Pasta | Papel |
 |-------|-------|
 | `Pages/{Admin,Client,Auth,Nr1,…}` | páginas Inertia (194) |
-| `Layouts/` | `AdminLayout`, `ClientLayout`, `Nr1Layout`, `GuestLayout`, `AuthenticatedLayout` |
+| `Layouts/` | `AdminLayout`, `ClientLayout`, `GuestLayout`, `AuthenticatedLayout` (o painel NR-1 usa os dois primeiros com a moldura `Components/Nr1Shell/Nr1Frame`) |
 | `Components/` | componentes por domínio (`Nr1Shell/*`, `Nr1Campaign/*`, `Nr1Documents/*`, `Nr1Plan/*`, `Finance/*`, `Commercial/*`, `Tasks/*`, `Feedback/*`, `Rhid/*`, `AdminHome/*`, `Landing/*`, `StrategicCalendar/*`) |
 | `composables/`, `utils/` | `usePermissions`, `useAdminDashboardLayout`, `brandTheme`, `strategicCalendarThemes` etc. |
 | Alias | `@` → `resources/js`; rotas via Ziggy (`route()`) |
-| CSS | `resources/css`; tema do painel NR-1 escopado em `.nr1-shell` |
+| CSS | `resources/css`; tema do painel NR-1 escopado em `.nr1-shell` (cabeçalho e conteúdo do painel, carregado pelo `Nr1Frame`) |
 
 ### 15.4 Props compartilhadas (Inertia)
 
@@ -3413,6 +3421,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | GET | `/nr1` | `nr1.index` | auth | — |
 | GET | `/nr1/campanha` | `nr1.campanha` | auth | `Nr1/Section` |
 | GET | `/nr1/documentos` | `nr1.documentos` | auth | `Nr1/Section` |
+| GET | `/nr1/empresas` | `nr1.empresas` | auth (perfil Talents, `companies:view`) | `Nr1/Companies` |
 | GET | `/nr1/jornada/{token}/{section?}` | `nr1.jornada` | — | `Survey/Closed`, `Nr1/Section` |
 | GET | `/nr1/oportunidades` | `nr1.oportunidades` | auth | `Nr1/Section` |
 | GET | `/nr1/parecer` | `nr1.parecer` | auth | `Nr1/Section` |
@@ -4146,7 +4155,7 @@ Extraído das validações inline dos controllers (`$request->validate`). «obri
 | Módulos por empresa | `app/Models/Company.php` (`hasModuleEnabled`), `Module.php`, `Plan.php` |
 | Workspaces e portal | `app/Support/WorkspaceManager.php`, `CompanyPortal.php`, `AdminHomeResolver.php` |
 | Home do admin | `app/Support/Admin/AdminHomeDashboardBuilder.php`, `resources/js/Pages/Admin/Dashboard.vue` |
-| Painel NR-1 | `app/Support/Nr1Shell/*`, `app/Http/Controllers/Nr1/*`, `resources/js/Layouts/Nr1Layout.vue`, `resources/js/Pages/Nr1/Section.vue`, `resources/js/Components/Nr1Shell/*` |
+| Painel NR-1 | `app/Support/Nr1Shell/*`, `app/Http/Controllers/Nr1/*`, `resources/js/Pages/Nr1/Section.vue`, `resources/js/Pages/Nr1/Companies.vue`, `resources/js/Components/Nr1Shell/*` |
 | NR-1 cálculo e privacidade | `app/Services/SurveyResultCalculator.php`, `app/Support/Nr1Scoring.php`, `Nr1PooledItemScore.php`, `Nr1GroupPrivacy.php`, `Nr1BandLabels.php`, `SurveyPublicationGate.php`, `config/nr1.php` |
 | NR-1 documentos e revisão | `app/Services/Psychosocial/*`, `app/Services/ExecutiveBrief*.php`, `app/Services/PsychosocialDashboardBuilder.php` |
 | NR-1 campanha, jornada, soluções, oportunidades | `app/Services/Nr1/*`, `app/Support/Nr1ServiceCards.php`, `Nr1Orientation.php` |
@@ -4157,7 +4166,7 @@ Extraído das validações inline dos controllers (`$request->validate`). «obri
 | RHID | `app/Services/Rhid/*`, `tools/rhid-espelho-parser/` |
 | IA | `app/Services/Interview/*`, `Meeting/*`, `Nr1AiAnalyzer.php`, `PurposeMapThemeAnalyzer.php` |
 | Avisos | `app/Actions/Notices/*`, `app/Support/Notices/*` |
-| Menus | `resources/js/Layouts/AdminLayout.vue`, `ClientLayout.vue`, `Nr1Layout.vue` |
+| Menus | `resources/js/Layouts/AdminLayout.vue`, `ClientLayout.vue`; sub-navegação do NR-1 em `Components/Nr1Shell/Nr1SubNav.vue` |
 | Detalhe da empresa | `resources/js/Pages/Admin/Companies/Show.vue` |
 | Infra | `docker-compose.yml`, `docker-compose.prod.yml`, `docker/` |
 | Checklists e demo | `SMOKE_CHECKLIST.md`, `USUARIOS_DEMO.md` |

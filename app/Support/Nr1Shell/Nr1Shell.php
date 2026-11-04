@@ -168,6 +168,25 @@ final class Nr1Shell
         return self::campaignUrl($survey->usesReviewFlow() ? 'documentos' : 'parecer', $survey);
     }
 
+    /**
+     * Item «NR-1» de primeiro nível do menu do Admin: só o perfil Talents (companies:view). O perfil só-Comercial entra
+     * por «Oportunidades NR-1» no grupo Comercial.
+     */
+    public static function adminMenuUrl(?User $user): ?string
+    {
+        if ($user === null || ! $user->isSuperAdmin() || self::profileFor($user) !== self::PROFILE_TALENTS || self::landingSection($user) === null) {
+            return null;
+        }
+
+        return route('nr1.index', absolute: false);
+    }
+
+    /** Tela de escolha de empresa do painel (só o perfil Talents com acesso à Visão geral). */
+    public static function canPickCompany(User $user): bool
+    {
+        return self::profileFor($user) === self::PROFILE_TALENTS && self::allows($user, 'visao-geral', self::PROFILE_TALENTS);
+    }
+
     /** URL do item único «NR-1» do menu principal, ou null (sem acesso). */
     public static function menuUrl(?User $user): ?string
     {
