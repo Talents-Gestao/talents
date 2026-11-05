@@ -14,7 +14,7 @@ class GenerateServiceSuggestionsCommand extends Command
 {
     protected $signature = 'nr1:generate-service-suggestions';
 
-    protected $description = 'Enfileira uma única geração de serviços do catálogo por IA para pesquisas já encerradas.';
+    protected $description = 'Reprocessa pesquisas já encerradas que ainda não tiveram a sugestão de serviços. O disparo normal ocorre ao marcar a pesquisa como encerrada.';
 
     public function handle(): int
     {

@@ -68,7 +68,9 @@ class SurveyResultCalculator
             $this->storeOthersGroup($survey, $profiles, $cuts);
         });
 
-        app(InsightGenerator::class)->generateForSurvey($survey->fresh());
+        $fresh = $survey->fresh();
+        app(InsightGenerator::class)->generateForSurvey($fresh);
+        ServiceSuggestionsGenerator::queueIfReady($fresh);
     }
 
     /**

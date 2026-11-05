@@ -12,6 +12,7 @@ use App\Models\Company;
 use App\Models\PsychosocialDocument;
 use App\Models\PsychosocialDocumentVersion;
 use App\Models\Survey;
+use App\Models\User;
 use App\Models\SurveyNr1Report;
 use App\Services\ActionPlanGenerator;
 use App\Services\Nr1AiAnalyzer;
@@ -24,6 +25,7 @@ use App\Support\HtmlSanitizer;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1RiskScenarioResolver;
 use App\Support\Nr1Shell\Nr1Shell;
+use App\Support\Nr1Shell\Nr1ShellPageData;
 use App\Support\TechnicalOpinionDisclaimerStripper;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -175,6 +177,9 @@ class ActionPlanAdminController extends Controller
             'technicalOpinionAiPending' => $technicalOpinionAiPending,
             'aiGeneratePostUrl' => url('/admin/companies/'.$company->getKey().'/surveys/'.$survey->getKey().'/ai-analysis'),
             'technicalOpinionGeneratePostUrl' => url('/admin/companies/'.$company->getKey().'/surveys/'.$survey->getKey().'/technical-opinion'),
+            'actionMeasures' => request()->user() instanceof User
+                ? app(Nr1ShellPageData::class)->plan($survey, request()->user(), true)
+                : ['measures' => [], 'users' => [], 'effectivenessResults' => [], 'fullUrl' => null],
         ]);
     }
 

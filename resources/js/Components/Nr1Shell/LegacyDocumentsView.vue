@@ -6,7 +6,7 @@ import LegacyNotice from './LegacyNotice.vue';
 import Nr1Button from './Nr1Button.vue';
 
 /**
- * Parecer e publicação (modelo anterior): Laudo 02 Parecer + 03 Publicar.
+ * Parecer e publicação (modelo anterior): o texto, o plano e a publicação ficam na mesma tela.
  * A barra acima do parecer só leva ao cadastro técnico. Relatório, subsídio e PDF ficam no próprio parecer.
  * O resumo executivo fica inativo na UI do parecer legado.
  */

@@ -18,6 +18,7 @@ use App\Services\Nr1\Nr1OpportunityService;
 use App\Services\Nr1\Nr1SolutionService;
 use App\Services\SurveyServiceSuggestionService;
 use App\Support\Nr1ServiceCards;
+use App\Support\SurveyPublicationGate;
 use App\Support\TechnicalOpinionDisclaimerStripper;
 use Illuminate\Http\Request;
 
@@ -155,8 +156,8 @@ final class Nr1ShellStageD
     }
 
     /**
-     * Soluções numa campanha do modelo anterior. As regras das 7 dimensões da V11 não se aplicam. Os serviços do
-     * catálogo entram pela sugestão da Mia, depois que a Talents libera.
+     * Soluções numa campanha do modelo anterior. As regras das dimensões valem também aqui: a seção do
+     * questionário anterior entra na regra correspondente. Os serviços do catálogo entram pela sugestão da Mia.
      *
      * @return array<string, mixed>
      */
@@ -166,12 +167,19 @@ final class Nr1ShellStageD
         $forTalents = $profile === Nr1Shell::PROFILE_TALENTS;
         $canRequest = $user !== null && ! $staff && $user->canAccess(\App\Enums\PermissionModule::Pesquisas, \App\Enums\PermissionAction::Edit);
 
+        $publishedForCompany = $survey !== null && SurveyPublicationGate::allows($survey);
+
         return [
             'mode' => $staff ? 'staff' : 'company',
             'cards' => Nr1ServiceCards::all(),
-            'recommendations' => [],
-            'requests' => [],
-            'canRequest' => $canRequest,
+            'recommendations' => $survey !== null
+                ? $this->solutions->recommendations($survey, forCompany: ! $staff)
+                : [],
+            'requests' => $survey !== null && ! $staff ? $this->solutions->companyRequests($survey) : [],
+            'canRequest' => $canRequest && $publishedForCompany,
+            'requestUrlBase' => $survey !== null && ! $staff
+                ? route('client.surveys.solutions.request', [$survey->id, '__MATCH__'])
+                : null,
             'locked' => false,
             'noSurvey' => false,
             'legacy' => true,

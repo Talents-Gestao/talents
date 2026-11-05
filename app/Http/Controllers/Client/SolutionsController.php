@@ -55,7 +55,7 @@ class SolutionsController extends Controller
 
     public function requestConversation(Request $request, Survey $survey, int $match): RedirectResponse
     {
-        $this->authorizeSurvey($request, $survey);
+        abort_unless((int) $survey->company_id === (int) $request->user()->company_id, 404);
 
         $data = $request->validate(['note' => ['nullable', 'string', 'max:1000']]);
 

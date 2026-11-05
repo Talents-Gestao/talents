@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ServiceSuggestionsGenerator;
 use App\Services\SurveyInstrumentVersionResolver;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1InstrumentMatrix;
@@ -43,6 +44,12 @@ class Survey extends Model
         static::saving(function (Survey $survey): void {
             if ($survey->min_group_size !== null && (int) $survey->min_group_size < Nr1GroupPrivacy::FLOOR) {
                 throw new \InvalidArgumentException('O mínimo de respondentes por grupo não pode ser menor que '.Nr1GroupPrivacy::FLOOR.'.');
+            }
+        });
+
+        static::updated(function (Survey $survey): void {
+            if ($survey->wasChanged('status') && $survey->status === 'closed') {
+                ServiceSuggestionsGenerator::queueIfReady($survey);
             }
         });
 

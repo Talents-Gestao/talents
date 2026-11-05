@@ -10,7 +10,9 @@ use App\Models\CommercialProduct;
 use App\Models\Survey;
 use App\Models\SurveyServiceSuggestion;
 use App\Models\User;
+use App\Jobs\GenerateServiceSuggestionsJob;
 use App\Support\Nr1GroupPrivacy;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -26,10 +28,37 @@ final class ServiceSuggestionsGenerator
         return Nr1AiAnalyzer::pendingCacheKey($surveyId, Nr1AiAnalyzer::TYPE_NR1_SERVICE_SUGGESTIONS);
     }
 
+    /**
+     * Dispara a única geração quando a campanha acaba de ser encerrada e já tem resultado.
+     * Sem resultado ainda, não marca a campanha: o recálculo seguinte dispara de novo.
+     */
+    public static function queueIfReady(Survey $survey): void
+    {
+        if ($survey->status !== 'closed' || $survey->service_suggestions_generated_at !== null) {
+            return;
+        }
+
+        if (! $survey->results()->exists() || ! Nr1GroupPrivacy::hasMinimumSample($survey)) {
+            return;
+        }
+
+        $key = self::pendingCacheKey($survey->id);
+        if (Cache::has($key)) {
+            return;
+        }
+
+        Cache::put($key, true, now()->addMinutes(15));
+        GenerateServiceSuggestionsJob::dispatch($survey->id);
+    }
+
     public function generate(Survey $survey, AiSetting $setting, ?User $actor = null): int
     {
         $catalog = $this->catalog();
-        if ($catalog === [] || ! Nr1GroupPrivacy::hasMinimumSample($survey) || ! $survey->results()->exists()) {
+        if (! Nr1GroupPrivacy::hasMinimumSample($survey) || ! $survey->results()->exists()) {
+            return 0;
+        }
+
+        if ($catalog === []) {
             $survey->forceFill(['service_suggestions_generated_at' => now()])->save();
 
             return 0;
