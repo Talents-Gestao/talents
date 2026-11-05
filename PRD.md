@@ -872,27 +872,25 @@ Lead incluído manualmente também gera aviso «novo lead».
 
 | Aba | Conteúdo |
 |-----|----------|
-| **Empresa** | Painel operacional (alertas, KPIs, atalhos, atividade recente) + acordeões de gestão (abaixo), fechados por padrão |
+| **Empresa** | Painel operacional (alertas, KPIs, atalhos, atividade recente). A gestão abre num modal a partir do atalho |
 | **Gestão de ponto** | Credenciais RHID da empresa (`CompanyRhidCredentialsForm`) e métricas (`GET …/rhid-metrics`); exige `rhid` |
 | **Colaboradores** | Lista de colaboradores da empresa e atalho para o cadastro (7.3.4) |
 | **Regulamento interno** | Regulamentos publicados (7.3.5) |
 
-**Painel operacional (aba Empresa):** prop Inertia `dashboard` com contagens leves (usuários, campanhas NR-1, plano ativo, colaboradores, regulamentos, flags RHID/denúncias), atalhos tipados e listas curtas de campanhas/mapas. UI em `CompanyDashboardSummary` + `CompanyShortcutGrid`. Os atalhos incluem também os blocos de gestão (Dados, Assinaturas, Direcionamento, Mapeamentos, Pesquisas, Mapa de Propósito, Usuários, Excluir), que abrem o acordeão correspondente na mesma página.
+**Painel operacional (aba Empresa):** prop Inertia `dashboard` com contagens leves (usuários, campanhas NR-1, plano ativo, colaboradores, regulamentos, flags RHID/denúncias), atalhos tipados e listas curtas de campanhas/mapas. UI em `CompanyDashboardSummary` + `CompanyShortcutGrid`. Os atalhos de gestão não desenrolam bloco na página: abrem `CompanyShortcutDestinationModal` para escolher o destino. Usuários e Mapa de Propósito, que já eram atalhos de rotina, usam o mesmo modal. Excluir empresa abre a confirmação direto.
 
-Acordeões da aba Empresa (secção «Gestão e configuração»):
+| Atalho | O que o modal oferece |
+|--------|------------------------|
+| Dados | Editar empresa e leitura do cadastro; link público de denúncias quando existe |
+| Assinaturas | Alterar o plano na ficha, catálogo de planos e lista das assinaturas vinculadas |
+| Direcionamento Estratégico | Planos, templates de satisfação e vincular/desvincular (`…/methodology-templates/{template}`) |
+| Mapeamentos disponíveis | Catálogo de templates NR-1 e vincular/desvincular (`…/templates/{template}`) |
+| **Pesquisas e parecer** | Uma opção por campanha com **«Abrir painel NR-1»** (`/nr1/visao-geral?empresa=&campanha=`) e «Excluir» (com `companies:delete`) |
+| Mapa de Propósito | Dashboard (`/admin/mapa-proposito`) |
+| Usuários | Gerenciar, novo usuário e a ficha de cada vinculado (7.3.3) |
+| Excluir empresa | Confirmação da exclusão, sem lista de destinos |
 
-| Acordeão | Conteúdo e ações |
-|----------|------------------|
-| Dados | Informações cadastrais |
-| Assinaturas | Planos vinculados |
-| Direcionamento Estratégico | Templates de satisfação vinculados (etapa 02); anexar/desanexar (`…/methodology-templates/{template}`) |
-| Mapeamentos disponíveis | Templates NR-1 liberados para a empresa; anexar/desanexar (`…/templates/{template}`) |
-| **Pesquisas e parecer** | Lista de campanhas NR-1 da empresa com **«Abrir painel NR-1»** (leva a `/nr1/visao-geral?empresa=&campanha=`) e «Excluir» (com `companies:delete`) |
-| Mapa de Propósito | Atalho para o dashboard (`/admin/mapa-proposito`) |
-| Usuários | Usuários da empresa, convite e reenvio (7.3.3) |
-| Excluir empresa | Exclusão com confirmação |
-
-Também na página: painel do link público do canal de denúncias (`ComplaintsPublicLinkPanel`) e revogação de compartilhamentos de documentos com revisores (`DELETE …/document-shares/{share}`).
+A revogação de compartilhamentos de documentos com revisores continua em `DELETE …/document-shares/{share}`.
 
 **Excluir campanha NR-1:** `DELETE /admin/companies/{company}/surveys/{survey}` executa `ArchiveAndDeleteSurvey` (arquiva e faz soft delete, registrando quem excluiu).
 

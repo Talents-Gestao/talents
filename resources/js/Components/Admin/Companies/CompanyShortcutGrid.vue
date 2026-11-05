@@ -111,7 +111,7 @@ const onSectionClick = (item) => {
                             class="mt-0.5 block text-xs"
                             :class="item.tone === 'danger' ? 'text-red-800/80' : 'text-slate-500 group-hover:text-talents-800'"
                         >
-                            {{ item.hint || 'Abrir na página' }}
+                            {{ item.hint || 'Escolher destino' }}
                         </span>
                     </span>
                 </button>

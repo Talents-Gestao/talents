@@ -1,10 +1,9 @@
 <script setup>
 import CompanyDashboardSummary from '@/Components/Admin/Companies/CompanyDashboardSummary.vue';
+import CompanyShortcutDestinationModal from '@/Components/Admin/Companies/CompanyShortcutDestinationModal.vue';
 import CompanyShortcutGrid from '@/Components/Admin/Companies/CompanyShortcutGrid.vue';
-import CompanyShowAccordion from '@/Components/Admin/Companies/CompanyShowAccordion.vue';
 import CompanyShowTabFrame from '@/Components/Admin/Companies/CompanyShowTabFrame.vue';
 import CompanyRhidCredentialsForm from '@/Components/Admin/Rhid/CompanyRhidCredentialsForm.vue';
-import ComplaintsPublicLinkPanel from '@/Components/Complaints/ComplaintsPublicLinkPanel.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import BackLink from '@/Components/BackLink.vue';
 import DangerButton from '@/Components/DangerButton.vue';
@@ -13,26 +12,18 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import {
     BuildingOffice2Icon,
-    ChartBarIcon,
     ChevronDownIcon,
-    ClipboardDocumentListIcon,
-    CreditCardIcon,
     DocumentTextIcon,
     EnvelopeIcon,
-    ExclamationTriangleIcon,
     FingerPrintIcon,
     GlobeAltIcon,
     KeyIcon,
-    LinkIcon,
-    MapIcon,
     PencilSquareIcon,
     StarIcon,
-    SparklesIcon,
     UserGroupIcon,
 } from '@heroicons/vue/24/outline';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, nextTick, ref } from 'vue';
-import { collectiveBargainingMonthLabel } from '@/utils/collectiveBargainingMonths';
+import { computed, ref } from 'vue';
 import { formatCnpj } from '@/utils/formatCnpj';
 import { confirmDialog } from '@/composables/useConfirmDialog';
 
@@ -88,8 +79,9 @@ const showDeleteModal = ref(false);
 const showDeleteSurveyModal = ref(false);
 const surveyToDelete = ref(null);
 const resendingInvitation = ref(false);
+const destinationSection = ref(null);
 
-/** Atalhos que abrem os acordeões de «Gestão e configuração» na mesma página. */
+/** Atalhos de gestão: o clique abre o modal para escolher o destino. */
 const configShortcuts = [
     {
         key: 'dados',
@@ -122,22 +114,8 @@ const configShortcuts = [
     {
         key: 'pesquisas',
         label: 'Pesquisas e parecer',
-        hint: 'Campanhas e painel NR-1',
+        hint: 'Escolher a campanha e abrir o painel',
         section: 'pesquisas',
-        enabled: true,
-    },
-    {
-        key: 'mapa_proposito',
-        label: 'Mapa de Propósito',
-        hint: 'Perguntas anónimas e resultados',
-        section: 'mapa_proposito',
-        enabled: true,
-    },
-    {
-        key: 'usuarios_gestao',
-        label: 'Usuários',
-        hint: 'Usuários vinculados a esta empresa',
-        section: 'usuarios',
         enabled: true,
     },
     {
@@ -150,16 +128,32 @@ const configShortcuts = [
     },
 ];
 
-const allShortcuts = computed(() => [...(props.dashboard?.shortcuts || []), ...configShortcuts]);
+const operationalDestination = {
+    users: {
+        section: 'usuarios',
+        hint: 'Lista, convite e ficha de cada usuário',
+    },
+    mapa: {
+        section: 'mapa_proposito',
+        hint: 'Dashboard de resultados',
+    },
+};
 
-const openConfigSection = async (section) => {
-    const el = document.getElementById(`company-section-${section}`);
-    if (!el) {
+const allShortcuts = computed(() => {
+    const operational = (props.dashboard?.shortcuts || []).map((item) => {
+        const extra = operationalDestination[item.key];
+        return extra ? { ...item, ...extra } : item;
+    });
+
+    return [...operational, ...configShortcuts];
+});
+
+const openShortcutSection = (section) => {
+    if (section === 'excluir') {
+        showDeleteModal.value = true;
         return;
     }
-    el.open = true;
-    await nextTick();
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    destinationSection.value = section;
 };
 
 const tabs = computed(() => {
@@ -226,57 +220,6 @@ const locationLabel = computed(() => {
     return city || state || null;
 });
 
-const collectiveBargainingMonth = computed(() =>
-    collectiveBargainingMonthLabel(props.company.collective_bargaining_month),
-);
-
-const subscriptionStatusClass = (status) => {
-    const s = String(status || '').toLowerCase();
-    if (s === 'active') {
-        return 'bg-emerald-50 text-emerald-800 ring-emerald-200/80';
-    }
-    if (s === 'cancelled' || s === 'canceled') {
-        return 'bg-slate-100 text-slate-600 ring-slate-200/80';
-    }
-    return 'bg-amber-50 text-amber-800 ring-amber-200/80';
-};
-
-const subscriptionStatusLabel = (status) => {
-    const s = String(status || '').toLowerCase();
-    if (s === 'active') {
-        return 'Ativa';
-    }
-    if (s === 'cancelled' || s === 'canceled') {
-        return 'Cancelada';
-    }
-    if (s === 'pending') {
-        return 'Pendente';
-    }
-    if (s === 'expired') {
-        return 'Expirada';
-    }
-    return status || '—';
-};
-
-const roleLabel = (role) => {
-    const map = {
-        company_admin: 'Administrador da empresa',
-        company_user: 'Usuário da empresa',
-        super_admin: 'Administrador Talents',
-    };
-    const key = String(role || '').toLowerCase();
-
-    return map[key] ?? role ?? '—';
-};
-
-const roleLabelClass = (role) => {
-    const r = String(role || '').toLowerCase();
-    if (r.includes('admin')) {
-        return 'bg-talents-50 text-talents-800 ring-talents-200/80';
-    }
-    return 'bg-slate-100 text-slate-600 ring-slate-200/80';
-};
-
 const attach = (templateId) => {
     router.post(route('admin.companies.templates.attach', [props.company.id, templateId]));
 };
@@ -303,6 +246,7 @@ const deleteCompany = () => {
 
 const openDeleteSurveyModal = (survey) => {
     surveyToDelete.value = survey;
+    destinationSection.value = null;
     showDeleteSurveyModal.value = true;
 };
 
@@ -524,331 +468,7 @@ const removeRegulation = async (id) => {
                     :registration-admin-email="registrationAdminEmail"
                     @resend-invitation="resendInvitation"
                 />
-                <CompanyShortcutGrid :shortcuts="allShortcuts" @open-section="openConfigSection" />
-
-                <div class="space-y-4">
-                <div>
-                    <h3 class="text-sm font-semibold text-slate-900">Gestão e configuração</h3>
-                    <p class="mt-1 text-sm text-slate-500">
-                        Dados cadastrais, planos, pesquisas e usuários — use os atalhos acima ou abra cada bloco
-                        conforme necessário.
-                    </p>
-                </div>
-                <CompanyShowAccordion
-                    section-id="company-section-dados"
-                    title="Dados"
-                    description="Informações cadastrais da empresa"
-                >
-                    <template #icon>
-                        <BuildingOffice2Icon class="h-5 w-5" />
-                    </template>
-                    <dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">E-mail</dt>
-                            <dd class="mt-1 text-slate-800">{{ company.contact_email || '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Instagram</dt>
-                            <dd class="mt-1 text-slate-800">{{ company.instagram || '—' }}</dd>
-                        </div>
-                        <div class="sm:col-span-2">
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Portal de entrada</dt>
-                            <dd class="mt-1 text-slate-800">
-                                <template v-if="company.portal_slug">
-                                    {{ company.portal_enabled ? 'Ativo' : 'Inativo' }}
-                                    — /entrar/{{ company.portal_slug }}
-                                    <span v-if="company.brand_name"> ({{ company.brand_name }})</span>
-                                </template>
-                                <template v-else>—</template>
-                            </dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Razão social</dt>
-                            <dd class="mt-1 text-slate-800">{{ company.legal_name || '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">CNPJ</dt>
-                            <dd class="mt-1 text-slate-800">{{ formatCnpj(company.cnpj) || '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Segmento</dt>
-                            <dd class="mt-1 text-slate-800">{{ company.segment || '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Ramo de atividade</dt>
-                            <dd class="mt-1 text-slate-800">{{ company.activity_branch || '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Mês do dissídio</dt>
-                            <dd class="mt-1 text-slate-800">{{ collectiveBargainingMonth || '—' }}</dd>
-                        </div>
-                        <div class="sm:col-span-2">
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Logradouro</dt>
-                            <dd class="mt-1 text-slate-800">{{ company.address_street || '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Bairro</dt>
-                            <dd class="mt-1 text-slate-800">{{ company.address_neighborhood || '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Município</dt>
-                            <dd class="mt-1 text-slate-800">{{ company.address_city || '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">UF</dt>
-                            <dd class="mt-1 text-slate-800">{{ company.address_state || '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">CEP</dt>
-                            <dd class="mt-1 text-slate-800">{{ company.address_zip || '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Regime tributário</dt>
-                            <dd class="mt-1 text-slate-800">{{ company.tax_regime || '—' }}</dd>
-                        </div>
-                    </dl>
-                    <ComplaintsPublicLinkPanel
-                        v-if="complaintsPublicUrl"
-                        :url="complaintsPublicUrl"
-                        variant="compact"
-                    />
-                </CompanyShowAccordion>
-
-                <CompanyShowAccordion
-                    section-id="company-section-assinaturas"
-                    title="Assinaturas"
-                    description="Planos vinculados a esta empresa"
-                >
-                    <template #icon>
-                        <CreditCardIcon class="h-5 w-5" />
-                    </template>
-                    <ul v-if="company.subscriptions?.length" class="divide-y divide-slate-100">
-                        <li
-                            v-for="sub in company.subscriptions"
-                            :key="sub.id"
-                            class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                        >
-                            <span class="text-sm font-medium text-slate-800">{{ sub.plan?.name || 'Plano' }}</span>
-                            <span
-                                class="inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
-                                :class="subscriptionStatusClass(sub.status)"
-                            >
-                                {{ subscriptionStatusLabel(sub.status) }}
-                            </span>
-                        </li>
-                    </ul>
-                    <p v-else class="text-sm text-slate-500">Nenhuma assinatura vinculada.</p>
-                </CompanyShowAccordion>
-
-                <CompanyShowAccordion
-                    section-id="company-section-direcionamento"
-                    title="Direcionamento Estratégico"
-                    description="Acesso e templates de satisfação definidos pelo plano"
-                >
-                    <template #icon>
-                        <ChartBarIcon class="h-5 w-5" />
-                    </template>
-                    <p class="mb-4 text-sm text-slate-500">
-                        Acesso definido pelo plano em
-                        <Link :href="route('admin.plans.index')" class="font-medium text-talents-700 hover:underline">
-                            Planos
-                        </Link>
-                        .
-                    </p>
-                    <p
-                        class="rounded-2xl px-4 py-3 text-sm font-medium"
-                        :class="
-                            planIncludesMetodologia
-                                ? 'bg-emerald-50/90 text-emerald-900'
-                                : 'bg-amber-50/90 text-amber-900'
-                        "
-                    >
-                        {{
-                            planIncludesMetodologia
-                                ? 'Plano ativo inclui Direcionamento Estratégico.'
-                                : 'Plano ativo não inclui Direcionamento Estratégico — ajuste o plano da empresa.'
-                        }}
-                    </p>
-                    <h3 class="mt-6 text-xs font-medium uppercase tracking-wide text-slate-400">
-                        Templates de satisfação (etapa 02)
-                    </h3>
-                    <ul v-if="methodologyTemplates.length" class="mt-3 divide-y divide-slate-100">
-                        <li
-                            v-for="t in methodologyTemplates"
-                            :key="'m-' + t.id"
-                            class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                        >
-                            <span class="text-sm text-slate-800">{{ t.title }}</span>
-                            <button
-                                v-if="!(company.methodology_form_templates || []).some((x) => x.id === t.id)"
-                                type="button"
-                                class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold text-talents-700 ring-1 ring-talents-200/80 transition hover:bg-talents-50"
-                                @click="attachMethodologyTemplate(t.id)"
-                            >
-                                Vincular
-                            </button>
-                            <button
-                                v-else
-                                type="button"
-                                class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200/80 transition hover:bg-red-50"
-                                @click="detachMethodologyTemplate(t.id)"
-                            >
-                                Remover
-                            </button>
-                        </li>
-                    </ul>
-                    <p v-else class="mt-3 text-sm text-slate-500">
-                        Nenhum template cadastrado. Crie em Admin → Direcionamento Estratégico → Templates.
-                    </p>
-                </CompanyShowAccordion>
-
-                <CompanyShowAccordion
-                    section-id="company-section-mapeamentos"
-                    title="Mapeamentos disponíveis"
-                    description="Templates de pesquisa NR-1"
-                >
-                    <template #icon>
-                        <MapIcon class="h-5 w-5" />
-                    </template>
-                    <ul v-if="templates.length" class="divide-y divide-slate-100">
-                        <li
-                            v-for="t in templates"
-                            :key="t.id"
-                            class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                        >
-                            <span class="text-sm text-slate-800">{{ t.title }}</span>
-                            <button
-                                v-if="!(company.survey_templates || []).some((x) => x.id === t.id)"
-                                type="button"
-                                class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold text-talents-700 ring-1 ring-talents-200/80 transition hover:bg-talents-50"
-                                @click="attach(t.id)"
-                            >
-                                Vincular
-                            </button>
-                            <button
-                                v-else
-                                type="button"
-                                class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200/80 transition hover:bg-red-50"
-                                @click="detach(t.id)"
-                            >
-                                Remover
-                            </button>
-                        </li>
-                    </ul>
-                    <p v-else class="text-sm text-slate-500">Nenhum mapeamento disponível no catálogo.</p>
-                </CompanyShowAccordion>
-
-                <CompanyShowAccordion
-                    section-id="company-section-pesquisas"
-                    title="Pesquisas e parecer"
-                    description="Parecer e plano ficam visíveis para a empresa após publicação"
-                >
-                    <template #icon>
-                        <ClipboardDocumentListIcon class="h-5 w-5" />
-                    </template>
-                    <ul v-if="(company.surveys || []).length" class="divide-y divide-slate-100">
-                        <li
-                            v-for="s in company.surveys"
-                            :key="s.id"
-                            class="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                        >
-                            <span class="text-sm font-medium text-slate-800">{{ s.title }}</span>
-                            <div class="flex flex-wrap items-center gap-2">
-                                <Link
-                                    :href="nr1ShellUrls[s.id]"
-                                    class="inline-flex items-center gap-1.5 rounded-full bg-talents-700 px-3 py-1 text-xs font-semibold text-white transition hover:bg-talents-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-talents-700"
-                                >
-                                    <ClipboardDocumentListIcon class="h-3.5 w-3.5" aria-hidden="true" />
-                                    Abrir painel NR-1
-                                </Link>
-                                <button
-                                    v-if="canAdmin('companies', 'delete')"
-                                    type="button"
-                                    class="rounded-full px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200/80 transition hover:bg-red-50"
-                                    @click="openDeleteSurveyModal(s)"
-                                >
-                                    Excluir
-                                </button>
-                            </div>
-                        </li>
-                    </ul>
-                    <p v-else class="text-sm text-slate-500">Nenhuma pesquisa cadastrada para esta empresa.</p>
-                </CompanyShowAccordion>
-
-                <CompanyShowAccordion
-                    section-id="company-section-mapa_proposito"
-                    title="Mapa de Propósito"
-                    description="Perguntas anónimas e dashboard de resultados"
-                >
-                    <template #icon>
-                        <SparklesIcon class="h-5 w-5" />
-                    </template>
-                    <div class="flex flex-wrap gap-2">
-                        <Link
-                            href="/admin/mapa-proposito"
-                            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-talents-700 ring-1 ring-talents-200/80 transition hover:bg-talents-50"
-                        >
-                            Abrir dashboard
-                        </Link>
-                    </div>
-                </CompanyShowAccordion>
-
-                <CompanyShowAccordion
-                    section-id="company-section-usuarios"
-                    title="Usuários"
-                    description="Usuários vinculados a esta empresa"
-                >
-                    <template #icon>
-                        <UserGroupIcon class="h-5 w-5" />
-                    </template>
-                    <div class="mb-4 flex justify-end">
-                        <Link
-                            :href="route('admin.companies.users.index', company.id)"
-                            class="inline-flex items-center gap-1.5 text-sm font-medium text-talents-700 hover:underline"
-                        >
-                            <LinkIcon class="h-4 w-4" aria-hidden="true" />
-                            Gerenciar usuários
-                        </Link>
-                    </div>
-                    <ul v-if="company.users?.length" class="divide-y divide-slate-100">
-                        <li
-                            v-for="u in company.users"
-                            :key="u.id"
-                            class="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
-                        >
-                            <div class="min-w-0">
-                                <p class="text-sm font-medium text-slate-800">{{ u.name }}</p>
-                                <p class="text-xs text-slate-500">{{ u.email }}</p>
-                            </div>
-                            <span
-                                class="inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1"
-                                :class="roleLabelClass(u.role)"
-                            >
-                                {{ roleLabel(u.role) }}
-                            </span>
-                        </li>
-                    </ul>
-                    <p v-else class="text-sm text-slate-500">Nenhum usuário vinculado.</p>
-                </CompanyShowAccordion>
-
-                <CompanyShowAccordion
-                    section-id="company-section-excluir"
-                    title="Excluir empresa"
-                    description="Ação irreversível — remove empresa e dados associados"
-                    tone="danger"
-                >
-                    <template #icon>
-                        <ExclamationTriangleIcon class="h-5 w-5" />
-                    </template>
-                    <p class="text-sm text-red-900/80">
-                        Remove a empresa, usuários vinculados e todos os dados associados (pesquisas, assinaturas,
-                        etc.). Esta ação não pode ser desfeita.
-                    </p>
-                    <DangerButton class="mt-4" type="button" @click="showDeleteModal = true">
-                        Excluir empresa
-                    </DangerButton>
-                </CompanyShowAccordion>
-                </div>
+                <CompanyShortcutGrid :shortcuts="allShortcuts" @open-section="openShortcutSection" />
                     </div>
                 </CompanyShowTabFrame>
             </div>
@@ -1130,6 +750,23 @@ const removeRegulation = async (id) => {
                 </CompanyShowTabFrame>
             </div>
         </div>
+
+        <CompanyShortcutDestinationModal
+            :show="destinationSection !== null"
+            :section="destinationSection"
+            :company="company"
+            :nr1-shell-urls="nr1ShellUrls"
+            :plan-includes-metodologia="planIncludesMetodologia"
+            :complaints-public-url="complaintsPublicUrl"
+            :templates="templates"
+            :methodology-templates="methodologyTemplates"
+            @close="destinationSection = null"
+            @delete-survey="openDeleteSurveyModal"
+            @attach-template="attach"
+            @detach-template="detach"
+            @attach-methodology="attachMethodologyTemplate"
+            @detach-methodology="detachMethodologyTemplate"
+        />
 
         <Modal :show="showDeleteSurveyModal" @close="showDeleteSurveyModal = false">
             <div class="p-6">

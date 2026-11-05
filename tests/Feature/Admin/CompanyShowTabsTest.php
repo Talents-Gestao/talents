@@ -113,12 +113,14 @@ class CompanyShowTabsTest extends TestCase
             );
 
         $show = (string) file_get_contents(resource_path('js/Pages/Admin/Companies/Show.vue'));
+        $modal = (string) file_get_contents(resource_path('js/Components/Admin/Companies/CompanyShortcutDestinationModal.vue'));
         $this->assertStringContainsString('CompanyDashboardSummary', $show);
         $this->assertStringContainsString('CompanyShortcutGrid', $show);
-        $this->assertStringContainsString('Gestão e configuração', $show);
-        $this->assertStringContainsString('company-section-dados', $show);
+        $this->assertStringContainsString('CompanyShortcutDestinationModal', $show);
         $this->assertStringContainsString('configShortcuts', $show);
-        $this->assertStringNotContainsString('default-open', $show);
+        $this->assertStringNotContainsString('Gestão e configuração', $show);
+        $this->assertStringNotContainsString('company-section-dados', $show);
+        $this->assertStringContainsString('Escolha para onde deseja ir.', $modal);
     }
 
     public function test_companies_index_paginates_after_first_page(): void
