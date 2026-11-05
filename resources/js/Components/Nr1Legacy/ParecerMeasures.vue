@@ -3,6 +3,7 @@ import CompanyShowAccordion from '@/Components/Admin/Companies/CompanyShowAccord
 import InfoTooltip from '@/Components/InfoTooltip.vue';
 import InputError from '@/Components/InputError.vue';
 import MeasureSuggestionForm from '@/Components/Nr1Plan/MeasureSuggestionForm.vue';
+import MeasureCard from '@/Components/Nr1Shell/MeasureCard.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { onMounted, onUnmounted, reactive, ref, watch } from 'vue';
@@ -14,6 +15,7 @@ const props = defineProps({
     statuses: { type: Object, default: () => ({}) },
     canEditSuggestion: { type: Boolean, default: true },
     dueOrigins: { type: Object, default: () => ({}) },
+    effectivenessResults: { type: Object, default: () => ({}) },
     measuresAi: {
         type: Object,
         default: () => ({ generated_at: null, pending: false, refresh_url: null }),
@@ -122,7 +124,7 @@ watch(() => props.measuresAi?.pending, watchRefresh);
             <div>
                 <div class="flex items-center gap-1">
                     <label class="text-sm text-slate-700" for="parecer-factor">Fator</label>
-                    <InfoTooltip text="Fator psicossocial a que a medida se refere. Esse nome sai no subsídio AEP/PGR e no dossiê." />
+                    <InfoTooltip text="Fator psicossocial a que a medida se refere. Esse nome sai no Inventário de Riscos PGR e no dossiê." />
                 </div>
                 <input id="parecer-factor" v-model="form.factor_label" type="text" required class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
                 <InputError class="mt-1" :message="form.errors.factor_label" />
@@ -157,48 +159,36 @@ watch(() => props.measuresAi?.pending, watchRefresh);
         </CompanyShowAccordion>
 
         <p v-if="measures.length === 0" class="text-sm text-slate-600">Nenhuma medida ainda. Elas aparecem quando a pesquisa encerra e a Mia gera o plano, ou quando você registra uma.</p>
-        <ul v-else class="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
-            <li v-for="measure in measures" :key="measure.id" class="flex flex-wrap items-start justify-between gap-3 p-4">
-                <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-slate-900">{{ measure.factor_label }}</p>
-                    <p class="mt-1 text-sm text-slate-600">{{ measure.measure_description }}</p>
-                    <p class="mt-1 text-xs text-slate-500">
-                        {{ measure.status_label }}
-                        <span v-if="measure.origin === 'engine_suggestion'"> · Mia</span>
-                    </p>
-                </div>
-                <button
-                    v-if="canEditSuggestion"
-                    type="button"
-                    class="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    @click="toggleEdit(measure.id)"
-                >
-                    {{ editingId === measure.id ? 'Fechar' : 'Editar' }}
-                </button>
-                <form class="flex items-center gap-2" @submit.prevent="saveStatus(measure)">
-                    <select v-model="selectedStatus[measure.id]" class="rounded-lg border-slate-300 text-sm" :aria-label="`Status de ${measure.factor_label}`">
-                        <option v-for="(label, value) in statuses" :key="value" :value="value">{{ label }}</option>
-                    </select>
-                    <button type="submit" class="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                        Atualizar status
+        <div v-else class="space-y-4">
+            <article v-for="measure in measures" :key="measure.id">
+                <MeasureCard :measure="measure" :users="[]" :effectiveness-results="effectivenessResults" />
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                    <button
+                        v-if="canEditSuggestion"
+                        type="button"
+                        class="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        @click="toggleEdit(measure.id)"
+                    >
+                        {{ editingId === measure.id ? 'Fechar campos da sugestão' : 'Completar sugestão' }}
                     </button>
-                </form>
-                <div class="w-full text-sm">
-                    <p class="text-xs text-slate-600">
-                        Plano: <span class="font-medium">{{ measure.plan.status_label }}</span>
-                        <template v-if="measure.plan.suggested.responsible"> · Responsável sugerido: {{ measure.plan.suggested.responsible }}</template>
-                        <template v-if="measure.plan.suggested.due_date"> · Prazo sugerido: {{ measure.plan.suggested.due_date }}</template>
-                    </p>
-                    <MeasureSuggestionForm
-                        v-if="editingId === measure.id && canEditSuggestion"
-                        :company-id="companyId"
-                        :survey-id="surveyId"
-                        :measure="measure"
-                        :due-origins="dueOrigins"
-                    />
-                    <p v-else-if="!canEditSuggestion" class="mt-2 text-xs text-slate-500">Campanha publicada: a sugestão não é mais editada pela Talents.</p>
+                    <form class="flex items-center gap-2" @submit.prevent="saveStatus(measure)">
+                        <select v-model="selectedStatus[measure.id]" class="rounded-lg border-slate-300 text-sm" :aria-label="`Status de ${measure.factor_label}`">
+                            <option v-for="(label, value) in statuses" :key="value" :value="value">{{ label }}</option>
+                        </select>
+                        <button type="submit" class="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                            Atualizar status
+                        </button>
+                    </form>
                 </div>
-            </li>
-        </ul>
+                <MeasureSuggestionForm
+                    v-if="editingId === measure.id && canEditSuggestion"
+                    :company-id="companyId"
+                    :survey-id="surveyId"
+                    :measure="measure"
+                    :due-origins="dueOrigins"
+                />
+                <p v-else-if="!canEditSuggestion" class="mt-2 text-xs text-slate-500">Campanha publicada: a sugestão não é mais editada pela Talents.</p>
+            </article>
+        </div>
     </div>
 </template>

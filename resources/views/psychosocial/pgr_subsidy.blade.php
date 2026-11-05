@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
-    <title>Subsídio AEP/PGR - {{ $snapshot['survey']['title'] }}</title>
+    <title>Inventário de Riscos PGR - {{ $snapshot['survey']['title'] }}</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #2a1042; }
         h1 { font-size: 18px; color: #4a2070; margin-bottom: 4px; }
@@ -88,7 +88,7 @@
         </div>
     @endif
 
-    <h1>Subsídio AEP/PGR — riscos psicossociais</h1>
+    <h1>Inventário de Riscos PGR</h1>
     <p class="muted">
         Empresa: {{ $snapshot['company']['name'] }} &mdash; Campanha: {{ $snapshot['survey']['title'] }}
         @if($snapshot['survey']['starts_at'] || $snapshot['survey']['ends_at'])

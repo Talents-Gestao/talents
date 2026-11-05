@@ -209,20 +209,23 @@ class Nr1ShellPageData
      */
     public function plan(Survey $survey, User $user, bool $forTalents): array
     {
-        $scores = collect($this->dashboard->build($survey)['dimensions'] ?? [])->keyBy('title');
+        $dashboard = $this->dashboard->build($survey);
+        $scores = collect($dashboard['dimensions'] ?? [])->keyBy('title');
+        $departmentsByFactor = $this->departmentsByFactor($dashboard);
         $rows = PsychosocialMeasure::query()->where('survey_id', $survey->id)->orderBy('sort_order')->orderBy('id')->get();
 
         $published = $survey->requires_publication && $survey->published_at !== null;
         $canEditSuggestion = $forTalents && ! $published && $user->canAccessAdmin(AdminPermissionModule::Companies, PermissionAction::Edit);
         $canAct = ! $forTalents && $user->canAccess(PermissionModule::PlanosAcao, PermissionAction::Edit);
 
-        $measures = $rows->map(function (PsychosocialMeasure $measure) use ($survey, $scores, $canEditSuggestion, $canAct, $forTalents): array {
+        $measures = $rows->map(function (PsychosocialMeasure $measure) use ($survey, $scores, $departmentsByFactor, $canEditSuggestion, $canAct, $forTalents): array {
             $downloads = $forTalents ? [] : $measure->evidences
                 ->where('kind', PsychosocialMeasureEvidence::KIND_FILE)
                 ->mapWithKeys(fn (PsychosocialMeasureEvidence $evidence) => [$evidence->id => route('client.surveys.measures.evidences.download', [$survey->id, $measure->id, $evidence->id])])
                 ->all();
             $present = PsychosocialMeasurePresenter::present($measure, $downloads);
             $score = $scores->get($measure->factor_label);
+            $departments = $departmentsByFactor[$measure->factor_label] ?? [];
             $next = PsychosocialMeasure::PLAN_TRANSITIONS[$measure->status] ?? [];
             $action = fn (string $name, bool $allowed) => $canAct && $allowed ? route("client.surveys.measures.{$name}", [$survey->id, $measure->id]) : null;
 
@@ -243,6 +246,7 @@ class Nr1ShellPageData
                 'score_label' => $score['score_label'] ?? null,
                 'risk_level' => $score['risk_level'] ?? null,
                 'band_label' => $score['band_label'] ?? null,
+                'departments' => $departments,
                 'timeline' => $this->timeline($measure),
                 'urls' => [
                     'suggestion' => $canEditSuggestion ? route('admin.companies.surveys.measures.suggestion', [$survey->company_id, $survey->id, $measure->id]) : null,
@@ -270,6 +274,41 @@ class Nr1ShellPageData
             'effectivenessResults' => PsychosocialMeasure::EFFECTIVENESS_RESULTS,
             'fullUrl' => $forTalents ? route('admin.companies.surveys.measures.edit', [$survey->company_id, $survey->id]) : null,
         ];
+    }
+
+    /**
+     * Setores em que a dimensão da medida está em atenção, com a faixa daquele recorte.
+     *
+     * @param  array<string, mixed>  $dashboard
+     * @return array<string, list<array{name: string, band_label: ?string, score_label: ?string}>>
+     */
+    private function departmentsByFactor(array $dashboard): array
+    {
+        $groups = [];
+        $push = function (string $name, array $dimension) use (&$groups): void {
+            $title = (string) ($dimension['title'] ?? '');
+            if ($title === '' || ! Nr1BandLabels::isAttention($dimension['score'] ?? '')) {
+                return;
+            }
+            $groups[$title][] = [
+                'name' => $name,
+                'band_label' => $dimension['band_label'] ?? null,
+                'score_label' => $dimension['score_label'] ?? null,
+            ];
+        };
+
+        foreach ($dashboard['sectors'] ?? [] as $sector) {
+            foreach ($sector['dimensions'] ?? [] as $dimension) {
+                $push((string) ($sector['department_name'] ?? 'Setor'), $dimension);
+            }
+        }
+        if (is_array($dashboard['others'] ?? null)) {
+            foreach ($dashboard['others']['dimensions'] ?? [] as $dimension) {
+                $push((string) ($dashboard['others']['name'] ?? 'Outros Setores'), $dimension);
+            }
+        }
+
+        return $groups;
     }
 
     /**

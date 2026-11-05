@@ -43,7 +43,7 @@ class PsychosocialDocumentAdminController extends Controller
         }
 
         return $version->pdf_status === PsychosocialDocumentVersion::PDF_READY
-            ? $this->backToPlan($company, $survey)->with('success', "Subsídio AEP/PGR publicado no painel da empresa (versão {$version->version_number}).")
+            ? $this->backToPlan($company, $survey)->with('success', "Inventário de Riscos PGR publicado no painel da empresa (versão {$version->version_number}).")
             : $this->backToPlan($company, $survey)->with('error', "A versão {$version->version_number} foi registrada, mas o PDF não foi gerado: {$version->pdf_error}");
     }
 
@@ -65,7 +65,7 @@ class PsychosocialDocumentAdminController extends Controller
         }
 
         return $version->pdf_status === PsychosocialDocumentVersion::PDF_READY
-            ? $this->backToPlan($company, $survey)->with('success', "Relatório técnico publicado no painel da empresa (versão {$version->version_number}).")
+            ? $this->backToPlan($company, $survey)->with('success', "Inventário de Riscos Empresa publicado no painel da empresa (versão {$version->version_number}).")
             : $this->backToPlan($company, $survey)->with('error', "A versão {$version->version_number} foi registrada, mas o PDF não foi gerado: {$version->pdf_error}");
     }
 

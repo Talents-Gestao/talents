@@ -52,7 +52,7 @@ class PsychosocialDocumentService
             'view' => 'psychosocial.pgr_subsidy',
             'prefix' => 'SUB',
             'file' => 'subsidio-aep-pgr',
-            'label' => 'Subsídio AEP/PGR',
+            'label' => 'Inventário de Riscos PGR',
         ],
         PsychosocialDocument::TYPE_EVIDENCE_DOSSIER => [
             'builder' => EvidenceDossierSnapshotBuilder::class,
@@ -66,7 +66,7 @@ class PsychosocialDocumentService
             'view' => 'psychosocial.technical_report',
             'prefix' => 'RT',
             'file' => 'relatorio-tecnico-plano-de-acao',
-            'label' => 'Relatório técnico e plano de ação',
+            'label' => 'Inventário de Riscos Empresa',
         ],
     ];
 

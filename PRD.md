@@ -1629,7 +1629,7 @@ Só aparece em campanhas do modelo anterior; na V11 a URL redireciona para Docum
 |----------------|----------|
 | 01 Diagnóstico | na seção Resultados (painel do legado) com «Continuar para o parecer» |
 | Parecer | três seções que abrem e fecham: Parecer técnico (aberta), Plano de ação e Anexos (recolhidos). A publicação fica em seguida: status, o relatório técnico no painel da empresa e o botão que abre o PDF |
-| Documentos liberados | no parecer legado, a publicação é por etapa: relatório técnico + plano de ação e subsídio AEP/PGR. O botão mostra um visto quando a versão está no painel NR-1 da empresa. A Mia só preenche o texto do parecer; «Atualizar arquivos publicados» gera nova versão só dos PDFs que já estão no painel. «Plano com resultados + parecer» fica inativo. Resumo executivo inativo na UI; dossiê fora desta tela (8.11.4) |
+| Documentos liberados | no parecer legado, a publicação é por etapa: Inventário de Riscos Empresa e Inventário de Riscos PGR. O botão mostra um visto quando a versão está no painel NR-1 da empresa. A Mia só preenche o texto do parecer; «Atualizar arquivos publicados» gera nova versão só dos PDFs que já estão no painel. «Plano com resultados + parecer» fica inativo. Resumo executivo inativo na UI; dossiê fora desta tela (8.11.4) |
 | Empresa | parecer e plano publicados, PDFs e anexos |
 | Plano de ação | «Da análise à execução» lista as medidas geradas (`psychosocial_measures`) para a Talents e, depois da publicação do parecer, para a empresa |
 
@@ -1694,7 +1694,7 @@ Origens (`Nr1Opportunity`): Treinamento, Solução sugerida, Solução solicitad
 
 #### 8.10.3 Medidas — `/admin/companies/{c}/surveys/{s}/medidas`
 
-**Página:** `Admin/Measures/Edit` («Nova medida» e «Medidas do plano de ação»). Cada medida gerada pela Mia tem o botão «Editar» para ajustar a sugestão enquanto a campanha não está publicada. O texto da Mia não lista as medidas. No card do parecer, o plano de ação fica abaixo do texto e antes dos anexos: dá para incluir medida, editar a sugestão, mudar o status e pedir nova geração da Mia, sem sair para o cadastro de medidas. Ao encerrar a pesquisa (`status` fechado ou `ends_at` passado), o agendamento `nr1:generate-action-measures` (de hora em hora) enfileira **uma** geração por IA (`action_measures_generated_at`); o botão «Atualizar medidas» nesta página dispara outra chamada e substitui só sugestões ainda «A aprovar». O texto da Mia no parecer descreve o cenário com mais detalhe e linguagem próxima de quem lê, sem plano de ação nem lista de medidas. A geração do parecer usa pelo menos 4.000 tokens de resposta.
+**Página:** `Admin/Measures/Edit` («Nova medida» e «Medidas do plano de ação»). Cada medida gerada pela Mia tem o botão «Editar» para ajustar a sugestão enquanto a campanha não está publicada. O texto da Mia não lista as medidas. No card do parecer, cada medida usa a mesma visualização do menu Plano de Ação (índice, faixa, linha do tempo, responsável e prazo sugeridos) e lista os setores em que aquela dimensão está em atenção. Dá para incluir medida, completar a sugestão, mudar o status e pedir nova geração da Mia, sem sair para o cadastro de medidas. Ao encerrar a pesquisa (`status` fechado ou `ends_at` passado), o agendamento `nr1:generate-action-measures` (de hora em hora) enfileira **uma** geração por IA (`action_measures_generated_at`); o botão «Atualizar medidas» nesta página dispara outra chamada e substitui só sugestões ainda «A aprovar». O texto da Mia no parecer descreve o cenário com mais detalhe e linguagem próxima de quem lê, sem plano de ação nem lista de medidas. A geração do parecer usa pelo menos 4.000 tokens de resposta.
 
 #### 8.10.4 Resultados psicossociais — `/admin/companies/{c}/surveys/{s}/resultados-psicossociais`
 
@@ -1711,8 +1711,8 @@ Origens (`Nr1Opportunity`): Treinamento, Solução sugerida, Solução solicitad
 | Tipo | Nome | Modelo | Uso |
 |------|------|--------|-----|
 | `executive_brief` | Resumo executivo / Relatório executivo | V11 e legado | Campanha, adesão, panorama das 7 dimensões, pontos fortes, atenções, ações com responsável e prazo; 1–2 páginas |
-| `technical_report` | Relatório técnico + plano de ação | V11 | Identificação, metodologia (versão, 39 itens, 7 dimensões, frequências, polaridade, regras), elegíveis e base, resultados, grupos agregados, pontos positivos, prioridades, plano completo e revisão documental; 3–5 páginas de síntese |
-| `pgr_subsidy` | Subsídio AEP/PGR | legado | Panorama + prioridades (dimensões/setores em atenção ou grave) com decisão solicitada ao RT; cadastro técnico só imprime o preenchido e lista pendências; gravidade, probabilidade, nível de risco do inventário e assinatura ficam em branco para o responsável técnico |
+| `technical_report` | Inventário de Riscos Empresa | V11 | Identificação, metodologia (versão, 39 itens, 7 dimensões, frequências, polaridade, regras), elegíveis e base, resultados, grupos agregados, pontos positivos, prioridades, plano completo e revisão documental; 3–5 páginas de síntese |
+| `pgr_subsidy` | Inventário de Riscos PGR | legado | Panorama + prioridades (dimensões/setores em atenção ou grave) com decisão solicitada ao RT; cadastro técnico só imprime o preenchido e lista pendências; gravidade, probabilidade, nível de risco do inventário e assinatura ficam em branco para o responsável técnico |
 | `evidence_dossier` | Dossiê de evidências | legado | Anexos (AEP, observação, inventário, outros) e lista congelada; bloqueado com polaridade pendente |
 
 #### 8.11.2 Versões, snapshot e hash
@@ -1753,7 +1753,7 @@ Ações do revisor (em `/revisao`): comentar, aprovar, solicitar alteração (te
 | Ação | Rota (admin) | Regra |
 |------|--------------|-------|
 | Prévia do resumo (modal) | `GET …/resumo-executivo/previa` | PDF ao vivo; rotas mantidas, mas o botão do resumo está **inativo** no parecer legado |
-| Prévia / publicar relatório técnico (legado) | `GET …/documentos/technical_report/previa` · `POST …/relatorio-tecnico/liberar` · `POST …/relatorio-tecnico/validar` | substitui o resumo no parecer legado; publicar envia a versão ao painel da empresa e o botão ganha o visto; o parecer só publica com esse PDF pronto. O PDF do relatório técnico e do subsídio AEP/PGR leva o logo da Talents no cabeçalho; versão já gravada só muda ao substituir a publicação |
+| Prévia / publicar Inventário de Riscos Empresa (legado) | `GET …/documentos/technical_report/previa` · `POST …/relatorio-tecnico/liberar` · `POST …/relatorio-tecnico/validar` | substitui o resumo no parecer legado; publicar envia a versão ao painel da empresa e o botão ganha o visto; o parecer só publica com esse PDF pronto. O PDF do Inventário de Riscos Empresa e do Inventário de Riscos PGR leva o logo da Talents no cabeçalho; versão já gravada só muda ao substituir a publicação |
 | Prévia do documento | `GET …/documentos/{type}/previa` | mesma regra para subsídio AEP/PGR e demais tipos do modal |
 | Liberar resumo executivo | `POST …/resumo-executivo/liberar` | congela versão (V11 / API); UI do parecer legado não usa mais este botão |
 | Liberar subsídio AEP/PGR | `POST …/subsidio-pgr/liberar` | bloqueado com auditoria pendente (ex.: instrumento HSE-IT) ou polaridade não homologada |

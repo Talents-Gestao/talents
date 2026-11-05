@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
-    <title>Relatório técnico e plano de ação - {{ $snapshot['survey']['title'] }}</title>
+    <title>Inventário de Riscos Empresa - {{ $snapshot['survey']['title'] }}</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 10.5px; color: #2a1042; }
         h1 { font-size: 18px; color: #4a2070; margin-bottom: 4px; }
@@ -39,7 +39,7 @@
         </div>
     @endif
 
-    <h1>Relatório técnico e plano de ação</h1>
+    <h1>Inventário de Riscos Empresa</h1>
     <p class="muted">Fatores psicossociais relacionados ao trabalho · Pesquisa Talents NR-1</p>
     <p>
         <strong>Organização:</strong> {{ $orGap($registration['legal_name_snapshot'] ?? $snapshot['company']['name']) }}

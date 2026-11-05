@@ -55,6 +55,7 @@ const props = defineProps({
             statuses: {},
             canEditSuggestion: true,
             dueOrigins: {},
+            effectivenessResults: {},
             measuresAi: { generated_at: null, pending: false, refresh_url: null },
         }),
     },
@@ -711,7 +712,7 @@ defineExpose({
                         <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.3a1 1 0 0 1-1.42.002l-3.25-3.25a1 1 0 1 1 1.414-1.414l2.54 2.54 6.542-6.586a1 1 0 0 1 1.418-.006Z" clip-rule="evenodd" />
                     </svg>
                     <span class="sr-only" v-if="technicalReport?.ready">Publicado no painel NR-1 da empresa. </span>
-                    Relatório técnico + plano de ação
+                    Inventário de Riscos Empresa
                 </SecondaryButton>
                 <SecondaryButton type="button" @click="openPgrSubsidyModal">
                     <svg
@@ -724,7 +725,7 @@ defineExpose({
                         <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.3a1 1 0 0 1-1.42.002l-3.25-3.25a1 1 0 1 1 1.414-1.414l2.54 2.54 6.542-6.586a1 1 0 0 1 1.418-.006Z" clip-rule="evenodd" />
                     </svg>
                     <span class="sr-only" v-if="pgrSubsidy?.ready">Publicado no painel NR-1 da empresa. </span>
-                    Subsídio AEP/PGR
+                    Inventário de Riscos PGR
                 </SecondaryButton>
                 <SecondaryButton type="button" disabled title="Inativo por enquanto">
                     Plano com resultados + parecer
@@ -793,6 +794,7 @@ defineExpose({
                     :statuses="actionMeasures.statuses"
                     :can-edit-suggestion="actionMeasures.canEditSuggestion"
                     :due-origins="actionMeasures.dueOrigins"
+                    :effectiveness-results="actionMeasures.effectivenessResults"
                     :measures-ai="actionMeasures.measuresAi"
                 />
                 </CompanyShowAccordion>
@@ -936,17 +938,17 @@ defineExpose({
             <span v-if="plan?.admin_published_at"> · última em {{ formatDateTime(plan.admin_published_at) }}</span>
         </p>
         <p class="mt-3 text-sm text-slate-700">
-            Relatório técnico + plano de ação:
+            Inventário de Riscos Empresa:
             <strong>{{ technicalReportPublished ? 'publicado no painel da empresa' : 'ainda não publicado' }}</strong>.
             <button type="button" class="font-medium text-talents-800 underline" @click="openTechnicalReportModal">
-                Abrir relatório técnico
+                Abrir inventário
             </button>
         </p>
         <p
             v-if="!publication.uses_review_flow && !canPublishParecer"
             class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
         >
-            Publique o relatório técnico e plano de ação antes de publicar o parecer.
+            Publique o Inventário de Riscos Empresa antes de publicar o parecer.
         </p>
         <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
             <SecondaryButton v-if="!shellMode" type="button" @click="selectStep('results')">
@@ -1041,7 +1043,7 @@ defineExpose({
 
     <Nr1DocumentPreviewModal
         :show="showTechnicalReportModal"
-        title="Relatório técnico + plano de ação"
+        title="Inventário de Riscos Empresa"
         description="O PDF abre na hora. Publicar envia esta versão ao painel NR-1 da empresa. Depois você pode editar e substituir."
         :document="technicalReport"
         :download-url="technicalReportDownloadUrl"
@@ -1055,7 +1057,7 @@ defineExpose({
 
     <Nr1DocumentPreviewModal
         :show="showPgrSubsidyModal"
-        title="Subsídio AEP/PGR"
+        title="Inventário de Riscos PGR"
         description="O PDF abre na hora. Complete o cadastro técnico para preencher Unidade, AEP e responsável. Publicar envia esta versão ao painel NR-1 da empresa. Depois você pode editar e substituir."
         :document="pgrSubsidy"
         :download-url="pgrSubsidyDownloadUrl"

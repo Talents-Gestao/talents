@@ -25,8 +25,8 @@ const laudo = computed(() => props.documents.laudo ?? null);
                 <div class="n1-eyebrow">Parecer e publicação</div>
                 <h1>Parecer técnico e publicação.</h1>
                 <p>
-                    Parecer técnico com a Mia, relatório técnico + plano de ação e subsídio AEP/PGR. A publicação do
-                    parecer exige o relatório técnico validado pela Talents.
+                    Parecer técnico com a Mia, Inventário de Riscos Empresa e Inventário de Riscos PGR. A publicação do
+                    parecer exige o Inventário de Riscos Empresa no painel da empresa.
                 </p>
             </div>
             <LegacyNotice :text="notice" />
