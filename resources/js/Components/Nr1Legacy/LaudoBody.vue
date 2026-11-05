@@ -429,6 +429,26 @@ const requestTechnicalOpinionAi = () => {
     router.post(props.technicalOpinionGeneratePostUrl);
 };
 
+const publishedFiles = computed(() => props.technicalReport?.ready === true || props.pgrSubsidy?.ready === true);
+const updatingFiles = ref(false);
+
+const updatePublishedFiles = () => {
+    if (!publishedFiles.value || updatingFiles.value) {
+        return;
+    }
+    updatingFiles.value = true;
+    router.post(
+        route('admin.companies.surveys.documents.replace-published', [props.company.id, props.survey.id]),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                updatingFiles.value = false;
+            },
+        },
+    );
+};
+
 let technicalPollTimer = null;
 
 const startTechnicalPollIfPending = () => {
@@ -720,8 +740,16 @@ defineExpose({
                 >
                 <div class="flex flex-wrap items-center justify-end gap-2">
                     <InfoTooltip
-                        text="A Mia gera um rascunho com base nos resultados da campanha. Revise antes de publicar."
+                        text="A Mia só preenche este texto. Os PDFs já publicados no painel da empresa não mudam até você atualizar os arquivos."
                     />
+                    <SecondaryButton
+                        v-if="publishedFiles"
+                        type="button"
+                        :disabled="updatingFiles || technicalOpinionAiPending"
+                        @click="updatePublishedFiles"
+                    >
+                        {{ updatingFiles ? 'Atualizando…' : 'Atualizar arquivos publicados' }}
+                    </SecondaryButton>
                     <PrimaryButton
                         type="button"
                         :disabled="!aiEnabled || technicalOpinionAiPending"
@@ -736,7 +764,7 @@ defineExpose({
                     <Link :href="route('admin.settings.edit')" class="font-medium text-talents-800 underline">Configurações</Link>.
                 </p>
                 <p v-else-if="technicalOpinionAiPending" class="text-sm text-sky-800">
-                    Geração em andamento — o texto será aplicado automaticamente nesta área.
+                    Geração em andamento — o texto entra nesta área. Os PDFs publicados só mudam se você atualizar os arquivos.
                 </p>
 
                 <div

@@ -18,6 +18,8 @@
         thead th { width: auto; }
         .disclaimer { color: #555; font-size: 9px; }
         .footer { margin-top: 24px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 9px; color: #555; }
+        .header { text-align: center; margin-bottom: 12px; }
+        .header img { max-height: 48px; width: auto; }
         ul.compact { margin: 4px 0 0 16px; padding: 0; }
         ul.compact li { margin: 2px 0; }
     </style>
@@ -79,6 +81,12 @@
         $priorities = $pgr['priorities'] ?? [];
         $sectorPriorities = $pgr['sector_priorities'] ?? [];
     @endphp
+
+    @if(!empty($logoBase64))
+        <div class="header">
+            <img src="{{ $logoBase64 }}" alt="Talents">
+        </div>
+    @endif
 
     <h1>Subsídio AEP/PGR — riscos psicossociais</h1>
     <p class="muted">

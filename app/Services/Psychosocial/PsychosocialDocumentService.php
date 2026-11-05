@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\ExecutiveBriefSnapshotBuilder;
 use App\Services\ReportGenerator;
 use App\Support\CanonicalJson;
+use App\Support\TalentsLogoDataUri;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -429,6 +430,7 @@ class PsychosocialDocumentService
         $pdf = Pdf::loadView($config['view'], [
             'snapshot' => $snapshot,
             'validation' => null,
+            'logoBase64' => TalentsLogoDataUri::get(),
             'meta' => [
                 'version_number' => null,
                 'public_identifier' => 'prévia',
@@ -537,6 +539,7 @@ class PsychosocialDocumentService
             $pdf = Pdf::loadView($this->config($type)['view'], [
                 'snapshot' => $version->snapshot,
                 'validation' => $version->validation_block,
+                'logoBase64' => TalentsLogoDataUri::get(),
                 // Identificação da versão no rodapé; não entra no hash do conteúdo (que é só o snapshot).
                 'meta' => [
                     'version_number' => $version->version_number,

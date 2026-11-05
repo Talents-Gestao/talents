@@ -70,6 +70,58 @@ class PsychosocialDocumentAdminController extends Controller
     }
 
     /**
+     * Nova versão só dos documentos que já estão no painel da empresa.
+     * A Mia não dispara isto: a Talents pede depois de revisar o parecer.
+     */
+    public function replacePublished(Company $company, Survey $survey): RedirectResponse
+    {
+        $this->assertSurveyBelongsToCompany($company, $survey);
+
+        if ($survey->usesReviewFlow()) {
+            return $this->backToPlan($company, $survey)->with('error', 'Nesta campanha os documentos seguem o fluxo de revisão, em Documentos.');
+        }
+
+        $updated = [];
+        $errors = [];
+
+        foreach ([PsychosocialDocument::TYPE_TECHNICAL_REPORT, PsychosocialDocument::TYPE_PGR_SUBSIDY] as $type) {
+            $current = $this->documents->currentVersion($survey, $type);
+            if ($current === null || $current->pdf_status !== PsychosocialDocumentVersion::PDF_READY) {
+                continue;
+            }
+
+            try {
+                $version = $this->documents->release($survey, $type);
+            } catch (PsychosocialDocumentException $exception) {
+                $errors[] = $exception->getMessage();
+
+                continue;
+            }
+
+            if ($version->pdf_status === PsychosocialDocumentVersion::PDF_READY) {
+                $updated[] = PsychosocialDocumentService::label($type).' (versão '.$version->version_number.')';
+            } else {
+                $errors[] = PsychosocialDocumentService::label($type).': '.$version->pdf_error;
+            }
+        }
+
+        if ($updated === [] && $errors === []) {
+            return $this->backToPlan($company, $survey)->with('error', 'Nenhum arquivo publicado para atualizar.');
+        }
+
+        if ($updated === []) {
+            return $this->backToPlan($company, $survey)->with('error', implode(' ', $errors));
+        }
+
+        $message = 'Arquivos atualizados no painel da empresa: '.implode(', ', $updated).'.';
+        if ($errors !== []) {
+            $message .= ' '.implode(' ', $errors);
+        }
+
+        return $this->backToPlan($company, $survey)->with('success', $message);
+    }
+
+    /**
      * Validação in-system pela Talents no modal do parecer legado.
      */
     public function validateTechnicalReportInSystem(Request $request, Company $company, Survey $survey): RedirectResponse

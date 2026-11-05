@@ -1629,7 +1629,7 @@ Só aparece em campanhas do modelo anterior; na V11 a URL redireciona para Docum
 |----------------|----------|
 | 01 Diagnóstico | na seção Resultados (painel do legado) com «Continuar para o parecer» |
 | Parecer | três seções que abrem e fecham: Parecer técnico (aberta), Plano de ação e Anexos (recolhidos). A publicação fica em seguida: status, o relatório técnico no painel da empresa e o botão que abre o PDF |
-| Documentos liberados | no parecer legado, a publicação é por etapa: relatório técnico + plano de ação e subsídio AEP/PGR. O botão mostra um visto quando a versão está no painel NR-1 da empresa. Publicar de novo substitui a versão. «Plano com resultados + parecer» fica inativo. Resumo executivo inativo na UI; dossiê fora desta tela (8.11.4) |
+| Documentos liberados | no parecer legado, a publicação é por etapa: relatório técnico + plano de ação e subsídio AEP/PGR. O botão mostra um visto quando a versão está no painel NR-1 da empresa. A Mia só preenche o texto do parecer; «Atualizar arquivos publicados» gera nova versão só dos PDFs que já estão no painel. «Plano com resultados + parecer» fica inativo. Resumo executivo inativo na UI; dossiê fora desta tela (8.11.4) |
 | Empresa | parecer e plano publicados, PDFs e anexos |
 | Plano de ação | «Da análise à execução» lista as medidas geradas (`psychosocial_measures`) para a Talents e, depois da publicação do parecer, para a empresa |
 
@@ -1753,7 +1753,7 @@ Ações do revisor (em `/revisao`): comentar, aprovar, solicitar alteração (te
 | Ação | Rota (admin) | Regra |
 |------|--------------|-------|
 | Prévia do resumo (modal) | `GET …/resumo-executivo/previa` | PDF ao vivo; rotas mantidas, mas o botão do resumo está **inativo** no parecer legado |
-| Prévia / publicar relatório técnico (legado) | `GET …/documentos/technical_report/previa` · `POST …/relatorio-tecnico/liberar` · `POST …/relatorio-tecnico/validar` | substitui o resumo no parecer legado; publicar envia a versão ao painel da empresa e o botão ganha o visto; o parecer só publica com esse PDF pronto |
+| Prévia / publicar relatório técnico (legado) | `GET …/documentos/technical_report/previa` · `POST …/relatorio-tecnico/liberar` · `POST …/relatorio-tecnico/validar` | substitui o resumo no parecer legado; publicar envia a versão ao painel da empresa e o botão ganha o visto; o parecer só publica com esse PDF pronto. O PDF do relatório técnico e do subsídio AEP/PGR leva o logo da Talents no cabeçalho; versão já gravada só muda ao substituir a publicação |
 | Prévia do documento | `GET …/documentos/{type}/previa` | mesma regra para subsídio AEP/PGR e demais tipos do modal |
 | Liberar resumo executivo | `POST …/resumo-executivo/liberar` | congela versão (V11 / API); UI do parecer legado não usa mais este botão |
 | Liberar subsídio AEP/PGR | `POST …/subsidio-pgr/liberar` | bloqueado com auditoria pendente (ex.: instrumento HSE-IT) ou polaridade não homologada |

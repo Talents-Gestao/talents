@@ -18,6 +18,8 @@
         td.num { text-align: right; white-space: nowrap; }
         .small td, .small th { font-size: 8.5px; padding: 3px; }
         .footer { margin-top: 22px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 9px; color: #555; }
+        .header { text-align: center; margin-bottom: 12px; }
+        .header img { max-height: 48px; width: auto; }
         .annex { page-break-before: always; }
     </style>
 </head>
@@ -30,6 +32,12 @@
         $meta = $meta ?? [];
         $labels = ['Nunca', 'Raramente', 'Às vezes', 'Frequentemente', 'Sempre'];
     @endphp
+
+    @if(!empty($logoBase64))
+        <div class="header">
+            <img src="{{ $logoBase64 }}" alt="Talents">
+        </div>
+    @endif
 
     <h1>Relatório técnico e plano de ação</h1>
     <p class="muted">Fatores psicossociais relacionados ao trabalho · Pesquisa Talents NR-1</p>
