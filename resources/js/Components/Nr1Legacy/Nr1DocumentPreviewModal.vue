@@ -21,6 +21,8 @@ const props = defineProps({
     registrationUrl: { type: String, default: null },
     /** Chave em sessionStorage para reabrir o modal após o redirect da liberação. */
     persistKey: { type: String, default: null },
+    /** Publicação direta no painel NR-1 da empresa, sem a etapa de validação. */
+    publishMode: { type: Boolean, default: false },
     declarationText: {
         type: String,
         default:
@@ -44,7 +46,18 @@ const hasVersion = computed(() => Boolean(props.document?.version_number));
 
 const versionNumber = computed(() => props.document?.version_number ?? null);
 
+const publishedToCompany = computed(() => props.publishMode && props.document?.ready === true);
+
 const statusLabel = computed(() => {
+    if (props.publishMode) {
+        if (!hasVersion.value) {
+            return 'Ainda não publicado';
+        }
+        if (publishedToCompany.value) {
+            return `Publicado no painel da empresa · versão ${versionNumber.value}`;
+        }
+        return `Publicação em preparação · versão ${versionNumber.value}`;
+    }
     if (!hasVersion.value) {
         return 'Prévia ao vivo';
     }
@@ -58,11 +71,11 @@ const statusLabel = computed(() => {
 });
 
 const statusToneClass = computed(() => {
+    if (publishedToCompany.value || props.document?.validated) {
+        return 'bg-emerald-50 text-emerald-900 ring-emerald-200';
+    }
     if (!hasVersion.value) {
         return 'bg-slate-100 text-slate-800 ring-slate-200';
-    }
-    if (props.document?.validated) {
-        return 'bg-emerald-50 text-emerald-900 ring-emerald-200';
     }
     return 'bg-sky-50 text-sky-950 ring-sky-200';
 });
@@ -73,7 +86,10 @@ const canRelease = computed(() => Boolean(props.releaseUrl));
 
 const releaseLabel = computed(() => {
     if (releasing.value) {
-        return 'Liberando…';
+        return props.publishMode ? 'Publicando…' : 'Liberando…';
+    }
+    if (props.publishMode) {
+        return publishedToCompany.value ? 'Substituir publicação' : 'Publicar para a empresa';
     }
     return hasVersion.value ? 'Liberar nova versão' : 'Liberar para validação';
 });
@@ -253,7 +269,7 @@ const validate = () => {
                             }}
                         </dd>
                     </div>
-                    <div class="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2">
+                    <div v-if="!publishMode" class="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2">
                         <dt class="text-[11px] font-medium uppercase tracking-wide text-slate-500">Validação</dt>
                         <dd class="mt-0.5 text-sm font-semibold text-slate-900">
                             {{
@@ -265,6 +281,12 @@ const validate = () => {
                                         ? 'Pendente'
                                         : '—'
                             }}
+                        </dd>
+                    </div>
+                    <div v-else class="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2">
+                        <dt class="text-[11px] font-medium uppercase tracking-wide text-slate-500">Painel da empresa</dt>
+                        <dd class="mt-0.5 text-sm font-semibold text-slate-900">
+                            {{ publishedToCompany ? 'Publicado' : 'Não publicado' }}
                         </dd>
                     </div>
                 </dl>
@@ -292,7 +314,7 @@ const validate = () => {
                 />
 
                 <div
-                    v-if="canValidate && validateUrl && hasVersion"
+                    v-if="!publishMode && canValidate && validateUrl && hasVersion"
                     class="mt-4 rounded-xl border border-talents-200 bg-talents-50/60 p-4"
                 >
                     <p class="text-sm font-semibold text-talents-950">Validar (Talents)</p>
@@ -329,10 +351,10 @@ const validate = () => {
                     :href="downloadUrl"
                     class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
-                    Baixar PDF liberado
+                    {{ publishMode ? 'Baixar PDF publicado' : 'Baixar PDF liberado' }}
                 </a>
                 <SecondaryButton
-                    v-if="canRelease"
+                    v-if="canRelease && !publishMode"
                     type="button"
                     :disabled="releasing"
                     @click="release"
@@ -340,7 +362,15 @@ const validate = () => {
                     {{ releaseLabel }}
                 </SecondaryButton>
                 <PrimaryButton
-                    v-if="canValidate && validateUrl && hasVersion"
+                    v-if="publishMode && canRelease"
+                    type="button"
+                    :disabled="releasing"
+                    @click="release"
+                >
+                    {{ releaseLabel }}
+                </PrimaryButton>
+                <PrimaryButton
+                    v-if="!publishMode && canValidate && validateUrl && hasVersion"
                     type="button"
                     :disabled="!declarationAccepted || validateForm.processing"
                     @click="validate"

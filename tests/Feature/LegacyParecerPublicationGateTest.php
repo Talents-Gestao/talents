@@ -120,7 +120,7 @@ class LegacyParecerPublicationGateTest extends TestCase
         );
     }
 
-    public function test_publishing_parecer_with_released_but_unvalidated_technical_report_is_rejected(): void
+    public function test_publishing_parecer_with_technical_report_on_the_company_panel_succeeds(): void
     {
         $campaign = $this->seedLegacyCampaign();
 
@@ -131,19 +131,26 @@ class LegacyParecerPublicationGateTest extends TestCase
             ]))
             ->assertRedirect();
 
-        $this->assertSame(
-            PsychosocialDocumentVersion::KIND_RELEASED,
-            PsychosocialDocument::query()->sole()->currentVersion->kind
-        );
+        $version = PsychosocialDocument::query()->sole()->currentVersion;
+        $this->assertSame(PsychosocialDocumentVersion::KIND_RELEASED, $version->kind);
+        $this->assertSame(PsychosocialDocumentVersion::PDF_READY, $version->pdf_status);
 
         $this->actingAs($campaign->admin)
             ->put(route('admin.companies.surveys.action-plan.update', [
                 $campaign->fx->company->id,
                 $campaign->fx->survey->id,
             ]), [
-                'technical_opinion' => '<p>Parecer com relatório só liberado.</p>',
+                'technical_opinion' => '<p>Parecer com relatório publicado no painel.</p>',
             ])
-            ->assertSessionHasErrors('technical_opinion');
+            ->assertRedirect(route('nr1.parecer', [
+                'empresa' => $campaign->fx->company->id,
+                'campanha' => $campaign->fx->survey->id,
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertNotNull(
+            ActionPlan::query()->where('survey_id', $campaign->fx->survey->id)->value('admin_published_at')
+        );
     }
 
     public function test_publishing_parecer_with_validated_technical_report_succeeds(): void

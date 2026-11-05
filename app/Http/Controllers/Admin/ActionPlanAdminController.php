@@ -636,7 +636,7 @@ class ActionPlanAdminController extends Controller
     }
 
     /**
-     * No modelo anterior, publicar o parecer exige relatório técnico liberado e validado pela Talents.
+     * No modelo anterior, publicar o parecer exige o relatório técnico já no painel da empresa.
      * (O resumo executivo ficou inativo na UI do parecer legado.)
      */
     private function assertLegacyTechnicalReportValidatedForPublish(Survey $survey): void
@@ -646,12 +646,12 @@ class ActionPlanAdminController extends Controller
             PsychosocialDocument::TYPE_TECHNICAL_REPORT
         );
 
-        if ($version !== null && $version->kind === PsychosocialDocumentVersion::KIND_VALIDATED) {
+        if ($version !== null && $version->pdf_status === PsychosocialDocumentVersion::PDF_READY) {
             return;
         }
 
         throw ValidationException::withMessages([
-            'technical_opinion' => 'Para publicar o parecer, libere e valide o relatório técnico e plano de ação nesta campanha.',
+            'technical_opinion' => 'Para publicar o parecer, publique o relatório técnico e plano de ação nesta campanha.',
         ]);
     }
 }
