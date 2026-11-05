@@ -11,9 +11,11 @@ use App\Models\Nr1Opportunity;
 use App\Models\SurveyResult;
 use App\Models\SurveyServiceSuggestion;
 use App\Models\User;
+use App\Jobs\GenerateServiceSuggestionsJob;
 use App\Services\ServiceSuggestionsGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\CreatesSurveyFixtures;
 use Tests\TestCase;
@@ -32,6 +34,29 @@ class ServiceSuggestionsGenerationTest extends TestCase
 
         $this->assertCount(1, $rows);
         $this->assertSame('Diagnóstico', $rows[0]['product_name']);
+    }
+
+    public function test_closing_the_survey_queues_one_generation(): void
+    {
+        Queue::fake();
+        $fx = $this->createSurveyFixture();
+        SurveyResult::query()->create([
+            'survey_id' => $fx->survey->id,
+            'survey_template_section_id' => null,
+            'department_id' => null,
+            'average_score' => '3.400',
+            'risk_level' => 'yellow',
+            'respondent_count' => 12,
+        ]);
+
+        $fx->survey->update(['title' => 'Ainda ativa']);
+        Queue::assertNothingPushed();
+
+        $fx->survey->update(['status' => 'closed']);
+        Queue::assertPushed(GenerateServiceSuggestionsJob::class, 1);
+
+        $fx->survey->update(['title' => 'Encerrada']);
+        Queue::assertPushed(GenerateServiceSuggestionsJob::class, 1);
     }
 
     public function test_generation_stays_pending_until_talents_releases_it_to_the_company(): void

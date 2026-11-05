@@ -37,11 +37,15 @@ class Nr1SolutionService
      */
     public function recommendations(Survey $survey, bool $forCompany): array
     {
-        if (! SurveyPublicationGate::allows($survey) || ($survey->requires_publication && $survey->published_at === null)) {
+        if ($survey->usesReviewFlow()) {
+            if (! SurveyPublicationGate::allows($survey) || ($survey->requires_publication && $survey->published_at === null)) {
+                return [];
+            }
+        } elseif ($forCompany && ! SurveyPublicationGate::isPublished($survey)) {
             return [];
         }
 
-        $attention = collect($this->dashboard->build($survey)['attention'])->keyBy('title');
+        $attention = $this->attentionByFactor($survey);
         if ($attention->isEmpty()) {
             return [];
         }
@@ -158,9 +162,6 @@ class Nr1SolutionService
      */
     public function requestConversation(Survey $survey, User $requester, int $matchId, ?string $note): Nr1Opportunity
     {
-        if (! $survey->usesReviewFlow()) {
-            throw new Nr1CampaignException('As soluções valem para campanhas NR-1 V11.');
-        }
         if ((int) $requester->company_id !== (int) $survey->company_id || $requester->isSuperAdmin() || $requester->isOwner()) {
             throw new Nr1CampaignException('Só a empresa da campanha solicita conversa.');
         }
@@ -219,6 +220,44 @@ class Nr1SolutionService
         $this->applyDefaultOwner($opportunity, $matchId);
 
         return $opportunity;
+    }
+
+    /**
+     * No modelo anterior, o nome da seção (HSE) entra na regra da dimensão correspondente.
+     *
+     * @return \Illuminate\Support\Collection<string, array<string, mixed>>
+     */
+    private function attentionByFactor(Survey $survey): \Illuminate\Support\Collection
+    {
+        $attention = collect($this->dashboard->build($survey)['attention']);
+        if ($survey->usesReviewFlow()) {
+            return $attention->keyBy('title');
+        }
+
+        $legacy = [
+            'demandas' => 'Demandas e Sobrecarga',
+            'controle' => 'Percepção Organizacional',
+            'apoio da gestão' => 'Liderança e Gestão',
+            'apoio da gestao' => 'Liderança e Gestão',
+            'apoio dos colegas' => 'Relacionamentos e Clima',
+            'papel e função' => 'Percepção Organizacional',
+            'papel e funcao' => 'Percepção Organizacional',
+            'relacionamentos' => 'Relacionamentos e Clima',
+            'mudança' => 'Percepção Organizacional',
+            'mudanca' => 'Percepção Organizacional',
+        ];
+
+        $grouped = collect();
+        foreach ($attention as $dimension) {
+            $title = (string) ($dimension['title'] ?? '');
+            $factor = $legacy[mb_strtolower($title)] ?? $title;
+            $current = $grouped->get($factor);
+            if ($current === null || (float) ($dimension['score'] ?? 0) > (float) ($current['score'] ?? 0)) {
+                $grouped->put($factor, $dimension);
+            }
+        }
+
+        return $grouped;
     }
 
     private function applyDefaultOwner(Nr1Opportunity $opportunity, int $matchId): void

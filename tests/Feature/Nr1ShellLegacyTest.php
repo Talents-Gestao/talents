@@ -24,7 +24,7 @@ use Tests\TestCase;
 
 /**
  * Etapa L: campanhas do modelo anterior (sem fluxo de revisão) dentro do shell NR-1. O shell reaproveita as props, o
- * acesso e o fluxo Diagnóstico/Parecer/Publicar das telas antigas, que seguem intactas por URL direta.
+ * acesso e o fluxo Diagnóstico/Parecer das telas antigas, que seguem intactas por URL direta. A publicação fica no parecer.
  */
 class Nr1ShellLegacyTest extends TestCase
 {
@@ -109,6 +109,9 @@ class Nr1ShellLegacyTest extends TestCase
             'status' => PsychosocialMeasure::STATUS_TO_APPROVE,
         ]);
 
+        $this->actingAs($c->owner)->get(route('nr1.parecer', $q))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('section.legacy.documents.laudo.actionMeasures.measures.0.measure_description', 'Organizar a carga da equipe do setor.'));
+
         $this->actingAs($c->owner)->get(route('nr1.plano-de-acao', $q))->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('section.legacy.plan.locked', false)
             ->where('section.legacy.plan.action.measures.0.measure_description', 'Organizar a carga da equipe do setor.')
@@ -129,6 +132,20 @@ class Nr1ShellLegacyTest extends TestCase
             ->where('section.legacy.plan.action.measures.0.measure_description', 'Organizar a carga da equipe do setor.')
             ->where('section.legacy.plan.action.fullUrl', null)
             ->where('section.legacy.plan.action.measures.0.urls.suggestion', null));
+    }
+
+    public function test_legacy_recommendations_follow_the_previous_questionnaire_sections(): void
+    {
+        $c = $this->legacy();
+        $c->survey->template->sections()->first()->update(['title' => 'Demandas']);
+
+        $this->actingAs($c->owner)->get(route('nr1.solucoes', [
+            'empresa' => $c->company->id,
+            'campanha' => $c->survey->id,
+        ]))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('section.solutions.legacy', true)
+            ->where('section.solutions.recommendations.0.factor', 'Demandas e Sobrecarga')
+            ->where('section.solutions.recommendations.0.service_name', 'Diagnóstico Empresarial e Contratação de Talentos'));
     }
 
     public function test_the_company_sees_the_legacy_results_and_the_plan_only_as_the_old_pages_do(): void

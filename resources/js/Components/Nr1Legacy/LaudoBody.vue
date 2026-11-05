@@ -1,5 +1,6 @@
 <script setup>
 import InfoTooltip from '@/Components/InfoTooltip.vue';
+import MeasureCard from '@/Components/Nr1Shell/MeasureCard.vue';
 import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
 import Nr1DocumentPreviewModal from '@/Components/Nr1Legacy/Nr1DocumentPreviewModal.vue';
@@ -46,6 +47,10 @@ const props = defineProps({
     technicalOpinionAi: { type: Object, default: null },
     technicalOpinionAiPending: { type: Boolean, default: false },
     technicalOpinionGeneratePostUrl: { type: String, required: true },
+    actionMeasures: {
+        type: Object,
+        default: () => ({ measures: [], users: [], effectivenessResults: {}, fullUrl: null }),
+    },
     riskScenario: { type: String, default: null },
     riskScenarioLabel: { type: String, default: null },
     nr1Reports: { type: Object, default: () => ({ executive: null, technical_referral: null }) },
@@ -74,7 +79,6 @@ const activeStep = ref(props.shellMode ? 'opinion' : 'results');
 const steps = [
     { id: 'results', number: '01', label: 'Diagnóstico' },
     { id: 'opinion', number: '02', label: 'Parecer' },
-    { id: 'publish', number: '03', label: 'Publicar' },
 ];
 
 const visibleSteps = computed(() => (props.shellMode ? steps.filter((step) => step.id !== 'results') : steps));
@@ -558,7 +562,7 @@ defineExpose({
         </dl>
     </section>
 
-    <nav class="mb-8" aria-label="Etapas do parecer">
+    <nav v-if="visibleSteps.length > 1" class="mb-8" aria-label="Etapas do parecer">
         <ol class="grid gap-2 sm:grid-cols-3">
             <li v-for="step in visibleSteps" :key="step.id">
                 <button
@@ -582,8 +586,7 @@ defineExpose({
                         <span class="block text-sm font-semibold text-slate-900">{{ step.label }}</span>
                         <span class="block text-xs text-slate-500">
                             <template v-if="step.id === 'results'">Indicadores e detalhe</template>
-                            <template v-else-if="step.id === 'opinion'">Texto e IA</template>
-                            <template v-else>Revisar e enviar</template>
+                            <template v-else>Texto e publicação</template>
                         </span>
                     </span>
                 </button>
@@ -625,7 +628,7 @@ defineExpose({
     <form class="space-y-8" @submit.prevent="openPublishConfirmModal">
         <div v-show="activeStep === 'opinion'" class="space-y-8 pb-8">
             <div>
-                <h3 class="text-lg font-semibold text-talents-900">02 · Parecer técnico</h3>
+                <h3 class="text-lg font-semibold text-talents-900">Parecer técnico</h3>
                 <p class="mt-1 text-sm text-gray-600">
                     Elabore o documento entregue à empresa. Use a Mia para rascunho — o texto entra direto na área editável.
                 </p>
@@ -656,7 +659,9 @@ defineExpose({
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h3 class="font-semibold text-talents-800">Parecer técnico</h3>
-                        <p class="mt-1 text-sm text-gray-600">Edite o texto abaixo. A Mia preenche esta mesma área.</p>
+                        <p class="mt-1 text-sm text-gray-600">
+                            Edite o texto abaixo. A Mia preenche esta mesma área. O plano de ação aparece em seguida, com as medidas desta campanha.
+                        </p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <InfoTooltip
@@ -821,125 +826,78 @@ defineExpose({
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 pt-4">
-                        <SecondaryButton
-                            v-if="!shellMode"
-                            type="button"
-                            @click="selectStep('results')"
-                        >
-                            Voltar
-                        </SecondaryButton>
-                        <PrimaryButton type="button" @click="selectStep('publish')">
-                            Revisar e publicar
-                        </PrimaryButton>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div v-show="activeStep === 'publish'" class="space-y-6">
-            <div>
-                <h3 class="text-lg font-semibold text-talents-900">03 · Revisar e publicar</h3>
-                <p class="mt-1 text-sm text-gray-600">
-                    Ao salvar, você verá o PDF do parecer como a empresa receberá e poderá confirmar o envio.
-                </p>
-            </div>
-
-            <div
-                v-if="!publication.uses_review_flow && !canPublishParecer"
-                class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
-            >
-                Publique o parecer só depois de liberar e
-                <button type="button" class="font-semibold underline" @click="openTechnicalReportModal">
-                    validar o relatório técnico e plano de ação
-                </button>
-                .
-            </div>
-
-            <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Publicação dos resultados</p>
-                <p v-if="!publication.requires_publication" class="mt-2 text-sm text-slate-700">
-                    Esta campanha é anterior ao controle de publicação: a empresa já vê os resultados.
-                </p>
-                <p v-else-if="publication.uses_review_flow" class="mt-2 text-sm text-slate-700">
-                    {{ publication.published_at ? `Publicado em ${publication.published_at}.` : 'Não publicado.' }}
-                    Nesta campanha a publicação é feita na Central de documentos, depois da revisão.
-                </p>
-                <template v-else>
-                    <p class="mt-2 text-base font-semibold text-slate-900">
-                        {{ publication.published_at ? `Publicado em ${publication.published_at}` : 'Não publicado' }}
-                    </p>
-                    <PrimaryButton
-                        v-if="!publication.published_at"
-                        type="button"
-                        class="mt-3"
-                        @click="
-                            router.post(
-                                route('admin.companies.surveys.publication.store', [company.id, survey.id]),
-                                {},
-                                { preserveScroll: true },
-                            )
-                        "
-                    >
-                        Publicar resultados para a empresa
-                    </PrimaryButton>
-                </template>
-            </div>
-
-            <div class="grid gap-4 sm:grid-cols-2">
-                <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Status atual</p>
-                    <p class="mt-2 text-base font-semibold text-slate-900">{{ publicationStatusLabel }}</p>
-                    <p v-if="plan?.admin_published_at" class="mt-1 text-sm text-slate-600">
-                        Última publicação: {{ formatDateTime(plan.admin_published_at) }}
-                    </p>
-                </div>
-                <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Relatório técnico + plano de ação
-                    </p>
-                    <p class="mt-2 text-base font-semibold text-slate-900">
-                        {{ technicalReportValidated ? 'Validado' : 'Pendente de validação' }}
-                    </p>
-                    <button
-                        type="button"
-                        class="mt-2 text-sm font-medium text-talents-800 underline"
-                        @click="openTechnicalReportModal"
-                    >
-                        Abrir relatório técnico
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div
-            v-show="activeStep === 'publish'"
-            class="relative z-30 mt-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
-        >
-            <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-                <p class="text-xs text-slate-500 sm:text-sm">
-                    <template v-if="!canPublishParecer">
-                        Valide o relatório técnico e plano de ação antes de publicar o parecer.
-                    </template>
-                    <template v-else>
-                        A confirmação no modal publica o parecer para a empresa.
-                    </template>
-                </p>
-                <div class="flex flex-wrap gap-2">
-                    <SecondaryButton type="button" @click="selectStep('opinion')">
-                        Voltar
-                    </SecondaryButton>
-                    <PrimaryButton
-                        type="button"
-                        :disabled="form.processing || previewingPlanPdf || !canPublishParecer"
-                        @click="openPublishConfirmModal"
-                    >
-                        Salvar e publicar para a empresa
-                    </PrimaryButton>
                 </div>
             </div>
         </div>
     </form>
+
+    <section v-show="activeStep === 'opinion'" class="mt-8 space-y-4" aria-labelledby="action-plan-title">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+                <h3 id="action-plan-title" class="text-lg font-semibold text-talents-900">Plano de ação</h3>
+                <p class="mt-1 text-sm text-gray-600">
+                    Medidas geradas para esta campanha. Ajuste responsável e prazo aqui, ou abra o cadastro completo.
+                </p>
+            </div>
+            <a
+                v-if="actionMeasures.fullUrl"
+                :href="actionMeasures.fullUrl"
+                class="text-sm font-medium text-talents-800 underline"
+            >
+                Cadastro de medidas
+            </a>
+        </div>
+        <p v-if="!actionMeasures.measures?.length" class="text-sm text-gray-600">
+            Nenhuma medida ainda. Elas aparecem aqui quando a pesquisa encerra e a Mia gera o plano.
+        </p>
+        <MeasureCard
+            v-for="measure in actionMeasures.measures"
+            :key="measure.id"
+            :measure="measure"
+            :users="actionMeasures.users"
+            :effectiveness-results="actionMeasures.effectivenessResults"
+        />
+    </section>
+
+    <section v-show="activeStep === 'opinion'" class="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="publish-title">
+        <h3 id="publish-title" class="text-lg font-semibold text-talents-900">Publicação</h3>
+        <p class="mt-1 text-sm text-gray-600">
+            {{ publicationStatusLabel }}
+            <span v-if="plan?.admin_published_at"> · última em {{ formatDateTime(plan.admin_published_at) }}</span>
+        </p>
+        <p class="mt-3 text-sm text-slate-700">
+            Relatório técnico + plano de ação:
+            <strong>{{ technicalReportValidated ? 'validado' : 'pendente de validação' }}</strong>.
+            <button type="button" class="font-medium text-talents-800 underline" @click="openTechnicalReportModal">
+                Abrir relatório técnico
+            </button>
+        </p>
+        <p
+            v-if="!publication.uses_review_flow && !canPublishParecer"
+            class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+        >
+            Valide o relatório técnico antes de publicar o parecer.
+        </p>
+        <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+            <SecondaryButton v-if="!shellMode" type="button" @click="selectStep('results')">
+                Voltar
+            </SecondaryButton>
+            <SecondaryButton
+                v-if="publication.requires_publication && !publication.uses_review_flow && !publication.published_at"
+                type="button"
+                @click="router.post(route('admin.companies.surveys.publication.store', [company.id, survey.id]), {}, { preserveScroll: true })"
+            >
+                Publicar resultados para a empresa
+            </SecondaryButton>
+            <PrimaryButton
+                type="button"
+                :disabled="form.processing || previewingPlanPdf || !canPublishParecer"
+                @click="openPublishConfirmModal"
+            >
+                Salvar e publicar para a empresa
+            </PrimaryButton>
+        </div>
+    </section>
 
     <div
         v-if="canAdmin('companies', 'delete')"
