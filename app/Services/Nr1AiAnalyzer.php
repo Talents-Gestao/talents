@@ -20,6 +20,8 @@ class Nr1AiAnalyzer
 
     public const TYPE_NR1_TECHNICAL_OPINION = 'nr1_technical_opinion';
 
+    public const TYPE_NR1_ACTION_MEASURES = 'nr1_action_measures';
+
     public static function pendingCacheKey(int $surveyId, string $type = self::TYPE_NR1_GUIDANCE): string
     {
         if ($type === self::TYPE_NR1_GUIDANCE) {
@@ -31,9 +33,11 @@ class Nr1AiAnalyzer
 
     public function systemPromptForType(string $type): string
     {
-        return $type === self::TYPE_NR1_TECHNICAL_OPINION
-            ? $this->technicalOpinionSystemPrompt()
-            : $this->systemPrompt();
+        return match ($type) {
+            self::TYPE_NR1_TECHNICAL_OPINION => $this->technicalOpinionSystemPrompt(),
+            self::TYPE_NR1_ACTION_MEASURES => $this->actionMeasuresSystemPrompt(),
+            default => $this->systemPrompt(),
+        };
     }
 
     public function systemPrompt(): string
@@ -74,6 +78,24 @@ Regras obrigatórias:
 - Separe parágrafos e seções com linha em branco após cada título ##.
 
 Se os dados forem insuficientes, indique objetivamente o que falta (ex.: mais respondentes por setor) e limite as recomendações ao que os dados permitem sustentar.
+PROMPT;
+    }
+
+    public function actionMeasuresSystemPrompt(): string
+    {
+        return <<<'PROMPT'
+Você elabora medidas de plano de ação psicossocial para a equipe Talents, com base só nos dados agregados da pesquisa (NR-1 / PGR).
+
+Responda APENAS com um JSON válido, sem Markdown e sem texto fora do JSON, neste formato:
+{"measures":[{"factor_label":"nome da dimensão","measure_description":"ação concreta em até 400 caracteres","suggested_due_days":30}]}
+
+Regras:
+- No máximo 6 medidas.
+- Priorize dimensões e setores em Moderado/Grave ou Atenção/Maior sinalização. Se o cenário geral for leve, proponha no máximo 2 medidas preventivas.
+- Não invente números, pessoas, responsáveis nem gravidade/probabilidade de inventário.
+- factor_label deve citar a dimensão dos dados.
+- suggested_due_days é inteiro entre 15 e 90.
+- Não identifique respondentes.
 PROMPT;
     }
 

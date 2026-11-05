@@ -202,6 +202,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.measures.edit');
         Route::post('companies/{company}/surveys/{survey}/medidas', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'store'])
             ->name('companies.surveys.measures.store');
+        Route::post('companies/{company}/surveys/{survey}/medidas/atualizar-ia', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'refreshFromAi'])
+            ->name('companies.surveys.measures.refresh-ai');
         Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}/sugestao', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateSuggestion'])
             ->name('companies.surveys.measures.suggestion');
         Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateStatus'])

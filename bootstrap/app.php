@@ -83,5 +83,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('rhid:import-closed-day')
             ->dailyAt('00:30')
             ->timezone('America/Sao_Paulo');
+        $schedule->command('nr1:generate-action-measures')
+            ->hourly()
+            ->timezone('America/Sao_Paulo');
     })
     ->create();

@@ -6,13 +6,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Exceptions\PsychosocialMeasureException;
 use App\Http\Controllers\Controller;
+use App\Jobs\GenerateActionMeasuresJob;
+use App\Models\AiSetting;
 use App\Models\Company;
 use App\Models\PsychosocialMeasure;
 use App\Models\Survey;
+use App\Services\ActionMeasuresGenerator;
 use App\Services\PsychosocialMeasureService;
 use App\Support\PsychosocialMeasurePresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -114,6 +118,33 @@ class PsychosocialMeasureAdminController extends Controller
         }
 
         return back()->with('success', 'Medida registrada como «A aprovar».');
+    }
+
+    /**
+     * Nova chamada de IA, só quando a Talents pedir. A geração automática ocorre uma vez ao encerrar.
+     */
+    public function refreshFromAi(Request $request, Company $company, Survey $survey): RedirectResponse
+    {
+        $this->assertSurveyBelongsToCompany($company, $survey);
+
+        $setting = AiSetting::current();
+        if (! $setting || ! $setting->is_enabled || $setting->safeApiKey() === null) {
+            return back()->with('error', 'A Mia não está disponível. Configure a chave em Configurações.');
+        }
+
+        if (! $survey->results()->exists()) {
+            return back()->with('error', 'Não há resultados calculados para atualizar as medidas.');
+        }
+
+        $key = ActionMeasuresGenerator::pendingCacheKey($survey->id);
+        if (Cache::has($key)) {
+            return back()->with('error', 'A atualização das medidas já está em andamento.');
+        }
+
+        Cache::put($key, true, now()->addMinutes(15));
+        GenerateActionMeasuresJob::dispatch($survey->id, $request->user()?->id, true);
+
+        return back()->with('success', 'Atualização das medidas solicitada. Em alguns segundos a lista é atualizada.');
     }
 
     public function updateStatus(Request $request, Company $company, Survey $survey, PsychosocialMeasure $measure): RedirectResponse
