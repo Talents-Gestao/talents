@@ -70,6 +70,7 @@ class Survey extends Model
             'uses_invitations' => 'boolean',
             'published_at' => 'datetime',
             'action_measures_generated_at' => 'datetime',
+            'service_suggestions_generated_at' => 'datetime',
         ];
     }
 

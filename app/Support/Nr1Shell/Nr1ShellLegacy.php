@@ -12,6 +12,7 @@ use App\Http\Controllers\Client\SurveyResultsController;
 use App\Models\ActionPlan;
 use App\Models\ActionPlanItem;
 use App\Models\Company;
+use App\Models\PsychosocialMeasure;
 use App\Models\PsychosocialDocument;
 use App\Models\PsychosocialDocumentVersion;
 use App\Models\Survey;
@@ -85,7 +86,7 @@ final class Nr1ShellLegacy
             'visao-geral' => ['overview' => $this->overview($survey, $forTalents)],
             'campanha' => ['campaign' => $this->campaign($survey, $forTalents)],
             'resultados' => ['results' => $this->results($request, $survey, $company, $forTalents)],
-            'plano-de-acao' => ['plan' => $this->plan($survey, $company, $forTalents)],
+            'plano-de-acao' => ['plan' => $this->plan($survey, $company, $user, $forTalents)],
             'documentos' => ['central' => $this->central($request, $survey, $company, $forTalents)],
             'parecer' => ['documents' => $this->documents($request, $survey, $company, $forTalents)],
             default => [],
@@ -112,8 +113,16 @@ final class Nr1ShellLegacy
         $eligible = self::eligible($survey, $respondents);
         $sections = collect($presented['bySection']);
         $items = $plan?->items()->get() ?? collect();
+        $measures = PsychosocialMeasure::query()->where('survey_id', $survey->id)->get();
         // A empresa só vê o plano depois da publicação do parecer (gate do legado).
         $planVisible = $forTalents || $published;
+        if ($measures->isNotEmpty()) {
+            $planCount = $measures->count();
+            $planConfirmed = $measures->filter(fn (PsychosocialMeasure $measure) => $measure->hasConfirmedResponsible())->count();
+        } else {
+            $planCount = $items->count();
+            $planConfirmed = $items->filter(fn ($item) => filled($item->responsible_name))->count();
+        }
 
         $cards = $overall === null ? null : [
             'overall' => [
@@ -134,14 +143,14 @@ final class Nr1ShellLegacy
                 'count' => $sections->filter(fn ($row) => in_array($row->risk_level, ['yellow', 'red'], true))->count(),
                 'total' => $sections->count(),
             ],
-            // «Responsável confirmado» no modelo anterior = item do plano do parecer com responsável preenchido.
-            'plan' => $planVisible && $items->isNotEmpty() ? [
-                'confirmed' => $items->filter(fn ($item) => filled($item->responsible_name))->count(),
-                'total' => $items->count(),
+            // Com medidas geradas, o cartão conta responsável confirmado nelas. Sem medidas, usa os itens antigos do parecer.
+            'plan' => $planVisible && $planCount > 0 ? [
+                'confirmed' => $planConfirmed,
+                'total' => $planCount,
             ] : null,
             'planMessage' => match (true) {
                 ! $planVisible => 'O plano aparece quando a Talents publicar o parecer.',
-                $items->isEmpty() => 'Plano de ação ainda não elaborado no parecer.',
+                $planCount === 0 => 'Plano de ação ainda não elaborado no parecer.',
                 default => null,
             },
         ];
@@ -302,17 +311,17 @@ final class Nr1ShellLegacy
     }
 
     /**
-     * Plano de ação no modelo anterior: os itens do plano do Laudo (título, responsável, prazo, situação), só leitura.
-     * A edição continua em «Parecer e publicação». A empresa só vê depois da publicação do parecer.
+     * Plano de ação no modelo anterior. As medidas geradas (psychosocial_measures) aparecem em «Da análise à execução»
+     * para a Talents e, depois da publicação do parecer, para a empresa. Os itens antigos do laudo seguem no payload.
      *
      * @return array<string, mixed>
      */
-    private function plan(Survey $survey, ?Company $company, bool $forTalents): array
+    private function plan(Survey $survey, ?Company $company, User $user, bool $forTalents): array
     {
         $plan = ActionPlan::query()->where('survey_id', $survey->id)->where('company_id', $survey->company_id)->first();
         $published = $plan?->admin_published_at !== null;
         if (! $forTalents && ! $published) {
-            return ['locked' => true, 'published' => false, 'items' => []];
+            return ['locked' => true, 'published' => false, 'items' => [], 'action' => null];
         }
 
         $staff = $forTalents && $company !== null;
@@ -329,6 +338,9 @@ final class Nr1ShellLegacy
                 'due' => $item->due_date?->format('d/m/Y'),
                 'status' => (string) $item->status,
             ])->values()->all(),
+            'action' => PsychosocialMeasure::query()->where('survey_id', $survey->id)->exists()
+                ? app(Nr1ShellPageData::class)->plan($survey, $user, $forTalents)
+                : null,
             'editUrl' => $staff ? route('nr1.parecer') : null,
             'pdfUrl' => match (true) {
                 $staff => route('admin.companies.surveys.action-plan.pdf', [$company->id, $survey->id]),

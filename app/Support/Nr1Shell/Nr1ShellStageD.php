@@ -16,6 +16,7 @@ use App\Models\Survey;
 use App\Models\User;
 use App\Services\Nr1\Nr1OpportunityService;
 use App\Services\Nr1\Nr1SolutionService;
+use App\Services\SurveyServiceSuggestionService;
 use App\Support\Nr1ServiceCards;
 use App\Support\TechnicalOpinionDisclaimerStripper;
 use Illuminate\Http\Request;
@@ -116,6 +117,7 @@ final class Nr1ShellStageD
                 'canRequest' => $props['canRequest'],
                 'locked' => false,
                 'requestUrlBase' => route('client.surveys.solutions.request', [$survey->id, '__MATCH__']),
+                'serviceSuggestions' => app(SurveyServiceSuggestionService::class)->payload($survey, false),
             ];
         }
 
@@ -128,6 +130,7 @@ final class Nr1ShellStageD
             // Antes da publicação não há recomendações: a mensagem do HTML.
             'locked' => $survey->requires_publication && $survey->published_at === null,
             'rulesUrl' => route('admin.service-matches.index'),
+            'serviceSuggestions' => app(SurveyServiceSuggestionService::class)->payload($survey, $profile === Nr1Shell::PROFILE_TALENTS),
         ];
     }
 
@@ -147,29 +150,35 @@ final class Nr1ShellStageD
             'locked' => false,
             'noSurvey' => true,
             'rulesUrl' => route('admin.service-matches.index'),
+            'serviceSuggestions' => ['generated_at' => null, 'pending' => false, 'can_moderate' => false, 'release_url' => null, 'items' => []],
         ];
     }
 
     /**
-     * Soluções numa campanha do modelo anterior: só os serviços. As recomendações dependem das 7 dimensões do
-     * questionário V11, então não há regra aplicável nem botão de pedido (estado honesto, sem recomendação inventada).
+     * Soluções numa campanha do modelo anterior. As regras das 7 dimensões da V11 não se aplicam. Os serviços do
+     * catálogo entram pela sugestão da Mia, depois que a Talents libera.
      *
      * @return array<string, mixed>
      */
-    public function solutionsForLegacy(string $profile): array
+    public function solutionsForLegacy(string $profile, ?Survey $survey = null, ?User $user = null): array
     {
         $staff = $profile !== Nr1Shell::PROFILE_EMPRESA;
+        $forTalents = $profile === Nr1Shell::PROFILE_TALENTS;
+        $canRequest = $user !== null && ! $staff && $user->canAccess(\App\Enums\PermissionModule::Pesquisas, \App\Enums\PermissionAction::Edit);
 
         return [
             'mode' => $staff ? 'staff' : 'company',
             'cards' => Nr1ServiceCards::all(),
             'recommendations' => [],
             'requests' => [],
-            'canRequest' => false,
+            'canRequest' => $canRequest,
             'locked' => false,
             'noSurvey' => false,
             'legacy' => true,
             'rulesUrl' => $staff ? route('admin.service-matches.index') : null,
+            'serviceSuggestions' => $survey !== null
+                ? app(SurveyServiceSuggestionService::class)->payload($survey, $forTalents)
+                : ['generated_at' => null, 'pending' => false, 'can_moderate' => false, 'release_url' => null, 'items' => []],
         ];
     }
 

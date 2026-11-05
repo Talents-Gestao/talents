@@ -145,7 +145,7 @@ class ShellController extends Controller
         }
         // Modelo anterior: as regras de Soluções usam as 7 dimensões da V11; ficam os serviços e um aviso honesto.
         if ($section === 'solucoes' && $survey !== null && Nr1ShellLegacy::isLegacy($survey)) {
-            return ['solutions' => $stageD->solutionsForLegacy($profile)];
+            return ['solutions' => $stageD->solutionsForLegacy($profile, $survey, $user)];
         }
         // Trilha do painel gerencial: cada leitura de resultados pela empresa fica registrada.
         if ($survey !== null && $profile === Nr1Shell::PROFILE_EMPRESA && $this->readsResults($section)) {

@@ -9,7 +9,9 @@ use App\Enums\PermissionModule;
 use App\Exceptions\Nr1CampaignException;
 use App\Http\Controllers\Controller;
 use App\Models\Survey;
+use App\Models\SurveyServiceSuggestion;
 use App\Services\Nr1\Nr1SolutionService;
+use App\Services\SurveyServiceSuggestionService;
 use App\Support\Nr1ServiceCards;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,7 +36,21 @@ class SolutionsController extends Controller
             'recommendations' => $this->solutions->recommendations($survey, forCompany: true),
             'requests' => $this->solutions->companyRequests($survey),
             'canRequest' => $request->user()->canAccess(PermissionModule::Pesquisas, PermissionAction::Edit),
+            'serviceSuggestions' => app(SurveyServiceSuggestionService::class)->payload($survey, forTalents: false),
         ]);
+    }
+
+    public function requestSuggestedService(Request $request, Survey $survey, SurveyServiceSuggestion $suggestion): RedirectResponse
+    {
+        abort_unless((int) $survey->company_id === (int) $request->user()->contextCompanyId(), 404);
+
+        try {
+            app(SurveyServiceSuggestionService::class)->requestConversation($survey, $suggestion, $request->user());
+        } catch (Nr1CampaignException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('success', 'Conversa solicitada. A Talents entrará em contato.');
     }
 
     public function requestConversation(Request $request, Survey $survey, int $match): RedirectResponse

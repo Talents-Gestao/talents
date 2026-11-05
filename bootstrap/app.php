@@ -86,5 +86,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('nr1:generate-action-measures')
             ->hourly()
             ->timezone('America/Sao_Paulo');
+        $schedule->command('nr1:generate-service-suggestions')
+            ->hourly()
+            ->timezone('America/Sao_Paulo');
     })
     ->create();

@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\ActionPlan;
 use App\Models\Company;
+use App\Models\PsychosocialMeasure;
 use App\Models\Department;
 use App\Models\Survey;
 use App\Models\SurveyAnswer;
@@ -89,9 +90,45 @@ class Nr1ShellLegacyTest extends TestCase
 
         // Plano de ação e Soluções também abrem no legado: o plano do parecer (só leitura) e os serviços com aviso honesto.
         $this->actingAs($c->owner)->get(route('nr1.plano-de-acao', $q))->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('section.legacy.plan.locked', false)->where('section.legacy.plan.items', [])->where('section.legacy.plan.editUrl', route('nr1.parecer')));
+            ->where('section.legacy.plan.locked', false)->where('section.legacy.plan.items', [])->where('section.legacy.plan.action', null)->where('section.legacy.plan.editUrl', route('nr1.parecer')));
         $this->actingAs($c->owner)->get(route('nr1.solucoes', $q))->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('section.solutions.legacy', true)->where('section.solutions.recommendations', [])->where('section.solutions.canRequest', false));
+    }
+
+    public function test_generated_measures_show_on_the_legacy_plan_for_talents_and_for_the_company_after_publish(): void
+    {
+        $c = $this->legacy();
+        $q = ['empresa' => $c->company->id, 'campanha' => $c->survey->id];
+        PsychosocialMeasure::query()->create([
+            'survey_id' => $c->survey->id,
+            'company_id' => $c->company->id,
+            'factor_label' => 'Demandas e sobrecarga',
+            'evidence_basis' => PsychosocialMeasure::BASIS_QUESTIONNAIRE_INDICATION,
+            'measure_description' => 'Organizar a carga da equipe do setor.',
+            'origin' => PsychosocialMeasure::ORIGIN_ENGINE_SUGGESTION,
+            'status' => PsychosocialMeasure::STATUS_TO_APPROVE,
+        ]);
+
+        $this->actingAs($c->owner)->get(route('nr1.plano-de-acao', $q))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('section.legacy.plan.locked', false)
+            ->where('section.legacy.plan.action.measures.0.measure_description', 'Organizar a carga da equipe do setor.')
+            ->where('section.legacy.plan.action.measures.0.urls.suggestion', fn ($url) => is_string($url) && $url !== ''));
+
+        $this->actingAs($c->admin)->get(route('nr1.plano-de-acao'))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('section.legacy.plan.locked', true)
+            ->where('section.legacy.plan.action', null));
+
+        ActionPlan::query()->create([
+            'company_id' => $c->company->id,
+            'survey_id' => $c->survey->id,
+            'admin_published_at' => now(),
+        ]);
+
+        $this->actingAs($c->admin)->get(route('nr1.plano-de-acao'))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('section.legacy.plan.locked', false)
+            ->where('section.legacy.plan.action.measures.0.measure_description', 'Organizar a carga da equipe do setor.')
+            ->where('section.legacy.plan.action.fullUrl', null)
+            ->where('section.legacy.plan.action.measures.0.urls.suggestion', null));
     }
 
     public function test_the_company_sees_the_legacy_results_and_the_plan_only_as_the_old_pages_do(): void

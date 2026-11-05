@@ -99,6 +99,7 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
     });
     Route::middleware(['can.module:pesquisas,edit', 'survey.published'])->group(function () {
         Route::post('surveys/{survey}/solucoes/{match}/conversa', [\App\Http\Controllers\Client\SolutionsController::class, 'requestConversation'])->whereNumber('match')->name('surveys.solutions.request');
+        Route::post('surveys/{survey}/solucoes-sugeridas/{suggestion}/conversa', [\App\Http\Controllers\Client\SolutionsController::class, 'requestSuggestedService'])->whereNumber('suggestion')->name('surveys.service-suggestions.request');
     });
 
     Route::middleware(['can.module:planos_acao', 'survey.published'])->group(function () {

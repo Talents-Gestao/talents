@@ -1,13 +1,13 @@
 <script setup>
 import ClientActionPlanBody from '@/Components/Nr1Legacy/ClientActionPlanBody.vue';
 import LaudoBody from '@/Components/Nr1Legacy/LaudoBody.vue';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import LegacyNotice from './LegacyNotice.vue';
 import Nr1Button from './Nr1Button.vue';
 
 /**
  * Parecer e publicação (modelo anterior): Laudo 02 Parecer + 03 Publicar.
- * Relatório técnico + plano de ação e subsídio AEP/PGR abrem em modais; o dossiê não aparece nesta tela.
+ * A barra acima do parecer só leva ao cadastro técnico. Relatório, subsídio e PDF ficam no próprio parecer.
  * O resumo executivo fica inativo na UI do parecer legado.
  */
 const props = defineProps({
@@ -15,7 +15,6 @@ const props = defineProps({
     notice: { type: String, default: 'Pesquisa no modelo anterior' },
 });
 
-const body = ref(null);
 const laudo = computed(() => props.documents.laudo ?? null);
 </script>
 
@@ -42,24 +41,10 @@ const laudo = computed(() => props.documents.laudo ?? null);
                 >
                     Cadastro técnico
                 </Nr1Button>
-                <Nr1Button
-                    size="sm"
-                    inertia
-                    :href="route('admin.companies.surveys.measures.edit', [laudo.company.id, laudo.survey.id])"
-                >
-                    Medidas
-                </Nr1Button>
-                <Nr1Button size="sm" @click="body?.openTechnicalReportModal()">
-                    Relatório técnico + plano de ação
-                </Nr1Button>
-                <Nr1Button size="sm" @click="body?.openPgrSubsidyModal()">Subsídio AEP/PGR</Nr1Button>
-                <Nr1Button size="sm" @click="body?.openExportPdfModal()">
-                    Plano com resultados + parecer
-                </Nr1Button>
             </div>
 
             <div class="nr1-theme">
-                <LaudoBody ref="body" v-bind="laudo" shell-mode />
+                <LaudoBody v-bind="laudo" shell-mode />
             </div>
         </template>
 

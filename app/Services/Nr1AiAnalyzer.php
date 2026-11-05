@@ -22,6 +22,8 @@ class Nr1AiAnalyzer
 
     public const TYPE_NR1_ACTION_MEASURES = 'nr1_action_measures';
 
+    public const TYPE_NR1_SERVICE_SUGGESTIONS = 'nr1_service_suggestions';
+
     public static function pendingCacheKey(int $surveyId, string $type = self::TYPE_NR1_GUIDANCE): string
     {
         if ($type === self::TYPE_NR1_GUIDANCE) {
@@ -64,20 +66,32 @@ PROMPT;
     public function technicalOpinionSystemPrompt(): string
     {
         return <<<'PROMPT'
-Você é a Mia, assistente da plataforma Talents, elaborando um **parecer técnico** para a equipe Talents entregar à empresa cliente, sobre riscos psicossociais no trabalho conforme a NR-1 (Portaria MTE nº 1.419/2024) e integração ao PGR.
+Você é a Mia, da Talents, escrevendo o **parecer técnico** que a equipe entrega à empresa sobre riscos psicossociais no trabalho (NR-1, Portaria MTE nº 1.419/2024) e a leitura desses resultados para o PGR.
+
+Tom:
+- Fale com quem cuida de pessoas e com a gestão, como uma especialista que explica o que a pesquisa mostra no dia a dia — não como um relatório automático nem uma lista de indicadores.
+- Use frases completas, próximas e claras. Evite jargão solto: quando citar NR-1, PGR ou o nome de uma dimensão, diga em uma frase o que isso significa na prática do trabalho.
+- Trate cada número como um sinal do que as pessoas estão vivendo: carga, relações, organização, reconhecimento, segurança para falar, o que couber na dimensão que os dados trouxeram. Não invente causa, história nem episódio que não esteja nos dados.
+
+Profundidade:
+- O parecer precisa ser longo o bastante para a empresa entender o cenário sem outra leitura. Cada seção tem vários parágrafos, não um resumo de uma linha.
+- No **Panorama geral**, conte o que a média, o nível e a quantidade de respostas dizem sobre o conjunto. Explique, em linguagem cotidiana, o que esse patamar sugere sobre o clima de trabalho.
+- Em **Dimensões**, comente cada dimensão recebida, da mais crítica para a mais leve. Traga o nome, a média, o nível e o que aquele resultado costuma indicar sobre a experiência de quem respondeu. Compare dimensões quando o contraste ajudar a leitura.
+- Em **Setores**, faça o mesmo com cada setor que aparecer. Se um setor se destaca, explique a diferença em relação ao geral e às outras áreas, só com os números recebidos. Se não houver setor, diga isso com naturalidade e siga.
+- Em **Interpretação**, una panorama, dimensões e setores numa leitura só: o que pesa mais, o que está mais estável e o que pede atenção da gestão. Fale de risco psicossocial de forma concreta, sempre amarrada aos dados.
 
 Regras obrigatórias:
 - Use apenas os dados agregados fornecidos (médias, níveis de risco, contagens por dimensão/setor). Não invente números nem respondentes individuais.
 - Não identifique pessoas. Não solicite nem suponha dados pessoais.
 - Os níveis de risco oficiais são **Leve**, **Moderado** e **Grave** (campo `risk_level` nos dados). Use sempre esses nomes. **Nunca** diga “risco verde/amarelo/vermelho”, “faixa amarela” ou qualquer referência a cor — a cor é só visual na interface, não faz parte do parecer.
-- Escreva em linguagem técnica e profissional, em tom de parecer da Talents para gestores e SST. No texto final, não diga que você é uma IA ou modelo de linguagem.
-- Formate em Markdown: use ## para títulos de seção (sem numerar com 1., 2., 3.), **negrito** para destaques, e listas quando fizer sentido.
-- Estruture o parecer com: **Panorama geral**; **Dimensões e setores críticos ou em atenção**; **Interpretação técnica e riscos**; **Recomendações e medidas preventivas/corretivas** alinhadas à NR-1 e ao ciclo do PGR; **Priorização sugerida** (curto/médio prazo quando aplicável).
-- Inclua recomendações operacionais concretas que a empresa possa considerar.
+- No texto final, não diga que você é uma IA ou modelo de linguagem. Não comece com saudação nem feche com assinatura.
+- Formate em Markdown: use ## para títulos de seção (sem numerar com 1., 2., 3.) e **negrito** para o nome da dimensão, do setor ou do nível quando ajudar a leitura. Prefira parágrafos a listas.
+- Estruture o parecer com: **Panorama geral**; **Dimensões**; **Setores**; **Interpretação**.
+- Não elabore plano de ação, lista de medidas, recomendações operacionais, cronograma nem priorização de ações. As medidas ficam no plano de ação, fora deste parecer.
 - **Não inclua** seção, título ou parágrafo de Disclaimer, Aviso legal ou equivalente. Não finalize o texto com frases de que o parecer não substitui obrigações legais, avaliação por equipe técnica ou profissionais habilitados.
 - Separe parágrafos e seções com linha em branco após cada título ##.
 
-Se os dados forem insuficientes, indique objetivamente o que falta (ex.: mais respondentes por setor) e limite as recomendações ao que os dados permitem sustentar.
+Se os dados forem insuficientes, diga com clareza o que falta (ex.: mais respondentes por setor) e limite a leitura ao que os dados sustentam.
 PROMPT;
     }
 
@@ -97,6 +111,43 @@ Regras:
 - suggested_due_days é inteiro entre 15 e 90.
 - Não identifique respondentes.
 PROMPT;
+    }
+
+    public function serviceSuggestionsSystemPrompt(): string
+    {
+        return <<<'PROMPT'
+Você orienta a equipe Talents sobre serviços do catálogo comercial que esta empresa pode contratar, com base só nos resultados agregados da pesquisa e na lista `catalog`.
+
+Responda APENAS com um JSON válido, sem Markdown e sem texto fora do JSON:
+{"suggestions":[{"product_id":1,"rationale":"por que este serviço ajuda esta empresa, em até 500 caracteres"}]}
+
+Regras:
+- No máximo 4 sugestões, as mais úteis primeiro.
+- product_id tem de existir em `catalog`. Não invente serviço, nome nem id.
+- Escreva a rationale em português, de forma clara e humana, ligando o serviço ao que os dados mostram. Sem preço, desconto, promessa de resultado ou diagnóstico clínico.
+- Não identifique pessoas nem setores que não estejam nos dados.
+- Se nenhum produto do catálogo couber no cenário, devolva {"suggestions":[]}.
+PROMPT;
+    }
+
+    /**
+     * @param  list<array{id: int, name: string, description: string|null}>  $catalog
+     * @return array{content: string, prompt_tokens: int|null, completion_tokens: int|null, model_used: string}
+     */
+    public function generateServiceSuggestions(Survey $survey, AiSetting $setting, array $catalog): array
+    {
+        if (! Nr1GroupPrivacy::hasMinimumSample($survey)) {
+            throw new RuntimeException('Amostra abaixo do grupo mínimo: nenhum dado segue para a IA.');
+        }
+
+        $payload = $this->buildAggregatedPayload($survey);
+        $payload['catalog'] = $catalog;
+        $userContent = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+
+        return match ($setting->provider) {
+            'anthropic' => $this->callAnthropic($setting, $userContent, $this->serviceSuggestionsSystemPrompt(), max((int) $setting->max_tokens, 2000)),
+            default => $this->callOpenAi($setting, $userContent, $this->serviceSuggestionsSystemPrompt(), max((int) $setting->max_tokens, 2000)),
+        };
     }
 
     /**
@@ -124,9 +175,13 @@ PROMPT;
             );
         }
 
+        $maxTokens = $type === self::TYPE_NR1_TECHNICAL_OPINION
+            ? max((int) $setting->max_tokens, 4000)
+            : (int) $setting->max_tokens;
+
         return match ($setting->provider) {
-            'anthropic' => $this->callAnthropic($setting, $userContent, $systemPrompt),
-            default => $this->callOpenAi($setting, $userContent, $systemPrompt),
+            'anthropic' => $this->callAnthropic($setting, $userContent, $systemPrompt, $maxTokens),
+            default => $this->callOpenAi($setting, $userContent, $systemPrompt, $maxTokens),
         };
     }
 
@@ -213,7 +268,7 @@ PROMPT;
     /**
      * @return array{content: string, prompt_tokens: int|null, completion_tokens: int|null, model_used: string}
      */
-    private function callOpenAi(AiSetting $setting, string $userContent, string $systemPrompt): array
+    private function callOpenAi(AiSetting $setting, string $userContent, string $systemPrompt, ?int $maxTokens = null): array
     {
         $key = $setting->safeApiKey();
         if ($key === null || $key === '') {
@@ -229,7 +284,7 @@ PROMPT;
                     ['role' => 'system', 'content' => $systemPrompt],
                     ['role' => 'user', 'content' => $userContent],
                 ],
-                'max_tokens' => $setting->max_tokens,
+                'max_tokens' => $maxTokens ?? (int) $setting->max_tokens,
                 'temperature' => $setting->temperature,
             ]);
 
@@ -253,7 +308,7 @@ PROMPT;
     /**
      * @return array{content: string, prompt_tokens: int|null, completion_tokens: int|null, model_used: string}
      */
-    private function callAnthropic(AiSetting $setting, string $userContent, string $systemPrompt): array
+    private function callAnthropic(AiSetting $setting, string $userContent, string $systemPrompt, ?int $maxTokens = null): array
     {
         $key = $setting->safeApiKey();
         if ($key === null || $key === '') {
@@ -268,7 +323,7 @@ PROMPT;
             ])
             ->post('https://api.anthropic.com/v1/messages', [
                 'model' => $setting->model,
-                'max_tokens' => $setting->max_tokens,
+                'max_tokens' => $maxTokens ?? (int) $setting->max_tokens,
                 'temperature' => $setting->temperature,
                 'system' => $systemPrompt,
                 'messages' => [

@@ -8,14 +8,12 @@ use App\Jobs\GenerateAiAnalysisJob;
 use App\Models\ActionPlan;
 use App\Models\AiAnalysis;
 use App\Models\AiSetting;
-use App\Models\PsychosocialMeasure;
 use App\Models\Company;
 use App\Models\PsychosocialDocument;
 use App\Models\PsychosocialDocumentVersion;
 use App\Models\Survey;
 use App\Models\SurveyNr1Report;
 use App\Services\ActionPlanGenerator;
-use App\Services\ActionMeasuresGenerator;
 use App\Services\Nr1AiAnalyzer;
 use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\Psychosocial\ReviewRoundService;
@@ -177,35 +175,7 @@ class ActionPlanAdminController extends Controller
             'technicalOpinionAiPending' => $technicalOpinionAiPending,
             'aiGeneratePostUrl' => url('/admin/companies/'.$company->getKey().'/surveys/'.$survey->getKey().'/ai-analysis'),
             'technicalOpinionGeneratePostUrl' => url('/admin/companies/'.$company->getKey().'/surveys/'.$survey->getKey().'/technical-opinion'),
-            'actionMeasures' => $this->actionMeasuresPayload($company, $survey),
         ]);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function actionMeasuresPayload(Company $company, Survey $survey): array
-    {
-        $rows = PsychosocialMeasure::query()
-            ->where('survey_id', $survey->id)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
-
-        return [
-            'generated_at' => $survey->action_measures_generated_at?->timezone('America/Sao_Paulo')->format('d/m/Y H:i'),
-            'pending' => Cache::has(ActionMeasuresGenerator::pendingCacheKey($survey->id)),
-            'refresh_url' => route('admin.companies.surveys.measures.refresh-ai', [$company->id, $survey->id]),
-            'store_url' => route('admin.companies.surveys.measures.store', [$company->id, $survey->id]),
-            'items' => $rows->map(fn (PsychosocialMeasure $measure): array => [
-                'id' => $measure->id,
-                'factor_label' => $measure->factor_label,
-                'measure_description' => $measure->measure_description,
-                'status_label' => $measure->statusLabel(),
-                'origin' => $measure->origin,
-                'suggested_due_date' => $measure->suggested_due_date?->format('d/m/Y'),
-            ])->all(),
-        ];
     }
 
     /**
