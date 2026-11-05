@@ -11,10 +11,12 @@ use App\Models\AiSetting;
 use App\Models\Company;
 use App\Models\PsychosocialDocument;
 use App\Models\PsychosocialDocumentVersion;
+use App\Models\PsychosocialMeasure;
 use App\Models\Survey;
-use App\Models\User;
 use App\Models\SurveyNr1Report;
+use App\Services\ActionMeasuresGenerator;
 use App\Services\ActionPlanGenerator;
+use App\Services\PsychosocialMeasureService;
 use App\Services\Nr1AiAnalyzer;
 use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\Psychosocial\ReviewRoundService;
@@ -25,7 +27,7 @@ use App\Support\HtmlSanitizer;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1RiskScenarioResolver;
 use App\Support\Nr1Shell\Nr1Shell;
-use App\Support\Nr1Shell\Nr1ShellPageData;
+use App\Support\PsychosocialMeasurePresenter;
 use App\Support\TechnicalOpinionDisclaimerStripper;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -177,10 +179,42 @@ class ActionPlanAdminController extends Controller
             'technicalOpinionAiPending' => $technicalOpinionAiPending,
             'aiGeneratePostUrl' => url('/admin/companies/'.$company->getKey().'/surveys/'.$survey->getKey().'/ai-analysis'),
             'technicalOpinionGeneratePostUrl' => url('/admin/companies/'.$company->getKey().'/surveys/'.$survey->getKey().'/technical-opinion'),
-            'actionMeasures' => request()->user() instanceof User
-                ? app(Nr1ShellPageData::class)->plan($survey, request()->user(), true)
-                : ['measures' => [], 'users' => [], 'effectivenessResults' => [], 'fullUrl' => null],
+            'actionMeasures' => $this->parecerMeasures($company, $survey),
         ]);
+    }
+
+    /**
+     * Mesmas ações do cadastro de medidas, para editar no próprio parecer.
+     *
+     * @return array<string, mixed>
+     */
+    private function parecerMeasures(Company $company, Survey $survey): array
+    {
+        $rows = PsychosocialMeasure::query()
+            ->where('survey_id', $survey->id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        return [
+            'measures' => $rows->map(fn (PsychosocialMeasure $measure): array => [
+                'id' => $measure->id,
+                'factor_label' => $measure->factor_label,
+                'measure_description' => $measure->measure_description,
+                'status' => $measure->status,
+                'status_label' => $measure->statusLabel(),
+                'origin' => $measure->origin,
+                'plan' => PsychosocialMeasurePresenter::present($measure),
+            ])->all(),
+            'statuses' => PsychosocialMeasure::STATUS_LABELS,
+            'canEditSuggestion' => ! ($survey->requires_publication && $survey->published_at !== null),
+            'dueOrigins' => PsychosocialMeasureService::DUE_ORIGINS,
+            'measuresAi' => [
+                'generated_at' => $survey->action_measures_generated_at?->timezone('America/Sao_Paulo')->format('d/m/Y H:i'),
+                'pending' => Cache::has(ActionMeasuresGenerator::pendingCacheKey($survey->id)),
+                'refresh_url' => route('admin.companies.surveys.measures.refresh-ai', [$company->id, $survey->id]),
+            ],
+        ];
     }
 
     /**
