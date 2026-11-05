@@ -3,6 +3,7 @@ import { router } from '@inertiajs/vue3';
 import CountUp from './CountUp.vue';
 import DimensionBadge from './DimensionBadge.vue';
 import EmptyState from './EmptyState.vue';
+import ServiceSuggestionList from './ServiceSuggestionList.vue';
 import LegacyNotice from './LegacyNotice.vue';
 import LevelPill from './LevelPill.vue';
 import Nr1Button from './Nr1Button.vue';
@@ -45,6 +46,8 @@ const request = (item) => {
                 <span class="n1-pill" :class="TONES[card.tone]" style="align-self: flex-start">{{ card.status }}</span>
                 <p>{{ card.text }}</p>
             </article>
+
+            <ServiceSuggestionList :suggestions="solutions.serviceSuggestions" :can-request="solutions.canRequest" />
 
             <section class="n1-card c12" aria-labelledby="recs-title">
                 <div class="n1-sectiontop">

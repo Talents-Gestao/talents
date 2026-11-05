@@ -53,6 +53,11 @@ class PsychosocialMeasureAdminController extends Controller
                 'plan' => PsychosocialMeasurePresenter::present($measure),
             ])->all(),
             'statuses' => PsychosocialMeasure::STATUS_LABELS,
+            'measuresAi' => [
+                'generated_at' => $survey->action_measures_generated_at?->timezone('America/Sao_Paulo')->format('d/m/Y H:i'),
+                'pending' => Cache::has(ActionMeasuresGenerator::pendingCacheKey($survey->id)),
+                'refresh_url' => route('admin.companies.surveys.measures.refresh-ai', [$company->id, $survey->id]),
+            ],
             // Talents propõe e edita até "Publicado"; depois a sugestão fica travada (a empresa confirma e ajusta).
             'canEditSuggestion' => ! ($survey->requires_publication && $survey->published_at !== null),
             'dueOrigins' => PsychosocialMeasureService::DUE_ORIGINS,

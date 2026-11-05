@@ -1632,6 +1632,7 @@ Só aparece em campanhas do modelo anterior; na V11 a URL redireciona para Docum
 | 03 Publicar | publica parecer e plano para a empresa |
 | Documentos liberados | no parecer legado: relatório técnico + plano de ação (resumo executivo inativo na UI) e subsídio AEP/PGR; dossiê fora desta tela (8.11.4) |
 | Empresa | parecer e plano publicados, PDFs e anexos |
+| Plano de ação | «Da análise à execução» lista as medidas geradas (`psychosocial_measures`) para a Talents e, depois da publicação do parecer, para a empresa |
 
 Rotas de ação do legado (admin): `PUT …/action-plan` (parecer e anexos), `POST …/action-plan/generate-suggested` (plano sugerido), `GET|POST …/action-plan/document-pdf` e `…/pdf`, `POST …/technical-opinion`, `GET …/technical-opinion-file`, `GET …/nr1-reports/{type}` (relatório executivo e encaminhamento técnico). Itens do plano legado: `PATCH /client/action-plan-items/{item}` (responsável, prazo, status `pending|in_progress|done`).
 
@@ -1641,6 +1642,7 @@ Rotas de ação do legado (admin): `PUT …/action-plan` (parecer e anexos), `PO
 |----------|-------|
 | 3 serviços fixos (`Nr1ServiceCards`) | 01 Pesquisa Psicossocial (Serviço realizado) · 02 Avaliação Complementar (Sob proposta) · 03 Intervenção Organizacional (Sob proposta) |
 | Recomendações | uma por dimensão em atenção, a partir das regras configuráveis (`Nr1ServiceMatch`) |
+| Serviços do catálogo | ao encerrar a pesquisa, `nr1:generate-service-suggestions` (de hora em hora) gera **uma** lista a partir dos produtos ativos (`commercial_products`) e dos resultados; nasce «Aguardando aprovação»; a Talents edita ou dispensa e «Liberar para a empresa» é o que o cliente vê em «Serviços que a empresa pode contratar»; «Solicitar conversa» cria o lead |
 | Antes da publicação | «Recomendações disponíveis quando o relatório for publicado.» |
 | Empresa | só regras **ativas e revisadas** (`NR1_SOLUTIONS_REQUIRE_REVIEW=true`); «Solicitar conversa» cria lead (`solution_request`) com empresa, campanha, serviço, necessidade, data e responsável comercial; «Meus pedidos» |
 | Sugestão automática | sem clique da empresa, gera só oportunidade «A qualificar» (`solution_suggestion`), nunca interesse declarado |
@@ -1693,7 +1695,7 @@ Origens (`Nr1Opportunity`): Treinamento, Solução sugerida, Solução solicitad
 
 #### 8.10.3 Medidas — `/admin/companies/{c}/surveys/{s}/medidas`
 
-**Página:** `Admin/Measures/Edit` («Nova medida» e «Medidas registradas»). No parecer legado, a inclusão e a lista ficam na mesma tela do parecer técnico. Ao encerrar a pesquisa (`status` fechado ou `ends_at` passado), o agendamento `nr1:generate-action-measures` (de hora em hora) enfileira **uma** geração por IA (`action_measures_generated_at`); o botão «Atualizar medidas» dispara outra chamada e substitui só sugestões ainda «A aprovar».
+**Página:** `Admin/Measures/Edit` («Nova medida» e «Medidas do plano de ação»). Cada medida gerada pela Mia tem o botão «Editar» para ajustar a sugestão enquanto a campanha não está publicada. O parecer técnico não lista nem inclui medidas. Ao encerrar a pesquisa (`status` fechado ou `ends_at` passado), o agendamento `nr1:generate-action-measures` (de hora em hora) enfileira **uma** geração por IA (`action_measures_generated_at`); o botão «Atualizar medidas» nesta página dispara outra chamada e substitui só sugestões ainda «A aprovar». O texto da Mia no parecer descreve o cenário com mais detalhe e linguagem próxima de quem lê, sem plano de ação nem lista de medidas. A geração do parecer usa pelo menos 4.000 tokens de resposta.
 
 #### 8.10.4 Resultados psicossociais — `/admin/companies/{c}/surveys/{s}/resultados-psicossociais`
 

@@ -208,6 +208,12 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.measures.suggestion');
         Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateStatus'])
             ->name('companies.surveys.measures.status');
+        Route::post('companies/{company}/surveys/{survey}/solucoes-sugeridas/liberar', [\App\Http\Controllers\Admin\SurveyServiceSuggestionAdminController::class, 'release'])
+            ->name('companies.surveys.service-suggestions.release');
+        Route::patch('companies/{company}/surveys/{survey}/solucoes-sugeridas/{suggestion}', [\App\Http\Controllers\Admin\SurveyServiceSuggestionAdminController::class, 'update'])
+            ->name('companies.surveys.service-suggestions.update');
+        Route::post('companies/{company}/surveys/{survey}/solucoes-sugeridas/{suggestion}/dispensar', [\App\Http\Controllers\Admin\SurveyServiceSuggestionAdminController::class, 'dismiss'])
+            ->name('companies.surveys.service-suggestions.dismiss');
         Route::get('companies/{company}/surveys/{survey}/documentos/{type}/previa', [PsychosocialDocumentAdminController::class, 'preview'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier', 'technical_report'])
             ->name('companies.surveys.psychosocial-documents.preview');

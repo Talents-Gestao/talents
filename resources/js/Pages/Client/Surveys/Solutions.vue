@@ -1,4 +1,5 @@
 <script setup>
+import ServiceSuggestionList from '@/Components/Nr1Shell/ServiceSuggestionList.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { bandBadgeClass } from '@/utils/nr1Bands';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -9,6 +10,7 @@ const props = defineProps({
     recommendations: { type: Array, default: () => [] },
     requests: { type: Array, default: () => [] },
     canRequest: { type: Boolean, default: false },
+    serviceSuggestions: { type: Object, default: () => ({ items: [], can_moderate: false }) },
 });
 
 const toneClass = {
@@ -49,6 +51,8 @@ const request = (recommendation) => {
                     <p class="text-sm text-gray-700">{{ card.text }}</p>
                 </section>
             </div>
+
+            <ServiceSuggestionList :suggestions="serviceSuggestions" :can-request="canRequest" />
 
             <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-labelledby="recommendations-title">
                 <div class="flex flex-wrap items-baseline justify-between gap-2">

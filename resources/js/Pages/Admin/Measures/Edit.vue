@@ -7,7 +7,7 @@ import MeasureSuggestionForm from '@/Components/Nr1Plan/MeasureSuggestionForm.vu
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
-import { reactive, watch } from 'vue';
+import { onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
     company: { type: Object, required: true },
@@ -16,9 +16,18 @@ const props = defineProps({
     statuses: { type: Object, required: true },
     canEditSuggestion: { type: Boolean, default: true },
     dueOrigins: { type: Object, default: () => ({}) },
+    measuresAi: {
+        type: Object,
+        default: () => ({ generated_at: null, pending: false, refresh_url: null }),
+    },
 });
 
 const page = usePage();
+const editingId = ref(null);
+
+const toggleEdit = (id) => {
+    editingId.value = editingId.value === id ? null : id;
+};
 
 const form = useForm({
     factor_label: '',
@@ -46,6 +55,35 @@ const submit = () => {
         onSuccess: () => form.reset('factor_label', 'measure_description', 'responsible_text', 'suggested_due_date'),
     });
 };
+
+const refreshMeasures = () => {
+    if (!props.measuresAi?.refresh_url || props.measuresAi.pending) {
+        return;
+    }
+    router.post(props.measuresAi.refresh_url, {}, { preserveScroll: true });
+};
+
+let refreshTimer = null;
+
+const watchRefresh = () => {
+    if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+    }
+    if (props.measuresAi?.pending) {
+        refreshTimer = setInterval(() => {
+            router.reload({ only: ['measures', 'measuresAi', 'flash'], preserveScroll: true });
+        }, 5000);
+    }
+};
+
+onMounted(watchRefresh);
+onUnmounted(() => {
+    if (refreshTimer) {
+        clearInterval(refreshTimer);
+    }
+});
+watch(() => props.measuresAi?.pending, watchRefresh);
 
 const saveStatus = (measure) => {
     router.patch(
@@ -129,15 +167,45 @@ const saveStatus = (measure) => {
         </section>
 
         <section class="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm sm:p-6">
-            <h2 class="text-base font-semibold text-slate-900">Medidas registradas</h2>
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 class="text-base font-semibold text-slate-900">Medidas do plano de ação</h2>
+                    <p class="mt-1 text-sm text-slate-600">
+                        A Mia gera as medidas uma vez, quando a pesquisa encerra.
+                        <span v-if="measuresAi.generated_at"> Última geração: {{ measuresAi.generated_at }}.</span>
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                    :disabled="measuresAi.pending"
+                    @click="refreshMeasures"
+                >
+                    {{ measuresAi.pending ? 'Atualizando…' : 'Atualizar medidas' }}
+                </button>
+            </div>
+            <p v-if="measuresAi.pending" class="mt-3 text-sm text-sky-800">
+                Geração em andamento. A lista atualiza sozinha em alguns segundos.
+            </p>
             <p v-if="measures.length === 0" class="mt-3 text-sm text-slate-600">Nenhuma medida registrada.</p>
             <ul v-else class="mt-4 divide-y divide-slate-100">
                 <li v-for="measure in measures" :key="measure.id" class="flex flex-wrap items-start justify-between gap-3 py-3">
-                    <div>
+                    <div class="min-w-0 flex-1">
                         <p class="text-sm font-medium text-slate-900">{{ measure.factor_label }}</p>
                         <p class="mt-1 text-sm text-slate-600">{{ measure.measure_description }}</p>
-                        <p class="mt-1 text-xs text-slate-500">{{ measure.status_label }}</p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            {{ measure.status_label }}
+                            <span v-if="measure.origin === 'engine_suggestion'"> · Mia</span>
+                        </p>
                     </div>
+                    <button
+                        v-if="canEditSuggestion && measure.origin === 'engine_suggestion'"
+                        type="button"
+                        class="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        @click="toggleEdit(measure.id)"
+                    >
+                        {{ editingId === measure.id ? 'Fechar' : 'Editar' }}
+                    </button>
                     <form class="flex items-center gap-2" @submit.prevent="saveStatus(measure)">
                         <InfoTooltip text="A aprovar ainda depende de decisão. Implantada só pode ser marcada por quem está logado e grava essa pessoa no registro." />
                         <select v-model="selectedStatus[measure.id]" class="rounded-lg border-slate-300 text-sm" :aria-label="`Status de ${measure.factor_label}`">
@@ -162,11 +230,18 @@ const saveStatus = (measure) => {
                         </p>
                         <p v-else class="mt-1 text-xs text-slate-500">Responsável e prazo ainda não confirmados pela empresa.</p>
 
-                        <details v-if="canEditSuggestion" class="mt-2">
+                        <MeasureSuggestionForm
+                            v-if="editingId === measure.id && measure.origin === 'engine_suggestion'"
+                            :company-id="company.id"
+                            :survey-id="survey.id"
+                            :measure="measure"
+                            :due-origins="dueOrigins"
+                        />
+                        <details v-else-if="canEditSuggestion && measure.origin !== 'engine_suggestion'" class="mt-2">
                             <summary class="cursor-pointer text-xs font-medium text-slate-700">Editar sugestão</summary>
                             <MeasureSuggestionForm :company-id="company.id" :survey-id="survey.id" :measure="measure" :due-origins="dueOrigins" />
                         </details>
-                        <p v-else class="mt-2 text-xs text-slate-500">Campanha publicada: a sugestão não é mais editada pela Talents.</p>
+                        <p v-else-if="!canEditSuggestion" class="mt-2 text-xs text-slate-500">Campanha publicada: a sugestão não é mais editada pela Talents.</p>
 
                         <MeasureHistory :history="measure.plan.history" />
                     </div>

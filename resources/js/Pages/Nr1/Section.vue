@@ -78,6 +78,10 @@ const view = computed(() => {
                 <LegacyOverviewView v-if="section.key === 'visao-geral'" :overview="section.legacy.overview" :notice="section.legacy.notice" :results-url="menuUrl('resultados')" :documents-url="menuUrl('parecer')" />
                 <LegacyCampaignView v-else-if="section.key === 'campanha'" :campaign="section.legacy.campaign" :notice="section.legacy.notice" />
                 <LegacyResultsView v-else-if="section.key === 'resultados'" :results="section.legacy.results" :notice="section.legacy.notice" :min-per-sector="section.legacy.minPerSector" :for-talents="section.legacy.forTalents" />
+                <template v-else-if="section.key === 'plano-de-acao' && section.legacy.plan.action">
+                    <LegacyNotice :text="section.legacy.notice" />
+                    <PlanView :plan="section.legacy.plan.action" />
+                </template>
                 <LegacyPlanView v-else-if="section.key === 'plano-de-acao'" :plan="section.legacy.plan" :notice="section.legacy.notice" />
                 <LegacyCentralView v-else-if="section.key === 'documentos'" :central="section.legacy.central" :notice="section.legacy.notice" />
                 <LegacyDocumentsView v-else-if="section.key === 'parecer'" :documents="section.legacy.documents" :notice="section.legacy.notice" />

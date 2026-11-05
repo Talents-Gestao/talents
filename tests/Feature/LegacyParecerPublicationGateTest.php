@@ -202,8 +202,10 @@ class LegacyParecerPublicationGateTest extends TestCase
 
         $legacy = (string) file_get_contents(resource_path('js/Components/Nr1Shell/LegacyDocumentsView.vue'));
         $this->assertStringNotContainsString('Liberar resumo executivo', $legacy);
-        $this->assertStringContainsString('openTechnicalReportModal', $legacy);
-        $this->assertStringContainsString('openPgrSubsidyModal', $legacy);
+        $this->assertStringContainsString('Cadastro técnico', $legacy);
+        $this->assertStringNotContainsString('openTechnicalReportModal', $legacy);
+        $this->assertStringNotContainsString('openPgrSubsidyModal', $legacy);
+        $this->assertStringNotContainsString('openExportPdfModal', $legacy);
         $this->assertStringNotContainsString('openExecutiveBriefModal', $legacy);
 
         $this->actingAs($campaign->admin)

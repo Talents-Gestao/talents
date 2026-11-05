@@ -2,11 +2,13 @@
 import { computed } from 'vue';
 import EmptyState from './EmptyState.vue';
 import LegacyNotice from './LegacyNotice.vue';
+import MeasureCard from './MeasureCard.vue';
 import Nr1Button from './Nr1Button.vue';
 
 /**
- * Plano de ação de uma campanha do modelo anterior: os itens do plano do parecer (só leitura). A edição continua em
- * «Parecer e publicação»; a empresa vê o plano depois da publicação.
+ * Plano de ação de uma campanha do modelo anterior. As medidas geradas (e as incluídas à mão) aparecem para a
+ * Talents e, depois da publicação do parecer, para a empresa. Itens antigos do parecer ficam na lista quando
+ * ainda não há medidas.
  */
 const props = defineProps({
     plan: { type: Object, required: true },
@@ -14,7 +16,12 @@ const props = defineProps({
 });
 
 const STATUS = { pending: 'Pendente', in_progress: 'Em andamento', done: 'Concluída', completed: 'Concluída', open: 'Aberta' };
-const withResponsible = computed(() => props.plan.items.filter((item) => item.responsible).length);
+const measures = computed(() => props.plan.measures ?? []);
+const usingMeasures = computed(() => measures.value.length > 0);
+const proposedCount = computed(() => (usingMeasures.value ? measures.value.length : props.plan.items.length));
+const withResponsible = computed(() => (usingMeasures.value
+    ? measures.value.filter((measure) => measure.confirmed).length
+    : props.plan.items.filter((item) => item.responsible).length));
 </script>
 
 <template>
@@ -31,16 +38,25 @@ const withResponsible = computed(() => props.plan.items.filter((item) => item.re
         <EmptyState v-if="plan.locked" title="O plano aparece quando a Talents publicar o parecer" text="Você será avisado quando o parecer técnico e o plano de ação estiverem disponíveis." />
 
         <div v-else class="n1-g12">
-            <div class="n1-card n1-stat teal c4"><div class="n1-cap">Ações propostas</div><div class="n1-big">{{ plan.items.length }}</div></div>
+            <div class="n1-card n1-stat teal c4"><div class="n1-cap">Ações propostas</div><div class="n1-big">{{ proposedCount }}</div></div>
             <div class="n1-card n1-stat purple c4"><div class="n1-cap">Com responsável</div><div class="n1-big">{{ withResponsible }}</div></div>
-            <div class="n1-card n1-stat gold c4"><div class="n1-cap">Sem responsável</div><div class="n1-big">{{ plan.items.length - withResponsible }}</div></div>
+            <div class="n1-card n1-stat gold c4"><div class="n1-cap">Sem responsável</div><div class="n1-big">{{ proposedCount - withResponsible }}</div></div>
 
             <section class="n1-card c12" aria-labelledby="legacy-plan-title">
                 <div class="n1-sectiontop">
-                    <h2 id="legacy-plan-title">Medidas do parecer</h2>
+                    <h2 id="legacy-plan-title">{{ usingMeasures ? 'Medidas do plano de ação' : 'Medidas do parecer' }}</h2>
                     <span class="n1-pill" :class="plan.published ? 'ok' : 'gray'">{{ plan.published ? `Publicado em ${plan.publishedAt}` : 'Rascunho' }}</span>
                 </div>
-                <EmptyState v-if="!plan.items.length" title="Plano de ação ainda não elaborado" text="As medidas aparecem aqui quando forem registradas no parecer técnico." />
+                <template v-if="usingMeasures">
+                    <MeasureCard
+                        v-for="measure in measures"
+                        :key="measure.id"
+                        :measure="measure"
+                        :users="plan.users ?? []"
+                        :effectiveness-results="plan.effectivenessResults ?? {}"
+                    />
+                </template>
+                <EmptyState v-else-if="!plan.items.length" title="Plano de ação ainda não elaborado" text="As medidas aparecem aqui quando a pesquisa encerra e a Mia gera o plano." />
                 <ul v-else class="n1-planlist">
                     <li v-for="item in plan.items" :key="item.id">
                         <div>
