@@ -1,7 +1,7 @@
 <script setup>
+import CompanyShowAccordion from '@/Components/Admin/Companies/CompanyShowAccordion.vue';
 import InfoTooltip from '@/Components/InfoTooltip.vue';
 import InputError from '@/Components/InputError.vue';
-import MeasureHistory from '@/Components/Nr1Plan/MeasureHistory.vue';
 import MeasureSuggestionForm from '@/Components/Nr1Plan/MeasureSuggestionForm.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { router, useForm } from '@inertiajs/vue3';
@@ -21,6 +21,7 @@ const props = defineProps({
 });
 
 const editingId = ref(null);
+const newMeasureSection = ref(null);
 const toggleEdit = (id) => {
     editingId.value = editingId.value === id ? null : id;
 };
@@ -49,6 +50,7 @@ const submit = () => {
     form.post(route('admin.companies.surveys.measures.store', [props.companyId, props.surveyId]), {
         preserveScroll: true,
         onSuccess: () => form.reset('factor_label', 'measure_description', 'responsible_text', 'suggested_due_date'),
+        onError: () => newMeasureSection.value?.open(),
     });
 };
 
@@ -110,8 +112,13 @@ watch(() => props.measuresAi?.pending, watchRefresh);
             Geração em andamento. A lista atualiza sozinha em alguns segundos.
         </p>
 
-        <form v-if="canEditSuggestion" class="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2" @submit.prevent="submit">
-            <h5 class="text-sm font-semibold text-slate-900 sm:col-span-2">Nova medida</h5>
+        <CompanyShowAccordion
+            v-if="canEditSuggestion"
+            ref="newMeasureSection"
+            title="Nova medida"
+            description="Fator, medida, responsável e prazo."
+        >
+        <form class="grid gap-4 sm:grid-cols-2" @submit.prevent="submit">
             <div>
                 <div class="flex items-center gap-1">
                     <label class="text-sm text-slate-700" for="parecer-factor">Fator</label>
@@ -147,6 +154,7 @@ watch(() => props.measuresAi?.pending, watchRefresh);
                 <PrimaryButton :disabled="form.processing">Registrar medida</PrimaryButton>
             </div>
         </form>
+        </CompanyShowAccordion>
 
         <p v-if="measures.length === 0" class="text-sm text-slate-600">Nenhuma medida ainda. Elas aparecem quando a pesquisa encerra e a Mia gera o plano, ou quando você registra uma.</p>
         <ul v-else class="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
@@ -189,7 +197,6 @@ watch(() => props.measuresAi?.pending, watchRefresh);
                         :due-origins="dueOrigins"
                     />
                     <p v-else-if="!canEditSuggestion" class="mt-2 text-xs text-slate-500">Campanha publicada: a sugestão não é mais editada pela Talents.</p>
-                    <MeasureHistory :history="measure.plan.history" />
                 </div>
             </li>
         </ul>

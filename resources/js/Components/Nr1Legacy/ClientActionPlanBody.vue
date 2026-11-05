@@ -85,25 +85,34 @@ defineProps({
 
 
 <style scoped>
+.parecer-prose :deep(p) {
+    margin: 0 0 1.15em;
+    line-height: 1.7;
+}
 .parecer-prose :deep(h2) {
-    margin-top: 1.25em;
-    margin-bottom: 0.5em;
+    margin-top: 1.85em;
+    margin-bottom: 0.75em;
     font-weight: 700;
 }
 .parecer-prose :deep(h2:first-child) {
     margin-top: 0;
 }
 .parecer-prose :deep(h3) {
-    margin-top: 1em;
-    margin-bottom: 0.4em;
+    margin-top: 1.5em;
+    margin-bottom: 0.65em;
     font-weight: 700;
 }
 .parecer-prose :deep(p + p) {
-    margin-top: 0.75em;
+    margin-top: 0;
 }
 .parecer-prose :deep(ul),
 .parecer-prose :deep(ol) {
     margin-top: 0.5em;
-    margin-bottom: 0.5em;
+    margin-bottom: 1.15em;
+}
+.parecer-prose :deep(br) {
+    display: block;
+    margin-bottom: 0.9em;
+    content: '';
 }
 </style>

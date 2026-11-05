@@ -77,8 +77,12 @@
             font-size: 9px;
             font-family: DejaVu Sans Mono, monospace;
         }
-        .opinion { margin-top: 6px; padding: 8px; border: 1px solid #e2e8f0; background: #fafafa; font-size: 10px; }
-        .opinion p { margin: 0 0 6px; }
+        .opinion { margin-top: 6px; padding: 8px; border: 1px solid #e2e8f0; background: #fafafa; font-size: 10px; line-height: 1.6; }
+        .opinion p { margin: 0 0 14px; }
+        .opinion h2 { margin: 18px 0 10px; font-size: 12px; }
+        .opinion h3 { margin: 16px 0 8px; font-size: 11px; }
+        .opinion ul, .opinion ol { margin: 0 0 14px; padding-left: 16px; }
+        .opinion li { margin: 0 0 6px; }
         .notice {
             margin-top: 14px;
             font-size: 9px;

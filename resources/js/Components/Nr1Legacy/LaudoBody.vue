@@ -98,13 +98,13 @@ const publicationStatusLabel = computed(() =>
     isPublished.value ? 'Publicado para a empresa' : 'Rascunho — ainda não enviado',
 );
 
-const technicalReportValidated = computed(() => Boolean(props.technicalReport?.validated));
+const technicalReportPublished = computed(() => props.technicalReport?.ready === true);
 
 const canPublishParecer = computed(() => {
     if (props.publication?.uses_review_flow) {
         return true;
     }
-    return technicalReportValidated.value;
+    return technicalReportPublished.value;
 });
 
 const measureSectionDescription = computed(() => {
@@ -140,12 +140,6 @@ const technicalReportPreviewUrl = computed(
             props.survey.id,
             'technical_report',
         ]),
-);
-
-const technicalReportValidateUrl = computed(
-    () =>
-        props.technicalReport?.urls?.validate ??
-        route('admin.companies.surveys.technical-report.validate', [props.company.id, props.survey.id]),
 );
 
 const pgrSubsidyReleaseUrl = computed(
@@ -257,10 +251,14 @@ const markdownToHtml = (text) => {
     if (!text) {
         return '';
     }
+    const spaced = String(text)
+        .replace(/\r\n/g, '\n')
+        .replace(/^(#{1,3}[^\n]+)\n(?!\n)/gm, '$1\n\n')
+        .replace(/([^\n])\n(?!\n)/g, '$1\n\n');
     try {
-        return marked.parse(text);
+        return marked.parse(spaced, { breaks: false, gfm: true });
     } catch {
-        return `<p>${String(text).replace(/\n/g, '<br>')}</p>`;
+        return `<p>${String(text).replace(/\n+/g, '</p><p>')}</p>`;
     }
 };
 
@@ -683,10 +681,32 @@ defineExpose({
 
             <div class="flex flex-wrap gap-2">
                 <SecondaryButton type="button" @click="openTechnicalReportModal">
+                    <svg
+                        v-if="technicalReport?.ready"
+                        class="mr-2 h-4 w-4 text-emerald-600"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        aria-hidden="true"
+                    >
+                        <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.3a1 1 0 0 1-1.42.002l-3.25-3.25a1 1 0 1 1 1.414-1.414l2.54 2.54 6.542-6.586a1 1 0 0 1 1.418-.006Z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="sr-only" v-if="technicalReport?.ready">Publicado no painel NR-1 da empresa. </span>
                     Relatório técnico + plano de ação
                 </SecondaryButton>
-                <SecondaryButton type="button" @click="openPgrSubsidyModal">Subsídio AEP/PGR</SecondaryButton>
-                <SecondaryButton type="button" @click="openExportPdfModal">
+                <SecondaryButton type="button" @click="openPgrSubsidyModal">
+                    <svg
+                        v-if="pgrSubsidy?.ready"
+                        class="mr-2 h-4 w-4 text-emerald-600"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        aria-hidden="true"
+                    >
+                        <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.3a1 1 0 0 1-1.42.002l-3.25-3.25a1 1 0 1 1 1.414-1.414l2.54 2.54 6.542-6.586a1 1 0 0 1 1.418-.006Z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="sr-only" v-if="pgrSubsidy?.ready">Publicado no painel NR-1 da empresa. </span>
+                    Subsídio AEP/PGR
+                </SecondaryButton>
+                <SecondaryButton type="button" disabled title="Inativo por enquanto">
                     Plano com resultados + parecer
                 </SecondaryButton>
             </div>
@@ -721,7 +741,7 @@ defineExpose({
 
                 <div
                     ref="opinionEditable"
-                    class="min-h-[280px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm prose prose-sm max-w-none focus:outline-none focus:ring-2 focus:ring-talents-500/30"
+                    class="parecer-editor min-h-[280px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-talents-500/30"
                     contenteditable="true"
                     role="textbox"
                     aria-label="Parecer técnico"
@@ -889,7 +909,7 @@ defineExpose({
         </p>
         <p class="mt-3 text-sm text-slate-700">
             Relatório técnico + plano de ação:
-            <strong>{{ technicalReportValidated ? 'validado' : 'pendente de validação' }}</strong>.
+            <strong>{{ technicalReportPublished ? 'publicado no painel da empresa' : 'ainda não publicado' }}</strong>.
             <button type="button" class="font-medium text-talents-800 underline" @click="openTechnicalReportModal">
                 Abrir relatório técnico
             </button>
@@ -898,7 +918,7 @@ defineExpose({
             v-if="!publication.uses_review_flow && !canPublishParecer"
             class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
         >
-            Valide o relatório técnico antes de publicar o parecer.
+            Publique o relatório técnico e plano de ação antes de publicar o parecer.
         </p>
         <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
             <SecondaryButton v-if="!shellMode" type="button" @click="selectStep('results')">
@@ -994,28 +1014,28 @@ defineExpose({
     <Nr1DocumentPreviewModal
         :show="showTechnicalReportModal"
         title="Relatório técnico + plano de ação"
-        description="O PDF abre na hora, sem liberar. Inclui achados, prioridades e plano de ação. Liberar congela a versão para validação antes de publicar o parecer."
+        description="O PDF abre na hora. Publicar envia esta versão ao painel NR-1 da empresa. Depois você pode editar e substituir."
         :document="technicalReport"
         :download-url="technicalReportDownloadUrl"
         :preview-url="technicalReportPreviewUrl"
         :release-url="technicalReportReleaseUrl"
-        :validate-url="technicalReportValidateUrl"
-        :can-validate="Boolean(technicalReport?.validatable)"
         :registration-url="registrationUrl"
         persist-key="technical_report"
+        publish-mode
         @close="showTechnicalReportModal = false"
     />
 
     <Nr1DocumentPreviewModal
         :show="showPgrSubsidyModal"
         title="Subsídio AEP/PGR"
-        description="O PDF abre na hora, sem liberar. Complete o cadastro técnico para preencher Unidade, AEP e responsável. Liberar congela a versão oficial."
+        description="O PDF abre na hora. Complete o cadastro técnico para preencher Unidade, AEP e responsável. Publicar envia esta versão ao painel NR-1 da empresa. Depois você pode editar e substituir."
         :document="pgrSubsidy"
         :download-url="pgrSubsidyDownloadUrl"
         :preview-url="pgrSubsidyPreviewUrl"
         :release-url="pgrSubsidyReleaseUrl"
         :registration-url="registrationUrl"
         persist-key="pgr_subsidy"
+        publish-mode
         @close="showPgrSubsidyModal = false"
     />
 
@@ -1045,3 +1065,38 @@ defineExpose({
         </div>
     </Modal>
 </template>
+
+<style scoped>
+.parecer-editor :deep(p) {
+    margin: 0 0 1.25rem;
+    line-height: 1.75;
+}
+.parecer-editor :deep(h2) {
+    margin: 2rem 0 0.9rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+.parecer-editor :deep(h3) {
+    margin: 1.6rem 0 0.75rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+.parecer-editor :deep(h2:first-child),
+.parecer-editor :deep(h3:first-child) {
+    margin-top: 0;
+}
+.parecer-editor :deep(ul),
+.parecer-editor :deep(ol) {
+    margin: 0 0 1.25rem;
+    padding-left: 1.25rem;
+}
+.parecer-editor :deep(li + li) {
+    margin-top: 0.45rem;
+}
+.parecer-editor :deep(br) {
+    display: block;
+    margin-bottom: 1rem;
+    content: '';
+}
+</style>

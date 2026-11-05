@@ -294,6 +294,6 @@ class Nr1ShellLegacyTest extends TestCase
         $this->assertStringNotContainsString('PsychosocialDocumentsAdminPanel', $laudo);
         $this->assertStringNotContainsString('MiaNr1AdminPanel', $laudo);
         $this->assertStringNotContainsString('useEditor', $laudo);
-        $this->assertStringContainsString('technicalReportValidated', $laudo);
+        $this->assertStringContainsString('technicalReportPublished', $laudo);
     }
 }

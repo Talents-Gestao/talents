@@ -155,7 +155,9 @@ class ReportGenerator
         $data = $this->baseViewData($survey);
         $data['logoBase64'] = TalentsLogoDataUri::get();
         $data['plan'] = $plan;
-        $data['technicalOpinion'] = TechnicalOpinionDisclaimerStripper::strip($plan?->technical_opinion);
+        $data['technicalOpinion'] = $this->separateOpinionBlocks(
+            TechnicalOpinionDisclaimerStripper::strip($plan?->technical_opinion)
+        );
         $data['overall'] = $overall;
         $data['bySection'] = $bySection;
         $data['deptOveralls'] = $deptOveralls;
@@ -233,12 +235,26 @@ class ReportGenerator
         $data = $this->baseViewData($survey);
         $data['logoBase64'] = TalentsLogoDataUri::get();
         $data['plan'] = $plan;
-        $data['technicalOpinion'] = TechnicalOpinionDisclaimerStripper::strip($technicalOpinion);
+        $data['technicalOpinion'] = $this->separateOpinionBlocks(
+            TechnicalOpinionDisclaimerStripper::strip($technicalOpinion)
+        );
         $data['isDraft'] = $isDraft;
 
         return $this->applyDompdfOptions(
             Pdf::loadView('reports.action_plan_document', $data)->setPaper('a4')
         );
+    }
+
+    /**
+     * Quebras simples da Mia viram parágrafos, para o PDF não colar um bloco no outro.
+     */
+    private function separateOpinionBlocks(?string $html): ?string
+    {
+        if ($html === null || trim($html) === '') {
+            return $html;
+        }
+
+        return preg_replace('/<br\s*\/?>/i', '</p><p>', $html) ?? $html;
     }
 
     /**
