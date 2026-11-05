@@ -1628,7 +1628,7 @@ Só aparece em campanhas do modelo anterior; na V11 a URL redireciona para Docum
 | Etapa do Laudo | Conteúdo |
 |----------------|----------|
 | 01 Diagnóstico | na seção Resultados (painel do legado) com «Continuar para o parecer» |
-| Parecer | três seções que abrem e fecham: Parecer técnico (aberta), Plano de ação e Anexos (recolhidos). A publicação fica em seguida: status, o relatório técnico no painel da empresa e o botão que abre o PDF |
+| Parecer | três seções que abrem e fecham: Parecer técnico (aberta), Plano de ação e Anexos (recolhidos). Anexos lista o Inventário de Riscos Empresa e o Inventário de Riscos PGR, com o estado de publicação no painel NR-1 da empresa. A publicação fica em seguida |
 | Documentos liberados | no parecer legado, a publicação é por etapa: Inventário de Riscos Empresa e Inventário de Riscos PGR. O botão mostra um visto quando a versão está no painel NR-1 da empresa. A Mia só preenche o texto do parecer; «Atualizar arquivos publicados» gera nova versão só dos PDFs que já estão no painel. «Plano com resultados + parecer» fica inativo. Resumo executivo inativo na UI; dossiê fora desta tela (8.11.4) |
 | Empresa | parecer e plano publicados, PDFs e anexos |
 | Plano de ação | «Da análise à execução» lista as medidas geradas (`psychosocial_measures`) para a Talents e, depois da publicação do parecer, para a empresa |

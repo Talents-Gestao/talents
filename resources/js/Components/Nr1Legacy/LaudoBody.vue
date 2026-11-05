@@ -10,7 +10,6 @@ import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
-import { DocumentTextIcon } from '@heroicons/vue/24/outline';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import { marked } from 'marked';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
@@ -158,6 +157,25 @@ const pgrSubsidyDownloadUrl = computed(
             'pgr_subsidy',
         ]),
 );
+
+const publishedAnnexes = computed(() => [
+    {
+        key: 'technical_report',
+        title: 'Inventário de Riscos Empresa',
+        ready: props.technicalReport?.ready === true,
+        version: props.technicalReport?.version_number ?? null,
+        downloadUrl: technicalReportDownloadUrl.value,
+        open: openTechnicalReportModal,
+    },
+    {
+        key: 'pgr_subsidy',
+        title: 'Inventário de Riscos PGR',
+        ready: props.pgrSubsidy?.ready === true,
+        version: props.pgrSubsidy?.version_number ?? null,
+        downloadUrl: pgrSubsidyDownloadUrl.value,
+        open: openPgrSubsidyModal,
+    },
+]);
 
 const pgrSubsidyPreviewUrl = computed(
     () =>
@@ -802,130 +820,46 @@ defineExpose({
                 <CompanyShowAccordion
                     ref="annexSection"
                     title="Anexos"
-                    description="Opcional. PDF, DOC ou DOCX, até 20 MB cada."
+                    description="Arquivos gerados e publicados no painel NR-1 da empresa."
                 >
-                <div class="space-y-4">
-
-                    <div class="rounded-lg border border-gray-200 bg-white p-3">
-                        <h5 class="text-sm font-medium text-gray-900">Arquivo do parecer</h5>
-                        <div
-                            v-if="existingOpinionFileName"
-                            class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
-                        >
-                            <div class="flex items-center gap-2 text-gray-800">
-                                <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
-                                <a
-                                    v-if="existingOpinionFileUrl"
-                                    :href="existingOpinionFileUrl"
-                                    class="font-medium text-talents-800 hover:underline"
+                <ul class="space-y-3">
+                    <li
+                        v-for="annex in publishedAnnexes"
+                        :key="annex.key"
+                        class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-3"
+                    >
+                        <div class="min-w-0">
+                            <h5 class="flex items-center text-sm font-medium text-gray-900">
+                                <svg
+                                    v-if="annex.ready"
+                                    class="mr-2 h-4 w-4 shrink-0 text-emerald-600"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                    aria-hidden="true"
                                 >
-                                    {{ existingOpinionFileName }}
-                                </a>
-                                <span v-else class="font-medium">{{ existingOpinionFileName }}</span>
-                            </div>
-                            <button
-                                type="button"
-                                class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                                @click="removeExistingOpinionFile"
-                            >
-                                Remover arquivo
-                            </button>
-                        </div>
-                        <div class="mt-3">
-                            <input
-                                ref="opinionFileInput"
-                                type="file"
-                                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-talents-800"
-                                @change="onOpinionFileChange"
-                            />
-                            <p v-if="form.technical_opinion_file" class="mt-2 text-xs text-emerald-700">
-                                Novo arquivo selecionado: {{ form.technical_opinion_file.name }}
-                                <button type="button" class="ml-2 text-red-600 hover:underline" @click="clearSelectedOpinionFile">
-                                    cancelar
-                                </button>
-                            </p>
-                            <p v-if="form.errors.technical_opinion_file" class="mt-2 text-sm text-red-600">
-                                {{ form.errors.technical_opinion_file }}
+                                    <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.3a1 1 0 0 1-1.42.002l-3.25-3.25a1 1 0 1 1 1.414-1.414l2.54 2.54 6.542-6.586a1 1 0 0 1 1.418-.006Z" clip-rule="evenodd" />
+                                </svg>
+                                {{ annex.title }}
+                            </h5>
+                            <p class="mt-1 text-xs text-gray-600">
+                                {{ annex.ready ? 'Publicado no painel NR-1 da empresa' : 'Ainda não publicado no painel NR-1 da empresa' }}
+                                <template v-if="annex.version"> · versão {{ annex.version }}</template>
                             </p>
                         </div>
-                    </div>
-
-                    <div class="rounded-lg border border-gray-200 bg-white p-3">
-                        <h5 class="text-sm font-medium text-gray-900">Relatório executivo</h5>
-                        <p class="mt-1 text-xs text-gray-600">Substitua a versão gerada automaticamente, se precisar.</p>
-                        <div
-                            v-if="existingExecutiveFileName"
-                            class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
-                        >
-                            <div class="flex items-center gap-2 text-gray-800">
-                                <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
-                                <a
-                                    v-if="existingExecutiveFileUrl"
-                                    :href="existingExecutiveFileUrl"
-                                    class="font-medium text-talents-800 hover:underline"
-                                >
-                                    {{ existingExecutiveFileName }}
-                                </a>
-                                <span v-else class="font-medium">{{ existingExecutiveFileName }}</span>
-                            </div>
-                            <button
-                                type="button"
-                                class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                                @click="removeExistingExecutiveFile"
+                        <div class="flex flex-wrap items-center gap-2">
+                            <a
+                                v-if="annex.ready && annex.downloadUrl"
+                                :href="annex.downloadUrl"
+                                class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                             >
-                                Remover
-                            </button>
+                                Baixar PDF
+                            </a>
+                            <SecondaryButton type="button" @click="annex.open">
+                                {{ annex.ready ? 'Abrir' : 'Publicar' }}
+                            </SecondaryButton>
                         </div>
-                        <div class="mt-3">
-                            <input
-                                ref="executiveFileInput"
-                                type="file"
-                                accept=".pdf,.doc,.docx"
-                                class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
-                                @change="onExecutiveFileChange"
-                            />
-                        </div>
-                    </div>
-
-                    <div class="rounded-lg border border-gray-200 bg-white p-3">
-                        <h5 class="text-sm font-medium text-gray-900">Encaminhamento técnico</h5>
-                        <p class="mt-1 text-xs text-gray-600">Substitua a versão gerada automaticamente, se precisar.</p>
-                        <div
-                            v-if="existingReferralFileName"
-                            class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
-                        >
-                            <div class="flex items-center gap-2 text-gray-800">
-                                <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
-                                <a
-                                    v-if="existingReferralFileUrl"
-                                    :href="existingReferralFileUrl"
-                                    class="font-medium text-talents-800 hover:underline"
-                                >
-                                    {{ existingReferralFileName }}
-                                </a>
-                                <span v-else class="font-medium">{{ existingReferralFileName }}</span>
-                            </div>
-                            <button
-                                type="button"
-                                class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                                @click="removeExistingReferralFile"
-                            >
-                                Remover
-                            </button>
-                        </div>
-                        <div class="mt-3">
-                            <input
-                                ref="referralFileInput"
-                                type="file"
-                                accept=".pdf,.doc,.docx"
-                                class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
-                                @change="onReferralFileChange"
-                            />
-                        </div>
-                    </div>
-
-                </div>
+                    </li>
+                </ul>
                 </CompanyShowAccordion>
             </div>
         </div>
