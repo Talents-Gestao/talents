@@ -1693,7 +1693,7 @@ Origens (`Nr1Opportunity`): Treinamento, Solução sugerida, Solução solicitad
 
 #### 8.10.3 Medidas — `/admin/companies/{c}/surveys/{s}/medidas`
 
-**Página:** `Admin/Measures/Edit` («Nova medida» e «Medidas registradas», com formulário de sugestão e histórico).
+**Página:** `Admin/Measures/Edit` («Nova medida» e «Medidas registradas»). No parecer legado, a inclusão e a lista ficam na mesma tela do parecer técnico. Ao encerrar a pesquisa (`status` fechado ou `ends_at` passado), o agendamento `nr1:generate-action-measures` (de hora em hora) enfileira **uma** geração por IA (`action_measures_generated_at`); o botão «Atualizar medidas» dispara outra chamada e substitui só sugestões ainda «A aprovar».
 
 #### 8.10.4 Resultados psicossociais — `/admin/companies/{c}/surveys/{s}/resultados-psicossociais`
 

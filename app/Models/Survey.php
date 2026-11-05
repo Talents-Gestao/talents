@@ -69,6 +69,7 @@ class Survey extends Model
             'requires_passeg_review' => 'boolean',
             'uses_invitations' => 'boolean',
             'published_at' => 'datetime',
+            'action_measures_generated_at' => 'datetime',
         ];
     }
 

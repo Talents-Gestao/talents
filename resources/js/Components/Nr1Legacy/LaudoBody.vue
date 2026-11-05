@@ -46,6 +46,10 @@ const props = defineProps({
     technicalOpinionAi: { type: Object, default: null },
     technicalOpinionAiPending: { type: Boolean, default: false },
     technicalOpinionGeneratePostUrl: { type: String, required: true },
+    actionMeasures: {
+        type: Object,
+        default: () => ({ items: [], pending: false, generated_at: null, refresh_url: null, store_url: null }),
+    },
     riskScenario: { type: String, default: null },
     riskScenarioLabel: { type: String, default: null },
     nr1Reports: { type: Object, default: () => ({ executive: null, technical_referral: null }) },
@@ -391,6 +395,31 @@ const requestTechnicalOpinionAi = () => {
     router.post(props.technicalOpinionGeneratePostUrl);
 };
 
+const measureForm = useForm({
+    factor_label: '',
+    measure_description: '',
+    evidence_basis: 'questionnaire_indication',
+    responsible_text: '',
+    suggested_due_date: '',
+});
+
+const submitMeasure = () => {
+    if (!props.actionMeasures?.store_url) {
+        return;
+    }
+    measureForm.post(props.actionMeasures.store_url, {
+        preserveScroll: true,
+        onSuccess: () => measureForm.reset('factor_label', 'measure_description', 'responsible_text', 'suggested_due_date'),
+    });
+};
+
+const refreshMeasures = () => {
+    if (!props.actionMeasures?.refresh_url || props.actionMeasures.pending) {
+        return;
+    }
+    router.post(props.actionMeasures.refresh_url, {}, { preserveScroll: true });
+};
+
 let technicalPollTimer = null;
 
 const startTechnicalPollIfPending = () => {
@@ -398,7 +427,7 @@ const startTechnicalPollIfPending = () => {
         clearInterval(technicalPollTimer);
         technicalPollTimer = null;
     }
-    if (props.technicalOpinionAiPending) {
+    if (props.technicalOpinionAiPending || props.actionMeasures?.pending) {
         technicalPollTimer = setInterval(() => {
             router.reload({
                 only: [
@@ -407,6 +436,7 @@ const startTechnicalPollIfPending = () => {
                     'technicalOpinionAiPending',
                     'technicalReport',
                     'pgrSubsidy',
+                    'actionMeasures',
                     'flash',
                 ],
             });
@@ -424,7 +454,7 @@ onMounted(async () => {
 });
 
 watch(
-    () => props.technicalOpinionAiPending,
+    () => [props.technicalOpinionAiPending, props.actionMeasures?.pending],
     () => {
         startTechnicalPollIfPending();
     },
@@ -650,6 +680,83 @@ defineExpose({
                 <SecondaryButton type="button" @click="openExportPdfModal">
                     Plano com resultados + parecer
                 </SecondaryButton>
+            </div>
+
+            <div class="surface-card space-y-4 p-6 text-slate-900">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h3 class="font-semibold text-talents-800">Medidas do plano de ação</h3>
+                        <p class="mt-1 text-sm text-gray-600">
+                            A Mia gera as medidas uma vez, quando a pesquisa encerra. Você pode incluir outras ou atualizar.
+                            <span v-if="actionMeasures.generated_at"> Última geração: {{ actionMeasures.generated_at }}.</span>
+                        </p>
+                    </div>
+                    <SecondaryButton
+                        type="button"
+                        :disabled="!aiEnabled || actionMeasures.pending"
+                        @click="refreshMeasures"
+                    >
+                        {{ actionMeasures.pending ? 'Atualizando…' : 'Atualizar medidas' }}
+                    </SecondaryButton>
+                </div>
+
+                <p v-if="actionMeasures.pending" class="text-sm text-sky-800">
+                    Geração em andamento. A lista atualiza sozinha em alguns segundos.
+                </p>
+
+                <ul v-if="actionMeasures.items?.length" class="space-y-2">
+                    <li
+                        v-for="item in actionMeasures.items"
+                        :key="item.id"
+                        class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                    >
+                        <p class="font-semibold text-slate-900">{{ item.factor_label }}</p>
+                        <p class="mt-1 text-slate-700">{{ item.measure_description }}</p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            {{ item.status_label }}
+                            <span v-if="item.suggested_due_date"> · prazo sugerido {{ item.suggested_due_date }}</span>
+                            <span v-if="item.origin === 'engine_suggestion'"> · Mia</span>
+                        </p>
+                    </li>
+                </ul>
+                <p v-else class="text-sm text-slate-600">Nenhuma medida ainda. Ao encerrar a pesquisa, a Mia gera a primeira lista.</p>
+
+                <form class="grid gap-3 border-t border-slate-200 pt-4 sm:grid-cols-2" @submit.prevent="submitMeasure">
+                    <div>
+                        <label class="text-sm font-medium text-slate-700" for="measure-factor">Fator</label>
+                        <input
+                            id="measure-factor"
+                            v-model="measureForm.factor_label"
+                            type="text"
+                            required
+                            class="mt-1 block w-full rounded-lg border-slate-300 text-sm"
+                        />
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-slate-700" for="measure-due">Prazo sugerido</label>
+                        <input
+                            id="measure-due"
+                            v-model="measureForm.suggested_due_date"
+                            type="date"
+                            class="mt-1 block w-full rounded-lg border-slate-300 text-sm"
+                        />
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="text-sm font-medium text-slate-700" for="measure-body">Medida</label>
+                        <textarea
+                            id="measure-body"
+                            v-model="measureForm.measure_description"
+                            required
+                            rows="3"
+                            class="mt-1 block w-full rounded-lg border-slate-300 text-sm"
+                        />
+                    </div>
+                    <div class="sm:col-span-2 flex justify-end">
+                        <PrimaryButton type="submit" :disabled="measureForm.processing">
+                            {{ measureForm.processing ? 'Salvando…' : 'Incluir medida' }}
+                        </PrimaryButton>
+                    </div>
+                </form>
             </div>
 
             <div class="surface-card space-y-4 p-6 text-slate-900">
