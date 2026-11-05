@@ -1,6 +1,7 @@
 <script setup>
+import CompanyShowAccordion from '@/Components/Admin/Companies/CompanyShowAccordion.vue';
 import InfoTooltip from '@/Components/InfoTooltip.vue';
-import MeasureCard from '@/Components/Nr1Shell/MeasureCard.vue';
+import ParecerMeasures from '@/Components/Nr1Legacy/ParecerMeasures.vue';
 import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
 import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
 import Nr1DocumentPreviewModal from '@/Components/Nr1Legacy/Nr1DocumentPreviewModal.vue';
@@ -49,7 +50,13 @@ const props = defineProps({
     technicalOpinionGeneratePostUrl: { type: String, required: true },
     actionMeasures: {
         type: Object,
-        default: () => ({ measures: [], users: [], effectivenessResults: {}, fullUrl: null }),
+        default: () => ({
+            measures: [],
+            statuses: {},
+            canEditSuggestion: true,
+            dueOrigins: {},
+            measuresAi: { generated_at: null, pending: false, refresh_url: null },
+        }),
     },
     riskScenario: { type: String, default: null },
     riskScenarioLabel: { type: String, default: null },
@@ -73,6 +80,8 @@ const publishPreviewPdfUrl = ref(null);
 const publishPreviewError = ref(null);
 const showDangerZone = ref(false);
 const opinionEditable = ref(null);
+const opinionSection = ref(null);
+const annexSection = ref(null);
 const appliedAiContent = ref(null);
 
 const activeStep = ref(props.shellMode ? 'opinion' : 'results');
@@ -96,6 +105,15 @@ const canPublishParecer = computed(() => {
         return true;
     }
     return technicalReportValidated.value;
+});
+
+const measureSectionDescription = computed(() => {
+    const count = props.actionMeasures.measures?.length ?? 0;
+    if (count === 0) {
+        return 'Nenhuma medida ainda';
+    }
+
+    return count === 1 ? '1 medida' : `${count} medidas`;
 });
 
 const technicalReportReleaseUrl = computed(
@@ -204,6 +222,24 @@ const form = useForm({
     technical_referral_file: null,
     remove_technical_referral_file: false,
 });
+
+watch(
+    () => form.errors.technical_opinion,
+    (message) => {
+        if (message) {
+            opinionSection.value?.open();
+        }
+    },
+);
+
+watch(
+    () => [form.errors.technical_opinion_file, form.errors.executive_report_file, form.errors.technical_referral_file],
+    (messages) => {
+        if (messages.some(Boolean)) {
+            annexSection.value?.open();
+        }
+    },
+);
 
 const existingOpinionFileName = ref(props.plan?.technical_opinion_file_name ?? null);
 const existingOpinionFileUrl = ref(props.plan?.technical_opinion_file_url ?? null);
@@ -625,12 +661,12 @@ defineExpose({
         </div>
     </div>
 
-    <form class="space-y-8" @submit.prevent="openPublishConfirmModal">
+    <div class="space-y-8">
         <div v-show="activeStep === 'opinion'" class="space-y-8 pb-8">
             <div>
                 <h3 class="text-lg font-semibold text-talents-900">Parecer técnico</h3>
                 <p class="mt-1 text-sm text-gray-600">
-                    Elabore o documento entregue à empresa. Use a Mia para rascunho — o texto entra direto na área editável.
+                    Abra cada seção. O parecer começa aberto; o plano de ação e os anexos ficam recolhidos até você expandir.
                 </p>
             </div>
 
@@ -655,26 +691,24 @@ defineExpose({
                 </SecondaryButton>
             </div>
 
-            <div class="surface-card space-y-4 p-6 text-slate-900">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h3 class="font-semibold text-talents-800">Parecer técnico</h3>
-                        <p class="mt-1 text-sm text-gray-600">
-                            Edite o texto abaixo. A Mia preenche esta mesma área. O plano de ação aparece em seguida, com as medidas desta campanha.
-                        </p>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <InfoTooltip
-                            text="A Mia gera um rascunho com base nos resultados da campanha. Revise antes de publicar."
-                        />
-                        <PrimaryButton
-                            type="button"
-                            :disabled="!aiEnabled || technicalOpinionAiPending"
-                            @click="requestTechnicalOpinionAi"
-                        >
-                            {{ technicalOpinionAiPending ? 'Gerando…' : 'Gerar parecer com IA' }}
-                        </PrimaryButton>
-                    </div>
+            <div class="space-y-4">
+                <CompanyShowAccordion
+                    ref="opinionSection"
+                    title="Parecer técnico"
+                    description="Edite o texto. A Mia preenche esta mesma área."
+                    default-open
+                >
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <InfoTooltip
+                        text="A Mia gera um rascunho com base nos resultados da campanha. Revise antes de publicar."
+                    />
+                    <PrimaryButton
+                        type="button"
+                        :disabled="!aiEnabled || technicalOpinionAiPending"
+                        @click="requestTechnicalOpinionAi"
+                    >
+                        {{ technicalOpinionAiPending ? 'Gerando…' : 'Gerar parecer com IA' }}
+                    </PrimaryButton>
                 </div>
 
                 <p v-if="!aiEnabled" class="text-sm text-amber-900">
@@ -698,14 +732,29 @@ defineExpose({
                 <div v-if="form.errors.technical_opinion" class="text-sm text-red-600">
                     {{ form.errors.technical_opinion }}
                 </div>
+                </CompanyShowAccordion>
 
-                <div class="space-y-4 rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-900">Anexos (opcional)</h4>
-                        <p class="mt-1 text-xs text-gray-600">
-                            Arquivo do parecer, relatório executivo ou encaminhamento técnico · PDF, DOC ou DOCX · máximo 20 MB.
-                        </p>
-                    </div>
+                <CompanyShowAccordion
+                    title="Plano de ação"
+                    :description="measureSectionDescription"
+                >
+                <ParecerMeasures
+                    :company-id="company.id"
+                    :survey-id="survey.id"
+                    :measures="actionMeasures.measures"
+                    :statuses="actionMeasures.statuses"
+                    :can-edit-suggestion="actionMeasures.canEditSuggestion"
+                    :due-origins="actionMeasures.dueOrigins"
+                    :measures-ai="actionMeasures.measuresAi"
+                />
+                </CompanyShowAccordion>
+
+                <CompanyShowAccordion
+                    ref="annexSection"
+                    title="Anexos"
+                    description="Opcional. PDF, DOC ou DOCX, até 20 MB cada."
+                >
+                <div class="space-y-4">
 
                     <div class="rounded-lg border border-gray-200 bg-white p-3">
                         <h5 class="text-sm font-medium text-gray-900">Arquivo do parecer</h5>
@@ -827,37 +876,10 @@ defineExpose({
                     </div>
 
                 </div>
+                </CompanyShowAccordion>
             </div>
         </div>
-    </form>
-
-    <section v-show="activeStep === 'opinion'" class="mt-8 space-y-4" aria-labelledby="action-plan-title">
-        <div class="flex flex-wrap items-end justify-between gap-3">
-            <div>
-                <h3 id="action-plan-title" class="text-lg font-semibold text-talents-900">Plano de ação</h3>
-                <p class="mt-1 text-sm text-gray-600">
-                    Medidas geradas para esta campanha. Ajuste responsável e prazo aqui, ou abra o cadastro completo.
-                </p>
-            </div>
-            <a
-                v-if="actionMeasures.fullUrl"
-                :href="actionMeasures.fullUrl"
-                class="text-sm font-medium text-talents-800 underline"
-            >
-                Cadastro de medidas
-            </a>
-        </div>
-        <p v-if="!actionMeasures.measures?.length" class="text-sm text-gray-600">
-            Nenhuma medida ainda. Elas aparecem aqui quando a pesquisa encerra e a Mia gera o plano.
-        </p>
-        <MeasureCard
-            v-for="measure in actionMeasures.measures"
-            :key="measure.id"
-            :measure="measure"
-            :users="actionMeasures.users"
-            :effectiveness-results="actionMeasures.effectivenessResults"
-        />
-    </section>
+    </div>
 
     <section v-show="activeStep === 'opinion'" class="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="publish-title">
         <h3 id="publish-title" class="text-lg font-semibold text-talents-900">Publicação</h3>

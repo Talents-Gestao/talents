@@ -1628,7 +1628,7 @@ Só aparece em campanhas do modelo anterior; na V11 a URL redireciona para Docum
 | Etapa do Laudo | Conteúdo |
 |----------------|----------|
 | 01 Diagnóstico | na seção Resultados (painel do legado) com «Continuar para o parecer» |
-| Parecer | texto do parecer técnico, análise da Mia, plano de ação com as medidas da campanha, anexos e a publicação no mesmo lugar: status, validação do relatório técnico e o botão que abre o PDF antes de confirmar o envio à empresa |
+| Parecer | três seções que abrem e fecham: Parecer técnico (aberta), Plano de ação e Anexos (recolhidos). A publicação fica em seguida: status, validação do relatório técnico e o botão que abre o PDF |
 | Documentos liberados | no parecer legado: relatório técnico + plano de ação (resumo executivo inativo na UI) e subsídio AEP/PGR; dossiê fora desta tela (8.11.4) |
 | Empresa | parecer e plano publicados, PDFs e anexos |
 | Plano de ação | «Da análise à execução» lista as medidas geradas (`psychosocial_measures`) para a Talents e, depois da publicação do parecer, para a empresa |
@@ -1694,7 +1694,7 @@ Origens (`Nr1Opportunity`): Treinamento, Solução sugerida, Solução solicitad
 
 #### 8.10.3 Medidas — `/admin/companies/{c}/surveys/{s}/medidas`
 
-**Página:** `Admin/Measures/Edit` («Nova medida» e «Medidas do plano de ação»). Cada medida gerada pela Mia tem o botão «Editar» para ajustar a sugestão enquanto a campanha não está publicada. O texto do parecer técnico não inclui a lista de medidas. Na etapa do parecer, o plano de ação aparece logo abaixo da área editável, com as mesmas medidas. Ao encerrar a pesquisa (`status` fechado ou `ends_at` passado), o agendamento `nr1:generate-action-measures` (de hora em hora) enfileira **uma** geração por IA (`action_measures_generated_at`); o botão «Atualizar medidas» nesta página dispara outra chamada e substitui só sugestões ainda «A aprovar». O texto da Mia no parecer descreve o cenário com mais detalhe e linguagem próxima de quem lê, sem plano de ação nem lista de medidas. A geração do parecer usa pelo menos 4.000 tokens de resposta.
+**Página:** `Admin/Measures/Edit` («Nova medida» e «Medidas do plano de ação»). Cada medida gerada pela Mia tem o botão «Editar» para ajustar a sugestão enquanto a campanha não está publicada. O texto da Mia não lista as medidas. No card do parecer, o plano de ação fica abaixo do texto e antes dos anexos: dá para incluir medida, editar a sugestão, mudar o status e pedir nova geração da Mia, sem sair para o cadastro de medidas. Ao encerrar a pesquisa (`status` fechado ou `ends_at` passado), o agendamento `nr1:generate-action-measures` (de hora em hora) enfileira **uma** geração por IA (`action_measures_generated_at`); o botão «Atualizar medidas» nesta página dispara outra chamada e substitui só sugestões ainda «A aprovar». O texto da Mia no parecer descreve o cenário com mais detalhe e linguagem próxima de quem lê, sem plano de ação nem lista de medidas. A geração do parecer usa pelo menos 4.000 tokens de resposta.
 
 #### 8.10.4 Resultados psicossociais — `/admin/companies/{c}/surveys/{s}/resultados-psicossociais`
 
