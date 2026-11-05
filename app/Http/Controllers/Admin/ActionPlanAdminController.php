@@ -27,6 +27,7 @@ use App\Support\HtmlSanitizer;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1RiskScenarioResolver;
 use App\Support\Nr1Shell\Nr1Shell;
+use App\Support\Nr1Shell\Nr1ShellPageData;
 use App\Support\PsychosocialMeasurePresenter;
 use App\Support\TechnicalOpinionDisclaimerStripper;
 use Illuminate\Http\RedirectResponse;
@@ -196,17 +197,50 @@ class ActionPlanAdminController extends Controller
             ->orderBy('id')
             ->get();
 
+        $user = auth()->user();
+        $shellPlan = $user !== null
+            ? app(Nr1ShellPageData::class)->plan($survey, $user, true)
+            : ['measures' => [], 'effectivenessResults' => PsychosocialMeasure::EFFECTIVENESS_RESULTS];
+        $shellById = collect($shellPlan['measures'])->keyBy('id');
+
         return [
-            'measures' => $rows->map(fn (PsychosocialMeasure $measure): array => [
-                'id' => $measure->id,
-                'factor_label' => $measure->factor_label,
-                'measure_description' => $measure->measure_description,
-                'status' => $measure->status,
-                'status_label' => $measure->statusLabel(),
-                'origin' => $measure->origin,
-                'plan' => PsychosocialMeasurePresenter::present($measure),
-            ])->all(),
+            'measures' => $rows->map(function (PsychosocialMeasure $measure) use ($shellById): array {
+                $shell = $shellById->get($measure->id, []);
+
+                return array_merge([
+                    'urls' => [
+                        'suggestion' => null,
+                        'confirm' => null,
+                        'start' => null,
+                        'complete' => null,
+                        'adjust' => null,
+                        'replan' => null,
+                        'evidence' => null,
+                        'effectiveness' => null,
+                    ],
+                    'suggested' => ['responsible' => null, 'due_date' => null, 'due_origin_label' => null],
+                    'confirmed' => null,
+                    'effectiveness' => ['result_label' => null, 'note' => null],
+                    'evidences' => [],
+                    'history' => [],
+                    'timeline' => [],
+                    'departments' => [],
+                    'objective' => null,
+                    'expected_result' => null,
+                    'indicator' => null,
+                ], $shell, [
+                    'id' => $measure->id,
+                    'factor_label' => $measure->factor_label,
+                    'measure_description' => $measure->measure_description,
+                    'status' => $measure->status,
+                    'status_label' => $shell['status_label'] ?? $measure->planLabel(),
+                    'admin_status_label' => $measure->statusLabel(),
+                    'origin' => $measure->origin,
+                    'plan' => PsychosocialMeasurePresenter::present($measure),
+                ]);
+            })->all(),
             'statuses' => PsychosocialMeasure::STATUS_LABELS,
+            'effectivenessResults' => $shellPlan['effectivenessResults'] ?? PsychosocialMeasure::EFFECTIVENESS_RESULTS,
             'canEditSuggestion' => ! ($survey->requires_publication && $survey->published_at !== null),
             'dueOrigins' => PsychosocialMeasureService::DUE_ORIGINS,
             'measuresAi' => [
@@ -651,7 +685,7 @@ class ActionPlanAdminController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'technical_opinion' => 'Para publicar o parecer, publique o relatório técnico e plano de ação nesta campanha.',
+            'technical_opinion' => 'Para publicar o parecer, publique o Inventário de Riscos Empresa nesta campanha.',
         ]);
     }
 }

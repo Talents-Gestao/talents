@@ -64,6 +64,12 @@ const dateBr = (iso) => (iso ? iso.split('-').reverse().join('/') : '—');
                     <DimensionBadge :title="measure.factor_label" :size="26" />{{ measure.factor_label }}
                 </h3>
                 <p>{{ measure.measure_description }}</p>
+                <p v-if="measure.departments?.length" class="n1-tiny" style="margin-top: 6px">
+                    <b>Setores apontados:</b>
+                    <template v-for="(department, index) in measure.departments" :key="department.name">
+                        <span v-if="index"> · </span>{{ department.name }}<template v-if="department.band_label"> ({{ department.band_label }}<template v-if="department.score_label"> · {{ department.score_label }}</template>)</template>
+                    </template>
+                </p>
             </div>
             <div class="n1-action-chips">
                 <LevelPill v-if="measure.risk_level" :risk="measure.risk_level" :label="measure.band_label" />

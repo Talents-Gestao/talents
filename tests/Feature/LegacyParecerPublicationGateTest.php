@@ -230,4 +230,43 @@ class LegacyParecerPublicationGateTest extends TestCase
                 ->has('section.legacy.documents.laudo.pgrSubsidy.urls.release')
             );
     }
+
+    public function test_updating_published_files_replaces_only_documents_already_on_the_company_panel(): void
+    {
+        $campaign = $this->seedLegacyCampaign();
+
+        $this->actingAs($campaign->admin)
+            ->post(route('admin.companies.surveys.documents.replace-published', [
+                $campaign->fx->company->id,
+                $campaign->fx->survey->id,
+            ]))
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertSame(0, PsychosocialDocumentVersion::query()->count());
+
+        $this->actingAs($campaign->admin)
+            ->post(route('admin.companies.surveys.technical-report.release', [
+                $campaign->fx->company->id,
+                $campaign->fx->survey->id,
+            ]))
+            ->assertRedirect();
+
+        $this->actingAs($campaign->admin)
+            ->post(route('admin.companies.surveys.documents.replace-published', [
+                $campaign->fx->company->id,
+                $campaign->fx->survey->id,
+            ]))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $versions = PsychosocialDocumentVersion::query()->orderBy('id')->get();
+        $this->assertCount(2, $versions);
+        $this->assertSame(PsychosocialDocument::TYPE_TECHNICAL_REPORT, $versions->first()->document->type);
+        $this->assertSame(2, (int) $versions->last()->version_number);
+        $this->assertSame(
+            $versions->last()->id,
+            PsychosocialDocument::query()->sole()->current_version_id
+        );
+    }
 }

@@ -192,6 +192,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.pgr-subsidy.release');
         Route::post('companies/{company}/surveys/{survey}/relatorio-tecnico/liberar', [PsychosocialDocumentAdminController::class, 'releaseTechnicalReport'])
             ->name('companies.surveys.technical-report.release');
+        Route::post('companies/{company}/surveys/{survey}/documentos/atualizar-publicados', [PsychosocialDocumentAdminController::class, 'replacePublished'])
+            ->name('companies.surveys.documents.replace-published');
         Route::post('companies/{company}/surveys/{survey}/relatorio-tecnico/validar', [PsychosocialDocumentAdminController::class, 'validateTechnicalReportInSystem'])
             ->name('companies.surveys.technical-report.validate');
         Route::post('companies/{company}/surveys/{survey}/dossie/liberar', [PsychosocialDocumentAdminController::class, 'releaseDossier'])

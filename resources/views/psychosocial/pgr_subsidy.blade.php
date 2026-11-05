@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
-    <title>Subsídio AEP/PGR - {{ $snapshot['survey']['title'] }}</title>
+    <title>Inventário de Riscos PGR - {{ $snapshot['survey']['title'] }}</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #2a1042; }
         h1 { font-size: 18px; color: #4a2070; margin-bottom: 4px; }
@@ -18,6 +18,8 @@
         thead th { width: auto; }
         .disclaimer { color: #555; font-size: 9px; }
         .footer { margin-top: 24px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 9px; color: #555; }
+        .header { text-align: center; margin-bottom: 12px; }
+        .header img { max-height: 48px; width: auto; }
         ul.compact { margin: 4px 0 0 16px; padding: 0; }
         ul.compact li { margin: 2px 0; }
     </style>
@@ -80,7 +82,13 @@
         $sectorPriorities = $pgr['sector_priorities'] ?? [];
     @endphp
 
-    <h1>Subsídio AEP/PGR — riscos psicossociais</h1>
+    @if(!empty($logoBase64))
+        <div class="header">
+            <img src="{{ $logoBase64 }}" alt="Talents">
+        </div>
+    @endif
+
+    <h1>Inventário de Riscos PGR</h1>
     <p class="muted">
         Empresa: {{ $snapshot['company']['name'] }} &mdash; Campanha: {{ $snapshot['survey']['title'] }}
         @if($snapshot['survey']['starts_at'] || $snapshot['survey']['ends_at'])

@@ -25,7 +25,7 @@ const shown = computed(() => (isTalents.value ? (round.value?.versions?.length ?
 
 const DOCS = [
     { type: 'executive_brief', icon: '▣', title: 'Relatório executivo', text: 'Visão resumida para a liderança: indicadores, prioridades e plano proposto.' },
-    { type: 'technical_report', icon: '▤', title: 'Relatório técnico + plano de ação', text: 'Documento único para a PASSEG: metodologia, resultados, pontos fortes, prioridades, medidas, responsáveis, prazos, evidências e acompanhamento.' },
+    { type: 'technical_report', icon: '▤', title: 'Inventário de Riscos Empresa', text: 'Documento único para a PASSEG: metodologia, resultados, pontos fortes, prioridades, medidas, responsáveis, prazos, evidências e acompanhamento.' },
 ];
 const versionOf = (type) => shown.value?.versions?.find((version) => version.type === type) ?? null;
 

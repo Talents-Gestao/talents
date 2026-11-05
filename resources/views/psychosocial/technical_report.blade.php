@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
-    <title>Relatório técnico e plano de ação - {{ $snapshot['survey']['title'] }}</title>
+    <title>Inventário de Riscos Empresa - {{ $snapshot['survey']['title'] }}</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 10.5px; color: #2a1042; }
         h1 { font-size: 18px; color: #4a2070; margin-bottom: 4px; }
@@ -18,6 +18,8 @@
         td.num { text-align: right; white-space: nowrap; }
         .small td, .small th { font-size: 8.5px; padding: 3px; }
         .footer { margin-top: 22px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 9px; color: #555; }
+        .header { text-align: center; margin-bottom: 12px; }
+        .header img { max-height: 48px; width: auto; }
         .annex { page-break-before: always; }
     </style>
 </head>
@@ -31,7 +33,13 @@
         $labels = ['Nunca', 'Raramente', 'Às vezes', 'Frequentemente', 'Sempre'];
     @endphp
 
-    <h1>Relatório técnico e plano de ação</h1>
+    @if(!empty($logoBase64))
+        <div class="header">
+            <img src="{{ $logoBase64 }}" alt="Talents">
+        </div>
+    @endif
+
+    <h1>Inventário de Riscos Empresa</h1>
     <p class="muted">Fatores psicossociais relacionados ao trabalho · Pesquisa Talents NR-1</p>
     <p>
         <strong>Organização:</strong> {{ $orGap($registration['legal_name_snapshot'] ?? $snapshot['company']['name']) }}
