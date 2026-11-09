@@ -113,7 +113,8 @@ const iconBoxClass = (accent) =>
 </script>
 
 <template>
-    <nav aria-label="Navegação do NR-1" data-nr1-subnav :class="cls('min-w-0', 'xl:sticky xl:top-0 xl:self-start xl:overflow-x-clip xl:pl-1 xl:pt-1')">
+    <!-- xl:top-8 = respiro superior do <main> (lg:py-8): a trilha não se mexe quando o conteúdo rola (nr1-frame-scroll.css). -->
+    <nav aria-label="Navegação do NR-1" data-nr1-subnav :class="cls('min-w-0', 'xl:sticky xl:top-8 xl:self-start xl:overflow-x-clip xl:pl-1 xl:pt-1')">
         <div :class="tabs ? 'sr-only' : cls('sr-only', 'xl:not-sr-only xl:mb-2 xl:flex xl:min-h-7 xl:items-center xl:justify-between xl:gap-2 xl:pl-3', whenCollapsed('xl:justify-start'))">
             <p :class="cls('text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500', whenCollapsed('xl:sr-only'))">Inteligência organizacional</p>
             <button

@@ -428,6 +428,7 @@ const pinButtonTitle = computed(() =>
                     <main
                         id="conteudo-principal"
                         tabindex="-1"
+                        scroll-region
                         class="app-shell-main-scroll min-h-0 flex-1 overflow-y-auto px-4 py-6 focus:outline-none sm:px-6 lg:px-8 lg:py-8"
                     >
                         <slot />
