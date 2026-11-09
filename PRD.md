@@ -469,7 +469,7 @@ O painel NR-1 não tem layout próprio: abre dentro do layout padrão do perfil 
 | 8 | Oportunidades | `/nr1/oportunidades` | ↗ |
 | — | Campanha NR-1 | `/nr1/campanha` (fora do menu gerencial; colaborador mantém no link da jornada) | ▶ |
 
-Ícones: os da sub-navegação são Heroicons do sistema por seção; o glifo da tabela é a reserva para uma seção sem ícone mapeado. Cabeçalho (inalterado, dentro do conteúdo): «← Voltar à empresa» (Talents com empresa em foco → página da empresa; Empresa → Painel) ou «← Voltar ao Talents» (Comercial), monograma/logo da empresa, «NR-1 · PESQUISA PSICOSSOCIAL», nome da empresa, linha de contexto (respostas · campanha) e seletor de campanha quando há mais de uma. Não há seletor de empresa: a empresa vem da entrada (`?empresa=&campanha=`, lembrada na sessão).
+Ícones: os da sub-navegação são Heroicons do sistema por seção; o glifo da tabela é a reserva para uma seção sem ícone mapeado. Cabeçalho (inalterado, dentro do conteúdo): «← Voltar à empresa» (Talents com empresa em foco → página da empresa; Empresa → Painel) ou «← Voltar ao Talents» (Comercial), monograma/logo da empresa, «NR-1 · PESQUISA PSICOSSOCIAL», nome da empresa, linha de contexto (respostas · campanha) e seletor de campanha quando há mais de uma. Não há seletor de empresa no cabeçalho: a empresa vem da entrada (`?empresa=&campanha=` nos links do menu, lembrada na sessão). «Trocar empresa» (`/nr1/empresas`) limpa o foco da sessão para a próxima escolha não devolver à empresa anterior.
 
 ### 4.5 Superfícies públicas (sem login)
 
@@ -1491,7 +1491,7 @@ Gravação em transação: consome o convite e cria `survey_responses` (com `ses
 
 **Contexto (`Nr1ShellContext`):**
 
-- Talents: empresa e campanha vêm da query `empresa`/`campanha` e ficam lembradas na sessão. Padrão: a campanha de coleta mais recente (por data de início).
+- Talents: empresa e campanha vêm da query `empresa`/`campanha` e ficam lembradas na sessão (os itens do menu também levam a query). Padrão: a campanha de coleta mais recente (por data de início). Abrir `/nr1/empresas` limpa o foco (`clearTalentsFocus`); «Abertas recentemente» permanece.
 - Empresa: entra direto na própria empresa (ignora `empresa` da URL) e só enxerga campanhas **publicadas** (ou que não exigem publicação). Padrão: a mais recente publicada. Uma campanha mais nova ainda não publicada nunca é padrão, não entra no seletor, não abre por `?campanha=` e o nome dela não vai no payload.
 - Comercial e revisor: sem empresa em foco.
 

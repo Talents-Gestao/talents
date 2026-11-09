@@ -59,7 +59,9 @@ export function sectionAfterCampaignSwitch(current, menu, target) {
 /** Destino da troca de campanha: href da seção (do menu do servidor) e a query de empresa e campanha. */
 export function campaignSwitchVisit(shell, context, target) {
     const section = sectionAfterCampaignSwitch(shell?.current, shell?.menu, target);
-    const href = (shell?.menu ?? []).find((item) => item.key === section)?.href ?? null;
+    const rawHref = (shell?.menu ?? []).find((item) => item.key === section)?.href ?? null;
+    // O menu já pode trazer ?empresa=&campanha=; a visita monta a query nova a partir do alvo.
+    const href = rawHref ? String(rawHref).split('?')[0] : null;
     const query = { campanha: target?.id };
     if (context?.company?.id) {
         query.empresa = context.company.id;

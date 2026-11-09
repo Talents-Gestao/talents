@@ -68,6 +68,9 @@ class ShellController extends Controller
         $user = $request->user();
         abort_unless($user !== null && Nr1Shell::canPickCompany($user), 403);
 
+        // Trocar empresa: solta o foco da sessão para a escolha seguinte não «voltar» à empresa anterior.
+        Nr1ShellContext::clearTalentsFocus($request);
+
         return Inertia::render('Nr1/Companies', [
             // Adiado: a tela abre com o skeleton e recebe os cartões em seguida (com estado de erro se falhar).
             'companies' => Inertia::defer(fn () => Nr1ShellCompanyPicker::cards()),
@@ -104,7 +107,7 @@ class ShellController extends Controller
                 'profile' => $profile,
                 'profileLabel' => self::PROFILE_LABELS[$profile],
                 'menu' => array_values(array_map(
-                    fn (array $item) => $item + ['href' => route('nr1.'.$item['key'])],
+                    fn (array $item) => $item + ['href' => $this->sectionHref($item['key'], $context)],
                     array_filter(
                         Nr1Shell::sectionsFor($user),
                         fn (array $item) => ($legacy || ! in_array($item['key'], self::ONLY_LEGACY, true))
@@ -278,6 +281,19 @@ class ShellController extends Controller
             'awaitingPublication' => $context->awaitingPublication,
             'collaborator' => false,
         ];
+    }
+
+    /**
+     * Href do item do menu com empresa/campanha na query, para a troca de seção não depender só da sessão.
+     */
+    private function sectionHref(string $section, Nr1ShellContext $context): string
+    {
+        $query = array_filter([
+            'empresa' => $context->company?->id,
+            'campanha' => $context->survey?->id,
+        ], fn ($value) => $value !== null);
+
+        return route('nr1.'.$section, $query, absolute: false);
     }
 
     /**

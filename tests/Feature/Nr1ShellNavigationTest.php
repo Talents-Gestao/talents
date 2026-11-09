@@ -117,7 +117,8 @@ class Nr1ShellNavigationTest extends TestCase
         $legacyQuery = ['empresa' => $legacy->company_id, 'campanha' => $legacy->id];
         $this->actingAs($owner)->get(route('nr1.parecer', $legacyQuery))->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('shell.current', 'parecer')->where('section.key', 'parecer')->where('section.label', 'Parecer e publicação')
-            ->where('shell.menu.4.key', 'parecer')->where('shell.menu.4.label', 'Parecer e publicação')->where('shell.menu.4.href', route('nr1.parecer'))
+            ->where('shell.menu.4.key', 'parecer')->where('shell.menu.4.label', 'Parecer e publicação')
+            ->where('shell.menu.4.href', route('nr1.parecer', $legacyQuery, false))
             ->where('shell.menu.3.key', 'documentos')->has('section.legacy.documents'));
         // Na V11 o item some e a URL direta leva a Documentos (o parecer e a publicação vivem lá).
         $v11Query = ['empresa' => $c->company->id, 'campanha' => $c->survey->id];
@@ -158,6 +159,17 @@ class Nr1ShellNavigationTest extends TestCase
         $this->actingAs($fresh)->get('/nr1/visao-geral?empresa='.$other->company_id)->assertOk()
             ->assertInertia(fn (Assert $p) => $p->where('context.company.id', $other->company_id)->where('context.survey.id', $other->id));
         $this->actingAs($fresh)->get(route('nr1.index'))->assertRedirect(route('nr1.visao-geral'));
+
+        // «Trocar empresa» limpa o foco: a entrada NR-1 não devolve à empresa anterior.
+        $this->actingAs($fresh)->get(route('nr1.empresas'))->assertOk();
+        $this->actingAs($fresh)->get(route('nr1.index'))->assertRedirect(route('nr1.empresas'));
+
+        // Escolher outra empresa abre a nova (não a que estava na sessão antes do seletor).
+        $this->actingAs($fresh)->get('/nr1/visao-geral?empresa='.$c->company->id.'&campanha='.$c->survey->id)
+            ->assertOk()
+            ->assertInertia(fn (Assert $p) => $p
+                ->where('context.company.id', $c->company->id)
+                ->where('context.survey.id', $c->survey->id));
 
         // «Abrir painel NR-1» (empresa e campanha na URL) continua abrindo o contexto certo.
         $this->actingAs($fresh)->get(route('nr1.index', ['empresa' => $c->company->id, 'campanha' => $c->survey->id]))

@@ -55,6 +55,12 @@ describe('sectionAfterCampaignSwitch', () => {
         assert.deepEqual(visit, { section: 'resultados', href: '/nr1/resultados', query: { campanha: 7, empresa: 9 } });
         const company = campaignSwitchVisit({ current: 'parecer', menu: LEGACY_MENU }, { company: null }, { id: 6, legacy: false });
         assert.deepEqual(company, { section: 'visao-geral', href: '/nr1/visao-geral', query: { campanha: 6 } });
+        const withQuery = campaignSwitchVisit(
+            { current: 'resultados', menu: [{ key: 'resultados', href: '/nr1/resultados?empresa=1&campanha=2' }] },
+            { company: { id: 9 } },
+            { id: 7 },
+        );
+        assert.deepEqual(withQuery, { section: 'resultados', href: '/nr1/resultados', query: { campanha: 7, empresa: 9 } });
     });
 });
 
