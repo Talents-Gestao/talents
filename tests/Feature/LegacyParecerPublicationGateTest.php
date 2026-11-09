@@ -151,6 +151,7 @@ class LegacyParecerPublicationGateTest extends TestCase
         $this->assertNotNull(
             ActionPlan::query()->where('survey_id', $campaign->fx->survey->id)->value('admin_published_at')
         );
+        $this->assertNotNull($campaign->fx->survey->fresh()->published_at);
     }
 
     public function test_publishing_parecer_with_validated_technical_report_succeeds(): void
@@ -173,7 +174,36 @@ class LegacyParecerPublicationGateTest extends TestCase
 
         $plan = ActionPlan::query()->where('survey_id', $campaign->fx->survey->id)->firstOrFail();
         $this->assertNotNull($plan->admin_published_at);
+        $this->assertNotNull($campaign->fx->survey->fresh()->published_at);
         $this->assertStringContainsString('Parecer com relatório técnico validado.', (string) $plan->technical_opinion);
+    }
+
+    public function test_company_shell_sees_legacy_campaign_after_parecer_publication(): void
+    {
+        $campaign = $this->seedLegacyCampaign();
+        $campaign->fx->survey->forceFill(['requires_publication' => true, 'published_at' => null])->save();
+        $companyAdmin = User::factory()->companyAdmin($campaign->fx->company->id)->create();
+
+        $this->actingAs($companyAdmin)->get(route('nr1.resultados'))->assertInertia(fn (Assert $p) => $p
+            ->where('context.survey', null)
+            ->where('context.awaitingPublication', true));
+
+        $this->releaseAndValidateTechnicalReport($campaign);
+        $this->actingAs($campaign->admin)
+            ->put(route('admin.companies.surveys.action-plan.update', [
+                $campaign->fx->company->id,
+                $campaign->fx->survey->id,
+            ]), [
+                'technical_opinion' => '<p>Parecer liberado para a empresa.</p>',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($companyAdmin)
+            ->get(route('nr1.resultados', ['campanha' => $campaign->fx->survey->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $p) => $p
+                ->where('context.survey.id', $campaign->fx->survey->id)
+                ->where('context.awaitingPublication', false));
     }
 
     public function test_talents_can_validate_technical_report_in_system_without_proof(): void

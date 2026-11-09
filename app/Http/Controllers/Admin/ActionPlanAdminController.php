@@ -16,10 +16,10 @@ use App\Models\Survey;
 use App\Models\SurveyNr1Report;
 use App\Services\ActionMeasuresGenerator;
 use App\Services\ActionPlanGenerator;
-use App\Services\PsychosocialMeasureService;
 use App\Services\Nr1AiAnalyzer;
 use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\Psychosocial\ReviewRoundService;
+use App\Services\PsychosocialMeasureService;
 use App\Services\ReportGenerator;
 use App\Services\SurveyResultCalculator;
 use App\Services\SurveyResultsPresenter;
@@ -444,13 +444,21 @@ class ActionPlanAdminController extends Controller
             $this->assertLegacyTechnicalReportValidatedForPublish($survey);
         }
 
-        DB::transaction(function () use ($plan, $technicalOpinion, $hasPublishableContent, $newFilePath, $newFileName) {
+        DB::transaction(function () use ($request, $survey, $plan, $technicalOpinion, $hasPublishableContent, $newFilePath, $newFileName) {
             $plan->update([
                 'technical_opinion' => $technicalOpinion,
                 'technical_opinion_file_path' => $newFilePath,
                 'technical_opinion_file_name' => $newFileName,
                 'admin_published_at' => $hasPublishableContent ? now() : null,
             ]);
+
+            // Legado: disponibilizar o parecer também marca a campanha como publicada (seletor + gate da empresa).
+            if ($hasPublishableContent && ! $survey->usesReviewFlow() && $survey->published_at === null) {
+                $survey->forceFill([
+                    'published_at' => now(),
+                    'published_by' => $request->user()->id,
+                ])->save();
+            }
         });
 
         if (($uploadedFile !== null || $removeFile)

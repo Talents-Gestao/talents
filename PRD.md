@@ -1438,9 +1438,10 @@ Efeitos: gera `public_token` (UUID), congela a versão do instrumento, grava `re
 
 #### 8.6.3 Gate de publicação (`SurveyPublicationGate`, middleware `survey.published`)
 
-- Campanha que exige publicação: resultados, impressão, exportações, plano e documentos respondem 404 à empresa até `published_at`.
-- Campanhas anteriores ao gate continuam visíveis como antes (decisão D9, sem backfill).
-- Na V11, a publicação acontece pela rodada de revisão (8.11). No modelo anterior, pelo botão «Publicar» do Laudo (`POST /admin/companies/{c}/surveys/{s}/publicar`).
+- Campanha que exige publicação: resultados, impressão, exportações, plano e documentos respondem 404 à empresa até estar «Publicada» (`allows` / `scopeVisible` / `isPublished` usam a mesma regra).
+- «Publicada» = `surveys.published_at` preenchido **ou**, no modelo anterior (`production_v1`), parecer disponibilizado (`action_plans.admin_published_at`). Parecer salvo na V11 **não** libera a campanha.
+- Campanhas anteriores ao gate (`requires_publication = false`) continuam visíveis como antes (decisão D9, sem backfill).
+- Na V11, a publicação grava `published_at` pela rodada de revisão (8.11). No modelo anterior: botão «Publicar» do Laudo (`POST /admin/companies/{c}/surveys/{s}/publicar`) **ou** disponibilizar o parecer (grava `admin_published_at` e, se ainda nulo, `published_at`).
 - Publicar dispara o aviso «relatório publicado» à empresa (sino e, com SMTP, e-mail).
 
 ### 8.7 Coleta pública
