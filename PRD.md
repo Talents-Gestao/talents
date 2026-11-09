@@ -272,9 +272,9 @@ O painel NR-1 (`/nr1`) tem perfis próprios, derivados do papel e das permissõe
 
 | Perfil | Quem | Seções que pode ver | Abre em |
 |--------|------|---------------------|---------|
-| Talents | `super_admin` com `companies:view` | Visão geral, Campanha NR-1, Resultados, Plano de ação, Documentos, Parecer e publicação, Soluções Talents, Oportunidades | Visão geral |
+| Talents | `super_admin` com `companies:view` | Visão geral, Resultados, Plano de ação, Documentos, Parecer e publicação, Soluções Talents, Oportunidades (Campanha NR-1 fora do menu; rota `/nr1/campanha` permanece para gestão) | Visão geral |
 | Comercial | `super_admin` sem `companies:view`, com `nr1_oportunidades:view` | Soluções Talents (só com `methodology:view`), Oportunidades | Oportunidades |
-| Empresa | `company_admin` ou `company_user` | Visão geral, Campanha NR-1, Resultados, Plano de ação, Documentos, Parecer e publicação, Soluções Talents | Visão geral |
+| Empresa | `company_admin` ou `company_user` | Visão geral, Resultados, Plano de ação, Documentos, Parecer e publicação, Soluções Talents (Campanha NR-1 fora do menu) | Visão geral |
 | PASSEG | `external_reviewer` | Documentos (só com a revisão externa ligada; redireciona para `/revisao`) | Documentos |
 | Colaborador | sem login, pelo link | Campanha NR-1 e Minha jornada | Minha jornada |
 
@@ -459,15 +459,15 @@ O painel NR-1 não tem layout próprio: abre dentro do layout padrão do perfil 
 
 | Ordem | Seção | Rota | Ícone |
 |-------|-------|------|-------|
-| 1 | Visão geral | `/nr1/visao-geral` | ◫ |
-| 2 | Campanha NR-1 | `/nr1/campanha` | ▶ |
-| 3 | Minha jornada | `/nr1/jornada/{token}/minha-jornada` | ♡ |
-| 4 | Resultados da pesquisa | `/nr1/resultados` | ▥ |
-| 5 | Plano de ação | `/nr1/plano-de-acao` | ☷ |
-| 6 | Documentos | `/nr1/documentos` | ▤ |
-| 7 | Parecer e publicação | `/nr1/parecer` (só campanhas do modelo anterior) | ✎ |
-| 8 | Soluções Talents | `/nr1/solucoes` | ✦ |
-| 9 | Oportunidades | `/nr1/oportunidades` | ↗ |
+| 1 | Visão geral | `/nr1/visao-geral` (questões, dimensões e participação no topo) | ◫ |
+| 2 | Minha jornada | `/nr1/jornada/{token}/minha-jornada` | ♡ |
+| 3 | Resultados da pesquisa | `/nr1/resultados` | ▥ |
+| 4 | Plano de ação | `/nr1/plano-de-acao` | ☷ |
+| 5 | Documentos | `/nr1/documentos` | ▤ |
+| 6 | Parecer e publicação | `/nr1/parecer` (só campanhas do modelo anterior) | ✎ |
+| 7 | Soluções Talents | `/nr1/solucoes` | ✦ |
+| 8 | Oportunidades | `/nr1/oportunidades` | ↗ |
+| — | Campanha NR-1 | `/nr1/campanha` (fora do menu gerencial; colaborador mantém no link da jornada) | ▶ |
 
 Ícones: os da sub-navegação são Heroicons do sistema por seção; o glifo da tabela é a reserva para uma seção sem ícone mapeado. Cabeçalho (inalterado, dentro do conteúdo): «← Voltar à empresa» (Talents com empresa em foco → página da empresa; Empresa → Painel) ou «← Voltar ao Talents» (Comercial), monograma/logo da empresa, «NR-1 · PESQUISA PSICOSSOCIAL», nome da empresa, linha de contexto (respostas · campanha) e seletor de campanha quando há mais de uma. Não há seletor de empresa: a empresa vem da entrada (`?empresa=&campanha=`, lembrada na sessão).
 
@@ -1710,7 +1710,7 @@ Origens (`Nr1Opportunity`): Treinamento, Solução sugerida, Solução solicitad
 | Tipo | Nome | Modelo | Uso |
 |------|------|--------|-----|
 | `executive_brief` | Resumo executivo / Relatório executivo | V11 e legado | Campanha, adesão, panorama das 7 dimensões, pontos fortes, atenções, ações com responsável e prazo; 1–2 páginas |
-| `technical_report` | Inventário de Riscos Psicossocial | V11 e legado | Dados da empresa, metodologia, elegíveis e base, resultados, grupos agregados, pontos positivos, prioridades e plano completo; sem Anexo A (instrumento), Anexo B nem controle documental; documento único centralizado |
+| `technical_report` | Inventário de Riscos Psicossocial | V11 e legado | Dados da empresa, parecer técnico (seção 2), participação e resultados (seção 3), pontos positivos, prioridades e plano completo; sem Anexo A (instrumento), Anexo B nem controle documental; documento único centralizado |
 | `pgr_subsidy` | Inventário de Riscos PGR | legado (fora da UI) | Tipo mantido no backend para versões antigas; não aparece mais no parecer nem na centralização de publicação |
 | `evidence_dossier` | Dossiê de evidências | legado | Anexos (AEP, observação, inventário, outros) e lista congelada; bloqueado com polaridade pendente |
 

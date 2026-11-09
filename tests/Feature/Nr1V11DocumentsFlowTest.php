@@ -484,7 +484,7 @@ class Nr1V11DocumentsFlowTest extends TestCase
         $this->assertArrayHasKey('name', $snapshot['company']);
 
         $html = app(PsychosocialDocumentService::class)->renderHtml(PsychosocialDocument::TYPE_TECHNICAL_REPORT, $snapshot);
-        foreach (['Inventário de Riscos Psicossocial', '1. Dados da empresa', '6. Plano de ação e acompanhamento', 'Revisar a distribuição das tarefas do setor.', 'Confirmado:', 'Em andamento'] as $expected) {
+        foreach (['Inventário de Riscos Psicossocial', '1. Dados da empresa', '2. Parecer técnico', '3. Participação e resultados', '6. Plano de ação e acompanhamento', 'Revisar a distribuição das tarefas do setor.', 'Confirmado:', 'Em andamento'] as $expected) {
             $this->assertStringContainsString($expected, $html);
         }
         $this->assertStringNotContainsString('Anexo A', $html);

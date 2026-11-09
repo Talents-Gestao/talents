@@ -107,8 +107,8 @@ class Nr1ShellNavigationTest extends TestCase
         $owner = User::factory()->talentsOwner()->create();
 
         $q = fn (Survey $s) => '/nr1/visao-geral?'.http_build_query(['empresa' => $s->company_id, 'campanha' => $s->id]);
-        $this->assertSame(['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'solucoes', 'oportunidades'], $this->menuKeys($owner, $q($c->survey)));
-        $this->assertSame(['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'parecer', 'solucoes', 'oportunidades'], $this->menuKeys($owner, $q($legacy)));
+        $this->assertSame(['visao-geral', 'resultados', 'plano-de-acao', 'documentos', 'solucoes', 'oportunidades'], $this->menuKeys($owner, $q($c->survey)));
+        $this->assertSame(['visao-geral', 'resultados', 'plano-de-acao', 'documentos', 'parecer', 'solucoes', 'oportunidades'], $this->menuKeys($owner, $q($legacy)));
 
         $this->actingAs($owner)->get($q($c->survey))->assertInertia(fn (Assert $p) => $p
             ->component('Nr1/Section')->where('shell.profile', 'talents')->where('shell.current', 'visao-geral')->where('shell.pickerUrl', '/nr1/empresas'));
@@ -117,8 +117,8 @@ class Nr1ShellNavigationTest extends TestCase
         $legacyQuery = ['empresa' => $legacy->company_id, 'campanha' => $legacy->id];
         $this->actingAs($owner)->get(route('nr1.parecer', $legacyQuery))->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('shell.current', 'parecer')->where('section.key', 'parecer')->where('section.label', 'Parecer e publicação')
-            ->where('shell.menu.5.key', 'parecer')->where('shell.menu.5.label', 'Parecer e publicação')->where('shell.menu.5.href', route('nr1.parecer'))
-            ->where('shell.menu.4.key', 'documentos')->has('section.legacy.documents'));
+            ->where('shell.menu.4.key', 'parecer')->where('shell.menu.4.label', 'Parecer e publicação')->where('shell.menu.4.href', route('nr1.parecer'))
+            ->where('shell.menu.3.key', 'documentos')->has('section.legacy.documents'));
         // Na V11 o item some e a URL direta leva a Documentos (o parecer e a publicação vivem lá).
         $v11Query = ['empresa' => $c->company->id, 'campanha' => $c->survey->id];
         $this->actingAs($owner)->get(route('nr1.parecer', $v11Query))->assertRedirect(route('nr1.documentos', $v11Query));
@@ -133,7 +133,7 @@ class Nr1ShellNavigationTest extends TestCase
         }
 
         $companyAdmin = User::factory()->companyAdmin($c->company->id)->create();
-        $this->assertSame(['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'solucoes'], $this->menuKeys($companyAdmin, '/nr1/visao-geral'));
+        $this->assertSame(['visao-geral', 'resultados', 'plano-de-acao', 'documentos', 'solucoes'], $this->menuKeys($companyAdmin, '/nr1/visao-geral'));
         $this->actingAs($companyAdmin)->get('/nr1/resultados')->assertInertia(fn (Assert $p) => $p->where('shell.profile', 'empresa')->where('shell.current', 'resultados')->where('shell.pickerUrl', null));
 
         $commercial = $this->adminWith(AdminPermissionModule::Nr1Oportunidades, AdminPermissionModule::Methodology);

@@ -23,6 +23,7 @@ use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\PsychosocialDashboardBuilder;
 use App\Services\SurveyResultsPresenter;
 use App\Support\Nr1GroupPrivacy;
+use App\Support\Nr1InstrumentMatrix;
 use App\Support\Nr1RiskScenarioResolver;
 use App\Support\SurveyPublicationGate;
 use Illuminate\Http\Request;
@@ -156,9 +157,14 @@ final class Nr1ShellLegacy
         ];
 
         $strengthsPayload = $this->strengthsFromSurvey($survey, $respondents, $minGroup, $hideParticipation);
+        $matrix = Nr1InstrumentMatrix::forTemplate((int) $survey->survey_template_id);
 
         return [
             'cards' => $cards,
+            'instrument' => [
+                'questions' => count($matrix),
+                'dimensions' => collect($matrix)->pluck('section_id')->unique()->count(),
+            ],
             'strengths' => $strengthsPayload['strengths'],
             'strengthsEmpty' => $strengthsPayload['strengthsEmpty'],
             'strengthsBase' => $strengthsPayload['strengthsBase'],

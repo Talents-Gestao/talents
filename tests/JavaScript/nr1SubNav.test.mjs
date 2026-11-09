@@ -11,8 +11,8 @@ import {
 } from '../../resources/js/Components/Nr1Shell/nr1SubNav.js';
 
 const sections = (keys) => keys.map((key) => ({ key, label: key, icon: '', href: `/nr1/${key}` }));
-const LEGACY_MENU = sections(['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'parecer', 'solucoes', 'oportunidades']);
-const V11_MENU = sections(['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'solucoes', 'oportunidades']);
+const LEGACY_MENU = sections(['visao-geral', 'resultados', 'plano-de-acao', 'documentos', 'parecer', 'solucoes', 'oportunidades']);
+const V11_MENU = sections(['visao-geral', 'resultados', 'plano-de-acao', 'documentos', 'solucoes', 'oportunidades']);
 
 describe('lista da sub-sidebar por tipo de campanha', () => {
     it('shows «Parecer e publicação» right after Documentos only on the previous model', () => {
@@ -46,7 +46,8 @@ describe('sectionAfterCampaignSwitch', () => {
     it('falls back to Visão geral (never Campanha NR-1) when the section does not exist for the new campaign', () => {
         assert.equal(sectionAfterCampaignSwitch('parecer', LEGACY_MENU, { id: 5, legacy: false }), 'visao-geral');
         assert.equal(sectionAfterCampaignSwitch('inexistente', V11_MENU, { id: 5 }), 'visao-geral');
-        assert.equal(sectionAfterCampaignSwitch('parecer', sections(['campanha', 'solucoes']), { id: 5 }), 'campanha');
+        assert.equal(sectionAfterCampaignSwitch('parecer', sections(['campanha', 'solucoes']), { id: 5 }), 'solucoes');
+        assert.equal(sectionAfterCampaignSwitch('campanha', V11_MENU, { id: 5 }), 'visao-geral');
     });
 
     it('builds the visit with the menu href and the company and campaign query', () => {
@@ -61,7 +62,7 @@ describe('subNavBadges', () => {
     it('only uses the status already in the header context', () => {
         assert.deepEqual(subNavBadges({ survey: { statusBadge: { label: 'Publicado', tone: 'ok' } } }, V11_MENU), { documentos: { label: 'Publicado', tone: 'ok' } });
         assert.deepEqual(subNavBadges({ survey: { statusBadge: { label: 'Em revisão', tone: 'warn' } } }, LEGACY_MENU), { parecer: { label: 'Em revisão', tone: 'warn' } });
-        assert.deepEqual(subNavBadges({ survey: { statusBadge: { label: 'Encerrada', tone: 'gray' } } }, LEGACY_MENU), { campanha: { label: 'Encerrada', tone: 'gray' } });
+        assert.deepEqual(subNavBadges({ survey: { statusBadge: { label: 'Encerrada', tone: 'gray' } } }, LEGACY_MENU), {});
         assert.deepEqual(subNavBadges({ survey: null }, V11_MENU), {});
         assert.deepEqual(subNavBadges({ collaborator: true, survey: { statusBadge: { label: 'Ativa', tone: 'ok' } } }, V11_MENU), {});
     });

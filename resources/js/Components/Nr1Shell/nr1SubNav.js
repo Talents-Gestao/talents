@@ -32,6 +32,9 @@ export function subNavItems(menu, current) {
 /** Seções que só existem nas campanhas do modelo anterior (espelha ShellController::ONLY_LEGACY). */
 export const ONLY_LEGACY_SECTIONS = ['parecer'];
 
+/** Fora do menu gerencial (espelha ShellController::HIDDEN_FROM_MENU). */
+export const HIDDEN_FROM_MENU_SECTIONS = ['campanha'];
+
 /**
  * Seção ao trocar de campanha no cabeçalho: fica na seção atual; se ela não existir para a nova campanha (fora do menu
  * do perfil, ou «Parecer e publicação» indo para uma V11), cai em «Visão geral» — nunca em «Campanha NR-1» por acaso.
@@ -39,7 +42,10 @@ export const ONLY_LEGACY_SECTIONS = ['parecer'];
 export function sectionAfterCampaignSwitch(current, menu, target) {
     const keys = (Array.isArray(menu) ? menu : []).map((item) => item?.key).filter(Boolean);
     const legacy = Boolean(target?.legacy);
-    const fits = (key) => keys.includes(key) && (legacy || !ONLY_LEGACY_SECTIONS.includes(key));
+    const fits = (key) =>
+        keys.includes(key)
+        && (legacy || !ONLY_LEGACY_SECTIONS.includes(key))
+        && !HIDDEN_FROM_MENU_SECTIONS.includes(key);
     if (fits(current)) {
         return current;
     }
@@ -82,8 +88,8 @@ export function accentFor(key, index = 0) {
 
 /**
  * Selos da trilha, só com o que já vem no contexto do cabeçalho (nenhum cálculo novo): o estado de publicação vai em
- * Documentos (V11) ou em Parecer e publicação (modelo anterior); campanha sem publicação mostra Ativa/Encerrada em
- * Campanha NR-1.
+ * Documentos (V11) ou em Parecer e publicação (modelo anterior). Ativa/Encerrada não ganha selo de seção após a
+ * saída de Campanha NR-1 do menu gerencial.
  *
  * @returns {Record<string, {label: string, tone: string}>}
  */
@@ -94,9 +100,10 @@ export function subNavBadges(context, menu) {
     }
     const keys = (Array.isArray(menu) ? menu : []).map((item) => item?.key);
     const publicationLabels = ['Publicado', 'Em revisão', 'Em edição'];
-    const target = publicationLabels.includes(badge.label)
-        ? (keys.includes('parecer') ? 'parecer' : 'documentos')
-        : 'campanha';
+    if (!publicationLabels.includes(badge.label)) {
+        return {};
+    }
+    const target = keys.includes('parecer') ? 'parecer' : 'documentos';
 
     return keys.includes(target) ? { [target]: { label: badge.label, tone: badge.tone ?? 'gray' } } : {};
 }

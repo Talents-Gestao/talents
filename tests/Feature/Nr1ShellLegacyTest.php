@@ -222,9 +222,9 @@ class Nr1ShellLegacyTest extends TestCase
                 ->missing('section.overview')->where('section.kpis', []));
         }
 
-        // Menu do legado: todas as seções do Talents, com «Parecer e publicação» logo depois de Documentos.
+        // Menu do legado: sem Campanha NR-1; «Parecer e publicação» logo depois de Documentos.
         $menu = $this->actingAs($c->owner)->get('/nr1/visao-geral?'.http_build_query($q))->viewData('page')['props']['shell']['menu'];
-        $this->assertSame(['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'parecer', 'solucoes', 'oportunidades'], array_column($menu, 'key'));
+        $this->assertSame(['visao-geral', 'resultados', 'plano-de-acao', 'documentos', 'parecer', 'solucoes', 'oportunidades'], array_column($menu, 'key'));
 
         // O seletor de campanha marca as antigas.
         $this->actingAs($c->owner)->get(route('nr1.visao-geral', $q))->assertInertia(fn (Assert $p) => $p

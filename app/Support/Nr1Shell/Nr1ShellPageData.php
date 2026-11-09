@@ -52,11 +52,20 @@ class Nr1ShellPageData
     public function overview(Survey $survey, bool $hideParticipation, string $insufficientMessage): array
     {
         $dashboard = $this->dashboard->build($survey);
+        $matrix = Nr1InstrumentMatrix::forTemplate((int) $survey->survey_template_id);
+        $instrument = [
+            'questions' => count($matrix),
+            'dimensions' => collect($matrix)->pluck('section_id')->unique()->count(),
+        ];
+
         if (! ($dashboard['has_results'] ?? false)) {
-            return ['hasResults' => false];
+            return [
+                'hasResults' => false,
+                'instrument' => $instrument,
+            ];
         }
 
-        $items = collect(Nr1InstrumentMatrix::forTemplate((int) $survey->survey_template_id))->keyBy('question_id');
+        $items = collect($matrix)->keyBy('question_id');
         $cards = $dashboard['cards'];
 
         $respondents = (int) ($cards['participation']['respondents'] ?? 0);
@@ -68,6 +77,7 @@ class Nr1ShellPageData
 
         return [
             'hasResults' => true,
+            'instrument' => $instrument,
             'cards' => [
                 'overall' => $cards['overall'] + ['band_labels' => Nr1BandLabels::forSurvey($survey)],
                 'participation' => $hideParticipation

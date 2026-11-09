@@ -44,6 +44,9 @@ class ShellController extends Controller
     /** Seções que só existem no modelo anterior: o Laudo (parecer técnico e publicação). Na V11 a publicação vive em Documentos. */
     private const ONLY_LEGACY = ['parecer'];
 
+    /** Fora do menu de Talents/Empresa: questionário, participação e dimensões passam a viver na Visão geral. */
+    private const HIDDEN_FROM_MENU = ['campanha'];
+
     public function index(Request $request): RedirectResponse
     {
         $user = $request->user();
@@ -89,7 +92,7 @@ class ShellController extends Controller
         // «Parecer e publicação» só existe no modelo anterior; na V11 (ou sem campanha) a URL direta leva a Documentos.
         $legacy = $context->survey !== null && Nr1ShellLegacy::isLegacy($context->survey);
         if (! $legacy && in_array($section, self::ONLY_LEGACY, true)) {
-            $target = collect(['documentos', 'visao-geral', 'campanha', 'resultados'])
+            $target = collect(['documentos', 'visao-geral', 'resultados'])
                 ->first(fn (string $key) => Nr1Shell::allows($user, $key, $profile));
             abort_if($target === null, 403);
 
@@ -102,7 +105,11 @@ class ShellController extends Controller
                 'profileLabel' => self::PROFILE_LABELS[$profile],
                 'menu' => array_values(array_map(
                     fn (array $item) => $item + ['href' => route('nr1.'.$item['key'])],
-                    array_filter(Nr1Shell::sectionsFor($user), fn (array $item) => $legacy || ! in_array($item['key'], self::ONLY_LEGACY, true)),
+                    array_filter(
+                        Nr1Shell::sectionsFor($user),
+                        fn (array $item) => ($legacy || ! in_array($item['key'], self::ONLY_LEGACY, true))
+                            && ! in_array($item['key'], self::HIDDEN_FROM_MENU, true),
+                    ),
                 )),
                 'current' => $section,
                 'pickerUrl' => Nr1Shell::canPickCompany($user) ? route('nr1.empresas', absolute: false) : null,

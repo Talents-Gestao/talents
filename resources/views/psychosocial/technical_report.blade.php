@@ -111,21 +111,20 @@
         </tbody>
     </table>
 
-    <h2>2. Objetivo e metodologia</h2>
-    <p>
-        O levantamento identifica percepções agregadas de condições de organização do trabalho relacionadas a fatores psicossociais,
-        para subsidiar a gestão preventiva e o processo de GRO/PGR. O instrumento tem {{ $snapshot['instrument']['item_count'] }} afirmações
-        em {{ $snapshot['instrument']['dimension_count'] }} dimensões, respondidas em escala de frequência
-        (<strong>Nunca, Raramente, Às vezes, Frequentemente e Sempre</strong>), pontuadas de 1 a 5. Enunciados desfavoráveis mantêm a pontuação direta;
-        enunciados favoráveis têm pontuação invertida (6 menos o valor da resposta). Maior índice indica maior percepção desfavorável.
-        Cada dimensão é a média dos escores válidos de suas perguntas; o índice geral é a média de todas as perguntas respondidas.
+    <p class="muted" style="margin-top: 10px;">
+        Metodologia: o instrumento tem {{ $snapshot['instrument']['item_count'] }} afirmações em {{ $snapshot['instrument']['dimension_count'] }} dimensões,
+        em escala de frequência (Nunca a Sempre, 1 a 5). {{ $snapshot['method']['legend'] }}. {{ $snapshot['band_disclaimer'] }}
+        Base mínima de {{ $snapshot['min_group_size'] }} respondentes por grupo.
     </p>
-    <p>
-        <strong>Faixas de interpretação:</strong> {{ $snapshot['method']['legend'] }}. {{ $snapshot['band_disclaimer'] }}
-        Os limites são critérios internos de triagem da Talents, não uma classificação ocupacional automática.
-        Os percentuais favoráveis usam Frequentemente/Sempre nas afirmações positivas e Nunca/Raramente nas desfavoráveis.
-        Os indicadores são agregados; grupos pequenos são reunidos em «Outros Setores» e a base mínima de {{ $snapshot['min_group_size'] }} respondentes por grupo é respeitada.
-    </p>
+
+    <h2>2. Parecer técnico</h2>
+    @if(! empty($snapshot['technical_opinion_html']))
+        <div class="box">{!! $snapshot['technical_opinion_html'] !!}</div>
+    @elseif(! empty($snapshot['technical_opinion']))
+        <div class="box"><p>{{ $snapshot['technical_opinion'] }}</p></div>
+    @else
+        <p>Parecer técnico ainda não registrado nesta campanha.</p>
+    @endif
 
     <h2>3. Participação e resultados</h2>
     <p>

@@ -46,6 +46,33 @@ const STRENGTH_TONES = ['ok', 'purple', 'blue'];
             </dl>
         </section>
 
+        <div v-if="overview.instrument" class="n1-g12" style="margin-bottom: 17px">
+            <div class="n1-card c4">
+                <div class="n1-cap">Questões</div>
+                <div class="n1-big">{{ overview.instrument.questions }}</div>
+                <p class="n1-tiny">Afirmações do questionário psicossocial</p>
+            </div>
+            <div class="n1-card c4">
+                <div class="n1-cap">Dimensões</div>
+                <div class="n1-big">{{ overview.instrument.dimensions }}</div>
+                <p class="n1-tiny">Grupos temáticos da pesquisa</p>
+            </div>
+            <div class="n1-card c4">
+                <div class="n1-cap">Participação na pesquisa</div>
+                <template v-if="overview.cards?.participation && !overview.cards.participation.hidden">
+                    <div class="n1-big">{{ overview.cards.participation.percent_label || overview.cards.participation.respondents }}</div>
+                    <p class="n1-tiny">
+                        <b>{{ overview.cards.participation.respondents }}</b> respostas
+                        <template v-if="overview.cards.participation.eligible"> · {{ overview.cards.participation.eligible }} elegíveis</template>
+                    </p>
+                </template>
+                <template v-else>
+                    <div class="n1-big">—</div>
+                    <p class="n1-tiny">{{ overview.cards?.participation?.message || 'A participação aparece com resultados suficientes.' }}</p>
+                </template>
+            </div>
+        </div>
+
         <EmptyState v-if="!overview.overall || !overview.cards" title="Ainda não há resultados calculados" text="Os indicadores aparecem aqui quando houver respostas concluídas e o cálculo for feito." />
 
         <div v-else class="n1-g12">

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Psychosocial;
 
+use App\Models\ActionPlan;
 use App\Models\PsychosocialMeasure;
 use App\Models\PsychosocialMeasureEvidence;
 use App\Models\Survey;
 use App\Services\ExecutiveBriefSnapshotBuilder;
 use App\Services\PsychosocialDashboardBuilder;
+use Illuminate\Support\Str;
 
 /**
  * Snapshot do Inventário de Riscos Psicossocial (documento final centralizado, Caderno §12). Mesma base do resumo
@@ -45,6 +47,10 @@ class TechnicalReportSnapshotBuilder implements DocumentSnapshotBuilder
         $dashboard = $this->dashboardBuilder->build($survey);
         $company = $survey->company;
         $base = $this->baseBuilder->buildForSchema($survey, self::SCHEMA);
+        $opinionHtml = (string) (ActionPlan::query()
+            ->where('survey_id', $survey->id)
+            ->orderByDesc('id')
+            ->value('technical_opinion') ?? '');
 
         return array_merge($base, [
             'company' => [
@@ -57,6 +63,10 @@ class TechnicalReportSnapshotBuilder implements DocumentSnapshotBuilder
                 'address_state' => $company?->address_state,
                 'address_zip' => $company?->address_zip,
             ],
+            'technical_opinion_html' => $this->sanitizeOpinionHtml($opinionHtml),
+            'technical_opinion' => filled($opinionHtml)
+                ? trim(html_entity_decode(strip_tags($opinionHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8'))
+                : null,
             'strengths' => $dashboard['strengths'],
             'attention' => array_map(fn (array $d) => [
                 'title' => $d['title'],
@@ -92,6 +102,15 @@ class TechnicalReportSnapshotBuilder implements DocumentSnapshotBuilder
                 ], $dashboard['items']),
             ],
         ]);
+    }
+
+    private function sanitizeOpinionHtml(string $html): ?string
+    {
+        $clean = trim(strip_tags($html, '<p><br><strong><b><em><i><ul><ol><li><h2><h3>'));
+
+        return $clean !== '' && ! in_array(Str::lower($clean), ['<p></p>', '<p><br></p>', '<br>'], true)
+            ? $clean
+            : null;
     }
 
     /**

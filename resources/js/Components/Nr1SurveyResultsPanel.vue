@@ -329,71 +329,6 @@ const deptBarSeries = computed(() => [
     },
 ]);
 
-const deptGroupedBar = computed(() => {
-    const depts = props.deptOveralls ?? [];
-    const sections = props.bySection ?? [];
-    const cats = depts.map((d) => d.department_name);
-    const series = sections.map((sec) => {
-        const sid = sec.survey_template_section_id;
-        return {
-            name: sec.meta?.section_title || 'Dimensão',
-            data: depts.map((d) => {
-                const grp = props.deptSectionsByDepartment?.find((g) => g.department_id === d.department_id);
-                const row = grp?.sections?.find((s) => s.survey_template_section_id === sid);
-                return row != null ? Number(row.average_score) : null;
-            }),
-        };
-    });
-    return {
-        chart: {
-            type: 'bar',
-            toolbar: { show: false },
-            foreColor: '#334155',
-            animations: { enabled: true, speed: 650 },
-            fontFamily: 'inherit',
-        },
-        plotOptions: { bar: { horizontal: false, columnWidth: '68%', borderRadius: 3 } },
-        xaxis: {
-            categories: cats,
-            labels: { style: { fontSize: '12px', fontWeight: 600, colors: '#475569' } },
-        },
-        yaxis: {
-            min: likertScaleMin,
-            max: likertScaleMax,
-            tickAmount: 4,
-            forceNiceScale: false,
-            decimalsInFloat: 0,
-            title: { text: 'Média (1–5)', style: { fontSize: '12px', fontWeight: 600, color: '#64748b' } },
-            labels: { formatter: formatLikertAxisTick },
-        },
-        legend: { position: 'bottom', fontSize: '12px', fontWeight: 600, markers: { radius: 10 } },
-        dataLabels: { enabled: false },
-        colors: ['#7b4fa2', '#b388d9', '#632a7e', '#4a2070', '#9b6bc4', '#d4b8e4', '#e8dcf2'],
-        grid: { borderColor: '#e2e8f0', strokeDashArray: 4 },
-        tooltip: {
-            shared: true,
-            intersect: false,
-            y: { formatter: (val) => (val == null ? '—' : formatLikertScore(val, 2)) },
-        },
-    };
-});
-
-const deptGroupedSeries = computed(() => {
-    const depts = props.deptOveralls ?? [];
-    const sections = props.bySection ?? [];
-    return sections.map((sec) => {
-        const sid = sec.survey_template_section_id;
-        return {
-            name: sec.meta?.section_title || 'Dimensão',
-            data: depts.map((d) => {
-                const grp = props.deptSectionsByDepartment?.find((g) => g.department_id === d.department_id);
-                const row = grp?.sections?.find((s) => s.survey_template_section_id === sid);
-                return row != null ? Number(row.average_score) : null;
-            }),
-        };
-    });
-});
-
 const heatmapCellClass = (level) => {
     if (level === 'green') return 'bg-emerald-400 text-emerald-950 ring-1 ring-emerald-500/40';
     if (level === 'yellow') return 'bg-amber-400 text-amber-950 ring-1 ring-amber-500/40';
@@ -760,20 +695,6 @@ const scrollToSection = (event, sectionId) => {
             </div>
             <div class="mt-4 min-h-[26rem]">
                 <ApexChart height="420" :options="deptBarChart" :series="deptBarSeries" />
-            </div>
-        </div>
-
-        <div
-            v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
-            class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
-        >
-            <h3 class="text-lg font-semibold text-talents-900">Dimensões por setor</h3>
-            <p class="mt-1 text-sm text-gray-500">Comparação lado a lado das dimensões em cada setor.</p>
-            <div class="mt-3">
-                <Nr1RiskLevelLegend :labels="bandLabels" />
-            </div>
-            <div class="mt-4 min-h-[30rem]">
-                <ApexChart height="460" :options="deptGroupedBar" :series="deptGroupedSeries" />
             </div>
         </div>
 
