@@ -1503,7 +1503,7 @@ Gravação em transação: consome o convite e cria `survey_responses` (com `ses
 | Visão geral | Cartões, pontos fortes, dimensões, prioridades, próximas ações, grupos | Cabeçalho do laudo, índice geral e dimensões |
 | Campanha NR-1 | Etapas, orientação, treinamentos por público, links/QR, elegíveis | Etapas, período, coleta, respostas e link |
 | Minha jornada | Link do colaborador | Não existe (404) |
-| Resultados | Abas Dimensões / Setores / 39 perguntas + Revisão interna (Talents) | Laudo 01 Diagnóstico (radar, setores, mapa de calor, perguntas, insights). No painel da empresa não aparecem a Mia nem o convite de parecer com especialista |
+| Resultados | Abas Dimensões / Setores / 39 perguntas + Revisão interna (Talents) | Laudo 01 Diagnóstico (radar, setores, mapa de calor, perguntas, insights). No Detalhamento por pergunta, a média exibida é índice de risco (1–5): enunciado favorável inverte (`6 − resposta`, via `reverse_score`), igual ao `Nr1Scoring`. No painel da empresa não aparecem a Mia nem o convite de parecer com especialista |
 | Plano de ação | Medidas V11 | Plano do legado (itens do parecer) |
 | Documentos | Central de documentos com rodada de revisão | A empresa só vê os arquivos que a Talents publicou. A situação da publicação, a PASSEG e o histórico ficam na Talents |
 | Parecer e publicação | Não aparece (URL redireciona) | Laudo 02 Parecer + 03 Publicar + Documentos liberados |

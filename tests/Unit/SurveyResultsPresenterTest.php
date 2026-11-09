@@ -57,6 +57,8 @@ class SurveyResultsPresenterTest extends TestCase
 
         $question = $section['questions'][0];
         $this->assertSame($fx->question->id, $question['id']);
+        $this->assertArrayHasKey('reverse_score', $question);
+        $this->assertFalse($question['reverse_score']);
         $this->assertSame(2, $question['total']);
         $this->assertSame([
             1 => 0,
@@ -65,6 +67,27 @@ class SurveyResultsPresenterTest extends TestCase
             4 => 1,
             5 => 1,
         ], $question['counts']);
+    }
+
+    public function test_question_distributions_expose_reverse_score_for_favorable_items(): void
+    {
+        $fx = $this->createSurveyFixture();
+        SurveyTemplateQuestion::query()->whereKey($fx->question->id)->update(['reverse_score' => true]);
+
+        SurveyResponse::query()->create([
+            'survey_id' => $fx->survey->id,
+            'session_token' => 'token-fav',
+            'completed_at' => now(),
+        ])->answers()->create([
+            'survey_template_question_id' => $fx->question->id,
+            'value' => 5,
+        ]);
+
+        $presented = SurveyResultsPresenter::forSurvey($fx->survey->fresh());
+        $question = $presented['questionDistributions'][0]['questions'][0];
+
+        $this->assertTrue($question['reverse_score']);
+        $this->assertSame(1, $question['counts'][5]);
     }
 
     public function test_question_distributions_ignores_incomplete_responses(): void
@@ -175,5 +198,49 @@ class SurveyResultsPresenterTest extends TestCase
         $this->assertSame([], $presented['departmentParticipation']);
         // As respostas do setor pequeno continuam no geral.
         $this->assertSame(2, $presented['questionDistributions'][0]['questions'][0]['counts'][5]);
+    }
+
+    public function test_small_sectors_reappear_as_others_when_the_group_reaches_the_floor(): void
+    {
+        $fx = $this->createSurveyFixture();
+        $big = Department::query()->create(['company_id' => $fx->company->id, 'name' => 'Grande']);
+        $smallA = Department::query()->create(['company_id' => $fx->company->id, 'name' => 'Alpha']);
+        $smallB = Department::query()->create(['company_id' => $fx->company->id, 'name' => 'Beta']);
+
+        for ($i = 0; $i < 5; $i++) {
+            SurveyResponse::query()->create([
+                'survey_id' => $fx->survey->id,
+                'session_token' => "big-{$i}",
+                'department_id' => $big->id,
+                'completed_at' => now(),
+            ])->answers()->create(['survey_template_question_id' => $fx->question->id, 'value' => 2]);
+        }
+
+        foreach ([[$smallA, 3], [$smallB, 2]] as [$dept, $n]) {
+            for ($i = 0; $i < $n; $i++) {
+                SurveyResponse::query()->create([
+                    'survey_id' => $fx->survey->id,
+                    'session_token' => "small-{$dept->id}-{$i}",
+                    'department_id' => $dept->id,
+                    'completed_at' => now(),
+                ])->answers()->create(['survey_template_question_id' => $fx->question->id, 'value' => 4]);
+            }
+        }
+
+        app(SurveyResultCalculator::class)->recalculate($fx->survey->fresh());
+        $presented = SurveyResultsPresenter::forSurvey($fx->survey->fresh());
+
+        $participation = collect($presented['departmentParticipation']);
+        $this->assertSame(['Grande', 'Outros Setores'], $participation->pluck('department_name')->all());
+        $this->assertSame([5, 5], $participation->pluck('respondent_count')->all());
+        $this->assertTrue((bool) $participation->last()['is_others']);
+
+        $this->assertCount(2, $presented['deptOveralls']);
+        $this->assertTrue((bool) collect($presented['deptOveralls'])->last()['is_others']);
+        $this->assertSame(10, (int) $presented['overall']->respondent_count);
+
+        // Distribuição por pergunta continua só nos setores publicáveis (sem composição de Outros).
+        $this->assertCount(1, $presented['questionDistributionsByDepartment']);
+        $this->assertSame($big->id, $presented['questionDistributionsByDepartment'][0]['department_id']);
     }
 }

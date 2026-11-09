@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Survey;
 use App\Models\SurveyAnswer;
+use App\Models\SurveyGroupResult;
 use App\Models\SurveyResult;
 use App\Support\Nr1BandLabels;
 use App\Support\Nr1GroupPrivacy;
@@ -30,6 +31,7 @@ class SurveyResultsPresenter
 
         // Só a exibição é suprimida: o índice geral e as dimensões continuam usando todas as respostas.
         $visibleDepartments = Nr1GroupPrivacy::publishableDepartmentIdsForSurvey($survey);
+        $othersOverall = self::othersOverall($survey);
 
         $bySection = $results->filter(fn ($r) => $r->survey_template_section_id !== null && $r->department_id === null)->values();
 
@@ -50,6 +52,7 @@ class SurveyResultsPresenter
                 return [
                     'department_id' => $first->department_id,
                     'department_name' => $first->department?->name ?? 'Setor #'.$first->department_id,
+                    'is_others' => false,
                     'sections' => $rows->values()->map(function ($r) {
                         return [
                             'id' => $r->id,
@@ -69,6 +72,43 @@ class SurveyResultsPresenter
             fn (array $participation) => in_array($participation['department_id'], $visibleDepartments, true),
         ));
 
+        if ($othersOverall !== null) {
+            $departmentParticipation[] = [
+                'department_id' => null,
+                'department_name' => PsychosocialDashboardBuilder::OTHERS_LABEL,
+                'respondent_count' => (int) $othersOverall->respondent_count,
+                'meets_minimum' => true,
+                'is_others' => true,
+            ];
+
+            $deptOveralls = $deptOveralls->concat([(object) [
+                'id' => $othersOverall->id,
+                'average_score' => (float) $othersOverall->average_score,
+                'risk_level' => $othersOverall->risk_level,
+                'respondent_count' => (int) $othersOverall->respondent_count,
+                'department_id' => null,
+                'department' => null,
+                'is_others' => true,
+            ]])->values();
+
+            $othersSections = self::othersSectionRows($survey);
+            if ($othersSections !== []) {
+                $deptSectionsByDepartment = $deptSectionsByDepartment
+                    ->concat([[
+                        'department_id' => null,
+                        'department_name' => PsychosocialDashboardBuilder::OTHERS_LABEL,
+                        'is_others' => true,
+                        'sections' => $othersSections,
+                    ]])
+                    ->values();
+            }
+        }
+
+        $publishableParticipation = array_values(array_filter(
+            $departmentParticipation,
+            fn (array $participation) => ($participation['is_others'] ?? false) === false,
+        ));
+
         $questionDistributionsByDepartment = array_map(
             fn (array $participation) => [
                 'department_id' => $participation['department_id'],
@@ -76,7 +116,7 @@ class SurveyResultsPresenter
                 'respondent_count' => $participation['respondent_count'],
                 'sections' => self::buildQuestionDistributions($survey, $participation['department_id']),
             ],
-            $departmentParticipation
+            $publishableParticipation
         );
 
         return [
@@ -85,13 +125,18 @@ class SurveyResultsPresenter
             'overall' => $overall,
             'bySection' => $bySection,
             'deptOveralls' => $deptOveralls->map(function ($r) {
+                $isOthers = (bool) ($r->is_others ?? false);
+
                 return [
                     'id' => $r->id,
                     'average_score' => (float) $r->average_score,
                     'risk_level' => $r->risk_level,
                     'respondent_count' => $r->respondent_count,
-                    'department_id' => $r->department_id,
-                    'department_name' => $r->department?->name ?? 'Setor #'.$r->department_id,
+                    'department_id' => $isOthers ? null : $r->department_id,
+                    'department_name' => $isOthers
+                        ? PsychosocialDashboardBuilder::OTHERS_LABEL
+                        : ($r->department?->name ?? 'Setor #'.$r->department_id),
+                    'is_others' => $isOthers,
                 ];
             }),
             'deptSectionsByDepartment' => $deptSectionsByDepartment,
@@ -103,7 +148,51 @@ class SurveyResultsPresenter
     }
 
     /**
-     * @return list<array{department_id: int, department_name: string, respondent_count: int, meets_minimum: bool}>
+     * Agregado «Outros Setores» (geral) quando o grupo atinge o mínimo de privacidade.
+     */
+    private static function othersOverall(Survey $survey): ?SurveyGroupResult
+    {
+        $overall = SurveyGroupResult::query()
+            ->where('survey_id', $survey->id)
+            ->where('group_key', SurveyGroupResult::GROUP_OTHERS)
+            ->whereNull('survey_template_section_id')
+            ->first();
+
+        if ($overall === null || (int) $overall->respondent_count < Nr1GroupPrivacy::minFor($survey)) {
+            return null;
+        }
+
+        return $overall;
+    }
+
+    /**
+     * @return list<array{id: int, survey_template_section_id: int, average_score: float, risk_level: string, respondent_count: int, meta: mixed}>
+     */
+    private static function othersSectionRows(Survey $survey): array
+    {
+        return SurveyGroupResult::query()
+            ->where('survey_id', $survey->id)
+            ->where('group_key', SurveyGroupResult::GROUP_OTHERS)
+            ->whereNotNull('survey_template_section_id')
+            ->with('section')
+            ->orderBy('survey_template_section_id')
+            ->get()
+            ->map(fn (SurveyGroupResult $r) => [
+                'id' => $r->id,
+                'survey_template_section_id' => $r->survey_template_section_id,
+                'average_score' => (float) $r->average_score,
+                'risk_level' => $r->risk_level,
+                'respondent_count' => $r->respondent_count,
+                'meta' => array_merge($r->meta ?? [], [
+                    'section_title' => $r->section?->title,
+                ]),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{department_id: int, department_name: string, respondent_count: int, meets_minimum: bool, is_others: bool}>
      */
     private static function buildDepartmentParticipation(Survey $survey): array
     {
@@ -129,6 +218,7 @@ class SurveyResultsPresenter
                 'department_name' => $department?->name ?? 'Setor #'.$departmentId,
                 'respondent_count' => (int) $count,
                 'meets_minimum' => (int) $count >= $min,
+                'is_others' => false,
             ];
         }
 
@@ -138,7 +228,7 @@ class SurveyResultsPresenter
     }
 
     /**
-     * @return list<array{section_id: int, section_title: string, questions: list<array{id: int, body: string, response_scale: string, total: int, counts: array<int, int>}>}>
+     * @return list<array{section_id: int, section_title: string, questions: list<array{id: int, body: string, response_scale: string, reverse_score: bool, total: int, counts: array<int, int>}>}>
      */
     private static function buildQuestionDistributions(Survey $survey, ?int $departmentId = null): array
     {
@@ -173,6 +263,8 @@ class SurveyResultsPresenter
                     'id' => $question->id,
                     'body' => $question->body,
                     'response_scale' => $question->response_scale ?? 'frequency',
+                    // Enunciado favorável: a média de risco inverte (6 − resposta); a UI precisa deste flag.
+                    'reverse_score' => (bool) $question->reverse_score,
                     'total' => array_sum($counts),
                     'counts' => $counts,
                 ];

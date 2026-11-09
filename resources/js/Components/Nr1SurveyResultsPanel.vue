@@ -48,10 +48,12 @@ const selectedDepartmentId = ref('');
 
 const departmentFilterOptions = computed(() => [
     { id: '', name: 'Todos os setores (visão geral)' },
-    ...(props.departmentParticipation ?? []).map((d) => ({
-        id: d.department_id,
-        name: d.department_name,
-    })),
+    ...(props.departmentParticipation ?? [])
+        .filter((d) => !d.is_others && d.department_id != null)
+        .map((d) => ({
+            id: d.department_id,
+            name: d.department_name,
+        })),
 ]);
 
 const normalizedSelectedDepartmentId = computed(() => {
@@ -335,8 +337,10 @@ const heatmapCellClass = (level) => {
     return 'bg-red-400 text-red-950 ring-1 ring-red-500/40';
 };
 
-const scoreForDeptSection = (departmentId, sectionId) => {
-    const grp = props.deptSectionsByDepartment?.find((g) => g.department_id === departmentId);
+const scoreForDeptSection = (row, sectionId) => {
+    const grp = props.deptSectionsByDepartment?.find((g) =>
+        row?.is_others ? g.is_others === true : g.department_id === row?.department_id,
+    );
     return grp?.sections?.find((s) => s.survey_template_section_id === sectionId) ?? null;
 };
 
@@ -354,13 +358,16 @@ const optionBarClass = (value) => {
     return 'bg-red-500';
 };
 
+/** Média de risco (1–5): enunciado favorável inverte (6 − resposta), igual ao Nr1Scoring do backend. */
 const questionAverage = (question) => {
     if (!question?.total) {
         return null;
     }
+    const reverse = Boolean(question.reverse_score);
     let weighted = 0;
     for (const value of [1, 2, 3, 4, 5]) {
-        weighted += value * (question.counts?.[value] ?? 0);
+        const effective = reverse ? 6 - value : value;
+        weighted += effective * (question.counts?.[value] ?? 0);
     }
     return weighted / question.total;
 };
@@ -641,7 +648,7 @@ const scrollToSection = (event, sectionId) => {
         >
             <h3 class="text-lg font-semibold text-talents-900">Participação por setor</h3>
             <p class="mt-1 text-sm text-gray-500">
-                Setores informados pelos respondentes. Gráficos detalhados por setor exigem pelo menos 1 respondente no mesmo setor.
+                Setores com base suficiente aparecem isolados. Setores menores são reunidos em «Outros Setores» para proteger o anonimato.
             </p>
             <div class="mt-4 overflow-x-auto">
                 <table class="min-w-full border-collapse text-sm">
@@ -655,14 +662,20 @@ const scrollToSection = (event, sectionId) => {
                     <tbody>
                         <tr
                             v-for="row in departmentParticipation"
-                            :key="row.department_id"
+                            :key="row.is_others ? 'others' : row.department_id"
                             class="border-b border-gray-100"
                         >
                             <td class="px-3 py-2 font-medium text-gray-900">{{ row.department_name }}</td>
                             <td class="px-3 py-2 text-right tabular-nums text-gray-700">{{ row.respondent_count }}</td>
                             <td class="px-3 py-2">
                                 <span
-                                    v-if="row.meets_minimum"
+                                    v-if="row.is_others"
+                                    class="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800"
+                                >
+                                    Agregado de setores menores
+                                </span>
+                                <span
+                                    v-else-if="row.meets_minimum"
                                     class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
                                 >
                                     Exibido nos gráficos
@@ -671,7 +684,7 @@ const scrollToSection = (event, sectionId) => {
                                     v-else
                                     class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
                                 >
-                                    Aguardando mínimo (1)
+                                    Aguardando mínimo
                                 </span>
                             </td>
                         </tr>
@@ -723,21 +736,21 @@ const scrollToSection = (event, sectionId) => {
                 <tbody>
                     <tr
                         v-for="row in deptOveralls"
-                        :key="row.department_id"
+                        :key="row.is_others ? 'others' : row.department_id"
                         class="border-b border-gray-100"
                     >
                         <td class="px-3 py-2 font-medium text-gray-900">{{ row.department_name }}</td>
                         <td
                             v-for="sec in bySection"
-                            :key="sec.survey_template_section_id + '-' + row.department_id"
+                            :key="sec.survey_template_section_id + '-' + (row.is_others ? 'others' : row.department_id)"
                             class="px-2 py-2 text-center"
                         >
                             <span
-                                v-if="scoreForDeptSection(row.department_id, sec.survey_template_section_id)"
+                                v-if="scoreForDeptSection(row, sec.survey_template_section_id)"
                                 class="inline-block min-w-[3rem] rounded px-2 py-1 font-mono text-xs font-semibold"
-                                :class="heatmapCellClass(scoreForDeptSection(row.department_id, sec.survey_template_section_id).risk_level)"
+                                :class="heatmapCellClass(scoreForDeptSection(row, sec.survey_template_section_id).risk_level)"
                             >
-                                {{ formatLikertScore(scoreForDeptSection(row.department_id, sec.survey_template_section_id).average_score) }}
+                                {{ formatLikertScore(scoreForDeptSection(row, sec.survey_template_section_id).average_score) }}
                             </span>
                             <span v-else class="text-gray-400">—</span>
                         </td>
