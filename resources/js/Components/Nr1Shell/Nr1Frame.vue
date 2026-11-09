@@ -8,6 +8,7 @@ import '../../../css/nr1-shell-motion.css';
 import '../../../css/nr1-shell-header.css';
 import '../../../css/nr1-shell-d.css';
 import '../../../css/nr1-shell-container.css';
+import '../../../css/nr1-frame-scroll.css';
 import Nr1SubNav from './Nr1SubNav.vue';
 import { subNavBadges } from './nr1SubNav';
 import ShellHeader from './ShellHeader.vue';

@@ -1,0 +1,57 @@
+/*
+ * Painel NR-1 (gestão, a partir de xl): um único scroll vertical, o do <main> do layout padrão (#conteudo-principal).
+ * Nas outras telas o painel do layout só tem altura mínima e quem rola é o documento; aqui a coluna ganha a altura da
+ * janela, o <main> passa a rolar sozinho e a sub-sidebar (sticky) fica parada ao lado do conteúdo. O :has() restringe
+ * as regras às páginas com a moldura do NR-1: o layout das demais telas e a impressão (só tela) não mudam.
+ * Entre o <main> e a sub-sidebar não pode haver ancestral com overflow ≠ visible (o sticky deixaria de funcionar).
+ */
+@media screen and (min-width: 1280px) {
+    .app-shell:has(.nr1-frame:not(.nr1-frame--public)) [data-shell-column] {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+    }
+    .app-shell:has(.nr1-frame:not(.nr1-frame--public)) .app-shell-panel {
+        min-height: 0;
+    }
+
+    /* Cabeçalho do NR-1 rola com o conteúdo (comportamento de antes): sem sticky dentro do <main> que agora rola. */
+    .nr1-frame:not(.nr1-frame--public) .nr1-shell .n1-header {
+        position: relative;
+    }
+
+    /* Sub-sidebar: cabe na área visível em alturas de notebook, sem scroll próprio. */
+    @media (max-height: 820px) {
+        .nr1-frame:not(.nr1-frame--public) [data-nr1-subnav] li > a {
+            padding-top: 0.25rem;
+            padding-bottom: 0.25rem;
+        }
+        .nr1-frame:not(.nr1-frame--public) [data-nr1-subnav] > ul + div {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+        }
+    }
+    @media (max-height: 640px) {
+        .nr1-frame:not(.nr1-frame--public) [data-nr1-subnav] a > span:first-child {
+            height: 1.75rem;
+            width: 1.75rem;
+        }
+        .nr1-frame:not(.nr1-frame--public) [data-nr1-subnav] li > a {
+            padding-top: 0.125rem;
+            padding-bottom: 0.125rem;
+        }
+    }
+    /* Alturas extremamente baixas: só então a trilha rola por conta própria, com a barra oculta. O desconto é a
+       moldura acima e abaixo da área visível do <main> (margens do painel, barra de topo e respiros). */
+    @media (max-height: 540px) {
+        .nr1-frame:not(.nr1-frame--public) [data-nr1-subnav] {
+            max-height: calc(100dvh - 10rem);
+            overflow-y: auto;
+            overscroll-behavior-y: contain;
+            scrollbar-width: none;
+        }
+        .nr1-frame:not(.nr1-frame--public) [data-nr1-subnav]::-webkit-scrollbar {
+            display: none;
+        }
+    }
+}
