@@ -171,23 +171,6 @@
     @endif
     @if($snapshot['groups']['note'])<p class="muted">{{ $snapshot['groups']['note'] }}</p>@endif
 
-    @if(count($snapshot['sectors']))
-        <h3>Setores com resultado publicável</h3>
-        <table>
-            <thead><tr><th>Setor</th><th>N</th><th>Índice</th><th>Leitura</th></tr></thead>
-            <tbody>
-            @foreach($snapshot['sectors'] as $sector)
-                <tr>
-                    <td>{{ $sector['department_name'] }}</td>
-                    <td class="num">{{ $sector['n'] }}</td>
-                    <td class="num">{{ $sector['score_label'] }}</td>
-                    <td>{{ $sector['band_label'] }}</td>
-                </tr>
-            @endforeach
-            </tbody>
-        </table>
-    @endif
-
     <h2>4. Pontos fortes relatados</h2>
     @if(count($snapshot['strengths']))
         <ul>
