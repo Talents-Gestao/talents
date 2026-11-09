@@ -65,8 +65,8 @@ class PsychosocialDocumentService
             'builder' => TechnicalReportSnapshotBuilder::class,
             'view' => 'psychosocial.technical_report',
             'prefix' => 'RT',
-            'file' => 'relatorio-tecnico-plano-de-acao',
-            'label' => 'Inventário de Riscos Empresa',
+            'file' => 'inventario-riscos-psicossocial',
+            'label' => 'Inventário de Riscos Psicossocial',
         ],
     ];
 
@@ -335,7 +335,7 @@ class PsychosocialDocumentService
     public function documentsSummary(Survey $survey): array
     {
         // Campanha V11: os documentos vivem na Central de documentos (fluxo de revisão); estas telas antigas
-        // não listam nada. Nas antigas, só os três documentos de sempre (o relatório técnico é do fluxo V11).
+        // não listam nada. Nas antigas, o inventário psicossocial fica no parecer; o inventário PGR saiu da UI.
         if ($survey->usesReviewFlow()) {
             return [];
         }
@@ -354,7 +354,10 @@ class PsychosocialDocumentService
                 'validatable' => false,
                 'attachments' => [],
             ],
-            array_values(array_diff(self::supportedTypes(), [PsychosocialDocument::TYPE_TECHNICAL_REPORT])),
+            array_values(array_diff(self::supportedTypes(), [
+                PsychosocialDocument::TYPE_TECHNICAL_REPORT,
+                PsychosocialDocument::TYPE_PGR_SUBSIDY,
+            ])),
         );
     }
 

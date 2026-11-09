@@ -91,7 +91,7 @@ const labelClass = 'block text-sm font-medium text-slate-700';
                     <div>
                         <div class="flex items-center gap-1">
                             <label :class="labelClass" for="unit_name">Unidade</label>
-                            <InfoTooltip text="Estabelecimento ou local em que a campanha foi aplicada. Esse nome sai na identificação do Inventário de Riscos PGR e do dossiê." />
+                            <InfoTooltip text="Estabelecimento ou local em que a campanha foi aplicada. Esse nome sai na identificação do Inventário de Riscos Psicossocial e do dossiê." />
                         </div>
                         <input id="unit_name" v-model="form.unit_name" type="text" :class="inputClass" />
                         <InputError :message="form.errors.unit_name" class="mt-1" />
@@ -146,7 +146,7 @@ const labelClass = 'block text-sm font-medium text-slate-700';
                     <div>
                         <div class="flex items-center gap-1">
                             <label :class="labelClass" for="eligible_source">Origem dos elegíveis</label>
-                            <InfoTooltip text="De onde veio o total, por exemplo folha de pagamento ou quadro de lotação. Essa origem é impressa no Inventário de Riscos PGR." />
+                            <InfoTooltip text="De onde veio o total, por exemplo folha de pagamento ou quadro de lotação. Essa origem é impressa no Inventário de Riscos Psicossocial." />
                         </div>
                         <textarea id="eligible_source" v-model="form.eligible_source" rows="2" :class="inputClass" />
                         <InputError :message="form.errors.eligible_source" class="mt-1" />

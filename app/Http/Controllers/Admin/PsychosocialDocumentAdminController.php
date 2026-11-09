@@ -65,12 +65,12 @@ class PsychosocialDocumentAdminController extends Controller
         }
 
         return $version->pdf_status === PsychosocialDocumentVersion::PDF_READY
-            ? $this->backToPlan($company, $survey)->with('success', "Inventário de Riscos Empresa publicado no painel da empresa (versão {$version->version_number}).")
+            ? $this->backToPlan($company, $survey)->with('success', "Inventário de Riscos Psicossocial publicado no painel da empresa (versão {$version->version_number}).")
             : $this->backToPlan($company, $survey)->with('error', "A versão {$version->version_number} foi registrada, mas o PDF não foi gerado: {$version->pdf_error}");
     }
 
     /**
-     * Nova versão só dos documentos que já estão no painel da empresa.
+     * Nova versão só do inventário psicossocial já publicado no painel da empresa.
      * A Mia não dispara isto: a Talents pede depois de revisar o parecer.
      */
     public function replacePublished(Company $company, Survey $survey): RedirectResponse
@@ -84,7 +84,7 @@ class PsychosocialDocumentAdminController extends Controller
         $updated = [];
         $errors = [];
 
-        foreach ([PsychosocialDocument::TYPE_TECHNICAL_REPORT, PsychosocialDocument::TYPE_PGR_SUBSIDY] as $type) {
+        foreach ([PsychosocialDocument::TYPE_TECHNICAL_REPORT] as $type) {
             $current = $this->documents->currentVersion($survey, $type);
             if ($current === null || $current->pdf_status !== PsychosocialDocumentVersion::PDF_READY) {
                 continue;

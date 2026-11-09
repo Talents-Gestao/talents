@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
-    <title>Inventário de Riscos Empresa - {{ $snapshot['survey']['title'] }}</title>
+    <title>Inventário de Riscos Psicossocial - {{ $snapshot['survey']['title'] }}</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 10.5px; color: #2a1042; }
         h1 { font-size: 18px; color: #4a2070; margin-bottom: 4px; }
@@ -20,7 +20,7 @@
         .footer { margin-top: 22px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 9px; color: #555; }
         .header { text-align: center; margin-bottom: 12px; }
         .header img { max-height: 48px; width: auto; }
-        .annex { page-break-before: always; }
+        table.id th { width: 32%; }
     </style>
 </head>
 <body>
@@ -30,7 +30,36 @@
         $registration = $snapshot['registration'];
         $eligible = $snapshot['eligible'];
         $meta = $meta ?? [];
-        $labels = ['Nunca', 'Raramente', 'Às vezes', 'Frequentemente', 'Sempre'];
+        $company = $snapshot['company'] ?? [];
+        $legalName = $registration['legal_name_snapshot'] ?? ($company['legal_name'] ?? $company['name'] ?? null);
+        $cnpj = $registration['cnpj_snapshot'] ?? ($company['cnpj'] ?? null);
+        $addressParts = array_filter([
+            $company['address_street'] ?? null,
+            $company['address_neighborhood'] ?? null,
+            filled($company['address_city'] ?? null) || filled($company['address_state'] ?? null)
+                ? trim(($company['address_city'] ?? '').(filled($company['address_state'] ?? null) ? '/'.$company['address_state'] : ''))
+                : null,
+            filled($company['address_zip'] ?? null) ? 'CEP '.$company['address_zip'] : null,
+        ], fn ($value) => filled($value));
+        $identification = array_filter([
+            'Razão social' => $legalName,
+            'Nome fantasia' => $company['name'] ?? null,
+            'CNPJ' => $cnpj,
+            'Endereço' => $addressParts !== [] ? implode(' · ', $addressParts) : null,
+            'Estabelecimento / unidade' => $registration['unit_name'] ?? null,
+            'Processo' => $registration['process_name'] ?? null,
+            'Origem dos elegíveis' => $registration['eligible_source'] ?? null,
+            'Grupos de exposição' => ! empty($registration['exposure_groups'])
+                ? implode(', ', $registration['exposure_groups'])
+                : null,
+            'Resumo da AEP' => $registration['aep_summary'] ?? null,
+            'Resumo da observação' => $registration['observation_summary'] ?? null,
+            'Controles existentes' => $registration['existing_controls'] ?? null,
+            'Responsável técnico' => $registration['technical_responsible_name'] ?? null,
+            'Função' => $registration['technical_responsible_role'] ?? null,
+            'Registro' => $registration['technical_responsible_registration'] ?? null,
+            'Organização que aprova' => $registration['approving_organization_name'] ?? null,
+        ], fn ($value) => filled($value));
     @endphp
 
     @if(!empty($logoBase64))
@@ -39,13 +68,8 @@
         </div>
     @endif
 
-    <h1>Inventário de Riscos Empresa</h1>
+    <h1>Inventário de Riscos Psicossocial</h1>
     <p class="muted">Fatores psicossociais relacionados ao trabalho · Pesquisa Talents NR-1</p>
-    <p>
-        <strong>Organização:</strong> {{ $orGap($registration['legal_name_snapshot'] ?? $snapshot['company']['name']) }}
-        · <strong>CNPJ:</strong> {{ $orGap($registration['cnpj_snapshot']) }}
-        · <strong>Estabelecimento:</strong> {{ $orGap($registration['unit_name']) }}
-    </p>
     <p class="muted">
         Campanha: {{ $snapshot['survey']['title'] }}
         @if($snapshot['survey']['starts_at'] || $snapshot['survey']['ends_at'])
@@ -62,7 +86,32 @@
         <div class="alert">{{ $eligible['alert'] }}</div>
     @endif
 
-    <h2>1. Objetivo e metodologia</h2>
+    <h2>1. Dados da empresa</h2>
+    <table class="id">
+        <tbody>
+            @forelse($identification as $label => $value)
+                <tr><th>{{ $label }}</th><td>{{ $value }}</td></tr>
+            @empty
+                <tr><th>Organização</th><td>{{ $orGap($company['name'] ?? null) }}</td></tr>
+            @endforelse
+            <tr>
+                <th>Respondentes</th>
+                <td>
+                    {{ $snapshot['respondents'] }}
+                    @if(! empty($eligible['participation_label'])) ({{ $eligible['participation_label'] }}) @endif
+                </td>
+            </tr>
+            <tr>
+                <th>Total de elegíveis</th>
+                <td>
+                    {{ $eligible['value_label'] ?? ($eligible['count'] ?? 'Não informado') }}
+                    @if(! empty($eligible['hint'])) — {{ $eligible['hint'] }} @endif
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>2. Objetivo e metodologia</h2>
     <p>
         O levantamento identifica percepções agregadas de condições de organização do trabalho relacionadas a fatores psicossociais,
         para subsidiar a gestão preventiva e o processo de GRO/PGR. O instrumento tem {{ $snapshot['instrument']['item_count'] }} afirmações
@@ -78,7 +127,7 @@
         Os indicadores são agregados; grupos pequenos são reunidos em «Outros Setores» e a base mínima de {{ $snapshot['min_group_size'] }} respondentes por grupo é respeitada.
     </p>
 
-    <h2>2. Participação e resultados</h2>
+    <h2>3. Participação e resultados</h2>
     <p>
         <strong>Respostas completas:</strong> {{ $snapshot['respondents'] }}
         · <strong>Elegíveis:</strong> {{ $eligible['count'] ?? 'Não informado' }}
@@ -140,7 +189,7 @@
         </table>
     @endif
 
-    <h2>3. Pontos fortes relatados</h2>
+    <h2>4. Pontos fortes relatados</h2>
     @if(count($snapshot['strengths']))
         <ul>
             @foreach($snapshot['strengths'] as $strength)
@@ -151,7 +200,7 @@
         <p>Ainda não há respostas para destacar pontos fortes.</p>
     @endif
 
-    <h2>4. Principais situações de atenção</h2>
+    <h2>5. Principais situações de atenção</h2>
     @if(count($snapshot['attention']))
         <ol>
             @foreach($snapshot['attention'] as $dimension)
@@ -163,7 +212,7 @@
     @endif
     <p class="muted">{{ $snapshot['priority_note'] }}</p>
 
-    <h2>5. Plano de ação e acompanhamento</h2>
+    <h2>6. Plano de ação e acompanhamento</h2>
     @if(count($snapshot['plan']) === 0)
         <p>{{ $snapshot['measures_empty_text'] }}</p>
     @else
@@ -209,57 +258,6 @@
     @endif
     <p class="muted">{{ $snapshot['plan_note'] }}</p>
 
-    <h2>6. Controle documental</h2>
-    <table>
-        <tbody>
-            <tr><th>Elaboração</th><td>Talents | Gestão de Pessoas</td></tr>
-            <tr><th>Responsável técnico</th><td>{{ $orGap($registration['technical_responsible_name']) }} · {{ $orGap($registration['technical_responsible_role']) }} · registro {{ $orGap($registration['technical_responsible_registration']) }}</td></tr>
-            <tr><th>Organização aprovadora</th><td>{{ $orGap($registration['approving_organization_name']) }}</td></tr>
-            @if(! empty($meta['public_identifier']))
-                <tr><th>Versão</th><td>{{ $meta['version_number'] }} · {{ $meta['public_identifier'] }}</td></tr>
-            @endif
-            <tr><th>Revisão e publicação</th><td>«Aprovado pela PASSEG» significa revisão documental. A revisão, a publicação, a ciência da empresa e o protocolo de encaminhamento são registrados no sistema, com autor, data e justificativa. A integração ao PGR só é confirmada com evidência de SST, em campo separado.</td></tr>
-        </tbody>
-    </table>
     <p class="footer">{{ $snapshot['reference'] }}</p>
-
-    <div class="annex">
-        <h2>Anexo A — Instrumento ({{ $snapshot['instrument']['item_count'] }} afirmações)</h2>
-        <p class="muted">{{ $snapshot['instrument']['template_title'] }} · {{ $snapshot['instrument']['scale'] }}</p>
-        <table class="small">
-            <thead><tr><th>#</th><th>Dimensão</th><th>Afirmação</th><th>Sentido do enunciado</th></tr></thead>
-            <tbody>
-            @foreach($snapshot['instrument']['items'] as $item)
-                <tr>
-                    <td class="num">{{ $item['position'] }}</td>
-                    <td>{{ $item['section_title'] }}</td>
-                    <td>{{ $item['body'] }}</td>
-                    <td>{{ $item['statement'] === 'favorable' ? 'Favorável (pontuação invertida)' : 'Desfavorável (pontuação direta)' }}</td>
-                </tr>
-            @endforeach
-            </tbody>
-        </table>
-    </div>
-
-    <div class="annex">
-        <h2>Anexo B — Dados agregados de suporte</h2>
-        <p class="muted">Contagens por resposta da campanha inteira. Nenhum dado individual nem recorte por grupo pequeno.</p>
-        <table class="small">
-            <thead>
-            <tr><th>#</th><th>N</th>@foreach($labels as $label)<th>{{ $label }}</th>@endforeach<th>Favorável</th><th>Desfavorável</th></tr>
-            </thead>
-            <tbody>
-            @foreach($snapshot['support_data']['items'] as $row)
-                <tr>
-                    <td class="num">{{ $row['position'] }}</td>
-                    <td class="num">{{ $row['n'] }}</td>
-                    @foreach([1, 2, 3, 4, 5] as $value)<td class="num">{{ $row['counts'][$value] ?? 0 }}</td>@endforeach
-                    <td class="num">{{ $row['favorable_pct_label'] ?? '—' }}</td>
-                    <td class="num">{{ $row['unfavorable_pct_label'] ?? '—' }}</td>
-                </tr>
-            @endforeach
-            </tbody>
-        </table>
-    </div>
 </body>
 </html>

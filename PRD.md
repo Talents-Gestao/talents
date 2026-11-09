@@ -1627,9 +1627,9 @@ Só aparece em campanhas do modelo anterior; na V11 a URL redireciona para Docum
 | Etapa do Laudo | Conteúdo |
 |----------------|----------|
 | 01 Diagnóstico | na seção Resultados (painel do legado) com «Continuar para o parecer» |
-| Parecer | três seções que abrem e fecham: Parecer técnico (aberta), Plano de ação e Anexos (recolhidos). Anexos lista o Inventário de Riscos Empresa e o Inventário de Riscos PGR, com o estado de publicação no painel NR-1 da empresa. A publicação fica em seguida |
-| Documentos liberados | no parecer legado, a publicação é por etapa: Inventário de Riscos Empresa e Inventário de Riscos PGR. O botão mostra um visto quando a versão está no painel NR-1 da empresa. A Mia só preenche o texto do parecer; «Atualizar arquivos publicados» gera nova versão só dos PDFs que já estão no painel. «Plano com resultados + parecer» fica inativo. Resumo executivo inativo na UI; dossiê fora desta tela (8.11.4) |
-| Empresa | texto próprio da empresa: o parecer publicado e os documentos da pesquisa. Sem as instruções de publicação da Talents (Mia, inventários e exigência de publicar o Inventário de Riscos Empresa). Enquanto o parecer não é publicado, a página avisa que ainda está em espera |
+| Parecer | três seções que abrem e fecham: Parecer técnico (aberta), Plano de ação e Anexos (recolhidos). Anexos lista só o Inventário de Riscos Psicossocial, com o estado de publicação no painel NR-1 da empresa. A publicação fica em seguida |
+| Documentos liberados | no parecer legado, a publicação centraliza no Inventário de Riscos Psicossocial (substitui o inventário empresa; o Inventário de Riscos PGR saiu da UI). O botão mostra um visto quando a versão está no painel NR-1 da empresa. A Mia só preenche o texto do parecer; «Atualizar arquivos publicados» gera nova versão só desse PDF. «Plano com resultados + parecer» fica inativo. Resumo executivo inativo na UI; dossiê fora desta tela (8.11.4) |
+| Empresa | texto próprio da empresa: o parecer publicado e os documentos da pesquisa. Sem as instruções de publicação da Talents (Mia, inventários e exigência de publicar o Inventário de Riscos Psicossocial). Enquanto o parecer não é publicado, a página avisa que ainda está em espera |
 | Plano de ação | «Da análise à execução» lista as medidas geradas (`psychosocial_measures`) para a Talents e, depois da publicação do parecer, para a empresa |
 
 Rotas de ação do legado (admin): `PUT …/action-plan` (parecer e anexos), `POST …/action-plan/generate-suggested` (plano sugerido), `GET|POST …/action-plan/document-pdf` e `…/pdf`, `POST …/technical-opinion`, `GET …/technical-opinion-file`, `GET …/nr1-reports/{type}` (relatório executivo e encaminhamento técnico). Itens do plano legado: `PATCH /client/action-plan-items/{item}` (responsável, prazo, status `pending|in_progress|done`).
@@ -1710,8 +1710,8 @@ Origens (`Nr1Opportunity`): Treinamento, Solução sugerida, Solução solicitad
 | Tipo | Nome | Modelo | Uso |
 |------|------|--------|-----|
 | `executive_brief` | Resumo executivo / Relatório executivo | V11 e legado | Campanha, adesão, panorama das 7 dimensões, pontos fortes, atenções, ações com responsável e prazo; 1–2 páginas |
-| `technical_report` | Inventário de Riscos Empresa | V11 | Identificação, metodologia (versão, 39 itens, 7 dimensões, frequências, polaridade, regras), elegíveis e base, resultados, grupos agregados, pontos positivos, prioridades, plano completo e revisão documental; 3–5 páginas de síntese |
-| `pgr_subsidy` | Inventário de Riscos PGR | legado | Panorama + prioridades (dimensões/setores em atenção ou grave) com decisão solicitada ao RT; cadastro técnico só imprime o preenchido e lista pendências; gravidade, probabilidade, nível de risco do inventário e assinatura ficam em branco para o responsável técnico |
+| `technical_report` | Inventário de Riscos Psicossocial | V11 e legado | Dados da empresa, metodologia, elegíveis e base, resultados, grupos agregados, pontos positivos, prioridades e plano completo; sem Anexo A (instrumento), Anexo B nem controle documental; documento único centralizado |
+| `pgr_subsidy` | Inventário de Riscos PGR | legado (fora da UI) | Tipo mantido no backend para versões antigas; não aparece mais no parecer nem na centralização de publicação |
 | `evidence_dossier` | Dossiê de evidências | legado | Anexos (AEP, observação, inventário, outros) e lista congelada; bloqueado com polaridade pendente |
 
 #### 8.11.2 Versões, snapshot e hash
@@ -1752,7 +1752,7 @@ Ações do revisor (em `/revisao`): comentar, aprovar, solicitar alteração (te
 | Ação | Rota (admin) | Regra |
 |------|--------------|-------|
 | Prévia do resumo (modal) | `GET …/resumo-executivo/previa` | PDF ao vivo; rotas mantidas, mas o botão do resumo está **inativo** no parecer legado |
-| Prévia / publicar Inventário de Riscos Empresa (legado) | `GET …/documentos/technical_report/previa` · `POST …/relatorio-tecnico/liberar` · `POST …/relatorio-tecnico/validar` | substitui o resumo no parecer legado; publicar envia a versão ao painel da empresa e o botão ganha o visto; o parecer só publica com esse PDF pronto. O PDF do Inventário de Riscos Empresa e do Inventário de Riscos PGR leva o logo da Talents no cabeçalho; versão já gravada só muda ao substituir a publicação |
+| Prévia / publicar Inventário de Riscos Psicossocial (legado) | `GET …/documentos/technical_report/previa` · `POST …/relatorio-tecnico/liberar` · `POST …/relatorio-tecnico/validar` | documento único do parecer legado; publicar envia a versão ao painel da empresa e o botão ganha o visto; o parecer só publica com esse PDF pronto. O PDF leva o logo da Talents no cabeçalho; versão já gravada só muda ao substituir a publicação |
 | Prévia do documento | `GET …/documentos/{type}/previa` | mesma regra para subsídio AEP/PGR e demais tipos do modal |
 | Liberar resumo executivo | `POST …/resumo-executivo/liberar` | congela versão (V11 / API); UI do parecer legado não usa mais este botão |
 | Liberar subsídio AEP/PGR | `POST …/subsidio-pgr/liberar` | bloqueado com auditoria pendente (ex.: instrumento HSE-IT) ou polaridade não homologada |

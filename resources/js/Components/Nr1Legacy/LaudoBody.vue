@@ -74,7 +74,6 @@ const showDeleteSurveyModal = ref(false);
 const showExportPdfModal = ref(false);
 const showPublishConfirmModal = ref(false);
 const showTechnicalReportModal = ref(false);
-const showPgrSubsidyModal = ref(false);
 const previewingPlanPdf = ref(false);
 const publishPreviewPdfUrl = ref(null);
 const publishPreviewError = ref(null);
@@ -142,50 +141,16 @@ const technicalReportPreviewUrl = computed(
         ]),
 );
 
-const pgrSubsidyReleaseUrl = computed(
-    () =>
-        props.pgrSubsidy?.urls?.release ??
-        route('admin.companies.surveys.pgr-subsidy.release', [props.company.id, props.survey.id]),
-);
-
-const pgrSubsidyDownloadUrl = computed(
-    () =>
-        props.pgrSubsidy?.urls?.download ??
-        route('admin.companies.surveys.psychosocial-documents.download', [
-            props.company.id,
-            props.survey.id,
-            'pgr_subsidy',
-        ]),
-);
-
 const publishedAnnexes = computed(() => [
     {
         key: 'technical_report',
-        title: 'Inventário de Riscos Empresa',
+        title: 'Inventário de Riscos Psicossocial',
         ready: props.technicalReport?.ready === true,
         version: props.technicalReport?.version_number ?? null,
         downloadUrl: technicalReportDownloadUrl.value,
         open: openTechnicalReportModal,
     },
-    {
-        key: 'pgr_subsidy',
-        title: 'Inventário de Riscos PGR',
-        ready: props.pgrSubsidy?.ready === true,
-        version: props.pgrSubsidy?.version_number ?? null,
-        downloadUrl: pgrSubsidyDownloadUrl.value,
-        open: openPgrSubsidyModal,
-    },
 ]);
-
-const pgrSubsidyPreviewUrl = computed(
-    () =>
-        props.pgrSubsidy?.urls?.preview ??
-        route('admin.companies.surveys.psychosocial-documents.preview', [
-            props.company.id,
-            props.survey.id,
-            'pgr_subsidy',
-        ]),
-);
 
 const restoreDocModalAfterRedirect = () => {
     if (typeof sessionStorage === 'undefined') {
@@ -198,8 +163,6 @@ const restoreDocModalAfterRedirect = () => {
     sessionStorage.removeItem('nr1-legacy-doc-modal');
     if (key === 'technical_report') {
         showTechnicalReportModal.value = true;
-    } else if (key === 'pgr_subsidy') {
-        showPgrSubsidyModal.value = true;
     }
 };
 
@@ -357,10 +320,6 @@ const openTechnicalReportModal = () => {
     showTechnicalReportModal.value = true;
 };
 
-const openPgrSubsidyModal = () => {
-    showPgrSubsidyModal.value = true;
-};
-
 const confirmExportPdf = () => {
     const url = route('admin.companies.surveys.action-plan.pdf', {
         company: props.company.id,
@@ -448,7 +407,7 @@ const requestTechnicalOpinionAi = () => {
     router.post(props.technicalOpinionGeneratePostUrl);
 };
 
-const publishedFiles = computed(() => props.technicalReport?.ready === true || props.pgrSubsidy?.ready === true);
+const publishedFiles = computed(() => props.technicalReport?.ready === true);
 const updatingFiles = ref(false);
 
 const updatePublishedFiles = () => {
@@ -483,7 +442,6 @@ const startTechnicalPollIfPending = () => {
                     'technicalOpinionAi',
                     'technicalOpinionAiPending',
                     'technicalReport',
-                    'pgrSubsidy',
                     'flash',
                 ],
             });
@@ -549,7 +507,6 @@ const submit = () => {
 
 defineExpose({
     openTechnicalReportModal,
-    openPgrSubsidyModal,
     openExportPdfModal,
 });
 </script>
@@ -730,20 +687,7 @@ defineExpose({
                         <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.3a1 1 0 0 1-1.42.002l-3.25-3.25a1 1 0 1 1 1.414-1.414l2.54 2.54 6.542-6.586a1 1 0 0 1 1.418-.006Z" clip-rule="evenodd" />
                     </svg>
                     <span class="sr-only" v-if="technicalReport?.ready">Publicado no painel NR-1 da empresa. </span>
-                    Inventário de Riscos Empresa
-                </SecondaryButton>
-                <SecondaryButton type="button" @click="openPgrSubsidyModal">
-                    <svg
-                        v-if="pgrSubsidy?.ready"
-                        class="mr-2 h-4 w-4 text-emerald-600"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                    >
-                        <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.3a1 1 0 0 1-1.42.002l-3.25-3.25a1 1 0 1 1 1.414-1.414l2.54 2.54 6.542-6.586a1 1 0 0 1 1.418-.006Z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="sr-only" v-if="pgrSubsidy?.ready">Publicado no painel NR-1 da empresa. </span>
-                    Inventário de Riscos PGR
+                    Inventário de Riscos Psicossocial
                 </SecondaryButton>
                 <SecondaryButton type="button" disabled title="Inativo por enquanto">
                     Plano com resultados + parecer
@@ -872,7 +816,7 @@ defineExpose({
             <span v-if="plan?.admin_published_at"> · última em {{ formatDateTime(plan.admin_published_at) }}</span>
         </p>
         <p class="mt-3 text-sm text-slate-700">
-            Inventário de Riscos Empresa:
+            Inventário de Riscos Psicossocial:
             <strong>{{ technicalReportPublished ? 'publicado no painel da empresa' : 'ainda não publicado' }}</strong>.
             <button type="button" class="font-medium text-talents-800 underline" @click="openTechnicalReportModal">
                 Abrir inventário
@@ -882,7 +826,7 @@ defineExpose({
             v-if="!publication.uses_review_flow && !canPublishParecer"
             class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
         >
-            Publique o Inventário de Riscos Empresa antes de publicar o parecer.
+            Publique o Inventário de Riscos Psicossocial antes de publicar o parecer.
         </p>
         <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
             <SecondaryButton v-if="!shellMode" type="button" @click="selectStep('results')">
@@ -977,7 +921,7 @@ defineExpose({
 
     <Nr1DocumentPreviewModal
         :show="showTechnicalReportModal"
-        title="Inventário de Riscos Empresa"
+        title="Inventário de Riscos Psicossocial"
         description="O PDF abre na hora. Publicar envia esta versão ao painel NR-1 da empresa. Depois você pode editar e substituir."
         :document="technicalReport"
         :download-url="technicalReportDownloadUrl"
@@ -987,20 +931,6 @@ defineExpose({
         persist-key="technical_report"
         publish-mode
         @close="showTechnicalReportModal = false"
-    />
-
-    <Nr1DocumentPreviewModal
-        :show="showPgrSubsidyModal"
-        title="Inventário de Riscos PGR"
-        description="O PDF abre na hora. Complete o cadastro técnico para preencher Unidade, AEP e responsável. Publicar envia esta versão ao painel NR-1 da empresa. Depois você pode editar e substituir."
-        :document="pgrSubsidy"
-        :download-url="pgrSubsidyDownloadUrl"
-        :preview-url="pgrSubsidyPreviewUrl"
-        :release-url="pgrSubsidyReleaseUrl"
-        :registration-url="registrationUrl"
-        persist-key="pgr_subsidy"
-        publish-mode
-        @close="showPgrSubsidyModal = false"
     />
 
     <Modal :show="showDeleteSurveyModal" @close="showDeleteSurveyModal = false">

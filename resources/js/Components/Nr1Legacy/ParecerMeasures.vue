@@ -99,7 +99,7 @@ watch(() => props.measuresAi?.pending, watchRefresh);
             <div>
                 <div class="flex items-center gap-1">
                     <label class="text-sm text-slate-700" for="parecer-factor">Fator</label>
-                    <InfoTooltip text="Fator psicossocial a que a medida se refere. Esse nome sai no Inventário de Riscos PGR e no dossiê." />
+                    <InfoTooltip text="Fator psicossocial a que a medida se refere. Esse nome sai no Inventário de Riscos Psicossocial e no dossiê." />
                 </div>
                 <input id="parecer-factor" v-model="form.factor_label" type="text" required class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
                 <InputError class="mt-1" :message="form.errors.factor_label" />

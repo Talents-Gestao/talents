@@ -685,7 +685,7 @@ class ActionPlanAdminController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'technical_opinion' => 'Para publicar o parecer, publique o Inventário de Riscos Empresa nesta campanha.',
+            'technical_opinion' => 'Para publicar o parecer, publique o Inventário de Riscos Psicossocial nesta campanha.',
         ]);
     }
 }

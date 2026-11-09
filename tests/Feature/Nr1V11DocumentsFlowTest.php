@@ -454,7 +454,7 @@ class Nr1V11DocumentsFlowTest extends TestCase
         $this->assertSame($first->id, $this->rounds->publishedRound($flow->survey)->id);
     }
 
-    public function test_t18_technical_report_embeds_the_action_plan_and_the_annexes_without_a_third_report(): void
+    public function test_t18_technical_report_embeds_the_action_plan_and_company_data_without_annexes(): void
     {
         $flow = $this->flow();
         $measures = app(PsychosocialMeasureService::class);
@@ -477,18 +477,22 @@ class Nr1V11DocumentsFlowTest extends TestCase
         $this->assertNotNull($plan['confirmed_due_date']);
         $this->assertSame(1, $plan['evidence_count']);
 
-        // Anexos dentro do próprio relatório: instrumento e dados agregados de suporte.
+        // Metadados do instrumento permanecem no snapshot; o PDF não imprime anexos.
         $this->assertSame(39, $snapshot['instrument']['item_count']);
         $this->assertCount(39, $snapshot['instrument']['items']);
         $this->assertCount(39, $snapshot['support_data']['items']);
+        $this->assertArrayHasKey('name', $snapshot['company']);
 
         $html = app(PsychosocialDocumentService::class)->renderHtml(PsychosocialDocument::TYPE_TECHNICAL_REPORT, $snapshot);
-        foreach (['5. Plano de ação e acompanhamento', 'Revisar a distribuição das tarefas do setor.', 'Confirmado:', 'Anexo A', 'Anexo B', 'Em andamento'] as $expected) {
+        foreach (['Inventário de Riscos Psicossocial', '1. Dados da empresa', '6. Plano de ação e acompanhamento', 'Revisar a distribuição das tarefas do setor.', 'Confirmado:', 'Em andamento'] as $expected) {
             $this->assertStringContainsString($expected, $html);
         }
+        $this->assertStringNotContainsString('Anexo A', $html);
+        $this->assertStringNotContainsString('Anexo B', $html);
+        $this->assertStringNotContainsString('Controle documental', $html);
         $this->assertStringContainsString('não implementa nenhuma medida', $html);
 
-        // O executivo é separado e não carrega os anexos; não existe terceiro documento no fluxo.
+        // O executivo é separado; não existe terceiro documento no fluxo.
         $this->assertArrayNotHasKey('instrument', $round->executiveVersion->snapshot);
         $this->assertSame(
             [PsychosocialDocument::TYPE_EXECUTIVE_BRIEF, PsychosocialDocument::TYPE_TECHNICAL_REPORT],
@@ -527,11 +531,11 @@ class Nr1V11DocumentsFlowTest extends TestCase
                 ->missing('section.legacy'));
         $this->assertNotNull($published->protocol);
 
-        // Campanha antiga (método antigo): continua com os três documentos de sempre.
+        // Campanha antiga (método antigo): resumo e dossiê na lista; inventário PGR fora da UI/summary.
         $old = $this->createSurveyFixture();
         $summary = $documents->documentsSummary($old->survey);
         $this->assertSame(
-            [PsychosocialDocument::TYPE_EXECUTIVE_BRIEF, PsychosocialDocument::TYPE_PGR_SUBSIDY, PsychosocialDocument::TYPE_EVIDENCE_DOSSIER],
+            [PsychosocialDocument::TYPE_EXECUTIVE_BRIEF, PsychosocialDocument::TYPE_EVIDENCE_DOSSIER],
             array_column($summary, 'type'),
         );
         $this->assertFalse($old->survey->usesReviewFlow());

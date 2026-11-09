@@ -11,11 +11,10 @@ use App\Services\ExecutiveBriefSnapshotBuilder;
 use App\Services\PsychosocialDashboardBuilder;
 
 /**
- * Snapshot do relatório técnico + plano de ação (segundo documento final, Caderno §12). Mesma base do resumo
- * executivo (painel com a cascata aplicada, cadastro técnico, medidas), mais:
- * - o plano de ação completo, com sugerido × confirmado, status e aferição (T18);
- * - anexos dentro do próprio relatório: instrumento (39 itens) e dados agregados de suporte. Sem terceiro relatório.
- * Tudo congelado: o PDF é a impressão deste snapshot, nunca dado ao vivo.
+ * Snapshot do Inventário de Riscos Psicossocial (documento final centralizado, Caderno §12). Mesma base do resumo
+ * executivo (painel com a cascata aplicada, cadastro técnico, medidas), mais o plano completo com sugerido ×
+ * confirmado, status e aferição (T18). Dados da empresa entram no PDF; sem Anexo A (instrumento), Anexo B nem
+ * controle documental. Tudo congelado: o PDF é a impressão deste snapshot, nunca dado ao vivo.
  */
 class TechnicalReportSnapshotBuilder implements DocumentSnapshotBuilder
 {
@@ -42,9 +41,22 @@ class TechnicalReportSnapshotBuilder implements DocumentSnapshotBuilder
      */
     public function build(Survey $survey): array
     {
+        $survey->loadMissing('company');
         $dashboard = $this->dashboardBuilder->build($survey);
+        $company = $survey->company;
+        $base = $this->baseBuilder->buildForSchema($survey, self::SCHEMA);
 
-        return array_merge($this->baseBuilder->buildForSchema($survey, self::SCHEMA), [
+        return array_merge($base, [
+            'company' => [
+                'name' => $company?->name,
+                'legal_name' => $company?->legal_name,
+                'cnpj' => $company?->cnpj,
+                'address_street' => $company?->address_street,
+                'address_neighborhood' => $company?->address_neighborhood,
+                'address_city' => $company?->address_city,
+                'address_state' => $company?->address_state,
+                'address_zip' => $company?->address_zip,
+            ],
             'strengths' => $dashboard['strengths'],
             'attention' => array_map(fn (array $d) => [
                 'title' => $d['title'],
@@ -57,6 +69,7 @@ class TechnicalReportSnapshotBuilder implements DocumentSnapshotBuilder
             'plan' => $this->plan($survey),
             'plan_note' => self::PLAN_NOTE,
             'priority_note' => self::PRIORITY_NOTE,
+            // Metadados do instrumento permanecem no snapshot (contagens/metodologia); o PDF não imprime anexos.
             'instrument' => [
                 'template_title' => (string) $survey->template?->title,
                 'item_count' => count($dashboard['items']),
