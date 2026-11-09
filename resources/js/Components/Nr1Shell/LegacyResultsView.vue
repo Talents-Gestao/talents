@@ -2,7 +2,6 @@
 import ClientResultsBody from '@/Components/Nr1Legacy/ClientResultsBody.vue';
 import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
 import { router } from '@inertiajs/vue3';
-import LegacyNotice from './LegacyNotice.vue';
 import MiaCard from './MiaCard.vue';
 import Nr1Button from './Nr1Button.vue';
 import { useNr1Toast } from './useNr1Toast';
@@ -10,7 +9,7 @@ import { useNr1Toast } from './useNr1Toast';
 /**
  * Resultados no modelo anterior = Laudo 01 Diagnóstico: o MESMO painel do legado (indicador geral, dimensões com radar,
  * participação por setor, risco por setor, dimensões por setor, tabela de calor, detalhamento por pergunta, insights),
- * com o padrão visual do shell por `.nr1-theme`. A empresa vê também a Mia e os relatórios; a Talents, a Mia.
+ * com o padrão visual do shell por `.nr1-theme`. A empresa vê os resultados; a Mia fica só na Talents.
  */
 const props = defineProps({
     results: { type: Object, required: true },
@@ -33,7 +32,6 @@ const recalculate = () => router.post(props.results.recalculateUrl, {}, { preser
                 <p>Laudo 01 · Diagnóstico: indicadores consolidados por dimensão, setor e pergunta.</p>
             </div>
             <div class="n1-legacybar no-print">
-                <LegacyNotice :text="notice" />
                 <Nr1Button v-if="results.recalculateUrl" size="sm" @click="recalculate">Recalcular</Nr1Button>
                 <Nr1Button variant="primary" size="sm" @click="print">Imprimir resultados ↓</Nr1Button>
             </div>
@@ -60,13 +58,6 @@ const recalculate = () => router.post(props.results.recalculateUrl, {}, { preser
         </div>
 
         <MiaCard v-if="results.ai" :ai="results.ai" />
-
-        <div v-if="results.reports.length" class="n1-card no-print" style="margin-top: 17px">
-            <div class="n1-sectiontop"><h2>Relatórios e exportações</h2></div>
-            <div class="n1-tools">
-                <Nr1Button v-for="report in results.reports" :key="report.href" size="sm" :href="report.href" external>{{ report.label }}</Nr1Button>
-            </div>
-        </div>
 
         <div class="n1-tools no-print" style="margin-top: 16px; justify-content: flex-end">
             <Nr1Button variant="primary" inertia :href="results.nextUrl">Continuar para o parecer →</Nr1Button>

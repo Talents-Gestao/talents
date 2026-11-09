@@ -2,7 +2,6 @@
 import ClientActionPlanBody from '@/Components/Nr1Legacy/ClientActionPlanBody.vue';
 import LaudoBody from '@/Components/Nr1Legacy/LaudoBody.vue';
 import { computed } from 'vue';
-import LegacyNotice from './LegacyNotice.vue';
 import Nr1Button from './Nr1Button.vue';
 
 /**
@@ -21,7 +20,7 @@ const laudo = computed(() => props.documents.laudo ?? null);
 <template>
     <div>
         <div class="n1-intro">
-            <div>
+            <div v-if="laudo">
                 <div class="n1-eyebrow">Parecer e publicação</div>
                 <h1>Parecer técnico e publicação.</h1>
                 <p>
@@ -29,7 +28,13 @@ const laudo = computed(() => props.documents.laudo ?? null);
                     parecer exige o Inventário de Riscos Empresa no painel da empresa.
                 </p>
             </div>
-            <LegacyNotice :text="notice" />
+            <div v-else>
+                <div class="n1-eyebrow">Parecer</div>
+                <h1>Parecer da sua empresa.</h1>
+                <p>
+                    O parecer técnico e os documentos publicados pela Talents aparecem aqui, para consulta da sua empresa.
+                </p>
+            </div>
         </div>
 
         <template v-if="laudo">
@@ -51,24 +56,6 @@ const laudo = computed(() => props.documents.laudo ?? null);
         <template v-else>
             <div class="nr1-theme">
                 <ClientActionPlanBody v-bind="documents.actionPlan" />
-            </div>
-
-            <div v-if="documents.reports.length" class="n1-card no-print" style="margin-top: 17px">
-                <div class="n1-sectiontop"><h2>Documentos liberados</h2></div>
-                <p class="n1-tiny">
-                    Relatórios automáticos desta campanha. O parecer técnico aparece acima quando a Talents publica.
-                </p>
-                <div class="n1-tools">
-                    <Nr1Button
-                        v-for="report in documents.reports"
-                        :key="report.href"
-                        size="sm"
-                        :href="report.href"
-                        external
-                    >
-                        {{ report.label }}
-                    </Nr1Button>
-                </div>
             </div>
         </template>
     </div>

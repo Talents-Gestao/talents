@@ -31,6 +31,10 @@ class Survey extends Model
         'requires_publication',
         'requires_passeg_review',
         'uses_invitations',
+        'intro_video_required',
+        'closing_video_required',
+        'intro_video_id',
+        'closing_video_id',
         'answers_reconstructed_at',
         'deleted_by',
         'archive_path',
@@ -75,10 +79,22 @@ class Survey extends Model
             'requires_publication' => 'boolean',
             'requires_passeg_review' => 'boolean',
             'uses_invitations' => 'boolean',
+            'intro_video_required' => 'boolean',
+            'closing_video_required' => 'boolean',
             'published_at' => 'datetime',
             'action_measures_generated_at' => 'datetime',
             'service_suggestions_generated_at' => 'datetime',
         ];
+    }
+
+    public function introVideo(): BelongsTo
+    {
+        return $this->belongsTo(Nr1OrientationVideo::class, 'intro_video_id');
+    }
+
+    public function closingVideo(): BelongsTo
+    {
+        return $this->belongsTo(Nr1OrientationVideo::class, 'closing_video_id');
     }
 
     /**

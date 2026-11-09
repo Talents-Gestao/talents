@@ -1500,12 +1500,12 @@ Gravação em transação: consome o convite e cria `survey_responses` (com `ses
 
 | Seção | V11 (`talents39_v1`) | Modelo anterior |
 |-------|----------------------|-----------------|
-| Visão geral | Cartões, pontos fortes, dimensões, prioridades, próximas ações, grupos | Cabeçalho do laudo, índice geral e dimensões, aviso «Pesquisa no modelo anterior» |
+| Visão geral | Cartões, pontos fortes, dimensões, prioridades, próximas ações, grupos | Cabeçalho do laudo, índice geral e dimensões |
 | Campanha NR-1 | Etapas, orientação, treinamentos por público, links/QR, elegíveis | Etapas, período, coleta, respostas e link |
 | Minha jornada | Link do colaborador | Não existe (404) |
-| Resultados | Abas Dimensões / Setores / 39 perguntas + Revisão interna (Talents) | Laudo 01 Diagnóstico (radar, setores, mapa de calor, perguntas, insights) |
+| Resultados | Abas Dimensões / Setores / 39 perguntas + Revisão interna (Talents) | Laudo 01 Diagnóstico (radar, setores, mapa de calor, perguntas, insights). No painel da empresa não aparecem a Mia nem o convite de parecer com especialista |
 | Plano de ação | Medidas V11 | Plano do legado (itens do parecer) |
-| Documentos | Central de documentos com rodada de revisão | Central com relatórios existentes e histórico de publicação |
+| Documentos | Central de documentos com rodada de revisão | A empresa só vê os arquivos que a Talents publicou. A situação da publicação, a PASSEG e o histórico ficam na Talents |
 | Parecer e publicação | Não aparece (URL redireciona) | Laudo 02 Parecer + 03 Publicar + Documentos liberados |
 | Soluções Talents | Regras dimensão → serviço | Disponível também no legado |
 | Oportunidades | Fila comercial | Fila comercial |
@@ -1534,7 +1534,8 @@ URLs antigas (`/admin/companies/{c}/surveys/{s}/action-plan`, `/client/surveys/{
 |----------|-------|
 | Etapas | Configuração → Coleta → Resultados → Publicação, lidas do que está gravado (`Nr1ShellCampaignFacts`) |
 | Período, grupo mínimo, publicação | fatos da campanha |
-| Orientação NR-1 | sempre «incluída»; texto por enquanto (vídeo depende de arquivo aprovado) |
+| Orientação NR-1 | sempre «incluída» (texto fixo); vídeos de abertura e/ou encerramento opcionais por campanha, escolhidos na biblioteca global da Talents (`nr1_orientation_videos`); quando exigidos, o colaborador precisa assistir até o fim (~95%) para avançar |
+| Vídeos da jornada | Talents configura em Campanha NR-1 (shell ou `/admin/companies/{c}/surveys/{s}/campanha-nr1`): exigir abertura e/ou encerramento + selecionar da biblioteca; empresa só consulta o estado; biblioteca em `/admin/nr1/videos` (`survey_templates`) |
 | Treinamentos (`TrainingCards`) | Online e Presencial × Time e Líderes. Contratado: destacado com escopo, datas, link/arquivo, local, facilitador, capacidade, presença. Não contratado: discreto, com «Solicitar proposta» (empresa) |
 | Solicitar proposta | cria oportunidade com origem `training_request`, estado «Novo»; nunca por visualização; bloqueia pedido aberto duplicado para a mesma modalidade e público; o botão vira «Proposta solicitada» |
 | Links e QR | por público, com janela própria; «Copiar link da pesquisa»; QR em SVG |
@@ -1545,7 +1546,7 @@ Ações da Talents nesta seção usam as rotas de apoio (8.10.1).
 
 #### 8.9.3 Minha jornada (colaborador)
 
-Entrada simples pelo link/QR do público. Exibe objetivo, sigilo e instruções; Orientação NR-1 sempre; Online/Presencial só se contratados e liberados para aquele público (`Nr1JourneyBuilder`); material por `GET /pesquisa/{token}/treinamento/{training}/arquivo`; botão «Responder questionário →». Nunca mostra resultados, rankings, ofertas, preços, nome da empresa no cabeçalho ou dados de outros colaboradores.
+Entrada simples pelo link/QR do público. Exibe objetivo, sigilo e instruções; Orientação NR-1 sempre; Online/Presencial só se contratados e liberados para aquele público (`Nr1JourneyBuilder`); material por `GET /pesquisa/{token}/treinamento/{training}/arquivo`; se a campanha exigir vídeo de abertura, o CTA «Responder questionário →» só libera após assistir até o fim. No questionário (`/pesquisa/{token}`): vídeo de abertura na etapa inicial (quando exigido) e vídeo de encerramento após «Revisar e enviar», antes do POST (quando exigido); stream em `GET /pesquisa/{token}/video/{video}`. Progresso do gate fica só no navegador (`localStorage` por token), sem vínculo pessoa↔vídeo no servidor. Nunca mostra resultados, rankings, ofertas, preços, nome da empresa no cabeçalho ou dados de outros colaboradores.
 
 #### 8.9.4 Resultados da pesquisa (V11)
 
@@ -1628,7 +1629,7 @@ Só aparece em campanhas do modelo anterior; na V11 a URL redireciona para Docum
 | 01 Diagnóstico | na seção Resultados (painel do legado) com «Continuar para o parecer» |
 | Parecer | três seções que abrem e fecham: Parecer técnico (aberta), Plano de ação e Anexos (recolhidos). Anexos lista o Inventário de Riscos Empresa e o Inventário de Riscos PGR, com o estado de publicação no painel NR-1 da empresa. A publicação fica em seguida |
 | Documentos liberados | no parecer legado, a publicação é por etapa: Inventário de Riscos Empresa e Inventário de Riscos PGR. O botão mostra um visto quando a versão está no painel NR-1 da empresa. A Mia só preenche o texto do parecer; «Atualizar arquivos publicados» gera nova versão só dos PDFs que já estão no painel. «Plano com resultados + parecer» fica inativo. Resumo executivo inativo na UI; dossiê fora desta tela (8.11.4) |
-| Empresa | parecer e plano publicados, PDFs e anexos |
+| Empresa | texto próprio da empresa: o parecer publicado e os documentos da pesquisa. Sem as instruções de publicação da Talents (Mia, inventários e exigência de publicar o Inventário de Riscos Empresa). Enquanto o parecer não é publicado, a página avisa que ainda está em espera |
 | Plano de ação | «Da análise à execução» lista as medidas geradas (`psychosocial_measures`) para a Talents e, depois da publicação do parecer, para a empresa |
 
 Rotas de ação do legado (admin): `PUT …/action-plan` (parecer e anexos), `POST …/action-plan/generate-suggested` (plano sugerido), `GET|POST …/action-plan/document-pdf` e `…/pdf`, `POST …/technical-opinion`, `GET …/technical-opinion-file`, `GET …/nr1-reports/{type}` (relatório executivo e encaminhamento técnico). Itens do plano legado: `PATCH /client/action-plan-items/{item}` (responsável, prazo, status `pending|in_progress|done`).
@@ -1637,11 +1638,11 @@ Rotas de ação do legado (admin): `PUT …/action-plan` (parecer e anexos), `PO
 
 | Elemento | Regra |
 |----------|-------|
-| 3 serviços fixos (`Nr1ServiceCards`) | 01 Pesquisa Psicossocial (Serviço realizado) · 02 Avaliação Complementar (Sob proposta) · 03 Intervenção Organizacional (Sob proposta) |
+| 3 serviços fixos (`Nr1ServiceCards`) | Só na Talents: 01 Pesquisa Psicossocial (Serviço realizado) · 02 Avaliação Complementar (Sob proposta) · 03 Intervenção Organizacional (Sob proposta). A empresa não vê esses cards |
 | Recomendações | uma por dimensão em atenção, a partir das regras configuráveis (`Nr1ServiceMatch`). No modelo anterior a seção do questionário entra na regra correspondente (Demandas → Demandas e Sobrecarga, Apoio da gestão → Liderança e Gestão, e as demais seções HSE nas regras de clima ou percepção). A Talents vê essas recomendações na campanha antiga; a empresa, depois da publicação |
 | Serviços do catálogo | ao gravar o status da pesquisa como encerrada (`closed`), e já havendo resultado, a própria campanha enfileira **uma** geração a partir dos produtos ativos (`commercial_products`); nasce «Aguardando aprovação»; a Talents edita ou dispensa e «Liberar para a empresa» é o que o cliente vê em «Serviços que a empresa pode contratar»; «Solicitar conversa» cria o lead. O comando `nr1:generate-service-suggestions` só reprocessa campanhas antigas que ficaram sem essa geração |
 | Antes da publicação | «Recomendações disponíveis quando o relatório for publicado.» |
-| Empresa | só regras **ativas e revisadas** (`NR1_SOLUTIONS_REQUIRE_REVIEW=true`); «Solicitar conversa» cria lead (`solution_request`) com empresa, campanha, serviço, necessidade, data e responsável comercial; «Meus pedidos» |
+| Empresa | texto da empresa, sem o fluxo interno da Mia e sem os três serviços fixos. Vê as recomendações já liberadas e os serviços do catálogo já aprovados; vazio avisa que ainda não há indicação. «Solicitar conversa» cria lead (`solution_request`); «Meus pedidos». Só regras **ativas e revisadas** (`NR1_SOLUTIONS_REQUIRE_REVIEW=true`) |
 | Sugestão automática | sem clique da empresa, gera só oportunidade «A qualificar» (`solution_suggestion`), nunca interesse declarado |
 | Talents | vê as ativas e consulta a oportunidade |
 | Comercial | só com `methodology:view`, sem campanha em foco |
@@ -2661,6 +2662,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/admin/companies/{company}/surveys/{survey}/campanha-nr1/convites` | `admin.companies.surveys.campaign.invitations` | auth · admin.can:companies | — |
 | POST | `/admin/companies/{company}/surveys/{survey}/campanha-nr1/elegiveis` | `admin.companies.surveys.campaign.eligible` | auth · admin.can:companies | — |
 | POST | `/admin/companies/{company}/surveys/{survey}/campanha-nr1/remover-contratacao` | `admin.companies.surveys.campaign.uncontract` | auth · admin.can:companies | — |
+| POST | `/admin/companies/{company}/surveys/{survey}/campanha-nr1/videos` | `admin.companies.surveys.campaign.videos` | auth · admin.can:companies | — |
 | GET | `/admin/companies/{company}/surveys/{survey}/dados-brutos/csv` | `admin.companies.surveys.raw-export.csv` | auth · admin.can:companies · admin.can:nr1_dados_brutos,view | — |
 | GET | `/admin/companies/{company}/surveys/{survey}/documentos` | `admin.companies.surveys.documents.index` | auth · admin.can:companies | `Admin/Documents/Central` |
 | POST | `/admin/companies/{company}/surveys/{survey}/documentos/exigir-revisao` | `admin.companies.surveys.documents.review-requirement` | auth · admin.can:companies | — |
@@ -3053,6 +3055,17 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | PUT/PATCH | `/admin/survey-templates/{survey_template}` | `admin.survey-templates.update` | auth · admin.can:survey_templates | — |
 | DELETE | `/admin/survey-templates/{survey_template}` | `admin.survey-templates.destroy` | auth · admin.can:survey_templates | — |
 | GET | `/admin/survey-templates/{survey_template}/edit` | `admin.survey-templates.edit` | auth · admin.can:survey_templates | `Admin/SurveyTemplates/Edit` |
+
+#### `/admin/nr1/videos`
+
+| Método | URI | Nome | Proteção | Tela |
+|--------|-----|------|----------|------|
+| GET | `/admin/nr1/videos` | `admin.nr1-videos.index` | auth · admin.can:survey_templates | `Admin/Nr1Videos/Index` |
+| POST | `/admin/nr1/videos` | `admin.nr1-videos.store` | auth · admin.can:survey_templates | — |
+| PUT | `/admin/nr1/videos/{nr1_video}` | `admin.nr1-videos.update` | auth · admin.can:survey_templates | — |
+| POST | `/admin/nr1/videos/{nr1_video}/substituir` | `admin.nr1-videos.replace` | auth · admin.can:survey_templates | — |
+| DELETE | `/admin/nr1/videos/{nr1_video}` | `admin.nr1-videos.destroy` | auth · admin.can:survey_templates | — |
+| GET | `/admin/nr1/videos/{nr1_video}/arquivo` | `admin.nr1-videos.stream` | auth · admin.can:survey_templates | — |
 
 #### `/admin/tarefas`
 
@@ -3625,6 +3638,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/pesquisa/{token}` | `survey.public.submit` | — | — |
 | GET | `/pesquisa/{token}/obrigado` | `survey.public.thanks` | — | `Survey/ThankYou` |
 | GET | `/pesquisa/{token}/treinamento/{training}/arquivo` | `survey.public.training-material` | — | — |
+| GET | `/pesquisa/{token}/video/{video}` | `survey.public.orientation-video` | — | stream inline do vídeo exigido pela campanha |
 
 #### `/profile`
 
@@ -3741,7 +3755,8 @@ Gerado a partir das migrations (`database/migrations`, 181 arquivos), aplicando 
 | `survey_template_sections` | `id`, `survey_template_id`, `title`, `description`, `sort_order`, `created_at/updated_at` |
 | `survey_template_questions` | `id`, `survey_template_section_id`, `body`, `reverse_score`, `sort_order`, `weight`, `response_scale`, `created_at/updated_at` |
 | `company_survey_template` | `id`, `company_id`, `survey_template_id`, `created_at/updated_at` |
-| `surveys` | `id`, `company_id`, `survey_template_id`, `title`, `public_token`, `starts_at`, `ends_at`, `status`, `min_responses_for_breakdown`, `answers_reconstructed_at`, `deleted_by`, `archive_path`, `method_version_id`, `instrument_version_id`, `min_group_size`, `commercial_released_at`, `commercial_released_by`, `show_others_composition`, `requires_publication`, `published_at`, `published_by`, `requires_passeg_review`, `uses_invitations`, `created_at/updated_at`, `deleted_at` |
+| `surveys` | `id`, `company_id`, `survey_template_id`, `title`, `public_token`, `starts_at`, `ends_at`, `status`, `min_responses_for_breakdown`, `answers_reconstructed_at`, `deleted_by`, `archive_path`, `method_version_id`, `instrument_version_id`, `min_group_size`, `commercial_released_at`, `commercial_released_by`, `show_others_composition`, `requires_publication`, `published_at`, `published_by`, `requires_passeg_review`, `uses_invitations`, `intro_video_required`, `closing_video_required`, `intro_video_id`, `closing_video_id`, `created_at/updated_at`, `deleted_at` |
+| `nr1_orientation_videos` | `id`, `title`, `role` (`intro`\|`closing`), `disk`, `path`, `original_name`, `mime`, `size_bytes`, `duration_seconds`, `is_active`, `created_at/updated_at` |
 | `survey_responses` | `id`, `survey_id`, `session_token`, `department_id`, `age_range`, `tenure_range`, `completed_at`, `audience`, `created_at/updated_at` |
 | `survey_answers` | `id`, `survey_response_id`, `survey_template_question_id`, `value`, `created_at/updated_at` |
 | `survey_results` | `id`, `survey_id`, `survey_template_section_id`, `department_id`, `average_score`, `risk_level`, `respondent_count`, `meta`, `method_version_id`, `score_numerator`, `score_denominator`, `created_at/updated_at` |

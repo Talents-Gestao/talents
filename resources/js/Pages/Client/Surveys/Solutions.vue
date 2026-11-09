@@ -13,12 +13,6 @@ const props = defineProps({
     serviceSuggestions: { type: Object, default: () => ({ items: [], can_moderate: false }) },
 });
 
-const toneClass = {
-    ok: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    info: 'bg-sky-50 text-sky-800 border-sky-200',
-    warn: 'bg-amber-50 text-amber-800 border-amber-200',
-};
-
 const request = (recommendation) => {
     router.post(route('client.surveys.solutions.request', [props.survey.id, recommendation.id]), {}, { preserveScroll: true });
 };
@@ -42,15 +36,6 @@ const request = (recommendation) => {
         <div class="space-y-6">
             <div v-if="$page.props.flash?.success" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{{ $page.props.flash.success }}</div>
             <div v-if="$page.props.flash?.error" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{{ $page.props.flash.error }}</div>
-
-            <div class="grid gap-4 lg:grid-cols-3">
-                <section v-for="card in cards" :key="card.number" class="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-5 shadow-sm" :aria-labelledby="`service-${card.number}`">
-                    <span class="text-xs font-bold text-gray-400">{{ card.number }}</span>
-                    <h3 :id="`service-${card.number}`" class="text-base font-semibold text-talents-900">{{ card.title }}</h3>
-                    <span class="inline-flex self-start rounded-md border px-2 py-0.5 text-xs font-semibold" :class="toneClass[card.tone]">{{ card.status }}</span>
-                    <p class="text-sm text-gray-700">{{ card.text }}</p>
-                </section>
-            </div>
 
             <ServiceSuggestionList :suggestions="serviceSuggestions" :can-request="canRequest" />
 

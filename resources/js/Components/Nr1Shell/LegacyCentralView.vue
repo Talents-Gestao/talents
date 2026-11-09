@@ -1,17 +1,46 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import EmptyState from './EmptyState.vue';
-import LegacyNotice from './LegacyNotice.vue';
 import Nr1Button from './Nr1Button.vue';
 
 /**
- * Central de documentos de uma campanha do modelo anterior, no desenho do HTML aprovado: à esquerda os documentos
- * oficiais com «Imprimir», à direita a situação da publicação e o histórico real. A publicação, a liberação dos
- * documentos e o parecer ficam em «Parecer e publicação»; a revisão da PASSEG não existe neste modelo.
+ * Central de documentos de uma campanha do modelo anterior. A Talents vê a situação da publicação.
+ * A empresa só recebe os arquivos que a Talents já publicou.
  */
-defineProps({
+const props = defineProps({
     central: { type: Object, required: true },
     notice: { type: String, default: 'Pesquisa no modelo anterior' },
+});
+
+const forCompany = computed(() => props.central.parecerUrl == null);
+
+const companyFiles = computed(() => {
+    const files = [];
+
+    for (const doc of props.central.documents ?? []) {
+        if (doc.url) {
+            files.push({ key: doc.key, title: doc.title, text: doc.text, url: doc.url });
+        }
+    }
+
+    for (const doc of props.central.released?.documents ?? []) {
+        if (!doc.download_url || files.some((file) => file.title === doc.label)) {
+            continue;
+        }
+        files.push({
+            key: doc.type,
+            title: doc.label,
+            text: doc.version_number ? `Versão ${doc.version_number}` : '',
+            url: doc.download_url,
+        });
+    }
+
+    if (props.central.released?.briefUrl && !files.some((file) => file.key === 'executivo')) {
+        files.push({ key: 'brief', title: 'Resumo executivo', text: '', url: props.central.released.briefUrl });
+    }
+
+    return files;
 });
 
 const validation = useForm({ declaration_accepted: false });
@@ -21,15 +50,49 @@ const validateDocument = (url) => validation.post(url, { preserveScroll: true, o
 <template>
     <div>
         <div class="n1-intro">
-            <div>
+            <div v-if="forCompany">
+                <div class="n1-eyebrow">Central de documentos</div>
+                <h1>Documentos da sua empresa.</h1>
+                <p>Arquivos que a Talents publicou para esta pesquisa.</p>
+            </div>
+            <div v-else>
                 <div class="n1-eyebrow">Central de documentos</div>
                 <h1>Documentos oficiais.</h1>
                 <p>Arquivos finais organizados em um só lugar, com revisão documental da PASSEG quando necessária.</p>
             </div>
-            <LegacyNotice :text="notice" />
         </div>
 
-        <div class="n1-docgrid">
+        <div v-if="forCompany">
+            <EmptyState
+                v-if="!companyFiles.length"
+                title="Nenhum documento publicado"
+                text="Quando a Talents publicar um arquivo para a sua empresa, ele aparece aqui."
+            />
+            <section v-else class="n1-card" aria-label="Documentos publicados">
+                <div v-for="doc in companyFiles" :key="doc.key" class="n1-docrow">
+                    <span class="n1-docico" aria-hidden="true">▤</span>
+                    <div>
+                        <strong>{{ doc.title }}</strong>
+                        <p v-if="doc.text">{{ doc.text }}</p>
+                    </div>
+                    <Nr1Button size="sm" :href="doc.url" external>Baixar</Nr1Button>
+                </div>
+            </section>
+            <section v-if="central.released?.canValidate && central.released.documents.some((item) => item.validatable)" class="n1-card no-print" style="margin-top: 15px" aria-label="Validação">
+                <div v-for="doc in central.released.documents.filter((item) => item.validatable)" :key="doc.type">
+                    <h3>Validar {{ doc.label }} · versão {{ doc.version_number }}</h3>
+                    <p class="n1-tiny">A validação se refere ao conteúdo congelado da versão atual. O PDF original não é refeito.</p>
+                    <label class="n1-tiny" style="display: flex; gap: 8px; align-items: flex-start">
+                        <input v-model="validation.declaration_accepted" type="checkbox" />
+                        <span>{{ central.released.declaration }}</span>
+                    </label>
+                    <p v-if="validation.errors.declaration_accepted" class="n1-tiny" role="alert">{{ validation.errors.declaration_accepted }}</p>
+                    <Nr1Button size="sm" variant="primary" :loading="validation.processing" @click="validateDocument(doc.validate_url)">Validar {{ doc.label }}</Nr1Button>
+                </div>
+            </section>
+        </div>
+
+        <div v-else class="n1-docgrid">
             <section class="n1-card" aria-label="Documentos oficiais">
                 <div v-for="doc in central.documents" :key="doc.key" class="n1-docrow">
                     <span class="n1-docico" aria-hidden="true">{{ doc.key === 'executivo' ? '▣' : '▤' }}</span>
@@ -67,28 +130,6 @@ const validateDocument = (url) => validation.post(url, { preserveScroll: true, o
                         <span>{{ row.label }}</span>
                     </li>
                 </ul>
-            </section>
-
-            <section v-if="central.released && (central.released.documents.length || central.released.briefUrl)" class="n1-card" aria-labelledby="released-title">
-                <h2 id="released-title">Documentos liberados pela Talents</h2>
-                <div class="n1-tools no-print">
-                    <template v-for="doc in central.released.documents" :key="doc.type">
-                        <Nr1Button v-if="doc.download_url" size="sm" :href="doc.download_url" external>Baixar {{ doc.label }}</Nr1Button>
-                    </template>
-                    <Nr1Button v-if="central.released.briefUrl" size="sm" :href="central.released.briefUrl" external>Baixar resumo executivo</Nr1Button>
-                </div>
-                <template v-if="central.released.canValidate">
-                    <div v-for="doc in central.released.documents.filter((item) => item.validatable)" :key="doc.type" class="no-print" style="margin-top: 14px">
-                        <h3>Validar {{ doc.label }} · versão {{ doc.version_number }}</h3>
-                        <p class="n1-tiny">A validação se refere ao conteúdo congelado da versão atual. O PDF original não é refeito.</p>
-                        <label class="n1-tiny" style="display: flex; gap: 8px; align-items: flex-start">
-                            <input v-model="validation.declaration_accepted" type="checkbox" />
-                            <span>{{ central.released.declaration }}</span>
-                        </label>
-                        <p v-if="validation.errors.declaration_accepted" class="n1-tiny" role="alert">{{ validation.errors.declaration_accepted }}</p>
-                        <Nr1Button size="sm" variant="primary" :loading="validation.processing" @click="validateDocument(doc.validate_url)">Validar {{ doc.label }}</Nr1Button>
-                    </div>
-                </template>
             </section>
         </div>
     </div>

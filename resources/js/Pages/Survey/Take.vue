@@ -1,4 +1,5 @@
 <script setup>
+import Nr1VideoGate from '@/Components/Nr1/Nr1VideoGate.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { buildSteps, firstStepOfSection, unansweredIn as unansweredInStep } from '@/utils/nr1Journey';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
@@ -7,6 +8,7 @@ const props = defineProps({
     survey: Object,
     entryToken: String,
     journey: { type: Object, default: null },
+    videos: { type: Object, default: () => ({ intro: null, closing: null }) },
     audience: { type: String, default: null },
     audienceLabel: { type: String, default: null },
     invitation: { type: String, default: null },
@@ -25,12 +27,24 @@ const hasDepartments = Boolean(props.survey.company?.departments?.length);
 const perQuestion = props.journey !== null;
 const steps = buildSteps(sections, perQuestion);
 
-// 0 = início, 1..N = etapas de pergunta, N+1 = revisão e envio.
+const introVideo = computed(() => props.videos?.intro ?? props.journey?.videos?.intro ?? null);
+const closingVideo = computed(() => props.videos?.closing ?? props.journey?.videos?.closing ?? null);
+const hasClosingVideo = computed(() => Boolean(closingVideo.value?.required && closingVideo.value?.url));
+
+// 0 = início, 1..N = perguntas, reviewStep = revisão, closingStep = vídeo final (se exigido).
 const reviewStep = steps.length + 1;
+const closingStep = computed(() => (hasClosingVideo.value ? reviewStep + 1 : null));
+const lastStep = computed(() => closingStep.value ?? reviewStep);
+
 const step = ref(0);
 const confirmed = ref(false);
 const stepError = ref('');
 const heading = ref(null);
+const introDone = ref(!introVideo.value?.required);
+const closingDone = ref(!closingVideo.value?.required);
+
+const introStorageKey = computed(() => (introVideo.value ? `nr1-video-${props.entryToken}-intro` : ''));
+const closingStorageKey = computed(() => (closingVideo.value ? `nr1-video-${props.entryToken}-closing` : ''));
 
 const labelsForQuestion = (q) => {
     if (q.response_scale === 'agreement' && props.agreementLabels) {
@@ -105,6 +119,7 @@ const progress = computed(() => (totalQuestions.value ? Math.round((answeredCoun
 const stepTitle = computed(() => {
     if (step.value === 0) return perQuestion ? 'Minha jornada' : 'Antes de começar';
     if (step.value === reviewStep) return 'Revisar e enviar';
+    if (closingStep.value !== null && step.value === closingStep.value) return 'Vídeo de encerramento';
     const current = steps[step.value - 1];
     return perQuestion ? `Afirmação ${current.ordinal} de ${totalQuestions.value}` : current.sectionTitle;
 });
@@ -114,14 +129,21 @@ const liveMessage = computed(() => `${stepTitle.value}. ${progress.value}% respo
 
 const stepIsValid = (index) => {
     if (index === 0) {
+        if (introVideo.value?.required && !introDone.value) return false;
         return !hasDepartments || (form.department_id !== null && form.department_id !== '');
     }
-    if (index === reviewStep) return true;
+    if (index === reviewStep) return confirmed.value;
+    if (closingStep.value !== null && index === closingStep.value) return closingDone.value;
     return unansweredInStep(steps[index - 1], form.answers).length === 0;
 };
 
 const errorFor = (index) => {
-    if (index === 0) return 'Selecione o seu setor para continuar.';
+    if (index === 0) {
+        if (introVideo.value?.required && !introDone.value) return 'Assista ao vídeo de abertura até o fim para continuar.';
+        return 'Selecione o seu setor para continuar.';
+    }
+    if (index === reviewStep) return 'Confirme o envio para concluir.';
+    if (closingStep.value !== null && index === closingStep.value) return 'Assista ao vídeo de encerramento até o fim para enviar.';
     return perQuestion ? 'Escolha uma opção para continuar.' : 'Responda todas as afirmações desta etapa para continuar.';
 };
 
@@ -143,6 +165,17 @@ const next = () => {
 
 const previous = () => goTo(Math.max(0, step.value - 1));
 
+const submitAnswers = () => {
+    form
+        .transform((data) => ({
+            ...data,
+            department_id: data.department_id != null && data.department_id !== '' ? Number(data.department_id) : null,
+        }))
+        .post(route('survey.public.submit', props.entryToken), {
+            onSuccess: clearDraft,
+        });
+};
+
 const submit = () => {
     if (form.processing) return;
     for (let i = 0; i < reviewStep; i++) {
@@ -157,15 +190,18 @@ const submit = () => {
         stepError.value = 'Confirme o envio para concluir.';
         return;
     }
+    if (hasClosingVideo.value) {
+        if (step.value !== closingStep.value) {
+            goTo(closingStep.value);
+            return;
+        }
+        if (!closingDone.value) {
+            stepError.value = errorFor(closingStep.value);
+            return;
+        }
+    }
 
-    form
-        .transform((data) => ({
-            ...data,
-            department_id: data.department_id != null && data.department_id !== '' ? Number(data.department_id) : null,
-        }))
-        .post(route('survey.public.submit', props.entryToken), {
-            onSuccess: clearDraft,
-        });
+    submitAnswers();
 };
 </script>
 
@@ -196,7 +232,7 @@ const submit = () => {
                 <div class="h-full bg-highlight transition-all" :style="{ width: progress + '%' }" />
             </div>
             <p class="mt-2 text-xs text-slate-500">
-                {{ progress }}% respondido · Etapa {{ step + 1 }} de {{ reviewStep + 1 }}
+                {{ progress }}% respondido · Etapa {{ step + 1 }} de {{ lastStep + 1 }}
             </p>
             <p class="sr-only" role="status" aria-live="polite">{{ liveMessage }}</p>
 
@@ -211,6 +247,15 @@ const submit = () => {
                         <p v-if="audienceLabel" class="inline-flex rounded-full bg-talents-50 px-3 py-1 text-xs font-semibold text-talents-800">
                             Você está respondendo pelo grupo: {{ audienceLabel }}
                         </p>
+
+                        <div v-if="introVideo?.url" class="rounded-lg border border-talents-100 bg-white p-4">
+                            <Nr1VideoGate
+                                :src="introVideo.url"
+                                :title="introVideo.title || 'Vídeo de abertura'"
+                                :storage-key="introStorageKey"
+                                @completed="introDone = true"
+                            />
+                        </div>
 
                         <div v-if="journey" class="rounded-lg border border-talents-100 bg-talents-50/60 p-4" aria-labelledby="journey-orientation">
                             <h2 id="journey-orientation" class="text-sm font-semibold text-talents-800">{{ journey.orientation.title }}</h2>
@@ -352,6 +397,16 @@ const submit = () => {
                         </label>
                     </div>
 
+                    <!-- Vídeo de encerramento (obrigatório antes do POST) -->
+                    <div v-if="closingStep !== null && step === closingStep" class="mt-4 space-y-4">
+                        <Nr1VideoGate
+                            :src="closingVideo.url"
+                            :title="closingVideo.title || 'Vídeo de encerramento'"
+                            :storage-key="closingStorageKey"
+                            @completed="closingDone = true"
+                        />
+                    </div>
+
                     <p v-if="stepError" class="mt-4 text-sm font-medium text-red-700" role="alert">{{ stepError }}</p>
                 </section>
 
@@ -367,18 +422,19 @@ const submit = () => {
                     <span v-else />
 
                     <button
-                        v-if="step < reviewStep"
+                        v-if="step < lastStep"
                         type="button"
-                        class="rounded-full bg-talents-600 px-6 py-2 text-sm font-bold text-white shadow transition hover:bg-talents-700"
+                        class="rounded-full bg-talents-600 px-6 py-2 text-sm font-bold text-white shadow transition hover:bg-talents-700 disabled:opacity-60"
+                        :disabled="step === 0 && introVideo?.required && !introDone"
                         @click="next"
                     >
-                        {{ step === 0 ? 'Começar' : 'Próxima' }}
+                        {{ step === 0 ? 'Começar' : step === reviewStep && hasClosingVideo ? 'Continuar' : 'Próxima' }}
                     </button>
                     <button
                         v-else
                         type="submit"
                         class="rounded-full bg-talents-600 px-6 py-2 text-sm font-bold text-white shadow transition hover:bg-talents-700 disabled:opacity-60"
-                        :disabled="form.processing"
+                        :disabled="form.processing || (hasClosingVideo && !closingDone)"
                     >
                         Enviar respostas
                     </button>

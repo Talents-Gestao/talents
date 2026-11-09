@@ -140,7 +140,7 @@ class Nr1V11JourneyTest extends TestCase
 
         $response->assertInertia(function (Assert $page) {
             $journey = $page->toArray()['props']['journey'];
-            $this->assertEqualsCanonicalizing(['orientation', 'audience_label', 'trainings'], array_keys($journey));
+            $this->assertEqualsCanonicalizing(['orientation', 'audience_label', 'trainings', 'videos'], array_keys($journey));
             $this->assertEqualsCanonicalizing(
                 ['id', 'modality', 'label', 'scope', 'period', 'link_url', 'material_name', 'material_url', 'location', 'event_at', 'facilitator'],
                 array_keys($journey['trainings'][0]),

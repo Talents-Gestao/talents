@@ -15,11 +15,18 @@ use App\Support\Nr1Orientation;
  */
 class Nr1JourneyBuilder
 {
+    public function __construct(private readonly Nr1OrientationVideoService $orientationVideos) {}
+
     /**
      * @param  callable(Nr1Training): string  $materialUrl
-     * @return array{orientation: array<string, mixed>, audience_label: ?string, trainings: list<array<string, mixed>>}|null
+     * @return array{
+     *     orientation: array<string, mixed>,
+     *     audience_label: ?string,
+     *     trainings: list<array<string, mixed>>,
+     *     videos: array{intro: ?array<string, mixed>, closing: ?array<string, mixed>}
+     * }|null
      */
-    public function build(Survey $survey, ?SurveyAudienceLink $link, callable $materialUrl): ?array
+    public function build(Survey $survey, ?SurveyAudienceLink $link, callable $materialUrl, ?string $publicToken = null): ?array
     {
         if (! $survey->usesReviewFlow()) {
             return null;
@@ -36,8 +43,16 @@ class Nr1JourneyBuilder
                 ->orderBy('modality')
                 ->get();
 
+        $token = $publicToken ?? $link?->token ?? $survey->public_token;
+        $videos = $this->orientationVideos->publicVideosForSurvey($survey, (string) $token);
+        $intro = $videos['intro'];
+
         return [
-            'orientation' => Nr1Orientation::content(),
+            'orientation' => Nr1Orientation::content(
+                $intro['url'] ?? null,
+                (bool) ($intro['required'] ?? false),
+                $intro['title'] ?? null,
+            ),
             'audience_label' => $link?->label(),
             'trainings' => $trainings->map(fn (Nr1Training $training): array => [
                 'id' => $training->id,
@@ -54,6 +69,7 @@ class Nr1JourneyBuilder
                 'event_at' => $training->event_at?->format('d/m/Y H:i'),
                 'facilitator' => $training->facilitator,
             ])->values()->all(),
+            'videos' => $videos,
         ];
     }
 }

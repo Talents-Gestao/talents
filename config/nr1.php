@@ -60,6 +60,14 @@ return [
     ],
 
     /*
+    | Biblioteca global de vídeos de abertura/encerramento da jornada NR-1.
+    | Limite em MB por arquivo (MP4/WebM).
+    */
+    'orientation_videos' => [
+        'max_upload_mb' => (int) env('NR1_ORIENTATION_VIDEO_MAX_MB', 200),
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | Revisão externa de documentos (organização aprovadora)
     |--------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 <script setup>
+import CampaignVideosForm from '@/Components/Nr1Campaign/CampaignVideosForm.vue';
 import OrientationCard from '@/Components/Nr1Campaign/OrientationCard.vue';
 import ParticipationCard from '@/Components/Nr1Campaign/ParticipationCard.vue';
 import TrainingCards from '@/Components/Nr1Campaign/TrainingCards.vue';
@@ -13,6 +14,7 @@ const props = defineProps({
     audienceLinks: { type: Array, default: () => [] },
     eligible: { type: Object, required: true },
     invitations: { type: Object, default: () => ({ enabled: false, stats: [], generated: [] }) },
+    videos: { type: Object, default: null },
     urls: { type: Object, required: true },
 });
 
@@ -52,6 +54,8 @@ const saveEligible = () => eligibleForm.post(props.urls.eligible, { preserveScro
         <div class="space-y-6">
             <div v-if="$page.props.flash?.success" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{{ $page.props.flash.success }}</div>
             <div v-if="$page.props.flash?.error" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{{ $page.props.flash.error }}</div>
+
+            <CampaignVideosForm v-if="videos" :videos="videos" />
 
             <div class="grid gap-4 lg:grid-cols-3">
                 <div class="lg:col-span-2"><OrientationCard :orientation="campaign.orientation" /></div>

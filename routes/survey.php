@@ -13,6 +13,10 @@ Route::get('/pesquisa/{token}/treinamento/{training}/arquivo', [PublicSurveyCont
     ->whereNumber('training')
     ->middleware('throttle:public-token-page')
     ->name('survey.public.training-material');
+Route::get('/pesquisa/{token}/video/{video}', [PublicSurveyController::class, 'orientationVideo'])
+    ->whereNumber('video')
+    ->middleware('throttle:public-token-page')
+    ->name('survey.public.orientation-video');
 Route::post('/pesquisa/{token}', [PublicSurveyController::class, 'submit'])
     ->middleware('throttle:public-survey-submit')
     ->name('survey.public.submit');

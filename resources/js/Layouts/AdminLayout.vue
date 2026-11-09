@@ -191,6 +191,7 @@ const mapaPropositoActive = computed(() => {
 const vozDoTimeActive = computed(
     () =>
         route().current('admin.survey-templates.*') ||
+        route().current('admin.nr1-videos.*') ||
         route().current('admin.desligamento.*') ||
         route().current('admin.complaints.*') ||
         route().current('admin.suggestions.*') ||
@@ -519,6 +520,15 @@ const isComercialSettingsTab = (tab) => {
                         route().current('admin.desligamento.*')
                     "
                     label="Pesquisas"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('survey_templates')"
+                    :href="route('admin.nr1-videos.index')"
+                    :active="route().current('admin.nr1-videos.*')"
+                    label="Vídeos NR-1"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"

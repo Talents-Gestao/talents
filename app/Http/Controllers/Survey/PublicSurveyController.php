@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Survey;
 
 use App\Http\Controllers\Controller;
 use App\Models\Department;
+use App\Models\Nr1OrientationVideo;
 use App\Models\Nr1Training;
 use App\Models\SurveyAnswer;
 use App\Models\SurveyAudienceLink;
 use App\Models\SurveyResponse;
 use App\Services\Nr1\Nr1JourneyBuilder;
+use App\Services\Nr1\Nr1OrientationVideoService;
 use App\Services\Nr1\Nr1TrainingService;
 use App\Services\SurveyDuplicateGuard;
 use App\Services\SurveyPublicEntry;
@@ -60,11 +62,19 @@ class PublicSurveyController extends Controller
             return Inertia::render('Survey/Closed', ['message' => SurveyDuplicateGuard::message($blocked)]);
         }
 
+        $journeyPayload = $journey->build(
+            $survey,
+            $link,
+            fn (Nr1Training $training) => route('survey.public.training-material', [$token, $training->id]),
+            $token,
+        );
+
         return Inertia::render('Survey/Take', [
             'survey' => $survey,
             'entryToken' => $token,
             // Campanha V11: «Minha jornada» (orientação + só o treinamento contratado e liberado a este público).
-            'journey' => $journey->build($survey, $link, fn (Nr1Training $training) => route('survey.public.training-material', [$token, $training->id])),
+            'journey' => $journeyPayload,
+            'videos' => $journeyPayload['videos'] ?? app(Nr1OrientationVideoService::class)->publicVideosForSurvey($survey, $token),
             'audience' => $link?->audience,
             'audienceLabel' => $link?->label(),
             'invitation' => is_string($invitation) ? $invitation : null,
@@ -121,6 +131,26 @@ class PublicSurveyController extends Controller
         abort_if($row === null || ! Storage::disk(Nr1TrainingService::DISK)->exists($row->material_path), 404);
 
         return Storage::disk(Nr1TrainingService::DISK)->download($row->material_path, $row->material_name ?? 'material', ['Cache-Control' => 'private, no-store']);
+    }
+
+    /**
+     * Stream do vídeo de abertura/encerramento exigido pela campanha (token da pesquisa válido e aberto).
+     */
+    public function orientationVideo(string $token, Nr1OrientationVideo $video)
+    {
+        $entry = SurveyPublicEntry::resolve($token);
+        abort_if($entry === null, 404);
+
+        $survey = $entry['survey'];
+        abort_if(SurveyPublicEntry::closureReason($survey, $entry['link']) !== null, 404);
+        abort_unless($survey->usesReviewFlow(), 404);
+        abort_unless($video->is_active, 404);
+
+        $allowed = ($survey->intro_video_required && (int) $survey->intro_video_id === (int) $video->id && $video->role === Nr1OrientationVideo::ROLE_INTRO)
+            || ($survey->closing_video_required && (int) $survey->closing_video_id === (int) $video->id && $video->role === Nr1OrientationVideo::ROLE_CLOSING);
+        abort_unless($allowed, 404);
+
+        return $video->toHttpResponse();
     }
 
     public function submit(Request $request, string $token, SurveyResultCalculator $calculator): RedirectResponse

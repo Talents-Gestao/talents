@@ -7,12 +7,14 @@ namespace App\Http\Controllers\Admin;
 use App\Exceptions\Nr1CampaignException;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\Nr1OrientationVideo;
 use App\Models\Nr1Training;
 use App\Models\Survey;
 use App\Models\SurveyAudienceLink;
 use App\Models\SurveyCampaignRegistration;
 use App\Services\Nr1\Nr1CampaignOverview;
 use App\Services\Nr1\Nr1InvitationService;
+use App\Services\Nr1\Nr1OrientationVideoService;
 use App\Services\Nr1\Nr1TrainingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,6 +31,7 @@ class CampaignAdminController extends Controller
         private readonly Nr1CampaignOverview $overview,
         private readonly Nr1TrainingService $trainings,
         private readonly Nr1InvitationService $invitations,
+        private readonly Nr1OrientationVideoService $orientationVideos,
     ) {}
 
     public function show(Company $company, Survey $survey): Response
@@ -59,6 +62,16 @@ class CampaignAdminController extends Controller
                 // Os códigos só existem em claro na resposta que os gera: lidos da sessão e esquecidos em seguida.
                 'generated' => session()->pull('invitation_urls', []),
             ],
+            'videos' => [
+                'intro_video_required' => (bool) $survey->intro_video_required,
+                'closing_video_required' => (bool) $survey->closing_video_required,
+                'intro_video_id' => $survey->intro_video_id,
+                'closing_video_id' => $survey->closing_video_id,
+                'intro_options' => $this->orientationVideos->library(Nr1OrientationVideo::ROLE_INTRO, true),
+                'closing_options' => $this->orientationVideos->library(Nr1OrientationVideo::ROLE_CLOSING, true),
+                'library_url' => route('admin.nr1-videos.index'),
+                'save_url' => route('admin.companies.surveys.campaign.videos', [$company->id, $survey->id]),
+            ],
             'urls' => [
                 'invitation_option' => route('admin.companies.surveys.campaign.invitation-option', [$company->id, $survey->id]),
                 'invitations' => route('admin.companies.surveys.campaign.invitations', [$company->id, $survey->id]),
@@ -66,8 +79,29 @@ class CampaignAdminController extends Controller
                 'uncontract' => route('admin.companies.surveys.campaign.uncontract', [$company->id, $survey->id]),
                 'eligible' => route('admin.companies.surveys.campaign.eligible', [$company->id, $survey->id]),
                 'registration' => route('admin.companies.surveys.registration.edit', [$company->id, $survey->id]),
+                'videos' => route('admin.companies.surveys.campaign.videos', [$company->id, $survey->id]),
             ],
         ]);
+    }
+
+    public function updateVideos(Request $request, Company $company, Survey $survey): RedirectResponse
+    {
+        $this->authorizeSurvey($company, $survey);
+
+        $data = $request->validate([
+            'intro_video_required' => ['required', 'boolean'],
+            'closing_video_required' => ['required', 'boolean'],
+            'intro_video_id' => ['nullable', 'integer', 'exists:nr1_orientation_videos,id'],
+            'closing_video_id' => ['nullable', 'integer', 'exists:nr1_orientation_videos,id'],
+        ]);
+
+        try {
+            $this->orientationVideos->configureSurvey($request->user(), $survey, $data);
+        } catch (Nr1CampaignException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('success', 'Vídeos da jornada atualizados.');
     }
 
     public function contract(Request $request, Company $company, Survey $survey): RedirectResponse

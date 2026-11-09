@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Talents · Manual das entregas desde 04/11/2026</title>
+<style>
+  :root {
+    --ink:#24182f; --mut:#6a6074; --line:#e6dfec; --bg:#f4f1f7; --card:#fff;
+    --brand:#623277; --brand2:#8e5ea5; --ok:#166b54; --okbg:#e5f6ef;
+    --was:#7a3142; --wasbg:#fce8ec; --now:#1f5f8a; --nowbg:#e7f2fa;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55}
+  a{color:var(--brand)}
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(36,24,47,.94);color:#f7eefb;backdrop-filter:blur(10px);padding:12px 18px;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .topbar strong{font-size:15px;letter-spacing:-.02em}
+  .topbar nav{display:flex;gap:8px;flex-wrap:wrap}
+  .topbar a{color:#f0e4f8;text-decoration:none;font-size:12px;font-weight:700;padding:7px 10px;border-radius:999px;border:1px solid #ffffff25}
+  .topbar a:hover{background:#ffffff18}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 16px 80px}
+  .hero{background:linear-gradient(125deg,#51256b,#7d3b94 55%,#9c599f);color:#fff;border-radius:24px;padding:36px 32px;margin-bottom:28px;box-shadow:0 20px 50px #3a1f5040}
+  .hero h1{margin:8px 0 12px;font-size:clamp(28px,4vw,42px);letter-spacing:-.04em}
+  .hero p{margin:0;max-width:46rem;color:#f3e3fa;font-size:16px}
+  .eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:11px;font-weight:800;color:#e4c7ef}
+  .section{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px 24px;margin:0 0 22px;box-shadow:0 10px 30px #2b1a3a08}
+  .section h2{margin:0 0 8px;font-size:24px;letter-spacing:-.03em}
+  .section h3{margin:18px 0 8px;font-size:16px}
+  .lead{color:var(--mut);margin:0 0 16px}
+  .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:750;background:#f1e7f7;color:var(--brand)}
+  .pill.ok{background:var(--okbg);color:var(--ok)}
+  .pill.was{background:var(--wasbg);color:var(--was)}
+  .pill.now{background:var(--nowbg);color:var(--now)}
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+  .box{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fbfafd}
+  .box.was{border-color:#f0c8d0;background:var(--wasbg)}
+  .box.now{border-color:#bdd8ec;background:var(--nowbg)}
+  .box strong{display:block;margin-bottom:6px}
+  .box ul{margin:0;padding-left:18px;color:var(--ink);font-size:14px}
+  .box li{margin:4px 0}
+  .shot{margin:16px 0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#111}
+  .shot img{display:block;width:100%;height:auto;background:#fff}
+  .shot figcaption{background:#24182f;color:#f4eafb;padding:10px 14px;font-size:12px}
+  .howto{counter-reset:step;list-style:none;margin:0;padding:0}
+  .howto li{display:grid;grid-template-columns:34px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .howto li:last-child{border:0}
+  .howto li::before{counter-increment:step;content:counter(step);width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#efe3f7;color:var(--brand);font-weight:800;font-size:13px}
+  .howto strong{display:block}
+  .howto span{color:var(--mut);font-size:13px}
+  .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 4px}
+  .node{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-size:13px;font-weight:700}
+  .node.hi{background:linear-gradient(120deg,#623277,#8e5ea5);color:#fff;border:0}
+  .arrow{color:var(--brand2);font-weight:800}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .muted{color:var(--mut);font-size:13px}
+  .toc{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:16px}
+  .toc a{display:block;text-decoration:none;border:1px solid var(--line);border-radius:14px;padding:14px;background:#fbfafd;color:var(--ink)}
+  .toc a:hover{border-color:#c9b0d8;background:#f7eefb}
+  .toc b{display:block;color:var(--brand);font-size:12px;margin-bottom:4px}
+  code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:#f0eaf5;padding:1px 6px;border-radius:6px}
+  .mock-screen{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+  .mock-top{background:#24182f;color:#f4eafb;padding:9px 12px;font-size:11px;font-weight:700;display:flex;justify-content:space-between}
+  .mock-body{padding:14px}
+  .chip{height:12px;border-radius:8px;background:#eee7f4;margin:8px 0}
+  .video-box{height:120px;border-radius:12px;background:#151018;color:#fff;display:grid;place-items:center;font-size:13px}
+  @media(max-width:800px){.compare,.grid2{grid-template-columns:1fr}.hero{padding:24px 18px}}
+  @media print{.topbar{display:none}.section{break-inside:avoid}.shot{break-inside:avoid}}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <strong>Talents · Entregas desde 04/11</strong>
+    <nav>
+      <a href="#indice">Índice</a>
+      <a href="#home">Home Admin</a>
+      <a href="#empresa">Empresa</a>
+      <a href="#nr1">Painel NR-1</a>
+      <a href="#parecer">Parecer</a>
+      <a href="#videos">Vídeos</a>
+      <a href="#ponto">Ponto</a>
+    </nav>
+  </div>
+
+  <div class="wrap">
+    <header class="hero" id="capa">
+      <div class="eyebrow">Manual de produto · 04/11 a 09/11/2026</div>
+      <h1>O que mudou, como ficou na tela e como usar</h1>
+      <p>Apresentação completa das entregas: prints reais do sistema, comparação do que era × o que virou, e roteiro de uso passo a passo para a equipe Talents e para a empresa.</p>
+      <p style="margin-top:16px"><span class="pill" style="background:#ffffff22;color:#fff">Prints de 09/11/2026</span> <span class="pill" style="background:#ffffff22;color:#fff">Admin · Empresa · Colaborador</span></p>
+    </header>
+
+    <section class="section" id="indice">
+      <h2>Índice</h2>
+      <p class="lead">Cada bloco traz: <strong>o que era</strong>, <strong>o que virou</strong>, <strong>print da tela</strong> e <strong>como utilizar</strong>.</p>
+      <div class="toc">
+        <a href="#home"><b>01</b>Home Admin — painel operacional</a>
+        <a href="#empresa"><b>02</b>Detalhe da empresa — indicadores e atalhos</a>
+        <a href="#nr1"><b>03</b>Painel NR-1 — interface única</a>
+        <a href="#parecer"><b>04</b>Parecer e publicação</a>
+        <a href="#videos"><b>05</b>Vídeos obrigatórios da jornada</a>
+        <a href="#ponto"><b>06</b>Ponto / RHID</a>
+        <a href="#resumo"><b>07</b>Resumo e checklist de validação</a>
+      </div>
+    </section>
+
+    <!-- 01 HOME -->
+    <section class="section" id="home">
+      <p class="pill">04/11 · Admin</p>
+      <h2>01 · Home Admin — Painel operacional</h2>
+      <p class="lead">A Home deixa de ser só um dashboard estático e vira operação do dia: frase, leitura do mês, caixa, tarefas e indicadores com layout reorganizável.</p>
+
+      <div class="compare">
+        <div class="box was">
+          <span class="pill was">O que era</span>
+          <strong>Antes</strong>
+          <ul>
+            <li>Indicadores soltos, sem narrativa do dia</li>
+            <li>Funil sem filtro claro de período</li>
+            <li>Pouca ênfase em “o que fazer hoje”</li>
+          </ul>
+        </div>
+        <div class="box now">
+          <span class="pill now">O que virou</span>
+          <strong>Agora</strong>
+          <ul>
+            <li>Frase do dia + Leitura do mês (origem, funil, meta)</li>
+            <li>Operação de hoje: financeiro, tarefas e calendário</li>
+            <li>Indicadores consolidados + “Repor layout padrão”</li>
+            <li>Funil com filtros: neste mês / total / período</li>
+          </ul>
+        </div>
+      </div>
+
+      <figure class="shot">
+        <img src="apresentacao-assets/01-admin-home.png" alt="Print da Home Admin — Painel operacional" />
+        <figcaption>Print real · /admin/dashboard · Painel operacional com Frase do dia e Leitura do mês</figcaption>
+      </figure>
+
+      <h3>Como utilizar</h3>
+      <ol class="howto">
+        <li><div><strong>Entrar como Admin Talents</strong><span>Login <code>admin@talents.local</code> → Home.</span></div></li>
+        <li><div><strong>Ler o dia</strong><span>Frase do dia no topo; depois a Leitura do mês (leads, funil, meta).</span></div></li>
+        <li><div><strong>Filtrar o funil</strong><span>Use «Neste mês», «Total» ou «Filtrar por período» no card do funil comercial.</span></div></li>
+        <li><div><strong>Operar</strong><span>Desça até Caixa / Tarefas / Calendário e use os atalhos «Ver…».</span></div></li>
+        <li><div><strong>Reorganizar (opcional)</strong><span>Arraste seções/cards; «Repor layout padrão» volta ao original.</span></div></li>
+      </ol>
+    </section>
+
+    <!-- 02 EMPRESA -->
+    <section class="section" id="empresa">
+      <p class="pill">04–05/11 · Admin · Clientes</p>
+      <h2>02 · Detalhe da empresa — painel operacional + atalhos</h2>
+      <p class="lead">Ao abrir uma empresa, a Talents vê indicadores daquela conta e atalhos que levam direto ao destino (não só à home genérica).</p>
+
+      <div class="compare">
+        <div class="box was">
+          <span class="pill was">O que era</span>
+          <strong>Antes</strong>
+          <ul>
+            <li>Foco em cadastro e abas soltas</li>
+            <li>Atalhos pouco claros ou genéricos</li>
+            <li>Pouca visão do “estado” da empresa</li>
+          </ul>
+        </div>
+        <div class="box now">
+          <span class="pill now">O que virou</span>
+          <strong>Agora</strong>
+          <ul>
+            <li>Painel operacional no detalhe (indicadores + alertas)</li>
+            <li>Atalhos: NR-1, ponto, colaboradores, regulamento, férias…</li>
+            <li>Campanhas NR-1 recentes com «Abrir painel NR-1»</li>
+            <li>Abas: Empresa · Gestão de ponto · Colaboradores · Regulamento</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <figure class="shot">
+          <img src="apresentacao-assets/04-empresas-lista.png" alt="Lista de empresas" />
+          <figcaption>Lista · /admin/companies</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="apresentacao-assets/05-empresa-painel.png" alt="Painel da empresa" />
+          <figcaption>Detalhe · /admin/companies/{id} — cabeçalho e ações</figcaption>
+        </figure>
+      </div>
+
+      <h3>Como utilizar</h3>
+      <ol class="howto">
+        <li><div><strong>Clientes → Clientes</strong><span>Busque por nome/CNPJ e clique em <em>Ver</em>.</span></div></li>
+        <li><div><strong>Ler o painel</strong><span>Indicadores (usuários, campanhas, assinatura, ponto) e alertas (ex.: RHID sem credenciais).</span></div></li>
+        <li><div><strong>Usar atalhos</strong><span>«Abrir painel NR-1», «Gestão de ponto», «Colaboradores» etc. abrem o destino certo.</span></div></li>
+        <li><div><strong>Campanhas recentes</strong><span>Na lista da empresa, abra direto a campanha no shell NR-1.</span></div></li>
+      </ol>
+    </section>
+
+    <!-- 03 NR-1 -->
+    <section class="section" id="nr1">
+      <p class="pill">04/11 · NR-1</p>
+      <h2>03 · Painel NR-1 — interface única</h2>
+      <p class="lead">O NR-1 deixa de espalhar telas antigas e concentra tudo em <code>/nr1</code>, dentro do layout Admin (Talents) ou Client (empresa), com sub-navegação própria.</p>
+
+      <div class="compare">
+        <div class="box was">
+          <span class="pill was">O que era</span>
+          <strong>Antes</strong>
+          <ul>
+            <li>Telas legadas espalhadas no admin/portal</li>
+            <li>Difícil trocar de empresa/campanha</li>
+            <li>Laudo/resultados/parecer em fluxos separados</li>
+          </ul>
+        </div>
+        <div class="box now">
+          <span class="pill now">O que virou</span>
+          <strong>Agora</strong>
+          <ul>
+            <li>Menu Admin → <strong>NR-1</strong> → escolha de empresa</li>
+            <li>Abas: Visão geral, Campanha, Resultados, Plano, Documentos, Parecer, Soluções</li>
+            <li>Pontos fortes e indicadores na visão geral</li>
+            <li>Empresa entra pelo portal; colaborador pela jornada/token</li>
+          </ul>
+        </div>
+      </div>
+
+      <figure class="shot">
+        <img src="apresentacao-assets/03-nr1-empresas.png" alt="Escolha de empresa NR-1" />
+        <figcaption>Print · /nr1/empresas — busca, filtros (Todas / Ativa / Em revisão / Publicadas / Modelo anterior / V11)</figcaption>
+      </figure>
+
+      <div class="grid2">
+        <figure class="shot">
+          <img src="apresentacao-assets/06-nr1-visao-geral.png" alt="Visão geral NR-1" />
+          <figcaption>Visão geral · Empresa Demo</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="apresentacao-assets/09-nr1-visao-com-dados.png" alt="Visão geral com 50 respostas" />
+          <figcaption>Visão geral · Simulação com 50 respostas</figcaption>
+        </figure>
+      </div>
+
+      <figure class="shot">
+        <img src="apresentacao-assets/07-nr1-campanha.png" alt="Campanha NR-1" />
+        <figcaption>Campanha NR-1 · coleta, participação e etapas (Configuração → Coleta → Resultados → Publicação)</figcaption>
+      </figure>
+
+      <h3>Como utilizar (Talents)</h3>
+      <ol class="howto">
+        <li><div><strong>Abrir NR-1</strong><span>Menu lateral → NR-1. Se houver várias empresas, escolha em <code>/nr1/empresas</code>.</span></div></li>
+        <li><div><strong>Filtrar</strong><span>Use «Com campanha ativa», «V11» etc. para achar rápido.</span></div></li>
+        <li><div><strong>Navegar o shell</strong><span>Visão geral → Campanha (links/QR) → Resultados → Plano → Documentos → Parecer → Soluções.</span></div></li>
+        <li><div><strong>Trocar empresa/campanha</strong><span>«Trocar empresa» ou o seletor de campanha no cabeçalho.</span></div></li>
+      </ol>
+
+      <h3>Como utilizar (Empresa)</h3>
+      <ol class="howto">
+        <li><div><strong>Portal</strong><span>Login da empresa → Voz do Time → Pesquisas NR1 (ou atalho «Abrir painel NR-1»).</span></div></li>
+        <li><div><strong>Ver só o liberado</strong><span>Resultados/documentos oficiais só após publicação pela Talents.</span></div></li>
+      </ol>
+    </section>
+
+    <!-- 04 PARECER -->
+    <section class="section" id="parecer">
+      <p class="pill">04–05/11 · Parecer legado</p>
+      <h2>04 · Parecer técnico e publicação</h2>
+      <p class="lead">O parecer deixou de ser um fluxo fragmentado: texto, plano, inventários e publicação ficam na mesma tela, com anexos unificados.</p>
+
+      <div class="compare">
+        <div class="box was">
+          <span class="pill was">O que era</span>
+          <strong>Antes</strong>
+          <ul>
+            <li>Resumo executivo como peça central</li>
+            <li>Publicação e anexos em caminhos distintos</li>
+            <li>Medidas pouco editáveis no contexto do parecer</li>
+            <li>Inventários pouco claros no painel da empresa</li>
+          </ul>
+        </div>
+        <div class="box now">
+          <span class="pill now">O que virou</span>
+          <strong>Agora</strong>
+          <ul>
+            <li>Relatório/parecer técnico editável (+ Mia)</li>
+            <li>Plano de ação na mesma tela (criar/editar medidas)</li>
+            <li>Anexos: Inventário Empresa, Inventário PGR, plano+parecer</li>
+            <li>Publicar para a empresa na mesma tela (com gate)</li>
+            <li>Logo Talents nos PDFs; inventários nomeados</li>
+          </ul>
+        </div>
+      </div>
+
+      <figure class="shot">
+        <img src="apresentacao-assets/08-nr1-parecer.png" alt="Parecer e publicação" />
+        <figcaption>Print · /nr1/parecer — aba Parecer e publicação (Empresa Demo)</figcaption>
+      </figure>
+
+      <div class="flow">
+        <div class="node">Gerar parecer (Mia)</div><span class="arrow">→</span>
+        <div class="node">Editar texto</div><span class="arrow">→</span>
+        <div class="node">Medidas / inventários</div><span class="arrow">→</span>
+        <div class="node hi">Publicar</div><span class="arrow">→</span>
+        <div class="node">Empresa vê no painel</div>
+      </div>
+
+      <h3>Como utilizar</h3>
+      <ol class="howto">
+        <li><div><strong>Abrir a campanha no shell</strong><span>NR-1 → empresa → aba <em>Parecer e publicação</em>.</span></div></li>
+        <li><div><strong>Parecer técnico</strong><span>Edite o texto ou use «Gerar parecer com IA» (a Mia preenche a mesma área).</span></div></li>
+        <li><div><strong>Plano de ação</strong><span>Expanda a seção; registre medida (fator, base, texto, responsável, prazo) ou atualize as geradas ao encerrar a coleta.</span></div></li>
+        <li><div><strong>Anexos</strong><span>Publique Inventário de Riscos Empresa (e PGR) — a publicação do parecer exige o inventário da empresa.</span></div></li>
+        <li><div><strong>Publicar</strong><span>«Salvar e publicar para a empresa» libera o que a empresa enxerga no painel NR-1.</span></div></li>
+      </ol>
+      <p class="muted">Dica: PDFs já publicados não mudam sozinhos se você só regenerar texto — use a atualização de arquivos quando necessário.</p>
+    </section>
+
+    <!-- 05 VIDEOS -->
+    <section class="section" id="videos">
+      <p class="pill ok">09/11 · Novidade</p>
+      <h2>05 · Vídeos obrigatórios na jornada NR-1</h2>
+      <p class="lead">A orientação deixa de ser só texto: a Talents sobe vídeos permanentes e, por campanha, exige abertura e/ou encerramento. O colaborador precisa assistir até o fim (~95%) para avançar.</p>
+
+      <div class="compare">
+        <div class="box was">
+          <span class="pill was">O que era</span>
+          <strong>Antes</strong>
+          <ul>
+            <li>Orientação NR-1 = 4 parágrafos fixos</li>
+            <li>Card “Vídeo de preparação” sem arquivo real</li>
+            <li>Sem etapa obrigatória antes/depois do questionário</li>
+            <li>Material de treinamento era por campanha (até 20 MB), sem biblioteca global</li>
+          </ul>
+        </div>
+        <div class="box now">
+          <span class="pill now">O que virou</span>
+          <strong>Agora</strong>
+          <ul>
+            <li>Biblioteca global em <code>/admin/nr1/videos</code></li>
+            <li>Por campanha V11: exigir abertura e/ou encerramento</li>
+            <li>Gate no player (assistir até o fim)</li>
+            <li>Encerramento depois de «Revisar», antes do envio</li>
+            <li>Upload MP4/WebM até 200 MB, reutilizável em qualquer empresa</li>
+          </ul>
+        </div>
+      </div>
+
+      <figure class="shot">
+        <img src="apresentacao-assets/02-videos-nr1.png" alt="Biblioteca de vídeos NR-1" />
+        <figcaption>Print real · /admin/nr1/videos — Adicionar vídeo permanente (título, etapa Abertura/Encerramento, arquivo)</figcaption>
+      </figure>
+
+      <h3>Fluxo do colaborador</h3>
+      <div class="flow">
+        <div class="node hi">Vídeo abertura</div><span class="arrow">→</span>
+        <div class="node">Afirmações</div><span class="arrow">→</span>
+        <div class="node">Revisar</div><span class="arrow">→</span>
+        <div class="node hi">Vídeo encerramento</div><span class="arrow">→</span>
+        <div class="node">Enviar</div><span class="arrow">→</span>
+        <div class="node">Obrigado</div>
+      </div>
+
+      <div class="grid2" style="margin-top:14px">
+        <div class="mock-screen">
+          <div class="mock-top"><span>Questionário · etapa inicial</span><span>Abertura</span></div>
+          <div class="mock-body">
+            <div class="video-box">▶ Assista até o fim</div>
+            <p class="muted">«Começar» só libera após ~95% do vídeo.</p>
+            <div class="chip"></div>
+          </div>
+        </div>
+        <div class="mock-screen">
+          <div class="mock-top"><span>Após revisar respostas</span><span>Encerramento</span></div>
+          <div class="mock-body">
+            <div class="video-box">▶ Vídeo de encerramento</div>
+            <p class="muted">Só então o botão «Enviar respostas» fica ativo.</p>
+            <div class="chip"></div>
+          </div>
+        </div>
+      </div>
+
+      <h3>Como utilizar — Talents (biblioteca)</h3>
+      <ol class="howto">
+        <li><div><strong>Menu</strong><span>Voz do Time → <strong>Vídeos NR-1</strong>.</span></div></li>
+        <li><div><strong>Adicionar</strong><span>Título + etapa (Abertura ou Encerramento) + arquivo MP4/WebM (até 200 MB) → «Enviar para a biblioteca».</span></div></li>
+        <li><div><strong>Manter</strong><span>Editar título, ativar/desativar, substituir arquivo ou remover. Vídeos inativos não entram nas campanhas novas.</span></div></li>
+      </ol>
+
+      <h3>Como utilizar — Talents (por campanha)</h3>
+      <ol class="howto">
+        <li><div><strong>Abrir campanha V11</strong><span>Shell NR-1 → Campanha NR-1 (ou tela admin da campanha).</span></div></li>
+        <li><div><strong>Bloco «Vídeos da jornada»</strong><span>Marque «Exigir vídeo de abertura» e/ou «Exigir vídeo de encerramento».</span></div></li>
+        <li><div><strong>Selecionar</strong><span>Escolha o vídeo ativo da biblioteca correspondente e salve.</span></div></li>
+        <li><div><strong>Gerar/copiar o link</strong><span>Na mesma campanha, copie o link Time/Líderes (ou QR) e envie aos colaboradores.</span></div></li>
+      </ol>
+
+      <h3>Como utilizar — Colaborador</h3>
+      <ol class="howto">
+        <li><div><strong>Abrir o link</strong><span><code>/nr1/jornada/{token}</code> ou direto <code>/pesquisa/{token}</code>.</span></div></li>
+        <li><div><strong>Assistir abertura</strong><span>Se exigido, o CTA «Responder questionário» / «Começar» só libera no fim do vídeo.</span></div></li>
+        <li><div><strong>Responder e revisar</strong><span>39 afirmações (V11) → confirmar envio.</span></div></li>
+        <li><div><strong>Assistir encerramento</strong><span>Se exigido, assista até o fim e só então envie.</span></div></li>
+      </ol>
+      <p class="muted">O progresso do vídeo fica só no navegador (<code>localStorage</code> por token). Não há vínculo pessoa↔vídeo no servidor (anonimato). Stream: <code>GET /pesquisa/{token}/video/{id}</code>.</p>
+      <p class="muted">A empresa, na Campanha NR-1, apenas <strong>consulta</strong> se abertura/encerramento estão ativos — não sobe arquivo.</p>
+    </section>
+
+    <!-- 06 PONTO -->
+    <section class="section" id="ponto">
+      <p class="pill">04/11 · Ponto / RHID</p>
+      <h2>06 · Ponto — métricas mensais e importação</h2>
+      <p class="lead">No portal e no detalhe da empresa, o ponto ganhou fluxo mais automático: ao escolher o mês, importa/atualiza espelhos e recalcula indicadores.</p>
+
+      <div class="compare">
+        <div class="box was">
+          <span class="pill was">O que era</span>
+          <strong>Antes</strong>
+          <ul>
+            <li>Importação mais manual / inconsistente</li>
+            <li>Indicadores confusos com dias sem espelho</li>
+          </ul>
+        </div>
+        <div class="box now">
+          <span class="pill now">O que virou</span>
+          <strong>Agora</strong>
+          <ul>
+            <li>Importação automática de espelhos no portal</li>
+            <li>«Importar agora» e métricas mensais ao selecionar o mês</li>
+            <li>Indicadores com dias fechados (falta ≠ dia sem espelho)</li>
+            <li>Alerta no painel da empresa se RHID estiver sem credenciais</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Como utilizar</h3>
+      <ol class="howto">
+        <li><div><strong>Credenciais</strong><span>Na empresa, configure e-mail/senha da API Control iD (sem isso o alerta «RHID sem credenciais» permanece).</span></div></li>
+        <li><div><strong>Portal ou Admin → Gestão de ponto</strong><span>Selecione o mês de referência.</span></div></li>
+        <li><div><strong>Importar</strong><span>O sistema importa espelhos fechados; use «Importar agora» se precisar forçar.</span></div></li>
+        <li><div><strong>Ler indicadores</strong><span>Aderência, faltas e cumprimento usam só dias com espelho importado.</span></div></li>
+      </ol>
+    </section>
+
+    <!-- RESUMO -->
+    <section class="section" id="resumo">
+      <h2>07 · Checklist rápido de validação</h2>
+      <div class="grid2">
+        <div class="box">
+          <strong>Talents</strong>
+          <ul>
+            <li>□ Home: funil com filtro de período</li>
+            <li>□ Empresa: painel + atalho NR-1</li>
+            <li>□ /nr1/empresas: busca e filtros</li>
+            <li>□ Parecer: gerar, anexar, publicar</li>
+            <li>□ Vídeos: subir 1 abertura + 1 encerramento</li>
+            <li>□ Campanha V11: exigir os dois e salvar</li>
+          </ul>
+        </div>
+        <div class="box">
+          <strong>Empresa / Colaborador</strong>
+          <ul>
+            <li>□ Empresa vê estado dos vídeos (somente leitura)</li>
+            <li>□ Link Time/Líderes abre jornada/pesquisa</li>
+            <li>□ Abertura bloqueia «Começar» até o fim</li>
+            <li>□ Encerramento bloqueia envio até o fim</li>
+            <li>□ Parecer publicado aparece no painel da empresa</li>
+            <li>□ Ponto: escolher mês e ver métricas</li>
+          </ul>
+        </div>
+      </div>
+      <p class="muted" style="margin-top:18px">Arquivo: <code>docs/apresentacao-entregas-desde-04-11.html</code> · imagens em <code>docs/apresentacao-assets/</code> · abra pelo Explorer (duplo clique) ou sirva a pasta <code>docs</code>.</p>
+    </section>
+  </div>
+</body>
+</html>

@@ -73,6 +73,24 @@ const eligibleForm = useForm({
 });
 const saveEligible = () => eligibleForm.post(props.campaign.eligibleEditor.url, { preserveScroll: true });
 
+const videoEditor = computed(() => props.campaign.videos?.editor ?? null);
+const videoForm = useForm({
+    intro_video_required: Boolean(props.campaign.videos?.intro_video_required),
+    closing_video_required: Boolean(props.campaign.videos?.closing_video_required),
+    intro_video_id: props.campaign.videos?.intro_video_id ?? '',
+    closing_video_id: props.campaign.videos?.closing_video_id ?? '',
+});
+const saveVideos = () => {
+    if (!videoEditor.value?.save_url) return;
+    videoForm
+        .transform((data) => ({
+            ...data,
+            intro_video_id: data.intro_video_id === '' ? null : Number(data.intro_video_id),
+            closing_video_id: data.closing_video_id === '' ? null : Number(data.closing_video_id),
+        }))
+        .post(videoEditor.value.save_url, { preserveScroll: true, onSuccess: () => push('Vídeos da jornada atualizados.') });
+};
+
 const copied = ref('');
 const copy = async (url) => {
     try {
@@ -145,6 +163,56 @@ const copy = async (url) => {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div v-if="campaign.videos" class="n1-card c12">
+                <div class="n1-sectiontop">
+                    <h2>Vídeos da jornada</h2>
+                    <span class="n1-pill" :class="campaign.videos.intro_video_required || campaign.videos.closing_video_required ? 'ok' : 'gray'">
+                        {{ campaign.videos.intro_video_required || campaign.videos.closing_video_required ? 'Etapas configuradas' : 'Opcional' }}
+                    </span>
+                </div>
+                <p class="n1-tiny" style="margin: 0 0 12px">
+                    Abertura antes do questionário e encerramento antes do envio. Quando exigidos, o colaborador precisa assistir até o fim.
+                </p>
+                <template v-if="videoEditor">
+                    <form class="n1-fields" style="flex-direction: column; align-items: stretch; gap: 12px" @submit.prevent="saveVideos">
+                        <div class="n1-g12">
+                            <div class="c6 n1-smallbox">
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 730">
+                                    <input v-model="videoForm.intro_video_required" type="checkbox" /> Exigir vídeo de abertura
+                                </label>
+                                <label class="n1-label" for="shell-intro-video">Vídeo de abertura</label>
+                                <select id="shell-intro-video" v-model="videoForm.intro_video_id" class="n1-field">
+                                    <option value="">Selecione</option>
+                                    <option v-for="opt in videoEditor.intro_options" :key="opt.id" :value="opt.id">{{ opt.title }}</option>
+                                </select>
+                            </div>
+                            <div class="c6 n1-smallbox">
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 730">
+                                    <input v-model="videoForm.closing_video_required" type="checkbox" /> Exigir vídeo de encerramento
+                                </label>
+                                <label class="n1-label" for="shell-closing-video">Vídeo de encerramento</label>
+                                <select id="shell-closing-video" v-model="videoForm.closing_video_id" class="n1-field">
+                                    <option value="">Selecione</option>
+                                    <option v-for="opt in videoEditor.closing_options" :key="opt.id" :value="opt.id">{{ opt.title }}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="n1-tools">
+                            <Nr1Button variant="primary" size="sm" type="submit" :disabled="videoForm.processing">Salvar vídeos</Nr1Button>
+                            <Nr1Button variant="secondary" size="sm" :href="videoEditor.library_url">Gerir biblioteca</Nr1Button>
+                        </div>
+                    </form>
+                </template>
+                <template v-else>
+                    <p class="n1-bodycopy" style="margin: 0">
+                        Abertura:
+                        <strong>{{ campaign.videos.intro_video_required ? (campaign.videos.intro_title || 'Ativa') : 'Não exigida' }}</strong>
+                        · Encerramento:
+                        <strong>{{ campaign.videos.closing_video_required ? (campaign.videos.closing_title || 'Ativa') : 'Não exigido' }}</strong>
+                    </p>
+                </template>
             </div>
 
             <div v-if="isTalents" id="campaignSettings" class="n1-card c12">

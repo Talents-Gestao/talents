@@ -2,7 +2,6 @@
 import { ref } from 'vue';
 import CampaignStatus from './CampaignStatus.vue';
 import EmptyState from './EmptyState.vue';
-import LegacyNotice from './LegacyNotice.vue';
 import Nr1Button from './Nr1Button.vue';
 import { useNr1Toast } from './useNr1Toast';
 
@@ -38,7 +37,6 @@ const copy = async (url) => {
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
                 <span class="n1-pill" :class="campaign.open ? 'ok' : 'gray'">{{ campaign.label }}</span>
-                <LegacyNotice :text="notice" />
             </div>
         </div>
 

@@ -1,7 +1,6 @@
 <script setup>
 import { computed } from 'vue';
 import EmptyState from './EmptyState.vue';
-import LegacyNotice from './LegacyNotice.vue';
 import MeasureCard from './MeasureCard.vue';
 import Nr1Button from './Nr1Button.vue';
 
@@ -32,7 +31,6 @@ const withResponsible = computed(() => (usingMeasures.value
                 <h1>Da análise à execução.</h1>
                 <p>Medidas do plano registrado no parecer técnico desta campanha, com responsáveis e prazos.</p>
             </div>
-            <LegacyNotice :text="notice" />
         </div>
 
         <EmptyState v-if="plan.locked" title="O plano aparece quando a Talents publicar o parecer" text="Você será avisado quando o parecer técnico e o plano de ação estiverem disponíveis." />

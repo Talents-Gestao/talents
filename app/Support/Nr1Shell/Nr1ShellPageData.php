@@ -8,6 +8,7 @@ use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Enums\PermissionModule;
 use App\Models\Company;
+use App\Models\Nr1OrientationVideo;
 use App\Models\PsychosocialInternalReview;
 use App\Models\PsychosocialMeasure;
 use App\Models\PsychosocialMeasureEvidence;
@@ -17,6 +18,7 @@ use App\Models\SurveyCampaignRegistration;
 use App\Models\User;
 use App\Services\Nr1\Nr1CampaignOverview;
 use App\Services\Nr1\Nr1JourneyBuilder;
+use App\Services\Nr1\Nr1OrientationVideoService;
 use App\Services\Psychosocial\InternalReviewService;
 use App\Services\PsychosocialDashboardBuilder;
 use App\Services\PsychosocialDashboardExtras;
@@ -39,6 +41,7 @@ class Nr1ShellPageData
         private readonly Nr1CampaignOverview $campaign,
         private readonly Nr1JourneyBuilder $journey,
         private readonly InternalReviewService $reviews,
+        private readonly Nr1OrientationVideoService $orientationVideos,
     ) {}
 
     /**
@@ -335,6 +338,7 @@ class Nr1ShellPageData
      */
     public function campaign(Survey $survey, User $user, bool $forTalents, bool $hideParticipation): array
     {
+        $survey->loadMissing(['introVideo', 'closingVideo']);
         $overview = $this->campaign->build($survey, $forTalents);
         $registration = SurveyCampaignRegistration::query()->where('survey_id', $survey->id)->first();
         $open = $survey->publicParticipationClosureReason() === null;
@@ -385,6 +389,20 @@ class Nr1ShellPageData
                 'contract' => route('admin.companies.surveys.campaign.contract', [$survey->company_id, $survey->id]),
                 'uncontract' => route('admin.companies.surveys.campaign.uncontract', [$survey->company_id, $survey->id]),
             ] : null,
+            'videos' => [
+                'intro_video_required' => (bool) $survey->intro_video_required,
+                'closing_video_required' => (bool) $survey->closing_video_required,
+                'intro_video_id' => $survey->intro_video_id,
+                'closing_video_id' => $survey->closing_video_id,
+                'intro_title' => $survey->introVideo?->title,
+                'closing_title' => $survey->closingVideo?->title,
+                'editor' => $forTalents ? [
+                    'intro_options' => $this->orientationVideos->library(Nr1OrientationVideo::ROLE_INTRO, true),
+                    'closing_options' => $this->orientationVideos->library(Nr1OrientationVideo::ROLE_CLOSING, true),
+                    'library_url' => route('admin.nr1-videos.index'),
+                    'save_url' => route('admin.companies.surveys.campaign.videos', [$survey->company_id, $survey->id]),
+                ] : null,
+            ],
             'canRequest' => $canRequest,
         ];
     }
@@ -396,7 +414,12 @@ class Nr1ShellPageData
      */
     public function journey(Survey $survey, ?SurveyAudienceLink $link, string $token): ?array
     {
-        $data = $this->journey->build($survey, $link, fn ($training) => route('survey.public.training-material', [$token, $training->id]));
+        $data = $this->journey->build(
+            $survey,
+            $link,
+            fn ($training) => route('survey.public.training-material', [$token, $training->id]),
+            $token,
+        );
         if ($data === null) {
             return null;
         }
@@ -406,6 +429,7 @@ class Nr1ShellPageData
         return $data + [
             'questionnaire' => ['questions' => count($matrix), 'dimensions' => collect($matrix)->pluck('section_id')->unique()->count()],
             'surveyUrl' => route('survey.public', ['token' => $token]),
+            'entryToken' => $token,
         ];
     }
 }

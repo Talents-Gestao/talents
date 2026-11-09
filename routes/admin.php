@@ -241,6 +241,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.campaign.invitation-option');
         Route::post('companies/{company}/surveys/{survey}/campanha-nr1/convites', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'generateInvitations'])
             ->name('companies.surveys.campaign.invitations');
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/videos', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'updateVideos'])
+            ->name('companies.surveys.campaign.videos');
         // Painel de resultados V11 para a consultoria e Revisão interna (Caderno §9): nada disso chega à empresa.
         Route::get('companies/{company}/surveys/{survey}/resultados-psicossociais', [\App\Http\Controllers\Admin\PsychosocialResultsAdminController::class, 'show'])
             ->name('companies.surveys.results.show');
@@ -482,6 +484,19 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
     Route::middleware('admin.can:survey_templates')->group(function () {
         Route::resource('survey-templates', SurveyTemplateController::class);
+
+        Route::get('nr1/videos', [\App\Http\Controllers\Admin\Nr1OrientationVideoController::class, 'index'])
+            ->name('nr1-videos.index');
+        Route::post('nr1/videos', [\App\Http\Controllers\Admin\Nr1OrientationVideoController::class, 'store'])
+            ->name('nr1-videos.store');
+        Route::put('nr1/videos/{nr1_video}', [\App\Http\Controllers\Admin\Nr1OrientationVideoController::class, 'update'])
+            ->name('nr1-videos.update');
+        Route::post('nr1/videos/{nr1_video}/substituir', [\App\Http\Controllers\Admin\Nr1OrientationVideoController::class, 'replace'])
+            ->name('nr1-videos.replace');
+        Route::delete('nr1/videos/{nr1_video}', [\App\Http\Controllers\Admin\Nr1OrientationVideoController::class, 'destroy'])
+            ->name('nr1-videos.destroy');
+        Route::get('nr1/videos/{nr1_video}/arquivo', [\App\Http\Controllers\Admin\Nr1OrientationVideoController::class, 'stream'])
+            ->name('nr1-videos.stream');
     });
 
     Route::middleware('admin.can:settings')->group(function () {

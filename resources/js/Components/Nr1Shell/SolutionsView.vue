@@ -4,7 +4,6 @@ import CountUp from './CountUp.vue';
 import DimensionBadge from './DimensionBadge.vue';
 import EmptyState from './EmptyState.vue';
 import ServiceSuggestionList from './ServiceSuggestionList.vue';
-import LegacyNotice from './LegacyNotice.vue';
 import LevelPill from './LevelPill.vue';
 import Nr1Button from './Nr1Button.vue';
 import { useNr1Toast } from './useNr1Toast';
@@ -31,16 +30,15 @@ const request = (item) => {
         <div class="n1-intro">
             <div>
                 <div class="n1-eyebrow">Talents para sua empresa</div>
-                <h1>Soluções conectadas às necessidades.</h1>
-                <p>Serviços que podem apoiar o plano de ação, a partir dos fatores sinalizados na pesquisa.</p>
+                <h1>{{ solutions.mode === 'company' ? 'Como a Talents pode apoiar a sua empresa.' : 'Soluções conectadas às necessidades.' }}</h1>
+                <p>{{ solutions.mode === 'company' ? 'Caminhos indicados a partir do que a pesquisa mostrou.' : 'Serviços que podem apoiar o plano de ação, a partir dos fatores sinalizados na pesquisa.' }}</p>
             </div>
-            <LegacyNotice v-if="solutions.legacy" text="Pesquisa no modelo anterior" />
         </div>
 
         <p v-if="solutions.locked" class="n1-notice warn" role="status" style="margin-bottom: 15px">Recomendações disponíveis quando o relatório for publicado.</p>
 
         <div class="n1-g12">
-            <article v-for="card in solutions.cards" :key="card.number" class="n1-card c4 n1-servicecard n1-lift" :class="TONES[card.tone]">
+            <article v-for="card in solutions.mode === 'company' ? [] : solutions.cards" :key="card.number" class="n1-card c4 n1-servicecard n1-lift" :class="TONES[card.tone]">
                 <span class="n1-svc-num" aria-hidden="true">{{ card.number }}</span>
                 <h3>{{ card.title }}</h3>
                 <span class="n1-pill" :class="TONES[card.tone]" style="align-self: flex-start">{{ card.status }}</span>
@@ -57,6 +55,7 @@ const request = (item) => {
 
                 <EmptyState v-if="solutions.noSurvey" title="Escolha uma campanha para ver as recomendações" text="As recomendações são geradas a partir dos resultados de cada campanha publicada; aqui o Comercial acompanha os serviços e as regras." />
                 <EmptyState v-else-if="solutions.locked" title="Recomendações ainda bloqueadas" text="Elas aparecem para a empresa e para a consultoria quando o relatório da campanha for publicado." />
+                <EmptyState v-else-if="!solutions.recommendations.length && solutions.mode === 'company'" title="Ainda não há indicações para esta pesquisa" text="Quando a Talents apontar um caminho a partir dos resultados, ele aparece aqui." />
                 <EmptyState v-else-if="!solutions.recommendations.length" title="Ainda não há recomendações para esta campanha" text="Elas aparecem quando uma dimensão fica em atenção e a Talents libera o serviço correspondente." />
 
                 <div v-else class="n1-g12">

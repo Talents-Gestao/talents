@@ -2,11 +2,10 @@
 import CompanyShowAccordion from '@/Components/Admin/Companies/CompanyShowAccordion.vue';
 import InfoTooltip from '@/Components/InfoTooltip.vue';
 import InputError from '@/Components/InputError.vue';
-import MeasureSuggestionForm from '@/Components/Nr1Plan/MeasureSuggestionForm.vue';
 import MeasureCard from '@/Components/Nr1Shell/MeasureCard.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { router, useForm } from '@inertiajs/vue3';
-import { onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps({
     companyId: { type: Number, required: true },
@@ -22,11 +21,7 @@ const props = defineProps({
     },
 });
 
-const editingId = ref(null);
 const newMeasureSection = ref(null);
-const toggleEdit = (id) => {
-    editingId.value = editingId.value === id ? null : id;
-};
 
 const form = useForm({
     factor_label: '',
@@ -35,18 +30,6 @@ const form = useForm({
     responsible_text: '',
     suggested_due_date: '',
 });
-
-const selectedStatus = reactive({});
-
-watch(
-    () => props.measures,
-    (rows) => {
-        for (const measure of rows) {
-            selectedStatus[measure.id] = measure.status;
-        }
-    },
-    { immediate: true },
-);
 
 const submit = () => {
     form.post(route('admin.companies.surveys.measures.store', [props.companyId, props.surveyId]), {
@@ -61,14 +44,6 @@ const refreshMeasures = () => {
         return;
     }
     router.post(props.measuresAi.refresh_url, {}, { preserveScroll: true });
-};
-
-const saveStatus = (measure) => {
-    router.patch(
-        route('admin.companies.surveys.measures.status', [props.companyId, props.surveyId, measure.id]),
-        { status: selectedStatus[measure.id] },
-        { preserveScroll: true },
-    );
 };
 
 let refreshTimer = null;
@@ -160,35 +135,18 @@ watch(() => props.measuresAi?.pending, watchRefresh);
 
         <p v-if="measures.length === 0" class="text-sm text-slate-600">Nenhuma medida ainda. Elas aparecem quando a pesquisa encerra e a Mia gera o plano, ou quando você registra uma.</p>
         <div v-else class="space-y-4">
-            <article v-for="measure in measures" :key="measure.id">
-                <MeasureCard :measure="measure" :users="[]" :effectiveness-results="effectivenessResults" />
-                <div class="mt-2 flex flex-wrap items-center gap-2">
-                    <button
-                        v-if="canEditSuggestion"
-                        type="button"
-                        class="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                        @click="toggleEdit(measure.id)"
-                    >
-                        {{ editingId === measure.id ? 'Fechar campos da sugestão' : 'Completar sugestão' }}
-                    </button>
-                    <form class="flex items-center gap-2" @submit.prevent="saveStatus(measure)">
-                        <select v-model="selectedStatus[measure.id]" class="rounded-lg border-slate-300 text-sm" :aria-label="`Status de ${measure.factor_label}`">
-                            <option v-for="(label, value) in statuses" :key="value" :value="value">{{ label }}</option>
-                        </select>
-                        <button type="submit" class="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                            Atualizar status
-                        </button>
-                    </form>
-                </div>
-                <MeasureSuggestionForm
-                    v-if="editingId === measure.id && canEditSuggestion"
-                    :company-id="companyId"
-                    :survey-id="surveyId"
-                    :measure="measure"
-                    :due-origins="dueOrigins"
-                />
-                <p v-else-if="!canEditSuggestion" class="mt-2 text-xs text-slate-500">Campanha publicada: a sugestão não é mais editada pela Talents.</p>
-            </article>
+            <MeasureCard
+                v-for="measure in measures"
+                :key="measure.id"
+                :measure="measure"
+                :users="[]"
+                :effectiveness-results="effectivenessResults"
+                :due-origins="dueOrigins"
+                :statuses="canEditSuggestion ? statuses : null"
+                :company-id="companyId"
+                :survey-id="surveyId"
+            />
+            <p v-if="!canEditSuggestion" class="text-xs text-slate-500">Campanha publicada: a sugestão não é mais editada pela Talents.</p>
         </div>
     </div>
 </template>

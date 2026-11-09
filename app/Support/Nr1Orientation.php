@@ -6,14 +6,14 @@ namespace App\Support;
 
 /**
  * Orientação NR-1 (Caderno §6): conteúdo sempre incluído na campanha e visível a todo colaborador, sem contratação.
- * Texto por enquanto; vídeo entra quando houver arquivo aprovado (pergunta 12 da Suzane).
+ * Texto fixo; vídeo de abertura vem da biblioteca global quando a campanha o exige.
  */
 final class Nr1Orientation
 {
     /**
-     * @return array{title: string, availability: string, paragraphs: list<string>}
+     * @return array{title: string, availability: string, paragraphs: list<string>, video_url: ?string, video_required: bool, video_title: ?string}
      */
-    public static function content(): array
+    public static function content(?string $videoUrl = null, bool $videoRequired = false, ?string $videoTitle = null): array
     {
         return [
             'title' => 'Orientação sobre a pesquisa',
@@ -24,6 +24,9 @@ final class Nr1Orientation
                 'Não existem respostas certas ou erradas. Responda pensando no seu dia a dia de trabalho, com sinceridade, e escolha sempre a opção que mais se aproxima da frequência com que a situação acontece.',
                 'Leva poucos minutos. Você pode voltar à pergunta anterior antes de enviar.',
             ],
+            'video_url' => $videoUrl,
+            'video_required' => $videoRequired,
+            'video_title' => $videoTitle,
         ];
     }
 }

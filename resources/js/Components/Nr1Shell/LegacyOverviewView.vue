@@ -2,7 +2,6 @@
 import CountUp from './CountUp.vue';
 import DimensionBadge from './DimensionBadge.vue';
 import EmptyState from './EmptyState.vue';
-import LegacyNotice from './LegacyNotice.vue';
 import LevelPill from './LevelPill.vue';
 import Nr1Button from './Nr1Button.vue';
 import Nr1OverviewCards from './Nr1OverviewCards.vue';
@@ -31,7 +30,6 @@ const STRENGTH_TONES = ['ok', 'purple', 'blue'];
                 <h1>{{ overview.title }}</h1>
                 <p>Panorama da campanha com os resultados já calculados no modelo anterior.</p>
             </div>
-            <LegacyNotice :text="notice" />
         </div>
 
         <section class="n1-card" style="margin-bottom: 15px" aria-label="Cabeçalho do laudo">

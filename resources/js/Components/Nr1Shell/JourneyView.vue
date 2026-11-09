@@ -1,4 +1,5 @@
 <script setup>
+import Nr1VideoGate from '@/Components/Nr1/Nr1VideoGate.vue';
 import Nr1Button from './Nr1Button.vue';
 import { computed, ref } from 'vue';
 
@@ -9,12 +10,23 @@ const props = defineProps({
 
 const ICON = { online: '▣', presencial: '♧' };
 const content = ref(null);
+const introDone = ref(!props.journey.orientation?.video_required);
 
 const audience = computed(() => props.journey.audience_label);
 const audienceBadge = computed(() => (audience.value ? `Trilha para ${audience.value === 'Líderes' ? 'Líderes' : 'o Time'}` : null));
+const introVideo = computed(() => props.journey.videos?.intro ?? null);
+const entryToken = computed(() => props.journey.entryToken ?? '');
+const introStorageKey = computed(() =>
+    introVideo.value && entryToken.value ? `nr1-video-${entryToken.value}-intro` : '',
+);
+const canOpenSurvey = computed(() => !introVideo.value?.required || introDone.value);
 
 const showOrientation = () => {
-    content.value = { title: props.journey.orientation.title, paragraphs: props.journey.orientation.paragraphs };
+    content.value = {
+        title: props.journey.orientation.title,
+        paragraphs: props.journey.orientation.paragraphs,
+        video: introVideo.value,
+    };
 };
 const showTraining = (training) => {
     const lines = [training.scope];
@@ -99,7 +111,23 @@ const showTraining = (training) => {
                 <h2>{{ content.title }}</h2>
                 <Nr1Button variant="secondary" size="sm" type="button" @click="content = null">Fechar</Nr1Button>
             </div>
+            <Nr1VideoGate
+                v-if="content.video?.url"
+                :src="content.video.url"
+                :title="content.video.title || 'Vídeo de abertura'"
+                :storage-key="introStorageKey"
+                @completed="introDone = true"
+            />
             <p v-for="line in content.paragraphs" :key="line" class="n1-bodycopy">{{ line }}</p>
+        </div>
+
+        <div v-if="introVideo?.required && !content" class="n1-card" style="margin-top: 16px">
+            <Nr1VideoGate
+                :src="introVideo.url"
+                :title="introVideo.title || 'Vídeo de abertura'"
+                :storage-key="introStorageKey"
+                @completed="introDone = true"
+            />
         </div>
 
         <div class="n1-card" style="margin-top: 16px">
@@ -108,11 +136,12 @@ const showTraining = (training) => {
                     <h2 style="margin: 0 0 5px">Pesquisa sobre o trabalho</h2>
                     <p class="n1-tiny" style="margin: 0">{{ journey.questionnaire.questions }} afirmações • {{ journey.questionnaire.dimensions }} dimensões • Escala de frequência</p>
                 </div>
-                <span class="n1-pill ok">Disponível</span>
+                <span class="n1-pill" :class="canOpenSurvey ? 'ok' : 'gray'">{{ canOpenSurvey ? 'Disponível' : 'Assista ao vídeo' }}</span>
             </div>
             <div class="n1-divider"></div>
             <p class="n1-bodycopy">Não existem respostas certas ou erradas. Considere sua rotina de trabalho ao responder cada afirmação.</p>
-            <Nr1Button variant="primary" :href="journey.surveyUrl">Responder questionário →</Nr1Button>
+            <Nr1Button v-if="canOpenSurvey" variant="primary" :href="journey.surveyUrl">Responder questionário →</Nr1Button>
+            <Nr1Button v-else variant="secondary" type="button" disabled>Assista ao vídeo de abertura para continuar</Nr1Button>
         </div>
     </div>
 </template>
