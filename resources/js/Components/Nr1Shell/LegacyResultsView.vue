@@ -2,14 +2,13 @@
 import ClientResultsBody from '@/Components/Nr1Legacy/ClientResultsBody.vue';
 import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
 import { router } from '@inertiajs/vue3';
-import MiaCard from './MiaCard.vue';
 import Nr1Button from './Nr1Button.vue';
 import { useNr1Toast } from './useNr1Toast';
 
 /**
  * Resultados no modelo anterior = Laudo 01 Diagnóstico: o MESMO painel do legado (indicador geral, dimensões com radar,
- * participação por setor, risco por setor, dimensões por setor, tabela de calor, detalhamento por pergunta, insights),
- * com o padrão visual do shell por `.nr1-theme`. A empresa vê os resultados; a Mia fica só na Talents.
+ * participação por setor, risco por setor, tabela de calor, detalhamento por pergunta, insights),
+ * com o padrão visual do shell por `.nr1-theme`.
  */
 const props = defineProps({
     results: { type: Object, required: true },
@@ -56,8 +55,6 @@ const recalculate = () => router.post(props.results.recalculateUrl, {}, { preser
                 questionDistributionsByDepartment: results.panel.questionDistributionsByDepartment,
             }" />
         </div>
-
-        <MiaCard v-if="results.ai" :ai="results.ai" />
 
         <div class="n1-tools no-print" style="margin-top: 16px; justify-content: flex-end">
             <Nr1Button variant="primary" inertia :href="results.nextUrl">Continuar para o parecer →</Nr1Button>

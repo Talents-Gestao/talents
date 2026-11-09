@@ -5,7 +5,6 @@ import DimensionBars from './DimensionBars.vue';
 import EmptyState from './EmptyState.vue';
 import InternalReviewPanel from './InternalReviewPanel.vue';
 import LevelPill from './LevelPill.vue';
-import MiaCard from './MiaCard.vue';
 import Nr1Button from './Nr1Button.vue';
 import QuestionsExplorer from './QuestionsExplorer.vue';
 import SectorsPanel from './SectorsPanel.vue';
@@ -167,8 +166,6 @@ const recalculate = () => router.post(props.results.recalculateUrl, {}, {
                     <QuestionsExplorer :items="shownItems" :dimensions="results.dimensions" />
                 </div>
             </Transition>
-
-            <MiaCard v-if="results.ai" :ai="results.ai" />
 
             <section v-if="results.exports.length" class="n1-card no-print" style="margin-top: 17px" aria-labelledby="exports-title">
                 <h2 id="exports-title">Exportações</h2>
