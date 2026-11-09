@@ -126,7 +126,7 @@ class Nr1ShellStageCTest extends TestCase
             ->where('section.plan.counters.total', 2)->where('section.plan.counters.confirmed', 0)->where('section.plan.counters.pending', 2)
             ->where('section.plan.canEditSuggestion', true)
             ->where('section.plan.measures.0.urls.suggestion', route('admin.companies.surveys.measures.suggestion', [$c->company->id, $c->survey->id, $measure->id]))
-            ->where('section.plan.measures.0.timeline.0.state', 'current'));
+            ->missing('section.plan.measures.0.timeline'));
         $this->actingAs($c->admin)->get(route('nr1.plano-de-acao'))->assertInertia(fn (Assert $p) => $p->where('context.survey', null)->missing('section.plan'));
 
         // Publicada: a sugestão não é mais editável pela Talents e a empresa confirma e inicia pelas rotas existentes.
@@ -151,7 +151,7 @@ class Nr1ShellStageCTest extends TestCase
             ->where('section.plan.measures.0.suggested.responsible', null)
             ->where('section.plan.measures.0.urls.confirm', null)
             ->where('section.plan.measures.0.urls.start', route('client.surveys.measures.start', [$c->survey->id, $measure->id]))
-            ->where('section.plan.measures.0.timeline.1.state', 'current'));
+            ->missing('section.plan.measures.0.timeline'));
     }
 
     public function test_the_plan_and_results_payloads_follow_the_shell_matrix_for_other_profiles(): void

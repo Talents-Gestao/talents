@@ -260,7 +260,6 @@ class Nr1ShellPageData
                 'risk_level' => $score['risk_level'] ?? null,
                 'band_label' => $score['band_label'] ?? null,
                 'departments' => $departments,
-                'timeline' => $this->timeline($measure),
                 'urls' => [
                     'suggestion' => $canEditSuggestion ? route('admin.companies.surveys.measures.suggestion', [$survey->company_id, $survey->id, $measure->id]) : null,
                     'confirm' => $canAct && $measure->status === PsychosocialMeasure::STATUS_TO_APPROVE ? route('client.surveys.measures.confirm', [$survey->id, $measure->id]) : null,
@@ -322,22 +321,6 @@ class Nr1ShellPageData
         }
 
         return $groups;
-    }
-
-    /**
-     * Linha do tempo simples do ciclo da medida: Proposta → Confirmada → Em andamento → Concluída.
-     *
-     * @return list<array{label: string, state: string}>
-     */
-    private function timeline(PsychosocialMeasure $measure): array
-    {
-        $order = [PsychosocialMeasure::STATUS_TO_APPROVE => 0, PsychosocialMeasure::STATUS_PENDING => 1, PsychosocialMeasure::STATUS_IN_PROGRESS => 2, PsychosocialMeasure::STATUS_IMPLEMENTED => 3, PsychosocialMeasure::STATUS_REPLANNED => 1];
-        $current = $order[$measure->status] ?? 0;
-
-        return collect(['Proposta', 'Confirmada', 'Em andamento', 'Concluída'])->map(fn (string $label, int $index) => [
-            'label' => $label,
-            'state' => $index < $current ? 'done' : ($index === $current ? 'current' : 'todo'),
-        ])->all();
     }
 
     /**

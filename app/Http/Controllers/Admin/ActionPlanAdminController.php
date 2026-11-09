@@ -223,7 +223,6 @@ class ActionPlanAdminController extends Controller
                     'effectiveness' => ['result_label' => null, 'note' => null],
                     'evidences' => [],
                     'history' => [],
-                    'timeline' => [],
                     'departments' => [],
                     'objective' => null,
                     'expected_result' => null,

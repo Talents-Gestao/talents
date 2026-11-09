@@ -13,6 +13,7 @@
 .nr1-shell .n1-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 13px 0 4px; }
 .nr1-shell .n1-qgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; position: relative; }
 .nr1-shell .n1-qcard { border: 1px solid #e7e0ed; border-radius: 15px; padding: 15px; background: #fff; }
+.nr1-shell .n1-qcard--extra { display: none; }
 .nr1-shell .n1-qcard h3 { font-size: 12.5px; line-height: 1.45; margin: 9px 0 11px; min-height: 36px; }
 .nr1-shell .n1-qdim { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 750; color: var(--n1-mut); }
 .nr1-shell .n1-qlist-move, .nr1-shell .n1-qlist-enter-active, .nr1-shell .n1-qlist-leave-active { transition: transform 0.3s ease, opacity 0.25s ease; }
@@ -59,14 +60,6 @@
 .nr1-shell .n1-chip-status[data-status='in_progress'] { background: #def4f1; color: #0f6a62; }
 .nr1-shell .n1-chip-status[data-status='implemented'] { background: #e4f7ed; color: #107552; }
 .nr1-shell .n1-chip-status[data-status='replanned'] { background: #f3eaf8; color: #6a3a86; }
-.nr1-shell .n1-timeline { list-style: none; display: flex; gap: 0; margin: 14px 0 4px; padding: 0; }
-.nr1-shell .n1-timeline li { flex: 1; position: relative; font-size: 10.5px; font-weight: 750; color: #9b90a3; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-.nr1-shell .n1-timeline li i { width: 12px; height: 12px; border-radius: 50%; background: #e5ddec; box-shadow: 0 0 0 3px #fff; position: relative; z-index: 1; }
-.nr1-shell .n1-timeline li::before { content: ''; position: absolute; top: 5px; left: 0; right: 0; height: 2px; background: #e5ddec; }
-.nr1-shell .n1-timeline li.done, .nr1-shell .n1-timeline li.current { color: #5b2a73; }
-.nr1-shell .n1-timeline li.done i { background: #168a80; }
-.nr1-shell .n1-timeline li.done::before { background: #168a80; }
-.nr1-shell .n1-timeline li.current i { background: #8146a5; box-shadow: 0 0 0 3px #e9d6f4; }
 .nr1-shell .n1-action-cols { display: grid; grid-template-columns: 1.1fr 1fr 0.7fr; gap: 12px; margin: 15px 0 12px; }
 .nr1-shell .n1-readonly { padding: 10px 11px; background: #fbf9fd; border: 1px solid #ece5f1; border-radius: 9px; font-size: 12px; min-height: 38px; }
 
@@ -76,11 +69,11 @@
 }
 @container nr1 (max-width: 700px) {
     .nr1-shell .n1-qgrid, .nr1-shell .n1-sectorgrid, .nr1-shell .n1-action-cols { grid-template-columns: 1fr; }
-    .nr1-shell .n1-timeline li { font-size: 9.5px; }
 }
 @media print {
     .nr1-shell .n1-tabbar, .nr1-shell .n1-filters, .nr1-shell .n1-internal { display: none !important; }
     .nr1-shell .n1-action { box-shadow: none; break-inside: avoid; }
+    .nr1-shell .n1-sdims { display: flex !important; animation: none !important; }
 }
 @media (prefers-reduced-motion: reduce) {
     .nr1-shell .n1-tab, .nr1-shell .n1-tabfade-enter-active, .nr1-shell .n1-tabfade-leave-active, .nr1-shell .n1-qlist-move, .nr1-shell .n1-qlist-enter-active, .nr1-shell .n1-qlist-leave-active { transition: none !important; }

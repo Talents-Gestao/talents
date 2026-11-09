@@ -160,14 +160,8 @@ const dateBr = (iso) => (iso ? iso.split('-').reverse().join('/') : '—');
             </div>
         </div>
 
-        <ol class="n1-timeline" aria-label="Andamento da medida">
-            <li v-for="point in measure.timeline" :key="point.label" :class="point.state" :aria-current="point.state === 'current' ? 'step' : undefined">
-                <i aria-hidden="true"></i>{{ point.label }}
-            </li>
-        </ol>
-
         <!-- Talents: todos os campos da sugestão no próprio card -->
-        <form v-if="editableSuggestion" class="n1-measure-form n1-fields" style="max-width: none; margin-top: 12px" @submit.prevent="saveSuggestion">
+        <form v-if="editableSuggestion" class="n1-measure-form n1-fields n1-measure-form--suggestion" @submit.prevent="saveSuggestion">
             <p class="n1-tiny" style="grid-column: 1 / -1">
                 Editar a sugestão não confirma nada pela empresa. A confirmação de responsável e prazo é feita pela empresa depois de «Publicado».
             </p>
