@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Tasks;
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Company;
 use App\Models\TaskBoard;
 use App\Models\User;
@@ -155,6 +156,134 @@ class TaskBoardUnifiedScreenTest extends TestCase
                 ->component('Client/Tasks/Index')
                 ->where('boardPayload', null)
                 ->has('boards', 0));
+    }
+
+    /** @return array<string, string> */
+    private function partialHeaders(string $component, string $only, array $extra = []): array
+    {
+        return array_merge([
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+            'X-Inertia-Partial-Component' => $component,
+            'X-Inertia-Partial-Data' => $only,
+        ], $extra);
+    }
+
+    public function test_admin_screen_lists_all_boards_with_summary_and_focus(): void
+    {
+        $admin = User::factory()->talentsOwner()->create();
+        $board = $this->board(['company_id' => null, 'name' => 'Com cartões', 'position' => 1000]);
+        $this->board(['company_id' => null, 'name' => 'Vazio', 'position' => 2000]);
+        $todo = $board->lists()->create(['name' => 'A fazer', 'position' => 1000, 'visibility' => 'internal', 'is_archived' => false]);
+        $done = $board->lists()->create(['name' => 'Feito', 'position' => 2000, 'visibility' => 'internal', 'is_archived' => false]);
+        $todo->cards()->create(['title' => 'Atrasado', 'position' => 1000, 'visibility' => 'inherit', 'is_archived' => false, 'due_date' => now()->subDays(2)->toDateString()]);
+        $todo->cards()->create(['title' => 'Próximo', 'position' => 2000, 'visibility' => 'inherit', 'is_archived' => false, 'due_date' => now()->addDays(3)->toDateString()]);
+        $done->cards()->create(['title' => 'Concluído', 'position' => 1000, 'visibility' => 'inherit', 'is_archived' => false, 'completed_at' => now()]);
+        $todo->cards()->create(['title' => 'Arquivado', 'position' => 3000, 'visibility' => 'inherit', 'is_archived' => true]);
+
+        $this->actingAs($admin)
+            ->get('/admin/tarefas/quadros')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Admin/Tasks/Boards/Index')
+                ->has('boards', 2)
+                ->where('focusBoardId', $board->id)
+                ->where('scrollToFocus', false)
+                ->where('boardPayloads', [])
+                ->where('boards.0.lists_count', 2)
+                ->where('boards.0.cards_count', 3)
+                ->where('boards.0.summary.completed_count', 1)
+                ->where('boards.0.summary.overdue_count', 1)
+                ->where('boards.0.summary.due_soon_count', 1)
+                ->where('boards.0.summary.next_due_date', now()->addDays(3)->toDateString())
+                ->where('boards.0.summary.lists.0.name', 'A fazer')
+                ->where('boards.0.summary.lists.0.cards_count', 2)
+                ->where('boards.1.cards_count', 0));
+    }
+
+    public function test_admin_partial_reload_loads_only_requested_boards_and_remembers_opened(): void
+    {
+        $admin = User::factory()->talentsOwner()->create();
+        $first = $this->board(['company_id' => null, 'name' => 'Primeiro', 'position' => 1000]);
+        $second = $this->board(['company_id' => null, 'name' => 'Segundo', 'position' => 2000]);
+        $third = $this->board(['company_id' => null, 'name' => 'Terceiro', 'position' => 3000]);
+        $list = $third->lists()->create(['name' => 'Lista', 'position' => 1000, 'visibility' => 'internal', 'is_archived' => false]);
+        $list->cards()->create(['title' => 'Guardado', 'position' => 1000, 'visibility' => 'inherit', 'is_archived' => true]);
+
+        $response = $this->actingAs($admin)
+            ->withHeaders($this->partialHeaders('Admin/Tasks/Boards/Index', 'boardPayloads', [
+                'X-Task-Boards' => "{$second->id},{$third->id},999999,abc",
+                'X-Task-Boards-Archived' => (string) $third->id,
+                'X-Task-Board-Opened' => (string) $second->id,
+            ]))
+            ->get('/admin/tarefas/quadros')
+            ->assertOk();
+
+        $props = $response->json('props');
+        $this->assertArrayNotHasKey('boards', $props);
+        $this->assertArrayNotHasKey('boardPayload', $props);
+        $this->assertSame([$second->id, $third->id], array_column($props['boardPayloads'], 'id'));
+        $this->assertFalse($props['boardPayloads'][0]['show_archived']);
+        $this->assertTrue($props['boardPayloads'][1]['show_archived']);
+        $this->assertSame('Guardado', $props['boardPayloads'][1]['lists'][0]['cards'][0]['title']);
+
+        $this->flushHeaders();
+
+        $this->actingAs($admin)
+            ->get('/admin/tarefas/quadros')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('focusBoardId', $second->id)
+                ->where('boardPayload.id', $second->id));
+
+        $this->actingAs($admin)
+            ->get('/admin/tarefas/quadros/'.$first->id)
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('focusBoardId', $first->id)
+                ->where('scrollToFocus', true)
+                ->has('boards', 3));
+    }
+
+    public function test_client_partial_reload_never_returns_boards_of_another_company(): void
+    {
+        $company = $this->company();
+        $other = Company::query()->create([
+            'name' => 'Outra empresa',
+            'cnpj' => '66.666.666/0001-66',
+            'is_active' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+            'tasks_access' => true,
+        ]);
+        $mine = $this->board(['company_id' => $company->id, 'name' => 'Meu', 'position' => 1000]);
+        $foreign = $this->board(['company_id' => $other->id, 'name' => 'Alheio', 'position' => 2000]);
+        $list = $mine->lists()->create(['name' => 'Lista', 'position' => 1000, 'visibility' => 'company', 'is_archived' => false]);
+        $list->cards()->create(['title' => 'Visível', 'company_id' => $company->id, 'position' => 1000, 'visibility' => 'inherit', 'is_archived' => false]);
+        $list->cards()->create(['title' => 'Interno', 'company_id' => $company->id, 'position' => 2000, 'visibility' => 'internal', 'is_archived' => false]);
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $this->actingAs($user)
+            ->get('/client/tarefas')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('boards', 1)
+                ->where('boards.0.cards_count', 1)
+                ->where('boards.0.lists_count', 1));
+
+        $props = $this->actingAs($user)
+            ->withHeaders($this->partialHeaders('Client/Tasks/Index', 'boardPayloads', [
+                'X-Task-Boards' => "{$foreign->id},{$mine->id}",
+            ]))
+            ->get('/client/tarefas')
+            ->assertOk()
+            ->json('props');
+
+        $this->assertSame([$mine->id], array_column($props['boardPayloads'], 'id'));
+        $this->assertSame(['Visível'], array_column($props['boardPayloads'][0]['lists'][0]['cards'], 'title'));
+    }
+
+    public function test_requested_board_ids_are_filtered_and_limited(): void
+    {
+        $this->assertSame([3, 1], BoardPresenter::requestedBoardIds(' 3, 1,3,x,-2,9', [1, 2, 3]));
+        $this->assertSame([], BoardPresenter::requestedBoardIds(null, [1]));
+        $this->assertSame([1, 2], BoardPresenter::requestedBoardIds('1,2,3', [1, 2, 3], 2));
     }
 
     public function test_resolve_initial_board_id_order_of_preference(): void

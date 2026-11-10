@@ -1,16 +1,17 @@
 <script setup>
-import BoardSwitcher from '@/Components/Tasks/BoardSwitcher.vue';
+import BoardDescriptionToggle from '@/Components/Tasks/BoardDescriptionToggle.vue';
 import ColorPresetPicker from '@/Components/Tasks/ColorPresetPicker.vue';
 import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import TaskToolbarMenu from '@/Components/Tasks/TaskToolbarMenu.vue';
-import { Link, router, useForm } from '@inertiajs/vue3';
+import { descriptionPlainText } from '@/utils/taskBoards';
+import { router, useForm } from '@inertiajs/vue3';
 import {
     ArchiveBoxIcon,
     BuildingOffice2Icon,
+    ChevronRightIcon,
     EllipsisHorizontalIcon,
     ListBulletIcon,
     PencilSquareIcon,
-    PlusIcon,
     StarIcon as StarOutlineIcon,
     TrashIcon,
     UserPlusIcon,
@@ -20,28 +21,37 @@ import { StarIcon as StarSolidIcon } from '@heroicons/vue/24/solid';
 import { computed, nextTick, ref, watch } from 'vue';
 import { confirmDialog } from '@/composables/useConfirmDialog';
 
+/**
+ * Cabeçalho de cada quadro da tela de Tarefas (uma linha; no celular rola na horizontal).
+ * Funciona recolhido (só com o resumo do quadro, `board`) e expandido (com o conteúdo, `boardPayload`):
+ * membros e Convidar aparecem quando o conteúdo já carregou; Ver arquivados e Kanban/Lista, só expandido.
+ */
 const props = defineProps({
-    boardPayload: { type: Object, required: true },
+    /** Item da lista de quadros (nome, cor, empresa, favorito, resumo). */
+    board: { type: Object, required: true },
+    /** Conteúdo do quadro (listas, cartões, membros); null enquanto não carregou. */
+    boardPayload: { type: Object, default: null },
+    expanded: { type: Boolean, default: false },
+    /** id do corpo da seção (aria-controls do chevron). */
+    bodyId: { type: String, default: undefined },
     isAdmin: { type: Boolean, default: false },
     companyUsers: { type: Array, default: () => [] },
     /** Usuários internos Talents (super admins) para quadros globais/internos. */
     teamUsers: { type: Array, default: () => [] },
     /** Empresas ativas — partilha em lote de cartões em quadros internos. */
     companies: { type: Array, default: () => [] },
-    /** Quadros do seletor (favoritos primeiro, internos / por empresa). */
-    boards: { type: Array, default: () => [] },
-    showRouteName: { type: String, required: true },
     viewMode: { type: String, default: 'kanban' },
     showArchived: { type: Boolean, default: false },
-    /** Admin com tarefas:edit: reordenar quadros (a rota exige essa permissão). */
-    canEdit: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['refresh', 'update:viewMode', 'toggle-archived']);
+const emit = defineEmits(['refresh', 'update:viewMode', 'toggle-archived', 'toggle']);
 
-const isStarred = ref(Boolean(props.boardPayload?.is_starred));
+/** Nome, cor, empresa e descrição vêm da lista de quadros (sempre atualizada); o conteúdo completa o resto. */
+const info = computed(() => ({ ...(props.boardPayload ?? {}), ...props.board }));
+
+const isStarred = ref(Boolean(props.board?.is_starred));
 watch(
-    () => props.boardPayload?.is_starred,
+    () => props.board?.is_starred,
     (value) => {
         isStarred.value = Boolean(value);
     },
@@ -56,13 +66,13 @@ const shareCompanyId = ref('');
 const shareProcessing = ref(false);
 
 const boardForm = useForm({
-    name: props.boardPayload?.name || '',
-    description: props.boardPayload?.description || '',
-    cover_color: props.boardPayload?.cover_color || '',
+    name: info.value?.name || '',
+    description: info.value?.description || '',
+    cover_color: info.value?.cover_color || '',
 });
 
 watch(
-    () => props.boardPayload,
+    info,
     (val) => {
         boardForm.name = val?.name || '';
         boardForm.description = val?.description || '';
@@ -85,7 +95,7 @@ const byUserName = (a, b) =>
 
 const eligibleCompanyUsers = computed(() => {
     const list = props.companyUsers || [];
-    const companyId = props.boardPayload?.company_id;
+    const companyId = info.value?.company_id;
     if (!companyId) {
         return list;
     }
@@ -164,12 +174,12 @@ function toggleStar() {
     const method = willStar ? 'post' : 'delete';
 
     router[method](
-        route(routeName, props.boardPayload.id),
+        route(routeName, props.board.id),
         {},
         {
             preserveScroll: true,
             preserveState: true,
-            only: ['boards', 'boardPayload'],
+            only: ['boards'],
             onError: () => {
                 isStarred.value = !willStar;
             },
@@ -180,7 +190,7 @@ function toggleStar() {
 function inviteSelected() {
     if (!inviteUserId.value) return;
     router.post(
-        route('admin.tarefas.quadros.membros.store', props.boardPayload.id),
+        route('admin.tarefas.quadros.membros.store', props.board.id),
         { user_id: inviteUserId.value, role: inviteRole.value },
         {
             preserveScroll: true,
@@ -219,7 +229,7 @@ async function submitShareCards() {
     }
     shareProcessing.value = true;
     router.post(
-        route('admin.tarefas.quadros.partilhar-cartoes', props.boardPayload.id),
+        route('admin.tarefas.quadros.partilhar-cartoes', props.board.id),
         { company_id: Number(shareCompanyId.value) },
         {
             preserveScroll: true,
@@ -237,7 +247,7 @@ async function submitShareCards() {
 async function removeMember(userId) {
     if (!(await confirmDialog('Remover este membro do quadro?'))) return;
     router.delete(
-        route('admin.tarefas.quadros.membros.destroy', [props.boardPayload.id, userId]),
+        route('admin.tarefas.quadros.membros.destroy', [props.board.id, userId]),
         {
             preserveScroll: true,
             onSuccess: () => emit('refresh'),
@@ -250,7 +260,7 @@ function patchBoard(fields) {
         return;
     }
 
-    router.patch(route('admin.tarefas.quadros.update', props.boardPayload.id), fields, {
+    router.patch(route('admin.tarefas.quadros.update', props.board.id), fields, {
         preserveScroll: true,
         onSuccess: () => emit('refresh'),
     });
@@ -258,7 +268,7 @@ function patchBoard(fields) {
 
 function startEditingName() {
     if (!props.isAdmin) return;
-    boardForm.name = props.boardPayload?.name || '';
+    boardForm.name = info.value?.name || '';
     editingName.value = true;
     nextTick(() => {
         nameInput.value?.focus();
@@ -283,20 +293,20 @@ function saveCoverColor(color) {
     }
     boardForm.cover_color = color || '';
     patchBoard({
-        name: props.boardPayload.name,
+        name: info.value.name,
         cover_color: color || null,
     });
 }
 
 async function deleteBoard() {
     if (!props.isAdmin) return;
-    const name = props.boardPayload?.name || 'este quadro';
+    const name = info.value?.name || 'este quadro';
     if (!(await confirmDialog(
             `Excluir "${name}" permanentemente?\n\nTodas as listas, tarefas, anexos, comentários e checklists serão removidos. Esta ação NÃO pode ser desfeita.`))) {
         return;
     }
 
-    router.delete(route('admin.tarefas.quadros.destroy', props.boardPayload.id), {
+    router.delete(route('admin.tarefas.quadros.destroy', props.board.id), {
         preserveScroll: false,
     });
 }
@@ -315,11 +325,10 @@ const menuItem =
 </script>
 
 <template>
-    <!-- Barra única do quadro: uma linha; no celular rola na horizontal (menus vão para o <body>). -->
     <div
-        class="flex items-center gap-1 overflow-x-auto rounded-xl bg-white px-2 py-1.5 shadow-sm ring-1 ring-slate-200 [scrollbar-width:thin]"
+        class="flex items-center gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:thin]"
         role="toolbar"
-        aria-label="Ações do quadro"
+        :aria-label="`Ações do quadro ${info.name}`"
         data-task-board-toolbar
     >
         <form v-if="editingName && isAdmin" class="flex shrink-0 items-center gap-1.5" @submit.prevent="saveBoardName">
@@ -343,14 +352,30 @@ const menuItem =
                 Cancelar
             </button>
         </form>
-        <BoardSwitcher
-            v-else
-            :boards="boards"
-            :active-board="boardPayload"
-            :show-route-name="showRouteName"
-            :is-admin="isAdmin"
-            :can-reorder="isAdmin && canEdit"
-        />
+        <h3 v-else class="min-w-0 shrink">
+            <button
+                type="button"
+                class="inline-flex min-w-0 max-w-[18rem] items-center gap-2 rounded-lg px-1.5 py-1 text-left transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 sm:max-w-md"
+                :aria-expanded="expanded ? 'true' : 'false'"
+                :aria-controls="bodyId"
+                :title="expanded ? 'Recolher quadro' : 'Expandir quadro'"
+                data-board-toggle
+                @click="emit('toggle')"
+            >
+                <ChevronRightIcon
+                    class="h-4 w-4 shrink-0 text-slate-500 transition-transform motion-reduce:transition-none"
+                    :class="expanded ? 'rotate-90' : ''"
+                    aria-hidden="true"
+                />
+                <span
+                    class="h-5 w-1 shrink-0 rounded-full"
+                    :class="info.cover_color ? '' : 'bg-slate-300'"
+                    :style="info.cover_color ? { backgroundColor: info.cover_color } : {}"
+                    aria-hidden="true"
+                />
+                <span class="truncate text-sm font-semibold text-slate-900 sm:text-base">{{ info.name }}</span>
+            </button>
+        </h3>
 
         <button
             v-if="isAdmin && !editingName"
@@ -376,24 +401,28 @@ const menuItem =
         </button>
 
         <span
-            v-if="boardPayload.company"
+            v-if="info.company"
             class="inline-block max-w-[12rem] shrink-0 truncate rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
-            :title="`Empresa: ${boardPayload.company.name}`"
+            :title="`Empresa: ${info.company.name}`"
         >
-            {{ boardPayload.company.name }}
+            {{ info.company.name }}
         </span>
         <span
-            v-else-if="boardPayload.is_internal"
+            v-else-if="info.is_internal"
             class="inline-flex shrink-0 items-center rounded-md bg-talents-50 px-2 py-0.5 text-xs font-medium text-talents-700"
         >
             Interno
         </span>
 
+        <div v-if="descriptionPlainText(info.description)" class="max-w-xs shrink-0">
+            <BoardDescriptionToggle :description="descriptionPlainText(info.description)" />
+        </div>
+
         <span class="mx-1 h-5 w-px shrink-0 bg-slate-200" aria-hidden="true" />
 
         <component
             :is="isAdmin ? 'button' : 'div'"
-            v-if="members.length"
+            v-if="boardPayload && members.length"
             :type="isAdmin ? 'button' : undefined"
             class="flex shrink-0 -space-x-1.5 rounded-full"
             :class="isAdmin ? 'focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500' : ''"
@@ -420,7 +449,7 @@ const menuItem =
         </component>
 
         <button
-            v-if="isAdmin"
+            v-if="isAdmin && boardPayload"
             type="button"
             :class="[toolbarButton, 'bg-talents-600 text-white hover:bg-talents-700']"
             title="Convidar para o quadro"
@@ -432,7 +461,7 @@ const menuItem =
         </button>
 
         <button
-            v-if="isAdmin && boardPayload.is_internal"
+            v-if="isAdmin && info.is_internal"
             type="button"
             :class="[toolbarButton, 'text-talents-800 hover:bg-talents-50']"
             title="Partilhar cartões com o portal de uma empresa"
@@ -446,7 +475,7 @@ const menuItem =
         <span class="min-w-2 flex-1" aria-hidden="true" />
 
         <button
-            v-if="isAdmin && viewMode === 'kanban'"
+            v-if="isAdmin && expanded && viewMode === 'kanban'"
             type="button"
             :class="[
                 toolbarButton,
@@ -461,7 +490,7 @@ const menuItem =
             <span class="sr-only xl:hidden">{{ showArchived ? 'Ocultar arquivados' : 'Ver arquivados' }}</span>
         </button>
 
-        <div class="inline-flex shrink-0 rounded-lg bg-slate-100 p-0.5" role="group" aria-label="Modo de exibição">
+        <div v-if="expanded" class="inline-flex shrink-0 rounded-lg bg-slate-100 p-0.5" role="group" aria-label="Modo de exibição">
             <button
                 v-for="option in viewOptions"
                 :key="option.value"
@@ -476,25 +505,6 @@ const menuItem =
                 <span class="sr-only sm:hidden">{{ option.label }}</span>
             </button>
         </div>
-
-        <TaskToolbarMenu
-            v-if="isAdmin"
-            align="right"
-            :width="240"
-            label="Novo quadro ou processo"
-            title="Novo quadro ou processo"
-            :button-class="[toolbarButton, 'text-slate-700 hover:bg-slate-100']"
-        >
-            <template #trigger>
-                <PlusIcon class="h-4 w-4" aria-hidden="true" />
-                <span class="hidden md:inline">Novo</span>
-            </template>
-            <template #default>
-                <Link :href="route('admin.tarefas.quadros.create')" :class="menuItem">Novo quadro interno</Link>
-                <Link :href="route('admin.tarefas.quadros.ativar')" :class="menuItem">Ativar processo para empresa</Link>
-                <Link :href="route('admin.tarefas.processos.index')" :class="menuItem">Modelos de processo</Link>
-            </template>
-        </TaskToolbarMenu>
 
         <TaskToolbarMenu
             v-if="isAdmin"
@@ -516,7 +526,7 @@ const menuItem =
                     <ColorPresetPicker
                         :model-value="boardForm.cover_color"
                         label="Cor de capa do quadro"
-                        hint="Aparece no seletor de quadros e ao lado do nome."
+                        hint="Aparece ao lado do nome do quadro."
                         @update:model-value="saveCoverColor"
                     />
                 </div>
@@ -573,7 +583,7 @@ const menuItem =
                                     </optgroup>
                                     <optgroup
                                         v-if="availableCompanyToInvite.length"
-                                        :label="boardPayload.company ? 'Empresa do quadro' : 'Clientes'"
+                                        :label="info.company ? 'Empresa do quadro' : 'Clientes'"
                                     >
                                         <option
                                             v-for="u in availableCompanyToInvite"

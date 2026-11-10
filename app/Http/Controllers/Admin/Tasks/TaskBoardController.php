@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Tasks;
 
 use App\Actions\Tasks\ShareBoardCardsWithCompany;
 use App\Enums\TaskCardRecurrence;
+use App\Http\Controllers\Client\Tasks\BoardController as ClientBoardController;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\TaskAttachment;
@@ -67,12 +68,12 @@ class TaskBoardController extends Controller
         return $board;
     }
 
-    /** Sessão: último quadro aberto, para a tela de Tarefas reabrir nele. */
+    /** Sessão: último quadro aberto, para a tela de Tarefas expandir e carregar esse primeiro. */
     private const LAST_BOARD_SESSION_KEY = 'tasks.admin.last_board_id';
 
     /**
-     * Tela única de Tarefas: abre direto no Kanban do último quadro usado (ou do primeiro favorito,
-     * ou do primeiro da lista). A troca de quadro acontece na própria tela, pela rota show.
+     * Tela única de Tarefas: todos os quadros empilhados. O último usado (ou o primeiro favorito,
+     * ou o primeiro da lista) já vem com o conteúdo; os demais carregam ao expandir (cabeçalho X-Task-Boards).
      */
     public function index(Request $request): Response
     {
@@ -80,14 +81,14 @@ class TaskBoardController extends Controller
             $this->ensureDefaultBoard($request->user()->id);
         }
 
-        $boards = $this->switcherBoards($request);
+        $models = $this->boardModels();
+        $this->rememberOpenedBoard($request, $models->pluck('id'));
         $boardId = BoardPresenter::resolveInitialBoardId(
-            $boards,
+            BoardPresenter::forSwitcher($models, $request->user()?->id),
             $request->session()->get(self::LAST_BOARD_SESSION_KEY),
         );
-        $board = TaskBoard::query()->findOrFail($boardId);
 
-        return $this->renderBoard($request, $board, $boards);
+        return $this->renderScreen($request, $models, $models->firstWhere('id', $boardId), false);
     }
 
     public function create(): Response
@@ -164,57 +165,78 @@ class TaskBoardController extends Controller
         return redirect()->route('admin.tarefas.quadros.index');
     }
 
-    /** Mesma tela única do index, já no quadro pedido (links, notificações e favoritos continuam valendo). */
+    /** Mesma tela do index, com este quadro expandido e rolado até ele (links, notificações e favoritos continuam valendo). */
     public function show(Request $request, TaskBoard $board): Response
     {
-        return $this->renderBoard($request, $board, $this->switcherBoards($request));
+        $models = $this->boardModels();
+        if (! $request->header('X-Inertia-Partial-Data')) {
+            $request->session()->put(self::LAST_BOARD_SESSION_KEY, $board->id);
+        }
+        $this->rememberOpenedBoard($request, $models->pluck('id'));
+
+        return $this->renderScreen($request, $models, $models->firstWhere('id', $board->id) ?? $board, true);
     }
 
     /**
-     * @return Collection<int, array<string, mixed>>
+     * @return Collection<int, TaskBoard>
      */
-    private function switcherBoards(Request $request): Collection
+    private function boardModels(): Collection
     {
-        $boards = TaskBoard::query()
+        return TaskBoard::query()
             ->with('company:id,name')
             ->where('is_archived', false)
             ->orderByRaw('company_id is null desc')
             ->orderBy('position')
             ->orderBy('id')
             ->get();
-
-        return BoardPresenter::forSwitcher($boards, $request->user()?->id);
     }
 
     /**
-     * @param  Collection<int, array<string, mixed>>  $boards
+     * @param  Collection<int, int>  $allowedIds
      */
-    private function renderBoard(Request $request, TaskBoard $board, Collection $boards): Response
+    private function rememberOpenedBoard(Request $request, Collection $allowedIds): void
     {
-        $request->session()->put(self::LAST_BOARD_SESSION_KEY, $board->id);
+        $opened = BoardPresenter::requestedBoardIds($request->header(ClientBoardController::OPENED_HEADER), $allowedIds, 1);
+        if ($opened !== []) {
+            $request->session()->put(self::LAST_BOARD_SESSION_KEY, $opened[0]);
+        }
+    }
 
-        $includeArchived = $request->boolean('ver_arquivados');
-        $payload = BoardPresenter::forAdmin($board, $includeArchived);
-        $activity = $board->activityLogs()->with('actor:id,name')->latest()->limit(50)->get()->map(fn ($row) => [
-            'id' => $row->id,
-            'action' => $row->action,
-            'payload' => $row->payload,
-            'created_at' => $row->created_at?->toIso8601String(),
-            'actor' => $row->actor ? ['id' => $row->actor->id, 'name' => $row->actor->name] : null,
-            'card_id' => $row->task_card_id,
-        ]);
-
-        $companyUsers = BoardPresenter::allActiveCompanyUsers();
-        $teamUsers = BoardPresenter::allActiveTalentsTeamUsers();
-        $companies = Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
+    /**
+     * Props em closures: as recargas parciais (só boardPayloads, ou boards) não calculam o resto.
+     *
+     * @param  Collection<int, TaskBoard>  $models
+     */
+    private function renderScreen(Request $request, Collection $models, ?TaskBoard $focus, bool $scrollToFocus): Response
+    {
+        $userId = $request->user()?->id;
 
         return Inertia::render('Admin/Tasks/Boards/Index', [
-            'boards' => $boards,
-            'boardPayload' => $payload,
-            'activity' => $activity,
-            'companyUsers' => $companyUsers,
-            'teamUsers' => $teamUsers,
-            'companies' => $companies,
+            'boards' => fn () => BoardPresenter::forSwitcher($models, $userId, BoardPresenter::summaries($models)),
+            'boardPayload' => fn () => $focus ? BoardPresenter::forAdmin($focus, $request->boolean('ver_arquivados')) : null,
+            'boardPayloads' => function () use ($request, $models) {
+                $ids = BoardPresenter::requestedBoardIds($request->header(ClientBoardController::BOARDS_HEADER), $models->pluck('id'));
+                $archived = array_flip(BoardPresenter::requestedBoardIds($request->header(ClientBoardController::ARCHIVED_HEADER), $ids));
+
+                return collect($ids)
+                    ->map(fn (int $id) => BoardPresenter::forAdmin($models->firstWhere('id', $id), isset($archived[$id])))
+                    ->values();
+            },
+            'focusBoardId' => $focus?->id,
+            'scrollToFocus' => $scrollToFocus,
+            'activity' => fn () => $focus
+                ? $focus->activityLogs()->with('actor:id,name')->latest()->limit(50)->get()->map(fn ($row) => [
+                    'id' => $row->id,
+                    'action' => $row->action,
+                    'payload' => $row->payload,
+                    'created_at' => $row->created_at?->toIso8601String(),
+                    'actor' => $row->actor ? ['id' => $row->actor->id, 'name' => $row->actor->name] : null,
+                    'card_id' => $row->task_card_id,
+                ])
+                : [],
+            'companyUsers' => fn () => BoardPresenter::allActiveCompanyUsers(),
+            'teamUsers' => fn () => BoardPresenter::allActiveTalentsTeamUsers(),
+            'companies' => fn () => Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'visibilityListOptions' => [
                 ['value' => 'internal', 'label' => 'Interno'],
                 ['value' => 'company', 'label' => 'Empresa'],

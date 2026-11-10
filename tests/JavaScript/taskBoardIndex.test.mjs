@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
-import { descriptionPlainText, filterBoards, groupBoards, normalizeSearch } from '../../resources/js/utils/taskBoards.js';
+import {
+    boardSections,
+    chunkIds,
+    completionPercent,
+    descriptionPlainText,
+    filterBoards,
+    groupBoards,
+    isBoardExpanded,
+    kanbanNeedsFixedHeight,
+    normalizeSearch,
+} from '../../resources/js/utils/taskBoards.js';
 
 /**
  * Tarefas: tela única (Admin e portal). Lógica pura do seletor e verificação estática da estrutura.
@@ -40,12 +50,45 @@ describe('Tarefas: seletor de quadros (lógica pura)', () => {
     });
 });
 
+describe('Tarefas: quadros empilhados (lógica pura)', () => {
+    it('seções: favoritos primeiro e cada quadro aparece uma só vez; a busca vale para todas', () => {
+        const sections = boardSections(boards);
+        assert.deepEqual(sections.favorites.map((b) => b.id), [2, 3]);
+        assert.deepEqual(sections.internal.map((b) => b.id), [1]);
+        assert.deepEqual(sections.company.map((b) => b.id), []);
+        assert.deepEqual(boardSections(boards, 'operacao').internal.map((b) => b.id), [1]);
+        assert.deepEqual(boardSections(boards, 'operacao').favorites, []);
+    });
+
+    it('expandido: escolha guardada vale; sem escolha, favoritos e o último usado abrem', () => {
+        assert.equal(isBoardExpanded(boards[0], {}, null), false);
+        assert.equal(isBoardExpanded(boards[0], {}, 1), true);
+        assert.equal(isBoardExpanded(boards[1], {}, null), true);
+        assert.equal(isBoardExpanded(boards[1], { 2: false }, null), false);
+        assert.equal(isBoardExpanded(boards[0], { 1: true }, null), true);
+        assert.equal(isBoardExpanded(boards[0], null, '1'), true);
+    });
+
+    it('progresso, lotes de ids e altura fixa do Kanban', () => {
+        assert.equal(completionPercent(0, 0), 0);
+        assert.equal(completionPercent(3, 1), 33);
+        assert.equal(completionPercent(2, 5), 100);
+        assert.deepEqual(chunkIds([1, 2, 2, '3', 4, 'x'], 2), [[1, 2], [3, 4]]);
+        assert.deepEqual(chunkIds(null), []);
+        assert.equal(kanbanNeedsFixedHeight({ lists: [{ cards: [1, 2, 3, 4] }] }), false);
+        assert.equal(kanbanNeedsFixedHeight({ lists: [{ cards: [] }, { cards: [1, 2, 3, 4, 5] }] }), true);
+        assert.equal(kanbanNeedsFixedHeight(null), false);
+    });
+});
+
 describe('Tarefas: estrutura da tela única', () => {
-    it('não existem mais a tela de detalhe separada nem a prévia da listagem', () => {
+    it('não existem mais a tela de detalhe separada, a prévia da listagem nem o seletor de quadro único', () => {
         for (const path of [
             'resources/js/Pages/Admin/Tasks/Boards/Show.vue',
             'resources/js/Pages/Client/Tasks/Show.vue',
             'resources/js/Components/Tasks/BoardIndexPreview.vue',
+            'resources/js/Components/Tasks/BoardSwitcher.vue',
+            'resources/js/Components/Tasks/BoardSwitcherItem.vue',
         ]) {
             assert.equal(existsSync(new URL(path, root)), false, path);
         }
@@ -62,17 +105,39 @@ describe('Tarefas: estrutura da tela única', () => {
         }
     });
 
-    it('trocar de quadro é visita parcial que preserva o estado (sem recarregar a página)', () => {
-        const item = read('resources/js/Components/Tasks/BoardSwitcherItem.vue');
-        assert.match(item, /<Link[\s\S]*:only="SWITCH_ONLY"[\s\S]*preserve-state/);
-        assert.match(item, /const SWITCH_ONLY = \['boardPayload', 'boards', 'activity'\]/);
-        assert.match(item, /after:absolute after:inset-0/);
+    it('todos os quadros empilhados: seções por grupo, conteúdo pedido só ao expandir, em lotes', () => {
         const screen = read('resources/js/Components/Tasks/TaskBoardScreen.vue');
-        assert.match(screen, /const BOARD_PROPS = \['boardPayload', 'boards', 'activity'\]/);
-        assert.match(screen, /preserveState: true,\s*only: BOARD_PROPS/);
+        assert.match(screen, /<BoardSection\s[\s\S]*v-for="board in group\.boards"/);
+        assert.match(screen, /boardSections\(props\.boards, search\.value\)/);
+        assert.match(screen, /const BOARDS_HEADER = 'X-Task-Boards'/);
+        assert.match(screen, /router\.reload\(\{\s*only: withBoards \? \['boardPayloads', 'boards'\] : \['boardPayloads'\]/);
+        assert.match(screen, /chunkIds\(ids, BATCH_SIZE\)/);
+        assert.match(screen, /localStorage\.setItem\(STORAGE_KEY/);
+        assert.match(screen, /auth\?\.user\?\.id/);
+        assert.doesNotMatch(screen, /BoardSwitcher/);
+
+        const section = read('resources/js/Components/Tasks/BoardSection.vue');
+        assert.match(section, /new IntersectionObserver/);
+        assert.match(section, /props\.expanded && !props\.payload && !props\.loading && !props\.failed && nearViewport\.value/);
+        assert.match(section, /data-board-skeleton/);
+        assert.match(section, /<BoardSummary :board="board" \/>/);
+        assert.match(section, /Tentar de novo/);
     });
 
-    it('a barra concentra as ações do antigo cabeçalho, com o excluir no menu ⋯ e confirmação', () => {
+    it('rota /{board}: expande e rola até o quadro; os atalhos do topo também abrem o quadro', () => {
+        const screen = read('resources/js/Components/Tasks/TaskBoardScreen.vue');
+        assert.match(screen, /if \(props\.scrollToFocus && props\.focusBoardId\)/);
+        assert.match(screen, /scrollIntoView/);
+        const nav = read('resources/js/Components/Tasks/TaskBoardsNav.vue');
+        for (const text of ['Buscar quadro', 'Expandir todos', 'Recolher todos', 'Novo quadro interno', 'Ativar processo para empresa']) {
+            assert.ok(nav.includes(text), text);
+        }
+        assert.match(nav, /:href="route\(showRouteName, board\.id\)"/);
+        assert.match(nav, /<BoardOrderMenu v-if="isAdmin && canEdit/);
+        assert.match(read('resources/js/Components/Tasks/BoardOrderMenu.vue'), /route\('admin\.tarefas\.quadros\.reordenar'\)/);
+    });
+
+    it('o cabeçalho de cada quadro tem chevron e concentra as ações, com o excluir no menu ⋯ e confirmação', () => {
         const bar = read('resources/js/Components/Tasks/BoardHeader.vue');
         for (const text of [
             'Renomear quadro',
@@ -80,18 +145,20 @@ describe('Tarefas: estrutura da tela única', () => {
             'Convidar',
             'Partilhar com empresa',
             'Ver arquivados',
-            'Novo quadro interno',
-            'Ativar processo para empresa',
             'Cor de capa do quadro',
             'Excluir quadro',
             'Mais ações do quadro',
+            'Expandir quadro',
+            'Recolher quadro',
         ]) {
             assert.ok(bar.includes(text), text);
         }
         assert.match(bar, /role="toolbar"/);
         assert.match(bar, /overflow-x-auto/);
+        assert.match(bar, /:aria-expanded="expanded \? 'true' : 'false'"/);
         assert.match(bar, /async function deleteBoard\(\)[\s\S]*confirmDialog/);
-        assert.match(bar, /:can-reorder="isAdmin && canEdit"/);
+        assert.match(bar, /only: \['boards'\]/);
+        assert.doesNotMatch(bar, /BoardSwitcher|Novo quadro interno/);
     });
 
     it('Kanban ocupa a altura da tela e as colunas rolam por dentro', () => {
@@ -99,8 +166,11 @@ describe('Tarefas: estrutura da tela única', () => {
         assert.match(kanban, /fillHeight: \{ type: Boolean, default: false \}/);
         assert.match(kanban, /props\.fillHeight \|\| listCardCount\(list\) > LIST_SCROLL_AFTER_CARDS/);
         assert.match(kanban, /fillHeight \? 'max-h-full' : ''/);
-        const screen = read('resources/js/Components/Tasks/TaskBoardScreen.vue');
-        assert.match(screen, /:fill-height="Boolean\(kanbanHeight\)"/);
+        const section = read('resources/js/Components/Tasks/BoardSection.vue');
+        assert.match(section, /:fill-height="fillHeight"/);
+        assert.match(section, /height: 'min\(70vh, 46rem\)'/);
+        assert.match(kanban, /:group="`kanban-cards-\$\{boardPayload\.id\}`"/);
+        assert.match(kanban, /const scope = \(\) => rootEl\.value \?\? document;/);
     });
 
     it('cartão mostra a descrição recolhível e o nome das etiquetas', () => {

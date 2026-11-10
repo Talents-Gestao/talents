@@ -5,12 +5,14 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head } from '@inertiajs/vue3';
 
 /**
- * Tarefas (Admin): tela única. /admin/tarefas/quadros abre no último quadro usado (ou no primeiro favorito,
- * ou no primeiro da lista) e /admin/tarefas/quadros/{board} abre direto nesse quadro.
+ * Tarefas (Admin): tela única com todos os quadros empilhados e recolhíveis. /admin/tarefas/quadros expande
+ * os favoritos e o último quadro usado; /admin/tarefas/quadros/{board} expande esse quadro e rola até ele.
  */
-defineProps({
+const props = defineProps({
     boards: { type: Array, default: () => [] },
     boardPayload: { type: Object, default: null },
+    focusBoardId: { type: Number, default: null },
+    scrollToFocus: { type: Boolean, default: false },
     companyUsers: { type: Array, default: () => [] },
     teamUsers: { type: Array, default: () => [] },
     companies: { type: Array, default: () => [] },
@@ -20,10 +22,13 @@ defineProps({
 });
 
 const { canAdmin } = useAdminPermissions();
+
+const focusName = () =>
+    props.scrollToFocus ? props.boards.find((board) => board.id === props.focusBoardId)?.name : null;
 </script>
 
 <template>
-    <Head :title="boardPayload ? `Tarefas — ${boardPayload.name}` : 'Tarefas'" />
+    <Head :title="focusName() ? `Tarefas — ${focusName()}` : 'Tarefas'" />
 
     <AdminLayout>
         <TaskBoardScreen
@@ -31,6 +36,8 @@ const { canAdmin } = useAdminPermissions();
             :can-edit="canAdmin('tarefas', 'edit')"
             :boards="boards"
             :board-payload="boardPayload"
+            :focus-board-id="focusBoardId"
+            :scroll-to-focus="scrollToFocus"
             :company-users="companyUsers"
             :team-users="teamUsers"
             :companies="companies"
