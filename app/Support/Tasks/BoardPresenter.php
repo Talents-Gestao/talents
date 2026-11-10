@@ -21,8 +21,7 @@ final class BoardPresenter
         TaskBoard $board,
         bool $fullCardRelations = false,
         bool $includeArchived = false,
-    ): void
-    {
+    ): void {
         $cardWith = $fullCardRelations
             ? [
                 'company:id,name',
@@ -129,6 +128,73 @@ final class BoardPresenter
             'updated_at' => $board->updated_at?->toIso8601String(),
             'lists' => $lists,
         ];
+    }
+
+    /**
+     * Lista leve para o seletor de quadros da tela de Tarefas (sem listas nem cartões).
+     *
+     * @param  iterable<int, TaskBoard>  $boards  já filtrados e ordenados
+     * @param  array<int, array<string, mixed>>  $extra  campos extras por id de quadro
+     * @return Collection<int, array<string, mixed>>
+     */
+    public static function forSwitcher(iterable $boards, ?int $userId, array $extra = []): Collection
+    {
+        $starred = array_flip(self::starredBoardIds($userId));
+
+        return collect($boards)->map(fn (TaskBoard $board) => array_merge([
+            'id' => $board->id,
+            'name' => $board->name,
+            'description' => $board->description,
+            'cover_color' => $board->cover_color,
+            'company_id' => $board->company_id,
+            'company' => $board->company ? ['id' => $board->company->id, 'name' => $board->company->name] : null,
+            'is_internal' => $board->company_id === null,
+            'is_starred' => isset($starred[$board->id]),
+        ], $extra[$board->id] ?? []))->values();
+    }
+
+    /**
+     * Quadro inicial da tela de Tarefas: o último usado (se ainda estiver na lista),
+     * senão o primeiro favorito, senão o primeiro da lista.
+     *
+     * @param  iterable<int, array{id:int,is_starred?:bool}>  $boards
+     */
+    public static function resolveInitialBoardId(iterable $boards, mixed $lastBoardId): ?int
+    {
+        $boards = collect($boards);
+        $last = is_numeric($lastBoardId) ? (int) $lastBoardId : null;
+
+        if ($last !== null && $boards->contains(fn ($b) => (int) $b['id'] === $last)) {
+            return $last;
+        }
+
+        $first = $boards->first(fn ($b) => ! empty($b['is_starred'])) ?? $boards->first();
+
+        return $first ? (int) $first['id'] : null;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private static function starredBoardIds(?int $userId): array
+    {
+        if (! $userId) {
+            return [];
+        }
+
+        try {
+            if (! Schema::hasTable('task_board_user_favorites')) {
+                return [];
+            }
+
+            return DB::table('task_board_user_favorites')
+                ->where('user_id', $userId)
+                ->pluck('board_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        } catch (Throwable $e) {
+            return [];
+        }
     }
 
     public static function forAdmin(TaskBoard $board, bool $includeArchived = false): array

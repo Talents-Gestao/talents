@@ -11,6 +11,7 @@ use App\Models\TaskBoard;
 use App\Support\Tasks\BoardPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -66,23 +67,27 @@ class TaskBoardController extends Controller
         return $board;
     }
 
+    /** Sessão: último quadro aberto, para a tela de Tarefas reabrir nele. */
+    private const LAST_BOARD_SESSION_KEY = 'tasks.admin.last_board_id';
+
+    /**
+     * Tela única de Tarefas: abre direto no Kanban do último quadro usado (ou do primeiro favorito,
+     * ou do primeiro da lista). A troca de quadro acontece na própria tela, pela rota show.
+     */
     public function index(Request $request): Response
     {
         if (TaskBoard::query()->where('is_archived', false)->doesntExist()) {
             $this->ensureDefaultBoard($request->user()->id);
         }
 
-        $boards = TaskBoard::query()
-            ->where('is_archived', false)
-            ->orderByRaw('company_id is null desc')
-            ->orderBy('position')
-            ->orderBy('id')
-            ->get()
-            ->map(fn (TaskBoard $board) => BoardPresenter::forAdminIndex($board));
+        $boards = $this->switcherBoards($request);
+        $boardId = BoardPresenter::resolveInitialBoardId(
+            $boards,
+            $request->session()->get(self::LAST_BOARD_SESSION_KEY),
+        );
+        $board = TaskBoard::query()->findOrFail($boardId);
 
-        return Inertia::render('Admin/Tasks/Boards/Index', [
-            'boards' => $boards,
-        ]);
+        return $this->renderBoard($request, $board, $boards);
     }
 
     public function create(): Response
@@ -159,8 +164,35 @@ class TaskBoardController extends Controller
         return redirect()->route('admin.tarefas.quadros.index');
     }
 
+    /** Mesma tela única do index, já no quadro pedido (links, notificações e favoritos continuam valendo). */
     public function show(Request $request, TaskBoard $board): Response
     {
+        return $this->renderBoard($request, $board, $this->switcherBoards($request));
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function switcherBoards(Request $request): Collection
+    {
+        $boards = TaskBoard::query()
+            ->with('company:id,name')
+            ->where('is_archived', false)
+            ->orderByRaw('company_id is null desc')
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get();
+
+        return BoardPresenter::forSwitcher($boards, $request->user()?->id);
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $boards
+     */
+    private function renderBoard(Request $request, TaskBoard $board, Collection $boards): Response
+    {
+        $request->session()->put(self::LAST_BOARD_SESSION_KEY, $board->id);
+
         $includeArchived = $request->boolean('ver_arquivados');
         $payload = BoardPresenter::forAdmin($board, $includeArchived);
         $activity = $board->activityLogs()->with('actor:id,name')->latest()->limit(50)->get()->map(fn ($row) => [
@@ -176,7 +208,8 @@ class TaskBoardController extends Controller
         $teamUsers = BoardPresenter::allActiveTalentsTeamUsers();
         $companies = Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
-        return Inertia::render('Admin/Tasks/Boards/Show', [
+        return Inertia::render('Admin/Tasks/Boards/Index', [
+            'boards' => $boards,
             'boardPayload' => $payload,
             'activity' => $activity,
             'companyUsers' => $companyUsers,

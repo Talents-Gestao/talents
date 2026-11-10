@@ -44,7 +44,7 @@ function submit() {
             <ColorPresetPicker
                 v-model="form.cover_color"
                 label="Cor de capa"
-                hint="Aparece como faixa colorida na listagem de quadros."
+                hint="Aparece como faixa colorida no seletor de quadros e ao lado do nome."
             />
             <div class="flex flex-wrap gap-3">
                 <PrimaryButton :disabled="form.processing">Criar quadro</PrimaryButton>

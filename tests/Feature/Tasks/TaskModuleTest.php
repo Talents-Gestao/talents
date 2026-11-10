@@ -1374,7 +1374,7 @@ class TaskModuleTest extends TestCase
             ->get('/admin/tarefas/quadros/'.$board->id)
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('Admin/Tasks/Boards/Show')
+                ->component('Admin/Tasks/Boards/Index')
                 ->where('boardPayload.lists.0.cards.0.id', $card->id)
                 ->where('boardPayload.lists.0.cards.0.checklist_total', 2)
                 ->where('boardPayload.lists.0.cards.0.checklist_done', 1)

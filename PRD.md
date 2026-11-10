@@ -1105,10 +1105,9 @@ Feed externo por categoria (`NewsCategory`: RH, Empreendedorismo, Contabilidade,
 
 | Tela | Rota | Conteúdo |
 |------|------|----------|
-| Quadros | `/admin/tarefas/quadros` | «Quadros internos» e «Quadros por empresa», com prévia (`BoardIndexPreview`), favoritos e reordenação |
+| Tarefas (tela única) | `/admin/tarefas/quadros` e `/admin/tarefas/quadros/{board}` | Abre direto no Kanban (`KanbanBoard`) do quadro: em `/quadros`, o último usado (sessão), senão o primeiro favorito, senão o primeiro da lista; em `/quadros/{board}`, o quadro pedido (links, notificações e favoritos seguem valendo). Não há listagem nem botão «Abrir». Barra única do quadro (`BoardHeader`, uma linha; no celular rola na horizontal): seletor de quadros (`BoardSwitcher`: busca, favoritos primeiro, «Quadros internos» e «Quadros por empresa», reordenação por arrastar com `tarefas:edit`, troca sem recarregar a página), renomear, favoritar, selo Interno/empresa, membros + Convidar, Partilhar com empresa, Ver arquivados, Kanban/Lista, «Novo» (novo quadro interno, ativar processo, modelos de processo) e menu «⋯» (renomear, cor de capa, excluir quadro com confirmação). O Kanban ocupa a altura da janela (≥ 640 px), com rolagem horizontal entre colunas e vertical dentro de cada coluna. Cartão: etiquetas com nome, prazo, recorrência, progresso do checklist, comentários, anexos, membros e «Ver descrição» (oculta por padrão); edição completa no `CardModal` |
 | Novo quadro interno | `/admin/tarefas/quadros/create` | nome, descrição, cor |
 | Ativar processo para empresa | `/admin/tarefas/quadros/ativar` | escolhe empresa e processo; cria quadro da empresa (`InstantiateProcessTemplateForCompany`) |
-| Quadro | `/admin/tarefas/quadros/{board}` | Kanban (`KanbanBoard`), cabeçalho com membros e labels, modal do cartão (`CardModal`) |
 | Processos | `/admin/tarefas/processos` | «Modelos de processo»: criar, editar listas e cartões-modelo, ativar |
 
 #### 7.9.3 Regras do cartão
@@ -1962,7 +1961,7 @@ Os períodos aparecem no calendário estratégico para administradores (não par
 
 ### 9.11 Tarefas (`/client/tarefas`)
 
-**Acesso:** `tarefas`. **Páginas:** `Client/Tasks/Index` («Seus quadros») e `Show` (Kanban).
+**Acesso:** `tarefas`. **Página:** `Client/Tasks/Index`, tela única em `/client/tarefas` e `/client/tarefas/{board}`, com a mesma estrutura do Admin (7.9.2): abre direto no Kanban (último quadro usado, senão o primeiro favorito, senão o primeiro), barra única com seletor de quadros («Quadros da Talents» e «Quadros da empresa», favoritos primeiro), favoritar, membros e Kanban/Lista. Sem quadro visível, a tela mostra um aviso.
 
 O portal vê só os quadros da empresa e só os cartões visíveis ao portal (7.9.3). Pode editar título, descrição, datas e conclusão do cartão, mover entre listas permitidas, comentar com menções, anexar, marcar itens de checklist e favoritar quadros. Não cria quadros, listas nem processos.
 
@@ -3114,7 +3113,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | GET | `/admin/tarefas/quadros/ativar` | `admin.tarefas.quadros.ativar` | auth · admin.can:tarefas | `Admin/Tasks/Boards/Activate` |
 | GET | `/admin/tarefas/quadros/create` | `admin.tarefas.quadros.create` | auth · admin.can:tarefas | `Admin/Tasks/Boards/Create` |
 | POST | `/admin/tarefas/quadros/reordenar` | `admin.tarefas.quadros.reordenar` | auth · admin.can:tarefas · admin.can:tarefas,edit | — |
-| GET | `/admin/tarefas/quadros/{board}` | `admin.tarefas.quadros.show` | auth · admin.can:tarefas | `Admin/Tasks/Boards/Show` |
+| GET | `/admin/tarefas/quadros/{board}` | `admin.tarefas.quadros.show` | auth · admin.can:tarefas | `Admin/Tasks/Boards/Index` (tela única, no quadro pedido) |
 | PATCH | `/admin/tarefas/quadros/{board}` | `admin.tarefas.quadros.update` | auth · admin.can:tarefas | — |
 | DELETE | `/admin/tarefas/quadros/{board}` | `admin.tarefas.quadros.destroy` | auth · admin.can:tarefas | — |
 | POST | `/admin/tarefas/quadros/{board}/favoritar` | `admin.tarefas.quadros.favoritar` | auth · admin.can:tarefas | — |
@@ -3413,7 +3412,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/client/tarefas/cards/{card}/comentarios` | `client.tarefas.cards.comentarios.store` | auth · can.module:tarefas | — |
 | POST | `/client/tarefas/cards/{card}/mover` | `client.tarefas.cards.move` | auth · can.module:tarefas | — |
 | PATCH | `/client/tarefas/checklist-itens/{item}` | `client.tarefas.checklist-itens.update` | auth · can.module:tarefas | — |
-| GET | `/client/tarefas/{board}` | `client.tarefas.show` | auth · can.module:tarefas | `Client/Tasks/Show` |
+| GET | `/client/tarefas/{board}` | `client.tarefas.show` | auth · can.module:tarefas | `Client/Tasks/Index` (tela única, no quadro pedido) |
 | POST | `/client/tarefas/{board}/favoritar` | `client.tarefas.favoritar` | auth · can.module:tarefas | — |
 | DELETE | `/client/tarefas/{board}/favoritar` | `client.tarefas.desfavoritar` | auth · can.module:tarefas | — |
 
