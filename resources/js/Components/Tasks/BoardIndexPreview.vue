@@ -133,7 +133,8 @@ onUnmounted(() => {
 
         <div v-if="!board.lists?.length" class="text-sm text-slate-500">Nenhuma lista neste quadro.</div>
 
-        <div v-else class="flex gap-3 overflow-x-auto pb-1">
+        <!-- relative z-10: fica acima do link que cobre o card do quadro (rolagem, menus e cartões continuam interativos). -->
+        <div v-else class="relative z-10 flex gap-3 overflow-x-auto pb-1">
             <div
                 v-for="list in board.lists"
                 :key="list.id"
