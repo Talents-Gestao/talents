@@ -52,13 +52,17 @@ const MAIN_SCROLL_SELECTOR = '.app-shell-main-scroll';
 const BOARD_SCROLL_ATTR = 'data-kanban-board-scroll';
 const CARDS_SCROLL_ATTR = 'data-kanban-cards-scroll';
 
+/** Vários quadros na mesma tela: as consultas de rolagem ficam dentro deste Kanban. */
+const rootEl = ref(null);
+const scope = () => rootEl.value ?? document;
+
 let dragScrollSnapshot = null;
 
 function captureKanbanScroll() {
     const main = document.querySelector(MAIN_SCROLL_SELECTOR);
-    const board = document.querySelector(`[${BOARD_SCROLL_ATTR}]`);
+    const board = scope().querySelector(`[${BOARD_SCROLL_ATTR}]`);
     const columns = {};
-    document.querySelectorAll(`[${CARDS_SCROLL_ATTR}]`).forEach((el) => {
+    scope().querySelectorAll(`[${CARDS_SCROLL_ATTR}]`).forEach((el) => {
         const id = el.closest('[data-list-id]')?.dataset?.listId;
         if (id) {
             columns[id] = el.scrollTop;
@@ -82,11 +86,11 @@ function restoreKanbanScroll(snapshot) {
         if (main) {
             main.scrollTop = snapshot.main;
         }
-        const board = document.querySelector(`[${BOARD_SCROLL_ATTR}]`);
+        const board = scope().querySelector(`[${BOARD_SCROLL_ATTR}]`);
         if (board) {
             board.scrollLeft = snapshot.boardX;
         }
-        document.querySelectorAll(`[${CARDS_SCROLL_ATTR}]`).forEach((el) => {
+        scope().querySelectorAll(`[${CARDS_SCROLL_ATTR}]`).forEach((el) => {
             const id = el.closest('[data-list-id]')?.dataset?.listId;
             if (id != null && snapshot.columns[id] != null) {
                 el.scrollTop = snapshot.columns[id];
@@ -647,7 +651,7 @@ function expandList(list) {
 </script>
 
 <template>
-    <div :class="fillHeight ? 'flex h-full min-h-0 flex-col gap-2' : 'space-y-3'">
+    <div ref="rootEl" :class="fillHeight ? 'flex h-full min-h-0 flex-col gap-2' : 'space-y-3'">
         <div
             class="flex items-start gap-3 overflow-x-auto pb-3"
             :class="fillHeight ? 'min-h-0 flex-1' : ''"
@@ -752,7 +756,7 @@ function expandList(list) {
                 <VueDraggable
                     v-if="!isListCollapsed(list.id)"
                     v-model="list.cards"
-                    group="kanban-cards"
+                    :group="`kanban-cards-${boardPayload.id}`"
                     item-key="id"
                     :disabled="!isAdmin || list.is_archived"
                     data-kanban-cards-scroll

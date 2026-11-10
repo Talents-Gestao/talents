@@ -1105,7 +1105,7 @@ Feed externo por categoria (`NewsCategory`: RH, Empreendedorismo, Contabilidade,
 
 | Tela | Rota | Conteúdo |
 |------|------|----------|
-| Tarefas (tela única) | `/admin/tarefas/quadros` e `/admin/tarefas/quadros/{board}` | Abre direto no Kanban (`KanbanBoard`) do quadro: em `/quadros`, o último usado (sessão), senão o primeiro favorito, senão o primeiro da lista; em `/quadros/{board}`, o quadro pedido (links, notificações e favoritos seguem valendo). Não há listagem nem botão «Abrir». Barra única do quadro (`BoardHeader`, uma linha; no celular rola na horizontal): seletor de quadros (`BoardSwitcher`: busca, favoritos primeiro, «Quadros internos» e «Quadros por empresa», reordenação por arrastar com `tarefas:edit`, troca sem recarregar a página), renomear, favoritar, selo Interno/empresa, membros + Convidar, Partilhar com empresa, Ver arquivados, Kanban/Lista, «Novo» (novo quadro interno, ativar processo, modelos de processo) e menu «⋯» (renomear, cor de capa, excluir quadro com confirmação). O Kanban ocupa a altura da janela (≥ 640 px), com rolagem horizontal entre colunas e vertical dentro de cada coluna. Cartão: etiquetas com nome, prazo, recorrência, progresso do checklist, comentários, anexos, membros e «Ver descrição» (oculta por padrão); edição completa no `CardModal` |
+| Tarefas (tela única) | `/admin/tarefas/quadros` e `/admin/tarefas/quadros/{board}` | Todos os quadros na mesma tela, empilhados e recolhíveis, em grupos: «Favoritos» primeiro, depois «Quadros internos» e «Quadros por empresa» (cada quadro aparece uma vez), na ordem definida pela reordenação. Topo fixo (`TaskBoardsNav`): busca por nome do quadro, empresa ou descrição; atalhos para pular até cada quadro (Ctrl/Cmd+clique abre a rota do quadro em outra aba); «Expandir todos» / «Recolher todos»; «Ordenar» (arrastar dentro de cada grupo, com `tarefas:edit`); «Novo» (novo quadro interno, ativar processo, modelos de processo). Cada quadro (`BoardSection`) tem um cabeçalho de uma linha (`BoardHeader`; no celular rola na horizontal): chevron para recolher/expandir, nome (renomear), favoritar, selo Interno/empresa, «Ver descrição», membros + Convidar (quando o conteúdo já carregou), Partilhar com empresa, e, expandido, Ver arquivados e Kanban/Lista; menu «⋯» com renomear, cor de capa e excluir quadro (com confirmação). Recolhido, mostra um resumo em uma linha (listas, cartões por lista, % concluídos, atrasados, próximo prazo), calculado no servidor sem carregar cartões. Expandido, mostra o Kanban completo (`KanbanBoard`) ou a Lista; com alguma lista acima de 4 cartões, o Kanban tem altura máxima (70% da janela, a partir de 640 px) e as colunas rolam por dentro; o quadro rola na horizontal. Estado inicial: favoritos e o último quadro usado expandidos, os demais recolhidos; a escolha de cada quadro (expandido/recolhido e Kanban/Lista) fica guardada por usuário no navegador. Em `/quadros/{board}` o quadro pedido abre expandido e a tela rola até ele (links, notificações e favoritos seguem valendo). Carregamento sob demanda: a página traz a lista com os resumos e o conteúdo só do último quadro usado; o de cada quadro expandido é pedido quando ele chega perto da área visível, por recarga parcial do Inertia (prop `boardPayloads`, ids no cabeçalho `X-Task-Boards`, no máximo 12 por pedido, só ids que o usuário pode ver), com esqueleto enquanto carrega. Cartão: etiquetas com nome, prazo, recorrência, progresso do checklist, comentários, anexos, membros e «Ver descrição» (oculta por padrão); edição completa no `CardModal` |
 | Novo quadro interno | `/admin/tarefas/quadros/create` | nome, descrição, cor |
 | Ativar processo para empresa | `/admin/tarefas/quadros/ativar` | escolhe empresa e processo; cria quadro da empresa (`InstantiateProcessTemplateForCompany`) |
 | Processos | `/admin/tarefas/processos` | «Modelos de processo»: criar, editar listas e cartões-modelo, ativar |
@@ -1962,7 +1962,7 @@ Os períodos aparecem no calendário estratégico para administradores (não par
 
 ### 9.11 Tarefas (`/client/tarefas`)
 
-**Acesso:** `tarefas`. **Página:** `Client/Tasks/Index`, tela única em `/client/tarefas` e `/client/tarefas/{board}`, com a mesma estrutura do Admin (7.9.2): abre direto no Kanban (último quadro usado, senão o primeiro favorito, senão o primeiro), barra única com seletor de quadros («Quadros da Talents» e «Quadros da empresa», favoritos primeiro), favoritar, membros e Kanban/Lista. Sem quadro visível, a tela mostra um aviso.
+**Acesso:** `tarefas`. **Página:** `Client/Tasks/Index`, tela única em `/client/tarefas` e `/client/tarefas/{board}`, com a mesma estrutura do Admin (7.9.2): todos os quadros visíveis empilhados e recolhíveis («Favoritos», «Quadros da Talents» e «Quadros da empresa»), busca e atalhos no topo, Expandir/Recolher todos, resumo no estado recolhido e conteúdo carregado ao expandir. O resumo e o conteúdo contam só os cartões que a empresa vê (mesma regra da visibilidade cartão × lista; `company_user` fora dos membros do quadro vê só os cartões em que é membro) e só as listas com cartões visíveis. Cada quadro tem favoritar, membros e Kanban/Lista. Sem quadro visível, a tela mostra um aviso.
 
 O portal vê só os quadros da empresa e só os cartões visíveis ao portal (7.9.3). Pode editar título, descrição, datas e conclusão do cartão, mover entre listas permitidas, comentar com menções, anexar, marcar itens de checklist e favoritar quadros. Não cria quadros, listas nem processos.
 
@@ -3109,12 +3109,12 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/admin/tarefas/processos/{template}/ativar` | `admin.tarefas.processos.ativar` | auth · admin.can:tarefas | — |
 | GET | `/admin/tarefas/processos/{template}/edit` | `admin.tarefas.processos.edit` | auth · admin.can:tarefas | `Admin/Tasks/Processes/Edit` |
 | POST | `/admin/tarefas/processos/{template}/listas` | `admin.tarefas.processos.listas.store` | auth · admin.can:tarefas | — |
-| GET | `/admin/tarefas/quadros` | `admin.tarefas.quadros.index` | auth · admin.can:tarefas | `Admin/Tasks/Boards/Index` |
+| GET | `/admin/tarefas/quadros` | `admin.tarefas.quadros.index` | auth · admin.can:tarefas | `Admin/Tasks/Boards/Index` (todos os quadros; recarga parcial `boardPayloads` com o cabeçalho `X-Task-Boards`) |
 | POST | `/admin/tarefas/quadros` | `admin.tarefas.quadros.store` | auth · admin.can:tarefas | — |
 | GET | `/admin/tarefas/quadros/ativar` | `admin.tarefas.quadros.ativar` | auth · admin.can:tarefas | `Admin/Tasks/Boards/Activate` |
 | GET | `/admin/tarefas/quadros/create` | `admin.tarefas.quadros.create` | auth · admin.can:tarefas | `Admin/Tasks/Boards/Create` |
 | POST | `/admin/tarefas/quadros/reordenar` | `admin.tarefas.quadros.reordenar` | auth · admin.can:tarefas · admin.can:tarefas,edit | — |
-| GET | `/admin/tarefas/quadros/{board}` | `admin.tarefas.quadros.show` | auth · admin.can:tarefas | `Admin/Tasks/Boards/Index` (tela única, no quadro pedido) |
+| GET | `/admin/tarefas/quadros/{board}` | `admin.tarefas.quadros.show` | auth · admin.can:tarefas | `Admin/Tasks/Boards/Index` (tela única, com o quadro pedido expandido) |
 | PATCH | `/admin/tarefas/quadros/{board}` | `admin.tarefas.quadros.update` | auth · admin.can:tarefas | — |
 | DELETE | `/admin/tarefas/quadros/{board}` | `admin.tarefas.quadros.destroy` | auth · admin.can:tarefas | — |
 | POST | `/admin/tarefas/quadros/{board}/favoritar` | `admin.tarefas.quadros.favoritar` | auth · admin.can:tarefas | — |
@@ -3406,14 +3406,14 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 
 | Método | URI | Nome | Proteção | Tela |
 |--------|-----|------|----------|------|
-| GET | `/client/tarefas` | `client.tarefas.index` | auth · can.module:tarefas | `Client/Tasks/Index` |
+| GET | `/client/tarefas` | `client.tarefas.index` | auth · can.module:tarefas | `Client/Tasks/Index` (todos os quadros visíveis; recarga parcial `boardPayloads` com o cabeçalho `X-Task-Boards`) |
 | DELETE | `/client/tarefas/anexos/{attachment}` | `client.tarefas.anexos.destroy` | auth · can.module:tarefas | — |
 | PATCH | `/client/tarefas/cards/{card}` | `client.tarefas.cards.update` | auth · can.module:tarefas | — |
 | POST | `/client/tarefas/cards/{card}/anexos` | `client.tarefas.cards.anexos.store` | auth · can.module:tarefas | — |
 | POST | `/client/tarefas/cards/{card}/comentarios` | `client.tarefas.cards.comentarios.store` | auth · can.module:tarefas | — |
 | POST | `/client/tarefas/cards/{card}/mover` | `client.tarefas.cards.move` | auth · can.module:tarefas | — |
 | PATCH | `/client/tarefas/checklist-itens/{item}` | `client.tarefas.checklist-itens.update` | auth · can.module:tarefas | — |
-| GET | `/client/tarefas/{board}` | `client.tarefas.show` | auth · can.module:tarefas | `Client/Tasks/Index` (tela única, no quadro pedido) |
+| GET | `/client/tarefas/{board}` | `client.tarefas.show` | auth · can.module:tarefas | `Client/Tasks/Index` (tela única, com o quadro pedido expandido) |
 | POST | `/client/tarefas/{board}/favoritar` | `client.tarefas.favoritar` | auth · can.module:tarefas | — |
 | DELETE | `/client/tarefas/{board}/favoritar` | `client.tarefas.desfavoritar` | auth · can.module:tarefas | — |
 

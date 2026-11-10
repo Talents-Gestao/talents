@@ -4,6 +4,7 @@ namespace App\Support\Tasks;
 
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
+use App\Models\TaskList;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -151,6 +152,141 @@ final class BoardPresenter
             'is_internal' => $board->company_id === null,
             'is_starred' => isset($starred[$board->id]),
         ], $extra[$board->id] ?? []))->values();
+    }
+
+    /**
+     * Resumo de cada quadro para o estado recolhido da tela de Tarefas, em duas consultas para todos:
+     * listas ativas com contagem de cartões, concluídos, atrasados e próximo prazo.
+     * No portal ($companyId informado) conta só os cartões que a empresa vê (mesma regra de forClient)
+     * e só as listas com cartões visíveis.
+     *
+     * @param  Collection<int, TaskBoard>  $boards
+     * @return array<int, array<string, mixed>> por id de quadro: lists_count, cards_count e summary
+     */
+    public static function summaries(Collection $boards, ?int $companyId = null, ?User $user = null): array
+    {
+        if ($boards->isEmpty()) {
+            return [];
+        }
+
+        $lists = TaskList::query()
+            ->whereIn('board_id', $boards->pluck('id'))
+            ->where('is_archived', false)
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get(['id', 'board_id', 'name', 'color']);
+
+        $cardsQuery = TaskCard::query()
+            ->whereIn('list_id', $lists->pluck('id'))
+            ->where('is_archived', false);
+
+        if ($companyId !== null) {
+            $cardsQuery->visibleToCompany($companyId);
+
+            if ($user && $user->isCompanyUser()) {
+                $memberOf = DB::table('task_board_members')
+                    ->where('user_id', $user->id)
+                    ->whereIn('board_id', $boards->pluck('id'))
+                    ->pluck('board_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+                $restrictedBoardIds = $boards->pluck('id')->diff($memberOf);
+                $restrictedListIds = $lists->whereIn('board_id', $restrictedBoardIds)->pluck('id');
+
+                if ($restrictedListIds->isNotEmpty()) {
+                    $cardsQuery->where(fn (Builder $q) => $q
+                        ->whereNotIn('list_id', $restrictedListIds)
+                        ->orWhereHas('members', fn (Builder $m) => $m->where('users.id', $user->id)));
+                }
+            }
+        }
+
+        $cardsByList = $cardsQuery->get(['id', 'list_id', 'due_date', 'completed_at'])->groupBy('list_id');
+        $today = now()->toDateString();
+        $soonLimit = now()->addDays(7)->toDateString();
+
+        $result = [];
+        foreach ($boards as $board) {
+            $boardLists = [];
+            $total = 0;
+            $completed = 0;
+            $overdue = 0;
+            $dueSoon = 0;
+            $nextDue = null;
+
+            foreach ($lists->where('board_id', $board->id) as $list) {
+                $cards = $cardsByList->get($list->id, collect());
+                if ($companyId !== null && $cards->isEmpty()) {
+                    continue;
+                }
+
+                $listCompleted = 0;
+                foreach ($cards as $card) {
+                    if ($card->completed_at !== null) {
+                        $listCompleted++;
+
+                        continue;
+                    }
+                    $due = $card->due_date?->toDateString();
+                    if ($due === null) {
+                        continue;
+                    }
+                    if ($due < $today) {
+                        $overdue++;
+                    } else {
+                        $nextDue = $nextDue === null || $due < $nextDue ? $due : $nextDue;
+                        if ($due <= $soonLimit) {
+                            $dueSoon++;
+                        }
+                    }
+                }
+
+                $total += $cards->count();
+                $completed += $listCompleted;
+                $boardLists[] = [
+                    'id' => $list->id,
+                    'name' => $list->name,
+                    'color' => $list->color,
+                    'cards_count' => $cards->count(),
+                    'completed_count' => $listCompleted,
+                ];
+            }
+
+            $result[$board->id] = [
+                'lists_count' => count($boardLists),
+                'cards_count' => $total,
+                'summary' => [
+                    'lists' => $boardLists,
+                    'completed_count' => $completed,
+                    'overdue_count' => $overdue,
+                    'due_soon_count' => $dueSoon,
+                    'next_due_date' => $nextDue,
+                ],
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Ids pedidos pela tela de Tarefas num cabeçalho (ex.: «3,5,8»), só os que estão em $allowedIds.
+     *
+     * @param  iterable<int, int>  $allowedIds
+     * @return array<int, int>
+     */
+    public static function requestedBoardIds(?string $header, iterable $allowedIds, int $limit = 12): array
+    {
+        $allowed = array_flip(array_map('intval', collect($allowedIds)->all()));
+
+        return collect(explode(',', (string) $header))
+            ->map(fn ($id) => trim($id))
+            ->filter(fn ($id) => ctype_digit($id))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => isset($allowed[$id]))
+            ->unique()
+            ->take($limit)
+            ->values()
+            ->all();
     }
 
     /**

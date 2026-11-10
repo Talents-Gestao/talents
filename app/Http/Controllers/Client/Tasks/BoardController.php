@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Client\Tasks;
 
 use App\Http\Controllers\Controller;
 use App\Models\TaskBoard;
-use App\Models\TaskCard;
 use App\Support\Tasks\BoardPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -13,22 +12,41 @@ use Inertia\Response;
 
 class BoardController extends Controller
 {
-    /** Tela única de Tarefas: abre direto no último quadro usado, no primeiro favorito ou no primeiro da lista. */
+    /** Cabeçalho da tela de Tarefas com os quadros a carregar (só os expandidos, sob demanda). */
+    public const BOARDS_HEADER = 'X-Task-Boards';
+
+    /** Cabeçalho com os quadros (entre os pedidos) que mostram itens arquivados. */
+    public const ARCHIVED_HEADER = 'X-Task-Boards-Archived';
+
+    /** Cabeçalho com o quadro que o usuário acabou de abrir (vira o «último usado»). */
+    public const OPENED_HEADER = 'X-Task-Board-Opened';
+
+    /**
+     * Tela única de Tarefas: todos os quadros visíveis empilhados. O último usado (ou o primeiro favorito,
+     * ou o primeiro da lista) já vem com o conteúdo; os demais carregam ao expandir.
+     */
     public function index(Request $request): Response
     {
-        $boards = $this->visibleBoards($request);
-        $boardId = BoardPresenter::resolveInitialBoardId($boards, $request->session()->get($this->lastBoardSessionKey($request)));
-        $board = $boardId ? TaskBoard::query()->find($boardId) : null;
+        $models = $this->visibleBoardModels($request);
+        $light = BoardPresenter::forSwitcher($models, $request->user()->id);
+        $this->rememberOpenedBoard($request, $light->pluck('id'));
+        $boardId = BoardPresenter::resolveInitialBoardId($light, $request->session()->get($this->lastBoardSessionKey($request)));
 
-        return $this->renderBoard($request, $board, $boards);
+        return $this->renderScreen($request, $models, $boardId ? $models->firstWhere('id', $boardId) : null, false);
     }
 
-    /** Mesma tela única do index, já no quadro pedido (links e notificações continuam valendo). */
+    /** Mesma tela do index, com este quadro expandido e rolado até ele (links e notificações continuam valendo). */
     public function show(Request $request, TaskBoard $board): Response
     {
         $this->authorize('view', $board);
 
-        return $this->renderBoard($request, $board, $this->visibleBoards($request));
+        $models = $this->visibleBoardModels($request);
+        if (! $request->header('X-Inertia-Partial-Data')) {
+            $request->session()->put($this->lastBoardSessionKey($request), $board->id);
+        }
+        $this->rememberOpenedBoard($request, $models->pluck('id'));
+
+        return $this->renderScreen($request, $models, $models->firstWhere('id', $board->id) ?? $board, true);
     }
 
     private function lastBoardSessionKey(Request $request): string
@@ -37,30 +55,52 @@ class BoardController extends Controller
     }
 
     /**
-     * @param  Collection<int, array<string, mixed>>  $boards
+     * @param  Collection<int, int>  $allowedIds
      */
-    private function renderBoard(Request $request, ?TaskBoard $board, Collection $boards): Response
+    private function rememberOpenedBoard(Request $request, Collection $allowedIds): void
+    {
+        $opened = BoardPresenter::requestedBoardIds($request->header(self::OPENED_HEADER), $allowedIds, 1);
+        if ($opened !== []) {
+            $request->session()->put($this->lastBoardSessionKey($request), $opened[0]);
+        }
+    }
+
+    /**
+     * Props em closures: as recargas parciais (só boardPayloads, ou boards) não calculam o resto.
+     *
+     * @param  Collection<int, TaskBoard>  $models
+     */
+    private function renderScreen(Request $request, Collection $models, ?TaskBoard $focus, bool $scrollToFocus): Response
     {
         $user = $request->user();
         $companyId = (int) $user->company_id;
 
-        if ($board) {
-            $request->session()->put($this->lastBoardSessionKey($request), $board->id);
-        }
-
         return Inertia::render('Client/Tasks/Index', [
-            'boards' => $boards,
-            'boardPayload' => $board ? BoardPresenter::forClient($board, $companyId, $user) : null,
-            'companyUsers' => BoardPresenter::companyUsersForMentions($companyId),
+            'boards' => fn () => BoardPresenter::forSwitcher(
+                $models,
+                $user->id,
+                BoardPresenter::summaries($models, $companyId, $user),
+            ),
+            'boardPayload' => fn () => $focus ? BoardPresenter::forClient($focus, $companyId, $user) : null,
+            'boardPayloads' => function () use ($request, $models, $companyId, $user) {
+                $ids = BoardPresenter::requestedBoardIds($request->header(self::BOARDS_HEADER), $models->pluck('id'));
+
+                return collect($ids)
+                    ->map(fn (int $id) => BoardPresenter::forClient($models->firstWhere('id', $id), $companyId, $user))
+                    ->values();
+            },
+            'focusBoardId' => $focus?->id,
+            'scrollToFocus' => $scrollToFocus,
+            'companyUsers' => fn () => BoardPresenter::companyUsersForMentions($companyId),
         ]);
     }
 
     /**
-     * Quadros que o usuário do portal pode ver, na ordem da Talents, com contagem de cartões visíveis.
+     * Quadros que o usuário do portal pode ver, na ordem da Talents.
      *
-     * @return Collection<int, array<string, mixed>>
+     * @return Collection<int, TaskBoard>
      */
-    private function visibleBoards(Request $request): Collection
+    private function visibleBoardModels(Request $request): Collection
     {
         $user = $request->user();
         $companyId = (int) $user->company_id;
@@ -72,9 +112,6 @@ class BoardController extends Controller
                     ->orWhere('company_id', $companyId);
             })
             ->with(['company:id,name'])
-            ->withCount([
-                'lists' => fn ($q) => $q->where('is_archived', false),
-            ])
             ->orderByRaw('company_id is null desc')
             ->orderBy('position')
             ->orderBy('id');
@@ -83,28 +120,9 @@ class BoardController extends Controller
             $boardsQuery->accessibleByCompanyUser($user->id, $companyId);
         }
 
-        $boards = $boardsQuery
+        return $boardsQuery
             ->get()
             ->filter(fn (TaskBoard $board) => $user->can('view', $board))
             ->values();
-
-        $extra = [];
-        foreach ($boards as $board) {
-            $cardsQuery = TaskCard::query()
-                ->whereHas('list', fn ($q) => $q->where('board_id', $board->id)->where('is_archived', false))
-                ->where('is_archived', false)
-                ->visibleToCompany($companyId);
-
-            if ($user->isCompanyUser() && ! $board->hasMember($user->id)) {
-                $cardsQuery->whereHas('members', fn ($q) => $q->where('users.id', $user->id));
-            }
-
-            $extra[$board->id] = [
-                'lists_count' => $board->lists_count,
-                'cards_count' => $cardsQuery->count(),
-            ];
-        }
-
-        return BoardPresenter::forSwitcher($boards, $user->id, $extra);
     }
 }

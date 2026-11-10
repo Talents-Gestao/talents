@@ -1,22 +1,26 @@
 <script setup>
-import BoardHeader from '@/Components/Tasks/BoardHeader.vue';
+import BoardSection from '@/Components/Tasks/BoardSection.vue';
 import CardModal from '@/Components/Tasks/CardModal.vue';
-import KanbanBoard from '@/Components/Tasks/KanbanBoard.vue';
-import { confirmDialog } from '@/composables/useConfirmDialog';
-import { formatDateNumeric, formatRelativeDate } from '@/utils/dateOnly';
-import { router } from '@inertiajs/vue3';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import TaskBoardsNav from '@/Components/Tasks/TaskBoardsNav.vue';
+import { boardSections, chunkIds, isBoardExpanded } from '@/utils/taskBoards';
+import { router, usePage } from '@inertiajs/vue3';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowReactive, watch } from 'vue';
 
 /**
- * Tela única de Tarefas (Admin e portal): barra compacta do quadro + Kanban/Lista do quadro ativo.
- * A troca de quadro é uma visita Inertia parcial à rota show (a URL acompanha o quadro aberto).
+ * Tela única de Tarefas (Admin e portal): todos os quadros visíveis empilhados, cada um recolhível.
+ * O servidor manda a lista com o resumo de cada quadro e o conteúdo só do último usado (`boardPayload`);
+ * o conteúdo dos demais é pedido ao expandir, por recarga parcial (`boardPayloads`, cabeçalho X-Task-Boards).
  */
 const props = defineProps({
     isAdmin: { type: Boolean, default: false },
-    /** Admin com tarefas:edit (reordenar quadros). */
+    /** Admin com tarefas:edit (ordenar quadros). */
     canEdit: { type: Boolean, default: false },
     boards: { type: Array, default: () => [] },
+    /** Conteúdo do quadro inicial (último usado, ou o da rota /{board}). */
     boardPayload: { type: Object, default: null },
+    focusBoardId: { type: Number, default: null },
+    /** Rota /{board}: expande e rola até o quadro. */
+    scrollToFocus: { type: Boolean, default: false },
     companyUsers: { type: Array, default: () => [] },
     teamUsers: { type: Array, default: () => [] },
     companies: { type: Array, default: () => [] },
@@ -26,37 +30,226 @@ const props = defineProps({
     emptyMessage: { type: String, default: 'Nenhum quadro disponível.' },
 });
 
-/** Props recarregadas ao atualizar ou trocar de quadro; usuários, empresas e opções ficam como estão. */
-const BOARD_PROPS = ['boardPayload', 'boards', 'activity'];
-const VIEW_MODE_KEY = props.isAdmin ? 'talents-tarefas-view-mode' : 'talents-client-tarefas-view-mode';
+const BOARDS_HEADER = 'X-Task-Boards';
+const ARCHIVED_HEADER = 'X-Task-Boards-Archived';
+const OPENED_HEADER = 'X-Task-Board-Opened';
+const BATCH_SIZE = 6;
 
-function readViewMode() {
+/* Preferências por usuário (expandido/recolhido e Kanban/Lista de cada quadro). */
+const page = usePage();
+const STORAGE_KEY = `talents-tarefas-quadros:${props.isAdmin ? 'admin' : 'client'}:${page.props.auth?.user?.id ?? 'anon'}`;
+const LEGACY_VIEW_KEY = props.isAdmin ? 'talents-tarefas-view-mode' : 'talents-client-tarefas-view-mode';
+
+function readPrefs() {
     try {
-        return localStorage.getItem(VIEW_MODE_KEY) === 'lista' ? 'lista' : 'kanban';
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        return {
+            expanded: parsed?.expanded && typeof parsed.expanded === 'object' ? parsed.expanded : {},
+            view: parsed?.view && typeof parsed.view === 'object' ? parsed.view : {},
+        };
+    } catch (_e) {
+        return { expanded: {}, view: {} };
+    }
+}
+
+function readDefaultView() {
+    try {
+        return localStorage.getItem(LEGACY_VIEW_KEY) === 'lista' ? 'lista' : 'kanban';
     } catch (_e) {
         return 'kanban';
     }
 }
 
-const viewMode = ref(readViewMode());
-watch(viewMode, (value) => {
+const prefs = reactive(readPrefs());
+const defaultView = readDefaultView();
+
+function savePrefs() {
     try {
-        localStorage.setItem(VIEW_MODE_KEY, value);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
     } catch (_e) {
         // modo privado / cota: segue sem lembrar
     }
+}
+
+const isExpanded = (board) => isBoardExpanded(board, prefs.expanded, props.focusBoardId);
+const viewModeOf = (id) => (prefs.view[id] === 'lista' ? 'lista' : prefs.view[id] === 'kanban' ? 'kanban' : defaultView);
+
+function setViewMode(id, mode) {
+    prefs.view[id] = mode;
+    savePrefs();
+}
+
+/* Conteúdo carregado por quadro (id → payload), estado de carga e quadros com arquivados à mostra. */
+const payloads = shallowReactive({});
+const loading = reactive({});
+const failed = reactive({});
+const archived = reactive(new Set(props.boardPayload?.show_archived ? [props.boardPayload.id] : []));
+
+watch(
+    () => props.boardPayload,
+    (payload) => {
+        if (payload?.id && Boolean(payload.show_archived) === archived.has(payload.id)) {
+            payloads[payload.id] = payload;
+        }
+    },
+    { immediate: true },
+);
+
+function load(ids, { withBoards = false, opened = null } = {}) {
+    const list = ids.map(Number).filter((id) => Number.isFinite(id));
+    if (!list.length) {
+        return;
+    }
+    list.forEach((id) => {
+        loading[id] = true;
+        delete failed[id];
+    });
+
+    const headers = { [BOARDS_HEADER]: list.join(',') };
+    const withArchived = list.filter((id) => archived.has(id));
+    if (withArchived.length) {
+        headers[ARCHIVED_HEADER] = withArchived.join(',');
+    }
+    if (opened) {
+        headers[OPENED_HEADER] = String(opened);
+    }
+
+    let received = [];
+    router.reload({
+        only: withBoards ? ['boardPayloads', 'boards'] : ['boardPayloads'],
+        headers,
+        onSuccess: (response) => {
+            received = response.props.boardPayloads || [];
+            received.forEach((payload) => {
+                payloads[payload.id] = payload;
+            });
+        },
+        onFinish: () => {
+            const got = new Set(received.map((payload) => Number(payload.id)));
+            list.forEach((id) => {
+                delete loading[id];
+                if (!got.has(id) && !payloads[id]) {
+                    failed[id] = true;
+                }
+            });
+        },
+    });
+}
+
+/* Pedidos das seções que ficaram visíveis e expandidas, juntos em lotes. */
+const queued = new Set();
+let flushTimer = null;
+
+function requestPayload(id) {
+    if (loading[id] || queued.has(id)) {
+        return;
+    }
+    queued.add(Number(id));
+    clearTimeout(flushTimer);
+    flushTimer = setTimeout(() => {
+        const ids = [...queued].filter((boardId) => !loading[boardId]);
+        queued.clear();
+        chunkIds(ids, BATCH_SIZE).forEach((chunk) => load(chunk));
+    }, 40);
+}
+
+onBeforeUnmount(() => clearTimeout(flushTimer));
+
+/** Recarrega um quadro (depois de editar) e a lista de quadros (resumo, nome, cor). */
+function refresh(id) {
+    load([id], { withBoards: true });
+}
+
+function toggle(id) {
+    const board = props.boards.find((b) => Number(b.id) === Number(id));
+    if (!board) return;
+    const open = !isExpanded(board);
+    prefs.expanded[id] = open;
+    savePrefs();
+    if (open && !loading[id]) {
+        if (payloads[id]) {
+            return;
+        }
+        load([id], { opened: id });
+    }
+}
+
+function toggleArchived(id) {
+    if (archived.has(id)) {
+        archived.delete(id);
+    } else {
+        archived.add(id);
+    }
+    load([id]);
+}
+
+/* Busca, seções e navegação. */
+const search = ref('');
+const sections = computed(() => boardSections(props.boards, search.value));
+const visibleBoards = computed(() => [...sections.value.favorites, ...sections.value.internal, ...sections.value.company]);
+
+const groupLabels = computed(() =>
+    props.isAdmin
+        ? { favorites: 'Favoritos', internal: 'Quadros internos', company: 'Quadros por empresa' }
+        : { favorites: 'Favoritos', internal: 'Quadros da Talents', company: 'Quadros da empresa' },
+);
+
+const groups = computed(() =>
+    ['favorites', 'internal', 'company']
+        .map((key) => ({ key, label: groupLabels.value[key], boards: sections.value[key] }))
+        .filter((group) => group.boards.length),
+);
+
+function setAll(open) {
+    visibleBoards.value.forEach((board) => {
+        prefs.expanded[board.id] = open;
+    });
+    savePrefs();
+}
+
+const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+function scrollToBoard(id, { focus = true } = {}) {
+    nextTick(() => {
+        const el = document.getElementById(`quadro-${id}`);
+        if (!el) return;
+        el.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+        if (focus) {
+            el.querySelector('[data-board-toggle]')?.focus({ preventScroll: true });
+        }
+    });
+}
+
+function jump(id) {
+    const board = props.boards.find((b) => Number(b.id) === Number(id));
+    if (board && !isExpanded(board)) {
+        toggle(id);
+    }
+    scrollToBoard(id);
+}
+
+onMounted(() => {
+    if (props.scrollToFocus && props.focusBoardId) {
+        prefs.expanded[props.focusBoardId] = true;
+        savePrefs();
+        scrollToBoard(props.focusBoardId, { focus: false });
+    }
 });
 
+/* Modal do cartão (um para a tela toda, com o quadro do cartão aberto). */
 const modalOpen = ref(false);
 const selectedCard = ref(null);
+const selectedBoardId = ref(null);
+const modalPayload = computed(() => (selectedBoardId.value ? payloads[selectedBoardId.value] ?? null : null));
 
-function openCard(card) {
+function openCard(boardId, card) {
+    selectedBoardId.value = boardId;
     selectedCard.value = card;
     modalOpen.value = true;
 }
 
 function syncSelectedCard(cardId) {
-    const freshCard = (props.boardPayload?.lists || [])
+    const freshCard = (modalPayload.value?.lists || [])
         .flatMap((list) => list.cards || [])
         .find((card) => Number(card.id) === Number(cardId));
 
@@ -64,112 +257,11 @@ function syncSelectedCard(cardId) {
         selectedCard.value = freshCard;
     }
 }
-
-const showArchived = computed(() => Boolean(props.boardPayload?.show_archived));
-
-function visitBoard(params) {
-    const main = document.querySelector('.app-shell-main-scroll');
-    const mainTop = main?.scrollTop ?? 0;
-    router.get(route(props.showRouteName, props.boardPayload.id), params, {
-        preserveScroll: true,
-        preserveState: true,
-        only: BOARD_PROPS,
-        onFinish: () => {
-            requestAnimationFrame(() => {
-                const el = document.querySelector('.app-shell-main-scroll');
-                if (el) {
-                    el.scrollTop = mainTop;
-                }
-            });
-        },
-    });
-}
-
-function refreshBoard() {
-    visitBoard(showArchived.value ? { ver_arquivados: 1 } : {});
-}
-
-function toggleShowArchived() {
-    visitBoard(showArchived.value ? {} : { ver_arquivados: 1 });
-}
-
-async function deleteListCard(card, event) {
-    event?.stopPropagation?.();
-    const title = card.title || 'esta tarefa';
-    if (
-        !(await confirmDialog(
-            `Excluir "${title}"?\n\nA tarefa e todos os seus anexos, comentários e checklists serão removidos.`,
-        ))
-    ) {
-        return;
-    }
-    router.delete(route('admin.tarefas.cards.destroy', card.id), {
-        preserveScroll: true,
-        onSuccess: () => refreshBoard(),
-    });
-}
-
-const listCards = computed(() =>
-    (props.boardPayload?.lists || []).flatMap((list) =>
-        (list.cards || []).map((card) => ({
-            ...card,
-            list_name: list.name,
-        })),
-    ),
-);
-
-function formatDateTitle(value) {
-    if (!value) return undefined;
-    const relative = formatRelativeDate(value);
-    const absolute = formatDateNumeric(value);
-    if (!absolute || relative === absolute) return absolute;
-    return `${relative} (${absolute})`;
-}
-
-/* Kanban do tamanho da janela (a partir de 640px): as colunas rolam por dentro e o quadro na horizontal. */
-const FILL_MIN_WIDTH = 640;
-const FILL_MIN_HEIGHT = 360;
-const kanbanWrap = ref(null);
-const kanbanHeight = ref(null);
-
-function measureKanban() {
-    const el = kanbanWrap.value;
-    if (!el || window.innerWidth < FILL_MIN_WIDTH) {
-        kanbanHeight.value = null;
-        return;
-    }
-    // Topo do Kanban no documento (quem rola pode ser a janela ou o <main> do layout).
-    const main = el.closest('.app-shell-main-scroll');
-    const top = el.getBoundingClientRect().top + window.scrollY + (main?.scrollTop ?? 0);
-    const bottomGap = main ? Number.parseFloat(getComputedStyle(main).paddingBottom) || 0 : 16;
-    kanbanHeight.value = Math.max(FILL_MIN_HEIGHT, Math.floor(window.innerHeight - top - bottomGap - 8));
-}
-
-function remeasure() {
-    nextTick(() => requestAnimationFrame(measureKanban));
-}
-
-onMounted(() => {
-    remeasure();
-    window.addEventListener('resize', measureKanban);
-});
-
-onBeforeUnmount(() => window.removeEventListener('resize', measureKanban));
-
-watch(
-    () => props.boardPayload?.id,
-    () => {
-        modalOpen.value = false;
-        selectedCard.value = null;
-        remeasure();
-    },
-);
-watch(viewMode, remeasure);
 </script>
 
 <template>
     <div class="space-y-3" data-task-board-screen>
-        <h1 class="sr-only">Tarefas{{ boardPayload ? ` — ${boardPayload.name}` : '' }}</h1>
+        <h1 class="sr-only">Tarefas</h1>
 
         <div
             v-if="$page.props.flash?.success"
@@ -178,91 +270,53 @@ watch(viewMode, remeasure);
             {{ $page.props.flash.success }}
         </div>
 
-        <template v-if="boardPayload">
-            <BoardHeader
-                :key="boardPayload.id"
-                v-model:view-mode="viewMode"
-                :board-payload="boardPayload"
-                :boards="boards"
+        <template v-if="boards.length">
+            <TaskBoardsNav
+                v-model:search="search"
+                :boards="visibleBoards"
+                :all-boards="boards"
                 :is-admin="isAdmin"
                 :can-edit="canEdit"
                 :show-route-name="showRouteName"
-                :show-archived="showArchived"
-                :company-users="companyUsers"
-                :team-users="teamUsers"
-                :companies="companies"
-                @refresh="refreshBoard"
-                @toggle-archived="toggleShowArchived"
+                @jump="jump"
+                @expand-all="setAll(true)"
+                @collapse-all="setAll(false)"
             />
 
-            <div
-                v-if="viewMode === 'kanban'"
-                ref="kanbanWrap"
-                :style="kanbanHeight ? { height: `${kanbanHeight}px` } : {}"
-                data-task-kanban-fill
-            >
-                <KanbanBoard
-                    :key="boardPayload.id"
-                    :board-payload="boardPayload"
+            <section v-for="group in groups" :key="group.key" class="space-y-2" :aria-label="group.label">
+                <h2 class="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{{ group.label }}</h2>
+                <BoardSection
+                    v-for="board in group.boards"
+                    :key="board.id"
+                    :board="board"
+                    :payload="payloads[board.id] ?? null"
+                    :expanded="isExpanded(board)"
+                    :loading="Boolean(loading[board.id])"
+                    :failed="Boolean(failed[board.id])"
+                    :view-mode="viewModeOf(board.id)"
+                    :show-archived="archived.has(board.id)"
                     :is-admin="isAdmin"
+                    :company-users="companyUsers"
+                    :team-users="teamUsers"
                     :companies="companies"
-                    :fill-height="Boolean(kanbanHeight)"
+                    @toggle="toggle"
+                    @need-payload="requestPayload"
+                    @refresh="refresh"
                     @open-card="openCard"
-                    @refresh="refreshBoard"
+                    @update:view-mode="setViewMode(board.id, $event)"
+                    @toggle-archived="toggleArchived"
                 />
-            </div>
+            </section>
 
-            <div v-else class="overflow-x-auto rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-                <table class="min-w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b border-slate-200 text-slate-600">
-                            <th class="px-2 py-2">Tarefa</th>
-                            <th class="px-2 py-2">Coluna</th>
-                            <th v-if="isAdmin" class="px-2 py-2">Cliente</th>
-                            <th class="px-2 py-2">Vencimento</th>
-                            <th class="px-2 py-2">Status</th>
-                            <th v-if="isAdmin" class="w-24 px-2 py-2 text-right">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr
-                            v-for="card in listCards"
-                            :key="card.id"
-                            class="cursor-pointer border-b border-slate-100 hover:bg-slate-50"
-                            @click="openCard(card)"
-                        >
-                            <td class="px-2 py-2 font-medium text-slate-900">{{ card.title }}</td>
-                            <td class="px-2 py-2 text-slate-600">{{ card.list_name }}</td>
-                            <td v-if="isAdmin" class="px-2 py-2 text-slate-600">{{ card.company?.name || '—' }}</td>
-                            <td class="px-2 py-2 text-slate-600" :title="formatDateTitle(card.due_date)">
-                                {{ formatRelativeDate(card.due_date) }}
-                            </td>
-                            <td class="px-2 py-2 text-slate-600">
-                                {{ card.completed_at ? 'Concluída' : 'Aberta' }}
-                            </td>
-                            <td v-if="isAdmin" class="px-2 py-2 text-right">
-                                <button
-                                    type="button"
-                                    class="text-xs font-medium text-rose-600 hover:underline"
-                                    @click="deleteListCard(card, $event)"
-                                >
-                                    Excluir
-                                </button>
-                            </td>
-                        </tr>
-                        <tr v-if="!listCards.length">
-                            <td :colspan="isAdmin ? 6 : 4" class="px-2 py-6 text-center text-sm text-slate-500">
-                                Nenhuma tarefa neste quadro.
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <p v-if="!visibleBoards.length" class="surface-card p-6 text-sm text-slate-600">
+                Nenhum quadro encontrado para essa busca.
+            </p>
 
             <CardModal
+                v-if="modalPayload"
                 :show="modalOpen"
                 :card="selectedCard"
-                :board-payload="boardPayload"
+                :board-payload="modalPayload"
                 :company-users="companyUsers"
                 :team-users="teamUsers"
                 :companies="companies"
@@ -270,7 +324,7 @@ watch(viewMode, remeasure);
                 :visibility-card-options="visibilityCardOptions"
                 :recurrence-options="recurrenceOptions"
                 @close="modalOpen = false"
-                @refresh="refreshBoard"
+                @refresh="refresh(selectedBoardId)"
                 @sync-card="syncSelectedCard"
             />
         </template>
