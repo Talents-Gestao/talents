@@ -1,7 +1,9 @@
 <script setup>
 import TextInput from '@/Components/TextInput.vue';
 import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
+import BoardDescriptionToggle from '@/Components/Tasks/BoardDescriptionToggle.vue';
 import TaskCardMeta from '@/Components/Tasks/TaskCardMeta.vue';
+import { descriptionPlainText } from '@/utils/taskBoards';
 import { router } from '@inertiajs/vue3';
 import {
     ArrowsPointingOutIcon,
@@ -25,6 +27,8 @@ const props = defineProps({
     isAdmin: { type: Boolean, default: false },
     /** Empresas ativas (admin); necessário para atribuir cliente em quadro global. */
     companies: { type: Array, default: () => [] },
+    /** Quadro com altura definida pela tela: colunas ocupam a altura e rolam por dentro. */
+    fillHeight: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['open-card', 'refresh']);
@@ -232,11 +236,11 @@ function listCardCount(list) {
 }
 
 function listNeedsCardScroll(list) {
-    return !isListCollapsed(list.id) && listCardCount(list) > LIST_SCROLL_AFTER_CARDS;
+    return !isListCollapsed(list.id) && (props.fillHeight || listCardCount(list) > LIST_SCROLL_AFTER_CARDS);
 }
 
 function listCardsScrollStyle(list) {
-    if (!listNeedsCardScroll(list)) {
+    if (props.fillHeight || !listNeedsCardScroll(list)) {
         return {};
     }
 
@@ -643,9 +647,10 @@ function expandList(list) {
 </script>
 
 <template>
-    <div class="space-y-3">
+    <div :class="fillHeight ? 'flex h-full min-h-0 flex-col gap-2' : 'space-y-3'">
         <div
             class="flex items-start gap-3 overflow-x-auto pb-3"
+            :class="fillHeight ? 'min-h-0 flex-1' : ''"
             data-kanban-board-scroll
             @scroll="onListMenuViewportChange"
         >
@@ -654,6 +659,7 @@ function expandList(list) {
                 item-key="id"
                 tag="div"
                 class="flex items-start gap-3"
+                :class="fillHeight ? 'h-full' : ''"
                 direction="horizontal"
                 :disabled="!isAdmin"
                 handle=".list-column-drag-handle"
@@ -670,6 +676,7 @@ function expandList(list) {
                     class="flex shrink-0 flex-col rounded-xl p-2 shadow-sm ring-1 ring-slate-200 transition-all duration-200"
                     :class="[
                         isListCollapsed(list.id) ? 'w-10 cursor-pointer' : 'w-72',
+                        fillHeight ? 'max-h-full' : '',
                         listNeedsCardScroll(list) ? 'overflow-hidden' : '',
                         list.color ? '' : 'bg-slate-100',
                         list.is_archived ? 'opacity-60 ring-dashed ring-slate-300' : '',
@@ -802,13 +809,22 @@ function expandList(list) {
                         <div v-if="card.cover_color" class="-mx-3 -mt-2 mb-2 h-2 rounded-t-lg" :style="{ backgroundColor: card.cover_color }" />
 
                         <div v-if="card.labels?.length" class="mb-1.5 flex flex-wrap gap-1">
-                            <span
-                                v-for="lb in card.labels"
-                                :key="lb.id"
-                                class="inline-block h-2 min-w-[2.5rem] rounded-full"
-                                :style="{ backgroundColor: lb.color }"
-                                :title="lb.name || lb.color"
-                            />
+                            <template v-for="lb in card.labels" :key="lb.id">
+                                <span
+                                    v-if="lb.name"
+                                    class="inline-flex max-w-full items-center gap-1 truncate rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700"
+                                    :title="lb.name"
+                                >
+                                    <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: lb.color }" aria-hidden="true" />
+                                    <span class="truncate">{{ lb.name }}</span>
+                                </span>
+                                <span
+                                    v-else
+                                    class="inline-block h-2 min-w-[2.5rem] self-center rounded-full"
+                                    :style="{ backgroundColor: lb.color }"
+                                    :title="lb.color"
+                                />
+                            </template>
                         </div>
 
                         <div class="flex items-start gap-2">
@@ -833,6 +849,8 @@ function expandList(list) {
                         <p v-if="isAdmin && card.company?.name" class="mt-1 text-[11px] text-slate-500">
                             Cliente: {{ card.company.name }}
                         </p>
+
+                        <BoardDescriptionToggle :description="descriptionPlainText(card.description)" />
 
                         <TaskCardMeta :card="card" />
                     </div>
@@ -943,7 +961,7 @@ function expandList(list) {
             </div>
         </div>
 
-        <div v-if="isAdmin && labels.length" class="text-xs text-slate-500">
+        <div v-if="isAdmin && labels.length" class="shrink-0 text-xs text-slate-500">
             <span class="font-medium">Etiquetas no quadro:</span>
             <span class="ml-1 inline-flex flex-wrap gap-1.5">
                 <span

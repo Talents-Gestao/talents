@@ -1,17 +1,23 @@
 <script setup>
+import BoardSwitcher from '@/Components/Tasks/BoardSwitcher.vue';
 import ColorPresetPicker from '@/Components/Tasks/ColorPresetPicker.vue';
 import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
-import { router, useForm } from '@inertiajs/vue3';
+import TaskToolbarMenu from '@/Components/Tasks/TaskToolbarMenu.vue';
+import { Link, router, useForm } from '@inertiajs/vue3';
 import {
+    ArchiveBoxIcon,
     BuildingOffice2Icon,
-    PaintBrushIcon,
+    EllipsisHorizontalIcon,
+    ListBulletIcon,
     PencilSquareIcon,
+    PlusIcon,
     StarIcon as StarOutlineIcon,
     TrashIcon,
     UserPlusIcon,
+    ViewColumnsIcon,
 } from '@heroicons/vue/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/vue/24/solid';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { confirmDialog } from '@/composables/useConfirmDialog';
 
 const props = defineProps({
@@ -22,18 +28,29 @@ const props = defineProps({
     teamUsers: { type: Array, default: () => [] },
     /** Empresas ativas — partilha em lote de cartões em quadros internos. */
     companies: { type: Array, default: () => [] },
-    /** Quando false, não repete o nome do quadro (ex.: já exibido num hero acima). */
-    showBoardTitle: { type: Boolean, default: true },
+    /** Quadros do seletor (favoritos primeiro, internos / por empresa). */
+    boards: { type: Array, default: () => [] },
+    showRouteName: { type: String, required: true },
+    viewMode: { type: String, default: 'kanban' },
+    showArchived: { type: Boolean, default: false },
+    /** Admin com tarefas:edit: reordenar quadros (a rota exige essa permissão). */
+    canEdit: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['refresh']);
+const emit = defineEmits(['refresh', 'update:viewMode', 'toggle-archived']);
 
 const isStarred = ref(Boolean(props.boardPayload?.is_starred));
+watch(
+    () => props.boardPayload?.is_starred,
+    (value) => {
+        isStarred.value = Boolean(value);
+    },
+);
 const inviting = ref(false);
 const inviteUserId = ref(null);
 const inviteRole = ref('viewer');
 const editingName = ref(false);
-const editingCover = ref(false);
+const nameInput = ref(null);
 const sharingCards = ref(false);
 const shareCompanyId = ref('');
 const shareProcessing = ref(false);
@@ -152,6 +169,7 @@ function toggleStar() {
         {
             preserveScroll: true,
             preserveState: true,
+            only: ['boards', 'boardPayload'],
             onError: () => {
                 isStarred.value = !willStar;
             },
@@ -238,6 +256,16 @@ function patchBoard(fields) {
     });
 }
 
+function startEditingName() {
+    if (!props.isAdmin) return;
+    boardForm.name = props.boardPayload?.name || '';
+    editingName.value = true;
+    nextTick(() => {
+        nameInput.value?.focus();
+        nameInput.value?.select();
+    });
+}
+
 function saveBoardName() {
     if (!props.isAdmin) {
         return;
@@ -273,142 +301,235 @@ async function deleteBoard() {
     });
 }
 
+const viewOptions = [
+    { value: 'kanban', label: 'Kanban', icon: ViewColumnsIcon },
+    { value: 'lista', label: 'Lista', icon: ListBulletIcon },
+];
+
+const toolbarButton =
+    'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500';
+const iconButton =
+    'inline-flex shrink-0 items-center justify-center rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500';
+const menuItem =
+    'flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none';
 </script>
 
 <template>
-    <div class="space-y-2">
-        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2 shadow-sm ring-1 ring-slate-200 backdrop-blur">
-            <div class="flex min-w-0 items-center gap-2">
-                <span
-                    v-if="boardPayload.cover_color"
-                    class="hidden h-8 w-1 shrink-0 rounded-full sm:inline-block"
-                    :style="{ backgroundColor: boardPayload.cover_color }"
-                    title="Cor de capa"
-                />
-                <template v-if="editingName && isAdmin">
-                <form class="flex items-center gap-2" @submit.prevent="saveBoardName">
-                    <input
-                        v-model="boardForm.name"
-                        class="w-64 rounded-md border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-900"
-                        maxlength="255"
-                        required
-                    />
-                    <button
-                        type="submit"
-                        class="rounded bg-talents-600 px-2 py-1 text-xs font-semibold text-white hover:bg-talents-700"
-                    >
-                        Salvar
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
-                        @click="editingName = false"
-                    >
-                        Cancelar
-                    </button>
-                </form>
+    <!-- Barra única do quadro: uma linha; no celular rola na horizontal (menus vão para o <body>). -->
+    <div
+        class="flex items-center gap-1 overflow-x-auto rounded-xl bg-white px-2 py-1.5 shadow-sm ring-1 ring-slate-200 [scrollbar-width:thin]"
+        role="toolbar"
+        aria-label="Ações do quadro"
+        data-task-board-toolbar
+    >
+        <form v-if="editingName && isAdmin" class="flex shrink-0 items-center gap-1.5" @submit.prevent="saveBoardName">
+            <input
+                ref="nameInput"
+                v-model="boardForm.name"
+                aria-label="Nome do quadro"
+                class="w-56 rounded-md border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-900 focus:border-talents-500 focus:ring-talents-500"
+                maxlength="255"
+                required
+                @keydown.esc.prevent="editingName = false"
+            />
+            <button type="submit" class="rounded bg-talents-600 px-2 py-1 text-xs font-semibold text-white hover:bg-talents-700">
+                Salvar
+            </button>
+            <button
+                type="button"
+                class="rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+                @click="editingName = false"
+            >
+                Cancelar
+            </button>
+        </form>
+        <BoardSwitcher
+            v-else
+            :boards="boards"
+            :active-board="boardPayload"
+            :show-route-name="showRouteName"
+            :is-admin="isAdmin"
+            :can-reorder="isAdmin && canEdit"
+        />
+
+        <button
+            v-if="isAdmin && !editingName"
+            type="button"
+            :class="iconButton"
+            title="Renomear quadro"
+            aria-label="Renomear quadro"
+            @click="startEditingName"
+        >
+            <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
+        </button>
+
+        <button
+            type="button"
+            :class="[iconButton, 'hover:text-amber-500']"
+            :title="isStarred ? 'Remover dos favoritos' : 'Adicionar aos favoritos'"
+            :aria-label="isStarred ? 'Remover dos favoritos' : 'Adicionar aos favoritos'"
+            :aria-pressed="isStarred ? 'true' : 'false'"
+            @click="toggleStar"
+        >
+            <StarSolidIcon v-if="isStarred" class="h-4 w-4 text-amber-400" aria-hidden="true" />
+            <StarOutlineIcon v-else class="h-4 w-4" aria-hidden="true" />
+        </button>
+
+        <span
+            v-if="boardPayload.company"
+            class="inline-block max-w-[12rem] shrink-0 truncate rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
+            :title="`Empresa: ${boardPayload.company.name}`"
+        >
+            {{ boardPayload.company.name }}
+        </span>
+        <span
+            v-else-if="boardPayload.is_internal"
+            class="inline-flex shrink-0 items-center rounded-md bg-talents-50 px-2 py-0.5 text-xs font-medium text-talents-700"
+        >
+            Interno
+        </span>
+
+        <span class="mx-1 h-5 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+
+        <component
+            :is="isAdmin ? 'button' : 'div'"
+            v-if="members.length"
+            :type="isAdmin ? 'button' : undefined"
+            class="flex shrink-0 -space-x-1.5 rounded-full"
+            :class="isAdmin ? 'focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500' : ''"
+            :title="isAdmin ? 'Ver e gerenciar membros' : `${members.length} membro(s)`"
+            :aria-label="isAdmin ? `Membros do quadro (${members.length})` : undefined"
+            @click="isAdmin && openInviteModal()"
+        >
+            <span
+                v-for="m in visibleMembers"
+                :key="m.id"
+                :title="m.name + (m.role ? ' · ' + memberRoleLabel(m.role) : '')"
+                class="inline-flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold text-white ring-2 ring-white"
+                :class="avatarColor(m.id)"
+            >
+                {{ avatarInitials(m.name) }}
+            </span>
+            <span
+                v-if="extraMembers"
+                class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-300 text-[11px] font-semibold text-slate-700 ring-2 ring-white"
+                :title="`+${extraMembers} membros`"
+            >
+                +{{ extraMembers }}
+            </span>
+        </component>
+
+        <button
+            v-if="isAdmin"
+            type="button"
+            :class="[toolbarButton, 'bg-talents-600 text-white hover:bg-talents-700']"
+            title="Convidar para o quadro"
+            @click="openInviteModal"
+        >
+            <UserPlusIcon class="h-4 w-4" aria-hidden="true" />
+            <span class="hidden md:inline">Convidar</span>
+            <span class="sr-only md:hidden">Convidar</span>
+        </button>
+
+        <button
+            v-if="isAdmin && boardPayload.is_internal"
+            type="button"
+            :class="[toolbarButton, 'text-talents-800 hover:bg-talents-50']"
+            title="Partilhar cartões com o portal de uma empresa"
+            @click="openShareCardsModal"
+        >
+            <BuildingOffice2Icon class="h-4 w-4" aria-hidden="true" />
+            <span class="hidden lg:inline">Partilhar com empresa</span>
+            <span class="sr-only lg:hidden">Partilhar com empresa</span>
+        </button>
+
+        <span class="min-w-2 flex-1" aria-hidden="true" />
+
+        <button
+            v-if="isAdmin && viewMode === 'kanban'"
+            type="button"
+            :class="[
+                toolbarButton,
+                showArchived ? 'bg-amber-100 text-amber-900 hover:bg-amber-200' : 'text-slate-600 hover:bg-slate-100',
+            ]"
+            :aria-pressed="showArchived ? 'true' : 'false'"
+            :title="showArchived ? 'Ocultar arquivados' : 'Ver arquivados'"
+            @click="emit('toggle-archived')"
+        >
+            <ArchiveBoxIcon class="h-4 w-4" aria-hidden="true" />
+            <span class="hidden xl:inline">{{ showArchived ? 'Ocultar arquivados' : 'Ver arquivados' }}</span>
+            <span class="sr-only xl:hidden">{{ showArchived ? 'Ocultar arquivados' : 'Ver arquivados' }}</span>
+        </button>
+
+        <div class="inline-flex shrink-0 rounded-lg bg-slate-100 p-0.5" role="group" aria-label="Modo de exibição">
+            <button
+                v-for="option in viewOptions"
+                :key="option.value"
+                type="button"
+                class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
+                :class="viewMode === option.value ? 'bg-white text-talents-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+                :aria-pressed="viewMode === option.value ? 'true' : 'false'"
+                @click="emit('update:viewMode', option.value)"
+            >
+                <component :is="option.icon" class="h-4 w-4" aria-hidden="true" />
+                <span class="hidden sm:inline">{{ option.label }}</span>
+                <span class="sr-only sm:hidden">{{ option.label }}</span>
+            </button>
+        </div>
+
+        <TaskToolbarMenu
+            v-if="isAdmin"
+            align="right"
+            :width="240"
+            label="Novo quadro ou processo"
+            title="Novo quadro ou processo"
+            :button-class="[toolbarButton, 'text-slate-700 hover:bg-slate-100']"
+        >
+            <template #trigger>
+                <PlusIcon class="h-4 w-4" aria-hidden="true" />
+                <span class="hidden md:inline">Novo</span>
             </template>
-            <h2 v-else-if="showBoardTitle" class="truncate text-base font-semibold text-slate-900 sm:text-lg">
-                {{ boardPayload.name }}
-            </h2>
+            <template #default>
+                <Link :href="route('admin.tarefas.quadros.create')" :class="menuItem">Novo quadro interno</Link>
+                <Link :href="route('admin.tarefas.quadros.ativar')" :class="menuItem">Ativar processo para empresa</Link>
+                <Link :href="route('admin.tarefas.processos.index')" :class="menuItem">Modelos de processo</Link>
+            </template>
+        </TaskToolbarMenu>
 
-            <button
-                v-if="isAdmin && !editingName"
-                type="button"
-                class="rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-                title="Alterar nome do quadro"
-                @click="editingName = true; editingCover = false"
-            >
-                <PencilSquareIcon class="h-4 w-4" />
-            </button>
-
-            <button
-                v-if="isAdmin && !editingName"
-                type="button"
-                class="rounded-md p-1 transition"
-                :class="editingCover ? 'bg-talents-100 text-talents-700' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'"
-                title="Cor de capa do quadro"
-                @click="editingCover = !editingCover; editingName = false"
-            >
-                <PaintBrushIcon class="h-4 w-4" />
-            </button>
-
-            <button
-                v-if="isAdmin && !editingName"
-                type="button"
-                class="rounded-md p-1 text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
-                title="Excluir quadro"
-                @click="deleteBoard"
-            >
-                <TrashIcon class="h-4 w-4" />
-            </button>
-
-            <button
-                type="button"
-                class="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-amber-500"
-                :title="isStarred ? 'Remover dos favoritos' : 'Adicionar aos favoritos'"
-                @click="toggleStar"
-            >
-                <StarSolidIcon v-if="isStarred" class="h-4 w-4 text-amber-400" />
-                <StarOutlineIcon v-else class="h-4 w-4" />
-            </button>
-
-            <span
-                v-if="boardPayload.company"
-                class="hidden items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 sm:inline-flex"
-            >
-                {{ boardPayload.company.name }}
-            </span>
-            <span
-                v-else-if="boardPayload.is_internal"
-                class="hidden items-center rounded-md bg-talents-50 px-2 py-0.5 text-xs font-medium text-talents-700 sm:inline-flex"
-            >
-                Interno
-            </span>
-        </div>
-
-        <div class="flex items-center gap-2">
-            <div v-if="members.length" class="flex -space-x-1.5">
-                <span
-                    v-for="m in visibleMembers"
-                    :key="m.id"
-                    :title="m.name + (m.role ? ' · ' + m.role : '')"
-                    class="inline-flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold text-white ring-2 ring-white"
-                    :class="avatarColor(m.id)"
+        <TaskToolbarMenu
+            v-if="isAdmin"
+            align="right"
+            :width="288"
+            label="Mais ações do quadro"
+            title="Mais ações do quadro"
+            :button-class="iconButton"
+        >
+            <template #trigger>
+                <EllipsisHorizontalIcon class="h-5 w-5" aria-hidden="true" />
+            </template>
+            <template #default="{ close }">
+                <button type="button" :class="menuItem" @click="close(); startEditingName()">
+                    <PencilSquareIcon class="h-4 w-4 text-slate-500" aria-hidden="true" />
+                    Renomear quadro
+                </button>
+                <div class="border-y border-slate-100 px-3 py-2">
+                    <ColorPresetPicker
+                        :model-value="boardForm.cover_color"
+                        label="Cor de capa do quadro"
+                        hint="Aparece no seletor de quadros e ao lado do nome."
+                        @update:model-value="saveCoverColor"
+                    />
+                </div>
+                <button
+                    type="button"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-rose-600 hover:bg-rose-50 focus:bg-rose-50 focus:outline-none"
+                    @click="close(); deleteBoard()"
                 >
-                    {{ avatarInitials(m.name) }}
-                </span>
-                <span
-                    v-if="extraMembers"
-                    class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-300 text-[11px] font-semibold text-slate-700 ring-2 ring-white"
-                    :title="`+${extraMembers} membros`"
-                >
-                    +{{ extraMembers }}
-                </span>
-            </div>
-
-            <button
-                v-if="isAdmin && boardPayload.is_internal"
-                type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-talents-200 bg-white px-3 py-1.5 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-50"
-                title="Partilhar cartões com o portal de uma empresa"
-                @click="openShareCardsModal"
-            >
-                <BuildingOffice2Icon class="h-4 w-4" />
-                Partilhar com empresa
-            </button>
-
-            <button
-                v-if="isAdmin"
-                type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg bg-talents-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
-                @click="openInviteModal"
-            >
-                <UserPlusIcon class="h-4 w-4" />
-                Convidar
-            </button>
-
-        </div>
+                    <TrashIcon class="h-4 w-4" aria-hidden="true" />
+                    Excluir quadro…
+                </button>
+            </template>
+        </TaskToolbarMenu>
 
         <Teleport to="body">
             <div
@@ -583,18 +704,5 @@ async function deleteBoard() {
                 </div>
             </div>
         </Teleport>
-        </div>
-
-        <div
-            v-if="isAdmin && editingCover"
-            class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
-        >
-            <ColorPresetPicker
-                :model-value="boardForm.cover_color"
-                label="Cor de capa do quadro"
-                hint="A cor aparece na listagem de quadros e na faixa ao lado do título."
-                @update:model-value="saveCoverColor"
-            />
-        </div>
     </div>
 </template>

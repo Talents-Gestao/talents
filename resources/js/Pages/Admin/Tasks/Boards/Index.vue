@@ -1,316 +1,42 @@
 <script setup>
+import TaskBoardScreen from '@/Components/Tasks/TaskBoardScreen.vue';
+import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import BoardDescriptionToggle from '@/Components/Tasks/BoardDescriptionToggle.vue';
-import BoardIndexPreview from '@/Components/Tasks/BoardIndexPreview.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
-import {
-    Bars3Icon,
-    ChevronDownIcon,
-    ChevronRightIcon,
-    PlusIcon,
-} from '@heroicons/vue/24/outline';
-import { VueDraggable } from 'vue-draggable-plus';
-import { computed, onMounted, ref, watch } from 'vue';
+import { Head } from '@inertiajs/vue3';
 
-const props = defineProps({
+/**
+ * Tarefas (Admin): tela única. /admin/tarefas/quadros abre no último quadro usado (ou no primeiro favorito,
+ * ou no primeiro da lista) e /admin/tarefas/quadros/{board} abre direto nesse quadro.
+ */
+defineProps({
     boards: { type: Array, default: () => [] },
+    boardPayload: { type: Object, default: null },
+    companyUsers: { type: Array, default: () => [] },
+    teamUsers: { type: Array, default: () => [] },
+    companies: { type: Array, default: () => [] },
+    visibilityListOptions: { type: Array, default: () => [] },
+    visibilityCardOptions: { type: Array, default: () => [] },
+    recurrenceOptions: { type: Array, default: () => [] },
 });
 
-const STORAGE_KEY = 'talents-tarefas-boards-collapsed';
-
-const search = ref('');
-const collapsedIds = ref(new Set());
-const localInternal = ref([]);
-const localCompany = ref([]);
-
-onMounted(() => {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-            const ids = JSON.parse(raw);
-            if (Array.isArray(ids)) {
-                collapsedIds.value = new Set(ids.map(Number));
-            }
-        }
-    } catch (_e) {
-        collapsedIds.value = new Set();
-    }
-});
-
-function persistCollapsed() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...collapsedIds.value]));
-}
-
-function isCollapsed(boardId) {
-    return collapsedIds.value.has(boardId);
-}
-
-function toggleCollapsed(boardId) {
-    if (collapsedIds.value.has(boardId)) {
-        collapsedIds.value.delete(boardId);
-    } else {
-        collapsedIds.value.add(boardId);
-    }
-    collapsedIds.value = new Set(collapsedIds.value);
-    persistCollapsed();
-}
-
-function expandAll() {
-    collapsedIds.value = new Set();
-    persistCollapsed();
-}
-
-function collapseAll() {
-    collapsedIds.value = new Set(filteredBoards.value.map((b) => b.id));
-    persistCollapsed();
-}
-
-const filteredBoards = computed(() => {
-    const term = search.value.trim().toLowerCase();
-    if (!term) {
-        return props.boards;
-    }
-    return props.boards.filter(
-        (b) =>
-            String(b.name || '')
-                .toLowerCase()
-                .includes(term) ||
-            String(b.company?.name || '')
-                .toLowerCase()
-                .includes(term),
-    );
-});
-
-const internalBoards = computed(() => filteredBoards.value.filter((b) => b.is_internal));
-const companyBoards = computed(() => filteredBoards.value.filter((b) => !b.is_internal));
-const isSearching = computed(() => search.value.trim() !== '');
-
-function cloneBoards(list) {
-    return list.map((board) => ({ ...board }));
-}
-
-watch(
-    () => [props.boards, search.value],
-    () => {
-        localInternal.value = cloneBoards(internalBoards.value);
-        localCompany.value = cloneBoards(companyBoards.value);
-    },
-    { immediate: true, deep: true },
-);
-
-function persistOrder(scope, evt) {
-    if (isSearching.value) {
-        return;
-    }
-    if (evt && evt.oldIndex === evt.newIndex) {
-        return;
-    }
-
-    const list = scope === 'internal' ? localInternal.value : localCompany.value;
-
-    router.post(
-        route('admin.tarefas.quadros.reordenar'),
-        {
-            scope,
-            board_ids: list.map((board) => board.id),
-        },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            only: ['boards'],
-            onError: () => {
-                localInternal.value = cloneBoards(internalBoards.value);
-                localCompany.value = cloneBoards(companyBoards.value);
-            },
-        },
-    );
-}
+const { canAdmin } = useAdminPermissions();
 </script>
 
 <template>
-    <Head title="Tarefas — Quadros" />
+    <Head :title="boardPayload ? `Tarefas — ${boardPayload.name}` : 'Tarefas'" />
 
     <AdminLayout>
-        <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 class="text-xl font-semibold text-gray-900">Quadros de tarefas</h2>
-                    <p class="mt-1 text-sm text-gray-600">
-                        Gerencie vários quadros internos ou abra quadros vinculados a empresas. Arraste pelo ícone para
-                        mudar a ordem — ela também vale no painel da empresa.
-                    </p>
-                </div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <Link
-                        :href="route('admin.tarefas.processos.index')"
-                        class="inline-flex items-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-                    >
-                        Modelos de processo
-                    </Link>
-                    <Link :href="route('admin.tarefas.quadros.create')">
-                        <PrimaryButton class="inline-flex items-center gap-1.5">
-                            <PlusIcon class="h-4 w-4" />
-                            Novo quadro
-                        </PrimaryButton>
-                    </Link>
-                </div>
-            </div>
-        </template>
-
-        <div
-            v-if="$page.props.flash?.success"
-            class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
-        >
-            {{ $page.props.flash.success }}
-        </div>
-
-        <div class="mb-4 flex flex-wrap items-center gap-3">
-            <TextInput v-model="search" type="search" placeholder="Buscar quadro…" class="w-full max-w-xs" />
-            <button
-                type="button"
-                class="text-sm font-medium text-talents-700 hover:underline"
-                @click="expandAll"
-            >
-                Expandir todos
-            </button>
-            <button
-                type="button"
-                class="text-sm font-medium text-slate-600 hover:underline"
-                @click="collapseAll"
-            >
-                Recolher todos
-            </button>
-            <p v-if="isSearching" class="text-sm text-slate-500">Limpe a busca para reordenar os quadros.</p>
-        </div>
-
-        <section v-if="localInternal.length" class="mb-8">
-            <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Quadros internos</h3>
-            <VueDraggable
-                v-model="localInternal"
-                item-key="id"
-                tag="ul"
-                class="space-y-2"
-                handle=".board-index-drag-handle"
-                filter="button:not(.board-index-drag-handle), a, input, textarea"
-                :prevent-on-filter="true"
-                :disabled="isSearching || localInternal.length < 2"
-                :animation="150"
-                ghost-class="opacity-40"
-                @end="persistOrder('internal', $event)"
-            >
-                <li
-                    v-for="board in localInternal"
-                    :key="board.id"
-                    class="surface-card relative overflow-hidden ring-1 ring-slate-200 transition hover:ring-talents-300"
-                >
-                    <div class="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2">
-                        <button
-                            v-if="!isSearching && localInternal.length > 1"
-                            type="button"
-                            class="board-index-drag-handle relative z-10 shrink-0 cursor-grab rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 active:cursor-grabbing"
-                            title="Arrastar para reordenar"
-                            aria-label="Arrastar para reordenar"
-                        >
-                            <Bars3Icon class="h-5 w-5" aria-hidden="true" />
-                        </button>
-                        <button
-                            type="button"
-                            class="relative z-10 rounded p-1 text-slate-600 hover:bg-slate-200"
-                            :title="isCollapsed(board.id) ? 'Expandir' : 'Recolher'"
-                            :aria-label="isCollapsed(board.id) ? 'Expandir prévia do quadro' : 'Recolher prévia do quadro'"
-                            :aria-expanded="isCollapsed(board.id) ? 'false' : 'true'"
-                            @click.stop="toggleCollapsed(board.id)"
-                        >
-                            <ChevronDownIcon v-if="!isCollapsed(board.id)" class="h-5 w-5" />
-                            <ChevronRightIcon v-else class="h-5 w-5" />
-                        </button>
-                        <div
-                            v-if="board.cover_color"
-                            class="h-8 w-1 shrink-0 rounded-full"
-                            :style="{ backgroundColor: board.cover_color }"
-                        />
-                        <div class="min-w-0 flex-1">
-                            <Link
-                                :href="route('admin.tarefas.quadros.show', board.id)"
-                                class="block truncate font-semibold text-slate-900 after:absolute after:inset-0 focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-talents-500"
-                            >
-                                {{ board.name }}
-                            </Link>
-                            <BoardDescriptionToggle :description="board.description" />
-                        </div>
-                    </div>
-                    <BoardIndexPreview
-                        v-show="!isCollapsed(board.id)"
-                        :board="board"
-                        :show-route="route('admin.tarefas.quadros.show', board.id)"
-                    />
-                </li>
-            </VueDraggable>
-        </section>
-
-        <section v-if="localCompany.length">
-            <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Quadros por empresa</h3>
-            <VueDraggable
-                v-model="localCompany"
-                item-key="id"
-                tag="ul"
-                class="space-y-2"
-                handle=".board-index-drag-handle"
-                filter="button:not(.board-index-drag-handle), a, input, textarea"
-                :prevent-on-filter="true"
-                :disabled="isSearching || localCompany.length < 2"
-                :animation="150"
-                ghost-class="opacity-40"
-                @end="persistOrder('company', $event)"
-            >
-                <li
-                    v-for="board in localCompany"
-                    :key="board.id"
-                    class="surface-card relative overflow-hidden ring-1 ring-slate-200 transition hover:ring-talents-300"
-                >
-                    <div class="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2">
-                        <button
-                            v-if="!isSearching && localCompany.length > 1"
-                            type="button"
-                            class="board-index-drag-handle relative z-10 shrink-0 cursor-grab rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 active:cursor-grabbing"
-                            title="Arrastar para reordenar"
-                            aria-label="Arrastar para reordenar"
-                        >
-                            <Bars3Icon class="h-5 w-5" aria-hidden="true" />
-                        </button>
-                        <button
-                            type="button"
-                            class="relative z-10 rounded p-1 text-slate-600 hover:bg-slate-200"
-                            :title="isCollapsed(board.id) ? 'Expandir' : 'Recolher'"
-                            :aria-label="isCollapsed(board.id) ? 'Expandir prévia do quadro' : 'Recolher prévia do quadro'"
-                            :aria-expanded="isCollapsed(board.id) ? 'false' : 'true'"
-                            @click.stop="toggleCollapsed(board.id)"
-                        >
-                            <ChevronDownIcon v-if="!isCollapsed(board.id)" class="h-5 w-5" />
-                            <ChevronRightIcon v-else class="h-5 w-5" />
-                        </button>
-                        <div class="min-w-0 flex-1">
-                            <Link
-                                :href="route('admin.tarefas.quadros.show', board.id)"
-                                class="block truncate font-semibold text-slate-900 after:absolute after:inset-0 focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-talents-500"
-                            >
-                                {{ board.name }}
-                            </Link>
-                            <p class="truncate text-xs text-slate-500">{{ board.company?.name }}</p>
-                            <BoardDescriptionToggle :description="board.description" />
-                        </div>
-                    </div>
-                    <BoardIndexPreview
-                        v-show="!isCollapsed(board.id)"
-                        :board="board"
-                        :show-route="route('admin.tarefas.quadros.show', board.id)"
-                    />
-                </li>
-            </VueDraggable>
-        </section>
-
-        <p v-if="!filteredBoards.length" class="text-sm text-slate-500">Nenhum quadro encontrado.</p>
+        <TaskBoardScreen
+            :is-admin="true"
+            :can-edit="canAdmin('tarefas', 'edit')"
+            :boards="boards"
+            :board-payload="boardPayload"
+            :company-users="companyUsers"
+            :team-users="teamUsers"
+            :companies="companies"
+            :visibility-card-options="visibilityCardOptions"
+            :recurrence-options="recurrenceOptions"
+            show-route-name="admin.tarefas.quadros.show"
+        />
     </AdminLayout>
 </template>
