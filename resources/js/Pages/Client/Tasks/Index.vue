@@ -1,4 +1,5 @@
 <script setup>
+import BoardDescriptionToggle from '@/Components/Tasks/BoardDescriptionToggle.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/vue/24/outline';
@@ -81,7 +82,7 @@ const filteredBoards = computed(() => {
                 <p class="text-sm font-medium text-white/80">Módulo de processos e tarefas</p>
                 <h3 class="mt-1 text-2xl font-semibold">Seus quadros</h3>
                 <p class="mt-2 text-sm text-white/80">
-                    Clique na seta para recolher ou expandir cada quadro. Abra o quadro para ver as colunas e tarefas.
+                    Clique no quadro para abrir as colunas e tarefas. Use a seta para recolher ou expandir o resumo.
                 </p>
             </section>
 
@@ -91,14 +92,16 @@ const filteredBoards = computed(() => {
                     <li
                         v-for="b in filteredBoards"
                         :key="b.id"
-                        class="overflow-hidden rounded-xl border border-slate-200 bg-white ring-1 ring-slate-100"
+                        class="relative overflow-hidden rounded-xl border border-slate-200 bg-white ring-1 ring-slate-100 transition hover:border-talents-300"
                     >
                         <div class="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2">
                             <button
                                 type="button"
-                                class="rounded p-1 text-slate-600 hover:bg-slate-200"
+                                class="relative z-10 rounded p-1 text-slate-600 hover:bg-slate-200"
                                 :title="isCollapsed(b.id) ? 'Expandir' : 'Recolher'"
-                                @click="toggleCollapsed(b.id)"
+                                :aria-label="isCollapsed(b.id) ? 'Expandir resumo do quadro' : 'Recolher resumo do quadro'"
+                                :aria-expanded="isCollapsed(b.id) ? 'false' : 'true'"
+                                @click.stop="toggleCollapsed(b.id)"
                             >
                                 <ChevronDownIcon v-if="!isCollapsed(b.id)" class="h-5 w-5" />
                                 <ChevronRightIcon v-else class="h-5 w-5" />
@@ -109,18 +112,18 @@ const filteredBoards = computed(() => {
                                 :style="{ backgroundColor: b.cover_color }"
                             />
                             <div class="min-w-0 flex-1">
-                                <p class="truncate font-semibold text-slate-900">{{ b.name }}</p>
+                                <Link
+                                    :href="route('client.tarefas.show', b.id)"
+                                    class="block truncate font-semibold text-slate-900 after:absolute after:inset-0 focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-talents-500"
+                                >
+                                    {{ b.name }}
+                                </Link>
                                 <p v-if="!isCollapsed(b.id)" class="truncate text-xs text-slate-500">
                                     <span v-if="b.is_internal">Quadro Talents</span>
                                     <span v-else-if="b.company">{{ b.company.name }}</span>
                                 </p>
+                                <BoardDescriptionToggle :description="b.description" />
                             </div>
-                            <Link
-                                :href="route('client.tarefas.show', b.id)"
-                                class="shrink-0 rounded-md bg-talents-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-talents-700"
-                            >
-                                Abrir
-                            </Link>
                         </div>
                         <div v-show="!isCollapsed(b.id)" class="flex flex-wrap gap-4 px-4 py-3 text-sm text-slate-600">
                             <span>{{ b.lists_count }} lista(s)</span>

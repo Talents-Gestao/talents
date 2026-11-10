@@ -1,5 +1,6 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import BoardDescriptionToggle from '@/Components/Tasks/BoardDescriptionToggle.vue';
 import BoardIndexPreview from '@/Components/Tasks/BoardIndexPreview.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -202,13 +203,13 @@ function persistOrder(scope, evt) {
                 <li
                     v-for="board in localInternal"
                     :key="board.id"
-                    class="surface-card overflow-hidden ring-1 ring-slate-200"
+                    class="surface-card relative overflow-hidden ring-1 ring-slate-200 transition hover:ring-talents-300"
                 >
                     <div class="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2">
                         <button
                             v-if="!isSearching && localInternal.length > 1"
                             type="button"
-                            class="board-index-drag-handle shrink-0 cursor-grab rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 active:cursor-grabbing"
+                            class="board-index-drag-handle relative z-10 shrink-0 cursor-grab rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 active:cursor-grabbing"
                             title="Arrastar para reordenar"
                             aria-label="Arrastar para reordenar"
                         >
@@ -216,9 +217,11 @@ function persistOrder(scope, evt) {
                         </button>
                         <button
                             type="button"
-                            class="rounded p-1 text-slate-600 hover:bg-slate-200"
+                            class="relative z-10 rounded p-1 text-slate-600 hover:bg-slate-200"
                             :title="isCollapsed(board.id) ? 'Expandir' : 'Recolher'"
-                            @click="toggleCollapsed(board.id)"
+                            :aria-label="isCollapsed(board.id) ? 'Expandir prévia do quadro' : 'Recolher prévia do quadro'"
+                            :aria-expanded="isCollapsed(board.id) ? 'false' : 'true'"
+                            @click.stop="toggleCollapsed(board.id)"
                         >
                             <ChevronDownIcon v-if="!isCollapsed(board.id)" class="h-5 w-5" />
                             <ChevronRightIcon v-else class="h-5 w-5" />
@@ -229,17 +232,14 @@ function persistOrder(scope, evt) {
                             :style="{ backgroundColor: board.cover_color }"
                         />
                         <div class="min-w-0 flex-1">
-                            <p class="truncate font-semibold text-slate-900">{{ board.name }}</p>
-                            <p v-if="!isCollapsed(board.id) && board.description" class="truncate text-xs text-slate-500">
-                                {{ board.description }}
-                            </p>
+                            <Link
+                                :href="route('admin.tarefas.quadros.show', board.id)"
+                                class="block truncate font-semibold text-slate-900 after:absolute after:inset-0 focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-talents-500"
+                            >
+                                {{ board.name }}
+                            </Link>
+                            <BoardDescriptionToggle :description="board.description" />
                         </div>
-                        <Link
-                            :href="route('admin.tarefas.quadros.show', board.id)"
-                            class="shrink-0 rounded-md bg-talents-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-talents-700"
-                        >
-                            Abrir
-                        </Link>
                     </div>
                     <BoardIndexPreview
                         v-show="!isCollapsed(board.id)"
@@ -268,13 +268,13 @@ function persistOrder(scope, evt) {
                 <li
                     v-for="board in localCompany"
                     :key="board.id"
-                    class="surface-card overflow-hidden ring-1 ring-slate-200"
+                    class="surface-card relative overflow-hidden ring-1 ring-slate-200 transition hover:ring-talents-300"
                 >
                     <div class="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2">
                         <button
                             v-if="!isSearching && localCompany.length > 1"
                             type="button"
-                            class="board-index-drag-handle shrink-0 cursor-grab rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 active:cursor-grabbing"
+                            class="board-index-drag-handle relative z-10 shrink-0 cursor-grab rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 active:cursor-grabbing"
                             title="Arrastar para reordenar"
                             aria-label="Arrastar para reordenar"
                         >
@@ -282,23 +282,25 @@ function persistOrder(scope, evt) {
                         </button>
                         <button
                             type="button"
-                            class="rounded p-1 text-slate-600 hover:bg-slate-200"
+                            class="relative z-10 rounded p-1 text-slate-600 hover:bg-slate-200"
                             :title="isCollapsed(board.id) ? 'Expandir' : 'Recolher'"
-                            @click="toggleCollapsed(board.id)"
+                            :aria-label="isCollapsed(board.id) ? 'Expandir prévia do quadro' : 'Recolher prévia do quadro'"
+                            :aria-expanded="isCollapsed(board.id) ? 'false' : 'true'"
+                            @click.stop="toggleCollapsed(board.id)"
                         >
                             <ChevronDownIcon v-if="!isCollapsed(board.id)" class="h-5 w-5" />
                             <ChevronRightIcon v-else class="h-5 w-5" />
                         </button>
                         <div class="min-w-0 flex-1">
-                            <p class="truncate font-semibold text-slate-900">{{ board.name }}</p>
+                            <Link
+                                :href="route('admin.tarefas.quadros.show', board.id)"
+                                class="block truncate font-semibold text-slate-900 after:absolute after:inset-0 focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-talents-500"
+                            >
+                                {{ board.name }}
+                            </Link>
                             <p class="truncate text-xs text-slate-500">{{ board.company?.name }}</p>
+                            <BoardDescriptionToggle :description="board.description" />
                         </div>
-                        <Link
-                            :href="route('admin.tarefas.quadros.show', board.id)"
-                            class="shrink-0 rounded-md bg-talents-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-talents-700"
-                        >
-                            Abrir
-                        </Link>
                     </div>
                     <BoardIndexPreview
                         v-show="!isCollapsed(board.id)"
