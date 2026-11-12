@@ -258,6 +258,27 @@ function syncSelectedCard(cardId) {
     }
 }
 
+/* Link com ?cartao={id} (ex.: «Tarefas · hoje» da Home): abre o cartão assim que o conteúdo do quadro chega. */
+let cardToOpen = null;
+try {
+    cardToOpen = Number(new URLSearchParams(window.location.search).get('cartao')) || null;
+} catch (_e) {
+    cardToOpen = null;
+}
+
+watch(
+    () => (cardToOpen && props.focusBoardId ? payloads[props.focusBoardId] : null),
+    (payload) => {
+        if (!payload || !cardToOpen) return;
+        const card = (payload.lists || []).flatMap((list) => list.cards || []).find((c) => Number(c.id) === cardToOpen);
+        cardToOpen = null;
+        if (card) {
+            openCard(payload.id, card);
+        }
+    },
+    { immediate: true },
+);
+
 /* O quadro do cartão aberto foi recarregado (etapa, comentário, anexo…): o modal passa a mostrar o cartão atualizado. */
 watch(modalPayload, () => {
     if (selectedCard.value) {

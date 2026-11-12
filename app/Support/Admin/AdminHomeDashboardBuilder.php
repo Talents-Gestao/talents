@@ -21,6 +21,7 @@ use App\Models\StrategicCalendarItem;
 use App\Models\Subscription;
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
+use App\Models\TaskChecklistItem;
 use App\Models\User;
 use App\Support\Commercial\ProposalListStatus;
 use App\Support\Finance\FinanceCashflowMetrics;
@@ -288,11 +289,14 @@ final class AdminHomeDashboardBuilder
     }
 
     /**
-     * Tarefas Admin (boards sem company_id) atribuídas ao usuário, relevantes para o dia:
-     * membro do cartão, due_date <= hoje, abertas (não arquivadas / não concluídas). Limite 6.
-     * Sem due_date ou sem atribuição não entram.
+     * «Tarefas · hoje»: o que vence hoje (ou já venceu) nos quadros Admin (sem company_id), para o usuário.
+     * - Cartões abertos (não arquivados, não concluídos) com due_date <= hoje em que ele é membro ou criador.
+     * - Etapas de checklist não concluídas com due_date <= hoje, em cartão aberto, em que ele é o responsável
+     *   ou membro do cartão.
+     * Um cartão aparece uma vez, com as etapas do dia agrupadas nele. Sem due_date não entra. Limite 6.
+     * "Hoje" é a data no fuso da aplicação (America/Sao_Paulo); due_date é coluna date.
      *
-     * @return list<array{id: int, title: string, list_name: string|null, board_name: string|null, due_date: string}>
+     * @return list<array{id: int, title: string, list_name: string|null, board_name: string|null, board_id: int|null, due_date: string, steps: list<array{id: int, text: string, due_date: string}>, href: string|null}>
      */
     private function adminTasksToday(Carbon $today, ?User $viewer): array
     {
@@ -307,28 +311,78 @@ final class AdminHomeDashboardBuilder
         }
 
         $todayStr = $today->toDateString();
-
-        return TaskCard::query()
-            ->with(['list:id,board_id,name', 'list.board:id,name'])
-            ->whereHas('list', fn ($q) => $q->whereIn('board_id', $boardIds))
-            ->whereHas('members', fn ($q) => $q->where('users.id', $userId))
+        $openAdminCard = static fn ($q) => $q
+            ->whereHas('list', fn ($list) => $list->whereIn('board_id', $boardIds))
             ->where('is_archived', false)
-            ->whereNull('completed_at')
+            ->whereNull('completed_at');
+
+        $cards = TaskCard::query()
+            ->with(['list:id,board_id,name', 'list.board:id,name'])
+            ->tap($openAdminCard)
             ->whereNotNull('due_date')
             ->whereDate('due_date', '<=', $todayStr)
-            ->orderBy('due_date')
-            ->orderBy('id')
-            ->limit(6)
+            ->where(fn ($q) => $q
+                ->whereHas('members', fn ($m) => $m->where('users.id', $userId))
+                ->orWhere('created_by_user_id', $userId))
             ->get()
-            ->map(static function (TaskCard $card) use ($todayStr): array {
+            ->keyBy('id');
+
+        $steps = TaskChecklistItem::query()
+            ->with('checklist:id,task_card_id')
+            ->where('is_completed', false)
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '<=', $todayStr)
+            ->whereHas('checklist.card', $openAdminCard)
+            ->where(fn ($q) => $q
+                ->where('assignee_user_id', $userId)
+                ->orWhereHas('checklist.card.members', fn ($m) => $m->where('users.id', $userId)))
+            ->orderBy('due_date')
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get()
+            ->groupBy(fn (TaskChecklistItem $item) => (int) $item->checklist->task_card_id);
+
+        $missing = $steps->keys()->diff($cards->keys())->all();
+        if ($missing !== []) {
+            TaskCard::query()
+                ->with(['list:id,board_id,name', 'list.board:id,name'])
+                ->whereIn('id', $missing)
+                ->get()
+                ->each(fn (TaskCard $card) => $cards->put($card->id, $card));
+        }
+
+        return $cards
+            ->map(static function (TaskCard $card) use ($steps, $todayStr): array {
+                $cardSteps = ($steps->get($card->id) ?? collect())
+                    ->map(static fn (TaskChecklistItem $item): array => [
+                        'id' => (int) $item->id,
+                        'text' => (string) $item->text,
+                        'due_date' => $item->due_date->toDateString(),
+                    ])
+                    ->values()
+                    ->all();
+                $dates = array_filter([
+                    $card->due_date?->toDateString(),
+                    ...array_column($cardSteps, 'due_date'),
+                ]);
+                $boardId = $card->list?->board_id ? (int) $card->list->board_id : null;
+
                 return [
                     'id' => (int) $card->id,
                     'title' => (string) $card->title,
                     'list_name' => $card->list?->name,
                     'board_name' => $card->list?->board?->name,
-                    'due_date' => $card->due_date?->toDateString() ?? $todayStr,
+                    'board_id' => $boardId,
+                    'due_date' => $dates === [] ? $todayStr : min($dates),
+                    'steps' => $cardSteps,
+                    'href' => $boardId
+                        ? route('admin.tarefas.quadros.show', ['board' => $boardId, 'cartao' => $card->id])
+                        : null,
                 ];
             })
+            ->sortBy([['due_date', 'asc'], ['id', 'asc']])
+            ->take(6)
+            ->values()
             ->all();
     }
 
