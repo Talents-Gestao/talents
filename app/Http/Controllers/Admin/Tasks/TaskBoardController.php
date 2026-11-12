@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin\Tasks;
 
 use App\Actions\Tasks\ShareBoardCardsWithCompany;
+use App\Enums\AdminPermissionModule;
+use App\Enums\PermissionAction;
 use App\Enums\TaskCardRecurrence;
 use App\Http\Controllers\Client\Tasks\BoardController as ClientBoardController;
 use App\Http\Controllers\Controller;
@@ -10,6 +12,8 @@ use App\Models\Company;
 use App\Models\TaskAttachment;
 use App\Models\TaskBoard;
 use App\Support\Tasks\BoardPresenter;
+use App\Support\Tasks\CompanyTaskAccess;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -310,6 +314,33 @@ class TaskBoardController extends Controller
      * Partilha com o portal da empresa os cartões do quadro que ainda não têm company_id.
      * Útil em quadros Internos (Talents) cujas colunas já estão em modo empresa.
      */
+    /**
+     * Somente leitura: quem da empresa acessa Tarefas no portal (e o quadro `quadro`, se informado).
+     * Usado no painel «Acesso da empresa» e nos resumos de «Ativar processo» e «Partilhar com empresa».
+     */
+    public function companyAccess(Request $request, Company $company): JsonResponse
+    {
+        $board = null;
+        if ($request->filled('quadro')) {
+            $board = TaskBoard::query()->findOrFail((int) $request->query('quadro'));
+            abort_if($board->company_id !== null && (int) $board->company_id !== (int) $company->id, 404);
+        }
+
+        $viewer = $request->user();
+        $companies = AdminPermissionModule::Companies;
+
+        return response()->json([
+            ...CompanyTaskAccess::for($company, $board),
+            'can' => [
+                'resend_invitation' => $viewer->canAccessAdmin($companies, PermissionAction::Create),
+                'manage_users' => $viewer->canAccessAdmin($companies, PermissionAction::View),
+            ],
+            'links' => [
+                'users' => route('admin.companies.users.index', $company),
+            ],
+        ]);
+    }
+
     public function shareCards(Request $request, TaskBoard $board, ShareBoardCardsWithCompany $share): RedirectResponse
     {
         $data = $request->validate([
