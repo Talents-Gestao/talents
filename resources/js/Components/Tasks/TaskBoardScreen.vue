@@ -257,6 +257,13 @@ function syncSelectedCard(cardId) {
         selectedCard.value = freshCard;
     }
 }
+
+/* O quadro do cartão aberto foi recarregado (etapa, comentário, anexo…): o modal passa a mostrar o cartão atualizado. */
+watch(modalPayload, () => {
+    if (selectedCard.value) {
+        syncSelectedCard(selectedCard.value.id);
+    }
+});
 </script>
 
 <template>
