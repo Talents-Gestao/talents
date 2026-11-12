@@ -15,16 +15,29 @@ const FUNNEL_LABELS = {
 };
 
 /**
- * Pontos de cor da silhueta, do topo à base do funil: a faixa i vai de STOPS[i] a STOPS[i + 1],
- * então o degradê é contínuo entre faixas. Só tokens (roxo da marca → azul `info`).
+ * Escala de roxo do tema, do mais escuro (topo do funil) ao lavanda claro (base). Cada faixa tem um
+ * degradê vertical do seu tom para o tom seguinte da escala, com qualquer número de etapas.
  */
-const STOPS = [
-    'rgb(var(--talents-700))',
-    'rgb(var(--talents-600))',
-    'rgb(var(--talents-500))',
-    'color-mix(in srgb, rgb(var(--info)) 55%, rgb(var(--talents-500)))',
-    'rgb(var(--info))',
+const SCALE = [
+    'var(--talents-700)',
+    'var(--talents-600)',
+    'var(--talents-500)',
+    'var(--talents-400)',
+    'var(--talents-300)',
+    'var(--talents-200)',
 ];
+
+/** Cor na posição t (0 = topo, 1 = base) da escala, interpolando entre os tokens vizinhos. */
+function scaleColor(t) {
+    const position = Math.min(1, Math.max(0, t)) * (SCALE.length - 1);
+    const lower = Math.floor(position);
+    const upper = Math.min(SCALE.length - 1, lower + 1);
+    const mix = Math.round((position - lower) * 100);
+    if (mix === 0 || lower === upper) {
+        return `rgb(${SCALE[lower]})`;
+    }
+    return `color-mix(in srgb, rgb(${SCALE[upper]}) ${mix}%, rgb(${SCALE[lower]}))`;
+}
 
 /** Largura mínima (%) da faixa e quanto a última faixa afunila na base. */
 const MIN_WIDTH = 34;
@@ -88,12 +101,12 @@ const widths = computed(() => {
 const leadsCount = computed(() => baseRows.value[0]?.count ?? 0);
 
 function polygonPoints(top, bottom) {
-    // viewBox 0 0 100 40; margem de 1,5 em y para o traço arredondado não vazar da linha.
+    // viewBox 0 0 100 40; margem de 0,5 para o contorno de 1px não ser cortado.
     return [
-        `${50 - top / 2},1.5`,
-        `${50 + top / 2},1.5`,
-        `${50 + bottom / 2},38.5`,
-        `${50 - bottom / 2},38.5`,
+        `${50 - top / 2},0.5`,
+        `${50 + top / 2},0.5`,
+        `${50 + bottom / 2},39.5`,
+        `${50 - bottom / 2},39.5`,
     ].join(' ');
 }
 
@@ -118,8 +131,8 @@ const rows = computed(() =>
             tooltip,
             points: polygonPoints(top, bottom),
             gradientId: `${gradientPrefix}-${index}`,
-            from: STOPS[Math.min(index, STOPS.length - 1)],
-            to: STOPS[Math.min(index + 1, STOPS.length - 1)],
+            from: scaleColor(index / baseRows.value.length),
+            to: scaleColor((index + 1) / baseRows.value.length),
             // proporção real do total de leads (a mesma base de "% dos leads")
             share: leadsCount.value > 0 ? Math.min(1, row.count / leadsCount.value) : 0,
         };
@@ -212,11 +225,11 @@ function formatLostDate(iso) {
                                 </linearGradient>
                             </defs>
                             <polygon
+                                class="dashboard-sales-funnel__shape"
                                 :points="row.points"
                                 :fill="`url(#${row.gradientId})`"
-                                :stroke="`url(#${row.gradientId})`"
-                                stroke-width="3"
-                                stroke-linejoin="round"
+                                stroke-width="1"
+                                stroke-linejoin="miter"
                                 vector-effect="non-scaling-stroke"
                             />
                         </svg>
@@ -366,7 +379,7 @@ function formatLostDate(iso) {
     container-type: inline-size;
     display: flex;
     flex-direction: column;
-    gap: 3px; /* pequeno espaçamento entre faixas; topo de cada uma = base da anterior */
+    gap: 8px; /* etapas separadas; o topo de cada faixa tem a largura da base da anterior */
 }
 
 .dashboard-sales-funnel__stage {
@@ -415,6 +428,11 @@ function formatLostDate(iso) {
     height: 100%;
     overflow: visible;
     transition: filter 0.2s ease;
+}
+
+/* Contorno fino lavanda e cantos retos em cada etapa. */
+.dashboard-sales-funnel__shape {
+    stroke: rgb(var(--talents-200));
 }
 
 .dashboard-sales-funnel__row:hover .dashboard-sales-funnel__band,

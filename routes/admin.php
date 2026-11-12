@@ -690,6 +690,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('processo-cards/{template_card}', [TasksTemplateCardController::class, 'destroy'])->name('processo-cards.destroy');
 
         Route::get('quadros/ativar', [TasksBoardActivationController::class, 'create'])->name('quadros.ativar');
+        Route::get('empresas/{company}/acesso', [TasksTaskBoardController::class, 'companyAccess'])->name('empresas.acesso');
         Route::post('quadros/reordenar', [TasksTaskBoardController::class, 'reorder'])
             ->middleware('admin.can:tarefas,edit')
             ->name('quadros.reordenar');

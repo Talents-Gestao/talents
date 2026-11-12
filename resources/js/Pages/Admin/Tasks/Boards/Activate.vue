@@ -1,4 +1,5 @@
 <script setup>
+import CompanyAccessPanel from '@/Components/Tasks/CompanyAccessPanel.vue';
 import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
@@ -61,6 +62,7 @@ function submit() {
                 <InputLabel for="board_name" value="Nome do quadro (opcional)" />
                 <TextInput id="board_name" v-model="form.board_name" class="mt-1 w-full" />
             </div>
+            <CompanyAccessPanel v-if="form.company_id" :company-id="form.company_id" mode="summary" context="activate" />
             <PrimaryButton :disabled="form.processing">Ativar</PrimaryButton>
         </form>
     </AdminLayout>

@@ -3,6 +3,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import TaskDescriptionDisclosure from '@/Components/Tasks/TaskDescriptionDisclosure.vue';
 import TaskDescriptionEditor from '@/Components/Tasks/TaskDescriptionEditor.vue';
 import TextInput from '@/Components/TextInput.vue';
 import {
@@ -71,6 +72,17 @@ function setCoverColor(color) {
 }
 
 const commentForm = useForm({ body: '', mentioned_user_ids: [] });
+
+/**
+ * Pedidos do modal ainda em andamento (salvar ao sair do campo, adicionar etapa, anexo).
+ * «Salvar alterações» espera por eles antes de enviar o resto, para os pedidos não se cancelarem.
+ */
+const inFlight = new Set();
+const saving = ref(false);
+const saveError = ref('');
+const addingItem = ref({});
+/** Troca a chave do formulário de nova etapa depois de criar, para a descrição voltar recolhida. */
+const newItemFormKeys = ref({});
 const checklistForm = useForm({ name: '', items_text: '' });
 const pendingFocusChecklistItemInputId = ref(null);
 const checklistIdsBeforeCreate = ref(null);
@@ -81,6 +93,8 @@ const editingChecklistItemId = ref(null);
 const editingChecklistItemText = ref('');
 /** Rascunhos locais de descrição por item (edição inline sem perder foco). */
 const itemDescriptionDrafts = ref({});
+/** Última descrição salva de cada item (para saber se o rascunho tem mudança pendente). */
+const savedDescriptions = {};
 const newChecklistItems = ref({});
 /** Itens por checklist (ordem local para arrastar). */
 const localChecklistItemsById = ref({});
@@ -92,34 +106,52 @@ const newLabelDraft = ref({ name: '', color: '#3b82f6' });
 const editingLabelId = ref(null);
 const labelEditDraft = ref({ name: '', color: '' });
 
+function cardFormValues(c) {
+    return {
+        title: c.title || '',
+        description: c.description || '',
+        visibility: c.visibility || 'inherit',
+        cover_color: c.cover_color || '',
+        due_date: c.due_date || '',
+        start_date: c.start_date || '',
+        recurrence: c.recurrence || '',
+        recurrence_ends_on: c.recurrence_ends_on || '',
+        company_id: c.company_id || '',
+        member_ids: (c.members || []).map((m) => m.id),
+        label_ids: (c.labels || []).map((l) => l.id),
+    };
+}
+
+const sameValue = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
 watch(
     () => props.card,
-    (c) => {
+    (c, previous) => {
         if (!c) {
             lastOpenedCardId.value = null;
             return;
         }
         const id = Number(c.id);
-        if (lastOpenedCardId.value !== id) {
+        const reopened = lastOpenedCardId.value !== id;
+        if (reopened) {
             lastOpenedCardId.value = id;
             activeTab.value = 'details';
             showNewLabelForm.value = false;
             editingLabelId.value = null;
+            saveError.value = '';
+            commentForm.reset('body');
+            newChecklistItems.value = {};
             cancelInlineEditChecklist();
             cancelInlineEditItem();
         }
-        cardUpdate.title = c.title || '';
-        cardUpdate.description = c.description || '';
-        cardUpdate.visibility = c.visibility || 'inherit';
-        cardUpdate.cover_color = c.cover_color || '';
-        cardUpdate.due_date = c.due_date || '';
-        cardUpdate.start_date = c.start_date || '';
-        cardUpdate.recurrence = c.recurrence || '';
-        cardUpdate.recurrence_ends_on = c.recurrence_ends_on || '';
-        cardUpdate.company_id = c.company_id || '';
-        cardUpdate.member_ids = (c.members || []).map((m) => m.id);
-        cardUpdate.label_ids = (c.labels || []).map((l) => l.id);
-        syncLocalChecklistItems(c);
+        // Mesmo cartão recarregado (ex.: depois de adicionar uma etapa): não apaga o que o usuário mudou e ainda não salvou.
+        const before = !reopened && previous ? cardFormValues(previous) : null;
+        const next = cardFormValues(c);
+        for (const [key, value] of Object.entries(next)) {
+            if (before && !sameValue(cardUpdate[key], before[key])) continue;
+            cardUpdate[key] = value;
+        }
+        syncLocalChecklistItems(c, { reopened });
         syncLocalChecklists(c);
     },
     { immediate: true },
@@ -226,13 +258,17 @@ function sortChecklists(checklists) {
     });
 }
 
-function syncLocalChecklistItems(card) {
+function syncLocalChecklistItems(card, { reopened = true } = {}) {
     const map = {};
     const descriptions = {};
     for (const cl of card?.checklists || []) {
         map[cl.id] = sortChecklistItems(cl.items);
         for (const item of cl.items || []) {
-            descriptions[item.id] = item.description || '';
+            const saved = item.description || '';
+            const draft = itemDescriptionDrafts.value[item.id];
+            // Recarga do mesmo cartão: mantém o que ainda está sendo digitado.
+            descriptions[item.id] = !reopened && draft !== undefined && draft !== (savedDescriptions[item.id] ?? '') ? draft : saved;
+            savedDescriptions[item.id] = saved;
         }
     }
     localChecklistItemsById.value = map;
@@ -281,39 +317,149 @@ const overallChecklistStats = computed(() => {
     return { ...totals, percent };
 });
 
-function saveCard() {
-    if (!props.card || isReadOnly.value) return;
+const REQUEST_OPTIONS = { preserveScroll: true, preserveState: true };
+const GENERIC_SAVE_ERROR = 'Não foi possível salvar. Confira os dados e tente de novo.';
+
+/**
+ * Dispara um pedido do Inertia e devolve uma promessa com { ok, errors }, registrada em `inFlight`
+ * até terminar (sucesso, erro de validação, erro do servidor ou cancelamento).
+ */
+function track(start) {
+    let resolveResult;
+    const promise = new Promise((resolve) => {
+        resolveResult = resolve;
+    });
+    let result = { ok: false, errors: {} };
+    inFlight.add(promise);
+    start({
+        onSuccess: () => {
+            result = { ok: true, errors: {} };
+        },
+        onError: (errors) => {
+            result = { ok: false, errors: errors || {} };
+        },
+        onFinish: () => {
+            inFlight.delete(promise);
+            resolveResult(result);
+        },
+    });
+    return promise;
+}
+
+/** Pedido do modal com os callbacks de quem chamou, acompanhado em `inFlight` (mesmos padrões de router.post/patch/delete). */
+function send(method, url, data, options = {}) {
+    return track((callbacks) =>
+        router.visit(url, {
+            method,
+            data,
+            preserveState: true,
+            ...options,
+            onSuccess: (page) => {
+                callbacks.onSuccess();
+                options.onSuccess?.(page);
+            },
+            onError: (errors) => {
+                callbacks.onError(errors);
+                options.onError?.(errors);
+            },
+            onFinish: (visit) => {
+                options.onFinish?.(visit);
+                callbacks.onFinish();
+            },
+        }),
+    );
+}
+
+const tracked = {
+    post: (url, data = {}, options = {}) => send('post', url, data, options),
+    patch: (url, data = {}, options = {}) => send('patch', url, data, options),
+    delete: (url, options = {}) => send('delete', url, {}, options),
+};
+
+function reportError(result) {
+    const first = Object.values(result?.errors || {})[0];
+    saveError.value = (Array.isArray(first) ? first[0] : first) || GENERIC_SAVE_ERROR;
+}
+
+function submitCardUpdate() {
     const url = props.isAdmin
         ? route('admin.tarefas.cards.update', props.card.id)
         : route('client.tarefas.cards.update', props.card.id);
 
-    if (props.isAdmin) {
-        cardUpdate
-            .transform((data) => ({
-                ...data,
-                company_id: data.company_id || null,
-                due_date: data.due_date || null,
-                start_date: data.start_date || null,
-                recurrence: data.recurrence || null,
-                recurrence_ends_on: data.recurrence ? data.recurrence_ends_on || null : null,
-                cover_color: data.cover_color || null,
-            }))
-            .patch(url, {
-                preserveScroll: true,
-                onSuccess: () => emit('refresh'),
-            });
-    } else {
-        cardUpdate
-            .transform((data) => ({
-                title: data.title,
-                description: data.description,
-                due_date: data.due_date || null,
-                start_date: data.start_date || null,
-            }))
-            .patch(url, {
-                preserveScroll: true,
-                onSuccess: () => emit('refresh'),
-            });
+    const form = props.isAdmin
+        ? cardUpdate.transform((data) => ({
+              ...data,
+              company_id: data.company_id || null,
+              due_date: data.due_date || null,
+              start_date: data.start_date || null,
+              recurrence: data.recurrence || null,
+              recurrence_ends_on: data.recurrence ? data.recurrence_ends_on || null : null,
+              cover_color: data.cover_color || null,
+          }))
+        : cardUpdate.transform((data) => ({
+              title: data.title,
+              description: data.description,
+              due_date: data.due_date || null,
+              start_date: data.start_date || null,
+          }));
+
+    return track((callbacks) => form.patch(url, { preserveScroll: true, ...callbacks }));
+}
+
+/** O que foi digitado no modal e ainda não foi enviado (etapa nova, título em edição, descrições, comentário). */
+function pendingSteps() {
+    const steps = [];
+    const allItems = localChecklists.value.flatMap((cl) => checklistItemsFor(cl));
+
+    for (const cl of localChecklists.value) {
+        if (newChecklistItems.value[cl.id]?.text?.trim()) {
+            steps.push(() => addChecklistItem(cl, { quiet: true }));
+        }
+    }
+    if (editingChecklistItemId.value) {
+        const item = allItems.find((it) => Number(it.id) === Number(editingChecklistItemId.value));
+        if (item) steps.push(() => saveInlineEditItem(item, { quiet: true }));
+    }
+    for (const item of allItems) {
+        if (descriptionChanged(item)) {
+            steps.push(() => saveItemDescription(item, { quiet: true }));
+        }
+    }
+    if (commentForm.body.trim()) {
+        steps.push(() => submitComment({ quiet: true }));
+    }
+    return steps;
+}
+
+/**
+ * «Salvar alterações»: espera os pedidos em andamento, envia o que está pendente (etapa nova primeiro),
+ * salva o cartão e só então fecha. Qualquer erro mantém o modal aberto, com a mensagem e o que foi digitado.
+ */
+async function saveCard() {
+    if (!props.card || isReadOnly.value || saving.value) return;
+    saving.value = true;
+    saveError.value = '';
+
+    try {
+        while (inFlight.size) {
+            await Promise.all([...inFlight]);
+        }
+        if (saveError.value) return;
+
+        for (const step of pendingSteps()) {
+            if (!(await step())) return;
+        }
+
+        const result = await submitCardUpdate();
+        if (!result.ok) {
+            reportError(result);
+            return;
+        }
+
+        emit('refresh');
+        emit('close');
+    } finally {
+        saving.value = false;
     }
 }
 
@@ -325,7 +471,7 @@ async function deleteCard() {
         return;
     }
 
-    router.delete(route('admin.tarefas.cards.destroy', props.card.id), {
+    tracked.delete(route('admin.tarefas.cards.destroy', props.card.id), {
         preserveScroll: true,
         onSuccess: () => emit('close'),
     });
@@ -338,7 +484,7 @@ async function archiveCard() {
         return;
     }
 
-    router.post(route('admin.tarefas.cards.arquivar', props.card.id), {}, {
+    tracked.post(route('admin.tarefas.cards.arquivar', props.card.id), {}, {
         preserveScroll: true,
         onSuccess: () => {
             emit('close');
@@ -350,7 +496,7 @@ async function archiveCard() {
 function restoreCard() {
     if (!props.card?.id || !props.isAdmin) return;
 
-    router.post(route('admin.tarefas.cards.restaurar', props.card.id), {}, {
+    tracked.post(route('admin.tarefas.cards.restaurar', props.card.id), {}, {
         preserveScroll: true,
         onSuccess: () => {
             emit('close');
@@ -359,16 +505,10 @@ function restoreCard() {
     });
 }
 
+/** Recarrega o quadro do cartão; a tela atualiza o cartão aberto quando o conteúdo chega. */
 function reloadBoardPayloadAndSyncCard() {
     if (!props.card) return;
-    router.reload({
-        only: ['boardPayload'],
-        preserveState: true,
-        preserveScroll: true,
-        onSuccess: () => {
-            emit('sync-card', props.card.id);
-        },
-    });
+    emit('refresh');
 }
 
 function parseChecklistItemsText(text) {
@@ -420,19 +560,21 @@ watch(
     { deep: true },
 );
 
-function submitComment() {
-    if (!props.card || !commentForm.body.trim()) return;
+function submitComment({ quiet = false } = {}) {
+    if (!props.card || !commentForm.body.trim()) return Promise.resolve(true);
+    if (commentForm.processing) return Promise.resolve(false);
     const url = props.isAdmin
         ? route('admin.tarefas.cards.comentarios.store', props.card.id)
         : route('client.tarefas.cards.comentarios.store', props.card.id);
 
-    commentForm.post(url, {
-        preserveScroll: true,
-        preserveState: true,
-        onSuccess: () => {
-            commentForm.reset('body');
-            reloadBoardPayloadAndSyncCard();
-        },
+    return track((callbacks) => commentForm.post(url, { ...REQUEST_OPTIONS, ...callbacks })).then((result) => {
+        if (!result.ok) {
+            reportError(result);
+            return false;
+        }
+        commentForm.reset('body');
+        if (!quiet) reloadBoardPayloadAndSyncCard();
+        return true;
     });
 }
 
@@ -442,7 +584,7 @@ function toggleItem(item) {
         ? route('admin.tarefas.checklist-itens.update', item.id)
         : route('client.tarefas.checklist-itens.update', item.id);
 
-    router.patch(
+    tracked.patch(
         url,
         { is_completed: !item.is_completed },
         {
@@ -496,7 +638,7 @@ function saveInlineEditChecklist(checklist) {
         return;
     }
 
-    router.patch(
+    tracked.patch(
         route('admin.tarefas.checklists.update', checklist.id),
         { name },
         {
@@ -518,7 +660,7 @@ async function deleteChecklist(checklist) {
         return;
     }
 
-    router.delete(route('admin.tarefas.checklists.destroy', checklist.id), {
+    tracked.delete(route('admin.tarefas.checklists.destroy', checklist.id), {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {
@@ -545,26 +687,32 @@ function checklistItemUpdateUrl(item) {
         : route('client.tarefas.checklist-itens.update', item.id);
 }
 
-function saveInlineEditItem(item) {
-    if (!item || !item.id) return;
+const itemTitleRequests = new Map();
+
+function saveInlineEditItem(item, { quiet = false } = {}) {
+    if (!item?.id) return Promise.resolve(true);
+    if (itemTitleRequests.has(item.id)) return itemTitleRequests.get(item.id);
+    if (Number(editingChecklistItemId.value) !== Number(item.id)) return Promise.resolve(true);
     const text = editingChecklistItemText.value.trim();
     if (!text || text === item.text) {
         cancelInlineEditItem();
-        return;
+        return Promise.resolve(true);
     }
 
-    router.patch(
-        checklistItemUpdateUrl(item),
-        { text },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            onSuccess: () => {
-                cancelInlineEditItem();
-                reloadBoardPayloadAndSyncCard();
-            },
-        },
-    );
+    const request = track((callbacks) =>
+        router.patch(checklistItemUpdateUrl(item), { text }, { ...REQUEST_OPTIONS, ...callbacks }),
+    ).then((result) => {
+        itemTitleRequests.delete(item.id);
+        if (!result.ok) {
+            reportError(result);
+            return false;
+        }
+        if (Number(editingChecklistItemId.value) === Number(item.id)) cancelInlineEditItem();
+        if (!quiet) reloadBoardPayloadAndSyncCard();
+        return true;
+    });
+    itemTitleRequests.set(item.id, request);
+    return request;
 }
 
 function itemDescriptionDraft(item) {
@@ -586,21 +734,34 @@ function setItemDescriptionDraft(item, value) {
     };
 }
 
-function saveItemDescription(item) {
-    if (isReadOnly.value || !item?.id) return;
-    const description = (itemDescriptionDrafts.value[item.id] ?? item.description ?? '').trim();
-    const previous = (item.description || '').trim();
-    if (description === previous) return;
+function descriptionChanged(item) {
+    if (!item?.id || itemDescriptionDrafts.value[item.id] === undefined) return false;
+    const saved = savedDescriptions[item.id] ?? item.description ?? '';
+    return (itemDescriptionDrafts.value[item.id] || '').trim() !== saved.trim();
+}
 
-    router.patch(
-        checklistItemUpdateUrl(item),
-        { description: description || null },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            onSuccess: () => reloadBoardPayloadAndSyncCard(),
-        },
-    );
+const itemDescriptionRequests = new Map();
+
+function saveItemDescription(item, { quiet = false } = {}) {
+    if (isReadOnly.value || !item?.id) return Promise.resolve(true);
+    if (itemDescriptionRequests.has(item.id)) return itemDescriptionRequests.get(item.id);
+    if (!descriptionChanged(item)) return Promise.resolve(true);
+    const description = (itemDescriptionDrafts.value[item.id] || '').trim();
+
+    const request = track((callbacks) =>
+        router.patch(checklistItemUpdateUrl(item), { description: description || null }, { ...REQUEST_OPTIONS, ...callbacks }),
+    ).then((result) => {
+        itemDescriptionRequests.delete(item.id);
+        if (!result.ok) {
+            reportError(result);
+            return false;
+        }
+        savedDescriptions[item.id] = description;
+        if (!quiet) reloadBoardPayloadAndSyncCard();
+        return true;
+    });
+    itemDescriptionRequests.set(item.id, request);
+    return request;
 }
 
 async function deleteChecklistItem(item) {
@@ -610,7 +771,7 @@ async function deleteChecklistItem(item) {
         return;
     }
 
-    router.delete(route('admin.tarefas.checklist-itens.destroy', item.id), {
+    tracked.delete(route('admin.tarefas.checklist-itens.destroy', item.id), {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {
@@ -627,7 +788,7 @@ function onChecklistItemsReorder(checklist, evt) {
 
     const items = localChecklistItemsById.value[checklist.id] || [];
 
-    router.post(
+    tracked.post(
         route('admin.tarefas.checklists.itens.reorder', checklist.id),
         { item_ids: items.map((it) => it.id) },
         {
@@ -643,7 +804,7 @@ function onChecklistsReorder(evt) {
         return;
     }
 
-    router.post(
+    tracked.post(
         route('admin.tarefas.cards.checklists.reorder', props.card.id),
         { checklist_ids: localChecklists.value.map((cl) => cl.id) },
         {
@@ -660,7 +821,7 @@ function toggleChecklistCompletion(checklist) {
 
     if (!stats.total) {
         if (!props.isAdmin) return;
-        router.patch(
+        tracked.patch(
             route('admin.tarefas.checklists.update', checklist.id),
             { is_completed: !stats.done },
             {
@@ -682,7 +843,7 @@ function toggleChecklistCompletion(checklist) {
             ? route('admin.tarefas.checklist-itens.update', item.id)
             : route('client.tarefas.checklist-itens.update', item.id);
 
-        router.patch(
+        tracked.patch(
             url,
             { is_completed: targetValue },
             {
@@ -712,11 +873,12 @@ function uploadAttachment(e) {
     const fd = new FormData();
     fd.append('file', file);
 
-    router.post(url, fd, {
-        forceFormData: true,
-        preserveScroll: true,
-        preserveState: true,
-        onSuccess: () => reloadBoardPayloadAndSyncCard(),
+    track((callbacks) => router.post(url, fd, { forceFormData: true, ...REQUEST_OPTIONS, ...callbacks })).then((result) => {
+        if (!result.ok) {
+            reportError(result);
+            return;
+        }
+        reloadBoardPayloadAndSyncCard();
     });
     e.target.value = '';
 }
@@ -742,7 +904,7 @@ function submitNewLabel() {
     const name = newLabelDraft.value.name.trim();
     if (!name) return;
 
-    router.post(
+    tracked.post(
         route('admin.tarefas.quadros.labels.store', props.boardPayload.id),
         { name, color: newLabelDraft.value.color },
         {
@@ -774,7 +936,7 @@ function saveLabelEdit(label) {
     if (!label?.id) return;
     const name = labelEditDraft.value.name.trim();
 
-    router.patch(
+    tracked.patch(
         route('admin.tarefas.labels.update', label.id),
         { name: name || null, color: labelEditDraft.value.color },
         {
@@ -796,7 +958,7 @@ async function deleteLabel(label) {
         return;
     }
 
-    router.delete(route('admin.tarefas.labels.destroy', label.id), {
+    tracked.delete(route('admin.tarefas.labels.destroy', label.id), {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {
@@ -843,33 +1005,46 @@ function newItemDraft(checklistId) {
     return newChecklistItems.value[checklistId];
 }
 
-function addChecklistItem(checklist) {
-    if (!props.isAdmin || !checklist?.id) return;
+const addItemRequests = new Map();
+
+/** Cria a etapa digitada em «Título da etapa…» (com prazo e descrição); sem título é ignorada. Nunca envia duas vezes. */
+function addChecklistItem(checklist, { quiet = false } = {}) {
+    if (!props.isAdmin || !checklist?.id) return Promise.resolve(true);
+    if (addItemRequests.has(checklist.id)) return addItemRequests.get(checklist.id);
     const draft = newItemDraft(checklist.id);
     const text = draft.text?.trim();
-    if (!text) return;
+    if (!text) return Promise.resolve(true);
 
-    scheduleFocusNewChecklistItemInput(checklist.id);
+    if (!quiet) scheduleFocusNewChecklistItemInput(checklist.id);
+    addingItem.value = { ...addingItem.value, [checklist.id]: true };
 
-    router.post(
-        route('admin.tarefas.checklists.itens.store', checklist.id),
-        {
-            text,
-            description: draft.description?.trim() || null,
-            due_date: draft.due_date || null,
-        },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            onSuccess: () => {
-                newChecklistItems.value = {
-                    ...newChecklistItems.value,
-                    [checklist.id]: { text: '', description: '', due_date: '' },
-                };
-                reloadBoardPayloadAndSyncCard();
+    const request = track((callbacks) =>
+        router.post(
+            route('admin.tarefas.checklists.itens.store', checklist.id),
+            {
+                text,
+                description: draft.description?.trim() || null,
+                due_date: draft.due_date || null,
             },
-        },
-    );
+            { ...REQUEST_OPTIONS, ...callbacks },
+        ),
+    ).then((result) => {
+        addItemRequests.delete(checklist.id);
+        addingItem.value = { ...addingItem.value, [checklist.id]: false };
+        if (!result.ok) {
+            reportError(result);
+            return false;
+        }
+        newChecklistItems.value = {
+            ...newChecklistItems.value,
+            [checklist.id]: { text: '', description: '', due_date: '' },
+        };
+        newItemFormKeys.value = { ...newItemFormKeys.value, [checklist.id]: (newItemFormKeys.value[checklist.id] || 0) + 1 };
+        if (!quiet) reloadBoardPayloadAndSyncCard();
+        return true;
+    });
+    addItemRequests.set(checklist.id, request);
+    return request;
 }
 
 function updateItemDueDate(item, dueDate) {
@@ -878,7 +1053,7 @@ function updateItemDueDate(item, dueDate) {
         ? route('admin.tarefas.checklist-itens.update', item.id)
         : route('client.tarefas.checklist-itens.update', item.id);
 
-    router.patch(
+    tracked.patch(
         url,
         { due_date: dueDate || null },
         {
@@ -1252,33 +1427,39 @@ function itemDueClass(item) {
                                             <TrashIcon class="h-4 w-4" aria-hidden="true" />
                                         </button>
                                     </div>
-                                    <div
-                                        class="mt-1.5 space-y-1"
+                                    <TaskDescriptionDisclosure
+                                        class="mt-1"
                                         :class="isAdmin ? 'pl-12' : 'pl-7'"
+                                        :filled="Boolean((isReadOnly ? it.description : itemDescriptionDraft(it))?.trim())"
+                                        :default-open="Boolean((isReadOnly ? it.description : itemDescriptionDraft(it))?.trim())"
+                                        :read-only="isReadOnly"
                                     >
+                                        <template #aside>
+                                            <span
+                                                v-if="it.created_at"
+                                                class="text-[11px] text-slate-400"
+                                                :title="formatDateTitle(it.created_at)"
+                                            >
+                                                Criado em {{ formatDateLabel(it.created_at) }}
+                                            </span>
+                                        </template>
                                         <textarea
                                             v-if="!isReadOnly"
                                             :value="itemDescriptionDraft(it)"
                                             rows="2"
                                             class="w-full resize-y rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 shadow-none placeholder:text-slate-400 focus:border-talents-500 focus:ring-talents-500"
                                             placeholder="Descrição (opcional)"
+                                            aria-label="Descrição da etapa"
                                             @input="setItemDescriptionDraft(it, $event.target.value)"
                                             @blur="saveItemDescription(it)"
                                         />
                                         <p
-                                            v-else-if="it.description"
+                                            v-else
                                             class="whitespace-pre-wrap text-xs text-slate-600"
                                         >
                                             {{ it.description }}
                                         </p>
-                                        <p
-                                            v-if="it.created_at"
-                                            class="text-[11px] text-slate-400"
-                                            :title="formatDateTitle(it.created_at)"
-                                        >
-                                            Criado em {{ formatDateLabel(it.created_at) }}
-                                        </p>
-                                    </div>
+                                    </TaskDescriptionDisclosure>
                                 </li>
                             </VueDraggable>
                             <div v-if="isAdmin" class="mt-2 space-y-2 border-t border-slate-100 pt-2">
@@ -1303,18 +1484,26 @@ function itemDueClass(item) {
                                     </label>
                                     <button
                                         type="button"
-                                        class="shrink-0 rounded-md border border-slate-300 px-2 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+                                        class="shrink-0 rounded-md border border-slate-300 px-2 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                        :disabled="Boolean(addingItem[cl.id]) || saving"
                                         @click="addChecklistItem(cl)"
                                     >
                                         Adicionar
                                     </button>
                                 </div>
-                                <textarea
-                                    v-model="newItemDraft(cl.id).description"
-                                    rows="2"
-                                    class="w-full resize-y rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 shadow-none placeholder:text-slate-400 focus:border-talents-500 focus:ring-talents-500"
-                                    placeholder="Descrição (opcional)"
-                                />
+                                <TaskDescriptionDisclosure
+                                    :key="`nova-etapa-${cl.id}-${newItemFormKeys[cl.id] || 0}`"
+                                    :filled="Boolean(newItemDraft(cl.id).description?.trim())"
+                                    :default-open="Boolean(newItemDraft(cl.id).description?.trim())"
+                                >
+                                    <textarea
+                                        v-model="newItemDraft(cl.id).description"
+                                        rows="2"
+                                        class="w-full resize-y rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 shadow-none placeholder:text-slate-400 focus:border-talents-500 focus:ring-talents-500"
+                                        placeholder="Descrição (opcional)"
+                                        aria-label="Descrição da nova etapa"
+                                    />
+                                </TaskDescriptionDisclosure>
                             </div>
                         </div>
                     </VueDraggable>
@@ -1620,7 +1809,15 @@ function itemDueClass(item) {
                 </div>
             </div>
 
-            <div class="sticky bottom-0 flex items-center justify-end gap-2 border-t border-slate-200 bg-white/95 px-6 py-4 backdrop-blur">
+            <div class="sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-white/95 px-6 py-4 backdrop-blur">
+                <p
+                    v-if="saveError"
+                    class="w-full rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+                    role="alert"
+                    data-card-save-error
+                >
+                    {{ saveError }}
+                </p>
                 <template v-if="isReadOnly">
                     <button
                         type="button"
@@ -1664,8 +1861,8 @@ function itemDueClass(item) {
                     >
                         Cancelar
                     </button>
-                    <PrimaryButton type="button" :disabled="cardUpdate.processing" @click="saveCard">
-                        Salvar alterações
+                    <PrimaryButton type="button" :disabled="saving || cardUpdate.processing" @click="saveCard">
+                        {{ saving ? 'Salvando…' : 'Salvar alterações' }}
                     </PrimaryButton>
                 </template>
             </div>

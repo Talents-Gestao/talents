@@ -195,3 +195,50 @@ describe('Tarefas: estrutura da tela única', () => {
         assert.match(menu, /event\.key === 'Escape'/);
     });
 });
+
+describe('Tarefas: modal do cartão (salvar e fechar)', () => {
+    const modal = () => read('resources/js/Components/Tasks/CardModal.vue');
+
+    it('«Salvar alterações» espera os pedidos em andamento, envia a etapa pendente, salva o cartão e só então fecha', () => {
+        const src = modal();
+        const save = src.slice(src.indexOf('async function saveCard()'), src.indexOf('async function deleteCard()'));
+        assert.match(save, /if \(!props\.card \|\| isReadOnly\.value \|\| saving\.value\) return;/);
+        assert.match(save, /while \(inFlight\.size\)/);
+        assert.match(save, /for \(const step of pendingSteps\(\)\) \{\s*if \(!\(await step\(\)\)\) return;/);
+        assert.match(save, /const result = await submitCardUpdate\(\);\s*if \(!result\.ok\) \{\s*reportError\(result\);\s*return;/);
+        assert.ok(save.indexOf("emit('close')") > save.indexOf('await submitCardUpdate()'), 'fecha só depois do sucesso');
+        assert.doesNotMatch(save, /setTimeout/);
+
+        const steps = src.slice(src.indexOf('function pendingSteps()'), src.indexOf('async function saveCard()'));
+        assert.ok(steps.indexOf('addChecklistItem(cl, { quiet: true })') < steps.indexOf('saveInlineEditItem('), 'etapa nova primeiro');
+        assert.match(steps, /saveItemDescription\(item, \{ quiet: true \}\)/);
+        assert.match(steps, /submitComment\(\{ quiet: true \}\)/);
+    });
+
+    it('sem duplicar etapa: pedido único por checklist, campo limpo depois de criar, botões desabilitados durante o envio', () => {
+        const src = modal();
+        assert.match(src, /if \(addItemRequests\.has\(checklist\.id\)\) return addItemRequests\.get\(checklist\.id\);/);
+        assert.match(src, /if \(!text\) return Promise\.resolve\(true\);/);
+        assert.match(src, /\[checklist\.id\]: \{ text: '', description: '', due_date: '' \}/);
+        assert.match(src, /:disabled="Boolean\(addingItem\[cl\.id\]\) \|\| saving"/);
+        assert.match(src, /:disabled="saving \|\| cardUpdate\.processing"/);
+        assert.match(src, /data-card-save-error/);
+    });
+
+    it('recarga do quadro do cartão (não só o da página) e o modal acompanha o cartão atualizado', () => {
+        const src = modal();
+        assert.doesNotMatch(src, /only: \['boardPayload'\]/);
+        const screen = read('resources/js/Components/Tasks/TaskBoardScreen.vue');
+        assert.match(screen, /watch\(modalPayload, \(\) => \{/);
+    });
+
+    it('descrição da etapa em accordion: recolhida sem texto, botão com aria-expanded, conteúdo só oculto', () => {
+        const src = read('resources/js/Components/Tasks/TaskDescriptionDisclosure.vue');
+        assert.match(src, /const open = ref\(props\.defaultOpen\)/);
+        assert.match(src, /:aria-expanded="open \? 'true' : 'false'"/);
+        assert.match(src, /'Ocultar descrição' : filled \? 'Ver descrição' : 'Adicionar descrição'/);
+        assert.match(src, /<div v-show="open"/);
+        const card = modal();
+        assert.equal(card.match(/<TaskDescriptionDisclosure/g)?.length, 2);
+    });
+});

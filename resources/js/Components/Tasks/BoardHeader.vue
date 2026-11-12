@@ -1,6 +1,7 @@
 <script setup>
 import BoardDescriptionToggle from '@/Components/Tasks/BoardDescriptionToggle.vue';
 import ColorPresetPicker from '@/Components/Tasks/ColorPresetPicker.vue';
+import CompanyAccessPanel from '@/Components/Tasks/CompanyAccessPanel.vue';
 import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import TaskToolbarMenu from '@/Components/Tasks/TaskToolbarMenu.vue';
 import { descriptionPlainText } from '@/utils/taskBoards';
@@ -62,6 +63,8 @@ const inviteRole = ref('viewer');
 const editingName = ref(false);
 const nameInput = ref(null);
 const sharingCards = ref(false);
+/** Painel «Acesso da empresa» (quadros por empresa, só Admin). */
+const showCompanyAccess = ref(false);
 const shareCompanyId = ref('');
 const shareProcessing = ref(false);
 
@@ -461,6 +464,20 @@ const menuItem =
         </button>
 
         <button
+            v-if="isAdmin && !info.is_internal && info.company_id"
+            type="button"
+            :class="[toolbarButton, 'text-talents-800 hover:bg-talents-50']"
+            title="Quem da empresa acessa este quadro e quem recebe e-mail"
+            :aria-expanded="showCompanyAccess ? 'true' : 'false'"
+            data-company-access-button
+            @click="showCompanyAccess = true"
+        >
+            <BuildingOffice2Icon class="h-4 w-4" aria-hidden="true" />
+            <span class="hidden lg:inline">Acesso da empresa</span>
+            <span class="sr-only lg:hidden">Acesso da empresa</span>
+        </button>
+
+        <button
             v-if="isAdmin && info.is_internal"
             type="button"
             :class="[toolbarButton, 'text-talents-800 hover:bg-talents-50']"
@@ -662,6 +679,37 @@ const menuItem =
 
         <Teleport to="body">
             <div
+                v-if="showCompanyAccess && info.company_id"
+                class="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-900/40 px-4 py-12"
+                @click.self="showCompanyAccess = false"
+                @keydown.esc="showCompanyAccess = false"
+            >
+                <div
+                    class="w-full max-w-3xl rounded-2xl bg-white p-5 shadow-xl"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="company-access-title"
+                >
+                    <div class="mb-3 flex items-center justify-between gap-3">
+                        <h3 id="company-access-title" class="text-base font-semibold text-slate-900">
+                            Acesso da empresa · {{ info.company?.name }}
+                        </h3>
+                        <button
+                            type="button"
+                            class="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+                            @click="showCompanyAccess = false"
+                        >
+                            <span class="sr-only">Fechar</span>
+                            ✕
+                        </button>
+                    </div>
+                    <CompanyAccessPanel :company-id="info.company_id" :board-id="board.id" context="board" />
+                </div>
+            </div>
+        </Teleport>
+
+        <Teleport to="body">
+            <div
                 v-if="sharingCards"
                 class="fixed inset-0 z-[100] flex items-start justify-center bg-slate-900/40 px-4 py-12"
                 @click.self="sharingCards = false"
@@ -694,6 +742,14 @@ const menuItem =
                             input-class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         />
                     </div>
+                    <CompanyAccessPanel
+                        v-if="shareCompanyId"
+                        class="mt-4"
+                        :company-id="shareCompanyId"
+                        :board-id="board.id"
+                        mode="summary"
+                        context="share"
+                    />
                     <div class="mt-5 flex justify-end gap-2">
                         <button
                             type="button"

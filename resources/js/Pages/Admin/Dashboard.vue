@@ -590,27 +590,47 @@ const submitGoal = () => {
                                     <li
                                         v-for="task in tasksToday"
                                         :key="task.id"
-                                        class="home-list__item"
                                     >
-                                        <span class="home-list__dot" aria-hidden="true" />
-                                        <span class="min-w-0 flex-1">
-                                            <span class="home-list__title">{{ task.title }}</span>
-                                            <span
-                                                v-if="task.list_name || task.board_name"
-                                                class="home-list__meta"
-                                            >
-                                                <template v-if="task.board_name">{{ task.board_name }}</template>
-                                                <template v-if="task.board_name && task.list_name"> · </template>
-                                                <template v-if="task.list_name">{{ task.list_name }}</template>
+                                        <component
+                                            :is="task.href ? Link : 'div'"
+                                            :href="task.href || undefined"
+                                            class="home-list__item"
+                                            :class="task.href ? 'rounded-md hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-ring' : ''"
+                                            data-home-task-today
+                                        >
+                                            <span class="home-list__dot" aria-hidden="true" />
+                                            <span class="min-w-0 flex-1">
+                                                <span class="home-list__title">{{ task.title }}</span>
+                                                <span
+                                                    v-if="task.list_name || task.board_name"
+                                                    class="home-list__meta"
+                                                >
+                                                    <template v-if="task.board_name">{{ task.board_name }}</template>
+                                                    <template v-if="task.board_name && task.list_name"> · </template>
+                                                    <template v-if="task.list_name">{{ task.list_name }}</template>
+                                                </span>
+                                                <span
+                                                    v-for="step in (task.steps || []).slice(0, 2)"
+                                                    :key="step.id"
+                                                    class="home-list__meta block truncate"
+                                                >
+                                                    Etapa: {{ step.text }}
+                                                </span>
+                                                <span
+                                                    v-if="(task.steps || []).length > 2"
+                                                    class="home-list__meta block"
+                                                >
+                                                    + {{ task.steps.length - 2 }} {{ task.steps.length - 2 === 1 ? 'etapa' : 'etapas' }}
+                                                </span>
                                             </span>
-                                        </span>
+                                        </component>
                                     </li>
                                 </ul>
                                 <HomeEmptyState
                                     v-else
                                     variant="tasks"
                                     title="Sem tarefas atribuídas a si para hoje"
-                                    description="Quando houver tarefas Admin com vencimento hoje (ou atrasadas) e o seu nome no cartão, elas aparecem aqui."
+                                    description="Cartões e etapas de checklist dos quadros Admin com vencimento hoje (ou atrasados), em que você é membro, criador ou responsável, aparecem aqui."
                                 />
                                 <Link
                                     :href="route('admin.tarefas.quadros.index')"

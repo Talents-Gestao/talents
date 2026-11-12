@@ -39,7 +39,7 @@ class CompanyUserController extends Controller
 
         return Inertia::render('Admin/Companies/Users/Index', [
             'company' => $company->only('id', 'name'),
-            'users' => $users->map(function (User $u) use ($company) {
+            'users' => $users->map(function (User $u) {
                 $workspace = $u->workspaces->first();
 
                 return [
@@ -223,7 +223,7 @@ class CompanyUserController extends Controller
             report($e);
 
             return redirect()
-                ->route('admin.companies.users.index', $company)
+                ->back(fallback: route('admin.companies.users.index', $company))
                 ->with('error', 'Não foi possível reenviar o convite. Erro: '.$e->getMessage());
         }
 
@@ -232,7 +232,7 @@ class CompanyUserController extends Controller
             : 'Convite reenviado para '.$user->email.'.';
 
         return redirect()
-            ->route('admin.companies.users.index', $company)
+            ->back(fallback: route('admin.companies.users.index', $company))
             ->with('success', $message);
     }
 
