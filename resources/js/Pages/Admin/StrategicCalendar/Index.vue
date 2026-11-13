@@ -38,6 +38,13 @@ function audienceLabel(row) {
 
 const companyFilter = ref(props.filters?.company_id ? String(props.filters.company_id) : '');
 const kindFilter = ref(props.filters?.kind ?? '');
+/** Origem: ambas, agenda Talents ou agenda interna das empresas (mesmo filtro do portal). */
+const agendaFilter = ref(['talents', 'company'].includes(props.filters?.agenda) ? props.filters.agenda : 'all');
+const agendaOptions = [
+    { value: 'all', label: 'Ambas' },
+    { value: 'talents', label: 'Talents' },
+    { value: 'company', label: 'Empresa' },
+];
 const dayModalOpen = ref(false);
 const dayModalIso = ref(null);
 
@@ -62,6 +69,7 @@ const goToMonth = (year, month) => {
             month,
             company_id: companyFilter.value || undefined,
             kind: kindFilter.value || undefined,
+            agenda: agendaFilter.value !== 'all' ? agendaFilter.value : undefined,
         },
         { preserveState: true, replace: true },
     );
@@ -76,6 +84,7 @@ const goToday = () => {
             month: t.getMonth() + 1,
             company_id: companyFilter.value || undefined,
             kind: kindFilter.value || undefined,
+            agenda: agendaFilter.value !== 'all' ? agendaFilter.value : undefined,
         },
         { preserveState: true, replace: true },
     );
@@ -89,6 +98,7 @@ watch(companyFilter, (v) => {
             month: props.calendarMonth,
             company_id: v || undefined,
             kind: kindFilter.value || undefined,
+            agenda: agendaFilter.value !== 'all' ? agendaFilter.value : undefined,
         },
         { preserveState: true, replace: true },
     );
@@ -102,6 +112,21 @@ watch(kindFilter, (v) => {
             month: props.calendarMonth,
             company_id: companyFilter.value || undefined,
             kind: v || undefined,
+            agenda: agendaFilter.value !== 'all' ? agendaFilter.value : undefined,
+        },
+        { preserveState: true, replace: true },
+    );
+});
+
+watch(agendaFilter, (v) => {
+    router.get(
+        route('admin.strategic-calendar.index'),
+        {
+            year: props.calendarYear,
+            month: props.calendarMonth,
+            company_id: companyFilter.value || undefined,
+            kind: kindFilter.value || undefined,
+            agenda: v !== 'all' ? v : undefined,
         },
         { preserveState: true, replace: true },
     );
@@ -175,6 +200,28 @@ function closeDayModal() {
                         @click="setKind(kind.value)"
                     >
                         {{ kind.label }}
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <span id="agenda-filter-label" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Origem</span>
+                <div
+                    class="inline-flex rounded-full border border-slate-200 bg-slate-50/90 p-0.5"
+                    role="group"
+                    aria-labelledby="agenda-filter-label"
+                    data-agenda-filter
+                >
+                    <button
+                        v-for="opt in agendaOptions"
+                        :key="opt.value"
+                        type="button"
+                        class="rounded-full px-3 py-1.5 text-xs font-semibold transition sm:text-sm"
+                        :class="agendaFilter === opt.value ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+                        :aria-pressed="agendaFilter === opt.value ? 'true' : 'false'"
+                        @click="agendaFilter = opt.value"
+                    >
+                        {{ opt.label }}
                     </button>
                 </div>
             </div>

@@ -1072,10 +1072,10 @@ Ver 7.6 e 9.3/9.4.
 | Datas | Data única ou intervalo (`DateRangeFields`) |
 | Recorrência (`StrategicCalendarRecurrence`) | Semanal, Quinzenal, Mensal, Anual; ocorrências expandidas na leitura (`StrategicCalendarOccurrenceExpander`) |
 | Anexos | Vários arquivos por item, com download e exclusão |
-| Mudança de data | Arrastar ou editar (`PATCH …/{item}/data`) publica aviso «data alterada» às empresas do público |
+| Mudança de data | Arrastar (`PATCH …/{item}/data`) ou mudar a data de início ou de fim no formulário de edição publica o aviso «data alterada» às empresas do público, no lugar do genérico «Calendário atualizado» (um aviso por empresa) |
 | Temas mensais | Janeiro Branco, Fevereiro Laranja, Março Azul-claro, Abril Azul, Maio Amarelo, Junho Vermelho, Julho Amarelo, Agosto Dourado, Setembro Amarelo, Outubro Rosa, Novembro Azul, Dezembro Vermelho (`strategicCalendarThemes.js`) |
 | Mistura de fontes | Tarefas com prazo e férias (`StrategicCalendarLeaveEnricher`) aparecem no calendário, com rótulos próprios |
-| Filtro | Por tipo e por empresa |
+| Filtro | Por tipo, por empresa e por origem («Ambas» / «Talents» / «Empresa», parâmetro `agenda`, igual ao portal); os três combinam. Com origem específica, férias e afastamentos não aparecem (não pertencem a nenhuma das duas agendas) |
 | Importação | `php artisan calendar:import-csv` (export de agenda) |
 
 #### 7.8.2 Avisos às empresas (`/admin/avisos`)

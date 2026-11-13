@@ -46,9 +46,13 @@ class StrategicCalendarController extends Controller
             ]);
         }
 
+        // Origem (igual ao portal): ambas, só a agenda Talents ou só a agenda interna das empresas.
+        $agenda = $this->agendaFilter($request);
+
         $listQuery = StrategicCalendarItem::query()
             ->with(['company:id,name', 'companies:id,name', 'attachments'])
             ->withCount('attachments')
+            ->ofAgenda($agenda)
             ->orderByDesc('occurs_on')
             ->orderByDesc('id');
 
@@ -85,7 +89,10 @@ class StrategicCalendarController extends Controller
         $companyFilter = $request->filled('company_id') ? (int) $request->input('company_id') : null;
         $kindFilter = $request->filled('kind') ? (string) $request->input('kind') : null;
 
-        if ($kindFilter === null || $kindFilter === StrategicCalendarLeaveEnricher::KIND) {
+        $withLeaves = $agenda === null
+            && ($kindFilter === null || $kindFilter === StrategicCalendarLeaveEnricher::KIND);
+
+        if ($withLeaves) {
             $monthItems = $kindFilter === StrategicCalendarLeaveEnricher::KIND
                 ? collect()
                 : $monthItems;
@@ -112,7 +119,7 @@ class StrategicCalendarController extends Controller
             $agendaEnd,
         );
 
-        if ($kindFilter === null || $kindFilter === StrategicCalendarLeaveEnricher::KIND) {
+        if ($withLeaves) {
             $agendaItems = $kindFilter === StrategicCalendarLeaveEnricher::KIND
                 ? collect()
                 : $agendaItems;
@@ -134,7 +141,7 @@ class StrategicCalendarController extends Controller
             'agendaItems' => $agendaItems,
             'calendarYear' => $year,
             'calendarMonth' => $month,
-            'filters' => $request->only(['company_id', 'kind']),
+            'filters' => [...$request->only(['company_id', 'kind']), 'agenda' => $agenda ?? 'all'],
             'companies' => Company::query()->orderBy('name')->get(['id', 'name']),
             'kindLabels' => StrategicCalendarLeaveEnricher::mergeKindLabels($kindLabels),
             'recurrenceLabels' => collect(StrategicCalendarRecurrence::cases())->mapWithKeys(
@@ -254,12 +261,24 @@ class StrategicCalendarController extends Controller
 
         $data['source'] = StrategicCalendarSource::Talents;
 
+        $previousOccursOn = $item->occurs_on?->toDateString();
+        $previousEndsOn = $item->ends_on?->toDateString();
+
         $item->update($data);
         StrategicCalendarAudience::syncCompanies($item, $companyIds);
         $item->load(['companies', 'company']);
         $item->refresh();
 
-        $publishNotice->handle($item, CompanyNoticeEventKind::Updated, $request->user());
+        // Mudou a data (início ou fim): mesmo aviso de «data alterada» do arrastar, no lugar do genérico.
+        $dateChanged = $previousOccursOn !== $item->occurs_on?->toDateString()
+            || $previousEndsOn !== $item->ends_on?->toDateString();
+
+        $publishNotice->handle(
+            $item,
+            $dateChanged ? CompanyNoticeEventKind::DateChanged : CompanyNoticeEventKind::Updated,
+            $request->user(),
+            $dateChanged ? $previousOccursOn : null,
+        );
 
         return $this->redirectAfterMutation('Item atualizado.');
     }
@@ -323,7 +342,9 @@ class StrategicCalendarController extends Controller
 
     private function filteredMasterQuery(Request $request)
     {
-        $query = StrategicCalendarItem::query()->with(['company:id,name', 'companies:id,name', 'attachments']);
+        $query = StrategicCalendarItem::query()
+            ->with(['company:id,name', 'companies:id,name', 'attachments'])
+            ->ofAgenda($this->agendaFilter($request));
 
         if ($request->filled('company_id')) {
             $cid = (int) $request->input('company_id');
@@ -341,6 +362,18 @@ class StrategicCalendarController extends Controller
         }
 
         return $query;
+    }
+
+    /**
+     * Filtro de origem: `talents`, `company` ou null (ambas). Valor desconhecido conta como ambas.
+     */
+    private function agendaFilter(Request $request): ?string
+    {
+        $value = $request->input('agenda');
+
+        return in_array($value, [StrategicCalendarSource::Talents->value, StrategicCalendarSource::Company->value], true)
+            ? $value
+            : null;
     }
 
     /**
