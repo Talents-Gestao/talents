@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\SuggestionCompanySelectController;
 use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
 use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
+use App\Http\Controllers\Client\Feedback\FeedbackTemplateController;
 use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
 use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
 use App\Http\Controllers\Client\ComplaintController;
@@ -423,6 +424,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::get('sessions/{session}/edit', [FeedbackSessionController::class, 'edit'])->name('sessions.edit');
             Route::patch('sessions/{session}', [FeedbackSessionController::class, 'update'])->name('sessions.update');
             Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
+            Route::resource('templates', FeedbackTemplateController::class)
+                ->except(['show'])
+                ->parameters(['templates' => 'template']);
             Route::get('sessions/{session}/pdf', [FeedbackSessionController::class, 'pdf'])->name('sessions.pdf');
         });
     });

@@ -1915,12 +1915,14 @@ Fluxo público em 10.2.
 | Novo feedback | `/client/feedbacks/sessions/create` | colaborador (nome obrigatório, e-mail), modelo, líder (obrigatório), data agendada (obrigatória), próximo alinhamento, título |
 | Editar sessão | `/client/feedbacks/sessions/{s}/edit` | respostas por seção (`FeedbackQuestionField`), perguntas extras por seção, enviar para assinatura |
 | Sessão | `/client/feedbacks/sessions/{s}` | respostas, painel de assinaturas, PDF |
+| Modelos | `/client/feedbacks/templates` (e `/create`, `/{template}/edit`) | modelos de feedback da própria empresa: nome, descrição, ativo, seções e perguntas (Texto longo, Texto curto, Escolha única, Lista de itens; obrigatória); os modelos da Talents aparecem só como referência |
 
 #### 9.8.2 Regras
 
 | Regra | Detalhe |
 |-------|---------|
 | Modelo padrão | «Contrato de Expectativas — Padrão Talents» (`FeedbackTemplateSeeder`) |
+| Modelos da empresa | Só o administrador (`company_admin`, ou a Talents com a empresa selecionada) cria, edita e exclui (`FeedbackTemplateController`); `company_user` recebe 403. O modelo tem `company_id` e só aparece para a empresa dona (lista, «Novo feedback» e edição; para outra empresa é 404). Depois de usado em algum feedback, seções e perguntas ficam travadas (só nome, descrição e ativo mudam) e o modelo não pode ser excluído, só desativado |
 | Tipos de pergunta (`FeedbackQuestionType`) | Texto, Texto longo, Escolha única, Lista de tópicos, Bloco CCM, Tabela de ações, Grupo de notas |
 | Status (`FeedbackSessionStatus`) | Em andamento (ao criar) → Aguardando assinaturas → Concluída; ou Cancelada. O valor Rascunho existe no enum, mas a criação já grava Em andamento |
 | Visibilidade | `company_admin` (e a Talents) vê todas as sessões; `company_user` vê só as sessões em que é o líder (`FeedbackVisibility`) |
@@ -2808,6 +2810,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | GET | `/admin/feedbacks/sessions/{session}` | `admin.feedbacks.sessions.show` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Sessions/Show` |
 | PATCH | `/admin/feedbacks/sessions/{session}` | `admin.feedbacks.sessions.update` | auth · admin.can:feedbacks · Feedback selecionada | — |
 | POST | `/admin/feedbacks/sessions/{session}/assinaturas` | `admin.feedbacks.sessions.signatures` | auth · admin.can:feedbacks · Feedback selecionada | — |
+| GET · POST · PUT · DELETE | `/admin/feedbacks/templates` (`/create`, `/{template}`, `/{template}/edit`) | `admin.feedbacks.templates.{index,create,store,edit,update,destroy}` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Templates/Index` e `Form` |
 | GET | `/admin/feedbacks/sessions/{session}/edit` | `admin.feedbacks.sessions.edit` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Sessions/Edit` |
 | GET | `/admin/feedbacks/sessions/{session}/pdf` | `admin.feedbacks.sessions.pdf` | auth · admin.can:feedbacks · Feedback selecionada | — |
 
@@ -3252,6 +3255,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/client/feedbacks/sessions/{session}/assinaturas` | `client.feedbacks.sessions.signatures` | auth · can.module:feedbacks | — |
 | GET | `/client/feedbacks/sessions/{session}/edit` | `client.feedbacks.sessions.edit` | auth · can.module:feedbacks | `Client/Feedbacks/Sessions/Edit` |
 | GET | `/client/feedbacks/sessions/{session}/pdf` | `client.feedbacks.sessions.pdf` | auth · can.module:feedbacks | — |
+| GET · POST · PUT · DELETE | `/client/feedbacks/templates` (`/create`, `/{template}`, `/{template}/edit`) | `client.feedbacks.templates.{index,create,store,edit,update,destroy}` | auth · can.module:feedbacks · administrador | `Client/Feedbacks/Templates/Index` e `Form` |
 
 #### `/client/ferias`
 
