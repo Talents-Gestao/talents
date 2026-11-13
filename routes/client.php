@@ -14,6 +14,7 @@ use App\Http\Controllers\Client\ExportController;
 use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
 use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
+use App\Http\Controllers\Client\Feedback\FeedbackTemplateController;
 use App\Http\Controllers\Client\ImportController;
 use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
 use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
@@ -253,6 +254,10 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::patch('sessions/{session}', [FeedbackSessionController::class, 'update'])->name('sessions.update');
         Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
         Route::get('sessions/{session}/pdf', [FeedbackSessionController::class, 'pdf'])->name('sessions.pdf');
+        // Modelos da própria empresa (só administrador; o controller recusa os demais).
+        Route::resource('templates', FeedbackTemplateController::class)
+            ->except(['show'])
+            ->parameters(['templates' => 'template']);
     });
 
     Route::middleware(['company_admin', 'can.module:ferias'])->prefix('ferias')->name('ferias.')->group(function () {

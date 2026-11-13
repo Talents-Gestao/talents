@@ -66,7 +66,7 @@ const toggleModule = (id) => {
                     </option>
                 </select>
                 <p class="mt-1 text-xs text-gray-500">
-                    Aplica-se ao portal do cliente quando o plano inclui o módulo Calendário estratégico.
+                    Aplica-se ao portal do cliente quando a assinatura inclui o módulo Calendário estratégico.
                 </p>
             </div>
             <div>

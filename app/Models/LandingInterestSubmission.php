@@ -20,6 +20,8 @@ class LandingInterestSubmission extends Model
         'source',
         'created_by',
         'assigned_to',
+        'converted_company_id',
+        'converted_at',
         'mail_sent_at',
         'mail_error',
     ];
@@ -28,6 +30,7 @@ class LandingInterestSubmission extends Model
     {
         return [
             'mail_sent_at' => 'datetime',
+            'converted_at' => 'datetime',
             'is_qualified' => 'boolean',
             'source' => LandingInterestSource::class,
         ];
@@ -41,6 +44,16 @@ class LandingInterestSubmission extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function convertedCompany(): BelongsTo
+    {
+        return $this->belongsTo(Company::class, 'converted_company_id');
+    }
+
+    public function isConverted(): bool
+    {
+        return $this->converted_at !== null;
     }
 
     public function sourceEnum(): LandingInterestSource

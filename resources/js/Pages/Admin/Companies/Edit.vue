@@ -254,30 +254,30 @@ const submit = () => {
                 Ativa
             </label>
             <div>
-                <InputLabel for="plan_id" value="Plano (assinatura ativa)" />
+                <InputLabel for="plan_id" value="Assinatura ativa" />
                 <p class="mt-0.5 text-xs text-gray-500">
-                    Define o plano da assinatura ativa da empresa. Deixe em branco para cancelar assinaturas ativas.
+                    Define a assinatura ativa da empresa. Deixe em branco para cancelar assinaturas ativas.
                 </p>
                 <select
                     id="plan_id"
                     v-model="form.plan_id"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
-                    <option :value="null">— Sem plano —</option>
+                    <option :value="null">— Sem assinatura —</option>
                     <option v-for="p in plans" :key="p.id" :value="p.id">{{ p.name }}</option>
                 </select>
             </div>
             <div>
                 <InputLabel for="strategic_calendar_access_mode" value="Calendário estratégico" />
                 <p class="mt-0.5 text-xs text-gray-500">
-                    Por padrão segue o plano (módulo no plano). Você pode forçar habilitado ou desabilitado para esta empresa.
+                    Por padrão segue a assinatura (módulo na assinatura). Você pode forçar habilitado ou desabilitado para esta empresa.
                 </p>
                 <select
                     id="strategic_calendar_access_mode"
                     v-model="form.strategic_calendar_access_mode"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
-                    <option value="inherit">Seguir o plano</option>
+                    <option value="inherit">Seguir a assinatura</option>
                     <option value="enabled">Forçar habilitado</option>
                     <option value="disabled">Forçar desabilitado</option>
                 </select>
@@ -285,14 +285,14 @@ const submit = () => {
             <div>
                 <InputLabel for="tasks_access_mode" value="Tarefas (Kanban)" />
                 <p class="mt-0.5 text-xs text-gray-500">
-                    Por padrão segue o plano (módulo «tarefas»). Pode forçar por empresa.
+                    Por padrão segue a assinatura (módulo «tarefas»). Pode forçar por empresa.
                 </p>
                 <select
                     id="tasks_access_mode"
                     v-model="form.tasks_access_mode"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
-                    <option value="inherit">Seguir o plano</option>
+                    <option value="inherit">Seguir a assinatura</option>
                     <option value="enabled">Forçar habilitado</option>
                     <option value="disabled">Forçar desabilitado</option>
                 </select>
@@ -300,14 +300,14 @@ const submit = () => {
             <div>
                 <InputLabel for="rhid_access_mode" value="RHID / Ponto" />
                 <p class="mt-0.5 text-xs text-gray-500">
-                    Por padrão segue o plano (módulo «rhid»). Pode forçar por empresa.
+                    Por padrão segue a assinatura (módulo «rhid»). Pode forçar por empresa.
                 </p>
                 <select
                     id="rhid_access_mode"
                     v-model="form.rhid_access_mode"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
-                    <option value="inherit">Seguir o plano</option>
+                    <option value="inherit">Seguir a assinatura</option>
                     <option value="enabled">Forçar habilitado</option>
                     <option value="disabled">Forçar desabilitado</option>
                 </select>
@@ -315,14 +315,14 @@ const submit = () => {
             <div>
                 <InputLabel for="denuncias_access_mode" value="Canal de denúncias" />
                 <p class="mt-0.5 text-xs text-gray-500">
-                    Por padrão segue o plano (módulo «denuncias»). Pode forçar por empresa.
+                    Por padrão segue a assinatura (módulo «denuncias»). Pode forçar por empresa.
                 </p>
                 <select
                     id="denuncias_access_mode"
                     v-model="form.denuncias_access_mode"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
-                    <option value="inherit">Seguir o plano</option>
+                    <option value="inherit">Seguir a assinatura</option>
                     <option value="enabled">Forçar habilitado</option>
                     <option value="disabled">Forçar desabilitado</option>
                 </select>
@@ -330,14 +330,14 @@ const submit = () => {
             <div>
                 <InputLabel for="ferias_access_mode" value="Férias" />
                 <p class="mt-0.5 text-xs text-gray-500">
-                    Por padrão segue o plano (módulo «férias»). Pode forçar por empresa.
+                    Por padrão segue a assinatura (módulo «férias»). Pode forçar por empresa.
                 </p>
                 <select
                     id="ferias_access_mode"
                     v-model="form.ferias_access_mode"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
-                    <option value="inherit">Seguir o plano</option>
+                    <option value="inherit">Seguir a assinatura</option>
                     <option value="enabled">Forçar habilitado</option>
                     <option value="disabled">Forçar desabilitado</option>
                 </select>
@@ -345,14 +345,14 @@ const submit = () => {
             <div>
                 <InputLabel for="desligamento_access_mode" value="Pesquisa de Desligamento" />
                 <p class="mt-0.5 text-xs text-gray-500">
-                    Por padrão segue o plano (módulo «desligamento»). Pode forçar por empresa.
+                    Por padrão segue a assinatura (módulo «desligamento»). Pode forçar por empresa.
                 </p>
                 <select
                     id="desligamento_access_mode"
                     v-model="form.desligamento_access_mode"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
-                    <option value="inherit">Seguir o plano</option>
+                    <option value="inherit">Seguir a assinatura</option>
                     <option value="enabled">Forçar habilitado</option>
                     <option value="disabled">Forçar desabilitado</option>
                 </select>
@@ -360,14 +360,14 @@ const submit = () => {
             <div>
                 <InputLabel for="acompanhamento_access_mode" value="Acompanhamento" />
                 <p class="mt-0.5 text-xs text-gray-500">
-                    Por padrão segue o plano (módulo «acompanhamento»). Pode forçar por empresa.
+                    Por padrão segue a assinatura (módulo «acompanhamento»). Pode forçar por empresa.
                 </p>
                 <select
                     id="acompanhamento_access_mode"
                     v-model="form.acompanhamento_access_mode"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
-                    <option value="inherit">Seguir o plano</option>
+                    <option value="inherit">Seguir a assinatura</option>
                     <option value="enabled">Forçar habilitado</option>
                     <option value="disabled">Forçar desabilitado</option>
                 </select>

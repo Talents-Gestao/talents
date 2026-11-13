@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\SuggestionCompanySelectController;
 use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
 use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
+use App\Http\Controllers\Client\Feedback\FeedbackTemplateController;
 use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
 use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
 use App\Http\Controllers\Client\ComplaintController;
@@ -108,6 +109,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('landing-interest.update');
         Route::delete('/interessados-landing/{submission}', [LandingInterestSubmissionController::class, 'destroy'])
             ->name('landing-interest.destroy');
+        // Converter em cliente: além de `landing_interest`, exige criar empresas (`companies`).
+        Route::post('/interessados-landing/{submission}/converter', [LandingInterestSubmissionController::class, 'convert'])
+            ->middleware('admin.can:companies,create')
+            ->name('landing-interest.convert');
     });
 
     Route::middleware('admin.can:strategic_calendar')->group(function () {
@@ -423,6 +428,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::get('sessions/{session}/edit', [FeedbackSessionController::class, 'edit'])->name('sessions.edit');
             Route::patch('sessions/{session}', [FeedbackSessionController::class, 'update'])->name('sessions.update');
             Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
+            Route::resource('templates', FeedbackTemplateController::class)
+                ->except(['show'])
+                ->parameters(['templates' => 'template']);
             Route::get('sessions/{session}/pdf', [FeedbackSessionController::class, 'pdf'])->name('sessions.pdf');
         });
     });

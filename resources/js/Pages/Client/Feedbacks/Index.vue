@@ -118,6 +118,13 @@ const perceptionSeries = computed(() => {
                     </div>
                     <div class="flex flex-wrap gap-2 lg:justify-end">
                         <Link
+                            v-if="isCompanyAdmin"
+                            :href="feedbackRoute('templates.index')"
+                            class="inline-flex items-center gap-2 rounded-xl border border-talents-300 bg-white px-4 py-2.5 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-50"
+                        >
+                            Modelos
+                        </Link>
+                        <Link
                             :href="feedbackRoute('sessions.create')"
                             class="inline-flex items-center gap-2 rounded-xl bg-talents-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800"
                         >

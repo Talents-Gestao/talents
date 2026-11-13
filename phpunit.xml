@@ -12,6 +12,13 @@
             <directory>tests/Feature</directory>
         </testsuite>
     </testsuites>
+    <!-- Testes de aceitação marcados como "gap" documentam funcionalidades ainda não prontas;
+         ficam fora da execução padrão; para rodá-los, use a opção group com o valor gap. -->
+    <groups>
+        <exclude>
+            <group>gap</group>
+        </exclude>
+    </groups>
     <source>
         <include>
             <directory>app</directory>

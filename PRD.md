@@ -848,6 +848,7 @@ Item «Oportunidades NR-1» do grupo Comercial abre `/nr1/oportunidades` (painel
 | Incluir manualmente | Mesmos campos do formulário público + responsável (`assigned_to`) |
 | Qualificar e anotar | `PATCH`: `is_qualified`, `admin_notes` (até 10.000) |
 | Excluir | `DELETE` |
+| Converter em cliente | `POST …/{submission}/converter` (exige também `companies` com criar). Cria a empresa pelo mesmo fluxo do cadastro (`CreateCompanyWithAdmin`): nome = empresa do lead (ou o nome do lead), e-mail de contato = e-mail do lead, primeiro `company_admin` com o nome do lead e convite de acesso. Grava `converted_company_id` e `converted_at`; a lista mostra o selo «Cliente» com link para a empresa. Lead já convertido, ou e-mail já usado por um usuário, é recusado com mensagem |
 
 Lead incluído manualmente também gera aviso «novo lead».
 
@@ -1072,10 +1073,10 @@ Ver 7.6 e 9.3/9.4.
 | Datas | Data única ou intervalo (`DateRangeFields`) |
 | Recorrência (`StrategicCalendarRecurrence`) | Semanal, Quinzenal, Mensal, Anual; ocorrências expandidas na leitura (`StrategicCalendarOccurrenceExpander`) |
 | Anexos | Vários arquivos por item, com download e exclusão |
-| Mudança de data | Arrastar ou editar (`PATCH …/{item}/data`) publica aviso «data alterada» às empresas do público |
+| Mudança de data | Arrastar (`PATCH …/{item}/data`) ou mudar a data de início ou de fim no formulário de edição publica o aviso «data alterada» às empresas do público, no lugar do genérico «Calendário atualizado» (um aviso por empresa) |
 | Temas mensais | Janeiro Branco, Fevereiro Laranja, Março Azul-claro, Abril Azul, Maio Amarelo, Junho Vermelho, Julho Amarelo, Agosto Dourado, Setembro Amarelo, Outubro Rosa, Novembro Azul, Dezembro Vermelho (`strategicCalendarThemes.js`) |
 | Mistura de fontes | Tarefas com prazo e férias (`StrategicCalendarLeaveEnricher`) aparecem no calendário, com rótulos próprios |
-| Filtro | Por tipo e por empresa |
+| Filtro | Por tipo, por empresa e por origem («Ambas» / «Talents» / «Empresa», parâmetro `agenda`, igual ao portal); os três combinam. Com origem específica, férias e afastamentos não aparecem (não pertencem a nenhuma das duas agendas) |
 | Importação | `php artisan calendar:import-csv` (export de agenda) |
 
 #### 7.8.2 Avisos às empresas (`/admin/avisos`)
@@ -1916,12 +1917,14 @@ Fluxo público em 10.2.
 | Novo feedback | `/client/feedbacks/sessions/create` | colaborador (nome obrigatório, e-mail), modelo, líder (obrigatório), data agendada (obrigatória), próximo alinhamento, título |
 | Editar sessão | `/client/feedbacks/sessions/{s}/edit` | respostas por seção (`FeedbackQuestionField`), perguntas extras por seção, enviar para assinatura |
 | Sessão | `/client/feedbacks/sessions/{s}` | respostas, painel de assinaturas, PDF |
+| Modelos | `/client/feedbacks/templates` (e `/create`, `/{template}/edit`) | modelos de feedback da própria empresa: nome, descrição, ativo, seções e perguntas (Texto longo, Texto curto, Escolha única, Lista de itens; obrigatória); os modelos da Talents aparecem só como referência |
 
 #### 9.8.2 Regras
 
 | Regra | Detalhe |
 |-------|---------|
 | Modelo padrão | «Contrato de Expectativas — Padrão Talents» (`FeedbackTemplateSeeder`) |
+| Modelos da empresa | Só o administrador (`company_admin`, ou a Talents com a empresa selecionada) cria, edita e exclui (`FeedbackTemplateController`); `company_user` recebe 403. O modelo tem `company_id` e só aparece para a empresa dona (lista, «Novo feedback» e edição; para outra empresa é 404). Depois de usado em algum feedback, seções e perguntas ficam travadas (só nome, descrição e ativo mudam) e o modelo não pode ser excluído, só desativado |
 | Tipos de pergunta (`FeedbackQuestionType`) | Texto, Texto longo, Escolha única, Lista de tópicos, Bloco CCM, Tabela de ações, Grupo de notas |
 | Status (`FeedbackSessionStatus`) | Em andamento (ao criar) → Aguardando assinaturas → Concluída; ou Cancelada. O valor Rascunho existe no enum, mas a criação já grava Em andamento |
 | Visibilidade | `company_admin` (e a Talents) vê todas as sessões; `company_user` vê só as sessões em que é o líder (`FeedbackVisibility`) |
@@ -2809,6 +2812,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | GET | `/admin/feedbacks/sessions/{session}` | `admin.feedbacks.sessions.show` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Sessions/Show` |
 | PATCH | `/admin/feedbacks/sessions/{session}` | `admin.feedbacks.sessions.update` | auth · admin.can:feedbacks · Feedback selecionada | — |
 | POST | `/admin/feedbacks/sessions/{session}/assinaturas` | `admin.feedbacks.sessions.signatures` | auth · admin.can:feedbacks · Feedback selecionada | — |
+| GET · POST · PUT · DELETE | `/admin/feedbacks/templates` (`/create`, `/{template}`, `/{template}/edit`) | `admin.feedbacks.templates.{index,create,store,edit,update,destroy}` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Templates/Index` e `Form` |
 | GET | `/admin/feedbacks/sessions/{session}/edit` | `admin.feedbacks.sessions.edit` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Sessions/Edit` |
 | GET | `/admin/feedbacks/sessions/{session}/pdf` | `admin.feedbacks.sessions.pdf` | auth · admin.can:feedbacks · Feedback selecionada | — |
 
@@ -2879,6 +2883,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/admin/interessados-landing` | `admin.landing-interest.store` | auth · admin.can:landing_interest | — |
 | PATCH | `/admin/interessados-landing/{submission}` | `admin.landing-interest.update` | auth · admin.can:landing_interest | — |
 | DELETE | `/admin/interessados-landing/{submission}` | `admin.landing-interest.destroy` | auth · admin.can:landing_interest | — |
+| POST | `/admin/interessados-landing/{submission}/converter` | `admin.landing-interest.convert` | auth · admin.can:landing_interest · admin.can:companies,create | — |
 
 #### `/admin/mapa-proposito`
 
@@ -3253,6 +3258,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/client/feedbacks/sessions/{session}/assinaturas` | `client.feedbacks.sessions.signatures` | auth · can.module:feedbacks | — |
 | GET | `/client/feedbacks/sessions/{session}/edit` | `client.feedbacks.sessions.edit` | auth · can.module:feedbacks | `Client/Feedbacks/Sessions/Edit` |
 | GET | `/client/feedbacks/sessions/{session}/pdf` | `client.feedbacks.sessions.pdf` | auth · can.module:feedbacks | — |
+| GET · POST · PUT · DELETE | `/client/feedbacks/templates` (`/create`, `/{template}`, `/{template}/edit`) | `client.feedbacks.templates.{index,create,store,edit,update,destroy}` | auth · can.module:feedbacks · administrador | `Client/Feedbacks/Templates/Index` e `Form` |
 
 #### `/client/ferias`
 
@@ -3741,7 +3747,7 @@ Gerado a partir das migrations (`database/migrations`, 181 arquivos), aplicando 
 | `departments` | `id`, `company_id`, `name`, `created_at/updated_at` |
 | `positions` | `id`, `company_id`, `name`, `created_at/updated_at` |
 | `company_rhid_schedule_settings` | `id`, `company_id`, `settings`, `created_at/updated_at` |
-| `landing_interest_submissions` | `id`, `name`, `email`, `company`, `message`, `mail_sent_at`, `mail_error`, `phone`, `source`, `created_by`, `admin_notes`, `is_qualified`, `assigned_to`, `created_at/updated_at` |
+| `landing_interest_submissions` | `id`, `name`, `email`, `company`, `message`, `mail_sent_at`, `mail_error`, `phone`, `source`, `created_by`, `admin_notes`, `is_qualified`, `assigned_to`, `converted_company_id`, `converted_at`, `created_at/updated_at` |
 | `company_employees` | `id`, `company_id`, `name`, `email`, `phone`, `department_id`, `position_id`, `leader_user_id`, `is_active`, `notes`, `birth_date`, `emergency_contact_name`, `emergency_contact_relationship`, `emergency_contact_phone`, `admission_date`, `work_schedule`, `cpf`, `rg`, `address_zip`, `address_street`, `address_number`, `address_complement`, `address_neighborhood`, `address_city`, `address_state`, `created_at/updated_at` |
 | `company_internal_regulations` | `id`, `company_id`, `title`, `body_html`, `is_published`, `updated_by`, `file_path`, `file_name`, `created_at/updated_at` |
 | `company_monthly_highlights` | `id`, `company_id`, `company_employee_id`, `person_name`, `category`, `year`, `month`, `photo_path`, `photo_disk`, `description`, `is_published`, `created_by`, `updated_by`, `created_at/updated_at` |

@@ -6,6 +6,7 @@ import { TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { confirmDialog } from '@/composables/useConfirmDialog';
+import { useAdminPermissions } from '@/composables/useAdminPermissions';
 
 const props = defineProps({
     submissions: Object,
@@ -70,6 +71,12 @@ const notesForm = useForm({
 });
 
 const flashSuccess = computed(() => page.props.flash?.success ?? null);
+const flashError = computed(() => page.props.flash?.error ?? null);
+
+/** Converter em cliente cria uma empresa: exige também a permissão de empresas. */
+const { canAdmin } = useAdminPermissions();
+const canConvert = computed(() => canAdmin('companies', 'create'));
+const convertingId = ref(null);
 const filterErrors = computed(() => page.props.errors ?? {});
 
 const filterState = reactive({
@@ -335,6 +342,28 @@ async function destroyLead(lead, event) {
     });
 }
 
+async function convertLead(lead, event) {
+    event?.stopPropagation?.();
+    if (lead.converted_at || convertingId.value) {
+        return;
+    }
+    const companyName = lead.company || lead.name;
+    if (
+        !(await confirmDialog(
+            `Converter o lead «${lead.name}» em cliente?\n\nSerá criada a empresa «${companyName}» e ${lead.email} receberá o convite de acesso ao portal como administrador da empresa.`,
+        ))
+    ) {
+        return;
+    }
+    convertingId.value = lead.id;
+    router.post(route('admin.landing-interest.convert', lead.id), {}, {
+        preserveScroll: true,
+        onFinish: () => {
+            convertingId.value = null;
+        },
+    });
+}
+
 function onKeydown(e) {
     if (e.key !== 'Escape') {
         return;
@@ -368,6 +397,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </div>
         </template>
 
+        <div
+            v-if="flashError"
+            class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
+            role="alert"
+        >
+            {{ flashError }}
+        </div>
         <div
             v-if="flashSuccess"
             class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
@@ -575,6 +611,31 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 <span v-else class="text-gray-400">—</span>
                             </td>
                             <td class="whitespace-nowrap px-4 py-3 align-middle text-right">
+                                <Link
+                                    v-if="s.converted_company"
+                                    :href="route('admin.companies.show', s.converted_company.id)"
+                                    class="mr-2 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900 hover:underline"
+                                    :title="`Convertido em cliente: ${s.converted_company.name}`"
+                                    @click.stop
+                                >
+                                    Cliente
+                                </Link>
+                                <span
+                                    v-else-if="s.converted_at"
+                                    class="mr-2 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900"
+                                >
+                                    Convertido
+                                </span>
+                                <button
+                                    v-else-if="canConvert"
+                                    type="button"
+                                    class="mr-2 font-medium text-talents-700 hover:underline disabled:opacity-60"
+                                    :disabled="convertingId === s.id"
+                                    data-lead-convert
+                                    @click="convertLead(s, $event)"
+                                >
+                                    {{ convertingId === s.id ? 'Convertendo…' : 'Converter em cliente' }}
+                                </button>
                                 <button
                                     type="button"
                                     class="mr-2 font-medium text-talents-700 hover:underline"

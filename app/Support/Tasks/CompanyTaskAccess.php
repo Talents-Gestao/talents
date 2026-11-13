@@ -117,8 +117,8 @@ final class CompanyTaskAccess
             'label' => [
                 'company_on' => 'Habilitado no cadastro da empresa (acesso ao módulo ligado)',
                 'company_off' => 'Desabilitado no cadastro da empresa (acesso ao módulo desligado)',
-                'plan_on' => 'Habilitado pelo plano da assinatura ativa',
-                'plan_off' => 'Desabilitado: o plano ativo não inclui Tarefas e a empresa não tem o acesso ligado',
+                'plan_on' => 'Habilitado pela assinatura ativa',
+                'plan_off' => 'Desabilitado: a assinatura ativa não inclui Tarefas e a empresa não tem o acesso ligado',
             ][$rule],
         ];
     }

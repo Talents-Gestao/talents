@@ -676,7 +676,7 @@ function itemShellClass(item) {
             class="border-b border-amber-200/80 bg-amber-50/90 px-4 py-2 text-xs text-amber-900 sm:text-sm"
             :class="compact ? 'px-3 sm:px-4' : 'px-4 sm:px-6'"
         >
-            Visualização limitada ao período do seu plano:
+            Visualização limitada ao período da sua assinatura:
             <span class="font-semibold">{{ periodLabel }}</span>
         </p>
         <!-- Toolbar -->
