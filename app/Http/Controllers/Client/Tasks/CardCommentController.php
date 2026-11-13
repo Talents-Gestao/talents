@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Client\Tasks;
 
+use App\Actions\Tasks\LogTaskActivity;
 use App\Http\Controllers\Controller;
 use App\Models\TaskCard;
 use App\Models\User;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Notification;
 
 class CardCommentController extends Controller
 {
-    public function store(Request $request, TaskCard $card): RedirectResponse
+    public function store(Request $request, TaskCard $card, LogTaskActivity $log): RedirectResponse
     {
         $this->authorize('comment', $card);
 
@@ -27,6 +28,8 @@ class CardCommentController extends Controller
             'body' => $data['body'],
             'mentioned_user_ids' => $data['mentioned_user_ids'] ?? [],
         ]);
+
+        $log->handle($card->list->board, $card, 'comment.created', $request->user(), ['comment_id' => $comment->id]);
 
         $companyId = (int) $request->user()->company_id;
         $mentionIds = array_unique($data['mentioned_user_ids'] ?? []);

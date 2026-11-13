@@ -26,10 +26,14 @@ use Illuminate\Support\Facades\DB;
  * Quadro listado: quadro da própria empresa (administrador da empresa); OU U é membro (convidado) do quadro; OU há
  * pelo menos um cartão visível a U. Quadro interno sem nada disso não aparece.
  *
- * O que U pode fazer num cartão visível é o mais restritivo entre o papel no quadro e a permissão do módulo:
- * Dono/Editor editam (título, descrição, datas, conclusão, checklist, anexos) e movem; Comentarista só comenta;
- * Leitor só lê. Quem vê o cartão sem ser membro do quadro (administrador da empresa, atribuído) comenta, como antes.
- * Arquivar, excluir, convidar, partilhar e criar listas ou quadros nunca são do portal (rotas só do Admin).
+ * O que U pode fazer num cartão visível, sempre o mais restritivo entre esta regra e a permissão do módulo:
+ * - U atribuído ao cartão (task_card_members): edita título, descrição, datas e conclusão, cria/edita/marca itens de
+ *   checklist, anexa e remove anexos, comenta e move entre listas da empresa com drop-in, seja qual for o papel no
+ *   quadro (inclusive Leitor e Comentarista). Vale só para aquele cartão;
+ * - U não atribuído: o papel no quadro decide (Dono/Editor editam; Comentarista só comenta; Leitor só lê); quem vê o
+ *   cartão sem ser membro do quadro só comenta.
+ * Arquivar, excluir, mudar visibilidade, convidar, partilhar, criar listas ou quadros e atribuir membros ao cartão
+ * nunca são do portal (rotas só do Admin).
  */
 final class PortalTaskAccess
 {
@@ -141,31 +145,61 @@ final class PortalTaskAccess
     }
 
     /**
-     * O que o usuário pode fazer no cartão (já sabendo que o vê), cruzando papel e permissão do módulo.
-     *
-     * @return array{comment: bool, edit: bool, move: bool, attach: bool, remove_attachment: bool}
+     * O usuário está atribuído (membro) a este cartão.
      */
-    public static function abilities(User $user, int $boardId): array
+    public static function isAssigned(User $user, int $cardId): bool
     {
-        $level = self::LEVELS[self::levelFor(self::boardRole($user, $boardId))];
+        return DB::table('task_card_members')
+            ->where('task_card_id', $cardId)
+            ->where('user_id', $user->id)
+            ->exists();
+    }
+
+    /**
+     * O que o usuário pode fazer num cartão do quadro (já sabendo que o vê). Ver abilitiesFor.
+     *
+     * @return array{comment: bool, edit: bool, checklist: bool, move: bool, attach: bool, remove_attachment: bool}
+     */
+    public static function abilities(User $user, int $boardId, bool $assigned = false): array
+    {
+        return self::abilitiesFor($user, self::boardRole($user, $boardId), $assigned);
+    }
+
+    /**
+     * Atribuído ao cartão: nível de edição, seja qual for o papel. Senão, o nível do papel no quadro. Cada ação ainda
+     * exige a permissão do módulo (comentar: tarefas:create; editar: tarefas:edit; criar item de checklist, anexar e
+     * mover: tarefas:edit e tarefas:create; remover anexo: tarefas:edit e tarefas:delete).
+     *
+     * @return array{comment: bool, edit: bool, checklist: bool, move: bool, attach: bool, remove_attachment: bool}
+     */
+    public static function abilitiesFor(User $user, ?TaskBoardMemberRole $role, bool $assigned): array
+    {
+        $level = self::LEVELS[$assigned ? self::EDIT : self::levelFor($role)];
         $can = fn (PermissionAction $action) => $user->canAccess(PermissionModule::Tarefas, $action);
-        $edits = $level >= self::LEVELS[self::EDIT];
+        $edits = $level >= self::LEVELS[self::EDIT] && $can(PermissionAction::Edit);
+        $creates = $can(PermissionAction::Create);
 
         return [
-            'comment' => $level >= self::LEVELS[self::COMMENT] && $can(PermissionAction::Create),
-            'edit' => $edits && $can(PermissionAction::Edit),
-            'move' => $edits && $can(PermissionAction::Create),
-            'attach' => $edits && $can(PermissionAction::Create),
+            'comment' => $level >= self::LEVELS[self::COMMENT] && $creates,
+            'edit' => $edits,
+            'checklist' => $edits && $creates,
+            'move' => $edits && $creates,
+            'attach' => $edits && $creates,
             'remove_attachment' => $edits && $can(PermissionAction::Delete),
         ];
     }
 
     /**
-     * Convidado do quadro como Leitor ou Comentarista não altera o cartão em lugar nenhum do portal (ex.: concluir pelo
-     * calendário). Quem não é membro segue a regra da tela de origem.
+     * Concluir pelo calendário do portal (visão de toda a empresa): bloqueia só o convidado do quadro como Leitor ou
+     * Comentarista que não está atribuído ao cartão. Quem não é membro do quadro (ex.: administrador da empresa) e quem
+     * está atribuído concluem, como antes da regra de atribuição.
      */
-    public static function roleForbidsChanges(User $user, TaskCard $card): bool
+    public static function calendarForbidsCompletion(User $user, TaskCard $card): bool
     {
+        if (self::isAssigned($user, (int) $card->id)) {
+            return false;
+        }
+
         $boardId = (int) TaskCard::query()
             ->join('task_lists', 'task_lists.id', '=', 'task_cards.list_id')
             ->whereKey($card->id)
@@ -175,7 +209,7 @@ final class PortalTaskAccess
     }
 
     /**
-     * @param  'comment'|'edit'|'move'|'attach'|'remove_attachment'  $ability
+     * @param  'comment'|'edit'|'checklist'|'move'|'attach'|'remove_attachment'  $ability
      */
     public static function allows(User $user, TaskCard $card, string $ability): bool
     {
@@ -188,6 +222,6 @@ final class PortalTaskAccess
             ->whereKey($card->id)
             ->value('task_lists.board_id');
 
-        return self::abilities($user, $boardId)[$ability] ?? false;
+        return self::abilities($user, $boardId, self::isAssigned($user, (int) $card->id))[$ability] ?? false;
     }
 }

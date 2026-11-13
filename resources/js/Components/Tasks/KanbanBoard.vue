@@ -463,9 +463,15 @@ onUnmounted(() => {
     dragScrollSnapshot = null;
 });
 
+/** Concluir/reabrir: Admin sempre; portal só no cartão em que pode editar (portal_can do próprio cartão). */
+function canToggleComplete(card) {
+    if (!card || card.is_archived) return false;
+    return props.isAdmin || Boolean(card.portal_can?.edit);
+}
+
 function toggleCardComplete(card, event) {
     event?.stopPropagation?.();
-    if (!props.isAdmin || !card?.id) return;
+    if (!card?.id || !canToggleComplete(card)) return;
 
     const completing = !card.completed_at;
     const previousCompletedAt = card.completed_at;
@@ -473,7 +479,7 @@ function toggleCardComplete(card, event) {
     card.completed_at = completing ? new Date().toISOString() : null;
 
     router.patch(
-        route('admin.tarefas.cards.update', card.id),
+        props.isAdmin ? route('admin.tarefas.cards.update', card.id) : route('client.tarefas.cards.update', card.id),
         { complete: completing },
         {
             preserveScroll: true,
@@ -499,8 +505,17 @@ async function requestDeleteCard(card) {
     });
 }
 
-/** Portal: Dono/Editor do quadro movem cartões, só para listas da empresa que aceitam cartões (regra do servidor). */
-const portalCanMove = computed(() => !props.isAdmin && Boolean(props.boardPayload?.portal_can?.move));
+/**
+ * Portal: move o cartão quem pode no próprio cartão (atribuído a ele, ou Dono/Editor do quadro), só para listas da
+ * empresa que aceitam cartões (regra do servidor). Os demais cartões ficam presos (seletor `draggable`).
+ */
+function portalCardCanMove(card) {
+    return Boolean(card?.portal_can?.move);
+}
+
+const portalCanMoveAny = computed(
+    () => !props.isAdmin && (props.boardPayload?.lists || []).some((l) => (l.cards || []).some(portalCardCanMove)),
+);
 
 function portalAcceptsDrop(list) {
     return list?.visibility === 'company' && Boolean(list?.allow_company_drop_in) && !list?.is_archived;
@@ -513,8 +528,10 @@ function cardGroup(list) {
 
 function cardDragDisabled(list) {
     if (list.is_archived) return true;
-    return !props.isAdmin && !portalCanMove.value;
+    return !props.isAdmin && !portalCanMoveAny.value;
 }
+
+const cardDraggableSelector = computed(() => (props.isAdmin ? '>*' : '[data-portal-move="1"]'));
 
 function moveCardRoute(cardId) {
     return props.isAdmin
@@ -540,10 +557,10 @@ function positionBetween(list, newIndex) {
 function onCardDragEnd(_fromListId, evt) {
     endCardDragScrollGuard();
 
-    if (!props.isAdmin && !portalCanMove.value) return;
     const cardEl = evt.item;
     const cardId = Number(cardEl?.dataset?.cardId);
     if (!cardId) return;
+    if (!props.isAdmin && cardEl?.dataset?.portalMove !== '1') return;
 
     const fromEl = evt.from?.closest?.('[data-list-id]');
     const toEl = evt.to?.closest?.('[data-list-id]');
@@ -776,6 +793,7 @@ function expandList(list) {
                     :group="cardGroup(list)"
                     item-key="id"
                     :disabled="cardDragDisabled(list)"
+                    :draggable="cardDraggableSelector"
                     :sort="isAdmin || portalAcceptsDrop(list)"
                     data-kanban-cards-scroll
                     class="flex flex-col gap-2 px-0.5"
@@ -792,6 +810,7 @@ function expandList(list) {
                         v-for="card in list.cards"
                         :key="card.id"
                         :data-card-id="card.id"
+                        :data-portal-move="!isAdmin && portalCardCanMove(card) ? '1' : null"
                         class="group relative cursor-pointer rounded-lg bg-white px-3 py-2 text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-talents-300"
                         :class="card.is_archived ? 'opacity-70 ring-dashed' : ''"
                         @click="openCard(card)"
@@ -851,7 +870,7 @@ function expandList(list) {
 
                         <div class="flex items-start gap-2">
                             <input
-                                v-if="isAdmin && !card.is_archived"
+                                v-if="canToggleComplete(card)"
                                 type="checkbox"
                                 class="mt-0.5 h-4 w-4 shrink-0 rounded-full border-slate-300 text-talents-600 focus:ring-talents-500"
                                 :checked="!!card.completed_at"

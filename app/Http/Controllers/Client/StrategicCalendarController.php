@@ -276,7 +276,7 @@ class StrategicCalendarController extends Controller
 
         abort_unless($company->hasTasksEnabled(), 404);
         abort_unless($user->can('view', $card), 403);
-        abort_if(PortalTaskAccess::roleForbidsChanges($user, $card), 403);
+        abort_if(PortalTaskAccess::calendarForbidsCompletion($user, $card), 403);
 
         $completed = array_key_exists('completed', $data)
             ? (bool) $data['completed']

@@ -39,6 +39,9 @@ const portalCan = computed(() => props.card?.portal_can ?? {});
 const isReadOnly = computed(() => !props.isAdmin && !portalCan.value.edit);
 const canComment = computed(() => props.isAdmin || Boolean(portalCan.value.comment));
 const canAttach = computed(() => props.isAdmin || Boolean(portalCan.value.attach));
+/** Portal: atribuído ao cartão (ou Dono/Editor) cria etapas nas checklists existentes; criar checklist é do Admin. */
+const canAddChecklistItem = computed(() => props.isAdmin || Boolean(portalCan.value.checklist));
+const canRemoveAttachment = computed(() => props.isAdmin || Boolean(portalCan.value.remove_attachment));
 const showRecurrenceEnd = computed(() => Boolean(cardUpdate.recurrence));
 
 const emit = defineEmits(['close', 'refresh', 'sync-card']);
@@ -887,6 +890,23 @@ function uploadAttachment(e) {
     e.target.value = '';
 }
 
+async function removeAttachment(attachment) {
+    if (!canRemoveAttachment.value || !attachment?.id) return;
+    if (!(await confirmDialog(`Remover o anexo "${attachment.original_name}"?`))) return;
+
+    const url = props.isAdmin
+        ? route('admin.tarefas.anexos.destroy', attachment.id)
+        : route('client.tarefas.anexos.destroy', attachment.id);
+
+    track((callbacks) => router.delete(url, { ...REQUEST_OPTIONS, ...callbacks })).then((result) => {
+        if (!result.ok) {
+            reportError(result);
+            return;
+        }
+        reloadBoardPayloadAndSyncCard();
+    });
+}
+
 function randomLabelColor() {
     return `#${Math.floor(Math.random() * 0xffffff)
         .toString(16)
@@ -1013,7 +1033,7 @@ const addItemRequests = new Map();
 
 /** Cria a etapa digitada em «Título da etapa…» (com prazo e descrição); sem título é ignorada. Nunca envia duas vezes. */
 function addChecklistItem(checklist, { quiet = false } = {}) {
-    if (!props.isAdmin || !checklist?.id) return Promise.resolve(true);
+    if (!canAddChecklistItem.value || !checklist?.id) return Promise.resolve(true);
     if (addItemRequests.has(checklist.id)) return addItemRequests.get(checklist.id);
     const draft = newItemDraft(checklist.id);
     const text = draft.text?.trim();
@@ -1024,7 +1044,9 @@ function addChecklistItem(checklist, { quiet = false } = {}) {
 
     const request = track((callbacks) =>
         router.post(
-            route('admin.tarefas.checklists.itens.store', checklist.id),
+            props.isAdmin
+                ? route('admin.tarefas.checklists.itens.store', checklist.id)
+                : route('client.tarefas.checklists.itens.store', checklist.id),
             {
                 text,
                 description: draft.description?.trim() || null,
@@ -1469,7 +1491,7 @@ function itemDueClass(item) {
                                     </TaskDescriptionDisclosure>
                                 </li>
                             </VueDraggable>
-                            <div v-if="isAdmin" class="mt-2 space-y-2 border-t border-slate-100 pt-2">
+                            <div v-if="canAddChecklistItem" class="mt-2 space-y-2 border-t border-slate-100 pt-2">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <TextInput
                                         v-model="newItemDraft(cl.id).text"
@@ -1526,8 +1548,18 @@ function itemDueClass(item) {
                         Anexos
                     </h4>
                     <ul class="mt-2 space-y-1 text-xs">
-                        <li v-for="a in card.attachments || []" :key="a.id">
-                            <a :href="a.url" target="_blank" class="text-talents-700 underline">{{ a.original_name }}</a>
+                        <li v-for="a in card.attachments || []" :key="a.id" class="flex items-center gap-2">
+                            <a :href="a.url" target="_blank" class="min-w-0 truncate text-talents-700 underline">{{ a.original_name }}</a>
+                            <button
+                                v-if="canRemoveAttachment"
+                                type="button"
+                                class="shrink-0 rounded p-0.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                                :title="`Remover anexo ${a.original_name}`"
+                                :aria-label="`Remover anexo ${a.original_name}`"
+                                @click="removeAttachment(a)"
+                            >
+                                <TrashIcon class="h-3.5 w-3.5" aria-hidden="true" />
+                            </button>
                         </li>
                     </ul>
                 </div>
