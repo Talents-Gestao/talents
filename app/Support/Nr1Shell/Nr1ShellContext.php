@@ -58,6 +58,16 @@ final class Nr1ShellContext
         return $request->query('empresa') !== null || $request->session()->get(self::SESSION_COMPANY) !== null;
     }
 
+    /**
+     * Limpa empresa/campanha lembradas (mantém «Abertas recentemente»).
+     * Usado ao abrir o seletor: senão qualquer ida a `/nr1` sem query devolve à empresa anterior.
+     */
+    public static function clearTalentsFocus(Request $request): void
+    {
+        $request->session()->forget(self::SESSION_COMPANY);
+        $request->session()->forget(self::SESSION_SURVEY);
+    }
+
     /** @return list<int> */
     public static function recentCompanyIds(Request $request): array
     {

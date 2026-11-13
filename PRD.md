@@ -469,7 +469,7 @@ O painel NR-1 não tem layout próprio: abre dentro do layout padrão do perfil 
 | 8 | Oportunidades | `/nr1/oportunidades` | ↗ |
 | — | Campanha NR-1 | `/nr1/campanha` (fora do menu gerencial; colaborador mantém no link da jornada) | ▶ |
 
-Ícones: os da sub-navegação são Heroicons do sistema por seção; o glifo da tabela é a reserva para uma seção sem ícone mapeado. Cabeçalho (inalterado, dentro do conteúdo): «← Voltar à empresa» (Talents com empresa em foco → página da empresa; Empresa → Painel) ou «← Voltar ao Talents» (Comercial), monograma/logo da empresa, «NR-1 · PESQUISA PSICOSSOCIAL», nome da empresa, linha de contexto (respostas · campanha) e seletor de campanha quando há mais de uma. Não há seletor de empresa: a empresa vem da entrada (`?empresa=&campanha=`, lembrada na sessão).
+Ícones: os da sub-navegação são Heroicons do sistema por seção; o glifo da tabela é a reserva para uma seção sem ícone mapeado. Cabeçalho (inalterado, dentro do conteúdo): «← Voltar à empresa» (Talents com empresa em foco → página da empresa; Empresa → Painel) ou «← Voltar ao Talents» (Comercial), monograma/logo da empresa, «NR-1 · PESQUISA PSICOSSOCIAL», nome da empresa, linha de contexto (respostas · campanha) e seletor de campanha quando há mais de uma. Não há seletor de empresa no cabeçalho: a empresa vem da entrada (`?empresa=&campanha=` nos links do menu, lembrada na sessão). «Trocar empresa» (`/nr1/empresas`) limpa o foco da sessão para a próxima escolha não devolver à empresa anterior.
 
 ### 4.5 Superfícies públicas (sem login)
 
@@ -1438,9 +1438,10 @@ Efeitos: gera `public_token` (UUID), congela a versão do instrumento, grava `re
 
 #### 8.6.3 Gate de publicação (`SurveyPublicationGate`, middleware `survey.published`)
 
-- Campanha que exige publicação: resultados, impressão, exportações, plano e documentos respondem 404 à empresa até `published_at`.
-- Campanhas anteriores ao gate continuam visíveis como antes (decisão D9, sem backfill).
-- Na V11, a publicação acontece pela rodada de revisão (8.11). No modelo anterior, pelo botão «Publicar» do Laudo (`POST /admin/companies/{c}/surveys/{s}/publicar`).
+- Campanha que exige publicação: resultados, impressão, exportações, plano e documentos respondem 404 à empresa até estar «Publicada» (`allows` / `scopeVisible` / `isPublished` usam a mesma regra).
+- «Publicada» = `surveys.published_at` preenchido **ou**, no modelo anterior (`production_v1`), parecer disponibilizado (`action_plans.admin_published_at`). Parecer salvo na V11 **não** libera a campanha.
+- Campanhas anteriores ao gate (`requires_publication = false`) continuam visíveis como antes (decisão D9, sem backfill).
+- Na V11, a publicação grava `published_at` pela rodada de revisão (8.11). No modelo anterior: botão «Publicar» do Laudo (`POST /admin/companies/{c}/surveys/{s}/publicar`) **ou** disponibilizar o parecer (grava `admin_published_at` e, se ainda nulo, `published_at`).
 - Publicar dispara o aviso «relatório publicado» à empresa (sino e, com SMTP, e-mail).
 
 ### 8.7 Coleta pública
@@ -1490,7 +1491,7 @@ Gravação em transação: consome o convite e cria `survey_responses` (com `ses
 
 **Contexto (`Nr1ShellContext`):**
 
-- Talents: empresa e campanha vêm da query `empresa`/`campanha` e ficam lembradas na sessão. Padrão: a campanha de coleta mais recente (por data de início).
+- Talents: empresa e campanha vêm da query `empresa`/`campanha` e ficam lembradas na sessão (os itens do menu também levam a query). Padrão: a campanha de coleta mais recente (por data de início). Abrir `/nr1/empresas` limpa o foco (`clearTalentsFocus`); «Abertas recentemente» permanece.
 - Empresa: entra direto na própria empresa (ignora `empresa` da URL) e só enxerga campanhas **publicadas** (ou que não exigem publicação). Padrão: a mais recente publicada. Uma campanha mais nova ainda não publicada nunca é padrão, não entra no seletor, não abre por `?campanha=` e o nome dela não vai no payload.
 - Comercial e revisor: sem empresa em foco.
 
