@@ -2,77 +2,43 @@
 
 namespace App\Policies;
 
-use App\Models\TaskBoard;
 use App\Models\TaskCard;
 use App\Models\User;
-use App\Support\Tasks\TaskCardVisibility;
+use App\Support\Tasks\PortalTaskAccess;
 
+/**
+ * Admin (super admin) faz tudo. Portal: só cartões visíveis ao usuário e só o que o papel no quadro e a permissão
+ * do módulo deixam (PortalTaskAccess).
+ */
 class TaskCardPolicy
 {
-    /**
-     * Usuário do portal empresa (não super admin): apenas ver e comentar.
-     */
-    private function isCompanyPortalUser(User $user): bool
-    {
-        if ($user->isSuperAdmin()) {
-            return false;
-        }
-
-        return $user->belongsToCompany() && $user->contextCompany()?->hasTasksEnabled();
-    }
-
     public function view(User $user, TaskCard $card): bool
     {
-        if ($user->isSuperAdmin()) {
-            return true;
-        }
-
-        $card->loadMissing('list.board');
-        $board = $card->list?->board;
-        if (! $board instanceof TaskBoard) {
-            return false;
-        }
-
-        if (! $user->belongsToCompany() || ! $user->contextCompany()?->hasTasksEnabled()) {
-            return false;
-        }
-
-        if ((int) $card->company_id !== (int) $user->company_id) {
-            return false;
-        }
-
-        return TaskCardVisibility::isVisibleToCompany($card);
+        return $user->isSuperAdmin() || PortalTaskAccess::canSeeCard($user, $card);
     }
 
     public function update(User $user, TaskCard $card): bool
     {
-        if ($this->isCompanyPortalUser($user)) {
-            return false;
-        }
-
-        return $this->view($user, $card);
+        return $user->isSuperAdmin() || PortalTaskAccess::allows($user, $card, 'edit');
     }
 
     public function move(User $user, TaskCard $card): bool
     {
-        if ($this->isCompanyPortalUser($user)) {
-            return false;
-        }
-
-        return $this->view($user, $card);
+        return $user->isSuperAdmin() || PortalTaskAccess::allows($user, $card, 'move');
     }
 
     public function comment(User $user, TaskCard $card): bool
     {
-        return $this->view($user, $card);
+        return $user->isSuperAdmin() || PortalTaskAccess::allows($user, $card, 'comment');
     }
 
     public function attach(User $user, TaskCard $card): bool
     {
-        if ($this->isCompanyPortalUser($user)) {
-            return false;
-        }
+        return $user->isSuperAdmin() || PortalTaskAccess::allows($user, $card, 'attach');
+    }
 
-        return $this->view($user, $card);
+    public function removeAttachment(User $user, TaskCard $card): bool
+    {
+        return $user->isSuperAdmin() || PortalTaskAccess::allows($user, $card, 'remove_attachment');
     }
 }

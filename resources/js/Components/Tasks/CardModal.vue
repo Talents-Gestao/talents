@@ -34,7 +34,11 @@ const props = defineProps({
     recurrenceOptions: { type: Array, default: () => [] },
 });
 
-const isReadOnly = computed(() => !props.isAdmin);
+/** Portal: o servidor manda em cada cartão o que o usuário pode fazer (papel no quadro × permissão do módulo). */
+const portalCan = computed(() => props.card?.portal_can ?? {});
+const isReadOnly = computed(() => !props.isAdmin && !portalCan.value.edit);
+const canComment = computed(() => props.isAdmin || Boolean(portalCan.value.comment));
+const canAttach = computed(() => props.isAdmin || Boolean(portalCan.value.attach));
 const showRecurrenceEnd = computed(() => Boolean(cardUpdate.recurrence));
 
 const emit = defineEmits(['close', 'refresh', 'sync-card']);
@@ -561,7 +565,7 @@ watch(
 );
 
 function submitComment({ quiet = false } = {}) {
-    if (!props.card || !commentForm.body.trim()) return Promise.resolve(true);
+    if (!props.card || !canComment.value || !commentForm.body.trim()) return Promise.resolve(true);
     if (commentForm.processing) return Promise.resolve(false);
     const url = props.isAdmin
         ? route('admin.tarefas.cards.comentarios.store', props.card.id)
@@ -862,7 +866,7 @@ function toggleChecklistCompletion(checklist) {
 }
 
 function uploadAttachment(e) {
-    if (isReadOnly.value) return;
+    if (isReadOnly.value || !canAttach.value) return;
     const file = e.target.files?.[0];
     if (!file || !props.card) return;
 
@@ -1086,7 +1090,9 @@ function itemDueClass(item) {
                     {{ isReadOnly ? 'Tarefa' : 'Planejar atividade' }}
                 </p>
                 <p v-if="isReadOnly" class="mt-1 text-xs text-slate-500">
-                    Pode visualizar e comentar. Edições ao conteúdo são feitas pela equipe Talents.
+                    {{ canComment
+                        ? 'Pode visualizar e comentar. Edições ao conteúdo são feitas pela equipe Talents.'
+                        : 'Somente leitura. Edições e comentários são feitos pela equipe Talents.' }}
                 </p>
                 <div class="mt-4 flex items-center gap-5 text-xs">
                     <button
@@ -1163,6 +1169,7 @@ function itemDueClass(item) {
                             <InputLabel value="Descrição / observações" />
                             <TaskDescriptionEditor
                                 v-model="cardUpdate.description"
+                                :show-attachment="canAttach"
                                 @attach="uploadAttachment"
                             />
                         </div>
@@ -1184,7 +1191,7 @@ function itemDueClass(item) {
                                 />
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div v-if="isAdmin" class="grid grid-cols-1 gap-3 md:grid-cols-2">
                             <div>
                                 <InputLabel value="Repetir" />
                                 <select
@@ -1791,12 +1798,13 @@ function itemDueClass(item) {
                         </li>
                     </ul>
                     <textarea
+                        v-if="canComment"
                         v-model="commentForm.body"
                         rows="3"
                         class="mt-2 w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
                         placeholder="Escrever comentário..."
                     />
-                    <div class="flex justify-end">
+                    <div v-if="canComment" class="flex justify-end">
                         <PrimaryButton
                             type="button"
                             class="mt-1"
@@ -1829,7 +1837,7 @@ function itemDueClass(item) {
                 </template>
                 <template v-else>
                     <button
-                        v-if="card?.is_archived"
+                        v-if="isAdmin && card?.is_archived"
                         type="button"
                         class="mr-auto inline-flex items-center gap-1.5 rounded-md border border-talents-300 px-3 py-2 text-sm font-medium text-talents-700 transition hover:bg-talents-50"
                         @click="restoreCard"
@@ -1837,7 +1845,7 @@ function itemDueClass(item) {
                         <ArrowUturnLeftIcon class="h-4 w-4" />
                         Restaurar tarefa
                     </button>
-                    <template v-else>
+                    <template v-else-if="isAdmin">
                         <button
                             type="button"
                             class="mr-auto inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"

@@ -59,7 +59,8 @@ class CardAttachmentController extends Controller
     {
         $attachment->loadMissing('card.list.board');
         $card = $attachment->card;
-        $this->authorize('attach', $card);
+        abort_unless($card instanceof TaskCard, 404);
+        $this->authorize('removeAttachment', $card);
 
         if (Storage::disk($attachment->disk)->exists($attachment->path)) {
             Storage::disk($attachment->disk)->delete($attachment->path);

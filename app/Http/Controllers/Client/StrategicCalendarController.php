@@ -17,6 +17,7 @@ use App\Support\StrategicCalendarClientEnricher;
 use App\Support\StrategicCalendarLeaveEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Support\StrategicCalendarPeriod;
+use App\Support\Tasks\PortalTaskAccess;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -275,6 +276,7 @@ class StrategicCalendarController extends Controller
 
         abort_unless($company->hasTasksEnabled(), 404);
         abort_unless($user->can('view', $card), 403);
+        abort_if(PortalTaskAccess::roleForbidsChanges($user, $card), 403);
 
         $completed = array_key_exists('completed', $data)
             ? (bool) $data['completed']

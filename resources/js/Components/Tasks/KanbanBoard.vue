@@ -499,6 +499,23 @@ async function requestDeleteCard(card) {
     });
 }
 
+/** Portal: Dono/Editor do quadro movem cartões, só para listas da empresa que aceitam cartões (regra do servidor). */
+const portalCanMove = computed(() => !props.isAdmin && Boolean(props.boardPayload?.portal_can?.move));
+
+function portalAcceptsDrop(list) {
+    return list?.visibility === 'company' && Boolean(list?.allow_company_drop_in) && !list?.is_archived;
+}
+
+function cardGroup(list) {
+    const name = `kanban-cards-${props.boardPayload.id}`;
+    return props.isAdmin ? name : { name, pull: true, put: portalAcceptsDrop(list) };
+}
+
+function cardDragDisabled(list) {
+    if (list.is_archived) return true;
+    return !props.isAdmin && !portalCanMove.value;
+}
+
 function moveCardRoute(cardId) {
     return props.isAdmin
         ? route('admin.tarefas.cards.move', cardId)
@@ -523,7 +540,7 @@ function positionBetween(list, newIndex) {
 function onCardDragEnd(_fromListId, evt) {
     endCardDragScrollGuard();
 
-    if (!props.isAdmin) return;
+    if (!props.isAdmin && !portalCanMove.value) return;
     const cardEl = evt.item;
     const cardId = Number(cardEl?.dataset?.cardId);
     if (!cardId) return;
@@ -756,9 +773,10 @@ function expandList(list) {
                 <VueDraggable
                     v-if="!isListCollapsed(list.id)"
                     v-model="list.cards"
-                    :group="`kanban-cards-${boardPayload.id}`"
+                    :group="cardGroup(list)"
                     item-key="id"
-                    :disabled="!isAdmin || list.is_archived"
+                    :disabled="cardDragDisabled(list)"
+                    :sort="isAdmin || portalAcceptsDrop(list)"
                     data-kanban-cards-scroll
                     class="flex flex-col gap-2 px-0.5"
                     :class="

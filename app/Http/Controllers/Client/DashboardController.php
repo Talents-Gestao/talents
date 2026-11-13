@@ -18,6 +18,7 @@ use App\Support\StrategicCalendarClientEnricher;
 use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Support\StrategicCalendarPeriod;
 use App\Support\SurveyPublicationGate;
+use App\Support\Tasks\PortalTaskAccess;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -116,12 +117,10 @@ class DashboardController extends Controller
                 'survey_title' => $item->actionPlan?->survey?->title,
             ]);
 
-        $pendingTasks = TaskCard::query()
-            ->where('company_id', $companyId)
+        // Mesma regra da tela de Tarefas (PortalTaskAccess): inclui cartões sem empresa atribuídos ao usuário.
+        $pendingTasks = PortalTaskAccess::scopeCards(TaskCard::query(), $request->user())
             ->whereNull('completed_at')
-            ->where('is_archived', false)
             ->whereHas('members', fn ($q) => $q->where('users.id', $userId))
-            ->visibleToCompany($companyId)
             ->with(['list:id,name'])
             ->orderByRaw('due_date ASC NULLS LAST')
             ->limit(5)
