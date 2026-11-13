@@ -45,7 +45,8 @@ class SurveyCampaignRegistrationAdminController extends Controller
             ->first();
 
         $defaults = array_fill_keys(self::CONTENT_FIELDS, null);
-        $defaults['legal_name_snapshot'] = $company->legal_name ?: $company->name;
+        // Só a razão social cadastrada; o nome da empresa (pode ser fantasia) nunca vira razão social (T19).
+        $defaults['legal_name_snapshot'] = filled($company->legal_name) ? $company->legal_name : null;
         $defaults['cnpj_snapshot'] = $company->cnpj;
 
         $registrationPayload = $registration

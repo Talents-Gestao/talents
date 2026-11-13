@@ -29,6 +29,9 @@ class Nr1ShellTest extends TestCase
 
     private const ALL = ['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'solucoes', 'oportunidades'];
 
+    /** Menu da Talents: «Campanha NR-1» saiu do menu gerencial (6ce0407, PRD 8); a seção segue acessível pela URL. */
+    private const MENU = ['visao-geral', 'resultados', 'plano-de-acao', 'documentos', 'solucoes', 'oportunidades'];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -110,7 +113,7 @@ class Nr1ShellTest extends TestCase
         $c = $this->campaign();
         $owner = User::factory()->talentsOwner()->create();
 
-        $this->assertSame(self::ALL, $this->menuOf($owner));
+        $this->assertSame(self::MENU, $this->menuOf($owner));
         $this->actingAs($owner)->get(route('nr1.index'))->assertRedirect(route('nr1.visao-geral'));
 
         foreach (self::ALL as $section) {
@@ -130,7 +133,8 @@ class Nr1ShellTest extends TestCase
         $other = $this->campaign();
         $admin = User::factory()->companyAdmin($c->company->id)->create();
 
-        $this->assertSame(['visao-geral', 'campanha', 'resultados', 'plano-de-acao', 'documentos', 'solucoes'], $this->menuOf($admin));
+        $this->assertSame(['visao-geral', 'resultados', 'plano-de-acao', 'documentos', 'solucoes'], $this->menuOf($admin));
+        $this->actingAs($admin)->get(route('nr1.campanha'))->assertOk();
         $this->actingAs($admin)->get(route('nr1.oportunidades'))->assertForbidden();
         $this->actingAs($admin)->get(route('nr1.resultados'))->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('context.company.id', $c->company->id)->where('context.canPickCompany', false));
@@ -328,7 +332,11 @@ class Nr1ShellTest extends TestCase
             'module' => PermissionModule::Pesquisas,
             'action' => PermissionAction::View,
         ]);
-        $this->assertSame(['campanha', 'solucoes'], $this->menuOf($user));
+        // «Campanha NR-1» não aparece no menu (6ce0407), mas continua liberada pela mesma permissão.
+        $this->assertSame(['solucoes'], $this->menuOf($user));
+        $this->actingAs($user)->get(route('nr1.campanha'))->assertOk();
+        $this->actingAs($user)->get(route('nr1.resultados'))->assertForbidden();
+        $this->actingAs($user)->get(route('nr1.plano-de-acao'))->assertForbidden();
     }
 
     public function test_the_shell_menu_is_a_labelled_nav_with_aria_current_and_visible_focus(): void
