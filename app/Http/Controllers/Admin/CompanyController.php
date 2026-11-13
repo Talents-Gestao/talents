@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Company\CreateCompanyWithAdmin;
 use App\Actions\ResendCompanyInvitation;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
-use App\Mail\CompanyAdminInvitationMail;
 use App\Models\Company;
 use App\Models\CompanyEmployee;
 use App\Models\CompanyInternalRegulation;
@@ -16,16 +16,12 @@ use App\Models\SurveyTemplate;
 use App\Models\User;
 use App\Services\ReceitaWsService;
 use App\Support\Admin\CompanyShowDashboardBuilder;
-use App\Support\InvitationPassword;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -95,7 +91,7 @@ class CompanyController extends Controller
         }
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, CreateCompanyWithAdmin $createCompany): RedirectResponse
     {
         $request->merge($this->normalizeCompanyActivityFields($request->all()));
 
@@ -126,78 +122,16 @@ class CompanyController extends Controller
         $logo = $request->file('logo');
         unset($data['logo']);
 
-        $state = $data['address_state'] ?? null;
-        if (is_string($state) && $state !== '') {
-            $state = strtoupper($state);
-        } else {
-            $state = null;
-        }
+        $result = $createCompany->execute($data);
+        $company = $result['company'];
 
-        $company = null;
-        $adminUser = null;
-
-        DB::transaction(function () use ($data, $state, &$company, &$adminUser) {
-            $company = Company::create([
-                'name' => $data['name'],
-                'contact_email' => $data['contact_email'],
-                'instagram' => $data['instagram'] ?? null,
-                'legal_name' => $data['legal_name'] ?? null,
-                'cnpj' => $data['cnpj'] ?? null,
-                'segment' => $data['segment'] ?? null,
-                'activity_branch' => $data['activity_branch'] ?? null,
-                'collective_bargaining_month' => $data['collective_bargaining_month'] ?? null,
-                'address_street' => $data['address_street'] ?? null,
-                'address_neighborhood' => $data['address_neighborhood'] ?? null,
-                'address_city' => $data['address_city'] ?? null,
-                'address_state' => $state,
-                'address_zip' => $data['address_zip'] ?? null,
-                'tax_regime' => $data['tax_regime'] ?? null,
-                'employee_count_estimate' => $data['employee_count_estimate'] ?? null,
-                'is_active' => $data['is_active'] ?? true,
-                'complaints_public_token' => (string) Str::uuid(),
-            ]);
-
-            if (! empty($data['plan_id'])) {
-                Subscription::create([
-                    'company_id' => $company->id,
-                    'plan_id' => $data['plan_id'],
-                    'starts_at' => now(),
-                    'ends_at' => now()->addYear(),
-                    'status' => 'active',
-                ]);
-            }
-
-            $adminUser = User::create([
-                'name' => $data['name'],
-                'email' => $data['contact_email'],
-                'password' => Hash::make(Str::password(32)),
-                'role' => UserRole::CompanyAdmin,
-                'company_id' => $company->id,
-                'email_verified_at' => now(),
-            ]);
-
-            $this->workspaceManager->createCompanyWorkspace(
-                $adminUser,
-                $company->id,
-                UserRole::CompanyAdmin,
-            );
-        });
-
-        if ($logo instanceof UploadedFile && $company !== null) {
+        if ($logo instanceof UploadedFile) {
             $company->storeLogo($logo);
         }
 
-        $mailMessage = ' Empresa criada. O primeiro administrador da empresa receberá um e-mail com o link para definir a senha e acessar o portal.';
-
-        try {
-            $token = InvitationPassword::createToken($adminUser);
-            $resetUrl = InvitationPassword::setPasswordUrl($adminUser, $token);
-
-            Mail::to($adminUser->email)->send(new CompanyAdminInvitationMail($adminUser, $company, $resetUrl));
-        } catch (\Throwable $e) {
-            report($e);
-            $mailMessage = ' Empresa e usuário administrador criados, mas o e-mail de convite não pôde ser enviado. Verifique o SMTP em Configurações ou defina a senha manualmente. Erro: '.$e->getMessage();
-        }
+        $mailMessage = $result['invitation_error'] === null
+            ? ' Empresa criada. O primeiro administrador da empresa receberá um e-mail com o link para definir a senha e acessar o portal.'
+            : ' Empresa e usuário administrador criados, mas o e-mail de convite não pôde ser enviado. Verifique o SMTP em Configurações ou defina a senha manualmente. Erro: '.$result['invitation_error'];
 
         return redirect()->route('admin.companies.show', $company)->with('success', 'Empresa criada.'.$mailMessage);
     }

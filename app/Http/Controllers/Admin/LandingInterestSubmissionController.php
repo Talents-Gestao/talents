@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Company\CreateCompanyWithAdmin;
 use App\Actions\Leads\CreateLandingInterestSubmission;
 use App\Enums\LandingInterestSource;
 use App\Http\Controllers\Controller;
@@ -9,6 +10,7 @@ use App\Models\LandingInterestSubmission;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -36,7 +38,7 @@ class LandingInterestSubmissionController extends Controller
         ];
 
         $paginator = LandingInterestSubmission::query()
-            ->with(['creator:id,name', 'assignee:id,name'])
+            ->with(['creator:id,name', 'assignee:id,name', 'convertedCompany:id,name'])
             ->filtered($filters)
             ->orderByDesc('id')
             ->paginate(30)
@@ -122,6 +124,62 @@ class LandingInterestSubmissionController extends Controller
             ->with('success', 'Lead atualizado.');
     }
 
+    /**
+     * «Converter em cliente»: cria a empresa com os dados do lead pelo mesmo fluxo do cadastro de empresa
+     * (primeiro company_admin + convite) e marca o lead como convertido. Um lead só é convertido uma vez.
+     */
+    public function convert(LandingInterestSubmission $submission, CreateCompanyWithAdmin $createCompany): RedirectResponse
+    {
+        $back = redirect()->route('admin.landing-interest.index');
+
+        if ($submission->isConverted()) {
+            return $back->with('error', 'Este lead já foi convertido em cliente.');
+        }
+
+        $email = mb_strtolower(trim((string) $submission->email));
+        if ($email === '' || User::query()->where('email', $email)->exists()) {
+            return $back->with('error', $email === ''
+                ? 'O lead não tem e-mail; informe um e-mail antes de converter.'
+                : "Já existe um usuário com o e-mail {$email}. Cadastre a empresa em Clientes → Empresas com outro e-mail de contato.");
+        }
+
+        $companyName = trim((string) $submission->company) !== '' ? trim((string) $submission->company) : trim((string) $submission->name);
+
+        $result = DB::transaction(function () use ($submission, $createCompany, $companyName, $email) {
+            // Trava o lead: dois cliques ao mesmo tempo não criam duas empresas.
+            $locked = LandingInterestSubmission::query()->whereKey($submission->id)->lockForUpdate()->first();
+            if ($locked === null || $locked->isConverted()) {
+                return null;
+            }
+
+            return $createCompany->execute(
+                [
+                    'name' => $companyName,
+                    'contact_email' => $email,
+                    'admin_name' => trim((string) $submission->name) ?: $companyName,
+                    'is_active' => true,
+                ],
+                function ($company) use ($locked): void {
+                    $locked->update([
+                        'converted_company_id' => $company->id,
+                        'converted_at' => now(),
+                    ]);
+                },
+            );
+        });
+
+        if ($result === null) {
+            return $back->with('error', 'Este lead já foi convertido em cliente.');
+        }
+
+        $message = "Lead convertido: empresa «{$companyName}» criada."
+            .($result['invitation_error'] === null
+                ? " O convite de acesso ao portal foi enviado para {$email}."
+                : ' O e-mail de convite não pôde ser enviado; reenvie em Usuários da empresa. Erro: '.$result['invitation_error']);
+
+        return redirect()->route('admin.companies.show', $result['company'])->with('success', $message);
+    }
+
     public function destroy(LandingInterestSubmission $submission): RedirectResponse
     {
         $name = $submission->name;
@@ -156,6 +214,10 @@ class LandingInterestSubmissionController extends Controller
             'assigned_to_name' => self::asUtf8String($s->assignee?->name),
             'mail_sent_at' => $s->mail_sent_at?->toIso8601String(),
             'mail_error' => self::humanizeStoredMailError(self::asUtf8String($s->mail_error)),
+            'converted_at' => $s->converted_at?->toIso8601String(),
+            'converted_company' => $s->convertedCompany
+                ? ['id' => $s->convertedCompany->id, 'name' => self::asUtf8String($s->convertedCompany->name, '')]
+                : null,
             'created_at' => $s->created_at?->toIso8601String(),
             'updated_at' => $s->updated_at?->toIso8601String(),
         ];

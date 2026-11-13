@@ -848,6 +848,7 @@ Item «Oportunidades NR-1» do grupo Comercial abre `/nr1/oportunidades` (painel
 | Incluir manualmente | Mesmos campos do formulário público + responsável (`assigned_to`) |
 | Qualificar e anotar | `PATCH`: `is_qualified`, `admin_notes` (até 10.000) |
 | Excluir | `DELETE` |
+| Converter em cliente | `POST …/{submission}/converter` (exige também `companies` com criar). Cria a empresa pelo mesmo fluxo do cadastro (`CreateCompanyWithAdmin`): nome = empresa do lead (ou o nome do lead), e-mail de contato = e-mail do lead, primeiro `company_admin` com o nome do lead e convite de acesso. Grava `converted_company_id` e `converted_at`; a lista mostra o selo «Cliente» com link para a empresa. Lead já convertido, ou e-mail já usado por um usuário, é recusado com mensagem |
 
 Lead incluído manualmente também gera aviso «novo lead».
 
@@ -2881,6 +2882,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/admin/interessados-landing` | `admin.landing-interest.store` | auth · admin.can:landing_interest | — |
 | PATCH | `/admin/interessados-landing/{submission}` | `admin.landing-interest.update` | auth · admin.can:landing_interest | — |
 | DELETE | `/admin/interessados-landing/{submission}` | `admin.landing-interest.destroy` | auth · admin.can:landing_interest | — |
+| POST | `/admin/interessados-landing/{submission}/converter` | `admin.landing-interest.convert` | auth · admin.can:landing_interest · admin.can:companies,create | — |
 
 #### `/admin/mapa-proposito`
 
@@ -3744,7 +3746,7 @@ Gerado a partir das migrations (`database/migrations`, 181 arquivos), aplicando 
 | `departments` | `id`, `company_id`, `name`, `created_at/updated_at` |
 | `positions` | `id`, `company_id`, `name`, `created_at/updated_at` |
 | `company_rhid_schedule_settings` | `id`, `company_id`, `settings`, `created_at/updated_at` |
-| `landing_interest_submissions` | `id`, `name`, `email`, `company`, `message`, `mail_sent_at`, `mail_error`, `phone`, `source`, `created_by`, `admin_notes`, `is_qualified`, `assigned_to`, `created_at/updated_at` |
+| `landing_interest_submissions` | `id`, `name`, `email`, `company`, `message`, `mail_sent_at`, `mail_error`, `phone`, `source`, `created_by`, `admin_notes`, `is_qualified`, `assigned_to`, `converted_company_id`, `converted_at`, `created_at/updated_at` |
 | `company_employees` | `id`, `company_id`, `name`, `email`, `phone`, `department_id`, `position_id`, `leader_user_id`, `is_active`, `notes`, `birth_date`, `emergency_contact_name`, `emergency_contact_relationship`, `emergency_contact_phone`, `admission_date`, `work_schedule`, `cpf`, `rg`, `address_zip`, `address_street`, `address_number`, `address_complement`, `address_neighborhood`, `address_city`, `address_state`, `created_at/updated_at` |
 | `company_internal_regulations` | `id`, `company_id`, `title`, `body_html`, `is_published`, `updated_by`, `file_path`, `file_name`, `created_at/updated_at` |
 | `company_monthly_highlights` | `id`, `company_id`, `company_employee_id`, `person_name`, `category`, `year`, `month`, `photo_path`, `photo_disk`, `description`, `is_published`, `created_by`, `updated_by`, `created_at/updated_at` |

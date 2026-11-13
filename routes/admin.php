@@ -109,6 +109,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('landing-interest.update');
         Route::delete('/interessados-landing/{submission}', [LandingInterestSubmissionController::class, 'destroy'])
             ->name('landing-interest.destroy');
+        // Converter em cliente: além de `landing_interest`, exige criar empresas (`companies`).
+        Route::post('/interessados-landing/{submission}/converter', [LandingInterestSubmissionController::class, 'convert'])
+            ->middleware('admin.can:companies,create')
+            ->name('landing-interest.convert');
     });
 
     Route::middleware('admin.can:strategic_calendar')->group(function () {
