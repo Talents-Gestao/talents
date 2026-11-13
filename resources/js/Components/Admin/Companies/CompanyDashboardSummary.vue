@@ -72,8 +72,8 @@ const alerts = computed(() => {
         items.push({
             key: 'metodologia',
             tone: 'amber',
-            title: 'Direcionamento sem plano',
-            body: 'Há templates de satisfação vinculados, mas o plano ativo não inclui Direcionamento Estratégico.',
+            title: 'Direcionamento sem assinatura',
+            body: 'Há templates de satisfação vinculados, mas a assinatura ativa não inclui Direcionamento Estratégico.',
         });
     }
 
@@ -109,7 +109,7 @@ const kpiCards = computed(() => {
         {
             key: 'plan',
             label: 'Assinatura',
-            valueLabel: d.has_active_subscription ? d.active_plan_name || 'Plano ativo' : 'Sem plano',
+            valueLabel: d.has_active_subscription ? d.active_plan_name || 'Assinatura ativa' : 'Sem assinatura',
             hint: d.has_active_subscription ? 'Assinatura ativa' : 'Nenhuma assinatura ativa',
             icon: CreditCardIcon,
             isText: true,

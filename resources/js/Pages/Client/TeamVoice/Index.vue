@@ -157,7 +157,7 @@ const surveysHref = computed(() => page.props.nr1Shell?.url ?? route('client.sur
             class="surface-card mt-4 flex items-center gap-3 p-6 text-sm text-slate-500"
         >
             <MegaphoneIcon class="h-8 w-8 shrink-0 text-slate-300" aria-hidden="true" />
-            <p>Nenhum módulo de escuta disponível no seu plano. Contacte a equipe Talents.</p>
+            <p>Nenhum módulo de escuta disponível na sua assinatura. Contacte a equipe Talents.</p>
         </div>
     </ClientLayout>
 </template>

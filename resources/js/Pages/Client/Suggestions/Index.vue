@@ -39,7 +39,7 @@ const needsPicker = computed(() => props.isAdminContext && !props.activeCompany)
                 description="Escolha o cliente para gerenciar o canal de sugestões e dúvidas."
             />
             <p v-else class="surface-card p-6 text-sm text-slate-500">
-                Nenhuma empresa com o canal de sugestões ativo no plano.
+                Nenhuma empresa com o canal de sugestões ativo na assinatura.
             </p>
         </div>
 

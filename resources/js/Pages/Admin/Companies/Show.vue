@@ -93,7 +93,7 @@ const configShortcuts = [
     {
         key: 'assinaturas',
         label: 'Assinaturas',
-        hint: 'Planos vinculados a esta empresa',
+        hint: 'Assinaturas vinculadas a esta empresa',
         section: 'assinaturas',
         enabled: true,
     },
@@ -527,7 +527,7 @@ const removeRegulation = async (id) => {
                             v-if="!rhidEnabled"
                             class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
                         >
-                            O módulo RHID / Ponto está desligado no plano ou na ficha desta empresa. Ligue em
+                            O módulo RHID / Ponto está desligado na assinatura ou na ficha desta empresa. Ligue em
                             <Link
                                 :href="route('admin.companies.edit', company.id)"
                                 class="font-semibold text-talents-800 underline"

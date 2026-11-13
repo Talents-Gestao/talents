@@ -29,7 +29,7 @@ const toggle = (mod, act) => {
 
 <template>
     <div v-if="!permissionModules.length" class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        Nenhum módulo disponível no plano desta empresa para atribuir permissões.
+        Nenhum módulo disponível na assinatura desta empresa para atribuir permissões.
     </div>
     <div v-else class="overflow-x-auto rounded-lg border border-slate-200">
         <table class="min-w-full divide-y divide-slate-200 text-sm">

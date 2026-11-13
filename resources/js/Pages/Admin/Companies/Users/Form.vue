@@ -89,7 +89,7 @@ const submit = () => {
 
             <div v-if="showMatrix">
                 <InputLabel value="Permissões por módulo" />
-                <p class="mt-1 text-sm text-gray-600">Marque as ações permitidas para este usuário (apenas módulos do plano).</p>
+                <p class="mt-1 text-sm text-gray-600">Marque as ações permitidas para este usuário (apenas módulos da assinatura).</p>
                 <div class="mt-3">
                     <PermissionsMatrix
                         v-model="form.permissions"

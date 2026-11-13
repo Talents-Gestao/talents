@@ -35,7 +35,7 @@ const submit = () => {
         </template>
 
         <div v-if="!templates?.length" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
-            Nenhum template de satisfação foi vinculado à sua empresa. É necessário plano com módulo Direcionamento Estratégico e um template vinculado em
+            Nenhum template de satisfação foi vinculado à sua empresa. É necessária assinatura com o módulo Direcionamento Estratégico e um template vinculado em
             <strong>Admin → Planos</strong> e <strong>Admin → Empresas → sua empresa</strong>.
             <p class="mt-4">
                 <Link :href="route('client.metodologia.index')" class="font-medium text-talents-800 underline">Voltar</Link>

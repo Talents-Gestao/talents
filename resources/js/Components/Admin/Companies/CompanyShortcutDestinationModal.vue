@@ -116,7 +116,7 @@ const destinations = computed(() => {
             items.push({
                 key: 'plans',
                 label: 'Planos',
-                hint: 'O acesso ao Direcionamento vem do plano ativo',
+                hint: 'O acesso ao Direcionamento vem da assinatura ativa',
                 href: route('admin.plans.index'),
             });
         }
@@ -361,7 +361,7 @@ const surveysWithoutPanel = computed(() => {
                     {{
                         planIncludesMetodologia
                             ? 'Plano ativo inclui Direcionamento Estratégico.'
-                            : 'Plano ativo não inclui Direcionamento Estratégico — ajuste o plano da empresa.'
+                            : 'A assinatura ativa não inclui Direcionamento Estratégico — ajuste a assinatura da empresa.'
                     }}
                 </p>
                 <h3 class="mt-5 text-xs font-medium uppercase tracking-wide text-slate-400">

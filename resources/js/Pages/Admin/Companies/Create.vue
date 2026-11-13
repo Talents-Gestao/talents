@@ -263,7 +263,7 @@ const onLogoRemove = () => {
             </div>
 
             <div>
-                <InputLabel for="plan_id" value="Plano inicial (opcional)" />
+                <InputLabel for="plan_id" value="Assinatura inicial (opcional)" />
                 <select id="plan_id" v-model="form.plan_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-talents-500 focus:ring-talents-500">
                     <option :value="null">—</option>
                     <option v-for="p in plans" :key="p.id" :value="p.id">{{ p.name }}</option>
