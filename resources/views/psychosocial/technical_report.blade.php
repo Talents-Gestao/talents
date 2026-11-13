@@ -31,7 +31,7 @@
         $eligible = $snapshot['eligible'];
         $meta = $meta ?? [];
         $company = $snapshot['company'] ?? [];
-        $legalName = $registration['legal_name_snapshot'] ?? ($company['legal_name'] ?? $company['name'] ?? null);
+        $legalName = $registration['legal_name_snapshot'] ?? ($company['legal_name'] ?? null);
         $cnpj = $registration['cnpj_snapshot'] ?? ($company['cnpj'] ?? null);
         $addressParts = array_filter([
             $company['address_street'] ?? null,

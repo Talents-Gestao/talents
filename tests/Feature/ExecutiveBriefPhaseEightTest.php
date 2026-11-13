@@ -178,6 +178,16 @@ class ExecutiveBriefPhaseEightTest extends TestCase
         $this->assertStringNotContainsString('validado', mb_strtolower($this->html($version)));
     }
 
+    public function test_registered_company_legal_name_fills_the_empty_registration(): void
+    {
+        $campaign = $this->seedCascadeCampaign();
+        $campaign->fx->company->update(['legal_name' => 'Empresa Cascata Ltda']);
+
+        $version = $this->release($campaign);
+
+        $this->assertSame('Empresa Cascata Ltda', $version->snapshot['registration']['legal_name_snapshot']);
+    }
+
     public function test_null_eligible_and_empty_registration_stay_gaps_without_rate(): void
     {
         $campaign = $this->seedCascadeCampaign();
@@ -189,9 +199,12 @@ class ExecutiveBriefPhaseEightTest extends TestCase
         $this->assertSame('Aguardando total elegível', $eligible['hint']);
         $this->assertSame('Elegíveis não informados', $eligible['respondents_hint']);
 
-        // Razão social e CNPJ caem da empresa quando o cadastro técnico ainda não foi gravado.
+        // CNPJ cai da empresa quando o cadastro técnico ainda não foi gravado. Razão social só da razão social
+        // cadastrada: a empresa da fixture não tem, e o nome (fantasia) nunca a substitui (T19).
         $registration = $version->snapshot['registration'];
-        $this->assertSame($campaign->fx->company->name, $registration['legal_name_snapshot']);
+        $this->assertNull($campaign->fx->company->legal_name);
+        $this->assertNull($registration['legal_name_snapshot']);
+        $this->assertStringNotContainsString((string) $campaign->fx->company->name.'</td>', $this->html($version));
         $this->assertSame($campaign->fx->company->cnpj, $registration['cnpj_snapshot']);
         $manualFields = collect($registration)
             ->except(['legal_name_snapshot', 'cnpj_snapshot'])
