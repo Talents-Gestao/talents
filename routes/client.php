@@ -314,7 +314,8 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::patch('cards/{card}', [ClientTasksCardController::class, 'update'])->name('cards.update');
         Route::post('cards/{card}/mover', [ClientTasksCardMoveController::class, 'store'])->name('cards.move');
         Route::post('cards/{card}/comentarios', [ClientTasksCardCommentController::class, 'store'])->name('cards.comentarios.store');
-        Route::patch('checklist-itens/{item}', [ClientTasksCardChecklistItemController::class, 'update'])->name('checklist-itens.update');
+        Route::post('checklists/{checklist}/itens', [ClientTasksCardChecklistItemController::class, 'store'])->name('checklists.itens.store');
+        Route::patch('checklist-itens/{item}',[ClientTasksCardChecklistItemController::class, 'update'])->name('checklist-itens.update');
         Route::post('cards/{card}/anexos', [ClientTasksCardAttachmentController::class, 'store'])->name('cards.anexos.store');
         Route::delete('anexos/{attachment}', [ClientTasksCardAttachmentController::class, 'destroy'])->name('anexos.destroy');
         Route::post('{board}/favoritar', [ClientTasksBoardFavoriteController::class, 'store'])->name('favoritar')->whereNumber('board');

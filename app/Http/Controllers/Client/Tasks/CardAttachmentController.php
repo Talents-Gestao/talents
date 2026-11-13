@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Client\Tasks;
 
+use App\Actions\Tasks\LogTaskActivity;
 use App\Http\Controllers\Controller;
 use App\Models\TaskAttachment;
 use App\Models\TaskCard;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 
 class CardAttachmentController extends Controller
 {
-    public function store(Request $request, TaskCard $card): RedirectResponse
+    public function store(Request $request, TaskCard $card, LogTaskActivity $log): RedirectResponse
     {
         $this->authorize('attach', $card);
 
@@ -42,7 +43,7 @@ class CardAttachmentController extends Controller
         $file = $request->file('file');
         $path = $file->store('task-attachments/'.$card->id, 'public');
 
-        TaskAttachment::query()->create([
+        $attachment = TaskAttachment::query()->create([
             'task_card_id' => $card->id,
             'disk' => 'public',
             'path' => $path,
@@ -52,10 +53,12 @@ class CardAttachmentController extends Controller
             'uploaded_by_user_id' => $request->user()->id,
         ]);
 
+        $log->handle($card->list->board, $card, 'attachment.added', $request->user(), ['attachment_id' => $attachment->id]);
+
         return back()->with('success', 'Anexo enviado.');
     }
 
-    public function destroy(TaskAttachment $attachment): RedirectResponse
+    public function destroy(TaskAttachment $attachment, LogTaskActivity $log): RedirectResponse
     {
         $attachment->loadMissing('card.list.board');
         $card = $attachment->card;
@@ -66,6 +69,10 @@ class CardAttachmentController extends Controller
             Storage::disk($attachment->disk)->delete($attachment->path);
         }
 
+        $log->handle($card->list->board, $card, 'attachment.removed', request()->user(), [
+            'attachment_id' => $attachment->id,
+            'original_name' => $attachment->original_name,
+        ]);
         $attachment->delete();
 
         return back()->with('success', 'Anexo removido.');

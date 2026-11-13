@@ -7,8 +7,8 @@ use App\Models\User;
 use App\Support\Tasks\PortalTaskAccess;
 
 /**
- * Admin (super admin) faz tudo. Portal: só cartões visíveis ao usuário e só o que o papel no quadro e a permissão
- * do módulo deixam (PortalTaskAccess).
+ * Admin (super admin) faz tudo. Portal: só cartões visíveis ao usuário e só o que a atribuição ao cartão, o papel no
+ * quadro e a permissão do módulo deixam (PortalTaskAccess).
  */
 class TaskCardPolicy
 {
@@ -20,6 +20,11 @@ class TaskCardPolicy
     public function update(User $user, TaskCard $card): bool
     {
         return $user->isSuperAdmin() || PortalTaskAccess::allows($user, $card, 'edit');
+    }
+
+    public function addChecklistItem(User $user, TaskCard $card): bool
+    {
+        return $user->isSuperAdmin() || PortalTaskAccess::allows($user, $card, 'checklist');
     }
 
     public function move(User $user, TaskCard $card): bool

@@ -365,16 +365,22 @@ final class BoardPresenter
             ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name, 'role' => null])
             ->values();
 
-        $payload['portal_can'] = $user !== null
-            ? PortalTaskAccess::abilities($user, (int) $board->id)
-            : ['comment' => false, 'edit' => false, 'move' => false, 'attach' => false, 'remove_attachment' => false];
+        // portal_can do quadro: cartões em que o usuário não está atribuído (papel no quadro). Cada cartão leva o seu:
+        // atribuído ao cartão edita, seja qual for o papel (PortalTaskAccess::abilitiesFor).
+        $none = ['comment' => false, 'edit' => false, 'checklist' => false, 'move' => false, 'attach' => false, 'remove_attachment' => false];
+        $role = $user !== null ? PortalTaskAccess::boardRole($user, (int) $board->id) : null;
+        $payload['portal_can'] = $user !== null ? PortalTaskAccess::abilitiesFor($user, $role, false) : $none;
+        $assignedCan = $user !== null ? PortalTaskAccess::abilitiesFor($user, $role, true) : $none;
+        $userId = $user?->id;
 
         // Cada cartão leva o que o usuário pode fazer nele (o modal recebe só o cartão) e os membros sem e-mail.
         $payload['lists'] = collect($payload['lists'])->map(fn (array $list) => [
             ...$list,
             'cards' => collect($list['cards'])->map(fn (array $card) => [
                 ...$card,
-                'portal_can' => $payload['portal_can'],
+                'portal_can' => $userId !== null && collect($card['members'])->contains(fn (array $m) => (int) $m['id'] === (int) $userId)
+                    ? $assignedCan
+                    : $payload['portal_can'],
                 'members' => collect($card['members'])
                     ->map(fn (array $m) => ['id' => $m['id'], 'name' => $m['name'], 'is_team' => $m['is_team']])
                     ->values(),

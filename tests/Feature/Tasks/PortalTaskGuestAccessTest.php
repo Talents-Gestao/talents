@@ -319,12 +319,13 @@ class PortalTaskGuestAccessTest extends TestCase
         ];
     }
 
+    /** Cartão visível e NÃO atribuído ao convidado: o papel no quadro decide (atribuição: PortalTaskActionMatrixTest). */
     #[DataProvider('roles')]
-    public function test_invited_role_limits_what_the_guest_does_on_visible_cards(string $role, bool $comments, bool $edits): void
+    public function test_invited_role_limits_what_the_guest_does_on_visible_cards_not_assigned_to_her(string $role, bool $comments, bool $edits): void
     {
         Storage::fake('public');
         $this->invite($this->guest, $role);
-        $card = $this->cards['assigned'];
+        $card = $this->cards['company'];
         $item = TaskChecklistItem::query()->create([
             'task_checklist_id' => $card->checklists()->create(['name' => 'Etapas', 'position' => 1000])->id,
             'text' => 'Etapa', 'position' => 1000, 'is_completed' => false,
@@ -335,21 +336,21 @@ class PortalTaskGuestAccessTest extends TestCase
 
         $payload = $this->actingAs($this->guest)->get('/client/tarefas/'.$this->board->id)->inertiaProps('boardPayload');
         $flags = collect($payload['lists'])->flatMap(fn ($l) => $l['cards'])->firstWhere('id', $card->id)['portal_can'];
-        $this->assertSame(['comment' => $comments, 'edit' => $edits, 'move' => $edits, 'attach' => $edits, 'remove_attachment' => $edits], $flags);
+        $this->assertSame(['comment' => $comments, 'edit' => $edits, 'checklist' => $edits, 'move' => $edits, 'attach' => $edits, 'remove_attachment' => $edits], $flags);
 
         $status = fn ($response) => $response->status();
         $ok = fn (bool $allowed) => $allowed ? 302 : 403;
 
         $this->assertSame($ok($comments), $status($this->actingAs($this->guest)->post(route('client.tarefas.cards.comentarios.store', $card), ['body' => 'Oi'])));
-        $this->assertSame($ok($edits), $status($this->actingAs($this->guest)->patch(route('client.tarefas.cards.update', $card), ['title' => 'Novo título', 'completed_at' => now()->toDateTimeString()])));
+        $this->assertSame($ok($edits), $status($this->actingAs($this->guest)->patch(route('client.tarefas.cards.update', $card), ['title' => 'Novo título'])));
         $this->assertSame($ok($edits), $status($this->actingAs($this->guest)->patch(route('client.tarefas.checklist-itens.update', $item), ['is_completed' => true])));
         $this->assertSame($ok($edits), $status($this->actingAs($this->guest)->post(route('client.tarefas.cards.anexos.store', $card), ['file' => UploadedFile::fake()->create('b.pdf', 1, 'application/pdf')])));
         $this->assertSame($ok($edits), $status($this->actingAs($this->guest)->delete(route('client.tarefas.anexos.destroy', $attachment))));
-        $this->assertSame($ok($edits), $status($this->actingAs($this->guest)->post(route('client.tarefas.cards.move', $card), ['list_id' => $this->todo->id, 'position' => 500])));
+        $this->assertSame($ok($edits), $status($this->actingAs($this->guest)->post(route('client.tarefas.cards.move', $card), ['list_id' => $this->doing->id, 'position' => 500])));
 
         $card->refresh();
-        $this->assertSame($edits ? 'Novo título' : 'Atribuído à convidada', $card->title);
-        $this->assertSame($edits ? $this->todo->id : $this->doing->id, (int) $card->list_id);
+        $this->assertSame($edits ? 'Novo título' : 'Da empresa', $card->title);
+        $this->assertSame($edits ? $this->doing->id : $this->todo->id, (int) $card->list_id);
         $this->assertSame($edits, (bool) $item->fresh()->is_completed);
     }
 
@@ -444,7 +445,7 @@ class PortalTaskGuestAccessTest extends TestCase
         }
     }
 
-    public function test_viewer_cannot_complete_a_visible_card_from_the_calendar(): void
+    public function test_viewer_cannot_complete_a_visible_card_not_assigned_to_her_from_the_calendar(): void
     {
         $this->invite($this->guest, 'viewer');
 
