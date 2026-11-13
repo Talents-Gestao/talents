@@ -1117,9 +1117,10 @@ Feed externo por categoria (`NewsCategory`: RH, Empreendedorismo, Contabilidade,
 |-------|---------|
 | Visibilidade do cartão (`TaskCardVisibility`) | `internal` (só Talents), `company` (aparece no portal), `inherit` (segue a lista) |
 | Visibilidade da lista (`TaskListVisibility`) | `internal` ou `company` |
-| Cartão visível ao portal | cartão `company`/`inherit` em lista `company`; ou em lista `internal` quando o cartão tem `company_id` |
+| Cartão visível ao portal | Regra única em `PortalTaskAccess` (listagem, resumo, conteúdo sob demanda, modal, ações e «Tarefas» da Home). Cartão não arquivado, em lista e quadro não arquivados, visibilidade `company`/`inherit` (`internal` nunca aparece, nem atribuído), e: o cartão é da empresa (`company_id` da empresa, em lista `company` ou `internal`); **ou** não tem `company_id`, está numa lista `company` e o usuário é membro do cartão (atribuído). Cartão sem `company_id` nunca aparece só por estar em lista `company`: num quadro interno compartilhado com várias empresas, vazaria entre elas. `company_user` fora dos membros do quadro vê só os cartões em que é membro |
+| Quadro no portal | Quadro da empresa (para o administrador da empresa); **ou** o usuário é membro (convidado) do quadro; **ou** há pelo menos um cartão visível a ele. Quadro interno sem nada disso não é listado. Membros mostrados no portal: só quem está atribuído a cartões visíveis (nome, sem e-mail), nunca a equipe inteira do quadro |
 | Empresa mover cartão | só para lista `company` com `allow_company_drop_in` |
-| Membros (`TaskBoardMemberRole`) | Dono, Editor, Comentarista, Leitor |
+| Membros (`TaskBoardMemberRole`) | Dono, Editor, Comentarista, Leitor. Para o convidado do portal, o papel limita o que ele faz nos cartões que vê, cruzado com a permissão do módulo `tarefas` (vale o mais restritivo): Dono e Editor editam título, descrição, datas, conclusão, itens de checklist e anexos e movem o cartão; Comentarista só comenta; Leitor só lê (também não conclui pelo calendário). Quem vê o cartão sem ser membro do quadro (administrador da empresa, atribuído) comenta. O portal nunca arquiva, exclui, convida membros, partilha nem cria listas ou quadros |
 | Recorrência (`TaskCardRecurrence`) | Diária, Semanal, Mensal, Anual, com data de término; ao concluir, o próximo cartão é criado (`DuplicateTaskCardForRecurrence`) |
 | Checklists | vários por cartão; itens com descrição, prazo e responsável; reordenação |
 | Comentários | até 10.000 caracteres, com menções (notificação `TaskCommentMentionNotification`) |
@@ -1127,7 +1128,7 @@ Feed externo por categoria (`NewsCategory`: RH, Empreendedorismo, Contabilidade,
 | Arquivar / restaurar | cartões e listas |
 | Atividade | trilha em `task_activity_logs` (`LogTaskActivity`) |
 | Lembrete | job diário às 08:00 (`RemindUpcomingTaskDueDatesJob`) com `TaskDueReminderNotification` |
-| Partilhar cartões | `POST …/partilhar-cartoes` associa à empresa os cartões internos sem `company_id`; também `php artisan tasks:share-board-cards` |
+| Partilhar cartões | `POST …/partilhar-cartoes` associa à empresa **todos** os cartões ativos sem `company_id` do quadro (de qualquer lista, e troca `internal` por `company`), que passam a ser vistos pelo administrador da empresa; também `php artisan tasks:share-board-cards` (`--dry-run` mostra quantos) |
 
 ### 7.10 Financeiro (`/admin/financeiro`)
 
@@ -1965,9 +1966,9 @@ Os períodos aparecem no calendário estratégico para administradores (não par
 
 ### 9.11 Tarefas (`/client/tarefas`)
 
-**Acesso:** `tarefas`. **Página:** `Client/Tasks/Index`, tela única em `/client/tarefas` e `/client/tarefas/{board}`, com a mesma estrutura do Admin (7.9.2): todos os quadros visíveis empilhados e recolhíveis («Favoritos», «Quadros da Talents» e «Quadros da empresa»), busca e atalhos no topo, Expandir/Recolher todos, resumo no estado recolhido e conteúdo carregado ao expandir. O resumo e o conteúdo contam só os cartões que a empresa vê (mesma regra da visibilidade cartão × lista; `company_user` fora dos membros do quadro vê só os cartões em que é membro) e só as listas com cartões visíveis. Cada quadro tem favoritar, membros e Kanban/Lista. Sem quadro visível, a tela mostra um aviso.
+**Acesso:** `tarefas`. **Página:** `Client/Tasks/Index`, tela única em `/client/tarefas` e `/client/tarefas/{board}`, com a mesma estrutura do Admin (7.9.2): todos os quadros visíveis empilhados e recolhíveis («Favoritos», «Quadros da Talents» e «Quadros da empresa»), busca e atalhos no topo, Expandir/Recolher todos, resumo no estado recolhido e conteúdo carregado ao expandir. O resumo e o conteúdo contam só os cartões que o usuário vê (regra de 7.9.3, `PortalTaskAccess`) e só as listas com cartões visíveis. Cada quadro tem favoritar, membros e Kanban/Lista. Sem quadro visível, a tela mostra um aviso.
 
-O portal vê só os quadros da empresa e só os cartões visíveis ao portal (7.9.3). Pode editar título, descrição, datas e conclusão do cartão, mover entre listas permitidas, comentar com menções, anexar, marcar itens de checklist e favoritar quadros. Não cria quadros, listas nem processos.
+O portal vê os quadros e cartões de 7.9.3 («Quadro no portal» e «Cartão visível ao portal»). O que cada usuário faz num cartão vem do papel no quadro cruzado com a permissão do módulo (7.9.3, «Membros»), enviado em `portal_can` em cada cartão: com edição, altera título, descrição, datas e conclusão, edita e marca itens de checklist, anexa e remove anexos e arrasta o cartão para listas da empresa que aceitam cartões; com comentário, comenta com menções. Todos favoritam quadros. Não arquiva, não exclui, não convida, não partilha e não cria quadros, listas nem processos.
 
 ### 9.12 Setores e cargos
 

@@ -109,10 +109,9 @@ class TaskCard extends Model
     }
 
     /**
-     * Cards visíveis para usuários da empresa no cliente.
-     *
-     * Inclui listas internas quando o cartão está atribuído à empresa (company_id)
-     * e a visibilidade do cartão não é estritamente interna.
+     * Cartões da empresa como um todo (company_id = empresa, visibilidade não interna, em qualquer lista): calendário
+     * compartilhado do portal e prévias do Admin. O que cada usuário do portal vê em Tarefas (inclui cartões sem
+     * empresa atribuídos a ele e respeita o convite no quadro) é PortalTaskAccess::scopeCards.
      */
     public function scopeVisibleToCompany(Builder $query, int $companyId): Builder
     {

@@ -5,6 +5,7 @@ namespace App\Actions\Tasks;
 use App\Models\TaskCard;
 use App\Models\TaskList;
 use App\Models\User;
+use App\Support\Tasks\PortalTaskAccess;
 use App\Support\Tasks\TaskCardVisibility;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -35,10 +36,7 @@ final class MoveTaskCard
             }
 
             if (! $actorIsSuperAdmin) {
-                if ((int) $card->company_id !== (int) $actor->company_id) {
-                    throw new AuthorizationException('Acesso negado.');
-                }
-                if (! TaskCardVisibility::isVisibleToCompany($card)) {
+                if (! PortalTaskAccess::canSeeCard($actor, $card)) {
                     throw new AuthorizationException('Cartão não visível.');
                 }
                 if (! TaskCardVisibility::companyMayMoveBetween($sourceList, $targetList)) {

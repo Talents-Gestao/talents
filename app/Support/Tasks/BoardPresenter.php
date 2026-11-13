@@ -7,6 +7,7 @@ use App\Models\TaskCard;
 use App\Models\TaskList;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -180,25 +181,10 @@ final class BoardPresenter
             ->whereIn('list_id', $lists->pluck('id'))
             ->where('is_archived', false);
 
-        if ($companyId !== null) {
+        if ($user !== null && ! $user->isSuperAdmin()) {
+            PortalTaskAccess::scopeCards($cardsQuery, $user);
+        } elseif ($companyId !== null) {
             $cardsQuery->visibleToCompany($companyId);
-
-            if ($user && $user->isCompanyUser()) {
-                $memberOf = DB::table('task_board_members')
-                    ->where('user_id', $user->id)
-                    ->whereIn('board_id', $boards->pluck('id'))
-                    ->pluck('board_id')
-                    ->map(fn ($id) => (int) $id)
-                    ->all();
-                $restrictedBoardIds = $boards->pluck('id')->diff($memberOf);
-                $restrictedListIds = $lists->whereIn('board_id', $restrictedBoardIds)->pluck('id');
-
-                if ($restrictedListIds->isNotEmpty()) {
-                    $cardsQuery->where(fn (Builder $q) => $q
-                        ->whereNotIn('list_id', $restrictedListIds)
-                        ->orWhereHas('members', fn (Builder $m) => $m->where('users.id', $user->id)));
-                }
-            }
         }
 
         $cardsByList = $cardsQuery->get(['id', 'list_id', 'due_date', 'completed_at'])->groupBy('list_id');
@@ -348,35 +334,54 @@ final class BoardPresenter
     /**
      * @return array<string, mixed>
      */
+    /**
+     * Quadro no portal. Com o usuário, vale PortalTaskAccess (cartões, membros mostrados e o que ele pode fazer);
+     * sem usuário, a visão da empresa como um todo (cartões com company_id da empresa).
+     */
     public static function forClient(TaskBoard $board, int $companyId, ?User $user = null): array
     {
-        $onlyAssignedToUserId = null;
-        if ($user && $user->isCompanyUser() && ! $board->hasMember($user->id)) {
-            $onlyAssignedToUserId = $user->id;
-        }
+        $visible = function ($q) use ($user, $companyId) {
+            $cards = $q instanceof Relation ? $q->getQuery() : $q;
+            $user !== null ? PortalTaskAccess::scopeCards($cards, $user) : $cards->visibleToCompany($companyId);
+
+            return $q;
+        };
 
         $board->loadMissing([
-            'lists.cards' => function ($q) use ($companyId, $onlyAssignedToUserId) {
-                $q->visibleToCompany($companyId)->orderBy('position');
-                if ($onlyAssignedToUserId !== null) {
-                    $q->whereHas('members', fn (Builder $m) => $m->where('users.id', $onlyAssignedToUserId));
-                }
-            },
-            'lists' => function ($q) use ($companyId, $onlyAssignedToUserId) {
-                $q->where('is_archived', false)
-                    ->whereHas('cards', function (Builder $cq) use ($companyId, $onlyAssignedToUserId) {
-                        $cq->visibleToCompany($companyId);
-                        if ($onlyAssignedToUserId !== null) {
-                            $cq->whereHas('members', fn (Builder $m) => $m->where('users.id', $onlyAssignedToUserId));
-                        }
-                    })
-                    ->orderBy('position');
-            },
+            'lists.cards' => fn ($q) => $visible($q)->orderBy('position'),
+            'lists' => fn ($q) => $q->where('is_archived', false)
+                ->whereHas('cards', fn (Builder $cq) => $visible($cq))
+                ->orderBy('position'),
             'labels',
-            'members:id,name,email,company_id',
         ]);
 
-        return self::serializeBoard($board, true);
+        $payload = self::serializeBoard($board, true);
+
+        // Membros mostrados: só quem está atribuído a um cartão visível (nunca a equipe inteira do quadro).
+        $payload['members'] = $board->lists
+            ->flatMap(fn ($list) => $list->cards->flatMap(fn (TaskCard $card) => $card->members))
+            ->unique('id')
+            ->sortBy('name')
+            ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name, 'role' => null])
+            ->values();
+
+        $payload['portal_can'] = $user !== null
+            ? PortalTaskAccess::abilities($user, (int) $board->id)
+            : ['comment' => false, 'edit' => false, 'move' => false, 'attach' => false, 'remove_attachment' => false];
+
+        // Cada cartão leva o que o usuário pode fazer nele (o modal recebe só o cartão) e os membros sem e-mail.
+        $payload['lists'] = collect($payload['lists'])->map(fn (array $list) => [
+            ...$list,
+            'cards' => collect($list['cards'])->map(fn (array $card) => [
+                ...$card,
+                'portal_can' => $payload['portal_can'],
+                'members' => collect($card['members'])
+                    ->map(fn (array $m) => ['id' => $m['id'], 'name' => $m['name'], 'is_team' => $m['is_team']])
+                    ->values(),
+            ])->values(),
+        ])->values();
+
+        return $payload;
     }
 
     /**

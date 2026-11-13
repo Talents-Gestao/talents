@@ -5,8 +5,8 @@ namespace App\Policies;
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Models\TaskBoard;
-use App\Models\TaskCard;
 use App\Models\User;
+use App\Support\Tasks\PortalTaskAccess;
 
 class TaskBoardPolicy
 {
@@ -27,38 +27,9 @@ class TaskBoardPolicy
             return true;
         }
 
-        if (! $user->belongsToCompany() || ! $user->contextCompany()?->hasTasksEnabled()) {
-            return false;
-        }
-
-        $companyId = (int) $user->contextCompanyId();
-
-        if ($user->isCompanyAdmin()) {
-            if ($board->company_id === null) {
-                return true;
-            }
-
-            return (int) $board->company_id === $companyId;
-        }
-
-        if ($user->isCompanyUser()) {
-            if ($board->company_id !== null && (int) $board->company_id !== $companyId) {
-                return false;
-            }
-
-            if ($board->hasMember($user->id)) {
-                return true;
-            }
-
-            return TaskCard::query()
-                ->where('is_archived', false)
-                ->visibleToCompany($companyId)
-                ->whereHas('members', fn ($q) => $q->where('users.id', $user->id))
-                ->whereHas('list', fn ($q) => $q->where('board_id', $board->id)->where('is_archived', false))
-                ->exists();
-        }
-
-        return false;
+        // Portal: quadro da empresa, convidado do quadro ou com algum cartão visível (PortalTaskAccess).
+        return ($user->isCompanyAdmin() || $user->isCompanyUser())
+            && PortalTaskAccess::canSeeBoard($user, $board);
     }
 
     /**

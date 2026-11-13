@@ -169,7 +169,10 @@ describe('Tarefas: estrutura da tela única', () => {
         const section = read('resources/js/Components/Tasks/BoardSection.vue');
         assert.match(section, /:fill-height="fillHeight"/);
         assert.match(section, /height: 'min\(70vh, 46rem\)'/);
-        assert.match(kanban, /:group="`kanban-cards-\$\{boardPayload\.id\}`"/);
+        // Arrastar só dentro do próprio quadro; no portal, só para listas da empresa que aceitam cartões.
+        assert.match(kanban, /:group="cardGroup\(list\)"/);
+        assert.match(kanban, /const name = `kanban-cards-\$\{props\.boardPayload\.id\}`;/);
+        assert.match(kanban, /put: portalAcceptsDrop\(list\)/);
         assert.match(kanban, /const scope = \(\) => rootEl\.value \?\? document;/);
     });
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client\Tasks;
 use App\Http\Controllers\Controller;
 use App\Models\TaskBoard;
 use App\Support\Tasks\BoardPresenter;
+use App\Support\Tasks\PortalTaskAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -73,7 +74,7 @@ class BoardController extends Controller
     private function renderScreen(Request $request, Collection $models, ?TaskBoard $focus, bool $scrollToFocus): Response
     {
         $user = $request->user();
-        $companyId = (int) $user->company_id;
+        $companyId = PortalTaskAccess::companyId($user);
 
         return Inertia::render('Client/Tasks/Index', [
             'boards' => fn () => BoardPresenter::forSwitcher(
@@ -103,26 +104,15 @@ class BoardController extends Controller
     private function visibleBoardModels(Request $request): Collection
     {
         $user = $request->user();
-        $companyId = (int) $user->company_id;
+        if (! PortalTaskAccess::moduleEnabled($user)) {
+            return collect();
+        }
 
-        $boardsQuery = TaskBoard::query()
-            ->where('is_archived', false)
-            ->where(function ($q) use ($companyId) {
-                $q->whereNull('company_id')
-                    ->orWhere('company_id', $companyId);
-            })
+        return PortalTaskAccess::boardsQuery($user)
             ->with(['company:id,name'])
             ->orderByRaw('company_id is null desc')
             ->orderBy('position')
-            ->orderBy('id');
-
-        if ($user->isCompanyUser()) {
-            $boardsQuery->accessibleByCompanyUser($user->id, $companyId);
-        }
-
-        return $boardsQuery
-            ->get()
-            ->filter(fn (TaskBoard $board) => $user->can('view', $board))
-            ->values();
+            ->orderBy('id')
+            ->get();
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -87,18 +86,6 @@ class TaskBoard extends Model
     public function scopeForCompany($query, int $companyId)
     {
         return $query->where('company_id', $companyId);
-    }
-
-    public function scopeAccessibleByCompanyUser(Builder $query, int $userId, int $companyId): Builder
-    {
-        return $query->where(function (Builder $q) use ($userId, $companyId) {
-            $q->whereHas('members', fn (Builder $m) => $m->where('users.id', $userId))
-                ->orWhereHas('lists.cards', function (Builder $c) use ($userId, $companyId) {
-                    $c->where('is_archived', false)
-                        ->visibleToCompany($companyId)
-                        ->whereHas('members', fn (Builder $m) => $m->where('users.id', $userId));
-                });
-        });
     }
 
     public function hasMember(int $userId): bool
