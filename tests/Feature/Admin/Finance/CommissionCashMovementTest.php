@@ -13,6 +13,7 @@ use App\Enums\FinancePayableStatus;
 use App\Http\Controllers\Admin\Finance\PayableController;
 use App\Models\CommercialCommission;
 use App\Models\CommercialCommissionPayment;
+use App\Models\CommercialCommissionRefund;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
 use App\Models\CompanyNotice;
@@ -27,7 +28,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
- * Fase 2: pagamento de comissão move o caixa (conta a pagar baixada) e perda assumida.
+ * Fase 2: pagamento de comissão move o caixa (conta a pagar baixada); teto abaixo do pago vira devolução pendente.
  */
 class CommissionCashMovementTest extends TestCase
 {
@@ -231,7 +232,7 @@ class CommissionCashMovementTest extends TestCase
         $this->assertNull($payload['payments'][0]['bank_account']);
     }
 
-    public function test_loss_assumed_is_flagged_and_notified_once(): void
+    public function test_ceiling_drop_creates_pending_refund_and_notice_once_instead_of_loss(): void
     {
         $sale = $this->sale([10_000, 10_000]);
         $this->receive($sale, 1);
@@ -242,30 +243,40 @@ class CommissionCashMovementTest extends TestCase
 
         $commission = $sale->commission->fresh();
         $this->assertSame(CommercialCommission::STATUS_PAGA, $commission->status);
-        $this->assertNotNull($commission->loss_notified_at);
-        $this->assertSame(1, $this->lossNotices());
-        $notice = CompanyNotice::query()->where('event_kind', CompanyNoticeEventKind::CommissionLossAssumed->value)->firstOrFail();
+        $this->assertNull($commission->loss_notified_at, 'Regra nova: nada é assumido como perda automaticamente.');
+        $this->assertSame(0, $this->lossNotices());
+        $refund = CommercialCommissionRefund::query()->where('commission_id', $commission->id)->sole();
+        $this->assertSame(CommercialCommissionRefund::ORIGIN_CEILING_DROP, $refund->origin);
+        $this->assertSame(1_000, $refund->pendingCents());
+        $this->assertSame(1, $this->refundNotices());
+        $notice = CompanyNotice::query()->where('event_kind', CompanyNoticeEventKind::CommissionRefundDue->value)->firstOrFail();
         $this->assertStringContainsString($sale->code, $notice->body);
         $this->assertStringContainsString('Vendedora B', $notice->body);
         $this->assertStringContainsString('R$ 10,00', $notice->body);
 
-        // Recalcular de novo (outra mudança na venda) não repete o aviso.
+        // Recalcular de novo (outra mudança na venda) não repete a devolução nem o aviso.
         app(RefreshCommissionPayout::class)->forSale($sale->fresh());
-        $sale->fresh()->update(['total_cents' => 10_001]);
-        $this->assertSame(1, $this->lossNotices());
+        $this->assertSame(1, CommercialCommissionRefund::query()->count());
+        $this->assertSame(1, $this->refundNotices());
 
         $this->actingAs($this->admin)
             ->get(route('admin.financeiro.dashboard', ['period' => 'all']))
-            ->assertInertia(fn (Assert $page) => $page->where('kpis.commissions_loss_assumed_cents', 1_000));
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('kpis.commissions_loss_assumed_cents', 0)
+                ->where('kpis.commissions_refund_pending_cents', 1_000)
+                ->where('kpis.commissions_refund_pending_count', 1));
 
         $this->actingAs($this->admin)
-            ->get(route('admin.financeiro.comissoes.index'))
+            ->get(route('admin.financeiro.comissoes.index', ['status' => 'devolucoes']))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('summary.loss_assumed_cents', 1_000)
-                ->where('commissions.data.0.loss_assumed_cents', 1_000));
+                ->has('commissions.data', 1)
+                ->where('summary.loss_assumed_cents', 0)
+                ->where('summary.refund_pending_cents', 1_000)
+                ->where('commissions.data.0.refund_pending_cents', 1_000)
+                ->where('commissions.data.0.loss_assumed', false));
     }
 
-    public function test_loss_notice_rearms_after_commission_returns_within_ceiling(): void
+    public function test_pending_refund_is_cancelled_when_ceiling_covers_paid_again(): void
     {
         $sale = $this->sale([10_000, 10_000]);
         $this->receive($sale, 1);
@@ -273,17 +284,48 @@ class CommissionCashMovementTest extends TestCase
         $this->pay($sale->commission, '20.00')->assertSessionHasNoErrors();
 
         $this->cancelInstallment($sale, 2);
-        $this->assertSame(1, $this->lossNotices());
+        $this->assertSame(1, $this->refundNotices());
 
-        // Parcela reativada: volta ao teto, aviso «rearma».
+        // Parcela reativada: o teto volta a cobrir o pago e a devolução é cancelada automaticamente.
         $second = $sale->installments()->where('number', 2)->firstOrFail();
         $this->actingAs($this->admin)
             ->patch(route('admin.financeiro.parcelas.pagamento', $second), ['status' => CommercialSaleInstallment::STATUS_PENDENTE])
             ->assertSessionHasNoErrors();
-        $this->assertNull($sale->commission->fresh()->loss_notified_at);
+        $refund = CommercialCommissionRefund::query()->sole();
+        $this->assertSame(0, $refund->pendingCents());
+        $this->assertSame(1_000, $refund->cancelled_cents);
+        $this->assertSame(CommercialCommissionRefund::STATUS_RESOLVED, $refund->status);
 
+        // Novo cancelamento gera nova devolução e novo aviso.
         $this->cancelInstallment($sale, 2);
-        $this->assertSame(2, $this->lossNotices());
+        $this->assertSame(2, CommercialCommissionRefund::query()->count());
+        $this->assertSame(2, $this->refundNotices());
+    }
+
+    public function test_legacy_loss_assumed_before_refund_rule_is_kept(): void
+    {
+        $sale = $this->sale([10_000, 10_000]);
+        $this->receive($sale, 1);
+        $this->receive($sale, 2);
+        $this->pay($sale->commission, '20.00')->assertSessionHasNoErrors();
+
+        // Como ficou com a regra antiga: teto abaixo do pago e aviso de perda já disparado.
+        CommercialSaleInstallment::query()->where('sale_id', $sale->id)->where('number', 2)
+            ->update(['status' => CommercialSaleInstallment::STATUS_CANCELADO]);
+        CommercialCommission::query()->whereKey($sale->commission->id)->update([
+            'amount_cents' => 1_000,
+            'loss_notified_at' => now()->subWeek(),
+        ]);
+
+        app(RefreshCommissionPayout::class)->forSale($sale->fresh());
+
+        $this->assertFalse(CommercialCommissionRefund::query()->exists(), 'Dados antigos não viram devolução.');
+        $payload = CommissionPayoutCalculator::present(
+            $sale->commission->fresh(['sale.installments', 'seller', 'payments.payer', 'refunds.entries']),
+        );
+        $this->assertTrue($payload['legacy_loss']);
+        $this->assertSame(1_000, $payload['loss_assumed_cents']);
+        $this->assertSame(0, $payload['refund_pending_cents']);
     }
 
     public function test_pending_filter_includes_a_pagar_and_parcial(): void
@@ -425,6 +467,13 @@ class CommissionCashMovementTest extends TestCase
     {
         return CompanyNotice::query()
             ->where('event_kind', CompanyNoticeEventKind::CommissionLossAssumed->value)
+            ->count();
+    }
+
+    private function refundNotices(): int
+    {
+        return CompanyNotice::query()
+            ->where('event_kind', CompanyNoticeEventKind::CommissionRefundDue->value)
             ->count();
     }
 }

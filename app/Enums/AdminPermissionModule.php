@@ -30,6 +30,12 @@ enum AdminPermissionModule: string
     case FinanceiroResumo = 'financeiro_resumo';
     case FinanceiroVendas = 'financeiro_vendas';
     case FinanceiroComissoes = 'financeiro_comissoes';
+
+    /**
+     * Pagar comissão antes do recebimento (até o saldo, acima do liberável) e assumir devolução como perda.
+     * Ação usada: «Criar». Não vem do grant legado «financeiro»: só o Owner ou quem receber na Equipe.
+     */
+    case FinanceiroComissoesAdiantamento = 'financeiro_comissoes_adiantamento';
     case FinanceiroContasBancarias = 'financeiro_contas_bancarias';
     case FinanceiroContasAPagar = 'financeiro_contas_a_pagar';
     case FinanceiroContasAReceber = 'financeiro_contas_a_receber';
@@ -91,6 +97,7 @@ enum AdminPermissionModule: string
             self::FinanceiroResumo => 'Financeiro · Resumo',
             self::FinanceiroVendas => 'Financeiro · Vendas',
             self::FinanceiroComissoes => 'Financeiro · Comissões',
+            self::FinanceiroComissoesAdiantamento => 'Financeiro · Comissões · Pagar antes do recebimento',
             self::FinanceiroContasBancarias => 'Financeiro · Contas bancárias',
             self::FinanceiroContasAPagar => 'Financeiro · Contas a pagar',
             self::FinanceiroContasAReceber => 'Financeiro · Contas a receber',
@@ -156,6 +163,7 @@ enum AdminPermissionModule: string
             self::FinanceiroResumo,
             self::FinanceiroVendas,
             self::FinanceiroComissoes,
+            self::FinanceiroComissoesAdiantamento,
             self::FinanceiroContasBancarias,
             self::FinanceiroContasAPagar,
             self::FinanceiroContasAReceber,

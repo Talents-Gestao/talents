@@ -144,13 +144,21 @@ const statusClass = (s) =>
             <StatCard
                 label="Comissões a pagar"
                 :value="formatBRL(kpis.commissions_pending_cents)"
-                :hint="`Liberável agora: ${formatBRL(kpis.commissions_releasable_cents ?? 0)}`"
+                :hint="`Liberável agora: ${formatBRL(kpis.commissions_releasable_cents ?? 0)} · Adiantado em aberto: ${formatBRL(kpis.commissions_advance_cents ?? 0)}`"
             />
             <StatCard
                 v-if="(kpis.commissions_loss_assumed_cents ?? 0) > 0"
                 label="Perda assumida (comissões)"
                 :value="formatBRL(kpis.commissions_loss_assumed_cents)"
-                hint="Comissão já paga acima do novo teto no período"
+                hint="Devoluções de comissão assumidas pela empresa no período"
+            />
+            <StatCard
+                v-if="(kpis.commissions_refund_pending_cents ?? 0) > 0"
+                label="Devoluções de comissão pendentes"
+                :value="formatBRL(kpis.commissions_refund_pending_cents)"
+                :hint="`${kpis.commissions_refund_pending_count ?? 0} comissão(ões) aguardando devolução`"
+                :detail-href="route('admin.financeiro.comissoes.index', { status: 'devolucoes' })"
+                detail-label="Ver devoluções pendentes"
             />
             <StatCard
                 label="Saldo em contas"
@@ -165,6 +173,13 @@ const statusClass = (s) =>
                 class="text-sm font-semibold text-talents-700 hover:underline"
             >
                 Ver comissões pendentes →
+            </Link>
+            <Link
+                v-if="(kpis.commissions_refund_pending_count ?? 0) > 0"
+                :href="route('admin.financeiro.comissoes.index', { status: 'devolucoes' })"
+                class="text-sm font-semibold text-rose-700 hover:underline"
+            >
+                Ver devoluções pendentes →
             </Link>
             <Link
                 :href="route('admin.financeiro.contas-a-receber.index')"

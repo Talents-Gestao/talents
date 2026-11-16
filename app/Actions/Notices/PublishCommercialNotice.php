@@ -8,6 +8,7 @@ use App\Enums\CompanyNoticeAudience;
 use App\Enums\CompanyNoticeEventKind;
 use App\Models\CommercialCommission;
 use App\Models\CommercialCommissionPayment;
+use App\Models\CommercialCommissionRefund;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
@@ -123,11 +124,13 @@ class PublishCommercialNotice
         $sale = $commission->sale;
         $seller = $commission->seller;
         $remaining = max(0, (int) $commission->amount_cents - (int) $commission->paid_cents);
+        $advance = (int) ($payment->advance_cents ?? 0);
 
         $this->talents(
             title: $remaining === 0 ? 'Comissão paga' : 'Pagamento parcial de comissão',
             body: "Pagamento de {$this->money($payment->amount_cents)} da comissão de «{$seller?->name}» "
                 ."na venda {$sale?->code}. "
+                .($advance > 0 ? "Adiantado antes do recebimento: {$this->money($advance)}. " : '')
                 .($remaining === 0 ? 'Comissão quitada.' : "Restante: {$this->money($remaining)}."),
             eventKind: CompanyNoticeEventKind::CommissionPaid,
             sourceId: (int) $commission->id,
@@ -138,21 +141,51 @@ class PublishCommercialNotice
     }
 
     /**
-     * Teto da comissão caiu abaixo do já pago (parcela cancelada depois do repasse):
-     * a empresa assume a diferença. Disparado uma vez por entrada nessa situação.
+     * Devolução pendente tratada como perda: a empresa assume o valor (justificativa obrigatória).
      */
-    public function commissionLossAssumed(CommercialCommission $commission): void
-    {
+    public function commissionLossAssumed(
+        CommercialCommission $commission,
+        int $lossCents,
+        string $justification,
+        ?User $actor = null,
+    ): void {
         $sale = $commission->sale;
         $seller = $commission->seller;
-        $loss = max(0, (int) $commission->paid_cents - (int) $commission->amount_cents);
 
         $this->talents(
             title: 'Perda de comissão assumida',
-            body: "Na venda {$sale?->code}, a comissão de «{$seller?->name}» já paga ficou acima do novo teto. "
-                ."Perda assumida pela empresa: {$this->money($loss)}.",
+            body: "Na venda {$sale?->code}, a devolução da comissão de «{$seller?->name}» foi assumida como perda "
+                ."pela empresa: {$this->money($lossCents)}. Justificativa: {$justification}",
             eventKind: CompanyNoticeEventKind::CommissionLossAssumed,
             sourceId: (int) $commission->id,
+            actor: $actor,
+            sourceType: 'commercial_commission',
+            dedupeWithinMinutes: null,
+        );
+    }
+
+    /**
+     * Devolução de comissão pendente: teto abaixo do já pago (parcela ou venda cancelada)
+     * ou cobrança manual do adiantado quando o cliente não pagou.
+     */
+    public function commissionRefundDue(
+        CommercialCommission $commission,
+        CommercialCommissionRefund $refund,
+        ?User $actor = null,
+    ): void {
+        $sale = $commission->sale;
+        $seller = $commission->seller;
+        $reason = $refund->origin === CommercialCommissionRefund::ORIGIN_CEILING_DROP
+            ? 'a comissão já paga ficou acima do novo teto (parcela ou venda cancelada)'
+            : 'o cliente não pagou o valor adiantado';
+
+        $this->talents(
+            title: 'Devolução de comissão pendente',
+            body: "Na venda {$sale?->code}, {$reason}. «{$seller?->name}» deve devolver "
+                ."{$this->money($refund->amount_cents)}.",
+            eventKind: CompanyNoticeEventKind::CommissionRefundDue,
+            sourceId: (int) $commission->id,
+            actor: $actor,
             sourceType: 'commercial_commission',
             dedupeWithinMinutes: null,
         );

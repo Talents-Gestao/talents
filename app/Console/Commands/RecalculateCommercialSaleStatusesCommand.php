@@ -169,7 +169,7 @@ class RecalculateCommercialSaleStatusesCommand extends Command
         $amountFrom = (int) $commission->amount_cents;
         $amountTo = $percent > 0 ? CommissionPayoutCalculator::ceilingCents($ceilingBase, $percent) : $amountFrom;
         $baseChanged = $percent > 0 && (int) $commission->base_cents !== $ceilingBase;
-        $paidTo = (int) $commission->payments()->sum('amount_cents');
+        $paidTo = CommissionPayoutCalculator::netPaidCents($commission);
         $statusTo = CommissionPayoutCalculator::statusFor($paidTo, $amountTo);
 
         if ($amountTo === $amountFrom && ! $baseChanged && $paidTo === (int) $commission->paid_cents && $statusTo === $commission->status) {

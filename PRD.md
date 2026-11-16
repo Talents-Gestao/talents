@@ -201,7 +201,8 @@ A matriz é editada em **Configuração → Equipe**, por usuário, com o compon
 | `methodology` | Direcionamento Estratégico | Templates de satisfação, regras de Soluções NR-1 e seção «Soluções Talents» do painel NR-1 |
 | `financeiro_resumo` | Financeiro · Resumo | Resumo financeiro |
 | `financeiro_vendas` | Financeiro · Vendas | Vendas e parcelas |
-| `financeiro_comissoes` | Financeiro · Comissões | Comissões e pagamentos |
+| `financeiro_comissoes` | Financeiro · Comissões | Comissões, pagamentos e devoluções |
+| `financeiro_comissoes_adiantamento` | Financeiro · Comissões · Pagar antes do recebimento | Pagar acima do liberável (até o saldo) e assumir devolução como perda (ação Criar) |
 | `financeiro_contas_bancarias` | Financeiro · Contas bancárias | Contas e transferências |
 | `financeiro_contas_a_pagar` | Financeiro · Contas a pagar | Contas a pagar |
 | `financeiro_contas_a_receber` | Financeiro · Contas a receber | Ledger de recebíveis e parcelas |
@@ -538,7 +539,7 @@ sequenceDiagram
 | 6 | Gestão → Gerar contrato → ZapSign | `commercial_contracts`; documento na ZapSign |
 | 7 | Gestão → Converter em venda | `commercial_sales`, `commercial_sale_installments`, `commercial_commissions`; aviso `sale_created` |
 | 8 | Financeiro → Contas a receber | baixa da parcela com conta e data; aviso `installment_paid`; teto e liberável da comissão recalculados |
-| 9 | Financeiro → Comissões | `commercial_commission_payments` + conta a pagar baixada; aviso `commission_paid` |
+| 9 | Financeiro → Comissões | `commercial_commission_payments` + conta a pagar baixada (com adiantamento, se houver); aviso `commission_paid`; devolução pendente (`commercial_commission_refunds`) e aviso `commission_refund_due` quando o teto cai abaixo do pago ou na cobrança manual |
 | 10 | (diário) | parcela vencida gera aviso `installment_overdue` |
 
 #### 4.7.2 Implantação de uma empresa cliente
@@ -1154,28 +1155,40 @@ Feed externo por categoria (`NewsCategory`: RH, Empreendedorismo, Contabilidade,
 
 #### 7.10.3 Comissões (`/admin/financeiro/comissoes`)
 
-**Acesso:** `financeiro_comissoes`. **Página:** `Admin/Finance/Commissions/Index`.
+**Acesso:** `financeiro_comissoes`. Pagar antes do recebimento e assumir devolução como perda exigem também `financeiro_comissoes_adiantamento` (ação Criar; «Financeiro · Comissões · Pagar antes do recebimento»), que o Owner tem por padrão e os demais recebem em Configuração → Equipe (não vem do grant legado `financeiro`). **Página:** `Admin/Finance/Commissions/Index`.
 
 | Regra | Detalhe (fonte única: `CommissionPayoutCalculator`) |
 |-------|-------------------------------------------------------|
 | Teto | `round(percentual × soma das parcelas não canceladas)`; recalculado quando o total da venda muda |
-| Liberável | `floor(percentual × valor recebido) − já pago`, nunca negativo nem acima do teto; venda quitada libera `teto − pago` |
-| Pagamentos | vários por comissão, cada um limitado ao liberável no momento; sem liberação antecipada |
+| Pago | pagamentos ativos − devoluções registradas (valor líquido com a colaboradora) |
+| Liberável | `floor(percentual × valor recebido) − pago`, nunca negativo nem acima do saldo; venda quitada libera `teto − pago`. Continua como indicador para todos |
+| Pagamentos | vários por comissão. Sem a permissão de adiantar: até o liberável. Com ela: até o **saldo** (`teto − pago`), independentemente do recebido; nunca acima do teto |
+| Adiantamento | a parte acima do liberável exige confirmação explícita no modal («Você está pagando R$ X acima do que o cliente já pagou. Se o cliente não pagar, esse valor deverá ser devolvido pela colaboradora.») e campo de observação; o servidor recusa sem `confirm_advance`. Fica em `commercial_commission_payments.advance_cents` |
+| Adiantado em aberto | `max(0, min(pago, teto) − ganho)`, ganho = `floor(percentual × recebido)` limitado ao teto (venda quitada = teto); diminui sozinho quando o cliente paga |
+| Devolução (teto abaixo do pago) | parcela cancelada depois do repasse: devolução pendente = `pago − teto` (`origin = ceiling_drop`), criada no recálculo, com aviso `commission_refund_due`; nada vira perda automaticamente. Se o teto voltar a cobrir o pago, a parte pendente é cancelada automaticamente (com registro) |
+| Cobrar devolução | cliente que não pagou: ação manual sobre o adiantado em aberto ainda não cobrado, com justificativa obrigatória (`origin = client_default`), aviso `commission_refund_due`. Se o cliente pagar depois, a cobrança pendente é cancelada automaticamente |
+| Registrar devolução | total ou parcial, com conta ativa e data; entra no saldo da conta (`FinanceBankAccountBalance`), **não** entra em `FinanceCashflowMetrics`, e reduz o pago |
+| Assumir como perda | total ou parcial da devolução pendente, justificativa obrigatória; aviso `commission_loss_assumed`. Exige `financeiro_comissoes_adiantamento` |
+| Histórico e auditoria | `commercial_commission_refunds` + `commercial_commission_refund_entries` (devolvido, perda, cancelado; autor, data, conta). Em `finance_audit_logs`: cada pagamento (`commission_payment` ou `commission_payment_advance`, liberável no momento → valor, autor, observação), cobrança, devolução e perda |
 | Status | `a_pagar`, `parcial`, `paga` |
 | Conta bancária | cada pagamento exige conta ativa e gera uma **conta a pagar já baixada** (origem comissão) que reduz o saldo; esse lançamento fica travado em Contas a pagar (sem editar, pagar, excluir ou mudar data) |
-| Desfazer | só o último pagamento pode ser excluído (exclusão lógica com autoria, `DeleteLatestCommissionPayment`), desfazendo a conta a pagar vinculada |
-| Legado | pagamentos antigos aparecem como «sem conta (legado)», sem movimento retroativo |
-| Perda assumida | se o teto cair abaixo do já pago (parcela cancelada depois do repasse), a comissão fica paga, a diferença é perda assumida pela empresa e um aviso interno `commission_loss_assumed` é publicado uma vez por entrada nessa situação |
-| Filtro Pendentes | a pagar + parcial |
+| Desfazer | só o último pagamento pode ser excluído (exclusão lógica com autoria, `DeleteLatestCommissionPayment`), desfazendo a conta a pagar vinculada; bloqueado quando a comissão já tem devolução registrada ou perda assumida |
+| Legado | pagamentos antigos aparecem como «sem conta (legado)», sem movimento retroativo. Comissões que já estavam acima do teto com o aviso antigo de perda (`loss_notified_at`) continuam como perda assumida e não viram devolução |
+| Filtros | Pendentes (a pagar + parcial), **Devoluções pendentes** (`status=devolucoes`) e os status |
+| Cartões do topo | **Saldo da comissão** (Σ teto − pago, com «R$ X aguardando recebimento» = saldo − liberável), **Liberável agora**, **Adiantado em aberto** (com atalho para as devoluções pendentes) e **Pagas (filtro atual)** (com a perda assumida); respeitam os filtros e usam os mesmos totais do Resumo do Financeiro |
+| Linha | sob o status, sempre visível: «Adiantado: R$ X, aguardando o cliente pagar», «Aguardando recebimento de R$ X» (total da venda − recebido) e «Devolução pendente: R$ X». Sem a permissão de adiantar e sem liberável, «Registrar pagamento» fica bloqueado (`aria-disabled`, focável) com o motivo num tooltip (`aria-describedby`; hover, foco ou toque; Esc fecha) |
+| Linha expandida | resumo (total da venda, recebido, % recebido, teto, pago, liberável, adiantado, devolução pendente), parcelas pendentes com vencimento e valor (vencida = antes de hoje, em destaque), devoluções com histórico e ações, e pagamentos |
+| Mensagens | «O valor liberável agora é R$ X; o restante depende do recebimento da venda.» (sem permissão); «O valor não pode passar do saldo da comissão: R$ X.»; limites de cobrança e devolução com o valor |
 | Observações | `PATCH …/{commission}` (até 2.000) |
-| Fluxo de caixa | pagamento de comissão **não** entra em `FinanceCashflowMetrics` (o Resumo segue só com entradas) |
+| Fluxo de caixa | pagamento e devolução de comissão **não** entram em `FinanceCashflowMetrics` (o Resumo segue só com entradas) |
+| Resumo do Financeiro | «Comissões a pagar» com liberável e adiantado em aberto; «Perda assumida (comissões)» no período; «Devoluções de comissão pendentes» com atalho para o filtro |
 | Saneamento | `php artisan commercial:recalculate-sale-statuses` (dry-run por padrão; `--apply` grava) realinha status, totais e tetos de dados antigos |
 
 #### 7.10.4 Contas bancárias (`/admin/financeiro/contas-bancarias`)
 
 **Acesso:** `financeiro_contas_bancarias`. CRUD (nome, tipo `FinanceBankAccountType`: Corrente, Poupança, Caixa, Outra; saldo inicial; ativa) e **Transferir entre contas** (`POST …/transferir`, gera `finance_bank_transfers`).
 
-Saldo atual (`FinanceBankAccountBalance`) = saldo inicial + recebimentos manuais pagos na conta + parcelas pagas na conta + transferências recebidas − contas a pagar pagas na conta − transferências enviadas. Pendentes não movimentam saldo.
+Saldo atual (`FinanceBankAccountBalance`) = saldo inicial + recebimentos manuais pagos na conta + parcelas pagas na conta + transferências recebidas + devoluções de comissão registradas na conta − contas a pagar pagas na conta − transferências enviadas. Pendentes não movimentam saldo.
 
 #### 7.10.5 Contas a pagar (`/admin/financeiro/contas-a-pagar`)
 
@@ -2174,7 +2187,8 @@ Tabela `company_notices` (leitura em `company_notice_reads`). Audiência (`Compa
 | `installment_paid` | parcela paga | Talents | baixa de parcela |
 | `installment_overdue` | parcela vencida | Talents | comando diário 08:15 |
 | `commission_paid` | comissão paga | Talents | pagamento de comissão |
-| `commission_loss_assumed` | perda de comissão assumida | Talents | recálculo de comissão |
+| `commission_loss_assumed` | perda de comissão assumida | Talents | «Assumir como perda» numa devolução pendente (com justificativa) |
+| `commission_refund_due` | devolução de comissão pendente | Talents | teto abaixo do pago (recálculo) ou «Cobrar devolução»; abre Comissões filtrada em Devoluções pendentes |
 | `lead_received` | novo lead | Talents | landing ou inclusão manual |
 | `feedback_awaiting_signature` | feedback enviado para assinatura | empresa | Feedbacks |
 | `feedback_completed` | feedback concluído | empresa | Feedbacks |
@@ -2284,7 +2298,7 @@ Proteção de chamadas de saída: URLs externas configuráveis passam por `SafeE
 |------|----------|
 | Denúncias | `complaint_audit_logs` |
 | RHID | `rhid_audit_logs` |
-| Financeiro (datas de pagamento) | `finance_audit_logs` |
+| Financeiro (datas de pagamento, pagamentos e devoluções de comissão) | `finance_audit_logs` |
 | NR-1 (acesso a dados e documentos) | `psychosocial_access_logs` |
 | NR-1 (medidas, rodadas, oportunidades) | `psychosocial_measure_events`, `psychosocial_review_events`, `nr1_opportunity_events` |
 | MFA | `mfa_audit_events` |
@@ -2843,6 +2857,9 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | PATCH | `/admin/financeiro/comissoes/{commission}` | `admin.financeiro.comissoes.update` | auth · admin.can:financeiro_comissoes | — |
 | POST | `/admin/financeiro/comissoes/{commission}/pagamentos` | `admin.financeiro.comissoes.pagamentos.store` | auth · admin.can:financeiro_comissoes | — |
 | DELETE | `/admin/financeiro/comissoes/{commission}/pagamentos/{payment}` | `admin.financeiro.comissoes.pagamentos.destroy` | auth · admin.can:financeiro_comissoes | — |
+| POST | `/admin/financeiro/comissoes/{commission}/devolucoes` | `admin.financeiro.comissoes.devolucoes.store` | auth · admin.can:financeiro_comissoes | — |
+| POST | `/admin/financeiro/comissoes/{commission}/devolucoes/{refund}/registros` | `admin.financeiro.comissoes.devolucoes.registros.store` | auth · admin.can:financeiro_comissoes | — |
+| POST | `/admin/financeiro/comissoes/{commission}/devolucoes/{refund}/perda` | `admin.financeiro.comissoes.devolucoes.perda.store` | auth · admin.can:financeiro_comissoes · admin.can:financeiro_comissoes_adiantamento,create | — |
 | GET | `/admin/financeiro/contas-a-pagar` | `admin.financeiro.contas-a-pagar.index` | auth · admin.can:financeiro_contas_a_pagar | `Admin/Finance/Payables/Index` |
 | POST | `/admin/financeiro/contas-a-pagar` | `admin.financeiro.contas-a-pagar.store` | auth · admin.can:financeiro_contas_a_pagar | — |
 | GET | `/admin/financeiro/contas-a-pagar/nova` | `admin.financeiro.contas-a-pagar.create` | auth · admin.can:financeiro_contas_a_pagar | `Admin/Finance/Payables/Form` |
@@ -3898,7 +3915,9 @@ Gerado a partir das migrations (`database/migrations`, 181 arquivos), aplicando 
 | `commercial_commissions` | `id`, `sale_id`, `seller_id`, `base_cents`, `percent`, `amount_cents`, `status`, `paid_at`, `notes`, `paid_cents`, `loss_notified_at`, `created_at/updated_at` |
 | `commercial_processes` | `id`, `title`, `summary`, `body_html`, `file_path`, `file_name`, `sort_order`, `is_published`, `updated_by`, `created_at/updated_at` |
 | `commercial_proposal_extra_commissions` | `id`, `proposal_id`, `user_id`, `percent`, `notes`, `created_at/updated_at` |
-| `commercial_commission_payments` | `id`, `commission_id`, `amount_cents`, `paid_at`, `paid_by`, `notes`, `deleted_by`, `created_at/updated_at`, `deleted_at` |
+| `commercial_commission_payments` | `id`, `commission_id`, `amount_cents`, `advance_cents`, `paid_at`, `paid_by`, `notes`, `deleted_by`, `created_at/updated_at`, `deleted_at` |
+| `commercial_commission_refunds` | `id`, `commission_id`, `origin` (`ceiling_drop`/`client_default`), `amount_cents`, `returned_cents`, `written_off_cents`, `cancelled_cents`, `status` (`pending`/`resolved`), `justification`, `requested_by`, `created_at/updated_at` |
+| `commercial_commission_refund_entries` | `id`, `refund_id`, `type` (`returned`/`loss_assumed`/`cancelled`), `amount_cents`, `occurred_at`, `bank_account_id`, `notes`, `user_id`, `created_at/updated_at` |
 
 #### Financeiro
 
@@ -3953,12 +3972,12 @@ Valores gravados no banco e rótulos exibidos (`label()`), extraídos de `app/En
 
 | Enum | Valores (rótulo) |
 |------|------------------|
-| `AdminPermissionModule` | `dashboard` (Painel) · `landing_interest` (Clientes · Leads) · `companies` (Clientes · Empresas) · `companies_diagnostico` (Clientes · Diagnóstico empresarial) · `companies_contratos_fechados` (Clientes · Contratos fechados) · `rhid` (RHID - Empresas) · `plans` (Comercial · Assinaturas) · `survey_templates` (Voz do Time · Pesquisas / Mapeamentos) · `methodology` (Direcionamento Estratégico) · `strategic_calendar` (Calendário estratégico) · `tarefas` (Tarefas) · `comercial_resumo` (Comercial · Resumo (legado)) · `comercial_propostas` (Comercial · Gestão) · `comercial_processos` (Comercial · Processos) · `comercial_valores_contratos` (Comercial · Valores e contratos) · `financeiro_resumo` (Financeiro · Resumo) · `financeiro_vendas` (Financeiro · Vendas) · `financeiro_comissoes` (Financeiro · Comissões) · `financeiro_contas_bancarias` (Financeiro · Contas bancárias) · `financeiro_contas_a_pagar` (Financeiro · Contas a pagar) · `financeiro_contas_a_receber` (Financeiro · Contas a receber) · `financeiro_formas_pagamento` (Financeiro · Formas de pagamento) · `empresa_talents` (Configuração · Empresa Talents) · `solides_banco_talentos` (Contratação · Banco de talentos) · `solides_acompanhamento` (Contratação · Acompanhamento) · `solides_profiler` (Contratação · Profiler) · `nr1_dados_brutos` (Pesquisas NR-1 · Dados brutos (interno)) · `nr1_oportunidades` (Comercial · Oportunidades NR-1 (agregado)) · `settings` (Configuração · Geral) · `training` (Capacitação) · `equipe` (Configuração · Equipe) · `entrevistas_ia` (Contratação · Entrevistas IA) · `entrevistas_roteiros` (Contratação · Roteiros) · `entrevistas_reunioes` (Reuniões) · `feedbacks` (Feedbacks internos) · `ferias` (Férias) · `desligamento` (Voz do Time · Desligamento) · `denuncias` (Voz do Time · Canal de denúncias) · `sugestoes` (Voz do Time · Canal de sugestões e dúvidas) · `financeiro` (Financeiro (legado)) · `comercial` (Comercial (legado)) · `solides` (Sólides (legado)) · `entrevistas` (Entrevistas (legado)) |
+| `AdminPermissionModule` | `dashboard` (Painel) · `landing_interest` (Clientes · Leads) · `companies` (Clientes · Empresas) · `companies_diagnostico` (Clientes · Diagnóstico empresarial) · `companies_contratos_fechados` (Clientes · Contratos fechados) · `rhid` (RHID - Empresas) · `plans` (Comercial · Assinaturas) · `survey_templates` (Voz do Time · Pesquisas / Mapeamentos) · `methodology` (Direcionamento Estratégico) · `strategic_calendar` (Calendário estratégico) · `tarefas` (Tarefas) · `comercial_resumo` (Comercial · Resumo (legado)) · `comercial_propostas` (Comercial · Gestão) · `comercial_processos` (Comercial · Processos) · `comercial_valores_contratos` (Comercial · Valores e contratos) · `financeiro_resumo` (Financeiro · Resumo) · `financeiro_vendas` (Financeiro · Vendas) · `financeiro_comissoes` (Financeiro · Comissões) · `financeiro_comissoes_adiantamento` (Financeiro · Comissões · Pagar antes do recebimento) · `financeiro_contas_bancarias` (Financeiro · Contas bancárias) · `financeiro_contas_a_pagar` (Financeiro · Contas a pagar) · `financeiro_contas_a_receber` (Financeiro · Contas a receber) · `financeiro_formas_pagamento` (Financeiro · Formas de pagamento) · `empresa_talents` (Configuração · Empresa Talents) · `solides_banco_talentos` (Contratação · Banco de talentos) · `solides_acompanhamento` (Contratação · Acompanhamento) · `solides_profiler` (Contratação · Profiler) · `nr1_dados_brutos` (Pesquisas NR-1 · Dados brutos (interno)) · `nr1_oportunidades` (Comercial · Oportunidades NR-1 (agregado)) · `settings` (Configuração · Geral) · `training` (Capacitação) · `equipe` (Configuração · Equipe) · `entrevistas_ia` (Contratação · Entrevistas IA) · `entrevistas_roteiros` (Contratação · Roteiros) · `entrevistas_reunioes` (Reuniões) · `feedbacks` (Feedbacks internos) · `ferias` (Férias) · `desligamento` (Voz do Time · Desligamento) · `denuncias` (Voz do Time · Canal de denúncias) · `sugestoes` (Voz do Time · Canal de sugestões e dúvidas) · `financeiro` (Financeiro (legado)) · `comercial` (Comercial (legado)) · `solides` (Sólides (legado)) · `entrevistas` (Entrevistas (legado)) |
 | `ClientEvaluationStatus` | `pending` (Pendente) · `answered` (Respondida) · `expired` (Expirada) · `superseded` (Substituída) |
 | `CommercialProductPricingType` | `fixed` · `per_employee` · `tiered_per_employee` · `fixed_modality` · `salary_times_employees` · `threshold_multiplier` · `flexible_rates` |
 | `CommercialProposalPaymentMethod` | `boleto` (Boleto) · `pix` (PIX) · `credito` (Cartão de crédito) · `debito` (Cartão de débito) |
 | `CompanyNoticeAudience` | `company` (empresa) · `talents` (Talents) |
-| `CompanyNoticeEventKind` | `created` (novo item) · `updated` (item atualizado) · `deleted` (item removido) · `date_changed` (data alterada) · `proposal_created` (nova proposta) · `proposal_won` (proposta fechada) · `hiring_follow_up_from_proposal` (acompanhamento criado) · `sale_created` (nova venda) · `installment_paid` (parcela paga) · `installment_overdue` (parcela vencida) · `commission_paid` (comissão paga) · `commission_loss_assumed` (perda de comissão assumida) · `lead_received` (novo lead) · `feedback_awaiting_signature` (feedback enviado para assinatura) · `feedback_completed` (feedback concluído) · `complaint_created` (nova denúncia) · `complaint_updated` (denúncia atualizada) · `nr1_opportunity_created` (nova oportunidade NR-1) · `nr1_proposal_requested` (nova solicitação de proposta ou conversa) · `nr1_report_published` (relatório publicado) |
+| `CompanyNoticeEventKind` | `created` (novo item) · `updated` (item atualizado) · `deleted` (item removido) · `date_changed` (data alterada) · `proposal_created` (nova proposta) · `proposal_won` (proposta fechada) · `hiring_follow_up_from_proposal` (acompanhamento criado) · `sale_created` (nova venda) · `installment_paid` (parcela paga) · `installment_overdue` (parcela vencida) · `commission_paid` (comissão paga) · `commission_loss_assumed` (perda de comissão assumida) · `commission_refund_due` (devolução de comissão pendente) · `lead_received` (novo lead) · `feedback_awaiting_signature` (feedback enviado para assinatura) · `feedback_completed` (feedback concluído) · `complaint_created` (nova denúncia) · `complaint_updated` (denúncia atualizada) · `nr1_opportunity_created` (nova oportunidade NR-1) · `nr1_proposal_requested` (nova solicitação de proposta ou conversa) · `nr1_report_published` (relatório publicado) |
 | `EmployeeLeaveStatus` | `scheduled` (Agendado) · `in_progress` (Em férias) · `completed` (Concluído) · `cancelled` (Cancelado) |
 | `ExitInterviewStatus` | `draft` (Rascunho) · `completed` (Concluída) |
 | `FeedbackQuestionType` | `text` · `textarea` · `single_choice` · `bullet_list` · `ccm_block` · `action_table` · `rating_group` |

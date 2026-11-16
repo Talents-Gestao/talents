@@ -1,7 +1,16 @@
 <script setup>
+import CommissionPayButton from '@/Components/Finance/CommissionPayButton.vue';
 import CommissionPaymentModal from '@/Components/Finance/CommissionPaymentModal.vue';
 import CommissionPaymentsHistory from '@/Components/Finance/CommissionPaymentsHistory.vue';
+import CommissionRefundModal from '@/Components/Finance/CommissionRefundModal.vue';
+import CommissionRefundsPanel from '@/Components/Finance/CommissionRefundsPanel.vue';
 import CommissionStatusBadge from '@/Components/Finance/CommissionStatusBadge.vue';
+import {
+    commissionSummaryRows,
+    formatDueDate,
+    paymentBlockedReason,
+    rowNotes,
+} from '@/Components/Finance/commissionReceipt.js';
 import FullScreenOverlay from '@/Components/FullScreenOverlay.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL } from '@/composables/useCommercialPricing';
@@ -16,8 +25,24 @@ const props = defineProps({
     sellers: { type: Array, default: () => [] },
     statusOptions: { type: Object, default: () => ({}) },
     bankAccounts: { type: Array, default: () => [] },
-    can: { type: Object, default: () => ({ register_payment: false, delete_payment: false }) },
+    can: {
+        type: Object,
+        default: () => ({
+            register_payment: false,
+            pay_advance: false,
+            delete_payment: false,
+            charge_refund: false,
+            register_refund: false,
+            assume_loss: false,
+        }),
+    },
 });
+
+const NOTE_TONES = {
+    amber: 'text-amber-800',
+    slate: 'text-slate-600',
+    rose: 'font-medium text-rose-700',
+};
 
 const filterState = reactive({
     search: props.filters.search ?? '',
@@ -50,6 +75,17 @@ const toggleHistory = (id) => {
 // Guarda só o id: depois de registrar/excluir, a linha é recarregada do servidor.
 const paymentTargetId = ref(null);
 const paymentTarget = () => props.commissions.data?.find((c) => c.id === paymentTargetId.value) ?? null;
+
+// Devolução: modo + ids (a linha é recarregada do servidor depois da ação).
+const refundAction = ref({ mode: null, commissionId: null, refundId: null });
+const refundCommission = () => props.commissions.data?.find((c) => c.id === refundAction.value.commissionId) ?? null;
+const refundTarget = () => refundCommission()?.refunds?.find((r) => r.id === refundAction.value.refundId) ?? null;
+const openRefund = (mode, commission, refund = null) => {
+    refundAction.value = { mode, commissionId: commission.id, refundId: refund?.id ?? null };
+};
+const closeRefund = () => {
+    refundAction.value = { mode: null, commissionId: null, refundId: null };
+};
 
 const notesModalOpen = ref(false);
 const notesTarget = ref(null);
@@ -86,23 +122,40 @@ const submitNotes = () => {
                     <p class="text-sm text-slate-500">Financeiro</p>
                     <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Comissões</h2>
                     <p class="mt-1 max-w-2xl text-sm text-slate-600">
-                        O repasse acompanha o recebimento: o liberável é o percentual sobre o que a venda já recebeu,
-                        menos o que já foi pago.
+                        O liberável é o percentual sobre o que a venda já recebeu, menos o que já foi pago. Pagar antes
+                        do recebimento (até o saldo) exige permissão; se o cliente não pagar, a colaboradora devolve.
                     </p>
                 </div>
             </div>
         </template>
 
-        <div class="mb-6 grid gap-4 sm:grid-cols-3">
+        <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div class="surface-card p-5">
-                <p class="text-xs font-medium uppercase tracking-wide text-slate-500">A pagar</p>
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Saldo da comissão</p>
                 <p class="mt-2 text-2xl font-bold tabular-nums text-amber-800">{{ formatBRL(summary.pending_cents) }}</p>
-                <p class="mt-1 text-sm text-slate-600">{{ summary.pending_count }} comissão(ões) com saldo</p>
+                <p class="mt-1 text-sm text-slate-600" data-summary-awaiting>
+                    {{ formatBRL(summary.awaiting_receipt_cents ?? 0) }} aguardando recebimento
+                </p>
+                <p class="text-xs text-slate-500">{{ summary.pending_count }} comissão(ões) com saldo</p>
             </div>
             <div class="surface-card p-5">
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Liberável agora</p>
                 <p class="mt-2 text-2xl font-bold tabular-nums text-talents-700">{{ formatBRL(summary.releasable_cents) }}</p>
                 <p class="mt-1 text-sm text-slate-600">Proporcional ao que já foi recebido</p>
+            </div>
+            <div class="surface-card p-5" data-summary-advance>
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Adiantado em aberto</p>
+                <p class="mt-2 text-2xl font-bold tabular-nums text-amber-700">{{ formatBRL(summary.advance_cents ?? 0) }}</p>
+                <p class="mt-1 text-sm text-slate-600">
+                    Pago antes do cliente pagar · {{ summary.advance_count ?? 0 }} comissão(ões)
+                </p>
+                <Link
+                    v-if="summary.refund_pending_count"
+                    :href="route('admin.financeiro.comissoes.index', { status: 'devolucoes' })"
+                    class="mt-1 inline-block text-sm font-medium text-rose-700 hover:underline"
+                >
+                    Devoluções pendentes: {{ formatBRL(summary.refund_pending_cents) }} ({{ summary.refund_pending_count }})
+                </Link>
             </div>
             <div class="surface-card p-5">
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Pagas (filtro atual)</p>
@@ -168,7 +221,7 @@ const submitNotes = () => {
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                         <tr>
-                            <th class="w-8 px-2 py-3"><span class="sr-only">Histórico</span></th>
+                            <th class="w-8 px-2 py-3"><span class="sr-only">Detalhes</span></th>
                             <th class="px-4 py-3 text-left font-medium">Cliente</th>
                             <th class="px-4 py-3 text-left font-medium">Vendedor</th>
                             <th class="px-4 py-3 text-right font-medium">%</th>
@@ -187,7 +240,8 @@ const submitNotes = () => {
                                         type="button"
                                         class="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                                         :aria-expanded="expanded.has(c.id)"
-                                        :aria-label="expanded.has(c.id) ? 'Ocultar histórico de pagamentos' : 'Ver histórico de pagamentos'"
+                                        :aria-controls="`comissao-${c.id}-detalhes`"
+                                        :aria-label="expanded.has(c.id) ? 'Ocultar detalhes da comissão' : 'Ver detalhes da comissão'"
                                         @click="toggleHistory(c.id)"
                                     >
                                         <ChevronDownIcon v-if="expanded.has(c.id)" class="h-4 w-4" />
@@ -221,19 +275,24 @@ const submitNotes = () => {
                                 </td>
                                 <td class="px-4 py-3">
                                     <CommissionStatusBadge :status="c.status" :label="c.status_label" />
+                                    <p
+                                        v-for="note in rowNotes(c)"
+                                        :key="note.key"
+                                        class="mt-1 text-xs"
+                                        :class="NOTE_TONES[note.tone]"
+                                        :data-row-note="note.key"
+                                    >
+                                        {{ note.text }}
+                                    </p>
                                 </td>
                                 <td class="px-4 py-3">
                                     <div class="flex items-center justify-end gap-1">
-                                        <button
+                                        <CommissionPayButton
                                             v-if="can.register_payment"
-                                            type="button"
-                                            class="rounded-lg bg-talents-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-talents-700 disabled:cursor-not-allowed disabled:opacity-40"
-                                            :disabled="c.releasable_cents < 1"
-                                            :title="c.releasable_cents < 1 ? 'Nada liberável agora' : 'Registrar pagamento'"
-                                            @click="paymentTargetId = c.id"
-                                        >
-                                            Registrar pagamento
-                                        </button>
+                                            :commission-id="c.id"
+                                            :blocked-reason="paymentBlockedReason(c, can.pay_advance)"
+                                            @pay="paymentTargetId = c.id"
+                                        />
                                         <button
                                             type="button"
                                             class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
@@ -246,10 +305,55 @@ const submitNotes = () => {
                                     </div>
                                 </td>
                             </tr>
-                            <tr v-if="expanded.has(c.id)" class="bg-slate-50/60">
+                            <tr v-if="expanded.has(c.id)" :id="`comissao-${c.id}-detalhes`" class="bg-slate-50/60">
                                 <td />
                                 <td colspan="8" class="px-4 py-3">
-                                    <p class="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Pagamentos</p>
+                                    <div class="grid gap-6 lg:grid-cols-2">
+                                        <div>
+                                            <p class="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Resumo da comissão</p>
+                                            <dl class="grid max-w-md grid-cols-2 gap-x-4 gap-y-1 text-sm" data-commission-summary>
+                                                <template v-for="row in commissionSummaryRows(c)" :key="row.key">
+                                                    <dt class="text-slate-600">{{ row.label }}</dt>
+                                                    <dd class="text-right font-medium tabular-nums text-slate-900">{{ row.value }}</dd>
+                                                </template>
+                                            </dl>
+                                        </div>
+                                        <div v-if="c.sale">
+                                            <p class="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Parcelas pendentes da venda</p>
+                                            <ul
+                                                v-if="c.sale.pending_installments?.length"
+                                                class="max-w-md divide-y divide-slate-100 text-sm"
+                                                data-pending-installments
+                                            >
+                                                <li
+                                                    v-for="inst in c.sale.pending_installments"
+                                                    :key="inst.id"
+                                                    class="flex items-center justify-between gap-3 py-1"
+                                                    :class="inst.is_overdue ? 'font-medium text-rose-700' : 'text-slate-700'"
+                                                >
+                                                    <span>
+                                                        Parcela {{ inst.number }} · vence em {{ formatDueDate(inst.due_date) }}
+                                                        <span
+                                                            v-if="inst.is_overdue"
+                                                            class="ml-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700"
+                                                        >Vencida</span>
+                                                    </span>
+                                                    <span class="tabular-nums">{{ formatBRL(inst.amount_cents) }}</span>
+                                                </li>
+                                            </ul>
+                                            <p v-else class="text-sm text-slate-500">Nenhuma parcela pendente.</p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4">
+                                        <CommissionRefundsPanel
+                                            :commission="c"
+                                            :can="can"
+                                            @charge="(commission) => openRefund('charge', commission)"
+                                            @return="(commission, refund) => openRefund('return', commission, refund)"
+                                            @loss="(commission, refund) => openRefund('loss', commission, refund)"
+                                        />
+                                    </div>
+                                    <p class="mb-1 mt-4 text-xs font-medium uppercase tracking-wide text-slate-500">Pagamentos</p>
                                     <CommissionPaymentsHistory :commission="c" />
                                 </td>
                             </tr>
@@ -282,7 +386,16 @@ const submitNotes = () => {
             :show="paymentTargetId !== null"
             :commission="paymentTarget()"
             :bank-accounts="bankAccounts"
+            :can-advance="can.pay_advance"
             @close="paymentTargetId = null"
+        />
+
+        <CommissionRefundModal
+            :mode="refundAction.mode"
+            :commission="refundCommission()"
+            :refund="refundTarget()"
+            :bank-accounts="bankAccounts"
+            @close="closeRefund"
         />
 
         <FullScreenOverlay :show="notesModalOpen && !!notesTarget" @close="closeNotes">
