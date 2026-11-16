@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 import CampaignSelect from './CampaignSelect.vue';
 import CompanyAvatar from './CompanyAvatar.vue';
 import Nr1Button from './Nr1Button.vue';
@@ -31,29 +31,10 @@ const contextLine = computed(() => {
     return parts.join(' · ');
 });
 const title = computed(() => (props.context.collaborator ? 'Campanha NR-1' : (props.context.company?.name ?? 'NR-1')));
-
-// O cabeçalho é fixo (sticky): publica a altura em --n1-sticky-offset no .nr1-shell, para barras fixas abaixo
-// dele (ex.: «Ir para» dos resultados) não ficarem cobertas, e para as âncoras pararem logo abaixo.
-const headerEl = ref(null);
-let observer = null;
-const publishOffset = () => {
-    const el = headerEl.value;
-    const shell = el?.closest('.nr1-shell');
-    if (!el || !shell) return;
-    shell.style.setProperty('--n1-sticky-offset', `${Math.ceil(el.getBoundingClientRect().height) + 8}px`);
-};
-onMounted(() => {
-    publishOffset();
-    if (typeof ResizeObserver !== 'undefined' && headerEl.value) {
-        observer = new ResizeObserver(publishOffset);
-        observer.observe(headerEl.value);
-    }
-});
-onBeforeUnmount(() => observer?.disconnect());
 </script>
 
 <template>
-    <header ref="headerEl" class="n1-header">
+    <header class="n1-header">
         <div class="n1-header-main">
             <CompanyAvatar v-if="!context.collaborator && context.company" :name="context.company.name" :logo-url="context.company.logo_url" />
             <CompanyAvatar v-else name="NR" />

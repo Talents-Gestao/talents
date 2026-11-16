@@ -88,13 +88,9 @@ describe('itens removidos do painel NR-1', () => {
         assert.match(laudo, /:registration-url="registrationUrl"/);
     });
 
-    it('«Ir para» fixo abaixo do cabeçalho, em uma linha com rolagem no celular', () => {
+    it('«Ir para» em uma linha com rolagem no celular (causa raiz do sticky em nr1StickyJumpNav.test.mjs)', () => {
         const panel = read('resources/js/Components/Nr1SurveyResultsPanel.vue');
         assert.match(panel, /class="nr1-jump-nav sticky[^"]*flex-nowrap[^"]*overflow-x-auto[^"]*sm:flex-wrap/);
-        assert.match(panel, /top: var\(--n1-sticky-offset, 0px\)/);
-        assert.match(panel, /scroll-margin-top: calc\(var\(--n1-sticky-offset, 0px\) \+ var\(--nr1-jump-h, 3\.25rem\) \+ 12px\)/);
         assert.doesNotMatch(panel, /scroll-mt-24/);
-        const header = read(`${shellDir}/ShellHeader.vue`);
-        assert.match(header, /setProperty\('--n1-sticky-offset'/);
     });
 });
