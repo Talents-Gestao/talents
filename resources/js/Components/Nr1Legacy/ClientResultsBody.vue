@@ -12,6 +12,7 @@ defineProps({
     questionDistributions: Array,
     departmentParticipation: Array,
     questionDistributionsByDepartment: Array,
+    polarityPending: { type: Boolean, default: false },
     aiEnabled: { type: Boolean, default: false },
     aiAnalysis: { type: Object, default: null },
     aiAnalysisPending: { type: Boolean, default: false },
@@ -51,5 +52,6 @@ defineProps({
         :question-distributions="questionDistributions"
         :department-participation="departmentParticipation"
         :question-distributions-by-department="questionDistributionsByDepartment"
+        :polarity-pending="polarityPending"
     />
 </template>

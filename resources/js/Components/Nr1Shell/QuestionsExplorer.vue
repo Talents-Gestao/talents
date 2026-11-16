@@ -1,4 +1,5 @@
 <script setup>
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import { computed, ref } from 'vue';
 import DimensionBadge from './DimensionBadge.vue';
 import EmptyState from './EmptyState.vue';
@@ -48,10 +49,9 @@ const isDefault = computed(() => dimension.value === 'all' && sort.value === 'or
 <template>
     <div class="n1-card">
         <div class="n1-sectiontop">
-            <h2>O que dizem as 39 perguntas</h2>
+            <h2>O que dizem as 39 perguntas<Nr1HelpTip label="as perguntas" text="Cada cartão mostra a distribuição das respostas. Os percentuais favoráveis respeitam o sentido da afirmação." /></h2>
             <span class="n1-pill blue">Visualização agregada</span>
         </div>
-        <p class="n1-tiny" style="margin-top: 0">Cada cartão mostra a distribuição das respostas. Os percentuais favoráveis respeitam o sentido da afirmação.</p>
 
         <div class="n1-filters" role="group" aria-label="Filtros das perguntas">
             <Nr1Button variant="chip" size="sm" :selected="isDefault" @click="reset">Todas</Nr1Button>

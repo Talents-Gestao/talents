@@ -163,12 +163,14 @@ class Nr1ShellLegacyTest extends TestCase
         // Parecer e plano: nada antes de publicar (a tela antiga mostra o bloqueio) e só os relatórios automáticos.
         $this->actingAs($c->admin)->get(route('nr1.parecer'))->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('section.legacy.documents.actionPlan.actionPlanLocked', true)->where('section.legacy.documents.actionPlan.plan', null)
-            ->has('section.legacy.documents.reports', 9)->missing('section.legacy.documents.laudo'));
+            // 8 relatórios: o «Relatório executivo» saiu do painel (a rota do PDF continua para links já enviados).
+            ->has('section.legacy.documents.reports', 8)->missing('section.legacy.documents.laudo')
+            ->where('section.legacy.documents.reports', fn ($reports) => ! collect($reports)->contains('label', 'Relatório executivo')));
 
         ActionPlan::query()->create(['company_id' => $c->company->id, 'survey_id' => $c->survey->id, 'technical_opinion' => '<p>Parecer publicado</p>', 'admin_published_at' => now()]);
         $this->actingAs($c->admin)->get(route('nr1.parecer'))->assertInertia(fn (Assert $p) => $p
             ->where('section.legacy.documents.actionPlan.actionPlanLocked', false)->where('section.legacy.documents.actionPlan.plan.technical_opinion', '<p>Parecer publicado</p>')
-            ->has('section.legacy.documents.reports', 10));
+            ->has('section.legacy.documents.reports', 9));
 
         // Nada do Talents chega à empresa.
         $json = (string) json_encode($this->actingAs($c->admin)->get(route('nr1.parecer'))->viewData('page')['props']['section']);

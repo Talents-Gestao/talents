@@ -1,8 +1,10 @@
 <script setup>
 import ApexChart from '@/Components/Charts/ApexChart.vue';
 import Nr1RiskLevelLegend from '@/Components/Nr1RiskLevelLegend.vue';
+import Nr1HelpTip from '@/Components/Nr1Shell/Nr1HelpTip.vue';
+import { polarityLegend, questionPolarity } from '@/Components/Nr1Shell/nr1QuestionPolarity.js';
 import { ChevronDownIcon } from '@heroicons/vue/24/outline';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
     survey: Object,
@@ -15,7 +17,13 @@ const props = defineProps({
     questionDistributions: { type: Array, default: () => [] },
     departmentParticipation: { type: Array, default: () => [] },
     questionDistributionsByDepartment: { type: Array, default: () => [] },
+    /** Instrumento com polaridade pendente de auditoria (polarity_audit_status = pending_audit): cores neutras. */
+    polarityPending: { type: Boolean, default: false },
+    /** Selo e legenda da auditoria de polaridade: só a Talents vê; a empresa vê o cinza neutro. */
+    showPolarityAudit: { type: Boolean, default: false },
 });
+
+const polarityOptions = computed(() => ({ polarityPending: props.polarityPending, showAuditBadge: props.showPolarityAudit }));
 
 const likertScaleMax = 5;
 const likertScaleMin = 1;
@@ -351,13 +359,6 @@ const healthBadge = (level) => {
 };
 
 /** Barras por opção Likert: intensidade de risco (1 baixo → 5 alto). */
-const optionBarClass = (value) => {
-    if (value <= 2) return 'bg-emerald-500';
-    if (value === 3) return 'bg-amber-400';
-    if (value === 4) return 'bg-orange-500';
-    return 'bg-red-500';
-};
-
 /** Média de risco (1–5): enunciado favorável inverte (6 − resposta), igual ao Nr1Scoring do backend. */
 const questionAverage = (question) => {
     if (!question?.total) {
@@ -443,6 +444,22 @@ const sectionIdCandidates = {
     'nr1-insights': ['nr1-insights'],
 };
 
+// Altura da barra «Ir para» (quebra em duas linhas em telas médias): usada no recuo das âncoras.
+const jumpNav = ref(null);
+const jumpHeight = ref(null);
+let jumpObserver = null;
+const measureJump = () => {
+    jumpHeight.value = jumpNav.value ? Math.ceil(jumpNav.value.getBoundingClientRect().height) : null;
+};
+onMounted(() => {
+    measureJump();
+    if (typeof ResizeObserver !== 'undefined' && jumpNav.value) {
+        jumpObserver = new ResizeObserver(measureJump);
+        jumpObserver.observe(jumpNav.value);
+    }
+});
+onBeforeUnmount(() => jumpObserver?.disconnect());
+
 const scrollToSection = (event, sectionId) => {
     event.preventDefault();
     const candidates = sectionIdCandidates[sectionId] ?? [sectionId];
@@ -460,12 +477,13 @@ const scrollToSection = (event, sectionId) => {
 </script>
 
 <template>
-    <div class="space-y-6">
+    <div class="space-y-6" :style="jumpHeight ? { '--nr1-jump-h': `${jumpHeight}px` } : undefined">
         <nav
-            class="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white/95 px-3 py-2.5 text-xs font-semibold text-slate-600 shadow-sm backdrop-blur"
+            ref="jumpNav"
+            class="nr1-jump-nav sticky z-[2] flex flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-gray-200 bg-white/95 px-3 py-2.5 text-xs font-semibold text-slate-600 shadow-sm backdrop-blur [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible"
             aria-label="Navegação dos resultados"
         >
-            <span class="mr-1 hidden text-[10px] font-bold uppercase tracking-wide text-talents-700 sm:inline">
+            <span class="mr-1 shrink-0 text-[10px] font-bold uppercase tracking-wide text-talents-700">
                 Ir para
             </span>
             <a
@@ -510,10 +528,10 @@ const scrollToSection = (event, sectionId) => {
             v-if="departmentFilterOptions.length > 1"
             class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6"
         >
-            <label for="department-filter" class="text-sm font-semibold text-talents-900">Filtrar por setor</label>
-            <p class="mt-1 text-sm text-gray-500">
-                Selecione um setor para ver indicadores e respostas específicas daquele departamento.
-            </p>
+            <label for="department-filter" class="text-sm font-semibold text-talents-900">Filtrar por setor</label><Nr1HelpTip
+                label="o filtro por setor"
+                text="Selecione um setor para ver indicadores e respostas específicas daquele departamento."
+            />
             <select
                 id="department-filter"
                 v-model="selectedDepartmentId"
@@ -529,7 +547,7 @@ const scrollToSection = (event, sectionId) => {
             v-if="isDepartmentFiltered && activeDeptOverall"
             id="nr1-indicador-setor"
             tabindex="-1"
-            class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
+            class="nr1-jump-target rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
             <h3 class="text-lg font-semibold text-talents-900">Resultados — {{ selectedDepartmentName }}</h3>
             <p class="mt-1 text-sm text-gray-500">
@@ -547,7 +565,7 @@ const scrollToSection = (event, sectionId) => {
             v-if="isDepartmentFiltered && activeDeptSections.length"
             id="nr1-dimensoes-setor"
             tabindex="-1"
-            class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
+            class="nr1-jump-target rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
             <h3 class="text-lg font-semibold text-talents-900">Dimensões — {{ selectedDepartmentName }}</h3>
             <div class="mt-3">
@@ -580,14 +598,16 @@ const scrollToSection = (event, sectionId) => {
             v-if="!isDepartmentFiltered && overall"
             id="nr1-indicador"
             tabindex="-1"
-            class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
+            class="nr1-jump-target rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h3 class="text-lg font-semibold text-talents-900">Indicador geral de risco (1–5)</h3>
-                    <p class="mt-1 text-sm text-gray-500">
-                        Média ponderada das respostas Likert. Quanto maior, maior o risco.
-                    </p>
+                    <h3 class="text-lg font-semibold text-talents-900">
+                        Indicador geral de risco (1–5)<Nr1HelpTip
+                            label="o indicador geral"
+                            text="Média ponderada das respostas Likert. Quanto maior, maior o risco."
+                        />
+                    </h3>
                 </div>
                 <Nr1RiskLevelLegend :labels="bandLabels" />
             </div>
@@ -604,7 +624,7 @@ const scrollToSection = (event, sectionId) => {
             v-if="!isDepartmentFiltered && bySection?.length"
             id="nr1-dimensoes"
             tabindex="-1"
-            class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
+            class="nr1-jump-target rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
             <h3 class="text-lg font-semibold text-talents-900">Dimensões</h3>
             <div class="mt-3">
@@ -644,12 +664,14 @@ const scrollToSection = (event, sectionId) => {
             v-if="!isDepartmentFiltered && departmentParticipation?.length"
             id="nr1-setores"
             tabindex="-1"
-            class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
+            class="nr1-jump-target rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
-            <h3 class="text-lg font-semibold text-talents-900">Participação por setor</h3>
-            <p class="mt-1 text-sm text-gray-500">
-                Setores com base suficiente aparecem isolados. Setores menores são reunidos em «Outros Setores» para proteger o anonimato.
-            </p>
+            <h3 class="text-lg font-semibold text-talents-900">
+                Participação por setor<Nr1HelpTip
+                    label="a participação por setor"
+                    text="Setores com base suficiente aparecem isolados. Setores menores são reunidos em «Outros Setores» para proteger o anonimato."
+                />
+            </h3>
             <div class="mt-4 overflow-x-auto">
                 <table class="min-w-full border-collapse text-sm">
                     <thead>
@@ -697,12 +719,14 @@ const scrollToSection = (event, sectionId) => {
             v-if="!isDepartmentFiltered && deptOveralls?.length"
             id="nr1-setores-risco"
             tabindex="-1"
-            class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
+            class="nr1-jump-target rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
-            <h3 class="text-lg font-semibold text-talents-900">Risco por setor (média geral)</h3>
-            <p class="mt-1 text-sm text-gray-500">
-                Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato). Cores conforme faixa de risco.
-            </p>
+            <h3 class="text-lg font-semibold text-talents-900">
+                Risco por setor (média geral)<Nr1HelpTip
+                    label="o risco por setor"
+                    text="Setores só aparecem com pelo menos 1 respondente no mesmo setor (anonimato). Cores conforme faixa de risco."
+                />
+            </h3>
             <div class="mt-3">
                 <Nr1RiskLevelLegend :labels="bandLabels" />
             </div>
@@ -715,8 +739,9 @@ const scrollToSection = (event, sectionId) => {
             v-if="!isDepartmentFiltered && deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
             class="overflow-x-auto rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
         >
-            <h3 class="text-lg font-semibold text-talents-900">Tabela de risco por setor e dimensão</h3>
-            <p class="mt-1 text-sm text-gray-500">Valores numéricos complementares aos gráficos acima.</p>
+            <h3 class="text-lg font-semibold text-talents-900">
+                Tabela de risco por setor e dimensão<Nr1HelpTip label="a tabela" text="Valores numéricos complementares aos gráficos acima." />
+            </h3>
             <div class="mt-3">
                 <Nr1RiskLevelLegend :labels="bandLabels" />
             </div>
@@ -763,19 +788,29 @@ const scrollToSection = (event, sectionId) => {
             v-if="activeQuestionDistributions?.length"
             id="nr1-perguntas"
             tabindex="-1"
-            class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
+            class="nr1-jump-target rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h3 class="text-lg font-semibold text-talents-900">Detalhamento por pergunta</h3>
-                    <p class="mt-1 text-sm text-gray-500">
-                        <template v-if="isDepartmentFiltered">
-                            Votos por opção da escala no setor {{ selectedDepartmentName }}. Expanda cada dimensão para ver o detalhe.
-                        </template>
-                        <template v-else>
-                            Votos por opção da escala na campanha. Expanda cada dimensão para ver o detalhe.
-                        </template>
-                    </p>
+                    <h3 class="text-lg font-semibold text-talents-900">
+                        Detalhamento por pergunta<Nr1HelpTip
+                            label="o detalhamento por pergunta"
+                            :text="isDepartmentFiltered
+                                ? `Votos por opção da escala no setor ${selectedDepartmentName}. Expanda cada dimensão para ver o detalhe.`
+                                : 'Votos por opção da escala na campanha. Expanda cada dimensão para ver o detalhe.'"
+                        />
+                    </h3>
+                    <ul
+                        v-if="polarityLegend(polarityOptions).length"
+                        class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600"
+                        aria-label="Legenda das cores por polaridade"
+                        data-polarity-legend
+                    >
+                        <li v-for="item in polarityLegend(polarityOptions)" :key="item.key" class="inline-flex items-center gap-1.5">
+                            <span class="inline-block h-2.5 w-2.5 rounded-full" :class="item.bar" aria-hidden="true" />
+                            {{ item.legend }}
+                        </li>
+                    </ul>
                     <div class="mt-3">
                         <Nr1RiskLevelLegend :labels="bandLabels" />
                     </div>
@@ -842,7 +877,17 @@ const scrollToSection = (event, sectionId) => {
                             class="border-b border-slate-100 pb-5 last:border-b-0 last:pb-0"
                         >
                             <div class="flex flex-wrap items-start justify-between gap-2">
-                                <p class="text-sm font-medium text-gray-900">{{ question.body }}</p>
+                                <p class="text-sm font-medium text-gray-900">
+                                    {{ question.body }}
+                                    <span
+                                        v-if="questionPolarity(question, polarityOptions).label"
+                                        class="ml-1 inline-flex items-center rounded-full px-2 py-0.5 align-middle text-[11px] font-semibold ring-1 ring-inset"
+                                        :class="questionPolarity(question, polarityOptions).chip"
+                                        :data-polarity="questionPolarity(question, polarityOptions).key"
+                                    >
+                                        {{ questionPolarity(question, polarityOptions).label }}
+                                    </span>
+                                </p>
                                 <span
                                     v-if="questionAverage(question) != null"
                                     class="shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums"
@@ -865,7 +910,7 @@ const scrollToSection = (event, sectionId) => {
                                     <div class="h-4 flex-1 overflow-hidden rounded-full bg-gray-100">
                                         <div
                                             class="h-full rounded-full transition-all"
-                                            :class="optionBarClass(value)"
+                                            :class="questionPolarity(question, polarityOptions).bar"
                                             :style="{ width: barWidth(question, value) + '%' }"
                                         />
                                     </div>
@@ -884,7 +929,7 @@ const scrollToSection = (event, sectionId) => {
         <div
             id="nr1-insights"
             tabindex="-1"
-            class="scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
+            class="nr1-jump-target rounded-xl border border-gray-200 bg-white p-6 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
         >
             <h3 class="text-lg font-semibold text-talents-900">Insights</h3>
             <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-gray-700">
@@ -908,3 +953,14 @@ const scrollToSection = (event, sectionId) => {
         </div>
     </div>
 </template>
+
+<style scoped>
+/* «Ir para» fica logo abaixo do cabeçalho fixo do painel (altura em --n1-sticky-offset, publicada pelo ShellHeader;
+   fora do painel vale 0). As âncoras param abaixo do cabeçalho e da própria barra. */
+.nr1-jump-nav {
+    top: var(--n1-sticky-offset, 0px);
+}
+.nr1-jump-target {
+    scroll-margin-top: calc(var(--n1-sticky-offset, 0px) + var(--nr1-jump-h, 3.25rem) + 12px);
+}
+</style>

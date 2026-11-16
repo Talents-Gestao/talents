@@ -9,8 +9,6 @@ export const FILTERS = [
     { key: 'ativa', label: 'Com campanha ativa', flag: 'active' },
     { key: 'revisao', label: 'Em revisão', flag: 'review' },
     { key: 'publicadas', label: 'Publicadas', flag: 'published' },
-    { key: 'legado', label: 'Modelo anterior', flag: 'legacy' },
-    { key: 'v11', label: 'V11', flag: 'v11' },
 ];
 
 const fold = (char) => char.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();

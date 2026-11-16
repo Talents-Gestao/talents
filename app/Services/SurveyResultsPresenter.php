@@ -144,6 +144,8 @@ class SurveyResultsPresenter
             'questionDistributions' => self::buildQuestionDistributions($survey),
             'departmentParticipation' => $departmentParticipation,
             'questionDistributionsByDepartment' => $questionDistributionsByDepartment,
+            // Polaridade do instrumento em auditoria (pending_audit): o detalhamento por pergunta fica neutro.
+            'polarityPending' => (bool) $survey->instrumentVersion?->isPolarityAuditPending(),
         ];
     }
 

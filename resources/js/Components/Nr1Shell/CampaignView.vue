@@ -1,4 +1,5 @@
 <script setup>
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import Nr1Button from './Nr1Button.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
@@ -109,8 +110,7 @@ const copy = async (url) => {
         <div class="n1-intro">
             <div>
                 <div class="n1-eyebrow">Campanha NR-1</div>
-                <h1>Prepare seu time para participar.</h1>
-                <p>Orientações e treinamentos disponíveis conforme as modalidades contratadas pela empresa.</p>
+                <h1>Prepare seu time para participar.<Nr1HelpTip label="a campanha" text="Orientações e treinamentos disponíveis conforme as modalidades contratadas pela empresa." /></h1>
             </div>
             <span class="n1-pill" :class="campaign.collection.open ? 'ok' : 'gray'">{{ campaign.collection.open ? 'Campanha ativa' : campaign.collection.label }}</span>
         </div>
@@ -217,10 +217,9 @@ const copy = async (url) => {
 
             <div v-if="isTalents" id="campaignSettings" class="n1-card c12">
                 <div class="n1-sectiontop">
-                    <h2>Serviços contratados<template v-if="companyName"> · {{ companyName }}</template></h2>
+                    <h2>Serviços contratados<template v-if="companyName"> · {{ companyName }}</template><Nr1HelpTip label="os serviços contratados" text="Defina os públicos atendidos por cada modalidade. A orientação é incluída em todas as campanhas." /></h2>
                     <span class="n1-pill blue">Gestão Talents</span>
                 </div>
-                <p class="n1-tiny" style="margin: 0 0 12px">Defina os públicos atendidos por cada modalidade. A orientação é incluída em todas as campanhas.</p>
                 <div class="n1-g12">
                     <div v-for="card in campaign.trainings" :key="card.modality" class="n1-setting c6">
                         <div>

@@ -12,12 +12,12 @@ import {
     splitRecent,
 } from '../../resources/js/Components/Nr1Shell/nr1CompanyPicker.js';
 
-const company = (id, name, flags = {}) => ({ id, name, flags: { active: false, review: false, published: false, legacy: false, v11: false, ...flags } });
+const company = (id, name, flags = {}) => ({ id, name, flags: { active: false, review: false, published: false, ...flags } });
 const list = [
-    company(1, 'Zeta Logística', { v11: true, published: true }),
-    company(2, 'Água Viva Indústria', { legacy: true, active: true }),
-    company(3, 'Beta Serviços', { v11: true, review: true }),
-    company(4, 'Ômega Comércio', { legacy: true }),
+    company(1, 'Zeta Logística', { published: true }),
+    company(2, 'Água Viva Indústria', { active: true }),
+    company(3, 'Beta Serviços', { review: true }),
+    company(4, 'Ômega Comércio'),
 ];
 
 describe('filterCompanies', () => {
@@ -29,14 +29,15 @@ describe('filterCompanies', () => {
 
     it('applies the quick filters by campaign flags', () => {
         const by = (key) => filterCompanies(list, { filter: key }).map((c) => c.id);
-        assert.deepEqual(FILTERS.map((f) => f.label), ['Todas', 'Com campanha ativa', 'Em revisão', 'Publicadas', 'Modelo anterior', 'V11']);
+        // Sem o par «Modelo anterior | V11»: o modelo é da campanha, não um filtro de empresa.
+        assert.deepEqual(FILTERS.map((f) => f.label), ['Todas', 'Com campanha ativa', 'Em revisão', 'Publicadas']);
         assert.deepEqual(by('todas'), [1, 2, 3, 4]);
         assert.deepEqual(by('ativa'), [2]);
         assert.deepEqual(by('revisao'), [3]);
         assert.deepEqual(by('publicadas'), [1]);
-        assert.deepEqual(by('legado'), [2, 4]);
-        assert.deepEqual(by('v11'), [1, 3]);
-        assert.deepEqual(filterCompanies(list, { term: 'beta', filter: 'legado' }), []);
+        assert.deepEqual(filterCompanies(list, { term: 'beta', filter: 'ativa' }), []);
+        // Chave antiga (link salvo) não filtra nada.
+        assert.deepEqual(by('legado'), [1, 2, 3, 4]);
     });
 });
 

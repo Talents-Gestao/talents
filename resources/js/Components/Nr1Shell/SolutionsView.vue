@@ -1,4 +1,5 @@
 <script setup>
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import { router } from '@inertiajs/vue3';
 import CountUp from './CountUp.vue';
 import DimensionBadge from './DimensionBadge.vue';
@@ -30,8 +31,12 @@ const request = (item) => {
         <div class="n1-intro">
             <div>
                 <div class="n1-eyebrow">Talents para sua empresa</div>
-                <h1>{{ solutions.mode === 'company' ? 'Como a Talents pode apoiar a sua empresa.' : 'Soluções conectadas às necessidades.' }}</h1>
-                <p>{{ solutions.mode === 'company' ? 'Caminhos indicados a partir do que a pesquisa mostrou.' : 'Serviços que podem apoiar o plano de ação, a partir dos fatores sinalizados na pesquisa.' }}</p>
+                <h1>
+                    {{ solutions.mode === 'company' ? 'Como a Talents pode apoiar a sua empresa.' : 'Soluções conectadas às necessidades.' }}<Nr1HelpTip
+                        label="as soluções"
+                        :text="solutions.mode === 'company' ? 'Caminhos indicados a partir do que a pesquisa mostrou.' : 'Serviços que podem apoiar o plano de ação, a partir dos fatores sinalizados na pesquisa.'"
+                    />
+                </h1>
             </div>
         </div>
 

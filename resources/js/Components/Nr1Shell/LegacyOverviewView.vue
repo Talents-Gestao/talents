@@ -4,10 +4,11 @@ import DimensionBadge from './DimensionBadge.vue';
 import EmptyState from './EmptyState.vue';
 import LevelPill from './LevelPill.vue';
 import Nr1Button from './Nr1Button.vue';
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import Nr1OverviewCards from './Nr1OverviewCards.vue';
 
 /**
- * Visão geral de uma campanha do modelo anterior: cabeçalho do laudo, os quatro cartões, pontos fortes
+ * Visão geral de uma campanha do modelo anterior: dados da campanha, os quatro cartões, pontos fortes
  * (com base nas respostas favoráveis da pesquisa efetuada) e as dimensões.
  */
 defineProps({
@@ -26,15 +27,12 @@ const STRENGTH_TONES = ['ok', 'purple', 'blue'];
     <div>
         <div class="n1-intro">
             <div>
-                <div class="n1-eyebrow">Laudo NR-1</div>
-                <h1>{{ overview.title }}</h1>
-                <p>Panorama da campanha com os resultados já calculados no modelo anterior.</p>
+                <h1>{{ overview.title }}<Nr1HelpTip label="o panorama" text="Panorama da campanha com os resultados já calculados no modelo anterior." /></h1>
             </div>
         </div>
 
-        <section class="n1-card" style="margin-bottom: 15px" aria-label="Cabeçalho do laudo">
-            <div class="n1-sectiontop">
-                <h2>Cabeçalho do laudo</h2>
+        <section class="n1-card" style="margin-bottom: 15px" aria-label="Dados da campanha">
+            <div class="n1-sectiontop" style="justify-content: flex-end">
                 <span class="n1-pill" :class="overview.published ? 'ok' : 'warn'">{{ overview.publicationLabel }}</span>
             </div>
             <dl class="n1-laudo-grid">

@@ -18,7 +18,6 @@ use App\Models\PsychosocialDocumentVersion;
 use App\Models\Survey;
 use App\Models\SurveyCampaignRegistration;
 use App\Models\User;
-use App\Services\ExecutiveBriefService;
 use App\Services\Psychosocial\PsychosocialDocumentService;
 use App\Services\PsychosocialDashboardBuilder;
 use App\Services\SurveyResultsPresenter;
@@ -298,7 +297,7 @@ final class Nr1ShellLegacy
 
         $panel = array_intersect_key($props, array_flip([
             'survey', 'bandLabels', 'overall', 'bySection', 'deptOveralls', 'deptSectionsByDepartment', 'insights',
-            'questionDistributions', 'departmentParticipation', 'questionDistributionsByDepartment',
+            'questionDistributions', 'departmentParticipation', 'questionDistributionsByDepartment', 'polarityPending',
         ]));
 
         return [
@@ -357,9 +356,9 @@ final class Nr1ShellLegacy
     }
 
     /**
-     * Central de documentos no modelo anterior: os dois documentos oficiais (Relatório executivo; Relatório técnico +
-     * plano de ação) com o arquivo que existe hoje, a situação da publicação do Laudo e o histórico REAL (versões
-     * liberadas e validadas dos documentos e a publicação do parecer). Não há revisão PASSEG neste modelo.
+     * Central de documentos no modelo anterior: o documento oficial (Inventário de Riscos Psicossocial) com o arquivo
+     * que existe hoje, a situação da publicação do Laudo e o histórico REAL (versões liberadas e validadas dos
+     * documentos e a publicação do parecer). Não há revisão PASSEG neste modelo. O relatório executivo saiu do painel.
      *
      * @return array<string, mixed>
      */
@@ -369,28 +368,16 @@ final class Nr1ShellLegacy
         $published = $plan?->admin_published_at !== null;
         $staff = $forTalents && $company !== null;
 
-        $executive = PsychosocialDocument::query()
+        $inventory = PsychosocialDocument::query()
             ->where('survey_id', $survey->id)
-            ->where('type', PsychosocialDocument::TYPE_EXECUTIVE_BRIEF)
+            ->where('type', PsychosocialDocument::TYPE_TECHNICAL_REPORT)
             ->with('currentVersion')
             ->first()?->currentVersion;
-        $executiveReady = $executive !== null && $executive->pdf_status === PsychosocialDocumentVersion::PDF_READY;
 
         $documents = [
             [
-                'key' => 'executivo',
-                'title' => 'Relatório executivo',
-                'text' => 'Visão resumida para a liderança: indicadores, prioridades e plano proposto.',
-                'url' => match (true) {
-                    $staff && $executiveReady => route('admin.companies.surveys.psychosocial-documents.download', [$company->id, $survey->id, PsychosocialDocument::TYPE_EXECUTIVE_BRIEF]),
-                    ! $forTalents && $published => route('client.surveys.reports.executive', $survey->id),
-                    default => null,
-                },
-                'pending' => $staff ? 'Ainda não liberado: libere o resumo executivo em «Parecer e publicação».' : 'Disponível quando a Talents publicar o parecer.',
-            ],
-            [
                 'key' => 'tecnico',
-                'title' => 'Relatório técnico + plano de ação',
+                'title' => 'Inventário de Riscos Psicossocial',
                 'text' => 'Parecer técnico com metodologia, resultados, prioridades e o plano de ação com responsáveis e prazos.',
                 'url' => match (true) {
                     $staff => route('admin.companies.surveys.action-plan.document-pdf', [$company->id, $survey->id]),
@@ -424,7 +411,7 @@ final class Nr1ShellLegacy
             'documents' => $documents,
             'status' => $published ? 'Publicado' : ($staff ? 'Rascunho' : 'Em preparação'),
             'published' => $published,
-            'version' => $executive?->version_number,
+            'version' => $inventory?->version_number,
             'help' => match (true) {
                 $published => 'Parecer e plano publicados. Os arquivos estão disponíveis para a empresa.',
                 $staff => 'O parecer ainda não foi publicado para a empresa. A publicação é feita em «Parecer e publicação».',
@@ -440,7 +427,8 @@ final class Nr1ShellLegacy
     }
 
     /**
-     * Empresa: versões liberadas pela Talents (resumo, subsídio, dossiê) com download e a validação no sistema.
+     * Empresa: versões liberadas pela Talents (dossiê) com download e a validação no sistema. O resumo executivo
+     * saiu do painel: não é listado nem validado aqui (a rota de download continua para PDFs já gerados).
      *
      * @return array<string, mixed>
      */
@@ -448,11 +436,10 @@ final class Nr1ShellLegacy
     {
         $user = $request->user();
         $documents = app(PsychosocialDocumentService::class)->documentsSummary($survey);
-        $brief = app(ExecutiveBriefService::class)->currentVersionSummary($survey);
-        $hasExecutive = collect($documents)->contains(fn (array $doc) => $doc['type'] === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF && $doc['pdf_status'] === PsychosocialDocumentVersion::PDF_READY);
 
         return [
             'documents' => collect($documents)
+                ->reject(fn (array $doc) => $doc['type'] === PsychosocialDocument::TYPE_EXECUTIVE_BRIEF)
                 ->filter(fn (array $doc) => $doc['pdf_status'] === PsychosocialDocumentVersion::PDF_READY || ($doc['validatable'] ?? false))
                 ->map(fn (array $doc) => [
                     'type' => $doc['type'],
@@ -464,9 +451,6 @@ final class Nr1ShellLegacy
                         : null,
                     'validate_url' => route('client.surveys.psychosocial-documents.validate', [$survey->id, $doc['type']]),
                 ])->values()->all(),
-            'briefUrl' => ! $hasExecutive && ($brief['pdf_status'] ?? null) === PsychosocialDocumentVersion::PDF_READY
-                ? route('client.surveys.executive-brief.download', $survey->id)
-                : null,
             'canValidate' => $user->canAccess(PermissionModule::Relatorios, PermissionAction::Validate) && ! $user->isSuperAdmin() && ! $user->isOwner(),
             'declaration' => PsychosocialDocumentService::IN_SYSTEM_DECLARATION,
         ];
@@ -520,9 +504,7 @@ final class Nr1ShellLegacy
      */
     private function clientReports(Survey $survey, bool $planPublished): array
     {
-        $reports = [
-            ['label' => 'Relatório executivo', 'href' => route('client.surveys.reports.executive', $survey->id)],
-        ];
+        $reports = [];
         if ($planPublished) {
             $reports[] = ['label' => 'Plano de ação (PDF)', 'href' => route('client.surveys.reports.action-plan', $survey->id)];
         }

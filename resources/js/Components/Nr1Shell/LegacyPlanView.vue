@@ -1,4 +1,5 @@
 <script setup>
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import { computed } from 'vue';
 import EmptyState from './EmptyState.vue';
 import MeasureCard from './MeasureCard.vue';
@@ -28,8 +29,7 @@ const withResponsible = computed(() => (usingMeasures.value
         <div class="n1-intro">
             <div>
                 <div class="n1-eyebrow">Plano de ação</div>
-                <h1>Da análise à execução.</h1>
-                <p>Medidas do plano registrado no parecer técnico desta campanha, com responsáveis e prazos.</p>
+                <h1>Da análise à execução.<Nr1HelpTip label="o plano de ação" text="Medidas do plano registrado no parecer técnico desta campanha, com responsáveis e prazos." /></h1>
             </div>
         </div>
 

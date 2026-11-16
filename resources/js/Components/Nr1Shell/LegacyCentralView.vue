@@ -1,4 +1,5 @@
 <script setup>
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import { useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import EmptyState from './EmptyState.vue';
@@ -36,10 +37,6 @@ const companyFiles = computed(() => {
         });
     }
 
-    if (props.central.released?.briefUrl && !files.some((file) => file.key === 'executivo')) {
-        files.push({ key: 'brief', title: 'Resumo executivo', text: '', url: props.central.released.briefUrl });
-    }
-
     return files;
 });
 
@@ -52,13 +49,11 @@ const validateDocument = (url) => validation.post(url, { preserveScroll: true, o
         <div class="n1-intro">
             <div v-if="forCompany">
                 <div class="n1-eyebrow">Central de documentos</div>
-                <h1>Documentos da sua empresa.</h1>
-                <p>Arquivos que a Talents publicou para esta pesquisa.</p>
+                <h1>Documentos da sua empresa.<Nr1HelpTip label="os documentos" text="Arquivos que a Talents publicou para esta pesquisa." /></h1>
             </div>
             <div v-else>
                 <div class="n1-eyebrow">Central de documentos</div>
-                <h1>Documentos oficiais.</h1>
-                <p>Arquivos finais organizados em um só lugar, com revisão documental da PASSEG quando necessária.</p>
+                <h1>Documentos oficiais.<Nr1HelpTip label="os documentos" text="Arquivos finais organizados em um só lugar, com revisão documental da PASSEG quando necessária." /></h1>
             </div>
         </div>
 
@@ -80,8 +75,7 @@ const validateDocument = (url) => validation.post(url, { preserveScroll: true, o
             </section>
             <section v-if="central.released?.canValidate && central.released.documents.some((item) => item.validatable)" class="n1-card no-print" style="margin-top: 15px" aria-label="Validação">
                 <div v-for="doc in central.released.documents.filter((item) => item.validatable)" :key="doc.type">
-                    <h3>Validar {{ doc.label }} · versão {{ doc.version_number }}</h3>
-                    <p class="n1-tiny">A validação se refere ao conteúdo congelado da versão atual. O PDF original não é refeito.</p>
+                    <h3>Validar {{ doc.label }} · versão {{ doc.version_number }}<Nr1HelpTip label="a validação" text="A validação se refere ao conteúdo congelado da versão atual. O PDF original não é refeito." /></h3>
                     <label class="n1-tiny" style="display: flex; gap: 8px; align-items: flex-start">
                         <input v-model="validation.declaration_accepted" type="checkbox" />
                         <span>{{ central.released.declaration }}</span>
@@ -95,7 +89,7 @@ const validateDocument = (url) => validation.post(url, { preserveScroll: true, o
         <div v-else class="n1-docgrid">
             <section class="n1-card" aria-label="Documentos oficiais">
                 <div v-for="doc in central.documents" :key="doc.key" class="n1-docrow">
-                    <span class="n1-docico" aria-hidden="true">{{ doc.key === 'executivo' ? '▣' : '▤' }}</span>
+                    <span class="n1-docico" aria-hidden="true">▤</span>
                     <div>
                         <strong>{{ doc.title }}</strong>
                         <p>{{ doc.text }}</p>
@@ -108,7 +102,7 @@ const validateDocument = (url) => validation.post(url, { preserveScroll: true, o
 
             <section class="n1-card" aria-labelledby="legacy-review-title">
                 <div class="n1-sectiontop">
-                    <h2 id="legacy-review-title">Revisão do relatório técnico e plano de ação</h2>
+                    <h2 id="legacy-review-title">Revisão do Inventário de Riscos Psicossocial<Nr1HelpTip label="a revisão" text="A revisão documental da PASSEG não se aplica a esta pesquisa: ela existe só nas campanhas do questionário de 39 perguntas." /></h2>
                     <span class="n1-pill" :class="central.published ? 'ok' : 'gray'">{{ central.status }}</span>
                 </div>
                 <div class="n1-row" style="justify-content: flex-start; gap: 10px">
@@ -116,7 +110,6 @@ const validateDocument = (url) => validation.post(url, { preserveScroll: true, o
                     <span v-if="central.version" class="n1-pill blue">Versão {{ central.version }}</span>
                 </div>
                 <p class="n1-tiny">{{ central.help }}</p>
-                <p class="n1-tiny">A revisão documental da PASSEG não se aplica a esta pesquisa: ela existe só nas campanhas do questionário de 39 perguntas.</p>
                 <div v-if="central.parecerUrl" class="n1-tools no-print" style="margin-top: 12px">
                     <Nr1Button variant="primary" size="sm" inertia :href="central.parecerUrl">{{ central.published ? 'Abrir Parecer e publicação' : 'Publicar em Parecer e publicação' }} →</Nr1Button>
                 </div>
