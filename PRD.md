@@ -1915,17 +1915,21 @@ Fluxo público em 10.2.
 | Painel | `/client/feedbacks` | «Desenvolvimento com conversa estruturada», indicadores, Pontos fortes recorrentes, Atenção na equipe, matriz Nine Box (`NineBoxMatrix`), gráficos |
 | Colaboradores | `/client/feedbacks/employees` | lista, cadastro e perfil com histórico de feedbacks |
 | Sessões | `/client/feedbacks/sessions` | lista de sessões em cartões |
-| Novo feedback | `/client/feedbacks/sessions/create` | colaborador (nome obrigatório, e-mail), modelo, líder (obrigatório), data agendada (obrigatória), próximo alinhamento, título |
+| Novo feedback | `/client/feedbacks/sessions/create` | colaborador (nome obrigatório, e-mail), modelo, líder (obrigatório), data agendada (obrigatória), próximo alinhamento, título. Modelo digitado sem correspondência mostra erro (não é trocado pelo padrão); em branco, usa o padrão |
 | Editar sessão | `/client/feedbacks/sessions/{s}/edit` | respostas por seção (`FeedbackQuestionField`), perguntas extras por seção, enviar para assinatura |
 | Sessão | `/client/feedbacks/sessions/{s}` | respostas, painel de assinaturas, PDF |
-| Modelos | `/client/feedbacks/templates` (e `/create`, `/{template}/edit`) | modelos de feedback da própria empresa: nome, descrição, ativo, seções e perguntas (Texto longo, Texto curto, Escolha única, Lista de itens; obrigatória); os modelos da Talents aparecem só como referência |
+| Modelos | `/client/feedbacks/templates` (e `/create`, `/{template}/edit`, `POST /{template}/duplicar`) | modelos de feedback da própria empresa: nome, descrição, ativo, seções (perguntas ou só texto de orientação; quem responde: líder e colaborador, colaborador, líder ou reflexão do líder, só administradores) e perguntas (Texto longo, Texto curto, Escolha única, Lista de itens, Começar/continuar/melhorar/parar, Tabela de ações; obrigatória); os modelos da Talents aparecem como referência, com «Duplicar» |
 
 #### 9.8.2 Regras
 
 | Regra | Detalhe |
 |-------|---------|
 | Modelo padrão | «Contrato de Expectativas — Padrão Talents» (`FeedbackTemplateSeeder`) |
-| Modelos da empresa | Só o administrador (`company_admin`, ou a Talents com a empresa selecionada) cria, edita e exclui (`FeedbackTemplateController`); `company_user` recebe 403. O modelo tem `company_id` e só aparece para a empresa dona (lista, «Novo feedback» e edição; para outra empresa é 404). Depois de usado em algum feedback, seções e perguntas ficam travadas (só nome, descrição e ativo mudam) e o modelo não pode ser excluído, só desativado |
+| Modelos da empresa | Só o administrador (`company_admin`, ou a Talents com a empresa selecionada) cria, edita e exclui (`FeedbackTemplateController`); `company_user` recebe 403. O modelo tem `company_id` e só aparece para a empresa dona (lista, «Novo feedback» e edição; para outra empresa é 404). Depois de usado em algum feedback (a partir do primeiro feedback criado, mesmo sem respostas), seções e perguntas ficam travadas, porque as respostas apontam para as perguntas: só nome, descrição e ativo mudam, a tela mostra o motivo com os campos desabilitados, o servidor recusa estrutura enviada para modelo travado, e o modelo não pode ser excluído, só desativado. Não há versionamento por edição |
+| Mínimo de estrutura | o modelo precisa de pelo menos uma seção com perguntas (seção só de orientação não conta); cada seção de perguntas precisa de ao menos uma pergunta; escolha única, de duas opções (opção em branco é descartada) |
+| Duplicar modelo | «Duplicar» (na lista, para modelos da empresa e da Talents, e no aviso de modelo travado) cria uma cópia editável e sem trava, com seções, perguntas e opções, nome «… (cópia)», ativa, da empresa de quem duplica; abre a edição da cópia. Preserva chaves, tipo de seção, público e valores das opções (o painel da equipe lê respostas por chave e valor), também ao salvar pelo editor. Modelo de outra empresa: 404. No admin exige `feedbacks:create` |
+| Permissão no admin | rotas pela matriz `feedbacks` conforme o método (ver, criar, editar, excluir); quem só tem «ver» abre a edição em modo leitura (campos desabilitados, aviso, sem salvar) e não vê Novo, Duplicar nem Excluir |
+| Criar feedback: empresa | o líder (`leader_user_id`) precisa ser usuário ativo da empresa do feedback, também no admin («O líder precisa ser um usuário ativo desta empresa.»); o modelo precisa ser da Talents ou da empresa e estar ativo, mesmo em requisição direta; modelo inválido dá erro no campo, nunca é trocado em silêncio; sem modelo disponível: «Nenhum modelo disponível. Fale com o suporte.» (detalhe técnico só no log) |
 | Tipos de pergunta (`FeedbackQuestionType`) | Texto, Texto longo, Escolha única, Lista de tópicos, Bloco CCM, Tabela de ações, Grupo de notas |
 | Status (`FeedbackSessionStatus`) | Em andamento (ao criar) → Aguardando assinaturas → Concluída; ou Cancelada. O valor Rascunho existe no enum, mas a criação já grava Em andamento |
 | Visibilidade | `company_admin` (e a Talents) vê todas as sessões; `company_user` vê só as sessões em que é o líder (`FeedbackVisibility`) |
@@ -2814,6 +2818,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | PATCH | `/admin/feedbacks/sessions/{session}` | `admin.feedbacks.sessions.update` | auth · admin.can:feedbacks · Feedback selecionada | — |
 | POST | `/admin/feedbacks/sessions/{session}/assinaturas` | `admin.feedbacks.sessions.signatures` | auth · admin.can:feedbacks · Feedback selecionada | — |
 | GET · POST · PUT · DELETE | `/admin/feedbacks/templates` (`/create`, `/{template}`, `/{template}/edit`) | `admin.feedbacks.templates.{index,create,store,edit,update,destroy}` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Templates/Index` e `Form` |
+| POST | `/admin/feedbacks/templates/{template}/duplicar` | `admin.feedbacks.templates.duplicate` | auth · admin.can:feedbacks (criar) · Feedback selecionada | — |
 | GET | `/admin/feedbacks/sessions/{session}/edit` | `admin.feedbacks.sessions.edit` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Sessions/Edit` |
 | GET | `/admin/feedbacks/sessions/{session}/pdf` | `admin.feedbacks.sessions.pdf` | auth · admin.can:feedbacks · Feedback selecionada | — |
 
@@ -3260,6 +3265,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | GET | `/client/feedbacks/sessions/{session}/edit` | `client.feedbacks.sessions.edit` | auth · can.module:feedbacks | `Client/Feedbacks/Sessions/Edit` |
 | GET | `/client/feedbacks/sessions/{session}/pdf` | `client.feedbacks.sessions.pdf` | auth · can.module:feedbacks | — |
 | GET · POST · PUT · DELETE | `/client/feedbacks/templates` (`/create`, `/{template}`, `/{template}/edit`) | `client.feedbacks.templates.{index,create,store,edit,update,destroy}` | auth · can.module:feedbacks · administrador | `Client/Feedbacks/Templates/Index` e `Form` |
+| POST | `/client/feedbacks/templates/{template}/duplicar` | `client.feedbacks.templates.duplicate` | auth · can.module:feedbacks · administrador | — |
 
 #### `/client/ferias`
 

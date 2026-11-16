@@ -8,17 +8,22 @@ use App\Actions\Company\ResolveOrCreateCompanyEmployee;
 use App\Actions\Feedback\SendFeedbackSignatureInvites;
 use App\Enums\FeedbackSessionStatus;
 use App\Http\Controllers\Concerns\ResolvesFeedbackRoutes;
+use App\Models\Company;
 use App\Models\FeedbackSession;
 use App\Models\FeedbackSessionAnswer;
 use App\Models\FeedbackTemplate;
 use App\Models\FeedbackTemplateQuestion;
 use App\Models\FeedbackTemplateSection;
 use App\Models\User;
+use App\Services\Feedback\FeedbackPdfService;
 use App\Support\Company\CompanyEmployeeDirectory;
 use App\Support\Feedback\FeedbackVisibility;
-use App\Services\Feedback\FeedbackPdfService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
@@ -26,6 +31,7 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
 class FeedbackSessionController extends FeedbackCompanyController
 {
     use ResolvesFeedbackRoutes;
+
     public function index(Request $request): Response
     {
         $company = $this->company($request);
@@ -74,16 +80,33 @@ class FeedbackSessionController extends FeedbackCompanyController
         $data = $request->validate([
             'employee_name' => ['required', 'string', 'max:255'],
             'employee_email' => ['nullable', 'email', 'max:255'],
-            'feedback_template_id' => ['nullable', 'exists:feedback_templates,id'],
-            'leader_user_id' => ['required', 'exists:users,id'],
+            // Modelo da Talents ou da própria empresa, e ativo; nunca é trocado em silêncio por outro.
+            'feedback_template_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('feedback_templates', 'id')
+                    ->where('is_active', true)
+                    ->where(fn ($q) => $q->whereNull('company_id')->orWhere('company_id', $company->id)),
+            ],
+            // Líder: usuário ativo da mesma empresa do feedback (isolamento entre empresas).
+            'leader_user_id' => [
+                'required',
+                'integer',
+                Rule::exists('users', 'id')->where('company_id', $company->id)->where('is_active', true),
+            ],
             'scheduled_at' => ['required', 'date'],
             'next_alignment_at' => ['nullable', 'date'],
             'title' => ['nullable', 'string', 'max:255'],
-        ], [], [
+        ], [
+            'feedback_template_id.exists' => 'Modelo indisponível para esta empresa (inexistente, de outra empresa ou inativo). Escolha um modelo da lista.',
+            'leader_user_id.required' => 'Selecione o líder responsável.',
+            'leader_user_id.exists' => 'O líder precisa ser um usuário ativo desta empresa.',
+        ], [
             'employee_name' => 'nome do colaborador',
             'employee_email' => 'e-mail do colaborador',
             'scheduled_at' => 'data do alinhamento',
             'feedback_template_id' => 'modelo',
+            'leader_user_id' => 'líder responsável',
         ]);
 
         $employeeName = trim($data['employee_name']);
@@ -91,14 +114,19 @@ class FeedbackSessionController extends FeedbackCompanyController
         $employeeEmail = $employeeEmail !== '' ? $employeeEmail : null;
 
         $template = isset($data['feedback_template_id'])
-            ? FeedbackTemplate::query()->find($data['feedback_template_id'])
-            : null;
+            ? FeedbackTemplate::query()->findOrFail($data['feedback_template_id'])
+            : $this->availableTemplates($company)->first();
 
-        if ($template === null || ! $this->templateAvailableToCompany($company, $template)) {
-            $template = $this->availableTemplates($company)->first();
+        if ($template === null) {
+            Log::warning('Feedback: nenhum modelo ativo disponível ao criar feedback (rodar FeedbackTemplateSeeder?).', [
+                'company_id' => $company->id,
+                'user_id' => $request->user()->id,
+            ]);
+
+            throw ValidationException::withMessages([
+                'feedback_template_id' => 'Nenhum modelo disponível. Fale com o suporte.',
+            ]);
         }
-
-        abort_if($template === null, 422, 'Nenhum modelo de feedback disponível. Execute o seed de modelos.');
 
         if ($request->user()->isCompanyUser() && ! $request->user()->isSuperAdmin()) {
             abort_unless((int) $data['leader_user_id'] === (int) $request->user()->id, 403);
@@ -418,9 +446,9 @@ class FeedbackSessionController extends FeedbackCompanyController
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, FeedbackTemplate>
+     * @return Collection<int, FeedbackTemplate>
      */
-    private function availableTemplates(\App\Models\Company $company)
+    private function availableTemplates(Company $company)
     {
         return FeedbackTemplate::query()
             ->where(function ($q) use ($company) {
@@ -432,12 +460,7 @@ class FeedbackSessionController extends FeedbackCompanyController
             ->get(['id', 'title', 'description', 'is_default']);
     }
 
-    private function templateAvailableToCompany(\App\Models\Company $company, FeedbackTemplate $template): bool
-    {
-        return $template->company_id === null || $template->company_id === $company->id;
-    }
-
-    private function authorizeSession(\App\Models\Company $company, FeedbackSession $session): void
+    private function authorizeSession(Company $company, FeedbackSession $session): void
     {
         abort_unless($session->company_id === $company->id, 403);
         FeedbackVisibility::authorizeSession(request()->user(), $session);

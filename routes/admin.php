@@ -428,6 +428,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::get('sessions/{session}/edit', [FeedbackSessionController::class, 'edit'])->name('sessions.edit');
             Route::patch('sessions/{session}', [FeedbackSessionController::class, 'update'])->name('sessions.update');
             Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
+            Route::post('templates/{template}/duplicar', [FeedbackTemplateController::class, 'duplicate'])->name('templates.duplicate');
             Route::resource('templates', FeedbackTemplateController::class)
                 ->except(['show'])
                 ->parameters(['templates' => 'template']);
