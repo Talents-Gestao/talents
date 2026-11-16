@@ -1691,7 +1691,7 @@ Origens (`Nr1Opportunity`): Treinamento, Solução sugerida, Solução solicitad
 
 #### 8.10.2 Cadastro técnico — `/admin/companies/{c}/surveys/{s}/cadastro-tecnico`
 
-**Página:** `Admin/CampaignRegistration/Edit`, em blocos: Identificação (estabelecimento/unidade, processo, razão social e CNPJ congelados), Elegíveis e grupos de exposição, Avaliação e controles (resumo AEP, observação, controles existentes), Responsável técnico e aprovação (nome, função, registro profissional, organização aprovadora). Tabela `survey_campaign_registrations`. Campos usados pelo checklist de publicação: razão social, estabelecimento, fonte dos elegíveis e responsável técnico (nome, função, registro).
+**Página:** `Admin/CampaignRegistration/Edit`, em blocos: Identificação (estabelecimento/unidade, processo, razão social e CNPJ congelados), Elegíveis e grupos de exposição, Avaliação e controles (resumo AEP, observação, controles existentes), Responsável técnico e aprovação (nome, função, registro profissional, organização aprovadora). Tabela `survey_campaign_registrations`. Campos usados pelo checklist de publicação: razão social, estabelecimento, fonte dos elegíveis e responsável técnico (nome, função, registro). Sem razão social no cadastro, vale só a razão social cadastrada da empresa (`companies.legal_name`); o nome da empresa (que pode ser fantasia) nunca a substitui, nem no formulário, nem no snapshot, nem nos PDFs: sem ela, a razão social fica como pendência e bloqueia a publicação. O CNPJ continua vindo da empresa quando o cadastro não o tem.
 
 #### 8.10.3 Medidas — `/admin/companies/{c}/surveys/{s}/medidas`
 

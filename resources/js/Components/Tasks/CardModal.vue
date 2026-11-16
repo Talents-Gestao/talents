@@ -3,7 +3,8 @@ import InputLabel from '@/Components/InputLabel.vue';
 import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TaskDescriptionDisclosure from '@/Components/Tasks/TaskDescriptionDisclosure.vue';
+import TaskDescriptionToggle from '@/Components/Tasks/TaskDescriptionToggle.vue';
+import { hasText, initialDescriptionState, toggleDescription } from '@/Components/Tasks/taskDescriptionToggle.js';
 import TaskDescriptionEditor from '@/Components/Tasks/TaskDescriptionEditor.vue';
 import TextInput from '@/Components/TextInput.vue';
 import {
@@ -100,6 +101,8 @@ const editingChecklistItemId = ref(null);
 const editingChecklistItemText = ref('');
 /** Rascunhos locais de descrição por item (edição inline sem perder foco). */
 const itemDescriptionDrafts = ref({});
+/** Descrições abertas, por etapa (`item-{id}`) e por formulário de nova etapa (`new-{checklistId}`, recolhida). */
+const descriptionOpen = ref({});
 /** Última descrição salva de cada item (para saber se o rascunho tem mudança pendente). */
 const savedDescriptions = {};
 const newChecklistItems = ref({});
@@ -280,6 +283,23 @@ function syncLocalChecklistItems(card, { reopened = true } = {}) {
     }
     localChecklistItemsById.value = map;
     itemDescriptionDrafts.value = descriptions;
+    descriptionOpen.value = initialDescriptionState(
+        descriptionOpen.value,
+        (card?.checklists || []).flatMap((cl) => cl.items || []),
+        { reopened },
+    );
+}
+
+function isDescriptionOpen(key) {
+    return Boolean(descriptionOpen.value[key]);
+}
+
+function toggleDescriptionPanel(key) {
+    descriptionOpen.value = toggleDescription(descriptionOpen.value, key);
+}
+
+function itemDescriptionFilled(item) {
+    return hasText(isReadOnly.value ? item.description : itemDescriptionDraft(item));
 }
 
 function syncLocalChecklists(card) {
@@ -1066,6 +1086,7 @@ function addChecklistItem(checklist, { quiet = false } = {}) {
             [checklist.id]: { text: '', description: '', due_date: '' },
         };
         newItemFormKeys.value = { ...newItemFormKeys.value, [checklist.id]: (newItemFormKeys.value[checklist.id] || 0) + 1 };
+        descriptionOpen.value = { ...descriptionOpen.value, [`new-${checklist.id}`]: false };
         if (!quiet) reloadBoardPayloadAndSyncCard();
         return true;
     });
@@ -1383,7 +1404,7 @@ function itemDueClass(item) {
                                     :key="it.id"
                                     class="rounded-md bg-white px-1 py-1.5"
                                 >
-                                    <div class="flex flex-wrap items-center gap-2">
+                                    <div class="flex items-center gap-2">
                                         <button
                                             v-if="isAdmin"
                                             type="button"
@@ -1411,14 +1432,14 @@ function itemDueClass(item) {
                                         <button
                                             v-else-if="!isReadOnly"
                                             type="button"
-                                            class="min-w-0 flex-1 text-left"
+                                            class="min-w-0 flex-1 text-left [overflow-wrap:anywhere]"
                                             @click="startInlineEditItem(it)"
                                         >
                                             <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{ it.text }}</span>
                                         </button>
                                         <span
                                             v-else
-                                            class="min-w-0 flex-1 text-left text-sm"
+                                            class="min-w-0 flex-1 text-left text-sm [overflow-wrap:anywhere]"
                                             :class="it.is_completed ? 'text-slate-400 line-through' : 'text-slate-800'"
                                         >
                                             {{ it.text }}
@@ -1446,6 +1467,13 @@ function itemDueClass(item) {
                                             <CalendarDaysIcon class="h-3.5 w-3.5" aria-hidden="true" />
                                             {{ formatDateLabel(it.due_date) }}
                                         </span>
+                                        <TaskDescriptionToggle
+                                            v-if="!isReadOnly || itemDescriptionFilled(it)"
+                                            :open="isDescriptionOpen(`item-${it.id}`)"
+                                            :filled="itemDescriptionFilled(it)"
+                                            :controls="`etapa-descricao-${it.id}`"
+                                            @toggle="toggleDescriptionPanel(`item-${it.id}`)"
+                                        />
                                         <button
                                             v-if="isAdmin"
                                             type="button"
@@ -1456,22 +1484,20 @@ function itemDueClass(item) {
                                             <TrashIcon class="h-4 w-4" aria-hidden="true" />
                                         </button>
                                     </div>
-                                    <TaskDescriptionDisclosure
+                                    <p
+                                        v-if="it.created_at"
+                                        class="mt-1 text-[11px] text-slate-400"
+                                        :class="isAdmin ? 'pl-12' : 'pl-7'"
+                                        :title="formatDateTitle(it.created_at)"
+                                    >
+                                        Criado em {{ formatDateLabel(it.created_at) }}
+                                    </p>
+                                    <div
+                                        v-show="isDescriptionOpen(`item-${it.id}`)"
+                                        :id="`etapa-descricao-${it.id}`"
                                         class="mt-1"
                                         :class="isAdmin ? 'pl-12' : 'pl-7'"
-                                        :filled="Boolean((isReadOnly ? it.description : itemDescriptionDraft(it))?.trim())"
-                                        :default-open="Boolean((isReadOnly ? it.description : itemDescriptionDraft(it))?.trim())"
-                                        :read-only="isReadOnly"
                                     >
-                                        <template #aside>
-                                            <span
-                                                v-if="it.created_at"
-                                                class="text-[11px] text-slate-400"
-                                                :title="formatDateTitle(it.created_at)"
-                                            >
-                                                Criado em {{ formatDateLabel(it.created_at) }}
-                                            </span>
-                                        </template>
                                         <textarea
                                             v-if="!isReadOnly"
                                             :value="itemDescriptionDraft(it)"
@@ -1488,7 +1514,7 @@ function itemDueClass(item) {
                                         >
                                             {{ it.description }}
                                         </p>
-                                    </TaskDescriptionDisclosure>
+                                    </div>
                                 </li>
                             </VueDraggable>
                             <div v-if="canAddChecklistItem" class="mt-2 space-y-2 border-t border-slate-100 pt-2">
@@ -1511,6 +1537,12 @@ function itemDueClass(item) {
                                             class="w-[7.25rem] border-0 bg-transparent p-0 text-[11px] focus:ring-0"
                                         />
                                     </label>
+                                    <TaskDescriptionToggle
+                                        :open="isDescriptionOpen(`new-${cl.id}`)"
+                                        :filled="hasText(newItemDraft(cl.id).description)"
+                                        :controls="`nova-etapa-descricao-${cl.id}`"
+                                        @toggle="toggleDescriptionPanel(`new-${cl.id}`)"
+                                    />
                                     <button
                                         type="button"
                                         class="shrink-0 rounded-md border border-slate-300 px-2 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -1520,10 +1552,10 @@ function itemDueClass(item) {
                                         Adicionar
                                     </button>
                                 </div>
-                                <TaskDescriptionDisclosure
+                                <div
+                                    v-show="isDescriptionOpen(`new-${cl.id}`)"
+                                    :id="`nova-etapa-descricao-${cl.id}`"
                                     :key="`nova-etapa-${cl.id}-${newItemFormKeys[cl.id] || 0}`"
-                                    :filled="Boolean(newItemDraft(cl.id).description?.trim())"
-                                    :default-open="Boolean(newItemDraft(cl.id).description?.trim())"
                                 >
                                     <textarea
                                         v-model="newItemDraft(cl.id).description"
@@ -1532,7 +1564,7 @@ function itemDueClass(item) {
                                         placeholder="Descrição (opcional)"
                                         aria-label="Descrição da nova etapa"
                                     />
-                                </TaskDescriptionDisclosure>
+                                </div>
                             </div>
                         </div>
                     </VueDraggable>

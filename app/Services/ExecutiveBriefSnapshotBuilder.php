@@ -100,8 +100,9 @@ class ExecutiveBriefSnapshotBuilder implements DocumentSnapshotBuilder
     }
 
     /**
-     * Cadastro técnico da campanha, com fallback da empresa para razão social e CNPJ
-     * quando o cadastro ainda não foi gravado (evita «Não informado» no PDF).
+     * Cadastro técnico da campanha, com fallback da empresa para razão social e CNPJ quando o cadastro ainda não os
+     * tem. Razão social só da razão social cadastrada da empresa (nunca do nome/nome fantasia): sem ela, fica vazia e o
+     * checklist de publicação (T19) aponta a pendência.
      *
      * @return array<string, mixed>
      */
@@ -113,10 +114,8 @@ class ExecutiveBriefSnapshotBuilder implements DocumentSnapshotBuilder
             $payload[$field] = $registration?->getAttribute($field);
         }
 
-        if (! filled($payload['legal_name_snapshot'] ?? null)) {
-            $payload['legal_name_snapshot'] = filled($company?->legal_name)
-                ? (string) $company->legal_name
-                : ($company?->name !== null ? (string) $company->name : null);
+        if (! filled($payload['legal_name_snapshot'] ?? null) && filled($company?->legal_name)) {
+            $payload['legal_name_snapshot'] = (string) $company->legal_name;
         }
 
         if (! filled($payload['cnpj_snapshot'] ?? null) && filled($company?->cnpj)) {

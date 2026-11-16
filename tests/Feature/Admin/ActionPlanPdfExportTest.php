@@ -11,6 +11,7 @@ use App\Services\ReportGenerator;
 use App\Support\Nr1BandLabels;
 use App\Support\Nr1RiskScenarioResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\Support\CreatesSurveyFixtures;
 use Tests\Support\SeedsNr1SurveyResults;
 use Tests\TestCase;
@@ -136,13 +137,11 @@ class ActionPlanPdfExportTest extends TestCase
 
         $admin = User::factory()->superAdmin()->create(['is_owner' => true]);
 
+        // Publicar o parecer legado exige o Inventário de Riscos Psicossocial no painel da empresa (gate de
+        // ActionPlanAdminController; ver LegacyParecerPublicationGateTest).
+        Storage::fake('local');
         $this->actingAs($admin)
-            ->post(route('admin.companies.surveys.executive-brief.release', [$fx->company->id, $fx->survey->id]))
-            ->assertRedirect();
-        $this->actingAs($admin)
-            ->post(route('admin.companies.surveys.executive-brief.validate', [$fx->company->id, $fx->survey->id]), [
-                'declaration_accepted' => '1',
-            ])
+            ->post(route('admin.companies.surveys.technical-report.release', [$fx->company->id, $fx->survey->id]))
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 

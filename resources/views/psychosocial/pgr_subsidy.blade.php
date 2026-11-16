@@ -31,7 +31,7 @@
         $registration = $snapshot['registration'] ?? [];
         $pgr = $snapshot['pgr'] ?? [];
         $inventoryLabels = \App\Services\Psychosocial\PgrSubsidySnapshotBuilder::INVENTORY_FIELDS;
-        $legalName = $registration['legal_name_snapshot'] ?? ($snapshot['company']['name'] ?? null);
+        $legalName = $registration['legal_name_snapshot'] ?? null;
         $identification = array_filter([
             'Unidade' => $registration['unit_name'] ?? null,
             'Processo' => $registration['process_name'] ?? null,

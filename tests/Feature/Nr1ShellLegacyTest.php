@@ -137,7 +137,9 @@ class Nr1ShellLegacyTest extends TestCase
     public function test_legacy_recommendations_follow_the_previous_questionnaire_sections(): void
     {
         $c = $this->legacy();
-        $c->survey->template->sections()->first()->update(['title' => 'Demandas']);
+        // Preparação: o instrumento já se chamava assim antes da coleta. Pelo modelo, a trava do instrumento
+        // (SurveyTemplateLock) recusa renomear seção de campanha que já coletou; por isso a gravação vai direto.
+        DB::table('survey_template_sections')->where('id', $c->survey->template->sections()->first()->id)->update(['title' => 'Demandas']);
 
         $this->actingAs($c->owner)->get(route('nr1.solucoes', [
             'empresa' => $c->company->id,
@@ -199,12 +201,16 @@ class Nr1ShellLegacyTest extends TestCase
         $legacySame = Survey::query()->create(['company_id' => $company->id, 'survey_template_id' => $v11->template->id, 'title' => 'Antiga da mesma empresa', 'public_token' => (string) Str::uuid(), 'starts_at' => now()->subYear(), 'ends_at' => now()->subMonths(11), 'status' => 'closed']);
 
         // «Abrir painel NR-1» em TODAS as campanhas da empresa (V11 e antigas); o botão «Parecer e plano» saiu da lista.
+        // Desde ae63e22 o atalho da ficha abre o modal de destino, que é quem lista as campanhas.
         $this->actingAs($c->owner)->get(route('admin.companies.show', $company))->assertInertia(fn (Assert $p) => $p
             ->where('nr1ShellUrls.'.$v11->survey->id, '/nr1/visao-geral?empresa='.$company->id.'&campanha='.$v11->survey->id)
             ->where('nr1ShellUrls.'.$legacySame->id, '/nr1/visao-geral?empresa='.$company->id.'&campanha='.$legacySame->id));
         $show = (string) file_get_contents(resource_path('js/Pages/Admin/Companies/Show.vue'));
-        $this->assertStringContainsString('Abrir painel NR-1', $show);
+        $destinations = (string) file_get_contents(resource_path('js/Components/Admin/Companies/CompanyShortcutDestinationModal.vue'));
+        $this->assertStringContainsString(':nr1-shell-urls="nr1ShellUrls"', $show);
+        $this->assertStringContainsString('Abrir painel NR-1', $destinations);
         $this->assertStringNotContainsString('action-plan', $show);
+        $this->assertStringNotContainsString('action-plan', $destinations);
 
         // Empresa só com pesquisa antiga também abre o shell pelo menu.
         $this->actingAs($c->admin)->get(route('client.dashboard'))->assertInertia(fn (Assert $p) => $p->where('nr1Shell.url', '/nr1'));
@@ -288,9 +294,11 @@ class Nr1ShellLegacyTest extends TestCase
         $this->assertStringNotContainsString('AdminLayout', $laudo);
         $this->assertStringContainsString('shellMode: { type: Boolean, default: false }', $laudo);
         $this->assertStringContainsString("const activeStep = ref(props.shellMode ? 'opinion' : 'results');", $laudo);
-        foreach (['openTechnicalReportModal', 'openPgrSubsidyModal', 'openExportPdfModal'] as $exposed) {
+        foreach (['openTechnicalReportModal', 'openExportPdfModal'] as $exposed) {
             $this->assertStringContainsString($exposed.',', $laudo);
         }
+        // O subsídio PGR saiu da interface (13ca718, PRD 8): o Laudo não abre mais esse modal.
+        $this->assertStringNotContainsString('openPgrSubsidyModal', $laudo);
         $this->assertStringNotContainsString('PsychosocialDocumentsAdminPanel', $laudo);
         $this->assertStringNotContainsString('MiaNr1AdminPanel', $laudo);
         $this->assertStringNotContainsString('useEditor', $laudo);

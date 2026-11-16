@@ -235,13 +235,38 @@ describe('Tarefas: modal do cartão (salvar e fechar)', () => {
         assert.match(screen, /watch\(modalPayload, \(\) => \{/);
     });
 
-    it('descrição da etapa em accordion: recolhida sem texto, botão com aria-expanded, conteúdo só oculto', () => {
-        const src = read('resources/js/Components/Tasks/TaskDescriptionDisclosure.vue');
-        assert.match(src, /const open = ref\(props\.defaultOpen\)/);
+    it('descrição da etapa em accordion: botão só com ícone, aria-expanded/aria-controls, conteúdo só oculto', () => {
+        const src = read('resources/js/Components/Tasks/TaskDescriptionToggle.vue');
+        assert.match(src, /<button\s/);
         assert.match(src, /:aria-expanded="open \? 'true' : 'false'"/);
-        assert.match(src, /'Ocultar descrição' : filled \? 'Ver descrição' : 'Adicionar descrição'/);
-        assert.match(src, /<div v-show="open"/);
+        assert.match(src, /:aria-controls="controls"/);
+        assert.match(src, /:aria-label="label"/);
+        assert.match(src, /:title="label"/);
+        assert.match(src, /focus-visible:ring-2/);
+        assert.match(src, /:class="open \? 'rotate-180' : ''"/);
+        assert.match(src, /motion-reduce:transition-none/);
+        assert.match(src, /v-if="indicator"/);
+        // Sem texto visível no botão: o rótulo só vai em aria-label/title.
+        const template = src.slice(src.indexOf('<template>'));
+        assert.doesNotMatch(template, /\{\{/);
+        assert.doesNotMatch(template, /Adicionar descrição|Ocultar descrição|Ver descrição/);
+        assert.equal(existsSync(new URL('resources/js/Components/Tasks/TaskDescriptionDisclosure.vue', root)), false);
+
         const card = modal();
-        assert.equal(card.match(/<TaskDescriptionDisclosure/g)?.length, 2);
+        // Etapa e nova etapa: o botão fica na linha de ações e o painel abaixo, ligado pelo id e só oculto (v-show).
+        assert.equal(card.match(/<TaskDescriptionToggle/g)?.length, 2);
+        assert.match(card, /:controls="`etapa-descricao-\$\{it\.id\}`"/);
+        assert.match(card, /v-show="isDescriptionOpen\(`item-\$\{it\.id\}`\)"\s+:id="`etapa-descricao-\$\{it\.id\}`"/);
+        assert.match(card, /:controls="`nova-etapa-descricao-\$\{cl\.id\}`"/);
+        assert.match(card, /v-show="isDescriptionOpen\(`new-\$\{cl\.id\}`\)"\s+:id="`nova-etapa-descricao-\$\{cl\.id\}`"/);
+        // Ordem na linha da etapa: data → seta → lixeira.
+        const row = card.slice(card.indexOf('@change="updateItemDueDate'), card.indexOf('title="Excluir etapa"'));
+        assert.match(row, /<TaskDescriptionToggle/);
+        // Nova etapa: seta entre a data e «Adicionar»; a descrição digitada segue no rascunho e é enviada.
+        const form = card.slice(card.indexOf('v-model="newItemDraft(cl.id).due_date"'), card.indexOf('Adicionar\n'));
+        assert.match(form, /<TaskDescriptionToggle/);
+        assert.match(card, /description: draft\.description\?\.trim\(\) \|\| null/);
+        // «Criado em» fica sob o título, fora do controle.
+        assert.match(card, /<p\s+v-if="it\.created_at"[\s\S]*?Criado em/);
     });
 });
