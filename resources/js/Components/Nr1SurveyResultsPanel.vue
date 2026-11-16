@@ -480,7 +480,7 @@ const scrollToSection = (event, sectionId) => {
     <div class="space-y-6" :style="jumpHeight ? { '--nr1-jump-h': `${jumpHeight}px` } : undefined">
         <nav
             ref="jumpNav"
-            class="nr1-jump-nav sticky z-[2] flex flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-gray-200 bg-white/95 px-3 py-2.5 text-xs font-semibold text-slate-600 shadow-sm backdrop-blur [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible"
+            class="nr1-jump-nav sticky z-20 flex flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 shadow-sm [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible"
             aria-label="Navegação dos resultados"
         >
             <span class="mr-1 shrink-0 text-[10px] font-bold uppercase tracking-wide text-talents-700">
@@ -955,12 +955,12 @@ const scrollToSection = (event, sectionId) => {
 </template>
 
 <style scoped>
-/* «Ir para» fica logo abaixo do cabeçalho fixo do painel (altura em --n1-sticky-offset, publicada pelo ShellHeader;
-   fora do painel vale 0). As âncoras param abaixo do cabeçalho e da própria barra. */
+/* «Ir para» fica no topo da área que rola (o cabeçalho do painel rola com o conteúdo; ver nr1-frame-scroll.css, que
+   solta os ancestrais que prendiam o sticky). As âncoras param logo abaixo da barra (altura real em --nr1-jump-h). */
 .nr1-jump-nav {
-    top: var(--n1-sticky-offset, 0px);
+    top: 0;
 }
 .nr1-jump-target {
-    scroll-margin-top: calc(var(--n1-sticky-offset, 0px) + var(--nr1-jump-h, 3.25rem) + 12px);
+    scroll-margin-top: calc(var(--nr1-jump-h, 3.25rem) + 12px);
 }
 </style>
