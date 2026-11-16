@@ -414,7 +414,8 @@ class ExecutiveBriefPhaseEightTest extends TestCase
         $this->actingAs($campaign->client)
             ->get(route('nr1.documentos', ['campanha' => $campaign->fx->survey->id]))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->where('section.legacy.central.released.briefUrl', null));
+            // O resumo executivo saiu do painel: nem link nem campo para ele na Central da empresa.
+            ->assertInertia(fn ($page) => $page->missing('section.legacy.central.released.briefUrl'));
     }
 
     public function test_other_company_cannot_release_or_download(): void

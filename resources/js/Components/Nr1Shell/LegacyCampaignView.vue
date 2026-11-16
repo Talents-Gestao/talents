@@ -1,4 +1,5 @@
 <script setup>
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import { ref } from 'vue';
 import CampaignStatus from './CampaignStatus.vue';
 import EmptyState from './EmptyState.vue';
@@ -32,8 +33,7 @@ const copy = async (url) => {
         <div class="n1-intro">
             <div>
                 <div class="n1-eyebrow">Campanha NR-1</div>
-                <h1>Coleta da pesquisa.</h1>
-                <p>Período, andamento e participação desta campanha. Orientação e treinamentos por público existem só nas campanhas do questionário de 39 perguntas.</p>
+                <h1>Coleta da pesquisa.<Nr1HelpTip label="a coleta" text="Período, andamento e participação desta campanha. Orientação e treinamentos por público existem só nas campanhas do questionário de 39 perguntas." /></h1>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
                 <span class="n1-pill" :class="campaign.open ? 'ok' : 'gray'">{{ campaign.label }}</span>

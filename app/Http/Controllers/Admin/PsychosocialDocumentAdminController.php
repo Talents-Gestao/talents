@@ -135,7 +135,7 @@ class PsychosocialDocumentAdminController extends Controller
         $request->validate([
             'declaration_accepted' => ['accepted'],
         ], [
-            'declaration_accepted.accepted' => 'Confirme que revisou o relatório técnico para validar.',
+            'declaration_accepted.accepted' => 'Confirme que revisou o Inventário de Riscos Psicossocial para validar.',
         ]);
 
         $version = $this->documents->currentVersion($survey, PsychosocialDocument::TYPE_TECHNICAL_REPORT);
@@ -148,7 +148,7 @@ class PsychosocialDocumentAdminController extends Controller
         }
 
         return $this->backToPlan($company, $survey)
-            ->with('success', "Relatório técnico validado (versão {$validated->version_number}).");
+            ->with('success', "Inventário de Riscos Psicossocial validado (versão {$validated->version_number}).");
     }
 
     public function releaseDossier(Request $request, Company $company, Survey $survey): RedirectResponse

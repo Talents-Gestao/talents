@@ -1,5 +1,6 @@
 <script setup>
 import CompanyShowAccordion from '@/Components/Admin/Companies/CompanyShowAccordion.vue';
+import Nr1HelpTip from '@/Components/Nr1Shell/Nr1HelpTip.vue';
 import InfoTooltip from '@/Components/InfoTooltip.vue';
 import ParecerMeasures from '@/Components/Nr1Legacy/ParecerMeasures.vue';
 import SurveyStatusBadge from '@/Components/SurveyStatusBadge.vue';
@@ -29,6 +30,7 @@ const props = defineProps({
     questionDistributions: { type: Array, default: () => [] },
     departmentParticipation: { type: Array, default: () => [] },
     questionDistributionsByDepartment: { type: Array, default: () => [] },
+    polarityPending: { type: Boolean, default: false },
     plan: { type: Object, default: null },
     publication: {
         type: Object,
@@ -535,10 +537,11 @@ defineExpose({
         v-if="publication.uses_review_flow"
         class="mb-6 rounded-xl border border-talents-200 bg-talents-50/50 p-5 text-sm text-talents-950"
     >
-        <p class="font-semibold">Documentos desta campanha</p>
-        <p class="mt-1">
-            Os dois documentos finais (relatório executivo e relatório técnico + plano de ação) seguem o fluxo de revisão:
-            Em edição, Em revisão PASSEG, Alteração solicitada ou Aprovado pela PASSEG, e Publicado.
+        <p class="font-semibold">
+            Documentos desta campanha<Nr1HelpTip
+                label="os documentos desta campanha"
+                text="O Inventário de Riscos Psicossocial segue o fluxo de revisão: Em edição, Em revisão PASSEG, Alteração solicitada ou Aprovado pela PASSEG, e Publicado."
+            />
         </p>
         <Link :href="publication.documents_url" class="mt-3 inline-block rounded-md bg-talents-700 px-4 py-2 font-semibold text-white">
             Abrir a Central de documentos
@@ -549,8 +552,7 @@ defineExpose({
         <div class="border-b border-slate-100 bg-gradient-to-r from-talents-50/70 via-white to-white px-5 py-4 sm:px-6">
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-talents-700">Laudo NR-1</p>
-                    <h2 class="mt-1 text-lg font-semibold text-slate-900">{{ survey.title }}</h2>
+                    <h2 class="text-lg font-semibold text-slate-900">{{ survey.title }}</h2>
                     <p class="mt-0.5 text-sm text-slate-600">{{ company.name }}</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
@@ -626,10 +628,12 @@ defineExpose({
 
     <div v-if="!shellMode" v-show="activeStep === 'results'" class="pb-8">
         <div class="mb-4">
-            <h3 class="text-lg font-semibold text-talents-900">Diagnóstico dos resultados</h3>
-            <p class="mt-1 text-sm text-gray-600">
-                Indicadores e gráficos da pesquisa — os mesmos dados agregados que a empresa vê em Resultados.
-            </p>
+            <h3 class="text-lg font-semibold text-talents-900">
+                Diagnóstico dos resultados<Nr1HelpTip
+                    label="o diagnóstico"
+                    text="Indicadores e gráficos da pesquisa — os mesmos dados agregados que a empresa vê em Resultados."
+                />
+            </h3>
         </div>
 
         <Nr1SurveyResultsPanel
@@ -643,6 +647,8 @@ defineExpose({
             :question-distributions="questionDistributions"
             :department-participation="departmentParticipation"
             :question-distributions-by-department="questionDistributionsByDepartment"
+            :polarity-pending="polarityPending"
+            show-polarity-audit
         />
 
         <div v-if="!overall" class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
@@ -658,37 +664,25 @@ defineExpose({
     <div class="space-y-8">
         <div v-show="activeStep === 'opinion'" class="space-y-8 pb-8">
             <div>
-                <h3 class="text-lg font-semibold text-talents-900">Parecer técnico</h3>
-                <p class="mt-1 text-sm text-gray-600">
-                    Abra cada seção. O parecer começa aberto; o plano de ação e os anexos ficam recolhidos até você expandir.
-                </p>
+                <h3 class="text-lg font-semibold text-talents-900">
+                    Parecer técnico<Nr1HelpTip
+                        label="o parecer técnico"
+                        text="Abra cada seção. O parecer começa aberto; o plano de ação e os anexos ficam recolhidos até você expandir."
+                    />
+                </h3>
             </div>
 
             <div
                 v-if="overall && riskScenarioLabel"
                 class="rounded-lg border border-violet-200 bg-violet-50/80 p-4 text-sm text-violet-950"
             >
-                <strong>{{ riskScenarioLabel }}</strong>
-                <span class="mt-1 block text-violet-900/90">
-                    Os relatórios NR-1 (executivo e encaminhamento técnico) são gerados automaticamente conforme este cenário.
-                    Você pode substituí-los por arquivos personalizados abaixo.
-                </span>
+                <strong>{{ riskScenarioLabel }}</strong><Nr1HelpTip
+                    label="o cenário geral"
+                    text="Os documentos NR-1 desta campanha, como o Inventário de Riscos Psicossocial, são gerados automaticamente conforme este cenário. Você pode substituí-los por arquivos personalizados abaixo."
+                />
             </div>
 
             <div class="flex flex-wrap gap-2">
-                <SecondaryButton type="button" @click="openTechnicalReportModal">
-                    <svg
-                        v-if="technicalReport?.ready"
-                        class="mr-2 h-4 w-4 text-emerald-600"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                    >
-                        <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.3a1 1 0 0 1-1.42.002l-3.25-3.25a1 1 0 1 1 1.414-1.414l2.54 2.54 6.542-6.586a1 1 0 0 1 1.418-.006Z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="sr-only" v-if="technicalReport?.ready">Publicado no painel NR-1 da empresa. </span>
-                    Inventário de Riscos Psicossocial
-                </SecondaryButton>
                 <SecondaryButton type="button" disabled title="Inativo por enquanto">
                     Plano com resultados + parecer
                 </SecondaryButton>

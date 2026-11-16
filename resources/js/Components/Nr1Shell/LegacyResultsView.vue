@@ -3,6 +3,7 @@ import ClientResultsBody from '@/Components/Nr1Legacy/ClientResultsBody.vue';
 import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
 import { router } from '@inertiajs/vue3';
 import Nr1Button from './Nr1Button.vue';
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import { useNr1Toast } from './useNr1Toast';
 
 /**
@@ -27,8 +28,7 @@ const recalculate = () => router.post(props.results.recalculateUrl, {}, { preser
         <div class="n1-intro">
             <div>
                 <div class="n1-eyebrow">Diagnóstico organizacional</div>
-                <h1>Resultados que mostram o todo.</h1>
-                <p>Laudo 01 · Diagnóstico: indicadores consolidados por dimensão, setor e pergunta.</p>
+                <h1>Resultados que mostram o todo.<Nr1HelpTip label="os resultados" text="Laudo 01 · Diagnóstico: indicadores consolidados por dimensão, setor e pergunta." /></h1>
             </div>
             <div class="n1-legacybar no-print">
                 <Nr1Button v-if="results.recalculateUrl" size="sm" @click="recalculate">Recalcular</Nr1Button>
@@ -53,6 +53,8 @@ const recalculate = () => router.post(props.results.recalculateUrl, {}, { preser
                 questionDistributions: results.panel.questionDistributions,
                 departmentParticipation: results.panel.departmentParticipation,
                 questionDistributionsByDepartment: results.panel.questionDistributionsByDepartment,
+                polarityPending: Boolean(results.panel.polarityPending),
+                showPolarityAudit: forTalents,
             }" />
         </div>
 

@@ -1,4 +1,5 @@
 <script setup>
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import { router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import CountUp from './CountUp.vue';
@@ -37,8 +38,7 @@ const columns = computed(() => props.opportunities.stages.map((stage) => ({ ...s
         <div class="n1-intro">
             <div>
                 <div class="n1-eyebrow">Talents | Comercial</div>
-                <h1>Oportunidades para qualificação.</h1>
-                <p>Serviços sugeridos por necessidade organizacional, com histórico de contato e próxima ação comercial.</p>
+                <h1>Oportunidades para qualificação.<Nr1HelpTip label="as oportunidades" text="Serviços sugeridos por necessidade organizacional, com histórico de contato e próxima ação comercial." /></h1>
             </div>
         </div>
 

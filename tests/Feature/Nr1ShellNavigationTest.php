@@ -193,10 +193,10 @@ class Nr1ShellNavigationTest extends TestCase
                     ->where('companies.0.latest.id', $other->id)->where('companies.0.latest.method', 'legacy')
                     ->where('companies.0.latest.status', ['label' => 'Ativa', 'tone' => 'ok'])
                     ->where('companies.0.others.0.id', $older->id)->where('companies.0.others.0.href', '/nr1/visao-geral?empresa='.$other->company_id.'&campanha='.$older->id)
-                    ->where('companies.0.flags', ['active' => true, 'review' => false, 'published' => false, 'legacy' => true, 'v11' => false])
+                    ->where('companies.0.flags', ['active' => true, 'review' => false, 'published' => false])
                     ->where('companies.1.name', 'Empresa V11')->where('companies.1.brandColor', '#1e6b5c')
                     ->where('companies.1.latest.method', 'v11')->where('companies.1.latest.status', ['label' => 'Publicado', 'tone' => 'ok'])
-                    ->where('companies.1.flags.published', true)->where('companies.1.flags.v11', true)
+                    ->where('companies.1.flags.published', true)->missing('companies.1.flags.v11')
                     ->where('companies.1.href', '/nr1/visao-geral?empresa='.$c->company->id)
                     ->etc()));
 

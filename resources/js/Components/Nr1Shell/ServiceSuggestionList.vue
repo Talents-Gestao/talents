@@ -1,4 +1,5 @@
 <script setup>
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import { router } from '@inertiajs/vue3';
 import { reactive } from 'vue';
 import Nr1Button from './Nr1Button.vue';
@@ -52,7 +53,12 @@ const request = (item) => {
 <template>
     <section class="n1-card c12" aria-labelledby="catalog-suggestions-title">
         <div class="n1-sectiontop">
-            <h2 id="catalog-suggestions-title">{{ suggestions.can_moderate ? 'Serviços que a empresa pode contratar' : 'Serviços indicados para a sua empresa' }}</h2>
+            <h2 id="catalog-suggestions-title">
+                {{ suggestions.can_moderate ? 'Serviços que a empresa pode contratar' : 'Serviços indicados para a sua empresa' }}<Nr1HelpTip
+                    label="os serviços"
+                    :text="suggestions.can_moderate ? 'A Mia olha o catálogo de produtos e os resultados quando a pesquisa encerra. A Talents revisa o texto e só então a empresa vê a sugestão.' : 'Indicações da Talents para apoiar o que a pesquisa mostrou na sua empresa.'"
+                />
+            </h2>
             <Nr1Button
                 v-if="suggestions.can_moderate && suggestions.items.some((item) => item.status === 'pending')"
                 size="sm"
@@ -62,11 +68,7 @@ const request = (item) => {
                 Liberar para a empresa
             </Nr1Button>
         </div>
-        <p v-if="suggestions.can_moderate" class="n1-tiny">
-            A Mia olha o catálogo de produtos e os resultados quando a pesquisa encerra. A Talents revisa o texto e só então a empresa vê a sugestão.
-            <span v-if="suggestions.generated_at"> Gerado em {{ suggestions.generated_at }}.</span>
-        </p>
-        <p v-else class="n1-tiny">Indicações da Talents para apoiar o que a pesquisa mostrou na sua empresa.</p>
+        <p v-if="suggestions.can_moderate && suggestions.generated_at" class="n1-tiny">Gerado em {{ suggestions.generated_at }}.</p>
         <p v-if="suggestions.pending && suggestions.can_moderate" class="n1-notice" role="status" style="margin-top: 10px">Geração em andamento.</p>
         <p v-else-if="!suggestions.items.length" class="n1-tiny" style="margin-top: 10px">
             {{ suggestions.can_moderate ? 'Nenhuma sugestão ainda. Ela aparece depois que a pesquisa encerra.' : 'Ainda não há serviços indicados para esta pesquisa.' }}

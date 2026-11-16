@@ -75,8 +75,6 @@ final class Nr1ShellCompanyPicker
                     'active' => $campaigns->contains('collecting', true),
                     'review' => $campaigns->contains(fn (array $c) => $c['status']['label'] === 'Em revisão'),
                     'published' => $campaigns->contains(fn (array $c) => $c['status']['label'] === 'Publicado'),
-                    'legacy' => $campaigns->contains('method', 'legacy'),
-                    'v11' => $campaigns->contains('method', 'v11'),
                 ],
             ];
         })->values()->all();

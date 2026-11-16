@@ -1,4 +1,5 @@
 <script setup>
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import { ref } from 'vue';
 import LevelPill from './LevelPill.vue';
 import { GROUP_COLORS } from './nr1Theme';
@@ -24,10 +25,7 @@ const percentOf = (sector) => parseFloat(String(sector.percent_label ?? '0').rep
 <template>
     <div class="n1-card">
         <div class="n1-sectiontop">
-            <div>
-                <h2 style="margin-bottom: 3px">Onde estão os participantes</h2>
-                <p class="n1-tiny" style="margin: 0">Três grupos de visualização, com todas as respostas contabilizadas. As cores diferenciam grupos, não níveis de risco.</p>
-            </div>
+            <h2>Onde estão os participantes<Nr1HelpTip label="os participantes" text="Três grupos de visualização, com todas as respostas contabilizadas. As cores diferenciam grupos, não níveis de risco." /></h2>
             <span v-if="respondents" class="n1-pill blue">{{ respondents }} respostas</span>
         </div>
 

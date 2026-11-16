@@ -1,4 +1,5 @@
 <script setup>
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import EmptyState from './EmptyState.vue';
@@ -10,8 +11,8 @@ import TechnicalOpinionCard from './TechnicalOpinionCard.vue';
 import { useNr1Toast } from './useNr1Toast';
 
 /**
- * Central de documentos da campanha V11: os dois documentos oficiais, o bloco «Revisão do relatório técnico e plano de
- * ação» com o fluxo em passos, ações por perfil e estado, pendências, ciência e histórico. Só apresentação: cada ação
+ * Central de documentos da campanha V11: o Inventário de Riscos Psicossocial, o bloco «Revisão do Inventário de Riscos
+ * Psicossocial» com o fluxo em passos, ações por perfil e estado, pendências, ciência e histórico. Só apresentação: cada ação
  * posta para a rota que já existe (Publicar continua pedindo o MFA recente). A empresa só vê a rodada publicada.
  */
 const props = defineProps({
@@ -23,15 +24,15 @@ const isTalents = computed(() => props.documents.mode === 'talents');
 const round = computed(() => props.documents.round);
 const shown = computed(() => (isTalents.value ? (round.value?.versions?.length ? round.value : (props.documents.publishedRound ?? round.value)) : round.value));
 
+// O relatório executivo saiu do painel: a Central mostra só o Inventário de Riscos Psicossocial.
 const DOCS = [
-    { type: 'executive_brief', icon: '▣', title: 'Relatório executivo', text: 'Visão resumida para a liderança: indicadores, prioridades e plano proposto.' },
     { type: 'technical_report', icon: '▤', title: 'Inventário de Riscos Psicossocial', text: 'Documento único centralizado: dados da empresa, metodologia, resultados, pontos fortes, prioridades, medidas, responsáveis, prazos, evidências e acompanhamento.' },
 ];
 const versionOf = (type) => shown.value?.versions?.find((version) => version.type === type) ?? null;
 
 const HELP = {
     draft: 'Documento em revisão pela Talents.',
-    in_review: 'O relatório técnico está disponível para revisão documental.',
+    in_review: 'O Inventário de Riscos Psicossocial está disponível para revisão documental.',
     changes_requested: 'A Talents pode revisar e reenviar o documento.',
     approved: 'A Talents pode publicar os documentos.',
     published: 'Relatórios liberados para consulta e impressão.',
@@ -60,8 +61,7 @@ const confirmPgr = () => pgrForm.post(props.documents.urls.pgrIntegration, { pre
         <div class="n1-intro">
             <div>
                 <div class="n1-eyebrow">Central de documentos</div>
-                <h1>Documentos oficiais.</h1>
-                <p>Arquivos finais organizados em um só lugar, com revisão documental da PASSEG quando necessária.</p>
+                <h1>Documentos oficiais.<Nr1HelpTip label="os documentos" text="Arquivos finais organizados em um só lugar, com revisão documental da PASSEG quando necessária." /></h1>
             </div>
         </div>
 
@@ -83,7 +83,7 @@ const confirmPgr = () => pgrForm.post(props.documents.urls.pgrIntegration, { pre
             <template v-if="!isTalents">
                 <section class="n1-card c12" aria-labelledby="doc-company-title">
                     <div class="n1-sectiontop">
-                        <h2 id="doc-company-title">Revisão do relatório técnico e plano de ação</h2>
+                        <h2 id="doc-company-title">Revisão do Inventário de Riscos Psicossocial</h2>
                         <span v-if="round" class="n1-status ok"><span class="n1-dot" aria-hidden="true"></span>Publicado</span>
                     </div>
 
@@ -131,7 +131,7 @@ const confirmPgr = () => pgrForm.post(props.documents.urls.pgrIntegration, { pre
             <template v-else>
                 <section class="n1-card c12" aria-labelledby="doc-review-title">
                     <div class="n1-sectiontop">
-                        <h2 id="doc-review-title">Revisão do relatório técnico e plano de ação</h2>
+                        <h2 id="doc-review-title">Revisão do Inventário de Riscos Psicossocial</h2>
                         <span v-if="round" class="n1-pill" :class="round.status === 'published' ? 'ok' : round.status === 'in_review' || round.status === 'changes_requested' ? 'warn' : round.status === 'approved' ? 'blue' : 'gray'">{{ round.status_label }}</span>
                     </div>
 

@@ -1,4 +1,5 @@
 <script setup>
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import { router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import DimensionBars from './DimensionBars.vue';
@@ -73,8 +74,7 @@ const recalculate = () => router.post(props.results.recalculateUrl, {}, {
         <div class="n1-intro">
             <div>
                 <div class="n1-eyebrow">Diagnóstico organizacional</div>
-                <h1>Resultados que mostram o todo.</h1>
-                <p>Indicadores consolidados com leitura por dimensão, grupo e pergunta.</p>
+                <h1>Resultados que mostram o todo.<Nr1HelpTip label="os resultados" text="Indicadores consolidados com leitura por dimensão, grupo e pergunta." /></h1>
             </div>
             <div class="n1-tools no-print">
                 <Nr1Button v-if="results.recalculateUrl" :loading="recalculating" @click="recalculate">Recalcular</Nr1Button>
@@ -137,9 +137,8 @@ const recalculate = () => router.post(props.results.recalculateUrl, {}, {
             <Transition name="n1-tabfade" mode="out-in">
                 <div v-if="tab === 'dimensoes'" id="panel-dimensoes" key="d" role="tabpanel" aria-labelledby="tab-dimensoes" class="n1-g12">
                     <div class="n1-card c8">
-                        <h2>Resultados por dimensão</h2>
+                        <h2>Resultados por dimensão<Nr1HelpTip label="os resultados por dimensão" text="Clique em uma dimensão para ver as perguntas e a distribuição das respostas." /></h2>
                         <DimensionBars :dimensions="shownDimensions" :items="shownItems" />
-                        <p class="n1-tiny" style="margin-top: 10px">Clique em uma dimensão para ver as perguntas e a distribuição das respostas.</p>
                     </div>
                     <div class="n1-card c4">
                         <h2>Interpretação dos indicadores</h2>
@@ -168,8 +167,7 @@ const recalculate = () => router.post(props.results.recalculateUrl, {}, {
             </Transition>
 
             <section v-if="results.exports.length" class="n1-card no-print" style="margin-top: 17px" aria-labelledby="exports-title">
-                <h2 id="exports-title">Exportações</h2>
-                <p class="n1-tiny">Só dados agregados, com a mesma regra de grupo mínimo da tela.</p>
+                <h2 id="exports-title">Exportações<Nr1HelpTip label="as exportações" text="Só dados agregados, com a mesma regra de grupo mínimo da tela." /></h2>
                 <div class="n1-tools">
                     <Nr1Button v-for="item in results.exports" :key="item.href" size="sm" :href="item.href" external>{{ item.label }}</Nr1Button>
                 </div>

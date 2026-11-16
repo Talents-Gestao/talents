@@ -148,7 +148,7 @@ const send = () => {
 
                 <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-labelledby="review-title">
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <h3 id="review-title" class="text-base font-semibold text-talents-900">Revisão do relatório técnico e plano de ação</h3>
+                        <h3 id="review-title" class="text-base font-semibold text-talents-900">Revisão do Inventário de Riscos Psicossocial</h3>
                         <ReviewStatusPill v-if="round" :status="round.status" :label="round.status_label" />
                     </div>
 

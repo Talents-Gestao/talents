@@ -17,6 +17,7 @@ use App\Models\SurveyTemplateQuestion;
 use App\Models\User;
 use App\Models\UserPermission;
 use App\Services\SurveyResultCalculator;
+use App\Support\Nr1InstrumentMatrix;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -181,6 +182,38 @@ class Nr1ShellPanelsTest extends TestCase
         ];
     }
 
+    public function test_legacy_results_carry_question_polarity_and_pending_audit_flag(): void
+    {
+        $c = $this->legacyCampaign();
+
+        // reverse_score vem por pergunta (fonte única da polaridade); polaridade do instrumento aceita: sem selo.
+        $c->survey->instrumentVersion?->update(['polarity_audit_status' => Nr1InstrumentMatrix::AUDIT_ACCEPTED]);
+        $this->actingAs($c->owner)->get(route('nr1.resultados', $this->query($c)))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('section.legacy.results.panel.polarityPending', false)
+            ->where('section.legacy.results.panel.questionDistributions.0.questions.0.reverse_score', true));
+
+        // Instrumento com polaridade pendente de auditoria: o painel recebe o selo para as cores neutras.
+        $this->assertNotNull($c->survey->instrumentVersion);
+        $c->survey->instrumentVersion->update(['polarity_audit_status' => Nr1InstrumentMatrix::AUDIT_PENDING]);
+        // Talents: painel do Laudo (Nr1SurveyResultsPanel com showPolarityAudit = forTalents) mostra o selo.
+        $this->actingAs($c->owner)->get(route('nr1.resultados', $this->query($c)))->assertInertia(fn (Assert $p) => $p
+            ->where('section.legacy.forTalents', true)
+            ->where('section.legacy.results.client', null)
+            ->where('section.legacy.results.panel.polarityPending', true));
+
+        // Empresa: corpo do cliente (ClientResultsBody, sem showPolarityAudit) pinta tudo de cinza neutro, sem selo
+        // nem legenda de auditoria; o sinal chega só para neutralizar as cores.
+        $this->actingAs($c->admin)->get(route('nr1.resultados'))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('section.legacy.forTalents', false)
+            ->has('section.legacy.results.client')
+            ->where('section.legacy.results.panel.polarityPending', true));
+
+        $view = (string) file_get_contents(resource_path('js/Components/Nr1Shell/LegacyResultsView.vue'));
+        $this->assertStringContainsString('showPolarityAudit: forTalents,', $view);
+        $client = (string) file_get_contents(resource_path('js/Components/Nr1Legacy/ClientResultsBody.vue'));
+        $this->assertStringNotContainsString('show-polarity-audit', $client);
+    }
+
     public function test_legacy_overview_has_the_four_cards_and_strengths_from_the_survey(): void
     {
         $c = $this->legacyCampaign();
@@ -216,9 +249,10 @@ class Nr1ShellPanelsTest extends TestCase
         $c = $this->legacyCampaign();
 
         $this->actingAs($c->owner)->get(route('nr1.documentos', $this->query($c)))->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->has('section.legacy.central.documents', 2)
-            ->where('section.legacy.central.documents.0.title', 'Relatório executivo')
-            ->where('section.legacy.central.documents.1.title', 'Relatório técnico + plano de ação')
+            // Relatório executivo saiu do painel; o documento técnico se chama Inventário de Riscos Psicossocial.
+            ->has('section.legacy.central.documents', 1)
+            ->where('section.legacy.central.documents.0.key', 'tecnico')
+            ->where('section.legacy.central.documents.0.title', 'Inventário de Riscos Psicossocial')
             ->where('section.legacy.central.status', 'Rascunho')
             ->where('section.legacy.central.history', [])
             ->where('section.legacy.central.parecerUrl', route('nr1.parecer'))
@@ -231,8 +265,8 @@ class Nr1ShellPanelsTest extends TestCase
             ->where('section.legacy.central.history.0.label', 'Parecer e plano publicados para a empresa'));
 
         $this->actingAs($c->admin)->get(route('nr1.documentos'))->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('section.legacy.central.documents.0.url', route('client.surveys.reports.executive', $c->survey->id))
-            ->where('section.legacy.central.documents.1.url', route('client.surveys.reports.action-plan', $c->survey->id))
+            ->has('section.legacy.central.documents', 1)
+            ->where('section.legacy.central.documents.0.url', route('client.surveys.reports.action-plan', $c->survey->id))
             ->where('section.legacy.central.parecerUrl', null));
     }
 
@@ -241,8 +275,8 @@ class Nr1ShellPanelsTest extends TestCase
         $c = $this->legacyCampaign();
 
         $this->actingAs($c->admin)->get(route('nr1.documentos'))->assertInertia(fn (Assert $p) => $p
+            ->has('section.legacy.central.documents', 1)
             ->where('section.legacy.central.documents.0.url', null)
-            ->where('section.legacy.central.documents.1.url', null)
             ->where('section.legacy.central.help', 'Documento em revisão pela Talents.'));
         $this->actingAs($c->admin)->get(route('nr1.plano-de-acao'))->assertInertia(fn (Assert $p) => $p
             ->where('section.legacy.plan.locked', true)->where('section.legacy.plan.items', []));

@@ -1,4 +1,5 @@
 <script setup>
+import Nr1HelpTip from './Nr1HelpTip.vue';
 import EmptyState from './EmptyState.vue';
 import CountUp from './CountUp.vue';
 import MeasureCard from './MeasureCard.vue';
@@ -16,8 +17,7 @@ const print = () => window.print();
         <div class="n1-intro">
             <div>
                 <div class="n1-eyebrow">Plano de ação</div>
-                <h1>Da análise à execução.</h1>
-                <p>Responsáveis sugeridos pela Talents e prazos iniciais ajustáveis. A empresa confirma quem fará cada medida e acompanha os resultados.</p>
+                <h1>Da análise à execução.<Nr1HelpTip label="o plano de ação" text="Responsáveis sugeridos pela Talents e prazos iniciais ajustáveis. A empresa confirma quem fará cada medida e acompanha os resultados." /></h1>
             </div>
             <Nr1Button variant="primary" class="no-print" @click="print">Ver impressão do plano ↓</Nr1Button>
         </div>

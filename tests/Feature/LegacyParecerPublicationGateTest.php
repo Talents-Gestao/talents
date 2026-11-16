@@ -239,7 +239,9 @@ class LegacyParecerPublicationGateTest extends TestCase
 
         $legacy = (string) file_get_contents(resource_path('js/Components/Nr1Shell/LegacyDocumentsView.vue'));
         $this->assertStringNotContainsString('Liberar resumo executivo', $legacy);
-        $this->assertStringContainsString('Cadastro técnico', $legacy);
+        // Botão «Cadastro técnico» saiu do painel: o cadastro abre pela prévia do inventário (fluxo de publicação).
+        $this->assertStringNotContainsString('Cadastro técnico</Nr1Button>', $legacy);
+        $this->assertStringNotContainsString('registration.edit', $legacy);
         $this->assertStringNotContainsString('openTechnicalReportModal', $legacy);
         $this->assertStringNotContainsString('openPgrSubsidyModal', $legacy);
         $this->assertStringNotContainsString('openExportPdfModal', $legacy);
