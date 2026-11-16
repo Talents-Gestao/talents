@@ -121,11 +121,11 @@ class FinanceDashboardController extends Controller
         // Pendente = Σ (teto − pago); inclui comissões parcialmente pagas.
         $commissionTotals = CommissionPayoutCalculator::openTotals($commissionsQuery);
 
-        // Perda assumida no período: pela data em que a comissão passou a ficar acima do teto.
-        $lossQuery = CommercialCommission::query()
-            ->when($start, fn ($q) => $q->where('loss_notified_at', '>=', $start))
-            ->when($end, fn ($q) => $q->where('loss_notified_at', '<=', $end));
-        $commissionLoss = CommissionPayoutCalculator::lossAssumedTotals($lossQuery);
+        // Perda assumida no período: legado pela data do aviso antigo; novas pela data em que foi assumida.
+        $commissionLoss = CommissionPayoutCalculator::lossAssumedTotals(CommercialCommission::query(), $start, $end);
+
+        // Devoluções pendentes: posição atual (não depende do período).
+        $commissionRefunds = CommissionPayoutCalculator::refundTotals(CommercialCommission::query());
 
         $recentSales = CommercialSale::query()
             ->with('seller:id,name')
@@ -145,7 +145,10 @@ class FinanceDashboardController extends Controller
                 'overdue_cents' => $this->cashflow->overdueCents(),
                 'commissions_pending_cents' => $commissionTotals['pending_cents'],
                 'commissions_releasable_cents' => $commissionTotals['releasable_cents'],
+                'commissions_advance_cents' => $commissionTotals['advance_cents'],
                 'commissions_loss_assumed_cents' => $commissionLoss['loss_assumed_cents'],
+                'commissions_refund_pending_cents' => $commissionRefunds['refund_pending_cents'],
+                'commissions_refund_pending_count' => $commissionRefunds['refund_pending_count'],
                 'bank_balance_cents' => $this->cashflow->activeBankAccountsBalanceCents(),
                 'bank_accounts_count' => $this->cashflow->activeBankAccountsCount(),
             ],

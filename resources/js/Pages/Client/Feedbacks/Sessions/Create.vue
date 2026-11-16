@@ -60,6 +60,7 @@ const syncTemplateFromLabel = () => {
     if (exact) {
         form.feedback_template_id = exact.id;
         templateLabel.value = exact.title;
+        form.clearErrors('feedback_template_id');
         return;
     }
 
@@ -69,16 +70,21 @@ const syncTemplateFromLabel = () => {
     if (partial) {
         form.feedback_template_id = partial.id;
         templateLabel.value = partial.title;
+        form.clearErrors('feedback_template_id');
         return;
     }
 
-    form.feedback_template_id = defaultTemplate?.id ?? '';
-    templateLabel.value = defaultTemplate?.title ?? templateLabel.value;
+    // Texto sem modelo correspondente: avisa em vez de trocar pelo padrão sem o usuário perceber.
+    form.feedback_template_id = '';
+    form.setError('feedback_template_id', 'Modelo não encontrado. Escolha um modelo da lista.');
 };
 
 const submit = () => {
     syncTemplateFromLabel();
     if (!canSubmit.value) {
+        if (!props.templates.length) {
+            form.setError('feedback_template_id', 'Nenhum modelo disponível. Fale com o suporte.');
+        }
         return;
     }
 
@@ -167,7 +173,7 @@ const submit = () => {
                     </datalist>
                     <InputError :message="form.errors.feedback_template_id" />
                     <p class="mt-1.5 text-xs text-slate-500">
-                        Campo aberto com sugestões. Se o texto não bater com um modelo, usa-se o padrão Talents.
+                        Digite parte do nome ou escolha nas sugestões. Em branco, usa-se o modelo padrão.
                     </p>
                 </div>
                 <div>
@@ -176,6 +182,7 @@ const submit = () => {
                         <option value="">Selecione</option>
                         <option v-for="l in leaders" :key="l.id" :value="l.id">{{ l.name }}</option>
                     </select>
+                    <InputError :message="form.errors.leader_user_id" />
                 </div>
                 <div>
                     <InputLabel value="Título (opcional)" />

@@ -471,7 +471,7 @@ class ProposalExtraCommissionTest extends TestCase
             'is_active' => true,
         ]);
 
-        // Nada recebido: liberável zero.
+        // Nada recebido: liberável zero. O Owner pode adiantar, mas só com confirmação explícita.
         $this->actingAs($admin)
             ->from(route('admin.financeiro.comissoes.index'))
             ->post(route('admin.financeiro.comissoes.pagamentos.store', $extra), [
@@ -480,11 +480,12 @@ class ProposalExtraCommissionTest extends TestCase
                 'bank_account_id' => $account->id,
             ])
             ->assertRedirect(route('admin.financeiro.comissoes.index'))
-            ->assertSessionHasErrors('amount');
+            ->assertSessionHasErrors('confirm_advance');
+        $this->assertSame(0, (int) $extra->fresh()->paid_cents);
 
         $this->settleSale($sale);
 
-        // Acima do liberável (R$ 5,00): recusado.
+        // Acima do saldo/teto (R$ 5,00): recusado.
         $this->actingAs($admin)
             ->from(route('admin.financeiro.comissoes.index'))
             ->post(route('admin.financeiro.comissoes.pagamentos.store', $extra), [

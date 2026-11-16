@@ -1,7 +1,9 @@
 <script setup>
+import CommissionPayButton from '@/Components/Finance/CommissionPayButton.vue';
 import CommissionPaymentModal from '@/Components/Finance/CommissionPaymentModal.vue';
 import CommissionPaymentsHistory from '@/Components/Finance/CommissionPaymentsHistory.vue';
 import CommissionStatusBadge from '@/Components/Finance/CommissionStatusBadge.vue';
+import { paymentBlockedReason, rowNotes } from '@/Components/Finance/commissionReceipt.js';
 import SaleInstallmentEditModal from '@/Components/Finance/SaleInstallmentEditModal.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import Modal from '@/Components/Modal.vue';
@@ -259,18 +261,24 @@ const confirmDestroy = () => {
                                 <dd class="font-semibold tabular-nums text-talents-700">{{ formatBRL(item.releasable_cents) }}</dd>
                             </div>
                         </dl>
+                        <p
+                            v-for="note in rowNotes(item)"
+                            :key="note.key"
+                            class="mt-1 text-xs"
+                            :class="note.tone === 'rose' ? 'font-medium text-rose-700' : note.tone === 'amber' ? 'text-amber-800' : 'text-slate-600'"
+                        >
+                            {{ note.text }}
+                        </p>
                         <p v-if="item.loss_assumed" class="mt-1 text-xs font-medium text-rose-700">
                             Perda assumida pela empresa: {{ formatBRL(item.loss_assumed_cents) }}
                         </p>
-                        <button
-                            v-if="commission_can.register_payment"
-                            type="button"
-                            class="mt-3 w-full rounded-xl bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700 disabled:cursor-not-allowed disabled:opacity-40"
-                            :disabled="item.releasable_cents < 1"
-                            @click="paymentTargetId = item.id"
-                        >
-                            {{ item.releasable_cents < 1 ? 'Nada liberável agora' : 'Registrar pagamento' }}
-                        </button>
+                        <div v-if="commission_can.register_payment" class="mt-3 flex justify-end">
+                            <CommissionPayButton
+                                :commission-id="item.id"
+                                :blocked-reason="paymentBlockedReason(item, commission_can.pay_advance)"
+                                @pay="paymentTargetId = item.id"
+                            />
+                        </div>
                         <details class="mt-2">
                             <summary class="cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-900">
                                 Pagamentos ({{ item.payments.length }})
@@ -376,6 +384,7 @@ const confirmDestroy = () => {
             :show="paymentTargetId !== null"
             :commission="paymentTarget()"
             :bank-accounts="commissionBankAccounts"
+            :can-advance="Boolean(commission_can.pay_advance)"
             @close="paymentTargetId = null"
         />
 

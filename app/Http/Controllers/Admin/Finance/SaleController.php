@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Admin\Finance;
 
 use App\Actions\Notices\PublishCommercialNotice;
-use App\Enums\AdminPermissionModule;
-use App\Enums\PermissionAction;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialCommission;
 use App\Models\CommercialCommissionPayment;
@@ -105,21 +103,16 @@ class SaleController extends Controller
             ->get()
             ->each(fn (CommercialCommission $c) => $c->setRelation('sale', $sale));
 
-        $user = $request->user();
-        $canRegister = (bool) $user?->canAccessAdmin(AdminPermissionModule::FinanceiroComissoes, PermissionAction::Create);
-        $canDelete = (bool) $user?->canAccessAdmin(AdminPermissionModule::FinanceiroComissoes, PermissionAction::Delete);
+        $can = CommissionController::abilities($request->user());
 
         return Inertia::render('Admin/Finance/Sales/Show', [
             'sale' => $sale,
             'commission_payouts' => $commissions
-                ->map(fn (CommercialCommission $c) => CommissionPayoutCalculator::present($c, $canDelete))
+                ->map(fn (CommercialCommission $c) => CommissionPayoutCalculator::present($c, $can))
                 ->values()
                 ->all(),
             'commissionBankAccounts' => CommissionController::bankAccountOptions(),
-            'commission_can' => [
-                'register_payment' => $canRegister,
-                'delete_payment' => $canDelete,
-            ],
+            'commission_can' => $can,
             'destroyBlockedMessage' => self::PAID_COMMISSION_DESTROY_MESSAGE,
             'finance_impact' => $this->financeImpactPayload($sale),
             'paymentMethods' => [

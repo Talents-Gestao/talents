@@ -34,6 +34,16 @@ final class DeleteLatestCommissionPayment
                 ]);
             }
 
+            // Devolução já registrada ou assumida como perda depende dos pagamentos: não desfaz.
+            $hasResolvedRefund = $locked->refunds()
+                ->where(fn ($q) => $q->where('returned_cents', '>', 0)->orWhere('written_off_cents', '>', 0))
+                ->exists();
+            if ($hasResolvedRefund) {
+                throw ValidationException::withMessages([
+                    'payment' => 'Esta comissão já tem devolução registrada ou perda assumida; o pagamento não pode mais ser excluído.',
+                ]);
+            }
+
             // Desfaz a saída de caixa junto: a conta a pagar de origem comissão some com o lançamento.
             FinancePayable::query()->where('commission_payment_id', $payment->id)->delete();
 

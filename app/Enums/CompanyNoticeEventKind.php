@@ -18,6 +18,7 @@ enum CompanyNoticeEventKind: string
     case InstallmentOverdue = 'installment_overdue';
     case CommissionPaid = 'commission_paid';
     case CommissionLossAssumed = 'commission_loss_assumed';
+    case CommissionRefundDue = 'commission_refund_due';
     case LeadReceived = 'lead_received';
 
     // Feedbacks / Denúncias (audiência empresa)
@@ -46,6 +47,7 @@ enum CompanyNoticeEventKind: string
             self::InstallmentOverdue => 'parcela vencida',
             self::CommissionPaid => 'comissão paga',
             self::CommissionLossAssumed => 'perda de comissão assumida',
+            self::CommissionRefundDue => 'devolução de comissão pendente',
             self::LeadReceived => 'novo lead',
             self::FeedbackAwaitingSignature => 'feedback enviado para assinatura',
             self::FeedbackCompleted => 'feedback concluído',

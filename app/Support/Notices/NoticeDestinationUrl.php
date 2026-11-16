@@ -45,6 +45,7 @@ class NoticeDestinationUrl
             CompanyNoticeEventKind::InstallmentOverdue => $this->saleUrlFromInstallment($sourceId),
             CompanyNoticeEventKind::CommissionPaid,
             CompanyNoticeEventKind::CommissionLossAssumed => $this->saleUrlFromCommission($sourceId),
+            CompanyNoticeEventKind::CommissionRefundDue => $this->pendingRefundsUrl($sourceId),
             CompanyNoticeEventKind::LeadReceived => route('admin.landing-interest.index'),
             CompanyNoticeEventKind::Created,
             CompanyNoticeEventKind::Updated,
@@ -129,6 +130,20 @@ class NoticeDestinationUrl
         $saleId = (int) CommercialCommission::query()->whereKey($commissionId)->value('sale_id');
 
         return $this->saleUrl($saleId);
+    }
+
+    /** Devolução pendente: tela de Comissões já filtrada pela venda. */
+    private function pendingRefundsUrl(int $commissionId): string
+    {
+        $code = CommercialCommission::query()
+            ->whereKey($commissionId)
+            ->with('sale:id,code')
+            ->first()?->sale?->code;
+
+        return route('admin.financeiro.comissoes.index', array_filter([
+            'status' => 'devolucoes',
+            'search' => $code,
+        ]));
     }
 
     private function adminCalendarUrl(int $sourceId): string

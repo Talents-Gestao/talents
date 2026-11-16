@@ -62,4 +62,10 @@ class CommercialCommission extends Model
     {
         return $this->hasMany(CommercialCommissionPayment::class, 'commission_id');
     }
+
+    /** Devoluções cobradas da colaboradora (pendentes e resolvidas). */
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(CommercialCommissionRefund::class, 'commission_id');
+    }
 }

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Repasse (total ou parcial) de uma comissão ao beneficiário.
  *
  * Exclusão é lógica: deleted_at + deleted_by registram quem desfez o lançamento.
+ * advance_cents: parte paga acima do liberável no momento (adiantamento antes do recebimento).
  */
 class CommercialCommissionPayment extends Model
 {
@@ -24,6 +25,7 @@ class CommercialCommissionPayment extends Model
     {
         return [
             'amount_cents' => 'integer',
+            'advance_cents' => 'integer',
             'paid_at' => 'datetime',
         ];
     }

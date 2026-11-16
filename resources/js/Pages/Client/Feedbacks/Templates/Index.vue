@@ -5,11 +5,21 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { confirmDialog } from '@/composables/useConfirmDialog';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     templates: { type: Array, default: () => [] },
+    permissions: { type: Object, default: () => ({ create: true, edit: true, delete: true }) },
 });
+
+const duplicatingId = ref(null);
+function duplicateTemplate(template) {
+    router.post(
+        feedbackRoute('templates.duplicate', template.id),
+        {},
+        { onStart: () => (duplicatingId.value = template.id), onFinish: () => (duplicatingId.value = null) },
+    );
+}
 
 const ownTemplates = computed(() => props.templates.filter((template) => template.is_own));
 const talentsTemplates = computed(() => props.templates.filter((template) => !template.is_own));
@@ -38,7 +48,7 @@ function usageLabel(count) {
                 title="Modelos de feedback"
                 subtitle="Modelos da sua empresa e modelos da Talents"
             >
-                <template #trailing>
+                <template v-if="permissions.create" #trailing>
                     <Link :href="feedbackRoute('templates.create')">
                         <PrimaryButton type="button">Novo modelo</PrimaryButton>
                     </Link>
@@ -88,10 +98,19 @@ function usageLabel(count) {
                     </div>
                     <div class="flex shrink-0 items-center gap-3 text-sm">
                         <Link :href="feedbackRoute('templates.edit', template.id)" class="font-medium text-talents-700 hover:underline">
-                            Editar
+                            {{ permissions.edit ? 'Editar' : 'Ver' }}
                         </Link>
                         <button
-                            v-if="!template.sessions_count"
+                            v-if="permissions.create"
+                            type="button"
+                            class="font-medium text-slate-700 hover:underline disabled:opacity-60"
+                            :disabled="duplicatingId !== null"
+                            @click="duplicateTemplate(template)"
+                        >
+                            {{ duplicatingId === template.id ? 'Duplicando…' : 'Duplicar' }}
+                        </button>
+                        <button
+                            v-if="permissions.delete && !template.sessions_count"
                             type="button"
                             class="font-medium text-rose-700 hover:underline"
                             @click="destroyTemplate(template)"
@@ -108,6 +127,7 @@ function usageLabel(count) {
                 <p class="text-sm font-medium text-talents-900">A empresa ainda não tem modelos próprios</p>
                 <p class="mt-1 text-sm text-slate-600">Crie um modelo com as seções e perguntas que fazem sentido para a sua equipe.</p>
                 <Link
+                    v-if="permissions.create"
                     :href="feedbackRoute('templates.create')"
                     class="mt-4 inline-flex rounded-xl bg-talents-700 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-800"
                 >
@@ -119,10 +139,29 @@ function usageLabel(count) {
         <section v-if="talentsTemplates.length" class="mt-8 space-y-3" aria-labelledby="talents-templates-title">
             <h2 id="talents-templates-title" class="text-sm font-semibold text-slate-900">Modelos da Talents</h2>
             <ul class="space-y-2">
-                <li v-for="template in talentsTemplates" :key="template.id" class="surface-card p-4">
-                    <p class="font-medium text-slate-900">{{ template.title }}</p>
-                    <p v-if="template.description" class="mt-0.5 text-sm text-slate-600">{{ template.description }}</p>
-                    <p class="mt-1 text-xs text-slate-500">Disponível para novos feedbacks; não pode ser editado.</p>
+                <li
+                    v-for="template in talentsTemplates"
+                    :key="template.id"
+                    class="surface-card flex flex-wrap items-center justify-between gap-3 p-4"
+                    data-talents-template
+                >
+                    <div class="min-w-0">
+                        <p class="font-medium text-slate-900">{{ template.title }}</p>
+                        <p v-if="template.description" class="mt-0.5 text-sm text-slate-600">{{ template.description }}</p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            Disponível para novos feedbacks; não pode ser editado.
+                            <template v-if="permissions.create">Duplique para criar uma versão da empresa.</template>
+                        </p>
+                    </div>
+                    <button
+                        v-if="permissions.create"
+                        type="button"
+                        class="shrink-0 text-sm font-medium text-talents-700 hover:underline disabled:opacity-60"
+                        :disabled="duplicatingId !== null"
+                        @click="duplicateTemplate(template)"
+                    >
+                        {{ duplicatingId === template.id ? 'Duplicando…' : 'Duplicar' }}
+                    </button>
                 </li>
             </ul>
         </section>

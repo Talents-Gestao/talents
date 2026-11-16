@@ -98,18 +98,22 @@ class CommissionIndexTest extends TestCase
         $this->assertSame('Repasse PIX', $commission->notes);
     }
 
-    public function test_commission_can_be_paid_up_to_releasable_before_sale_is_settled(): void
+    public function test_user_without_advance_permission_is_limited_to_releasable(): void
     {
         // Venda de R$ 200,00 em 2x, 10%: teto R$ 20,00. Recebida 1 parcela: liberável R$ 10,00.
         $sale = $this->sale([10_000, 10_000]);
         $commission = $sale->commission;
         $this->receive($sale, 1);
         $this->assertSame(CommercialSale::STATUS_PARCIAL, $sale->fresh()->status);
+        $payer = User::factory()->superAdmin()->create(['is_owner' => false]);
+        $this->grant($payer, [PermissionAction::View, PermissionAction::Create]);
 
-        $this->pay($commission, '10.01')->assertSessionHasErrors('amount');
+        $this->pay($commission, '10.01', actor: $payer, confirmAdvance: true)->assertSessionHasErrors([
+            'amount' => 'O valor liberável agora é R$ 10,00; o restante depende do recebimento da venda.',
+        ]);
         $this->assertSame(0, (int) $commission->fresh()->paid_cents);
 
-        $this->pay($commission, '10.00')->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->pay($commission, '10.00', actor: $payer)->assertSessionHasNoErrors()->assertSessionHas('success');
 
         $fresh = $commission->fresh();
         $this->assertSame(1_000, (int) $fresh->paid_cents);
@@ -117,11 +121,15 @@ class CommissionIndexTest extends TestCase
         $this->assertSame(0, $this->releasable($fresh));
     }
 
-    public function test_payment_is_refused_when_nothing_was_received(): void
+    public function test_payment_without_advance_permission_is_refused_when_nothing_was_received(): void
     {
         $commission = $this->sale([10_000])->commission;
+        $payer = User::factory()->superAdmin()->create(['is_owner' => false]);
+        $this->grant($payer, [PermissionAction::View, PermissionAction::Create]);
 
-        $this->pay($commission, '1.00')->assertSessionHasErrors('amount');
+        $this->pay($commission, '1.00', actor: $payer)->assertSessionHasErrors([
+            'amount' => 'O valor liberável agora é R$ 0,00; o restante depende do recebimento da venda.',
+        ]);
         $this->assertFalse(CommercialCommissionPayment::query()->exists());
     }
 
@@ -207,7 +215,7 @@ class CommissionIndexTest extends TestCase
         $this->assertSame(500, (int) $extra->fresh()->amount_cents);
     }
 
-    public function test_paid_above_ceiling_is_flagged_without_reversal(): void
+    public function test_paid_above_ceiling_becomes_pending_refund_without_reversal(): void
     {
         $sale = $this->sale([10_000, 10_000]);
         $commission = $sale->commission;
@@ -223,23 +231,27 @@ class CommissionIndexTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $fresh = $commission->fresh(['sale.installments', 'seller', 'payments.payer']);
+        $fresh = $commission->fresh(['sale.installments', 'seller', 'payments.payer', 'refunds.entries']);
         $this->assertSame(1_000, (int) $fresh->amount_cents);
         $this->assertSame(2_000, (int) $fresh->paid_cents);
         $this->assertSame(CommercialCommission::STATUS_PAGA, $fresh->status);
         $this->assertSame(1, $fresh->payments()->count(), 'Nada é estornado automaticamente.');
 
+        // Regra nova: devolução pendente (pago − teto), não perda assumida.
         $payload = CommissionPayoutCalculator::present($fresh);
-        $this->assertTrue($payload['loss_assumed']);
-        $this->assertSame(1_000, $payload['loss_assumed_cents']);
+        $this->assertFalse($payload['loss_assumed']);
+        $this->assertSame(0, $payload['loss_assumed_cents']);
+        $this->assertSame(1_000, $payload['refund_pending_cents']);
         $this->assertSame(0, $payload['releasable_cents']);
 
         $this->actingAs($this->admin)
             ->get(route('admin.financeiro.comissoes.index'))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('summary.loss_assumed_count', 1)
-                ->where('summary.loss_assumed_cents', 1_000)
-                ->where('commissions.data.0.loss_assumed', true));
+                ->where('summary.loss_assumed_count', 0)
+                ->where('summary.refund_pending_cents', 1_000)
+                ->where('summary.refund_pending_count', 1)
+                ->where('commissions.data.0.refund_pending_cents', 1_000)
+                ->where('commissions.data.0.loss_assumed', false));
     }
 
     public function test_multiple_payments_derive_status(): void
@@ -471,15 +483,21 @@ class CommissionIndexTest extends TestCase
         $sale->recalculateStatus();
     }
 
-    private function pay(CommercialCommission $commission, string $amount, ?string $paidAt = null)
-    {
-        return $this->actingAs($this->admin)
+    private function pay(
+        CommercialCommission $commission,
+        string $amount,
+        ?string $paidAt = null,
+        ?User $actor = null,
+        bool $confirmAdvance = false,
+    ) {
+        return $this->actingAs($actor ?? $this->admin)
             ->from(route('admin.financeiro.comissoes.index'))
             ->post(route('admin.financeiro.comissoes.pagamentos.store', $commission), [
                 'amount' => $amount,
                 'paid_at' => $paidAt ?? now()->toDateString(),
                 'bank_account_id' => $this->account->id,
                 'notes' => 'PIX',
+                'confirm_advance' => $confirmAdvance,
             ]);
     }
 

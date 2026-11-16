@@ -98,6 +98,16 @@ class CommercialSale extends Model
         if ($this->status !== $newStatus) {
             $this->update(['status' => $newStatus]);
         }
+
+        // Recebimento mudou: devolução cobrada por cliente que não pagou é cancelada se o cliente pagou.
+        $hasChargedRefund = $this->commissions()
+            ->whereHas('refunds', fn ($q) => $q
+                ->where('origin', CommercialCommissionRefund::ORIGIN_CLIENT_DEFAULT)
+                ->where('status', CommercialCommissionRefund::STATUS_PENDING))
+            ->exists();
+        if ($hasChargedRefund) {
+            app(RefreshCommissionPayout::class)->forSale($this);
+        }
     }
 
     /**

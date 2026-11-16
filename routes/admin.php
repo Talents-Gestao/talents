@@ -428,6 +428,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::get('sessions/{session}/edit', [FeedbackSessionController::class, 'edit'])->name('sessions.edit');
             Route::patch('sessions/{session}', [FeedbackSessionController::class, 'update'])->name('sessions.update');
             Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
+            Route::post('templates/{template}/duplicar', [FeedbackTemplateController::class, 'duplicate'])->name('templates.duplicate');
             Route::resource('templates', FeedbackTemplateController::class)
                 ->except(['show'])
                 ->parameters(['templates' => 'template']);
@@ -637,6 +638,16 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::delete('comissoes/{commission}/pagamentos/{payment}', [FinanceCommissionController::class, 'destroyPayment'])
                 ->scopeBindings()
                 ->name('comissoes.pagamentos.destroy');
+            // Devoluções: cobrar e registrar = create; assumir como perda exige também «Pagar antes do recebimento».
+            Route::post('comissoes/{commission}/devolucoes', [FinanceCommissionController::class, 'chargeRefund'])
+                ->name('comissoes.devolucoes.store');
+            Route::post('comissoes/{commission}/devolucoes/{refund}/registros', [FinanceCommissionController::class, 'returnRefund'])
+                ->scopeBindings()
+                ->name('comissoes.devolucoes.registros.store');
+            Route::post('comissoes/{commission}/devolucoes/{refund}/perda', [FinanceCommissionController::class, 'assumeRefundLoss'])
+                ->scopeBindings()
+                ->middleware('admin.can:financeiro_comissoes_adiantamento,create')
+                ->name('comissoes.devolucoes.perda.store');
         });
 
         Route::middleware('admin.can:financeiro_contas_bancarias')->group(function () {

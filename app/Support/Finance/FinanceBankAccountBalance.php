@@ -6,6 +6,7 @@ namespace App\Support\Finance;
 
 use App\Enums\FinancePayableStatus;
 use App\Enums\FinanceReceivableStatus;
+use App\Models\CommercialCommissionRefundEntry;
 use App\Models\CommercialSaleInstallment;
 use App\Models\FinanceBankAccount;
 use App\Models\FinanceBankTransfer;
@@ -17,6 +18,7 @@ use App\Models\FinanceReceivable;
  * + recebimentos manuais pagos nesta conta
  * + parcelas de venda pagas nesta conta
  * + transferências recebidas
+ * + devoluções de comissão registradas nesta conta (não entram no fluxo de caixa)
  * − contas a pagar pagas nesta conta
  * − transferências enviadas.
  *
@@ -52,6 +54,11 @@ final class FinanceBankAccountBalance
             ->selectRaw('coalesce(sum(amount_cents), 0) as total')
             ->value('total');
 
+        $commissionRefunds = (int) CommercialCommissionRefundEntry::query()
+            ->where('bank_account_id', $id)
+            ->where('type', CommercialCommissionRefundEntry::TYPE_RETURNED)
+            ->sum('amount_cents');
+
         $transfersOut = (int) FinanceBankTransfer::query()
             ->where('from_bank_account_id', $id)
             ->selectRaw('coalesce(sum(amount_cents), 0) as total')
@@ -61,6 +68,7 @@ final class FinanceBankAccountBalance
             + $receivedManual
             + $receivedInstallments
             + $transfersIn
+            + $commissionRefunds
             - $paidOut
             - $transfersOut;
     }

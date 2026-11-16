@@ -68,8 +68,21 @@ class FeedbacksTest extends TestCase
             'Não existe rota no portal para criar modelo de feedback.',
         );
 
+        // Modelo sem nenhuma seção com perguntas é recusado.
         $this->actingAs($admin)
             ->post(route('client.feedbacks.templates.store'), ['title' => 'Modelo da empresa'])
+            ->assertSessionHasErrors(['sections' => 'O modelo precisa de pelo menos uma seção com perguntas.']);
+        $this->assertDatabaseMissing('feedback_templates', ['company_id' => $company->id]);
+
+        $this->actingAs($admin)
+            ->post(route('client.feedbacks.templates.store'), [
+                'title' => 'Modelo da empresa',
+                'sections' => [[
+                    'title' => 'Resultados',
+                    'questions' => [['body' => 'O que foi entregue?', 'question_type' => 'textarea']],
+                ]],
+            ])
+            ->assertSessionHasNoErrors()
             ->assertRedirect();
 
         $this->assertDatabaseHas('feedback_templates', ['company_id' => $company->id, 'title' => 'Modelo da empresa']);
