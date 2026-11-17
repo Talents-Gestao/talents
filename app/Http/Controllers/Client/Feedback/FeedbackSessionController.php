@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Client\Feedback;
 
 use App\Actions\Company\ResolveOrCreateCompanyEmployee;
+use App\Actions\Feedback\DeleteFeedbackSession;
 use App\Actions\Feedback\SendFeedbackSignatureInvites;
+use App\Enums\AdminPermissionModule;
 use App\Enums\FeedbackSessionStatus;
+use App\Enums\PermissionAction;
+use App\Enums\PermissionModule;
 use App\Http\Controllers\Concerns\ResolvesFeedbackRoutes;
 use App\Models\Company;
 use App\Models\FeedbackSession;
@@ -17,6 +21,7 @@ use App\Models\FeedbackTemplateSection;
 use App\Models\User;
 use App\Services\Feedback\FeedbackPdfService;
 use App\Support\Company\CompanyEmployeeDirectory;
+use App\Support\Feedback\FeedbackCompanyContext;
 use App\Support\Feedback\FeedbackVisibility;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,6 +46,7 @@ class FeedbackSessionController extends FeedbackCompanyController
             $request->user(),
         )
             ->with(['employee', 'leader', 'template'])
+            ->withCount('answers')
             ->orderByDesc('id')
             ->paginate(15)
             ->through(fn (FeedbackSession $session) => [
@@ -52,10 +58,12 @@ class FeedbackSessionController extends FeedbackCompanyController
                 'employee' => $session->collaboratorPayload(),
                 'leader' => $session->leader?->only(['id', 'name', 'email']),
                 'template' => $session->template?->only(['id', 'title']),
+                'answers_count' => (int) $session->answers_count,
             ]);
 
         return Inertia::render('Client/Feedbacks/Sessions/Index', [
             'sessions' => $sessions,
+            'canDelete' => $this->canDelete($request),
         ]);
     }
 
@@ -85,6 +93,7 @@ class FeedbackSessionController extends FeedbackCompanyController
                 'nullable',
                 'integer',
                 Rule::exists('feedback_templates', 'id')
+                    ->whereNull('deleted_at')
                     ->where('is_active', true)
                     ->where(fn ($q) => $q->whereNull('company_id')->orWhere('company_id', $company->id)),
             ],
@@ -98,7 +107,7 @@ class FeedbackSessionController extends FeedbackCompanyController
             'next_alignment_at' => ['nullable', 'date'],
             'title' => ['nullable', 'string', 'max:255'],
         ], [
-            'feedback_template_id.exists' => 'Modelo indisponível para esta empresa (inexistente, de outra empresa ou inativo). Escolha um modelo da lista.',
+            'feedback_template_id.exists' => 'Modelo indisponível para esta empresa (inexistente, excluído, de outra empresa ou inativo). Escolha um modelo da lista.',
             'leader_user_id.required' => 'Selecione o líder responsável.',
             'leader_user_id.exists' => 'O líder precisa ser um usuário ativo desta empresa.',
         ], [
@@ -165,6 +174,7 @@ class FeedbackSessionController extends FeedbackCompanyController
         return Inertia::render('Client/Feedbacks/Sessions/Show', [
             'session' => $this->sessionPayload($session, $request->user()),
             'canExportPdf' => FeedbackVisibility::actsAsCompanyAdmin($request->user()),
+            'canDelete' => $this->canDelete($request),
         ]);
     }
 
@@ -240,6 +250,41 @@ class FeedbackSessionController extends FeedbackCompanyController
     }
 
     /**
+     * Exclui o feedback e todas as respostas. Só quem administra a empresa (no admin, com «excluir» em Feedbacks);
+     * exige confirmação explícita, também em requisição direta.
+     */
+    public function destroy(Request $request, FeedbackSession $session, DeleteFeedbackSession $delete): RedirectResponse
+    {
+        $company = $this->company($request);
+        $this->authorizeSession($company, $session);
+        abort_unless($this->canDelete($request), 403, 'Sem permissão para excluir feedbacks.');
+
+        $request->validate(
+            ['confirmed' => ['accepted']],
+            ['confirmed.accepted' => 'Confirme que o feedback e todas as respostas serão excluídos.'],
+        );
+
+        $delete->execute($session, $request->user());
+
+        return $this->feedbackRedirect('sessions.index', [], 'Feedback excluído.');
+    }
+
+    /**
+     * Excluir feedback: administrador da empresa no portal (com a permissão de excluir do módulo); no admin da
+     * Talents, a matriz «feedbacks» com «excluir». Líder comum (company_user) não exclui.
+     */
+    private function canDelete(Request $request): bool
+    {
+        $user = $request->user();
+
+        if (app(FeedbackCompanyContext::class)->isAdminContext($request)) {
+            return $user->canAccessAdmin(AdminPermissionModule::Feedbacks, PermissionAction::Delete);
+        }
+
+        return $user->isCompanyAdmin() && $user->canAccess(PermissionModule::Feedbacks, PermissionAction::Delete);
+    }
+
+    /**
      * @param  array<int|string, mixed>  $answers
      */
     private function syncAnswers(FeedbackSession $session, array $answers, User $user): void
@@ -272,7 +317,7 @@ class FeedbackSessionController extends FeedbackCompanyController
                 FeedbackSessionAnswer::query()
                     ->where('feedback_session_id', $session->id)
                     ->where('feedback_template_question_id', $questionId)
-                    ->delete();
+                    ->forceDelete(); // resposta apagada na edição; a exclusão lógica é só para excluir o feedback
 
                 continue;
             }
@@ -429,6 +474,7 @@ class FeedbackSessionController extends FeedbackCompanyController
             'leader' => $session->leader?->only(['id', 'name', 'email']),
             'template' => $session->template,
             'answers' => $answers,
+            'answers_count' => $session->answers->count(),
             'section_extras' => $sectionExtras,
             'signatures' => $session->signatures->map(fn ($signature) => [
                 'id' => $signature->id,

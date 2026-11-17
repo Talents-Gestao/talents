@@ -8,7 +8,10 @@ defineProps({
     session: { type: Object, required: true },
     showEmployee: { type: Boolean, default: true },
     showCompany: { type: Boolean, default: false },
+    canDelete: { type: Boolean, default: false },
 });
+
+defineEmits(['delete']);
 </script>
 
 <template>
@@ -57,6 +60,14 @@ defineProps({
             >
                 Continuar
             </Link>
+            <button
+                v-if="canDelete"
+                type="button"
+                class="ml-auto text-sm font-medium text-rose-700 hover:underline"
+                @click="$emit('delete')"
+            >
+                Excluir
+            </button>
         </div>
     </article>
 </template>

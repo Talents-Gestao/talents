@@ -427,8 +427,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::get('sessions/{session}', [FeedbackSessionController::class, 'show'])->name('sessions.show');
             Route::get('sessions/{session}/edit', [FeedbackSessionController::class, 'edit'])->name('sessions.edit');
             Route::patch('sessions/{session}', [FeedbackSessionController::class, 'update'])->name('sessions.update');
+            Route::delete('sessions/{session}', [FeedbackSessionController::class, 'destroy'])->name('sessions.destroy');
             Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
             Route::post('templates/{template}/duplicar', [FeedbackTemplateController::class, 'duplicate'])->name('templates.duplicate');
+            Route::get('templates/{template}/exclusao', [FeedbackTemplateController::class, 'deletionImpact'])->name('templates.deletion');
             Route::resource('templates', FeedbackTemplateController::class)
                 ->except(['show'])
                 ->parameters(['templates' => 'template']);

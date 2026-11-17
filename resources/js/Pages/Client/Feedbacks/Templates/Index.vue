@@ -1,8 +1,8 @@
 <script setup>
+import FeedbackTemplateDeleteModal from '@/Components/Feedback/FeedbackTemplateDeleteModal.vue';
 import FeedbacksLayout from '@/Components/Feedback/FeedbacksLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { confirmDialog } from '@/composables/useConfirmDialog';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
@@ -24,12 +24,8 @@ function duplicateTemplate(template) {
 const ownTemplates = computed(() => props.templates.filter((template) => template.is_own));
 const talentsTemplates = computed(() => props.templates.filter((template) => !template.is_own));
 
-async function destroyTemplate(template) {
-    if (!(await confirmDialog(`Excluir o modelo "${template.title}"?`))) {
-        return;
-    }
-    router.delete(feedbackRoute('templates.destroy', template.id), { preserveScroll: true });
-}
+// Modelo usado também pode ser excluído: o alerta mostra quantos feedbacks saem junto (calculado no servidor).
+const deletingTemplate = ref(null);
 
 function usageLabel(count) {
     if (!count) return 'Ainda não usado';
@@ -110,10 +106,10 @@ function usageLabel(count) {
                             {{ duplicatingId === template.id ? 'Duplicando…' : 'Duplicar' }}
                         </button>
                         <button
-                            v-if="permissions.delete && !template.sessions_count"
+                            v-if="permissions.delete"
                             type="button"
                             class="font-medium text-rose-700 hover:underline"
-                            @click="destroyTemplate(template)"
+                            @click="deletingTemplate = template"
                         >
                             Excluir
                         </button>
@@ -165,5 +161,7 @@ function usageLabel(count) {
                 </li>
             </ul>
         </section>
+
+        <FeedbackTemplateDeleteModal :template="deletingTemplate" @close="deletingTemplate = null" />
     </FeedbacksLayout>
 </template>
