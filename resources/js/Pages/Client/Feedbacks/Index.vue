@@ -1,5 +1,6 @@
 <script setup>
 import FeedbackCompanyPicker from '@/Components/Feedback/FeedbackCompanyPicker.vue';
+import FeedbackEmptyState from '@/Components/Feedback/FeedbackEmptyState.vue';
 import FeedbackSessionCard from '@/Components/Feedback/FeedbackSessionCard.vue';
 import NineBoxMatrix from '@/Components/Feedback/NineBoxMatrix.vue';
 import ApexChart from '@/Components/Charts/ApexChart.vue';
@@ -12,6 +13,8 @@ import {
     ChartBarIcon,
     ChatBubbleLeftRightIcon,
     CheckCircleIcon,
+    DocumentDuplicateIcon,
+    PlusIcon,
 } from '@heroicons/vue/24/outline';
 import { computed } from 'vue';
 
@@ -85,14 +88,36 @@ const perceptionSeries = computed(() => {
 
     <FeedbacksLayout>
         <template #header>
-            <div>
-                <h2 class="text-xl font-semibold leading-tight text-talents-900">Feedbacks internos</h2>
-                <p class="mt-1 text-sm text-slate-600">
-                    Alinhamentos estruturados entre líder e colaborador, com assinatura digital.
-                </p>
-                <p v-if="activeCompany" class="mt-1 text-xs font-medium text-talents-700">
-                    Empresa: {{ activeCompany.name }}
-                </p>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                    <h2 class="text-xl font-semibold leading-tight text-talents-900">Feedbacks internos</h2>
+                    <p class="mt-1 text-pretty text-sm text-slate-600">
+                        Alinhamentos estruturados entre líder e colaborador, com assinatura digital.
+                    </p>
+                    <p
+                        v-if="activeCompany"
+                        class="mt-2 inline-flex items-center rounded-full bg-talents-50 px-2.5 py-0.5 text-xs font-medium text-talents-800 ring-1 ring-inset ring-talents-200"
+                    >
+                        Empresa: {{ activeCompany.name }}
+                    </p>
+                </div>
+                <div v-if="!needsCompanySelection" class="flex shrink-0 flex-wrap items-center gap-2">
+                    <Link
+                        v-if="isCompanyAdmin"
+                        :href="feedbackRoute('templates.index')"
+                        class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50 focus-visible:ring-offset-2"
+                    >
+                        <DocumentDuplicateIcon class="h-4 w-4" aria-hidden="true" />
+                        Modelos
+                    </Link>
+                    <Link
+                        :href="feedbackRoute('sessions.create')"
+                        class="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-talents-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2"
+                    >
+                        <PlusIcon class="h-4 w-4" aria-hidden="true" />
+                        Novo feedback
+                    </Link>
+                </div>
             </div>
         </template>
 
@@ -104,35 +129,15 @@ const perceptionSeries = computed(() => {
 
         <template v-else>
             <div
-                class="rounded-2xl border border-talents-200/80 bg-gradient-to-br from-talents-50/90 via-white to-white p-6 shadow-sm sm:p-8"
+                class="rounded-2xl border border-talents-200/80 bg-gradient-to-br from-talents-50/90 via-white to-white px-6 py-5 shadow-sm"
             >
-                <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                    <div class="max-w-xl">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-talents-600">Contrato de expectativas</p>
-                        <h3 class="mt-1 font-serif text-2xl font-bold tracking-tight text-talents-900 sm:text-3xl">
-                            Desenvolvimento com conversa estruturada
-                        </h3>
-                        <p class="mt-2 text-sm leading-relaxed text-slate-600">
-                            Registre conquistas, alinhe expectativas e acompanhe o termômetro da equipe em um só lugar.
-                        </p>
-                    </div>
-                    <div class="flex flex-wrap gap-2 lg:justify-end">
-                        <Link
-                            v-if="isCompanyAdmin"
-                            :href="feedbackRoute('templates.index')"
-                            class="inline-flex items-center gap-2 rounded-xl border border-talents-300 bg-white px-4 py-2.5 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-50"
-                        >
-                            Modelos
-                        </Link>
-                        <Link
-                            :href="feedbackRoute('sessions.create')"
-                            class="inline-flex items-center gap-2 rounded-xl bg-talents-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800"
-                        >
-                            <ChatBubbleLeftRightIcon class="h-4 w-4" />
-                            Novo feedback
-                        </Link>
-                    </div>
-                </div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-talents-600">Contrato de expectativas</p>
+                <h3 class="mt-1 font-serif text-xl font-bold tracking-tight text-talents-900 sm:text-2xl">
+                    Desenvolvimento com conversa estruturada
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
+                    Registre conquistas, alinhe expectativas e acompanhe o termômetro da equipe em um só lugar.
+                </p>
             </div>
 
             <FeedbackCompanyPicker
@@ -218,8 +223,11 @@ const perceptionSeries = computed(() => {
             <div class="mt-10">
                 <SectionHeader title="Sessões recentes" subtitle="Últimos alinhamentos registrados">
                     <template #action>
-                        <Link :href="feedbackRoute('sessions.index')" class="text-sm font-medium text-talents-700 hover:underline">
-                            Ver todas
+                        <Link
+                            :href="feedbackRoute('sessions.index')"
+                            class="rounded-md text-sm font-semibold text-talents-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50"
+                        >
+                            Ver todas as sessões
                         </Link>
                     </template>
                 </SectionHeader>
@@ -227,20 +235,20 @@ const perceptionSeries = computed(() => {
                 <div v-if="recentSessions.length" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     <FeedbackSessionCard v-for="s in recentSessions" :key="s.id" :session="s" />
                 </div>
-                <div
+                <FeedbackEmptyState
                     v-else
-                    class="rounded-2xl border border-dashed border-talents-200 bg-talents-50/40 px-6 py-12 text-center"
+                    :icon="ChatBubbleLeftRightIcon"
+                    title="Nenhum feedback registrado ainda"
+                    description="Informe o nome do colaborador e abra o primeiro alinhamento."
                 >
-                    <ChatBubbleLeftRightIcon class="mx-auto h-10 w-10 text-talents-300" />
-                    <p class="mt-3 text-sm font-medium text-talents-900">Nenhum feedback registrado ainda</p>
-                    <p class="mt-1 text-sm text-slate-600">Informe o nome do colaborador e abra o primeiro alinhamento.</p>
                     <Link
                         :href="feedbackRoute('sessions.create')"
-                        class="mt-4 inline-flex rounded-xl bg-talents-700 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-800"
+                        class="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-talents-700 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2"
                     >
+                        <PlusIcon class="h-4 w-4" aria-hidden="true" />
                         Criar primeiro feedback
                     </Link>
-                </div>
+                </FeedbackEmptyState>
             </div>
         </template>
     </FeedbacksLayout>

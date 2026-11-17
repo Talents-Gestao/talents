@@ -11,6 +11,7 @@ use App\Enums\AdminPermissionModule;
 use App\Enums\FeedbackSessionStatus;
 use App\Enums\PermissionAction;
 use App\Enums\PermissionModule;
+use App\Enums\WorkspaceType;
 use App\Http\Controllers\Concerns\ResolvesFeedbackRoutes;
 use App\Models\Company;
 use App\Models\FeedbackSession;
@@ -72,11 +73,7 @@ class FeedbackSessionController extends FeedbackCompanyController
         $company = $this->company($request);
 
         return Inertia::render('Client/Feedbacks/Sessions/Create', [
-            'leaders' => User::query()
-                ->where('company_id', $company->id)
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get(['id', 'name', 'email']),
+            'leaders' => $this->leaderOptions($company),
             'templates' => $this->availableTemplates($company),
             'employees' => app(CompanyEmployeeDirectory::class)->suggestionsFor($company),
         ]);
@@ -97,11 +94,15 @@ class FeedbackSessionController extends FeedbackCompanyController
                     ->where('is_active', true)
                     ->where(fn ($q) => $q->whereNull('company_id')->orWhere('company_id', $company->id)),
             ],
-            // Líder: usuário ativo da mesma empresa do feedback (isolamento entre empresas).
+            // Líder: acesso ativo à empresa do feedback (mesma fonte da lista de Acessos; isolamento entre empresas).
             'leader_user_id' => [
                 'required',
                 'integer',
-                Rule::exists('users', 'id')->where('company_id', $company->id)->where('is_active', true),
+                function (string $attribute, mixed $value, \Closure $fail) use ($company): void {
+                    if (! User::query()->withActiveCompanyAccess($company->id)->whereKey((int) $value)->exists()) {
+                        $fail('O líder precisa ter acesso ativo ao sistema nesta empresa.');
+                    }
+                },
             ],
             'scheduled_at' => ['required', 'date'],
             'next_alignment_at' => ['nullable', 'date'],
@@ -109,7 +110,6 @@ class FeedbackSessionController extends FeedbackCompanyController
         ], [
             'feedback_template_id.exists' => 'Modelo indisponível para esta empresa (inexistente, excluído, de outra empresa ou inativo). Escolha um modelo da lista.',
             'leader_user_id.required' => 'Selecione o líder responsável.',
-            'leader_user_id.exists' => 'O líder precisa ser um usuário ativo desta empresa.',
         ], [
             'employee_name' => 'nome do colaborador',
             'employee_email' => 'e-mail do colaborador',
@@ -282,6 +282,40 @@ class FeedbackSessionController extends FeedbackCompanyController
         }
 
         return $user->isCompanyAdmin() && $user->canAccess(PermissionModule::Feedbacks, PermissionAction::Delete);
+    }
+
+    /**
+     * Opções de «Líder responsável»: os acessos ativos da empresa do feedback (User::withActiveCompanyAccess).
+     * Rótulo «Nome (papel)»; com nome repetido, acrescenta o e-mail para distinguir.
+     *
+     * @return Collection<int, array{id: int, name: string, email: string, label: string}>
+     */
+    private function leaderOptions(Company $company): Collection
+    {
+        $users = User::query()
+            ->withActiveCompanyAccess($company->id)
+            ->with(['workspaces' => fn ($q) => $q
+                ->where('workspace_type', WorkspaceType::Company)
+                ->where('company_id', $company->id)])
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        $nameCounts = $users->countBy(fn (User $u) => mb_strtolower(trim((string) $u->name)));
+
+        return $users->map(function (User $u) use ($nameCounts): array {
+            $role = $u->workspaces->first()?->role?->label();
+            $details = array_filter([
+                $role,
+                $nameCounts[mb_strtolower(trim((string) $u->name))] > 1 ? $u->email : null,
+            ]);
+
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'label' => $details ? $u->name.' ('.implode(' · ', $details).')' : $u->name,
+            ];
+        })->values();
     }
 
     /**

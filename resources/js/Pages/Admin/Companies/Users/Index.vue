@@ -25,7 +25,7 @@ const roleLabel = (role) => {
 };
 
 const remove = async (userId) => {
-    if (await confirmDialog('Remover este usuário?')) {
+    if (await confirmDialog('Remover este acesso? A pessoa deixa de entrar no sistema por esta empresa.')) {
         router.delete(route('admin.companies.users.destroy', [props.company.id, userId]));
     }
 };
@@ -51,7 +51,7 @@ const resendInvitation = async (user) => {
 </script>
 
 <template>
-    <Head :title="'Usuários — ' + company.name" />
+    <Head :title="'Acessos — ' + company.name" />
 
     <AdminLayout>
         <template #header>
@@ -60,11 +60,12 @@ const resendInvitation = async (user) => {
                     <Link :href="route('admin.companies.show', company.id)" class="text-sm font-medium text-talents-700 hover:underline">
                         ← Empresa
                     </Link>
-                    <h2 class="mt-1 text-xl font-semibold leading-tight text-gray-900">Usuários</h2>
+                    <h2 class="mt-1 text-xl font-semibold leading-tight text-gray-900">Acessos</h2>
                     <p class="text-sm text-gray-600">{{ company.name }}</p>
+                    <p class="mt-1 text-sm text-gray-500">Pessoas que entram no sistema. Para quem recebe feedback, use a aba Colaboradores.</p>
                 </div>
                 <Link :href="route('admin.companies.users.create', company.id)">
-                    <PrimaryButton>Novo usuário</PrimaryButton>
+                    <PrimaryButton>Novo acesso</PrimaryButton>
                 </Link>
             </div>
         </template>
@@ -119,7 +120,7 @@ const resendInvitation = async (user) => {
                                 </button>
                             </td>
                         </tr>
-                        <TableEmptyRow v-if="!users.length" :colspan="5" message="Nenhum usuário encontrado." />
+                        <TableEmptyRow v-if="!users.length" :colspan="5" message="Nenhum acesso cadastrado." />
                     </tbody>
                 </table>
             </div>

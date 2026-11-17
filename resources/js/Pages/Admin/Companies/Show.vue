@@ -131,7 +131,7 @@ const configShortcuts = [
 const operationalDestination = {
     users: {
         section: 'usuarios',
-        hint: 'Lista, convite e ficha de cada usuário',
+        hint: 'Lista, convite e ficha de cada acesso',
     },
     mapa: {
         section: 'mapa_proposito',
@@ -412,7 +412,7 @@ const removeRegulation = async (id) => {
                             class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-50"
                         >
                             <UserGroupIcon class="h-4 w-4" aria-hidden="true" />
-                            Gerenciar usuários
+                            Gerenciar acessos
                         </Link>
                     </div>
                 </div>
@@ -623,6 +623,7 @@ const removeRegulation = async (id) => {
                     title="Colaboradores"
                     description="Ficha dos colaboradores desta empresa."
                 >
+                    <p class="mb-3 text-xs text-slate-500">Colaboradores não entram no sistema. Para dar acesso, use Gerenciar acessos.</p>
                     <template #icon>
                         <UserGroupIcon class="h-6 w-6" aria-hidden="true" />
                     </template>

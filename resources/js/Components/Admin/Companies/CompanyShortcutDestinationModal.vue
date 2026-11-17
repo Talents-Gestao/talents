@@ -31,7 +31,7 @@ const titles = {
     mapeamentos: 'Mapeamentos disponíveis',
     pesquisas: 'Pesquisas e parecer',
     mapa_proposito: 'Mapa de Propósito',
-    usuarios: 'Usuários',
+    usuarios: 'Acessos',
 };
 
 const title = computed(() => titles[props.section] || 'Atalho');
@@ -167,14 +167,14 @@ const destinations = computed(() => {
     if (props.section === 'usuarios' && canAdmin('companies')) {
         items.push({
             key: 'manage',
-            label: 'Gerenciar usuários',
+            label: 'Gerenciar acessos',
             hint: 'Lista, convite e permissões',
             href: route('admin.companies.users.index', companyId),
         });
         if (canAdmin('companies', 'create')) {
             items.push({
                 key: 'create',
-                label: 'Novo usuário',
+                label: 'Novo acesso',
                 hint: 'Convidar alguém para esta empresa',
                 href: route('admin.companies.users.create', companyId),
             });
@@ -237,7 +237,7 @@ const surveysWithoutPanel = computed(() => {
                 Nenhuma pesquisa cadastrada para esta empresa.
             </p>
             <p v-else-if="section === 'usuarios' && !(company.users || []).length" class="mt-4 text-sm text-slate-500">
-                Nenhum usuário vinculado.
+                Nenhum acesso cadastrado.
             </p>
 
             <ul v-if="surveysWithoutPanel.length" class="mt-3 space-y-2">

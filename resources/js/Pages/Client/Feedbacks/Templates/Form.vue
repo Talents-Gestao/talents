@@ -1,4 +1,6 @@
 <script setup>
+import FeedbackFlash from '@/Components/Feedback/FeedbackFlash.vue';
+import FeedbackPanel from '@/Components/Feedback/FeedbackPanel.vue';
 import FeedbacksLayout from '@/Components/Feedback/FeedbacksLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import InputError from '@/Components/InputError.vue';
@@ -13,8 +15,8 @@ import {
     templateFormPayload,
     templateLockMessage,
 } from '@/utils/feedbackTemplateForm';
-import { EyeIcon, LockClosedIcon } from '@heroicons/vue/24/outline';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { DocumentDuplicateIcon, EyeIcon, LockClosedIcon, PlusIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -134,21 +136,20 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
 
     <FeedbacksLayout>
         <template #header>
-            <FormPageHeader :back-href="feedbackRoute('templates.index')" back-label="Modelos" :title="pageTitle" />
+            <FormPageHeader
+                :back-href="feedbackRoute('templates.index')"
+                back-label="Modelos"
+                :title="pageTitle"
+                subtitle="Seções e perguntas que o líder preenche em cada feedback"
+            />
         </template>
 
-        <form class="max-w-3xl space-y-5" @submit.prevent="submit">
-            <div
-                v-if="$page.props.flash?.success"
-                class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900"
-                role="status"
-            >
-                {{ $page.props.flash.success }}
-            </div>
+        <form class="mx-auto max-w-3xl space-y-6" @submit.prevent="submit">
+            <FeedbackFlash />
 
             <div
                 v-if="hasErrors"
-                class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
+                class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
                 role="alert"
                 data-template-errors
             >
@@ -158,7 +159,7 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
 
             <div
                 v-if="readOnly"
-                class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+                class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
                 role="status"
                 data-template-readonly
             >
@@ -168,7 +169,7 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
 
             <div
                 v-else-if="structureLocked"
-                class="flex flex-wrap items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                class="flex flex-wrap items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
                 role="status"
                 data-template-locked
             >
@@ -177,18 +178,20 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
                 <button
                     v-if="permissions.create"
                     type="button"
-                    class="shrink-0 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-60"
+                    class="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-900 hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-60"
                     :disabled="duplicating"
                     @click="duplicateTemplate"
                 >
+                    <DocumentDuplicateIcon class="h-4 w-4" aria-hidden="true" />
                     {{ duplicating ? 'Duplicando…' : 'Duplicar modelo' }}
                 </button>
             </div>
 
-            <fieldset :disabled="readOnly" class="space-y-5">
+            <fieldset :disabled="readOnly" class="space-y-6">
                 <legend class="sr-only">Modelo de feedback</legend>
 
-                <div class="surface-card space-y-4 p-6">
+                <FeedbackPanel title="Dados do modelo" description="Nome e descrição que aparecem na escolha do modelo.">
+                    <div class="space-y-5">
                     <div>
                         <InputLabel for="template_title" value="Nome do modelo" />
                         <TextInput id="template_title" v-model="form.title" :class="['mt-1 block w-full', disabledClass]" required />
@@ -199,35 +202,46 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
                         <AutoGrowTextarea id="template_description" v-model="form.description" :min-rows="8" :class="fieldClass" />
                         <InputError class="mt-2" :message="form.errors.description" />
                     </div>
-                    <label class="flex items-center gap-2 text-sm text-slate-700">
+                    <label class="flex min-h-[36px] items-center gap-2 text-sm text-slate-700">
                         <input v-model="form.is_active" type="checkbox" :class="checkboxClass" />
                         Ativo (aparece em «Novo feedback»)
                     </label>
-                </div>
+                    </div>
+                </FeedbackPanel>
 
                 <fieldset :disabled="!structureEditable" class="space-y-4" :class="{ 'opacity-90': !structureEditable }">
                     <legend class="sr-only">Seções e perguntas</legend>
+                    <div>
+                        <h3 class="text-base font-semibold text-slate-900">Seções e perguntas</h3>
+                        <p class="mt-0.5 text-sm text-slate-600">Cada seção vira um bloco no preenchimento do feedback, na ordem abaixo.</p>
+                    </div>
 
                     <div
                         v-for="(section, sectionIndex) in form.sections"
                         :key="sectionIndex"
-                        class="surface-card space-y-4 p-6"
+                        class="space-y-5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6"
                         data-template-section
                     >
-                        <div class="flex items-start justify-between gap-3">
-                            <h3 class="text-sm font-semibold text-slate-900">Seção {{ sectionIndex + 1 }}</h3>
+                        <div class="-mx-5 -mt-5 flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-3 sm:-mx-6 sm:-mt-6 sm:px-6">
+                            <h4 class="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-900">
+                                <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-talents-100 text-xs font-bold text-talents-800" aria-hidden="true">
+                                    {{ sectionIndex + 1 }}
+                                </span>
+                                <span class="truncate">Seção {{ sectionIndex + 1 }}<template v-if="section.title">: {{ section.title }}</template></span>
+                            </h4>
                             <button
                                 v-if="structureEditable && form.sections.length > 1"
                                 type="button"
-                                class="text-xs font-medium text-rose-700 hover:underline"
+                                class="inline-flex min-h-[32px] shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
                                 @click="removeSection(sectionIndex)"
                             >
+                                <TrashIcon class="h-4 w-4" aria-hidden="true" />
                                 Remover seção
                             </button>
                         </div>
                         <div class="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <label :for="`section_type_${sectionIndex}`" class="text-xs font-medium text-slate-600">Conteúdo</label>
+                                <label :for="`section_type_${sectionIndex}`" class="block text-sm font-medium text-gray-700">Conteúdo</label>
                                 <select
                                     :id="`section_type_${sectionIndex}`"
                                     v-model="section.section_type"
@@ -239,7 +253,7 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
                                 </select>
                             </div>
                             <div>
-                                <label :for="`section_audience_${sectionIndex}`" class="text-xs font-medium text-slate-600">Quem responde</label>
+                                <label :for="`section_audience_${sectionIndex}`" class="block text-sm font-medium text-gray-700">Quem responde</label>
                                 <select :id="`section_audience_${sectionIndex}`" v-model="section.audience" :class="fieldClass">
                                     <option v-for="audience in audiences" :key="audience.value" :value="audience.value">{{ audience.label }}</option>
                                 </select>
@@ -269,16 +283,17 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
                             <div
                                 v-for="(question, questionIndex) in section.questions"
                                 :key="questionIndex"
-                                class="space-y-3 rounded-lg border border-slate-200 bg-slate-50/60 p-4"
+                                class="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4"
                             >
-                                <div class="flex items-start justify-between gap-3">
+                                <div class="flex items-center justify-between gap-3">
                                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pergunta {{ questionIndex + 1 }}</p>
                                     <button
                                         v-if="structureEditable && section.questions.length > 1"
                                         type="button"
-                                        class="text-xs font-medium text-rose-700 hover:underline"
+                                        class="inline-flex min-h-[32px] items-center gap-1 rounded-lg px-2 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
                                         @click="removeQuestion(section, questionIndex)"
                                     >
+                                        <TrashIcon class="h-4 w-4" aria-hidden="true" />
                                         Remover
                                     </button>
                                 </div>
@@ -296,15 +311,15 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
                                         :message="form.errors[`sections.${sectionIndex}.questions.${questionIndex}.body`]"
                                     />
                                 </div>
-                                <div class="flex flex-wrap items-center gap-4">
-                                    <div>
+                                <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
+                                    <div class="w-full sm:w-72">
                                         <label :for="`question_type_${sectionIndex}_${questionIndex}`" class="text-xs font-medium text-slate-600">
                                             Tipo de resposta
                                         </label>
                                         <select
                                             :id="`question_type_${sectionIndex}_${questionIndex}`"
                                             v-model="question.question_type"
-                                            :class="[fieldClass, 'w-72']"
+                                            :class="fieldClass"
                                             @change="onTypeChange(question)"
                                         >
                                             <option v-for="type in questionTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
@@ -314,7 +329,7 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
                                             :message="form.errors[`sections.${sectionIndex}.questions.${questionIndex}.question_type`]"
                                         />
                                     </div>
-                                    <label class="mt-5 flex items-center gap-2 text-sm text-slate-700">
+                                    <label class="flex min-h-[40px] items-center gap-2 text-sm text-slate-700">
                                         <input v-model="question.is_required" type="checkbox" :class="checkboxClass" />
                                         Obrigatória
                                     </label>
@@ -361,9 +376,10 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
                             <button
                                 v-if="structureEditable"
                                 type="button"
-                                class="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                class="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50"
                                 @click="addQuestion(section)"
                             >
+                                <PlusIcon class="h-4 w-4" aria-hidden="true" />
                                 Adicionar pergunta
                             </button>
                         </template>
@@ -372,15 +388,26 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
                     <button
                         v-if="structureEditable"
                         type="button"
-                        class="rounded-md border border-talents-300 px-3 py-2 text-sm font-medium text-talents-800 hover:bg-talents-50"
+                        class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-talents-200 bg-talents-50/30 px-4 text-sm font-semibold text-talents-800 hover:border-talents-300 hover:bg-talents-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50"
                         @click="addSection"
                     >
+                        <PlusIcon class="h-4 w-4" aria-hidden="true" />
                         Adicionar seção
                     </button>
                 </fieldset>
             </fieldset>
 
-            <PrimaryButton v-if="!readOnly" :disabled="form.processing">{{ form.processing ? 'Salvando…' : 'Salvar modelo' }}</PrimaryButton>
+            <div
+                class="sticky bottom-4 z-10 flex flex-col-reverse gap-3 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-end"
+            >
+                <Link
+                    :href="feedbackRoute('templates.index')"
+                    class="inline-flex min-h-[40px] items-center justify-center rounded-xl px-4 text-sm font-semibold text-slate-600 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50"
+                >
+                    {{ readOnly ? 'Voltar aos modelos' : 'Cancelar' }}
+                </Link>
+                <PrimaryButton v-if="!readOnly" :disabled="form.processing">{{ form.processing ? 'Salvando…' : 'Salvar modelo' }}</PrimaryButton>
+            </div>
         </form>
     </FeedbacksLayout>
 </template>

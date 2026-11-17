@@ -1,17 +1,26 @@
 <script setup>
+import FeedbackActionsMenu from '@/Components/Feedback/FeedbackActionsMenu.vue';
+import FeedbackFlash from '@/Components/Feedback/FeedbackFlash.vue';
+import FeedbackPanel from '@/Components/Feedback/FeedbackPanel.vue';
 import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccordion.vue';
 import FeedbackSessionDeleteModal from '@/Components/Feedback/FeedbackSessionDeleteModal.vue';
 import FeedbackSessionSignaturesPanel from '@/Components/Feedback/FeedbackSessionSignaturesPanel.vue';
 import FeedbackStatusBadge from '@/Components/Feedback/FeedbackStatusBadge.vue';
 import FeedbacksLayout from '@/Components/Feedback/FeedbacksLayout.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { feedbackSectionIcon } from '@/utils/feedbackSectionIcons';
 import { formatDateTime } from '@/utils/dateOnly';
-import { Head, Link, usePage } from '@inertiajs/vue3';
-import { CalendarDaysIcon, UserIcon } from '@heroicons/vue/24/outline';
+import { Head, Link } from '@inertiajs/vue3';
+import {
+    ArrowDownTrayIcon,
+    ArrowPathIcon,
+    CalendarDaysIcon,
+    PencilSquareIcon,
+    TrashIcon,
+    UserCircleIcon,
+    UserIcon,
+} from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -22,8 +31,15 @@ const props = defineProps({
 
 const deletingSession = ref(null);
 
-const page = usePage();
-const flashSuccess = computed(() => page.props.flash?.success);
+// Ações secundárias no menu; excluir fica separado, por último.
+const headerMenuItems = computed(() => [
+    ...(props.canExportPdf
+        ? [{ key: 'pdf', label: 'Exportar PDF', icon: ArrowDownTrayIcon, href: feedbackRoute('sessions.pdf', props.session.id), external: true }]
+        : []),
+    ...(props.canDelete
+        ? [{ key: 'delete', label: 'Excluir feedback', icon: TrashIcon, danger: true, onSelect: () => (deletingSession.value = props.session) }]
+        : []),
+]);
 
 const ccmLabels = {
     start: 'Começar',
@@ -125,66 +141,60 @@ const sectionMeta = (section) => {
                 :subtitle="session.employee?.name"
             >
                 <template #trailing>
-                    <div class="flex flex-wrap gap-2">
-                        <a v-if="canExportPdf" :href="feedbackRoute('sessions.pdf', session.id)">
-                            <SecondaryButton type="button">Exportar PDF</SecondaryButton>
-                        </a>
-                        <Link
-                            v-if="session.status !== 'completed' && session.status !== 'cancelled'"
-                            :href="feedbackRoute('sessions.edit', session.id)"
-                        >
-                            <PrimaryButton type="button">Editar</PrimaryButton>
-                        </Link>
-                        <button
-                            v-if="canDelete"
-                            type="button"
-                            class="inline-flex items-center rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50"
-                            @click="deletingSession = session"
-                        >
-                            Excluir
-                        </button>
-                    </div>
+                    <Link
+                        v-if="session.status !== 'completed' && session.status !== 'cancelled'"
+                        :href="feedbackRoute('sessions.edit', session.id)"
+                        class="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-talents-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2"
+                    >
+                        <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
+                        Editar
+                    </Link>
+                    <FeedbackActionsMenu v-if="headerMenuItems.length" :items="headerMenuItems" show-label label="Mais ações" />
                 </template>
             </FormPageHeader>
         </template>
 
-        <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Colaborador</p>
-                <p class="mt-2 flex items-center gap-2 font-medium text-talents-900">
-                    <UserIcon class="h-4 w-4 text-talents-600" />
-                    {{ session.employee?.name ?? '—' }}
-                </p>
-            </div>
-            <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Líder</p>
-                <p class="mt-2 font-medium text-slate-800">{{ session.leader?.name ?? '—' }}</p>
-            </div>
-            <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Alinhamento</p>
-                <p class="mt-2 flex items-center gap-2 text-sm text-slate-800">
-                    <CalendarDaysIcon class="h-4 w-4 text-talents-600" />
-                    {{ formatDate(session.scheduled_at) }}
-                </p>
-            </div>
-            <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</p>
-                <div class="mt-2">
-                    <FeedbackStatusBadge :status="session.status" :label="session.status_label" />
-                </div>
-                <p class="mt-2 text-xs text-slate-500">Próximo: {{ formatDateShort(session.next_alignment_at) }}</p>
-            </div>
-        </div>
+        <FeedbackFlash class="mb-6" />
 
-        <div
-            v-if="flashSuccess"
-            class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm text-emerald-900"
-        >
-            {{ flashSuccess }}
-        </div>
+        <FeedbackPanel title="Resumo" class="mb-6">
+            <template #actions>
+                <FeedbackStatusBadge :status="session.status" :label="session.status_label" />
+            </template>
+            <dl class="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="min-w-0">
+                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Colaborador</dt>
+                    <dd class="mt-1 flex items-center gap-2 font-medium text-talents-900">
+                        <UserIcon class="h-4 w-4 shrink-0 text-talents-600" aria-hidden="true" />
+                        <span class="truncate">{{ session.employee?.name ?? '—' }}</span>
+                    </dd>
+                </div>
+                <div class="min-w-0">
+                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Líder</dt>
+                    <dd class="mt-1 flex items-center gap-2 font-medium text-slate-800">
+                        <UserCircleIcon class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                        <span class="truncate">{{ session.leader?.name ?? '—' }}</span>
+                    </dd>
+                </div>
+                <div class="min-w-0">
+                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Alinhamento</dt>
+                    <dd class="mt-1 flex items-center gap-2 text-sm text-slate-800">
+                        <CalendarDaysIcon class="h-4 w-4 shrink-0 text-talents-600" aria-hidden="true" />
+                        {{ formatDate(session.scheduled_at) }}
+                    </dd>
+                </div>
+                <div class="min-w-0">
+                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Próximo alinhamento</dt>
+                    <dd class="mt-1 flex items-center gap-2 text-sm text-slate-800">
+                        <ArrowPathIcon class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                        {{ formatDateShort(session.next_alignment_at) }}
+                    </dd>
+                </div>
+            </dl>
+        </FeedbackPanel>
 
         <FeedbackSessionSignaturesPanel class="mb-8" :session="session" />
 
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Respostas por seção</h3>
         <div class="space-y-3">
             <FeedbackSectionAccordion
                 v-for="(section, index) in session.template?.sections || []"
@@ -198,22 +208,22 @@ const sectionMeta = (section) => {
             >
                 <template v-if="section.section_type !== 'intro'">
                     <div v-if="section.questions?.length" class="divide-y divide-slate-100">
-                        <div v-for="q in section.questions" :key="q.id" class="px-5 py-4">
-                            <p class="text-sm font-medium text-slate-800">{{ q.body }}</p>
-                            <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
-                                {{ formatAnswer(session.answers?.[q.id], q) }}
-                            </p>
+                        <div v-for="q in section.questions" :key="q.id" class="px-5 py-4 sm:px-6">
+                            <p class="max-w-prose text-sm font-semibold text-slate-800">{{ q.body }}</p>
+                            <p
+                                class="mt-2 max-w-prose whitespace-pre-wrap border-l-2 border-talents-100 pl-3 text-sm leading-relaxed text-slate-700"
+                            >{{ formatAnswer(session.answers?.[q.id], q) }}</p>
                         </div>
                         <div
                             v-if="session.section_extras?.[section.id]?.question || session.section_extras?.[section.id]?.answer"
-                            class="px-5 py-4"
+                            class="px-5 py-4 sm:px-6"
                         >
-                            <p class="text-sm font-medium text-slate-800">
+                            <p class="max-w-prose text-sm font-semibold text-slate-800">
                                 {{ session.section_extras[section.id].question || 'Pergunta extra' }}
                             </p>
-                            <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
-                                {{ formatAnswer(session.section_extras[section.id].answer) }}
-                            </p>
+                            <p
+                                class="mt-2 max-w-prose whitespace-pre-wrap border-l-2 border-talents-100 pl-3 text-sm leading-relaxed text-slate-700"
+                            >{{ formatAnswer(session.section_extras[section.id].answer) }}</p>
                         </div>
                     </div>
                     <p v-else class="px-5 py-4 text-sm text-slate-500">Sem perguntas nesta seção.</p>

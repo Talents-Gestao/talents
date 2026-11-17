@@ -105,7 +105,7 @@ final class CompanyShowDashboardBuilder
             ],
             [
                 'key' => 'users',
-                'label' => 'Usuários',
+                'label' => 'Acessos',
                 'href' => route('admin.companies.users.index', $companyId),
                 'permission' => 'companies',
                 'enabled' => true,
