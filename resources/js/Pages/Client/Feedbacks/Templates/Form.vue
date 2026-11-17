@@ -5,6 +5,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import AutoGrowTextarea from '@/Components/AutoGrowTextarea.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import {
     ensureTwoOptions,
@@ -195,7 +196,7 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
                     </div>
                     <div>
                         <InputLabel for="template_description" value="Descrição (opcional)" />
-                        <textarea id="template_description" v-model="form.description" rows="2" :class="fieldClass" />
+                        <AutoGrowTextarea id="template_description" v-model="form.description" :min-rows="8" :class="fieldClass" />
                         <InputError class="mt-2" :message="form.errors.description" />
                     </div>
                     <label class="flex items-center gap-2 text-sm text-slate-700">
@@ -255,10 +256,10 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
                                 :for="`section_description_${sectionIndex}`"
                                 :value="section.section_type === 'intro' ? 'Texto de orientação' : 'Orientação (opcional)'"
                             />
-                            <textarea
+                            <AutoGrowTextarea
                                 :id="`section_description_${sectionIndex}`"
                                 v-model="section.description"
-                                :rows="section.section_type === 'intro' ? 4 : 2"
+                                :min-rows="section.section_type === 'intro' ? 8 : 4"
                                 :class="fieldClass"
                             />
                             <InputError class="mt-2" :message="form.errors[`sections.${sectionIndex}.description`]" />
@@ -283,10 +284,10 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
                                 </div>
                                 <div>
                                     <label :for="`question_body_${sectionIndex}_${questionIndex}`" class="sr-only">Texto da pergunta</label>
-                                    <textarea
+                                    <AutoGrowTextarea
                                         :id="`question_body_${sectionIndex}_${questionIndex}`"
                                         v-model="question.body"
-                                        rows="2"
+                                        :min-rows="3"
                                         :class="fieldClass"
                                         placeholder="Texto da pergunta"
                                     />
