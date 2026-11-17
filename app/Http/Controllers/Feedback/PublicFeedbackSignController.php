@@ -101,8 +101,10 @@ class PublicFeedbackSignController extends Controller
 
     private function findSignature(string $token): FeedbackSessionSignature
     {
+        // Feedback excluído: o link de assinatura deixa de existir (404), sem assinar nem mostrar respostas.
         return FeedbackSessionSignature::query()
             ->where('token', $token)
+            ->whereHas('session')
             ->firstOrFail();
     }
 }

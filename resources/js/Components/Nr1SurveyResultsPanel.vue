@@ -4,7 +4,7 @@ import Nr1RiskLevelLegend from '@/Components/Nr1RiskLevelLegend.vue';
 import Nr1HelpTip from '@/Components/Nr1Shell/Nr1HelpTip.vue';
 import { polarityLegend, questionPolarity } from '@/Components/Nr1Shell/nr1QuestionPolarity.js';
 import { ChevronDownIcon } from '@heroicons/vue/24/outline';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     survey: Object,
@@ -444,22 +444,6 @@ const sectionIdCandidates = {
     'nr1-insights': ['nr1-insights'],
 };
 
-// Altura da barra «Ir para» (quebra em duas linhas em telas médias): usada no recuo das âncoras.
-const jumpNav = ref(null);
-const jumpHeight = ref(null);
-let jumpObserver = null;
-const measureJump = () => {
-    jumpHeight.value = jumpNav.value ? Math.ceil(jumpNav.value.getBoundingClientRect().height) : null;
-};
-onMounted(() => {
-    measureJump();
-    if (typeof ResizeObserver !== 'undefined' && jumpNav.value) {
-        jumpObserver = new ResizeObserver(measureJump);
-        jumpObserver.observe(jumpNav.value);
-    }
-});
-onBeforeUnmount(() => jumpObserver?.disconnect());
-
 const scrollToSection = (event, sectionId) => {
     event.preventDefault();
     const candidates = sectionIdCandidates[sectionId] ?? [sectionId];
@@ -477,10 +461,10 @@ const scrollToSection = (event, sectionId) => {
 </script>
 
 <template>
-    <div class="space-y-6" :style="jumpHeight ? { '--nr1-jump-h': `${jumpHeight}px` } : undefined">
+    <div class="space-y-6">
+        <!-- «Ir para» é estática: faz parte do fluxo e rola com o conteúdo (sem sticky). No celular, uma linha com rolagem lateral. -->
         <nav
-            ref="jumpNav"
-            class="nr1-jump-nav sticky z-20 flex flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 shadow-sm [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible"
+            class="nr1-jump-nav flex flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 shadow-sm [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible"
             aria-label="Navegação dos resultados"
         >
             <span class="mr-1 shrink-0 text-[10px] font-bold uppercase tracking-wide text-talents-700">
@@ -955,12 +939,9 @@ const scrollToSection = (event, sectionId) => {
 </template>
 
 <style scoped>
-/* «Ir para» fica no topo da área que rola (o cabeçalho do painel rola com o conteúdo; ver nr1-frame-scroll.css, que
-   solta os ancestrais que prendiam o sticky). As âncoras param logo abaixo da barra (altura real em --nr1-jump-h). */
-.nr1-jump-nav {
-    top: 0;
-}
+/* Destinos do «Ir para»: nada fixo cobre o topo da área que rola (o cabeçalho do painel e a barra do celular rolam com
+   a página), então a seção para com um respiro pequeno acima, sem ficar escondida. */
 .nr1-jump-target {
-    scroll-margin-top: calc(var(--nr1-jump-h, 3.25rem) + 12px);
+    scroll-margin-top: 1rem;
 }
 </style>

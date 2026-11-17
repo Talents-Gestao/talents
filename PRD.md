@@ -1518,7 +1518,7 @@ Gravação em transação: consome o convite e cria `survey_responses` (com `ses
 | Visão geral | Cartões, pontos fortes, dimensões, prioridades, próximas ações, grupos | Dados da campanha (período, cenário de risco, mínimo por setor, última publicação, coleta; sem os títulos «Laudo NR-1» e «Cabeçalho do laudo»), índice geral e dimensões |
 | Campanha NR-1 | Etapas, orientação, treinamentos por público, links/QR, elegíveis | Etapas, período, coleta, respostas e link |
 | Minha jornada | Link do colaborador | Não existe (404) |
-| Resultados | Abas Dimensões / Setores / 39 perguntas + Revisão interna (Talents) | Laudo 01 Diagnóstico (radar, setores, mapa de calor, perguntas, insights). No Detalhamento por pergunta, a média exibida é índice de risco (1–5): enunciado favorável inverte (`6 − resposta`, via `reverse_score`), igual ao `Nr1Scoring`. As barras e o selo de cada pergunta seguem a polaridade (fonte única `reverse_score`): verde = enunciado favorável, âmbar = desfavorável; com o instrumento em `polarity_audit_status = pending_audit` (`polarityPending` no payload), tudo cinza: a Talents vê o selo «Polaridade pendente de auditoria» e a legenda; a empresa vê só o cinza neutro, sem selo nem legenda sobre auditoria. Legenda curta no topo. A barra «Ir para» fica fixa logo abaixo do cabeçalho do painel (altura publicada pelo `ShellHeader` em `--n1-sticky-offset`), em uma linha com rolagem horizontal no celular, e as âncoras param abaixo dela. No painel da empresa não aparecem a Mia nem o convite de parecer com especialista |
+| Resultados | Abas Dimensões / Setores / 39 perguntas + Revisão interna (Talents) | Laudo 01 Diagnóstico (radar, setores, mapa de calor, perguntas, insights). No Detalhamento por pergunta, a média exibida é índice de risco (1–5): enunciado favorável inverte (`6 − resposta`, via `reverse_score`), igual ao `Nr1Scoring`. As barras e o selo de cada pergunta seguem a polaridade (fonte única `reverse_score`): verde = enunciado favorável, âmbar = desfavorável; com o instrumento em `polarity_audit_status = pending_audit` (`polarityPending` no payload), tudo cinza: a Talents vê o selo «Polaridade pendente de auditoria» e a legenda; a empresa vê só o cinza neutro, sem selo nem legenda sobre auditoria. Legenda curta no topo. A barra «Ir para» é estática: faz parte do fluxo e rola com o conteúdo (não fica fixa no topo); no celular fica em uma linha com rolagem horizontal; os atalhos rolam suave até a seção, que para com um pequeno respiro (`scroll-margin-top`). No painel da empresa não aparecem a Mia nem o convite de parecer com especialista |
 | Plano de ação | Medidas V11 | Plano do legado (itens do parecer) |
 | Documentos | Central de documentos com rodada de revisão | Documento oficial: Inventário de Riscos Psicossocial (o relatório executivo saiu do painel). A empresa só vê os arquivos que a Talents publicou. A situação da publicação, a PASSEG e o histórico ficam na Talents |
 | Parecer e publicação | Não aparece (URL redireciona) | Laudo 02 Parecer + 03 Publicar + Documentos liberados |
@@ -1927,10 +1927,10 @@ Fluxo público em 10.2.
 |------|------|----------|
 | Painel | `/client/feedbacks` | «Desenvolvimento com conversa estruturada», indicadores, Pontos fortes recorrentes, Atenção na equipe, matriz Nine Box (`NineBoxMatrix`), gráficos |
 | Colaboradores | `/client/feedbacks/employees` | lista, cadastro e perfil com histórico de feedbacks |
-| Sessões | `/client/feedbacks/sessions` | lista de sessões em cartões |
+| Sessões | `/client/feedbacks/sessions` | lista de sessões em cartões; «Excluir» no cartão para quem pode excluir |
 | Novo feedback | `/client/feedbacks/sessions/create` | colaborador (nome obrigatório, e-mail), modelo, líder (obrigatório), data agendada (obrigatória), próximo alinhamento, título. Modelo digitado sem correspondência mostra erro (não é trocado pelo padrão); em branco, usa o padrão |
 | Editar sessão | `/client/feedbacks/sessions/{s}/edit` | respostas por seção (`FeedbackQuestionField`), perguntas extras por seção, enviar para assinatura |
-| Sessão | `/client/feedbacks/sessions/{s}` | respostas, painel de assinaturas, PDF |
+| Sessão | `/client/feedbacks/sessions/{s}` | respostas, painel de assinaturas, PDF, «Excluir» para quem pode excluir |
 | Modelos | `/client/feedbacks/templates` (e `/create`, `/{template}/edit`, `POST /{template}/duplicar`) | modelos de feedback da própria empresa: nome, descrição, ativo, seções (perguntas ou só texto de orientação; quem responde: líder e colaborador, colaborador, líder ou reflexão do líder, só administradores) e perguntas (Texto longo, Texto curto, Escolha única, Lista de itens, Começar/continuar/melhorar/parar, Tabela de ações; obrigatória); os modelos da Talents aparecem como referência, com «Duplicar» |
 
 #### 9.8.2 Regras
@@ -1938,9 +1938,13 @@ Fluxo público em 10.2.
 | Regra | Detalhe |
 |-------|---------|
 | Modelo padrão | «Contrato de Expectativas — Padrão Talents» (`FeedbackTemplateSeeder`) |
-| Modelos da empresa | Só o administrador (`company_admin`, ou a Talents com a empresa selecionada) cria, edita e exclui (`FeedbackTemplateController`); `company_user` recebe 403. O modelo tem `company_id` e só aparece para a empresa dona (lista, «Novo feedback» e edição; para outra empresa é 404). Depois de usado em algum feedback (a partir do primeiro feedback criado, mesmo sem respostas), seções e perguntas ficam travadas, porque as respostas apontam para as perguntas: só nome, descrição e ativo mudam, a tela mostra o motivo com os campos desabilitados, o servidor recusa estrutura enviada para modelo travado, e o modelo não pode ser excluído, só desativado. Não há versionamento por edição |
+| Modelos da empresa | Só o administrador (`company_admin`, ou a Talents com a empresa selecionada) cria, edita e exclui (`FeedbackTemplateController`); `company_user` recebe 403. O modelo tem `company_id` e só aparece para a empresa dona (lista, «Novo feedback» e edição; para outra empresa é 404). Depois de usado em algum feedback (a partir do primeiro feedback criado, mesmo sem respostas), seções e perguntas ficam travadas, porque as respostas apontam para as perguntas: só nome, descrição e ativo mudam, a tela mostra o motivo com os campos desabilitados, o servidor recusa estrutura enviada para modelo travado, Pode ser desativado ou excluído (ver «Excluir modelo»). Não há versionamento por edição |
 | Mínimo de estrutura | o modelo precisa de pelo menos uma seção com perguntas (seção só de orientação não conta); cada seção de perguntas precisa de ao menos uma pergunta; escolha única, de duas opções (opção em branco é descartada) |
 | Duplicar modelo | «Duplicar» (na lista, para modelos da empresa e da Talents, e no aviso de modelo travado) cria uma cópia editável e sem trava, com seções, perguntas e opções, nome «… (cópia)», ativa, da empresa de quem duplica; abre a edição da cópia. Preserva chaves, tipo de seção, público e valores das opções (o painel da equipe lê respostas por chave e valor), também ao salvar pelo editor. Modelo de outra empresa: 404. No admin exige `feedbacks:create` |
+| Excluir feedback | «Excluir» na lista de sessões e no detalhe abre o alerta «Este feedback e todas as respostas serão excluídos e não poderão ser recuperados por aqui.», com colaborador, líder, data e número de respostas, e exige marcar a confirmação; o servidor recusa sem `confirmed` (`DELETE …/sessions/{session}`, `DeleteFeedbackSession`). Pode excluir: no portal, o administrador da empresa (`company_admin`) com a permissão de excluir do módulo; no admin, a matriz `feedbacks` com «excluir». Líder comum (`company_user`) não exclui, nem os próprios feedbacks (403); feedback de outra empresa, 403 |
+| Excluir modelo | modelo nunca usado: confirmação simples. Modelo usado: o alerta busca o impacto no servidor (`GET …/templates/{template}/exclusao`, feedbacks e respostas) e diz «Este modelo já foi usado em N feedbacks. Ao excluí-lo, os N feedbacks feitos com ele e todas as respostas também serão excluídos, e isso afeta o painel de Feedbacks (termômetro e 9-box) e os históricos dos colaboradores. Essa ação não pode ser desfeita por aqui.»; botão «Excluir modelo e N feedbacks», habilitado só com a caixa de confirmação marcada. O servidor recusa sem `confirmed` e recusa se a contagem confirmada (`sessions_count`) não bate com a atual (o alerta recarrega o impacto e pede nova confirmação). Modelo da Talents não é excluível pela empresa (404); admin só com «ver», 403 (`DeleteFeedbackTemplate`) |
+| Como a exclusão é feita | exclusão lógica (`deleted_at`) em modelo, feedbacks e respostas, em cascata e numa única transação (tudo ou nada), para o suporte poder recuperar; a interface diz que não é possível desfazer. Seções e perguntas do modelo e as assinaturas ficam como estão (recuperação completa). Feedback excluído some da lista, do painel (termômetro, 9-box, linha do tempo, pontos fortes, recentes) e dos contadores; detalhe, edição, PDF e link público de assinatura dão 404. Modelo excluído some da lista de modelos e de «Novo feedback», e é recusado em requisição direta (criar feedback, editar, duplicar). Avisos já publicados sobre um feedback excluído continuam no sino e abrem a lista de Feedbacks. Apagar uma resposta na edição continua sendo exclusão definitiva da resposta |
+| Auditoria da exclusão | `feedback_audit_logs`: quem excluiu, quando, a ação (`session_deleted`/`template_deleted`), o id e o nome do que foi excluído, quantos feedbacks e respostas foram afetados e, para modelo, os ids dos feedbacks (para recuperação) |
 | Permissão no admin | rotas pela matriz `feedbacks` conforme o método (ver, criar, editar, excluir); quem só tem «ver» abre a edição em modo leitura (campos desabilitados, aviso, sem salvar) e não vê Novo, Duplicar nem Excluir |
 | Criar feedback: empresa | o líder (`leader_user_id`) precisa ser usuário ativo da empresa do feedback, também no admin («O líder precisa ser um usuário ativo desta empresa.»); o modelo precisa ser da Talents ou da empresa e estar ativo, mesmo em requisição direta; modelo inválido dá erro no campo, nunca é trocado em silêncio; sem modelo disponível: «Nenhum modelo disponível. Fale com o suporte.» (detalhe técnico só no log) |
 | Tipos de pergunta (`FeedbackQuestionType`) | Texto, Texto longo, Escolha única, Lista de tópicos, Bloco CCM, Tabela de ações, Grupo de notas |
@@ -2299,6 +2303,7 @@ Proteção de chamadas de saída: URLs externas configuráveis passam por `SafeE
 | Denúncias | `complaint_audit_logs` |
 | RHID | `rhid_audit_logs` |
 | Financeiro (datas de pagamento, pagamentos e devoluções de comissão) | `finance_audit_logs` |
+| Feedbacks (exclusão de modelo e de feedback) | `feedback_audit_logs` |
 | NR-1 (acesso a dados e documentos) | `psychosocial_access_logs` |
 | NR-1 (medidas, rodadas, oportunidades) | `psychosocial_measure_events`, `psychosocial_review_events`, `nr1_opportunity_events` |
 | MFA | `mfa_audit_events` |
@@ -2830,9 +2835,11 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | GET | `/admin/feedbacks/sessions/create` | `admin.feedbacks.sessions.create` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Sessions/Create` |
 | GET | `/admin/feedbacks/sessions/{session}` | `admin.feedbacks.sessions.show` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Sessions/Show` |
 | PATCH | `/admin/feedbacks/sessions/{session}` | `admin.feedbacks.sessions.update` | auth · admin.can:feedbacks · Feedback selecionada | — |
+| DELETE | `/admin/feedbacks/sessions/{session}` | `admin.feedbacks.sessions.destroy` | auth · admin.can:feedbacks (excluir) · Feedback selecionada | — |
 | POST | `/admin/feedbacks/sessions/{session}/assinaturas` | `admin.feedbacks.sessions.signatures` | auth · admin.can:feedbacks · Feedback selecionada | — |
 | GET · POST · PUT · DELETE | `/admin/feedbacks/templates` (`/create`, `/{template}`, `/{template}/edit`) | `admin.feedbacks.templates.{index,create,store,edit,update,destroy}` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Templates/Index` e `Form` |
 | POST | `/admin/feedbacks/templates/{template}/duplicar` | `admin.feedbacks.templates.duplicate` | auth · admin.can:feedbacks (criar) · Feedback selecionada | — |
+| GET | `/admin/feedbacks/templates/{template}/exclusao` | `admin.feedbacks.templates.deletion` | auth · admin.can:feedbacks (o controller exige excluir) · Feedback selecionada | JSON do impacto |
 | GET | `/admin/feedbacks/sessions/{session}/edit` | `admin.feedbacks.sessions.edit` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Sessions/Edit` |
 | GET | `/admin/feedbacks/sessions/{session}/pdf` | `admin.feedbacks.sessions.pdf` | auth · admin.can:feedbacks · Feedback selecionada | — |
 
@@ -3278,11 +3285,13 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | GET | `/client/feedbacks/sessions/create` | `client.feedbacks.sessions.create` | auth · can.module:feedbacks | `Client/Feedbacks/Sessions/Create` |
 | GET | `/client/feedbacks/sessions/{session}` | `client.feedbacks.sessions.show` | auth · can.module:feedbacks | `Client/Feedbacks/Sessions/Show` |
 | PATCH | `/client/feedbacks/sessions/{session}` | `client.feedbacks.sessions.update` | auth · can.module:feedbacks | — |
+| DELETE | `/client/feedbacks/sessions/{session}` | `client.feedbacks.sessions.destroy` | auth · can.module:feedbacks (excluir) · administrador | — |
 | POST | `/client/feedbacks/sessions/{session}/assinaturas` | `client.feedbacks.sessions.signatures` | auth · can.module:feedbacks | — |
 | GET | `/client/feedbacks/sessions/{session}/edit` | `client.feedbacks.sessions.edit` | auth · can.module:feedbacks | `Client/Feedbacks/Sessions/Edit` |
 | GET | `/client/feedbacks/sessions/{session}/pdf` | `client.feedbacks.sessions.pdf` | auth · can.module:feedbacks | — |
 | GET · POST · PUT · DELETE | `/client/feedbacks/templates` (`/create`, `/{template}`, `/{template}/edit`) | `client.feedbacks.templates.{index,create,store,edit,update,destroy}` | auth · can.module:feedbacks · administrador | `Client/Feedbacks/Templates/Index` e `Form` |
 | POST | `/client/feedbacks/templates/{template}/duplicar` | `client.feedbacks.templates.duplicate` | auth · can.module:feedbacks · administrador | — |
+| GET | `/client/feedbacks/templates/{template}/exclusao` | `client.feedbacks.templates.deletion` | auth · can.module:feedbacks · administrador | JSON do impacto |
 
 #### `/client/ferias`
 
@@ -3860,12 +3869,13 @@ Gerado a partir das migrations (`database/migrations`, 181 arquivos), aplicando 
 
 | Tabela | Colunas |
 |--------|---------|
-| `feedback_templates` | `id`, `company_id`, `title`, `description`, `is_default`, `is_active`, `version`, `created_by`, `created_at/updated_at` |
+| `feedback_templates` | `id`, `company_id`, `title`, `description`, `is_default`, `is_active`, `version`, `created_by`, `created_at/updated_at`, `deleted_at` |
 | `feedback_template_sections` | `id`, `feedback_template_id`, `key`, `title`, `description`, `section_type`, `audience`, `sort_order`, `config`, `created_at/updated_at` |
 | `feedback_template_questions` | `id`, `feedback_template_section_id`, `key`, `body`, `question_type`, `options`, `is_required`, `sort_order`, `config`, `created_at/updated_at` |
-| `feedback_sessions` | `id`, `company_id`, `feedback_template_id`, `company_employee_id`, `leader_user_id`, `created_by_user_id`, `title`, `status`, `scheduled_at`, `next_alignment_at`, `completed_at`, `section_extras`, `rhid_person_id`, `employee_name`, `employee_email`, `created_at/updated_at` |
-| `feedback_session_answers` | `id`, `feedback_session_id`, `feedback_template_question_id`, `value_text`, `value_json`, `created_at/updated_at` |
+| `feedback_sessions` | `id`, `company_id`, `feedback_template_id`, `company_employee_id`, `leader_user_id`, `created_by_user_id`, `title`, `status`, `scheduled_at`, `next_alignment_at`, `completed_at`, `section_extras`, `rhid_person_id`, `employee_name`, `employee_email`, `created_at/updated_at`, `deleted_at` |
+| `feedback_session_answers` | `id`, `feedback_session_id`, `feedback_template_question_id`, `value_text`, `value_json`, `created_at/updated_at`, `deleted_at` |
 | `feedback_session_signatures` | `id`, `feedback_session_id`, `role`, `signer_name`, `signer_email`, `token`, `sent_at`, `signed_at`, `signature_path`, `ip`, `user_agent`, `created_at/updated_at` |
+| `feedback_audit_logs` | `id`, `company_id`, `user_id`, `action`, `subject_type`, `subject_id`, `subject_label`, `sessions_count`, `answers_count`, `details` (json), `created_at/updated_at` |
 | `employee_leaves` | `id`, `company_id`, `company_employee_id`, `start_date`, `end_date`, `status`, `notes`, `created_by`, `rhid_person_id`, `employee_name`, `employee_email`, `created_at/updated_at` |
 
 #### Calendário e avisos

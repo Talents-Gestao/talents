@@ -1,5 +1,6 @@
 <script setup>
 import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccordion.vue';
+import FeedbackSessionDeleteModal from '@/Components/Feedback/FeedbackSessionDeleteModal.vue';
 import FeedbackSessionSignaturesPanel from '@/Components/Feedback/FeedbackSessionSignaturesPanel.vue';
 import FeedbackStatusBadge from '@/Components/Feedback/FeedbackStatusBadge.vue';
 import FeedbacksLayout from '@/Components/Feedback/FeedbacksLayout.vue';
@@ -11,12 +12,15 @@ import { feedbackSectionIcon } from '@/utils/feedbackSectionIcons';
 import { formatDateTime } from '@/utils/dateOnly';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { CalendarDaysIcon, UserIcon } from '@heroicons/vue/24/outline';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     session: Object,
     canExportPdf: { type: Boolean, default: false },
+    canDelete: { type: Boolean, default: false },
 });
+
+const deletingSession = ref(null);
 
 const page = usePage();
 const flashSuccess = computed(() => page.props.flash?.success);
@@ -131,6 +135,14 @@ const sectionMeta = (section) => {
                         >
                             <PrimaryButton type="button">Editar</PrimaryButton>
                         </Link>
+                        <button
+                            v-if="canDelete"
+                            type="button"
+                            class="inline-flex items-center rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50"
+                            @click="deletingSession = session"
+                        >
+                            Excluir
+                        </button>
                     </div>
                 </template>
             </FormPageHeader>
@@ -208,5 +220,7 @@ const sectionMeta = (section) => {
                 </template>
             </FeedbackSectionAccordion>
         </div>
+
+        <FeedbackSessionDeleteModal :session="deletingSession" @close="deletingSession = null" />
     </FeedbacksLayout>
 </template>

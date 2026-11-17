@@ -1,4 +1,5 @@
 <script setup>
+import AutoGrowTextarea from '@/Components/AutoGrowTextarea.vue';
 import { feedbackFieldClass } from '@/utils/feedbackStatus';
 
 const props = defineProps({
@@ -30,12 +31,12 @@ const update = (field, value) => {
         />
 
         <label class="mt-3 block text-sm font-medium text-slate-800">Resposta</label>
-        <textarea
-            rows="3"
+        <AutoGrowTextarea
+            :min-rows="3"
             :class="feedbackFieldClass"
-            :value="modelValue.answer ?? ''"
+            :model-value="modelValue.answer ?? ''"
             placeholder="Resposta à pergunta extra"
-            @input="update('answer', $event.target.value)"
+            @update:model-value="update('answer', $event)"
         />
     </div>
 </template>

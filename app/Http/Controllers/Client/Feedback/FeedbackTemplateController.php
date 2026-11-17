@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Client\Feedback;
 
+use App\Actions\Feedback\DeleteFeedbackTemplate;
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Http\Controllers\Concerns\ResolvesFeedbackRoutes;
@@ -15,6 +16,7 @@ use App\Models\FeedbackTemplateSection;
 use App\Support\Feedback\FeedbackCompanyContext;
 use App\Support\Feedback\FeedbackVisibility;
 use BackedEnum;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +30,8 @@ use Inertia\Response;
  * Só o perfil administrador gerencia; o modelo só aparece para a empresa dona. Os modelos da Talents
  * (company_id nulo) são listados como referência, sem edição, mas podem ser duplicados para a empresa.
  * Depois que um modelo é usado em algum feedback, a estrutura (seções e perguntas) fica travada: só nome,
- * descrição e ativo mudam; para mudar as perguntas, duplica-se o modelo.
+ * descrição e ativo mudam; para mudar as perguntas, duplica-se o modelo. Excluir um modelo usado exclui junto
+ * os feedbacks feitos com ele (DeleteFeedbackTemplate), com alerta e confirmação explícita.
  *
  * A estrutura faz ida e volta fiel: chave da seção/pergunta, tipo de seção (perguntas ou orientação),
  * público (inclusive «leader_self», visível só a administradores) e valor das opções são preservados,
@@ -204,19 +207,54 @@ class FeedbackTemplateController extends FeedbackCompanyController
         return mb_substr($title, 0, 255 - mb_strlen($suffix, 'UTF-8'), 'UTF-8').$suffix;
     }
 
-    public function destroy(Request $request, FeedbackTemplate $template): RedirectResponse
+    /**
+     * Impacto atual da exclusão (feedbacks e respostas que seriam excluídos junto), para o alerta da tela.
+     */
+    public function deletionImpact(Request $request, FeedbackTemplate $template, DeleteFeedbackTemplate $delete): JsonResponse
+    {
+        $this->authorizeOwnTemplate($request, $template);
+        abort_unless($this->permissions($request)['delete'], 403);
+
+        $impact = $delete->impact($template);
+
+        return response()->json([
+            'id' => $template->id,
+            'title' => $template->title,
+            'sessions_count' => $impact['sessions'],
+            'answers_count' => $impact['answers'],
+        ]);
+    }
+
+    /**
+     * Modelo nunca usado: confirmação simples. Modelo usado: exclui junto os feedbacks feitos com ele e as respostas,
+     * só com confirmação explícita e com a contagem confirmada igual à atual.
+     */
+    public function destroy(Request $request, FeedbackTemplate $template, DeleteFeedbackTemplate $delete): RedirectResponse
     {
         $this->authorizeOwnTemplate($request, $template);
 
-        if ($this->isInUse($template)) {
-            return redirect()
-                ->route($this->feedbackRouteName('templates.index'))
-                ->with('error', 'Este modelo já foi usado em feedbacks e não pode ser excluído. Desative-o.');
+        $data = $request->validate([
+            'confirmed' => ['sometimes', 'boolean'],
+            'sessions_count' => ['sometimes', 'integer', 'min:0'],
+        ]);
+        $confirmedSessions = (int) ($data['sessions_count'] ?? 0);
+        $current = $this->usageCount($template);
+
+        if ($current > 0 && ! $request->boolean('confirmed')) {
+            throw ValidationException::withMessages([
+                'confirmed' => $current === 1
+                    ? 'Este modelo já foi usado em 1 feedback. Confirme que ele também será excluído.'
+                    : "Este modelo já foi usado em {$current} feedbacks. Confirme que eles também serão excluídos.",
+            ]);
         }
 
-        $template->delete();
+        $result = $delete->execute($template, $request->user(), $confirmedSessions);
 
-        return $this->feedbackRedirect('templates.index', [], 'Modelo de feedback excluído.');
+        return $this->feedbackRedirect('templates.index', [], match ($result['sessions']) {
+            0 => 'Modelo de feedback excluído.',
+            1 => 'Modelo excluído, junto com 1 feedback feito com ele.',
+            default => "Modelo excluído, junto com {$result['sessions']} feedbacks feitos com ele.",
+        });
     }
 
     private function companyForAdmin(Request $request): Company

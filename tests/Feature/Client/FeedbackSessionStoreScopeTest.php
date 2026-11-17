@@ -95,7 +95,7 @@ class FeedbackSessionStoreScopeTest extends TestCase
             $this->actingAs($admin)
                 ->post(route('client.feedbacks.sessions.store'), $this->payload($admin->id, $templateId))
                 ->assertSessionHasErrors([
-                    'feedback_template_id' => 'Modelo indisponível para esta empresa (inexistente, de outra empresa ou inativo). Escolha um modelo da lista.',
+                    'feedback_template_id' => 'Modelo indisponível para esta empresa (inexistente, excluído, de outra empresa ou inativo). Escolha um modelo da lista.',
                 ]);
         }
         $this->assertSame(0, FeedbackSession::query()->count());

@@ -1,4 +1,5 @@
 <script setup>
+import AutoGrowTextarea from '@/Components/AutoGrowTextarea.vue';
 import { feedbackFieldClass } from '@/utils/feedbackStatus';
 import { TrashIcon } from '@heroicons/vue/24/outline';
 
@@ -94,12 +95,12 @@ const removeActionRow = (index) => {
             @input="update($event.target.value)"
         />
 
-        <textarea
+        <AutoGrowTextarea
             v-else-if="question.question_type === 'textarea'"
-            rows="4"
+            :min-rows="4"
             :class="feedbackFieldClass"
-            :value="modelValue"
-            @input="update($event.target.value)"
+            :model-value="typeof modelValue === 'string' ? modelValue : ''"
+            @update:model-value="update"
         />
 
         <div v-else-if="question.question_type === 'single_choice'" class="mt-3 space-y-2">
@@ -158,11 +159,11 @@ const removeActionRow = (index) => {
                 >
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">{{ ccmLabels[key].title }}</label>
                     <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ ccmLabels[key].description }}</p>
-                    <textarea
-                        rows="3"
+                    <AutoGrowTextarea
+                        :min-rows="3"
                         :class="feedbackFieldClass + ' mt-2 bg-white'"
-                        :value="ccmValue(key)"
-                        @input="setCcm(key, $event.target.value)"
+                        :model-value="ccmValue(key)"
+                        @update:model-value="setCcm(key, $event)"
                     />
                 </div>
             </div>
