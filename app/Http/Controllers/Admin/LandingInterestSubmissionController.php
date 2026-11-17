@@ -175,7 +175,7 @@ class LandingInterestSubmissionController extends Controller
         $message = "Lead convertido: empresa «{$companyName}» criada."
             .($result['invitation_error'] === null
                 ? " O convite de acesso ao portal foi enviado para {$email}."
-                : ' O e-mail de convite não pôde ser enviado; reenvie em Usuários da empresa. Erro: '.$result['invitation_error']);
+                : ' O e-mail de convite não pôde ser enviado; reenvie em Acessos da empresa. Erro: '.$result['invitation_error']);
 
         return redirect()->route('admin.companies.show', $result['company'])->with('success', $message);
     }

@@ -36,10 +36,12 @@ class CompanyUserController extends Controller
     public function index(Company $company): Response
     {
         $users = $this->companyUsersQuery($company)->get();
+        // «Ativo» = mesma fonte do líder de Feedbacks e demais seletores: conta ativa e vínculo ativo na empresa.
+        $activeIds = User::query()->withActiveCompanyAccess($company->id)->pluck('users.id')->flip();
 
         return Inertia::render('Admin/Companies/Users/Index', [
             'company' => $company->only('id', 'name'),
-            'users' => $users->map(function (User $u) {
+            'users' => $users->map(function (User $u) use ($activeIds) {
                 $workspace = $u->workspaces->first();
 
                 return [
@@ -47,7 +49,7 @@ class CompanyUserController extends Controller
                     'name' => $u->name,
                     'email' => $u->email,
                     'role' => $workspace?->role->value ?? $u->role->value,
-                    'is_active' => $workspace ? (bool) $workspace->is_active : $u->isActive(),
+                    'is_active' => $activeIds->has($u->id),
                     'pending_registration' => ! $u->hasCompletedRegistration(),
                 ];
             }),
@@ -88,7 +90,7 @@ class CompanyUserController extends Controller
             );
 
             $user = $existingUser;
-            $mailMessage = ' Usuário vinculado à empresa (conta existente reutilizada).';
+            $mailMessage = ' Acesso vinculado à empresa (conta existente reutilizada).';
         } else {
             $user = User::create([
                 'name' => $validated['name'],
@@ -107,7 +109,7 @@ class CompanyUserController extends Controller
                 $validated['is_active'] ?? true,
             );
 
-            $mailMessage = ' Usuário criado.';
+            $mailMessage = ' Acesso criado.';
         }
 
         if ($workspace->isCompanyUser()) {
@@ -186,7 +188,7 @@ class CompanyUserController extends Controller
 
         return redirect()
             ->route('admin.companies.users.index', $company)
-            ->with('success', 'Usuário atualizado.');
+            ->with('success', 'Acesso atualizado.');
     }
 
     public function destroy(Company $company, User $user): RedirectResponse
@@ -210,7 +212,7 @@ class CompanyUserController extends Controller
 
         return redirect()
             ->route('admin.companies.users.index', $company)
-            ->with('success', 'Usuário removido.');
+            ->with('success', 'Acesso removido.');
     }
 
     public function resendInvitation(Company $company, User $user): RedirectResponse

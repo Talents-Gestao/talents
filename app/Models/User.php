@@ -90,6 +90,27 @@ class User extends Authenticatable
         );
     }
 
+    /**
+     * Acessos ativos de uma empresa: conta ativa e vínculo (workspace) ativo nessa empresa.
+     * Fonte única de «quem entra no sistema por esta empresa» (lista de Acessos, líder de Feedbacks).
+     * Não usa a coluna legada `users.company_id`: quem foi vinculado a outra empresa continua aqui.
+     *
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    public function scopeWithActiveCompanyAccess(Builder $query, int $companyId): Builder
+    {
+        return $query
+            ->where('users.is_active', true)
+            ->whereHas(
+                'workspaces',
+                fn (Builder $q) => $q
+                    ->where('workspace_type', WorkspaceType::Company)
+                    ->where('company_id', $companyId)
+                    ->where('is_active', true),
+            );
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);

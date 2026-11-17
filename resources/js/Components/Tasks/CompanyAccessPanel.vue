@@ -115,7 +115,7 @@ function resend(user) {
                         :href="data.links.users"
                         class="mt-1 inline-block text-xs font-semibold underline"
                     >
-                        Abrir usuários da empresa
+                        Abrir acessos da empresa
                     </Link>
                 </div>
             </div>
@@ -130,7 +130,7 @@ function resend(user) {
                     </p>
                     <p v-if="data.registration_contact">
                         O convite de acesso ao portal foi enviado ao contato principal ({{ data.registration_contact }}) no cadastro da empresa;
-                        cada usuário recebe o próprio convite ao ser cadastrado em Usuários da empresa.
+                        cada usuário recebe o próprio convite ao ser cadastrado em Acessos da empresa.
                     </p>
                     <p v-if="data.pending_emails.length" data-company-access-pending>
                         Convite pendente (ainda não entraram no portal):

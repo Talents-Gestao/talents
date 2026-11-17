@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Client;
 
+use App\Enums\UserRole;
+use App\Enums\WorkspaceType;
 use App\Models\FeedbackSession;
 use App\Models\FeedbackTemplate;
 use App\Models\User;
+use App\Models\UserWorkspace;
 use App\Support\Feedback\FeedbackCompanyContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
@@ -48,7 +51,7 @@ class FeedbackSessionStoreScopeTest extends TestCase
         foreach ([$foreignLeader, $inactiveLeader] as $refused) {
             $this->actingAs($admin)
                 ->post(route('client.feedbacks.sessions.store'), $this->payload($refused->id, $talents->id))
-                ->assertSessionHasErrors(['leader_user_id' => 'O líder precisa ser um usuário ativo desta empresa.']);
+                ->assertSessionHasErrors(['leader_user_id' => 'O líder precisa ter acesso ativo ao sistema nesta empresa.']);
         }
         $this->assertSame(0, FeedbackSession::query()->count());
 
@@ -79,6 +82,103 @@ class FeedbackSessionStoreScopeTest extends TestCase
             ->assertSessionHasErrors('leader_user_id');
 
         $this->assertSame(0, FeedbackSession::query()->count());
+    }
+
+    /**
+     * Vincula um usuário já existente a mais uma empresa (como a tela de Acessos faz com e-mail repetido).
+     */
+    private function linkToCompany(User $user, int $companyId, bool $active = true, UserRole $role = UserRole::CompanyUser): void
+    {
+        UserWorkspace::create([
+            'user_id' => $user->id,
+            'workspace_type' => WorkspaceType::Company,
+            'company_id' => $companyId,
+            'role' => $role,
+            'is_active' => $active,
+        ]);
+    }
+
+    public function test_leader_comes_from_company_access_not_from_legacy_company_id(): void
+    {
+        $talents = $this->seedFeedbackTemplate();
+        $company = $this->createFeedbackCompany();
+        $base = $this->createFeedbackCompany(['name' => 'Empresa-base']);
+        $other = $this->createFeedbackCompany(['name' => 'Outra empresa']);
+        $admin = User::factory()->companyAdmin($company->id)->create(['name' => 'Ana RH']);
+
+        // Conta com company_id de outra empresa, mas com vínculo ativo nesta (o caso relatado).
+        $linked = User::factory()->companyUser($base->id)->create(['name' => 'Isa Vinculada']);
+        $this->linkToCompany($linked, $company->id);
+        // Vínculo inativo nesta empresa.
+        $inactiveLink = User::factory()->companyUser($base->id)->create(['name' => 'Bia Inativa']);
+        $this->linkToCompany($inactiveLink, $company->id, active: false);
+        // company_id desta empresa (coluna legada), mas sem vínculo aqui: não tem acesso.
+        $legacyOnly = User::factory()->companyUser($other->id)->create(['name' => 'Caio Legado']);
+        $legacyOnly->forceFill(['company_id' => $company->id])->save();
+        $foreign = User::factory()->companyAdmin($other->id)->create(['name' => 'Duda Alheia']);
+
+        $this->actingAs($admin)
+            ->get(route('client.feedbacks.sessions.create'))
+            ->assertInertia(function ($page) use ($admin, $linked) {
+                $leaders = collect($page->toArray()['props']['leaders']);
+                $this->assertSame(
+                    collect([$admin->id, $linked->id])->sort()->values()->all(),
+                    $leaders->pluck('id')->sort()->values()->all(),
+                );
+                $this->assertSame('Isa Vinculada (Usuário da empresa)', $leaders->firstWhere('id', $linked->id)['label']);
+            });
+
+        foreach ([$inactiveLink, $legacyOnly, $foreign] as $refused) {
+            $this->actingAs($admin)
+                ->post(route('client.feedbacks.sessions.store'), $this->payload($refused->id, $talents->id))
+                ->assertSessionHasErrors(['leader_user_id' => 'O líder precisa ter acesso ativo ao sistema nesta empresa.']);
+        }
+        $this->assertSame(0, FeedbackSession::query()->count());
+
+        $this->actingAs($admin)
+            ->post(route('client.feedbacks.sessions.store'), $this->payload($linked->id, $talents->id))
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('feedback_sessions', ['company_id' => $company->id, 'leader_user_id' => $linked->id]);
+    }
+
+    public function test_leader_dropdown_and_access_list_show_the_same_active_set(): void
+    {
+        $company = $this->createFeedbackCompany();
+        $base = $this->createFeedbackCompany(['name' => 'Empresa-base']);
+        $owner = User::factory()->superAdmin()->create(['is_owner' => true, 'name' => 'Owner Talents']);
+        $admin = User::factory()->companyAdmin($company->id)->create(['name' => 'Ana RH']);
+        $linked = User::factory()->companyUser($base->id)->create(['name' => 'Isa Vinculada']);
+        $this->linkToCompany($linked, $company->id);
+        $inactiveAccount = User::factory()->companyUser($company->id)->create(['name' => 'Bia', 'is_active' => false]);
+        // Super admin da Talents com vínculo ativo entra; o Owner sem vínculo, não.
+        $talentsLinked = User::factory()->superAdmin()->create(['name' => 'Consultora Talents']);
+        $this->linkToCompany($talentsLinked, $company->id, role: UserRole::CompanyAdmin);
+        // Nome repetido: o rótulo traz o e-mail.
+        $twin = User::factory()->companyUser($company->id)->create(['name' => 'Ana RH', 'email' => 'ana2@example.test']);
+
+        $leaderIds = [];
+        $this->actingAs($owner)
+            ->withSession([FeedbackCompanyContext::SESSION_KEY => $company->id])
+            ->get(route('admin.feedbacks.sessions.create'))
+            ->assertInertia(function ($page) use (&$leaderIds, $twin) {
+                $leaders = collect($page->toArray()['props']['leaders']);
+                $leaderIds = $leaders->pluck('id')->sort()->values()->all();
+                $this->assertSame('Ana RH (Usuário da empresa · ana2@example.test)', $leaders->firstWhere('id', $twin->id)['label']);
+            });
+
+        $activeInList = [];
+        $this->actingAs($owner)
+            ->get(route('admin.companies.users.index', $company))
+            ->assertInertia(function ($page) use (&$activeInList) {
+                $activeInList = collect($page->toArray()['props']['users'])
+                    ->where('is_active', true)->pluck('id')->sort()->values()->all();
+            });
+
+        $expected = collect([$admin->id, $linked->id, $talentsLinked->id, $twin->id])->sort()->values()->all();
+        $this->assertSame($expected, $leaderIds);
+        $this->assertSame($expected, $activeInList);
+        $this->assertNotContains($owner->id, $leaderIds);
+        $this->assertNotContains($inactiveAccount->id, $leaderIds);
     }
 
     public function test_inactive_foreign_or_missing_template_is_refused_instead_of_swapped(): void
