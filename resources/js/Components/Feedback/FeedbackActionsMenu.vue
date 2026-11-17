@@ -1,6 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
-import { EllipsisHorizontalIcon } from '@heroicons/vue/24/outline';
+import { ChevronDownIcon, EllipsisHorizontalIcon } from '@heroicons/vue/24/outline';
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
 
 /**
@@ -14,7 +14,15 @@ const props = defineProps({
     label: { type: String, default: 'Mais ações' },
     /** Mostra o rótulo ao lado do ícone (no cabeçalho); na linha de uma lista, só o ícone. */
     showLabel: { type: Boolean, default: false },
+    /** `primary`: botão de destaque (único do cabeçalho), com seta; `default`: contornado, com reticências. */
+    variant: { type: String, default: 'default' },
 });
+
+const triggerClass = computed(() =>
+    props.variant === 'primary'
+        ? 'border-transparent bg-talents-700 px-4 text-white hover:bg-talents-800 focus-visible:ring-talents-500'
+        : 'border-slate-200 bg-white px-2.5 text-slate-700 hover:bg-slate-50 focus-visible:ring-talents-500/50',
+);
 
 const open = ref(false);
 const root = ref(null);
@@ -67,7 +75,7 @@ function select(item) {
 onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
 
 const itemClass = (item) => [
-    'flex min-h-[40px] w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium transition focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+    'flex min-h-[44px] w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium transition focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
     item.danger
         ? 'text-rose-700 hover:bg-rose-50 focus-visible:bg-rose-50'
         : 'text-slate-700 hover:bg-slate-50 focus-visible:bg-talents-50 focus-visible:text-talents-800',
@@ -79,15 +87,22 @@ const itemClass = (item) => [
         <button
             type="button"
             data-menu-trigger
-            class="inline-flex min-h-[40px] min-w-[40px] items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50 focus-visible:ring-offset-2"
+            class="inline-flex min-h-[40px] min-w-[40px] items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            :class="triggerClass"
             :aria-expanded="open ? 'true' : 'false'"
             :aria-controls="menuId"
             aria-haspopup="menu"
             :aria-label="showLabel ? undefined : label"
             @click.stop="toggle"
         >
-            <EllipsisHorizontalIcon class="h-5 w-5" aria-hidden="true" />
-            <span v-if="showLabel" class="pr-1">{{ label }}</span>
+            <template v-if="variant === 'primary'">
+                <span>{{ label }}</span>
+                <ChevronDownIcon class="h-4 w-4 transition-transform" :class="open ? 'rotate-180' : ''" aria-hidden="true" />
+            </template>
+            <template v-else>
+                <EllipsisHorizontalIcon class="h-5 w-5" aria-hidden="true" />
+                <span v-if="showLabel" class="pr-1">{{ label }}</span>
+            </template>
         </button>
 
         <div

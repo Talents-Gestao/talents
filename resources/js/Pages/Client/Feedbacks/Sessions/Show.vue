@@ -11,7 +11,7 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { feedbackSectionIcon } from '@/utils/feedbackSectionIcons';
 import { formatDateTime } from '@/utils/dateOnly';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import {
     ArrowDownTrayIcon,
     ArrowPathIcon,
@@ -31,8 +31,13 @@ const props = defineProps({
 
 const deletingSession = ref(null);
 
-// Ações secundárias no menu; excluir fica separado, por último.
+// Todas as ações do cabeçalho num menu: Editar (mesma regra do antigo botão), Exportar PDF e,
+// separado e por último, Excluir. Sem nenhum item, o botão «Ações» não aparece.
+const canEdit = computed(() => props.session.status !== 'completed' && props.session.status !== 'cancelled');
 const headerMenuItems = computed(() => [
+    ...(canEdit.value
+        ? [{ key: 'edit', label: 'Editar', icon: PencilSquareIcon, href: feedbackRoute('sessions.edit', props.session.id) }]
+        : []),
     ...(props.canExportPdf
         ? [{ key: 'pdf', label: 'Exportar PDF', icon: ArrowDownTrayIcon, href: feedbackRoute('sessions.pdf', props.session.id), external: true }]
         : []),
@@ -140,16 +145,8 @@ const sectionMeta = (section) => {
                 :title="session.title"
                 :subtitle="session.employee?.name"
             >
-                <template #trailing>
-                    <Link
-                        v-if="session.status !== 'completed' && session.status !== 'cancelled'"
-                        :href="feedbackRoute('sessions.edit', session.id)"
-                        class="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-talents-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2"
-                    >
-                        <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
-                        Editar
-                    </Link>
-                    <FeedbackActionsMenu v-if="headerMenuItems.length" :items="headerMenuItems" show-label label="Mais ações" />
+                <template v-if="headerMenuItems.length" #trailing>
+                    <FeedbackActionsMenu :items="headerMenuItems" show-label label="Ações" variant="primary" />
                 </template>
             </FormPageHeader>
         </template>
