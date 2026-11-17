@@ -5,34 +5,6 @@
  * as regras às páginas com a moldura do NR-1: o layout das demais telas e a impressão (só tela) não mudam.
  * Entre o <main> e a sub-sidebar não pode haver ancestral com overflow ≠ visible (o sticky deixaria de funcionar).
  */
-
-/*
- * Cabeçalho do NR-1 rola com o conteúdo em qualquer largura (gestão). Abaixo de 1280px ele já rolava porque os
- * ancestrais abaixo prendiam o sticky; agora que eles soltam, isto mantém o comportamento de antes.
- */
-.nr1-frame:not(.nr1-frame--public) .nr1-shell .n1-header {
-    position: relative;
-}
-
-/*
- * Abaixo de 1280px quem rola é o documento, mas o painel (overflow-hidden), a linha principal (overflow-hidden) e o
- * <main> (overflow-y-auto) do layout padrão são contêineres de rolagem que nunca rolam: todo sticky dentro deles
- * (ex.: a barra «Ir para» dos Resultados) gruda neles e não fixa. `overflow: clip` continua cortando o conteúdo
- * (cantos arredondados, nada vaza para os lados) sem criar contêiner de rolagem, então o sticky passa a valer para a
- * janela. Navegador sem `overflow: clip` mantém o hidden de antes (só não fixa, como já era).
- * A barra do celular (sticky no layout) também estava presa; continua rolando com a página, como antes.
- */
-@media screen and (max-width: 1279.98px) {
-    .app-shell:has(.nr1-frame:not(.nr1-frame--public)) .app-shell-panel,
-    .app-shell:has(.nr1-frame:not(.nr1-frame--public)) [data-shell-main-row],
-    .app-shell:has(.nr1-frame:not(.nr1-frame--public)) .app-shell-main-scroll {
-        overflow: clip;
-    }
-    .app-shell:has(.nr1-frame:not(.nr1-frame--public)) [data-shell-mobilebar] {
-        position: relative;
-    }
-}
-
 @media screen and (min-width: 1280px) {
     .app-shell:has(.nr1-frame:not(.nr1-frame--public)) [data-shell-column] {
         height: 100vh;
@@ -41,6 +13,11 @@
     }
     .app-shell:has(.nr1-frame:not(.nr1-frame--public)) .app-shell-panel {
         min-height: 0;
+    }
+
+    /* Cabeçalho do NR-1 rola com o conteúdo (comportamento de antes): sem sticky dentro do <main> que agora rola. */
+    .nr1-frame:not(.nr1-frame--public) .nr1-shell .n1-header {
+        position: relative;
     }
 
     /* Sub-sidebar: cabe na área visível em alturas de notebook, sem scroll próprio. */
