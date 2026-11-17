@@ -1,8 +1,9 @@
 <script setup>
 import FeedbackStatusBadge from '@/Components/Feedback/FeedbackStatusBadge.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
+import { formatDateTime } from '@/utils/dateOnly';
 import { Link } from '@inertiajs/vue3';
-import { UserIcon } from '@heroicons/vue/24/outline';
+import { CalendarDaysIcon, TrashIcon, UserCircleIcon, UserIcon } from '@heroicons/vue/24/outline';
 
 defineProps({
     session: { type: Object, required: true },
@@ -23,12 +24,15 @@ defineEmits(['delete']);
                 <Link
                     :href="feedbackRoute('sessions.show', session.id)"
                     :title="session.title"
-                    class="block text-pretty font-semibold leading-snug text-talents-900 transition group-hover:text-talents-700"
+                    class="block rounded text-pretty font-semibold leading-snug text-talents-900 transition group-hover:text-talents-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50"
                 >
                     {{ session.title }}
                 </Link>
                 <p v-if="showCompany && session.company?.name" class="mt-1 truncate text-xs text-slate-500">
                     {{ session.company.name }}
+                </p>
+                <p v-if="session.template?.title" class="mt-1 truncate text-xs text-slate-500">
+                    Modelo: {{ session.template.title }}
                 </p>
             </div>
             <FeedbackStatusBadge
@@ -38,34 +42,42 @@ defineEmits(['delete']);
             />
         </div>
 
-        <div class="mt-4 flex min-w-0 flex-col gap-1 text-xs text-slate-600 sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-1">
-            <span v-if="showEmployee && session.employee?.name" class="inline-flex min-w-0 items-center gap-1">
-                <UserIcon class="h-3.5 w-3.5 shrink-0 text-talents-500" />
-                <span class="truncate">{{ session.employee.name }}</span>
-            </span>
-            <span v-if="session.leader?.name" class="inline-flex min-w-0 items-center gap-1">
-                <span class="shrink-0">Líder:</span>
-                <span class="truncate">{{ session.leader.name }}</span>
-            </span>
-        </div>
+        <dl class="mb-4 mt-4 grid min-w-0 gap-1.5 text-sm text-slate-700">
+            <div v-if="showEmployee && session.employee?.name" class="flex min-w-0 items-center gap-2">
+                <dt class="shrink-0"><UserIcon class="h-4 w-4 text-talents-500" aria-hidden="true" /><span class="sr-only">Colaborador</span></dt>
+                <dd class="truncate font-medium text-slate-800">{{ session.employee.name }}</dd>
+            </div>
+            <div v-if="session.leader?.name" class="flex min-w-0 items-center gap-2">
+                <dt class="shrink-0"><UserCircleIcon class="h-4 w-4 text-slate-400" aria-hidden="true" /><span class="sr-only">Líder</span></dt>
+                <dd class="truncate">Líder: {{ session.leader.name }}</dd>
+            </div>
+            <div v-if="session.scheduled_at" class="flex min-w-0 items-center gap-2">
+                <dt class="shrink-0"><CalendarDaysIcon class="h-4 w-4 text-slate-400" aria-hidden="true" /><span class="sr-only">Data do alinhamento</span></dt>
+                <dd class="truncate">{{ formatDateTime(session.scheduled_at) }}</dd>
+            </div>
+        </dl>
 
-        <div class="mt-auto flex flex-wrap gap-x-3 gap-y-1 pt-4">
-            <Link :href="feedbackRoute('sessions.show', session.id)" class="text-sm font-medium text-talents-700 hover:underline">
+        <div class="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-100 pt-4">
+            <Link
+                :href="feedbackRoute('sessions.show', session.id)"
+                class="rounded text-sm font-semibold text-talents-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50"
+            >
                 Ver detalhes
             </Link>
             <Link
                 v-if="session.status !== 'completed' && session.status !== 'cancelled'"
                 :href="feedbackRoute('sessions.edit', session.id)"
-                class="text-sm font-medium text-slate-600 hover:text-talents-700 hover:underline"
+                class="rounded text-sm font-medium text-slate-600 hover:text-talents-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50"
             >
                 Continuar
             </Link>
             <button
                 v-if="canDelete"
                 type="button"
-                class="ml-auto text-sm font-medium text-rose-700 hover:underline"
+                class="ml-auto inline-flex min-h-[32px] items-center gap-1 rounded-lg px-2 text-sm font-medium text-slate-500 transition hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
                 @click="$emit('delete')"
             >
+                <TrashIcon class="h-4 w-4" aria-hidden="true" />
                 Excluir
             </button>
         </div>

@@ -37,10 +37,11 @@ const submit = () => {
             @submit.prevent="submit"
         >
             <div class="min-w-0 flex-1">
-                <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <label for="feedback_company_picker" class="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {{ compact ? 'Trocar empresa' : 'Empresa' }}
                 </label>
                 <CompanySearchSelect
+                    id="feedback_company_picker"
                     v-model="form.company_id"
                     :companies="companies"
                     required
@@ -51,7 +52,7 @@ const submit = () => {
             </div>
             <button
                 type="submit"
-                class="rounded-xl bg-talents-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-talents-800 disabled:opacity-50"
+                class="min-h-[42px] rounded-xl bg-talents-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-talents-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="form.processing || !form.company_id"
             >
                 {{ compact ? 'Aplicar' : 'Continuar' }}

@@ -1,4 +1,5 @@
 <script setup>
+import FeedbackPanel from '@/Components/Feedback/FeedbackPanel.vue';
 import FeedbackQuestionField from '@/Components/Feedback/FeedbackQuestionField.vue';
 import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccordion.vue';
 import FeedbackSectionExtraField from '@/Components/Feedback/FeedbackSectionExtraField.vue';
@@ -87,17 +88,20 @@ const sectionMeta = (section) => {
             </FormPageHeader>
         </template>
 
-        <div class="mb-8 grid gap-4 rounded-2xl border border-talents-100 bg-talents-50/40 p-5 sm:grid-cols-2">
-            <div>
-                <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Data do alinhamento</label>
-                <input v-model="form.scheduled_at" type="datetime-local" :class="feedbackFieldClass" />
+        <FeedbackPanel title="Datas" description="Quando a conversa acontece e quando será o próximo alinhamento." class="mb-6">
+            <div class="grid gap-5 sm:grid-cols-2">
+                <div>
+                    <label for="feedback_edit_scheduled_at" class="block text-sm font-medium text-gray-700">Data do alinhamento</label>
+                    <input id="feedback_edit_scheduled_at" v-model="form.scheduled_at" type="datetime-local" :class="feedbackFieldClass" />
+                </div>
+                <div>
+                    <label for="feedback_edit_next_alignment_at" class="block text-sm font-medium text-gray-700">Próximo alinhamento</label>
+                    <input id="feedback_edit_next_alignment_at" v-model="form.next_alignment_at" type="date" :class="feedbackFieldClass" />
+                </div>
             </div>
-            <div>
-                <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Próximo alinhamento</label>
-                <input v-model="form.next_alignment_at" type="date" :class="feedbackFieldClass" />
-            </div>
-        </div>
+        </FeedbackPanel>
 
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Respostas por seção</h3>
         <div class="space-y-3">
             <FeedbackSectionAccordion
                 v-for="(section, index) in session.template?.sections || []"
@@ -110,7 +114,7 @@ const sectionMeta = (section) => {
                 :default-open="index === 0"
             >
                 <template v-if="section.section_type !== 'intro'">
-                    <div class="space-y-4 p-5">
+                    <div class="space-y-5 p-5 sm:p-6">
                         <FeedbackQuestionField
                             v-for="q in section.questions"
                             :key="q.id"
@@ -127,14 +131,21 @@ const sectionMeta = (section) => {
             </FeedbackSectionAccordion>
         </div>
 
-        <div class="sticky bottom-4 z-10 mt-8 flex flex-wrap gap-3 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-lg backdrop-blur">
-            <PrimaryButton type="button" :disabled="form.processing" @click="save(false)">Salvar rascunho</PrimaryButton>
-            <PrimaryButton type="button" class="!bg-talents-800" :disabled="form.processing" @click="save(true)">
-                Enviar para assinatura
-            </PrimaryButton>
-            <Link :href="feedbackRoute('index')">
-                <SecondaryButton type="button">Cancelar</SecondaryButton>
+        <div
+            class="sticky bottom-4 z-10 mt-8 flex flex-col-reverse gap-3 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between"
+        >
+            <Link
+                :href="feedbackRoute('index')"
+                class="inline-flex min-h-[40px] items-center justify-center rounded-xl px-4 text-sm font-semibold text-slate-600 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50"
+            >
+                Cancelar
             </Link>
+            <div class="flex flex-col gap-2 sm:flex-row">
+                <SecondaryButton type="button" :disabled="form.processing" @click="save(false)">Salvar rascunho</SecondaryButton>
+                <PrimaryButton type="button" :disabled="form.processing" class="disabled:opacity-50" @click="save(true)">
+                    Enviar para assinatura
+                </PrimaryButton>
+            </div>
         </div>
     </FeedbacksLayout>
 </template>
