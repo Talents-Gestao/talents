@@ -1,5 +1,16 @@
 <script setup>
-import { NewspaperIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import {
+    ArrowTrendingUpIcon,
+    CalendarDaysIcon,
+    HeartIcon,
+    LightBulbIcon,
+    NewspaperIcon,
+    RocketLaunchIcon,
+    ScaleIcon,
+    TicketIcon,
+    UserGroupIcon,
+    XMarkIcon,
+} from '@heroicons/vue/24/outline';
 import { formatRelativeDateTime } from '@/utils/dateOnly';
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
@@ -7,11 +18,24 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const page = usePage();
 
+/** Ícone de linha de cada categoria (chave `value` de NewsCategory); sem chave conhecida, jornal. */
+const CATEGORY_ICONS = {
+    hr: UserGroupIcon,
+    entrepreneurship: RocketLaunchIcon,
+    accounting: ScaleIcon,
+    health: HeartIcon,
+    trends: ArrowTrendingUpIcon,
+    launches: LightBulbIcon,
+    important_dates: CalendarDaysIcon,
+    events: TicketIcon,
+};
+const categoryIcon = (value) => CATEGORY_ICONS[value] ?? NewspaperIcon;
+
 const open = ref(false);
 const loading = ref(false);
 const items = ref([]);
 const categories = ref([
-    { value: 'all', label: 'Todas', emoji: '📰' },
+    { value: 'all', label: 'Todas' },
 ]);
 const selectedCategory = ref('all');
 
@@ -160,7 +184,7 @@ onUnmounted(() => {
                                 "
                                 @click="selectCategory(cat.value)"
                             >
-                                <span aria-hidden="true">{{ cat.emoji }}</span>
+                                <component :is="categoryIcon(cat.value)" class="h-4 w-4 shrink-0" aria-hidden="true" />
                                 <span>{{ cat.label }}</span>
                             </button>
                         </div>
@@ -193,14 +217,13 @@ onUnmounted(() => {
                                     </div>
                                     <div
                                         v-else
-                                        class="flex h-16 w-20 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-lg"
+                                        class="flex h-16 w-20 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500"
                                         aria-hidden="true"
                                     >
-                                        {{ item.category_emoji || '📰' }}
+                                        <component :is="categoryIcon(item.category)" class="h-6 w-6" />
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                                            <span>{{ item.category_emoji }}</span>
                                             {{ item.category_label }}
                                             <span v-if="item.source"> · {{ item.source }}</span>
                                         </p>

@@ -25,8 +25,7 @@ final class ExternalNewsFeedService
      *     source: string|null,
      *     published_at: string|null,
      *     category: string,
-     *     category_label: string,
-     *     category_emoji: string
+     *     category_label: string
      * }>
      */
     public function recent(?string $categoryFilter = null, ?int $limit = null): array
@@ -178,7 +177,6 @@ final class ExternalNewsFeedService
                 'published_at' => $publishedAt,
                 'category' => $category->value,
                 'category_label' => $category->label(),
-                'category_emoji' => $category->emoji(),
             ];
         }
 
@@ -279,7 +277,6 @@ final class ExternalNewsFeedService
                     'published_at' => now()->subHours($index + 1)->utc()->toIso8601String(),
                     'category' => $category->value,
                     'category_label' => $category->label(),
-                    'category_emoji' => $category->emoji(),
                 ];
             })
             ->values()

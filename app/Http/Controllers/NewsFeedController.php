@@ -26,7 +26,6 @@ class NewsFeedController extends Controller
                 [
                     'value' => 'all',
                     'label' => 'Todas',
-                    'emoji' => '📰',
                 ],
                 ...NewsCategory::options(),
             ],

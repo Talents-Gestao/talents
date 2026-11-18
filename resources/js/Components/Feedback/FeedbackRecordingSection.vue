@@ -5,7 +5,7 @@ import FeedbackNotice from '@/Components/Feedback/FeedbackNotice.vue';
 import PrivacyDisclosure from '@/Components/Feedback/FeedbackRecordingPrivacy.vue';
 import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccordion.vue';
 import { formatDateTime } from '@/utils/dateOnly';
-import { ArrowUpTrayIcon, DocumentTextIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { ArrowUpTrayIcon, DocumentTextIcon, MicrophoneIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { computed, ref, watch } from 'vue';
 
 /**
@@ -104,7 +104,7 @@ const btnSecondary =
 <template>
     <FeedbackSectionAccordion
         title="Gravação e relatório"
-        icon="🎙️"
+        :icon="MicrophoneIcon"
         description="Transcrição da conversa exportada do gravador Plaud."
         :meta="meta"
         :default-open="defaultOpen"
