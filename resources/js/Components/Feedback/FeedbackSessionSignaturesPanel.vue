@@ -91,7 +91,7 @@ const copyLink = async (sig) => {
                 v-for="(step, index) in steps"
                 :key="step.key"
                 class="flex items-center gap-2 text-sm"
-                :class="index <= currentStep ? 'text-talents-800' : 'text-slate-400'"
+                :class="index <= currentStep ? 'text-talents-800' : 'text-slate-700'"
             >
                 <span
                     class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
@@ -100,7 +100,7 @@ const copyLink = async (sig) => {
                             ? 'bg-talents-700 text-white'
                             : index === currentStep
                               ? 'bg-talents-100 text-talents-800 ring-2 ring-talents-300'
-                              : 'bg-slate-100 text-slate-500'
+                              : 'bg-white text-slate-700 ring-1 ring-slate-300'
                     "
                 >
                     <CheckCircleIcon v-if="index < currentStep" class="h-4 w-4" />
@@ -128,7 +128,7 @@ const copyLink = async (sig) => {
                 <EnvelopeIcon class="mr-2 inline h-4 w-4" />
                 {{ inviteLabel }}
             </PrimaryButton>
-            <p class="mt-2 text-xs text-slate-500">
+            <p class="mt-2 text-sm text-slate-700">
                 E-mails serão enviados para o colaborador e o líder com link seguro para assinatura digital.
             </p>
         </div>
@@ -138,13 +138,13 @@ const copyLink = async (sig) => {
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
                         <p class="font-medium text-slate-800">{{ sig.signer_name }}</p>
-                        <p class="text-xs text-slate-500">
+                        <p class="text-[13px] text-slate-600">
                             {{ sig.role_label ?? sig.role }} · {{ sig.signer_email }}
                         </p>
-                        <p v-if="sig.signed_at" class="mt-1 text-xs text-emerald-700">
+                        <p v-if="sig.signed_at" class="mt-1 text-[13px] text-emerald-800">
                             Assinado em {{ formatDate(sig.signed_at) }}
                         </p>
-                        <p v-else-if="sig.sent_at" class="mt-1 text-xs text-slate-500">
+                        <p v-else-if="sig.sent_at" class="mt-1 text-[13px] text-slate-600">
                             Convite enviado em {{ formatDate(sig.sent_at) }}
                         </p>
                     </div>
@@ -163,7 +163,7 @@ const copyLink = async (sig) => {
                     </div>
                 </div>
             </li>
-            <li v-if="!session.signatures?.length" class="px-5 py-6 text-center text-sm text-slate-500">
+            <li v-if="!session.signatures?.length" class="px-5 py-6 text-center text-sm text-slate-600">
                 Nenhuma assinatura solicitada ainda. Use o botão acima após concluir o preenchimento.
             </li>
         </ul>

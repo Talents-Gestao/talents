@@ -2,10 +2,13 @@
 import FeedbackRecordingAi from '@/Components/Feedback/FeedbackRecordingAi.vue';
 import FeedbackRecordingDeleteModal from '@/Components/Feedback/FeedbackRecordingDeleteModal.vue';
 import FeedbackRecordingSection from '@/Components/Feedback/FeedbackRecordingSection.vue';
+import FeedbackRecordingSteps from '@/Components/Feedback/FeedbackRecordingSteps.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
+import { recordingSteps } from '@/utils/feedbackRecordingSteps';
+import { ArrowPathIcon } from '@heroicons/vue/24/outline';
 import { router, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 /**
  * Seção «Gravação e relatório» do feedback, ligada ao servidor: envia a transcrição do Plaud (com consentimento),
@@ -22,6 +25,8 @@ const props = defineProps({
         type: Object,
         default: () => ({ canUpload: false, canDelete: false, canViewOriginal: false, locked: false }),
     },
+    /** Nomes já presentes na sessão, para o responsável dos compromissos: { leader, employee }. */
+    people: { type: Object, default: () => ({}) },
 });
 
 const form = useForm({ file: null, consent: false });
@@ -72,6 +77,35 @@ async function showOriginal() {
     }
 }
 
+const steps = computed(() => recordingSteps(props.recording, props.ai));
+
+// «Gerar relatório novamente» no menu «Ações» da gravação: mesmas condições e mesma requisição de antes.
+const regenerating = ref(false);
+const canRegenerate = computed(
+    () =>
+        !!props.ai?.clean
+        && props.ai?.gate?.allowed === true
+        && !props.ai?.limit_reached
+        && ['ready', 'failed'].includes(props.ai?.status)
+        && props.access.canProcess
+        && !props.access.locked,
+);
+const extraActions = computed(() =>
+    canRegenerate.value
+        ? [{ key: 'regenerate', label: 'Gerar relatório novamente', icon: ArrowPathIcon, disabled: regenerating.value, onSelect: regenerate }]
+        : [],
+);
+
+function regenerate() {
+    if (regenerating.value) return;
+    router.post(feedbackRoute('sessions.recording.report', props.sessionId), {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onStart: () => (regenerating.value = true),
+        onFinish: () => (regenerating.value = false),
+    });
+}
+
 function openDelete() {
     deleteError.value = '';
     deleting.value = true;
@@ -101,17 +135,22 @@ function confirmDelete() {
         :loading-original="loadingOriginal"
         :original-error="originalError"
         :reset-key="resetKey"
+        :extra-actions="extraActions"
         @file-change="form.clearErrors('file')"
         @upload="upload"
         @show-original="showOriginal"
         @hide-original="original = null"
         @request-delete="openDelete"
     >
+        <template #steps>
+            <FeedbackRecordingSteps :steps="steps" />
+        </template>
         <template v-if="ai" #ai>
             <FeedbackRecordingAi
                 :session-id="sessionId"
                 :ai="ai"
                 :access="access"
+                :people="people"
                 :original="original"
                 :loading-original="loadingOriginal"
                 :original-error="originalError"
