@@ -19,6 +19,9 @@ class AiSetting extends Model
         'max_tokens',
         'temperature',
         'updated_by',
+        'feedback_approved_provider',
+        'feedback_approved_by',
+        'feedback_approved_at',
     ];
 
     protected function casts(): array
@@ -29,12 +32,18 @@ class AiSetting extends Model
             'is_enabled' => 'boolean',
             'max_tokens' => 'integer',
             'temperature' => 'float',
+            'feedback_approved_at' => 'datetime',
         ];
     }
 
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function feedbackApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'feedback_approved_by');
     }
 
     public static function current(): ?self

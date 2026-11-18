@@ -1,0 +1,1292 @@
+00:00:03 Speaker 1
+Bom dia, Camila. É... vamos fazer o nosso alinhamento do trimestre? Separei uns quinze minutinhos pra gente conversar com calma.
+
+00:00:11 Speaker 2
+Bom dia, Rafael! Vamos sim. Eu trouxe os números do atendimento e uma lista do que ficou pendente.
+
+00:00:19 Speaker 1
+Ótimo. Então, primeiro eu queria começar pelo que foi bom, né. Parabéns pelo projeto do novo fluxo de atendimento, ficou muito bom. O tempo de primeira resposta caiu bastante.
+
+00:00:34 Speaker 2
+Obrigada. Caiu de seis horas pra pouco menos de duas horas, em média. Foi um trabalho de equipe, o Diego e a Paula ajudaram muito na triagem.
+
+00:00:47 Speaker 1
+Eu vi. E eu gostei muito de você ter envolvido o time desde o começo. Isso fez diferença na adesão.
+
+00:00:56 Speaker 2
+Tipo, no começo teve resistência, né, porque mudava a rotina de todo mundo. Mas depois que o pessoal viu que diminuía o retrabalho, foi indo.
+
+00:01:10 Speaker 1
+Faz sentido. Agora, um ponto de atenção que eu queria trazer: o retorno aos clientes depois do primeiro atendimento. Tem casos que ficaram mais de uma semana sem retorno.
+
+00:01:25 Speaker 2
+É verdade. Eu sei. Tem uns casos que dependem do financeiro e aí a gente fica esperando, esperando, e o cliente fica sem resposta.
+
+00:01:37 Speaker 1
+Entendo. Mas mesmo quando depende de outra área, o cliente precisa saber que a gente está acompanhando. Isso é o que mais aparece nas reclamações.
+
+00:01:49 Speaker 2
+Concordo. A gente podia ter uma mensagem padrão de acompanhamento, avisando que o caso está com outra área e quando a gente volta a falar.
+
+00:02:02 Speaker 1
+Gostei da ideia. Você consegue montar essa proposta?
+
+00:02:07 Speaker 2
+Consigo. Eu vou montar a proposta da mensagem de acompanhamento e te mando até sexta-feira.
+
+00:02:15 Speaker 1
+Combinado. Até sexta então. E aí eu levo pra conversa com o financeiro na reunião de segunda.
+
+00:02:24 Speaker 2
+Perfeito.
+
+00:02:27 Speaker 1
+Outro ponto: o relatório semanal. Nas últimas três semanas ele chegou atrasado, na terça ou na quarta. A diretoria pediu ele na segunda de manhã.
+
+00:02:41 Speaker 2
+Hã... sim. Isso aconteceu porque eu estava montando tudo na mão, puxando de três planilhas diferentes. Demorou mais do que eu imaginava.
+
+00:02:53 Speaker 1
+E tem como automatizar alguma parte?
+
+00:02:57 Speaker 2
+Tem. O sistema de chamados exporta quase tudo. Eu só preciso aprender a montar a consulta direito. Tem um curso interno de planilhas avançadas que eu queria fazer.
+
+00:03:10 Speaker 1
+Pode se inscrever. Eu aprovo. Acho que vale muito a pena, pra você e pro time.
+
+00:03:17 Speaker 2
+Ótimo. Eu me inscrevo essa semana e faço até o fim do mês.
+
+00:03:23 Speaker 1
+Combinado. E enquanto isso, o relatório continua na segunda até as dez da manhã, tá? Se for atrasar, me avisa no domingo.
+
+00:03:33 Speaker 2
+Fica combinado. Eu aviso se tiver algum problema.
+
+00:03:38 Speaker 1
+Agora eu queria ouvir você. Como você está se sentindo com o volume de trabalho?
+
+00:03:45 Speaker 2
+Então, então, sinceramente, tá puxado. Com a saída da Júlia, eu fiquei com a fila dela também. Tem dia que eu termino bem depois do horário.
+
+00:04:00 Speaker 1
+Obrigado por falar. Isso é importante. Quantos chamados você está pegando por dia, mais ou menos?
+
+00:04:07 Speaker 2
+Uns quarenta, quarenta e cinco. Antes eram uns vinte e cinco.
+
+00:04:13 Speaker 1
+É bastante. A vaga da Júlia já está aberta, a previsão é contratar no mês que vem. Até lá, eu vou redistribuir parte da fila com o Diego.
+
+00:04:25 Speaker 2
+Ajudaria muito.
+
+00:04:28 Speaker 1
+Eu vou conversar com o Diego hoje à tarde e a gente divide a fila a partir de quarta.
+
+00:04:35 Speaker 2
+Obrigada, Rafael.
+
+00:04:38 Speaker 1
+E, assim, se tiver alguma coisa pessoal pesando também, você pode me falar, tá?
+
+00:04:44 Speaker 2
+Tá. Teve uma questão de saúde na família, minha mãe passou por uma consulta médica e eu precisei acompanhar algumas vezes. Mas agora já está tudo mais tranquilo.
+
+00:04:58 Speaker 1
+Que bom que está mais tranquilo. Se precisar de flexibilidade de horário, a gente combina, sem problema.
+
+00:05:05 Speaker 2
+Obrigada, de verdade.
+
+00:05:09 Speaker 1
+Bom, vamos falar um pouco de desenvolvimento. Onde você quer estar daqui a um ano?
+
+00:05:15 Speaker 2
+Eu gostaria de assumir a coordenação do atendimento um dia. Acho que eu já faço parte disso no dia a dia, organizando a fila, treinando o pessoal novo.
+
+00:05:28 Speaker 1
+Eu vejo isso também. Você já tem uma postura de referência pro time. O que falta, na minha visão, é a parte de indicadores e de planejamento, olhar mais pra frente.
+
+00:05:41 Speaker 2
+Faz sentido. Eu sinto que eu fico muito no operacional, apagando incêndio.
+
+00:05:48 Speaker 1
+Exato. E isso é natural com o volume que está. Mas eu queria que, depois que a fila normalizar, você reservasse um tempo na semana pra olhar os números com calma.
+
+00:06:01 Speaker 2
+Tipo uma hora por semana?
+
+00:06:04 Speaker 1
+Pode ser. Uma hora na sexta à tarde, revisando os indicadores da semana. A gente pode olhar junto nas primeiras vezes.
+
+00:06:13 Speaker 2
+Gostei. Eu topo.
+
+00:06:16 Speaker 1
+Combinado. A gente começa depois que o Diego assumir parte da fila.
+
+00:06:22 Speaker 2
+Uma dúvida: existe alguma possibilidade de promoção nesse ano ainda?
+
+00:06:28 Speaker 1
+Olha, eu não consigo te prometer prazo agora. Depende do orçamento do ano que vem. O que eu posso fazer é levar o seu nome como sucessora pra coordenação na conversa de planejamento.
+
+00:06:42 Speaker 2
+Entendi. Já ajuda saber que está no radar.
+
+00:06:46 Speaker 1
+Está. E eu queria que a gente montasse um plano de desenvolvimento por escrito, com os próximos passos.
+
+00:06:53 Speaker 2
+Pode ser. Eu posso começar um rascunho.
+
+00:06:57 Speaker 1
+Então você faz um rascunho e eu complemento. Mais pra frente a gente fecha.
+
+00:07:03 Speaker 2
+Tá bom. Eu mando o rascunho na semana que vem.
+
+00:07:08 Speaker 1
+Ótimo. Agora, sobre comunicação com as outras áreas. Eu recebi um retorno do comercial de que às vezes as informações dos clientes chegam incompletas pra eles.
+
+00:07:21 Speaker 2
+Hum... isso eu não sabia. Quais informações?
+
+00:07:25 Speaker 1
+Principalmente o histórico do cliente quando o caso vira uma oportunidade de venda. Eles precisam saber o que já foi conversado.
+
+00:07:34 Speaker 2
+Entendi. A gente registra no sistema, mas talvez o campo não esteja sendo preenchido por todo mundo. Eu posso reforçar com o time.
+
+00:07:44 Speaker 1
+Seria bom. E talvez revisar o modelo de registro, pra ficar mais fácil de preencher.
+
+00:07:50 Speaker 2
+Eu vou revisar o modelo de registro com o time na reunião de quinta.
+
+00:07:56 Speaker 1
+Perfeito. E me conta, tem alguma coisa que eu, como líder, poderia fazer diferente pra te ajudar?
+
+00:08:04 Speaker 2
+Então... às vezes as prioridades mudam muito rápido. Num dia é o relatório, no outro é um cliente grande, e eu fico sem saber o que vem primeiro.
+
+00:08:15 Speaker 1
+É um retorno justo. Eu posso ser mais claro nisso. Que tal a gente fazer um alinhamento rápido toda segunda de manhã, quinze minutos, pra definir as prioridades da semana?
+
+00:08:28 Speaker 2
+Seria ótimo. Ajuda muito.
+
+00:08:31 Speaker 1
+Então fica combinado: toda segunda, às nove, quinze minutos.
+
+00:08:36 Speaker 2
+Combinado.
+
+00:08:39 Speaker 1
+Mais alguma coisa sobre o time que você queira trazer?
+
+00:08:43 Speaker 2
+O pessoal novo está indo bem. A Paula evoluiu muito nas últimas semanas. Acho que vale um reconhecimento pra ela.
+
+00:08:52 Speaker 1
+Boa. Eu vou mandar uma mensagem de reconhecimento pra Paula ainda hoje, e cito no grupo do time.
+
+00:09:00 Speaker 2
+Ela vai gostar.
+
+00:09:03 Speaker 1
+Bom, deixa eu recapitular o que a gente combinou, pra não esquecer nada. Você monta a proposta da mensagem de acompanhamento até sexta-feira.
+
+00:09:13 Speaker 2
+Isso.
+
+00:09:15 Speaker 1
+Você se inscreve no curso de planilhas e faz até o fim do mês. O relatório continua na segunda até as dez.
+
+00:09:23 Speaker 2
+Certo.
+
+00:09:25 Speaker 1
+Eu converso com o Diego hoje e a fila é dividida a partir de quarta.
+
+00:09:31 Speaker 2
+Isso.
+
+00:09:33 Speaker 1
+Você revisa o modelo de registro com o time na quinta, e manda o rascunho do plano de desenvolvimento na semana que vem.
+
+00:09:41 Speaker 2
+Isso mesmo.
+
+00:09:43 Speaker 1
+E a gente começa o alinhamento de segunda às nove. Eu levo o seu nome na conversa de planejamento.
+
+00:09:50 Speaker 2
+Perfeito. Obrigada pela conversa, Rafael. Foi bem produtiva.
+
+00:09:56 Speaker 1
+Eu que agradeço, Camila. Você tem feito um trabalho excelente, mesmo com tudo puxado. Conte comigo.
+
+00:10:04 Speaker 2
+Obrigada. Ah, só mais uma coisa sobre o relatório. Se eu automatizar a consulta, dá pra gente mudar o formato também?
+
+00:10:12 Speaker 1
+Dá sim. Mas primeiro vamos garantir que ele chegue na segunda. Depois a gente melhora o formato.
+
+00:10:19 Speaker 2
+Faz sentido. Primeiro o prazo, depois o formato.
+
+00:10:24 Speaker 1
+Isso. E sobre a mensagem de acompanhamento, pensa também em quem vai disparar. Se for manual, a gente volta no mesmo problema.
+
+00:10:33 Speaker 2
+Verdade. Eu vejo se dá pra deixar automática no sistema de chamados. Se não der, eu coloco como tarefa na fila.
+
+00:10:43 Speaker 1
+Ótimo. Outra coisa: no mês que vem vai ter a pesquisa de clima. Eu queria que você incentivasse o time a responder.
+
+00:10:52 Speaker 2
+Pode deixar. Eu falo na reunião de quinta também.
+
+00:10:57 Speaker 1
+Ótimo. E sobre a contratação da vaga da Júlia, você topa participar das entrevistas?
+
+00:11:04 Speaker 2
+Topo! Eu gostaria muito. Acho que eu consigo avaliar bem a parte técnica do atendimento.
+
+00:11:11 Speaker 1
+Então eu te coloco como entrevistadora junto comigo. É uma boa experiência pra quem quer coordenação.
+
+00:11:18 Speaker 2
+Com certeza. Obrigada pela oportunidade.
+
+00:11:20 Speaker 1
+Antes de fechar, eu queria aproveitar que a gente reservou mais tempo hoje e passar com calma por alguns assuntos que ficaram de fora nos últimos alinhamentos. Pode ser?
+
+00:11:29 Speaker 2
+Pode sim. Eu até preferia, porque nos últimos a gente correu muito.
+
+00:11:33 Speaker 1
+Verdade. Então vamos por partes. Primeiro, eu queria entender melhor o projeto da base de conhecimento. Você comentou lá em agosto que queria montar artigos de ajuda pros clientes. Como está isso?
+
+00:11:43 Speaker 2
+É... então, ficou parado. Eu comecei, escrevi uns oito artigos, mas aí veio a saída da Júlia e eu não consegui mais mexer. Os artigos estão num rascunho, num documento compartilhado.
+
+00:11:53 Speaker 1
+Oito artigos já é um bom começo. Quais são os assuntos?
+
+00:11:56 Speaker 2
+Os mais comuns da fila. Como trocar a senha, como emitir a segunda via do boleto, como cancelar um pedido, como alterar o endereço de entrega, e uns de dúvidas sobre prazo de entrega. Esses cinco temas sozinhos dão quase metade dos chamados.
+
+00:12:09 Speaker 1
+Quase metade? Então isso tem um potencial enorme de reduzir a fila.
+
+00:12:13 Speaker 2
+Tem. Eu fiz uma conta rápida, tipo, se metade das pessoas que perguntam isso lerem o artigo antes de abrir chamado, a gente reduz uns vinte por cento do volume. Mas é uma estimativa, né, eu não tenho como garantir.
+
+00:12:25 Speaker 1
+Mesmo que seja dez por cento já vale. O que falta pra publicar?
+
+00:12:29 Speaker 2
+Falta revisar o texto, colocar umas imagens das telas e ver com o pessoal de tecnologia onde isso fica no site. Eu não sei se eles têm um espaço pra isso.
+
+00:12:39 Speaker 1
+Isso eu consigo ver. Eu vou falar com o Marcelo da tecnologia essa semana e te digo onde dá pra publicar.
+
+00:12:46 Speaker 2
+Ótimo. Aí eu reviso os oito artigos e mando pra você aprovar.
+
+00:12:50 Speaker 1
+Combinado. Mas sem pressa nisso agora, tá? Primeiro a mensagem de acompanhamento e o relatório. A base de conhecimento pode ficar pro mês que vem.
+
+00:12:58 Speaker 2
+Tá bom. Eu anoto aqui pra não esquecer.
+
+00:13:00 Speaker 1
+Segundo assunto: a pesquisa de satisfação dos clientes. A nota caiu um pouco no último trimestre. Você viu?
+
+00:13:06 Speaker 2
+Vi. Caiu de oito e meio pra sete e nove. Eu li os comentários, e a maior parte fala de demora no retorno, o que bate com o que a gente conversou no começo.
+
+00:13:17 Speaker 1
+Exato. Então a mensagem de acompanhamento ataca isso diretamente. Mas teve algum comentário que te chamou atenção além disso?
+
+00:13:23 Speaker 2
+Teve uns três ou quatro reclamando da forma como foram atendidos por telefone. Um cliente disse que a pessoa foi seca, que parecia que estava com pressa.
+
+00:13:31 Speaker 1
+Você sabe quem foi?
+
+00:13:33 Speaker 2
+Pelo horário, acho que foi um dos meninos novos. Eu não quero apontar sem ter certeza, mas eu posso ouvir as gravações das ligações daquele dia.
+
+00:13:41 Speaker 1
+Faz isso, mas com cuidado. A ideia não é punir ninguém, é entender e orientar. Se for alguém novo, provavelmente falta treinamento.
+
+00:13:48 Speaker 2
+Concordo. Eu acho que a gente nunca fez um treinamento de atendimento por telefone de verdade. O pessoal aprende vendo os outros.
+
+00:13:55 Speaker 1
+Então talvez seja hora de fazer. Você toparia montar um treinamento curto, tipo uma hora, com os principais pontos?
+
+00:14:01 Speaker 2
+Toparia. Eu já tenho umas anotações sobre isso. Posso montar com exemplos reais, tirando o nome dos clientes, claro.
+
+00:14:07 Speaker 1
+Perfeito. Mas de novo, depois que a fila normalizar. Eu não quero te sobrecarregar mais.
+
+00:14:12 Speaker 2
+Obrigada. Eu fico tentada a abraçar tudo, mas sei que não dá.
+
+00:14:16 Speaker 1
+E isso é um ponto que eu queria conversar também. Eu percebo que você tem dificuldade de dizer não. Quando chega um pedido de outra área, você aceita na hora, mesmo quando já está cheia.
+
+00:14:27 Speaker 2
+Hã... é verdade. Eu tenho isso. Eu acho que eu tenho medo de parecer que eu não estou colaborando.
+
+00:14:33 Speaker 1
+Eu entendo. Mas dizer não, ou dizer agora não dá, é parte do trabalho. Se você aceita tudo, alguma coisa vai atrasar, e aí o problema fica maior.
+
+00:14:42 Speaker 2
+Faz sentido. Como você sugere que eu faça?
+
+00:14:44 Speaker 1
+Quando chegar um pedido fora do combinado, você me copia ou me pergunta antes. Aí eu ajudo a priorizar, e se for o caso eu mesmo converso com a outra área.
+
+00:14:54 Speaker 2
+Isso me ajudaria muito. Às vezes o pedido vem direto de um gerente de outra área e eu fico sem graça de negar.
+
+00:15:01 Speaker 1
+Pode me envolver sempre. Esse é o meu papel.
+
+00:15:04 Speaker 2
+Tá bom. Vou fazer isso.
+
+00:15:06 Speaker 1
+Terceiro assunto, e esse é mais delicado. Eu notei que nas últimas semanas você chegou atrasada algumas vezes, e teve dois dias que você saiu mais cedo. Eu não estou cobrando, tá? Eu só queria entender se está acontecendo alguma coisa.
+
+00:15:19 Speaker 2
+Não, tudo bem, eu imaginei que você ia perguntar. Então, é... eu tenho tido umas dores nas costas bem fortes. Fui ao médico, ele pediu uns exames e eu comecei a fazer fisioterapia duas vezes por semana, de manhã cedo. Às vezes a sessão atrasa e eu chego depois.
+
+00:15:34 Speaker 1
+Poxa, sinto muito. Você está melhor?
+
+00:15:36 Speaker 2
+Estou melhorando. O médico disse que é postura, que eu passo muito tempo sentada do jeito errado. Ele falou pra eu fazer pausas e ajustar a cadeira.
+
+00:15:44 Speaker 1
+A gente pode pedir uma avaliação da cadeira e da mesa pro pessoal de segurança do trabalho. E nos dias de fisioterapia, a gente ajusta o seu horário, sem problema nenhum.
+
+00:15:54 Speaker 2
+Seria ótimo. Eu fiquei com receio de pedir.
+
+00:15:56 Speaker 1
+Não precisa ter receio. Saúde vem primeiro. Me manda os dias da fisioterapia e a gente organiza a escala.
+
+00:16:02 Speaker 2
+Mando hoje ainda.
+
+00:16:04 Speaker 1
+E os dois dias que você saiu mais cedo foram por isso também?
+
+00:16:08 Speaker 2
+Um foi por isso, teve exame. O outro foi por causa do meu filho. A escola ligou dizendo que ele estava com febre e eu precisei buscar. O pai dele estava viajando a trabalho.
+
+00:16:19 Speaker 1
+Entendi. Isso acontece, ainda mais com criança pequena. Quantos anos ele tem mesmo?
+
+00:16:23 Speaker 2
+Seis. Ele está no primeiro ano. É uma fase de adaptação, e tem sido difícil conciliar tudo. A gente também está passando por uma separação, eu e o pai dele, então a rotina mudou bastante.
+
+00:16:34 Speaker 1
+Obrigado por compartilhar, Camila. Eu imagino que não seja fácil. Se você precisar de flexibilidade em algum momento, me fala. A empresa também tem o programa de apoio ao colaborador, com atendimento psicológico gratuito. Você conhece?
+
+00:16:45 Speaker 2
+Já ouvi falar, mas nunca usei. É sigiloso?
+
+00:16:47 Speaker 1
+É totalmente sigiloso. A empresa não fica sabendo quem usa nem o que é conversado. Eu te mando o contato depois.
+
+00:16:54 Speaker 2
+Obrigada. Acho que pode ajudar.
+
+00:16:56 Speaker 1
+E o que eu puder fazer aqui no trabalho pra facilitar, a gente faz. O trabalho remoto em algum dia da semana ajudaria?
+
+00:17:03 Speaker 2
+Ajudaria muito. Se eu pudesse trabalhar de casa nas quartas, que é o dia que meu filho sai mais cedo da escola, já resolveria bastante coisa.
+
+00:17:11 Speaker 1
+Eu preciso ver com o RH se a política permite pra sua função, mas eu acho que dá. Eu vou consultar o RH sobre a quarta remota e te dou um retorno até a semana que vem.
+
+00:17:23 Speaker 2
+Perfeito. Muito obrigada mesmo.
+
+00:17:25 Speaker 1
+Imagina. Bom, vamos voltar um pouco pra parte de trabalho. Eu queria falar dos indicadores do time. Você tem acompanhado o tempo médio de resolução?
+
+00:17:33 Speaker 2
+Tenho, mais ou menos. O tempo de primeira resposta melhorou muito, como eu falei, mas o tempo de resolução, que é quando o chamado é fechado de verdade, continua alto. Está em torno de quatro dias.
+
+00:17:44 Speaker 1
+Quatro dias é bastante. Qual a meta?
+
+00:17:46 Speaker 2
+A meta é dois dias. A gente nunca bateu essa meta, na verdade, nem antes.
+
+00:17:51 Speaker 1
+E o que mais segura o chamado aberto?
+
+00:17:53 Speaker 2
+Principalmente os casos que dependem de outra área, como eu falei, o financeiro e a logística. Os casos que só dependem da gente se resolvem em menos de um dia.
+
+00:18:02 Speaker 1
+Então o problema não é o time, é o fluxo entre áreas.
+
+00:18:06 Speaker 2
+Isso. Eu acho que, tipo, se a gente tivesse um acordo de prazo com o financeiro e com a logística, ajudaria muito.
+
+00:18:13 Speaker 1
+Um acordo de nível de serviço interno. Faz sentido. Isso eu posso levar pra reunião de gerentes. Você me ajuda a levantar os números? Quantos casos por área, quanto tempo cada um fica parado.
+
+00:18:24 Speaker 2
+Ajudo. O sistema tem essa informação, é só filtrar por área responsável.
+
+00:18:28 Speaker 1
+Então você levanta esses números até o fim do mês, junto com o curso, e eu levo pra reunião de gerentes de dezembro.
+
+00:18:35 Speaker 2
+Fechado. Até o fim do mês eu te mando os números por área.
+
+00:18:39 Speaker 1
+Ótimo. Isso vai dar força pro argumento.
+
+00:18:41 Speaker 2
+Uma dúvida: eu posso participar dessa reunião? Pra apresentar os números?
+
+00:18:44 Speaker 1
+Boa pergunta. Normalmente é só gerente, mas eu acho que seria uma ótima exposição pra você, pensando na coordenação. Eu vou pedir pra você apresentar essa parte.
+
+00:18:52 Speaker 2
+Nossa, seria incrível. Eu fico um pouco nervosa de falar com a diretoria, mas acho que é uma boa oportunidade.
+
+00:18:58 Speaker 1
+É sim. E a gente pode ensaiar antes, se você quiser.
+
+00:19:01 Speaker 2
+Quero sim. Obrigada.
+
+00:19:03 Speaker 1
+Agora eu queria te dar um retorno mais detalhado sobre algumas situações específicas do trimestre, pra você ter exemplos concretos. Pode ser?
+
+00:19:10 Speaker 2
+Pode, claro.
+
+00:19:12 Speaker 1
+A primeira foi a crise com o cliente da rede de farmácias, em setembro. Lembra?
+
+00:19:17 Speaker 2
+Lembro. Foi aquele caso dos pedidos duplicados.
+
+00:19:19 Speaker 1
+Isso. Eu achei a sua condução excelente. Você ligou pro cliente antes de ele ligar pra gente, explicou o que tinha acontecido, assumiu o erro sem ficar dando desculpa e já trouxe a solução. O gerente deles me mandou um e-mail elogiando.
+
+00:19:32 Speaker 2
+Sério? Eu não sabia.
+
+00:19:34 Speaker 1
+Mandou. Eu devia ter te falado na hora, falha minha. Ele disse que foi o atendimento mais transparente que ele já recebeu de um fornecedor.
+
+00:19:42 Speaker 2
+Fico muito feliz. Naquele dia eu fiquei com muito medo de dar errado.
+
+00:19:46 Speaker 1
+Deu muito certo. E isso mostra uma coisa que eu valorizo muito em você, que é a transparência com o cliente. Parabéns por isso, de verdade.
+
+00:19:54 Speaker 2
+Obrigada, Rafael. Isso significa muito.
+
+00:19:56 Speaker 1
+A segunda situação foi menos boa. Foi a reunião com o time de logística em outubro, quando você discutiu com o Henrique.
+
+00:20:03 Speaker 2
+Ah, é... eu imaginei que isso ia aparecer.
+
+00:20:05 Speaker 1
+Não é pra te repreender. Eu só queria entender o que aconteceu, porque eu só ouvi a versão dele.
+
+00:20:11 Speaker 2
+Então, ele disse na frente de todo mundo que o atendimento promete prazo que a logística não consegue cumprir. E isso não é verdade, a gente só passa o prazo que o próprio sistema da logística informa. Eu me irritei e respondi de um jeito ríspido. Eu falei que se o sistema deles está errado, o problema é deles.
+
+00:20:29 Speaker 1
+Entendi. E você acha que a forma foi adequada?
+
+00:20:32 Speaker 2
+Não. Eu me arrependi depois. Eu tinha razão no conteúdo, mas a forma foi ruim. Eu deveria ter mostrado os dados em vez de responder no impulso.
+
+00:20:40 Speaker 1
+Exatamente isso. Você tinha razão, e justamente por isso não precisava subir o tom. Os dados falariam por você. E pensando em coordenação, esse tipo de situação vai aparecer mais vezes.
+
+00:20:50 Speaker 2
+Eu sei. É uma coisa que eu preciso melhorar, controlar a reação quando eu me sinto injustiçada.
+
+00:20:55 Speaker 1
+E você já conversou com o Henrique depois?
+
+00:20:57 Speaker 2
+Não. Fiquei sem graça.
+
+00:20:59 Speaker 1
+Eu acho que valeria uma conversa rápida, só pra fechar esse assunto. Não precisa pedir desculpa pelo conteúdo, só pela forma, e propor olhar os dados juntos.
+
+00:21:07 Speaker 2
+Tem razão. Eu vou procurar o Henrique essa semana pra conversar.
+
+00:21:10 Speaker 1
+Ótimo. Isso vai ajudar inclusive no acordo de prazo com a logística que a gente falou.
+
+00:21:15 Speaker 2
+Verdade, faz todo sentido.
+
+00:21:17 Speaker 1
+Terceira situação: o treinamento dos dois novos atendentes. Eu achei que você fez um ótimo trabalho, eles estão produzindo bem rápido. Mas eu percebi que o material de treinamento ficou muito na sua cabeça. Se você sair de férias, ninguém consegue treinar o próximo.
+
+00:21:31 Speaker 2
+É verdade. Eu treino mostrando, não tenho nada escrito.
+
+00:21:34 Speaker 1
+Então talvez a base de conhecimento interna seja um bom próximo passo, junto com a dos clientes. Um guia do atendente novo.
+
+00:21:41 Speaker 2
+Eu posso aproveitar o que eu já faço. Tipo, gravar umas telas, montar um roteiro da primeira semana.
+
+00:21:47 Speaker 1
+Isso. Mas também sem pressa. Coloca no plano de desenvolvimento, como um projeto pro primeiro trimestre do ano que vem.
+
+00:21:53 Speaker 2
+Combinado, vou colocar no rascunho do plano.
+
+00:21:55 Speaker 1
+Agora eu queria saber de você: tem alguma situação do trimestre que você quer trazer? Alguma coisa que te incomodou ou que você acha que eu deveria saber?
+
+00:22:04 Speaker 2
+Tem uma coisa, sim. Hum... é sobre a divisão das tarefas no time. Eu sinto que algumas pessoas pegam só os chamados fáceis e deixam os difíceis pra mim e pra Paula. Isso sobrecarrega a gente.
+
+00:22:15 Speaker 1
+Isso é importante. Você tem como mostrar isso nos dados?
+
+00:22:18 Speaker 2
+Tenho. Dá pra ver no sistema quem pega qual tipo de chamado. Eu não queria expor ninguém, mas está bem visível.
+
+00:22:25 Speaker 1
+Eu não vou expor ninguém. Mas eu preciso olhar. Talvez a gente precise mudar a forma de distribuição, em vez de cada um escolher, o sistema distribui automaticamente por ordem.
+
+00:22:34 Speaker 2
+Eu acho que seria mais justo. Já existe essa opção no sistema, a gente só nunca ativou.
+
+00:22:39 Speaker 1
+Então vamos testar. Você me manda o relatório de quem pega qual tipo de chamado e eu decido com você se ativamos a distribuição automática.
+
+00:22:47 Speaker 2
+Mando junto com os números por área.
+
+00:22:49 Speaker 1
+Perfeito. Mais alguma coisa?
+
+00:22:51 Speaker 2
+Tem uma coisa mais pessoal, que eu fiquei na dúvida se falava.
+
+00:22:55 Speaker 1
+Pode falar, fica aqui entre a gente.
+
+00:22:57 Speaker 2
+É sobre dinheiro. Com a separação, as contas ficaram mais apertadas. Eu fiz um empréstimo pra cobrir umas dívidas do cartão, e eu queria saber se a empresa tem alguma política de adiantamento de salário ou algo assim.
+
+00:23:09 Speaker 1
+Obrigado pela confiança. Eu não sei te dizer de cabeça como funciona, mas eu sei que o RH tem algumas opções, inclusive orientação financeira gratuita pelo mesmo programa de apoio. Eu posso te colocar em contato com a pessoa do RH responsável, sem passar detalhes, só dizendo que você quer informações sobre benefícios.
+
+00:23:26 Speaker 2
+Seria ótimo. Eu fico com vergonha de ir direto.
+
+00:23:29 Speaker 1
+Não precisa ter vergonha nenhuma. Isso acontece com muita gente. Eu faço a ponte e você conversa direto com ela, em sigilo.
+
+00:23:36 Speaker 2
+Obrigada, de verdade. Tirou um peso.
+
+00:23:38 Speaker 1
+Imagina. E, olha, nada disso muda a forma como eu vejo o seu trabalho. Você continua sendo uma das pessoas mais confiáveis do time.
+
+00:23:46 Speaker 2
+Obrigada. Eu fico emocionada.
+
+00:23:48 Speaker 1
+Vamos fazer uma pausa de um minuto? Quer uma água?
+
+00:23:51 Speaker 2
+Quero, pode ser.
+
+00:23:53 Speaker 1
+Bom, voltando. Agora eu queria falar do seu desenvolvimento técnico, além do curso de planilhas. Que outras habilidades você acha que precisa desenvolver pra coordenação?
+
+00:24:01 Speaker 2
+Acho que gestão de pessoas, principalmente. Dar feedback, por exemplo. Eu nunca dei um feedback formal pra ninguém. E também gestão do tempo, porque eu me perco muito no operacional.
+
+00:24:10 Speaker 1
+Concordo com os dois. A empresa tem uma trilha de liderança pra quem está se preparando pra assumir equipe. São seis encontros, um por mês. Eu posso te indicar pra próxima turma, que começa em fevereiro.
+
+00:24:21 Speaker 2
+Eu adoraria. Isso seria um sonho.
+
+00:24:23 Speaker 1
+Então eu vou indicar o seu nome pra trilha de liderança de fevereiro. A confirmação sai em janeiro.
+
+00:24:29 Speaker 2
+Obrigada!
+
+00:24:31 Speaker 1
+E enquanto isso, uma coisa prática: que tal você conduzir a próxima reunião semanal do time? Eu fico junto, mas quem conduz é você.
+
+00:24:39 Speaker 2
+Eu topo. Dá um frio na barriga, mas topo.
+
+00:24:42 Speaker 1
+É assim que se aprende. Depois a gente conversa sobre como foi.
+
+00:24:46 Speaker 2
+Combinado.
+
+00:24:48 Speaker 1
+E sobre gestão do tempo, uma sugestão: bloqueia na agenda duas horas por dia sem chamados, pra trabalhar nos projetos. Pode ser no começo da manhã ou no fim da tarde.
+
+00:24:58 Speaker 2
+No começo da manhã é mais tranquilo, a fila está menor. Mas com a fisioterapia em dois dias...
+
+00:25:04 Speaker 1
+Então nesses dois dias você bloqueia à tarde. O importante é ter o tempo protegido.
+
+00:25:09 Speaker 2
+Faz sentido. Eu vou testar isso a partir da semana que vem.
+
+00:25:13 Speaker 1
+Ótimo. E me conta depois se funcionou.
+
+00:25:15 Speaker 1
+Antes de falar de mim, eu queria entrar um pouco mais no dia a dia do time, porque você está mais perto deles do que eu. Como você vê cada um hoje?
+
+00:25:25 Speaker 2
+Posso falar com franqueza?
+
+00:25:27 Speaker 1
+Pode. É pra isso que a gente está aqui.
+
+00:25:30 Speaker 2
+A Paula, como eu falei, evoluiu muito. Ela chegou insegura, perguntava tudo, e hoje já resolve sozinha os casos de troca e devolução. O que falta pra ela é confiança pra falar com cliente bravo. Quando o cliente sobe o tom, ela trava e me passa a ligação.
+
+00:25:45 Speaker 1
+E você acha que isso se resolve com treinamento ou com tempo?
+
+00:25:49 Speaker 2
+Com os dois. Eu acho que se ela acompanhar algumas ligações difíceis comigo, ouvindo, ela vai pegar o jeito. Foi assim que eu aprendi.
+
+00:25:57 Speaker 1
+Boa. Pode fazer isso, tipo, uma ou duas ligações por semana, sem pressão.
+
+00:26:01 Speaker 2
+Faço sim. O Diego é o mais experiente depois de mim. Ele é muito técnico, resolve rápido, mas às vezes é curto demais nas respostas por escrito. O cliente lê e acha que foi grosseiro, mesmo que a solução esteja certa.
+
+00:26:14 Speaker 1
+Isso aparece nas avaliações dele também. Você já conversou com ele sobre isso?
+
+00:26:18 Speaker 2
+De passagem. Mas não de um jeito estruturado. É aí que entra aquela dificuldade que eu falei, de dar feedback.
+
+00:26:24 Speaker 1
+Então isso pode ser o seu primeiro exercício. Que tal a gente preparar junto um feedback pro Diego sobre a escrita das respostas? Você conduz e eu fico de apoio.
+
+00:26:33 Speaker 2
+Nossa, seria um bom treino. Mas como eu começo?
+
+00:26:36 Speaker 1
+Começa pelo fato, não pela pessoa. Por exemplo: na semana passada, três clientes avaliaram suas respostas como pouco cordiais. Depois você mostra o impacto, e pergunta como ele vê. E aí combinam juntos o que muda.
+
+00:26:47 Speaker 2
+Fato, impacto, pergunta e combinado. Gostei. Eu anoto isso.
+
+00:26:50 Speaker 1
+E reconhece o que ele faz bem também. Ele resolve rápido, isso é muito valioso. A ideia é ajustar a forma, não desmerecer.
+
+00:26:57 Speaker 2
+Entendi. Eu vou preparar o feedback do Diego e te mostro antes de conversar com ele.
+
+00:27:02 Speaker 1
+Ótimo. E os dois novos?
+
+00:27:04 Speaker 2
+O Lucas e a Bianca. O Lucas é muito interessado, mas ainda erra no registro dos chamados, esquece de preencher campos. A Bianca é mais organizada, mas é muito tímida, quase não fala nas reuniões.
+
+00:27:15 Speaker 1
+O erro de registro do Lucas tem relação com aquele problema do comercial, das informações incompletas?
+
+00:27:20 Speaker 2
+Pode ser, em parte. Mas não é só ele. Por isso eu acho que revisar o modelo de registro vai ajudar todo mundo.
+
+00:27:27 Speaker 1
+Faz sentido. E a timidez da Bianca, como você pensa em trabalhar?
+
+00:27:31 Speaker 2
+Eu pensei em dar pra ela uma parte da reunião semanal, tipo, ela apresenta os números da semana. Algo pequeno, pra ela ir ganhando segurança.
+
+00:27:39 Speaker 1
+Gostei muito dessa ideia. É exatamente o tipo de coisa que um coordenador faz.
+
+00:27:43 Speaker 2
+Obrigada.
+
+00:27:45 Speaker 1
+E o clima do time, de forma geral? Com a saída da Júlia e a sobrecarga, como está?
+
+00:27:51 Speaker 2
+Está cansado. O pessoal não reclama abertamente, mas eu percebo. Tem gente almoçando na mesa pra dar conta da fila. Eu mesma faço isso às vezes.
+
+00:27:59 Speaker 1
+Isso me preocupa. Almoçar na mesa não pode virar rotina. Vamos combinar que ninguém almoça na mesa, nem você. Se a fila apertar, a gente aceita que alguns chamados esperem um pouco mais.
+
+00:28:09 Speaker 2
+Vai ser difícil convencer o time, porque eles se sentem responsáveis.
+
+00:28:12 Speaker 1
+Eu falo na reunião. É uma orientação minha, então tira o peso deles.
+
+00:28:16 Speaker 2
+Vai ajudar.
+
+00:28:18 Speaker 1
+E você? Como você está dormindo? Porque com tudo isso que você me contou, separação, filho, dor nas costas...
+
+00:28:24 Speaker 2
+Hum... não muito bem, pra ser sincera. Tem noites que eu acordo de madrugada pensando no trabalho, nas contas, e não consigo dormir de novo. Meu médico falou que pode ser ansiedade e me encaminhou pra um acompanhamento.
+
+00:28:36 Speaker 1
+Que bom que você está sendo acompanhada. E aquele programa de apoio que eu falei pode complementar, se fizer sentido pra você.
+
+00:28:43 Speaker 2
+Vou procurar, sim.
+
+00:28:45 Speaker 1
+E por favor, se em algum dia você não estiver bem, me avisa. A gente reorganiza a fila. Ninguém precisa trabalhar no limite.
+
+00:28:52 Speaker 2
+Obrigada, Rafael. Eu fico aliviada de poder falar isso.
+
+00:28:55 Speaker 1
+Tem mais alguma coisa em casa que esteja pesando? Não precisa contar se não quiser.
+
+00:29:00 Speaker 2
+Tem o meu pai também. Ele mora no interior, sozinho, e recebeu um diagnóstico de diabetes há pouco tempo. Eu e meu irmão estamos nos revezando pra ir visitar, levar nas consultas. Quase todo fim de semana eu viajo.
+
+00:29:12 Speaker 1
+Nossa, é muita coisa ao mesmo tempo. Se em algum momento você precisar de uns dias, a gente vê férias ou alguma folga. Você tem férias vencendo, inclusive.
+
+00:29:21 Speaker 2
+Tenho, sim. Eu estava guardando pra janeiro, pra ficar com meu filho nas férias da escola.
+
+00:29:26 Speaker 1
+Então vamos planejar isso direitinho. Você me passa as datas que você quer em janeiro e a gente já organiza a cobertura.
+
+00:29:33 Speaker 2
+Te passo até o fim da semana.
+
+00:29:35 Speaker 1
+Combinado. Bom, voltando pro trabalho: tem algum processo que você mudaria amanhã, se pudesse?
+
+00:29:39 Speaker 2
+A triagem. Hoje a triagem é manual, cada chamado que entra alguém lê e classifica. Isso toma umas duas horas por dia do time. O sistema tem regras automáticas que classificam por palavra-chave, mas ninguém configurou.
+
+00:29:50 Speaker 1
+Duas horas por dia é muito tempo. Você sabe configurar essas regras?
+
+00:29:54 Speaker 2
+Sei mais ou menos. Eu vi um tutorial. Acho que em uma tarde eu configuro as regras principais, e depois a gente vai ajustando.
+
+00:30:02 Speaker 1
+Então vale a pena, porque libera tempo de todo mundo. Mas só depois da divisão da fila com o Diego. Coloca como primeira melhoria de dezembro.
+
+00:30:10 Speaker 2
+Primeira melhoria de dezembro: regras automáticas de triagem. Anotado.
+
+00:30:13 Speaker 1
+E se der certo, a gente apresenta isso também na reunião de gerentes, como ganho de produtividade.
+
+00:30:18 Speaker 2
+Boa. Eu meço o tempo de triagem antes e depois.
+
+00:30:21 Speaker 1
+Perfeito. Isso é pensar como coordenadora.
+
+00:30:23 Speaker 1
+Antes de mudar de assunto, tem uma coisa operacional que está chegando: a Black Friday. Ano passado a fila triplicou na semana seguinte. Como você está pensando em se preparar?
+
+00:30:32 Speaker 2
+É... eu estava justamente preocupada com isso. Ano passado foi caótico. A gente ficou umas duas semanas com chamado atrasado e muita reclamação.
+
+00:30:39 Speaker 1
+O que você acha que deu errado?
+
+00:30:41 Speaker 2
+Três coisas. Primeiro, a gente não tinha mensagem pronta pras dúvidas mais comuns, cada um escrevia do zero. Segundo, ninguém sabia o prazo real de entrega da logística naqueles dias. E terceiro, a gente não tinha reforço de pessoas.
+
+00:30:53 Speaker 1
+E o que dá pra fazer diferente esse ano, com o tempo que a gente tem?
+
+00:30:58 Speaker 2
+As mensagens prontas eu consigo fazer rápido, aproveitando os artigos da base de conhecimento. Tipo, uma mensagem pra atraso de entrega, uma pra troca, uma pra cancelamento.
+
+00:31:06 Speaker 1
+Ótimo, isso tem um custo baixo e um impacto alto. E o prazo da logística?
+
+00:31:11 Speaker 2
+Aí precisa do Henrique. Por isso também é importante eu conversar com ele essa semana. Se a gente tiver uma previsão de prazo atualizada todo dia durante a semana da Black Friday, o time passa a informação certa pro cliente.
+
+00:31:23 Speaker 1
+Perfeito, uma coisa puxa a outra. E o reforço de pessoas?
+
+00:31:26 Speaker 2
+Eu pensei em pedir pra algumas pessoas de outras áreas ajudarem nos chamados mais simples, tipo dúvida de rastreio. Ano passado o comercial ofereceu ajuda, mas a gente não tinha como treinar.
+
+00:31:36 Speaker 1
+Com as mensagens prontas e um roteiro simples, dá pra treinar em uma hora. Eu falo com a gerente do comercial sobre ceder duas pessoas na semana da Black Friday.
+
+00:31:45 Speaker 2
+Seria ótimo. E eu monto o roteiro de uma página pra eles.
+
+00:31:49 Speaker 1
+Combinado. Então pra Black Friday: você prepara as mensagens prontas e o roteiro até o dia vinte, eu consigo o reforço do comercial, e você alinha a previsão de prazo com o Henrique.
+
+00:31:59 Speaker 2
+Até o dia vinte, fechado.
+
+00:32:01 Speaker 1
+E na própria semana, eu quero que você faça um acompanhamento diário curto com o time, tipo dez minutos no começo do dia, pra ver o volume e redistribuir.
+
+00:32:10 Speaker 2
+Tipo um ponto de situação. Faço sim.
+
+00:32:12 Speaker 1
+Isso. E me manda um resumo no fim do dia, três linhas: quantos chamados entraram, quantos foram fechados, e se tem algum problema.
+
+00:32:19 Speaker 2
+Pode deixar.
+
+00:32:21 Speaker 1
+Outro assunto rápido: a escala de fim de ano. Você já tem as férias de janeiro, mas e o Natal e o Ano Novo?
+
+00:32:29 Speaker 2
+Então, o time precisa ter alguém nos dias vinte e seis e dois de janeiro, que são dias úteis. Eu pensei em fazer um revezamento, cada um pega um dia, e quem trabalhar ganha folga depois.
+
+00:32:40 Speaker 1
+Parece justo. Monta uma proposta de escala e mostra pro time na reunião semanal, pra eles darem opinião antes de fechar.
+
+00:32:47 Speaker 2
+Boa, assim ninguém se sente imposto.
+
+00:32:49 Speaker 1
+Exatamente. Agora, mudando de assunto, eu recebi uma solicitação estranha essa semana e queria a sua opinião. Um cliente pediu pra gente apagar todos os dados dele do sistema. Você sabe como a gente trata isso?
+
+00:33:00 Speaker 2
+Sei. É um pedido de exclusão de dados, pela lei de proteção de dados. Tem um formulário próprio, e quem cuida é o jurídico junto com tecnologia. O atendimento só registra o pedido e encaminha. A gente não pode apagar nada por conta própria.
+
+00:33:14 Speaker 1
+Que bom que você sabe. Eu não tinha certeza se o time sabia.
+
+00:33:18 Speaker 2
+Nem todo mundo sabe. O Lucas e a Bianca, por exemplo, eu acho que nunca viram esse fluxo. Vale colocar no guia do atendente novo.
+
+00:33:26 Speaker 1
+Coloca, sim. E talvez um aviso rápido na reunião semanal, já que é um tema sensível de conformidade.
+
+00:33:32 Speaker 2
+Eu falo na próxima reunião, que eu mesma vou conduzir.
+
+00:33:35 Speaker 1
+Perfeito, já tem pauta.
+
+00:33:37 Speaker 2
+Já tem, sim. Fila, almoço fora da mesa, escala de fim de ano e o fluxo de exclusão de dados.
+
+00:33:43 Speaker 1
+E a apresentação dos números da semana pela Bianca.
+
+00:33:46 Speaker 2
+Isso! Ia esquecer.
+
+00:33:48 Speaker 1
+Última coisa sobre operação: tem uma proposta antiga de colocar um atendimento automático no chat, um robô pras dúvidas simples. O que você acha?
+
+00:33:56 Speaker 2
+Eu tenho sentimentos misturados. Por um lado, ajudaria muito no volume, principalmente rastreio de pedido. Por outro, eu tenho medo do cliente ficar irritado de falar com robô e a gente perder aquela coisa da transparência.
+
+00:34:07 Speaker 1
+É uma preocupação legítima. E se o robô responder só rastreio e segunda via, e sempre oferecer a opção de falar com uma pessoa?
+
+00:34:15 Speaker 2
+Aí eu acho que funciona. O importante é o cliente nunca ficar preso.
+
+00:34:19 Speaker 1
+Concordo. Isso é um projeto grande, de tecnologia, pro ano que vem. Mas eu queria você no grupo que vai desenhar isso, porque você conhece as dúvidas melhor do que ninguém.
+
+00:34:29 Speaker 2
+Eu topo. Acho que pode ser muito interessante.
+
+00:34:31 Speaker 1
+Então quando o projeto começar, eu te indico pro grupo. Não é agora, é provavelmente em abril.
+
+00:34:36 Speaker 2
+Combinado. Fica no radar.
+
+00:34:38 Speaker 1
+E falando em ano que vem, as metas do atendimento pra dois mil e vinte e sete ainda estão em discussão. A diretoria quer manter a nota de satisfação acima de oito e meio e reduzir o tempo de resolução pra dois dias.
+
+00:34:51 Speaker 2
+A nota eu acho possível, com a mensagem de acompanhamento e o treinamento de telefone. O tempo de resolução depende muito do acordo com as outras áreas.
+
+00:34:59 Speaker 1
+Exatamente por isso a reunião de gerentes é tão importante. Se a gente não conseguir o acordo, eu vou argumentar pra meta de resolução considerar só o que depende do atendimento.
+
+00:35:09 Speaker 2
+Seria mais justo. Hoje a gente é medido por coisas que não controla.
+
+00:35:13 Speaker 1
+É um ponto que eu vou levar. E os seus números vão sustentar isso.
+
+00:35:17 Speaker 2
+Então eu capricho nos números.
+
+00:35:19 Speaker 1
+Sem exagero. Números simples e confiáveis já resolvem.
+
+00:35:21 Speaker 2
+Tá bom.
+
+00:35:23 Speaker 1
+Antes do retorno sobre mim, eu queria voltar no plano de desenvolvimento, pra você já sair com uma estrutura do rascunho. Pode ser?
+
+00:35:30 Speaker 2
+Pode. Eu estava mesmo pensando em como organizar.
+
+00:35:32 Speaker 1
+Eu gosto de dividir em três partes. Primeiro, o que você já faz bem e quer manter. Segundo, o que você quer desenvolver. Terceiro, as ações concretas, com prazo.
+
+00:35:41 Speaker 2
+Então na primeira parte entra a relação com o cliente, a transparência, o cuidado com o time.
+
+00:35:46 Speaker 1
+Exato. E a capacidade de organizar a fila, que é algo que muita gente não tem.
+
+00:35:51 Speaker 2
+Na segunda, gestão de pessoas, dar feedback, indicadores e planejamento, e gestão do tempo.
+
+00:35:55 Speaker 1
+E controle da reação em conflito, como a gente falou do caso com o Henrique.
+
+00:36:00 Speaker 2
+É, isso também. Eu ia esquecer.
+
+00:36:02 Speaker 1
+E na terceira, as ações. O curso de planilhas, a trilha de liderança, conduzir a reunião, o feedback do Diego, os números pra reunião de gerentes.
+
+00:36:10 Speaker 2
+E os projetos, a base de conhecimento, o guia do atendente novo, as regras de triagem.
+
+00:36:15 Speaker 1
+Isso. Mas aí eu queria que você priorizasse. Não dá pra fazer tudo no primeiro trimestre. Escolhe três que você considera mais importantes e coloca o resto como segunda fase.
+
+00:36:24 Speaker 2
+Eu acho que seriam as regras de triagem, porque liberam tempo, a trilha de liderança e os números da reunião de gerentes.
+
+00:36:31 Speaker 1
+Concordo com a escolha. São coisas que se reforçam. As regras liberam tempo, os números mostram resultado, e a trilha te prepara pra posição.
+
+00:36:39 Speaker 2
+E a base de conhecimento fica pra segunda fase.
+
+00:36:42 Speaker 1
+Isso. E pra cada ação, coloca como a gente vai saber que deu certo. Tipo, tempo de triagem caiu de duas horas pra meia hora.
+
+00:36:50 Speaker 2
+Entendi, um indicador pra cada ação.
+
+00:36:52 Speaker 1
+Isso. E uma data. Sem data, vira intenção, não plano.
+
+00:36:55 Speaker 2
+Faz sentido. Eu vou fazer assim.
+
+00:36:57 Speaker 1
+Outra coisa que eu queria sugerir: um mentor fora da área. Alguém de outra coordenação que possa conversar com você uma vez por mês sobre liderança.
+
+00:37:05 Speaker 2
+Eu nunca pensei nisso. Quem você sugeriria?
+
+00:37:07 Speaker 1
+A Fernanda, coordenadora do financeiro. Ela é muito boa com gente e passou por uma transição parecida, de analista pra coordenadora. E de quebra ajuda a melhorar a relação entre as áreas.
+
+00:37:17 Speaker 2
+Gostei muito. A gente já conversa às vezes sobre os casos.
+
+00:37:20 Speaker 1
+Então eu falo com a Fernanda e vejo se ela topa ser sua mentora.
+
+00:37:24 Speaker 2
+Seria ótimo.
+
+00:37:26 Speaker 1
+E sobre o curso de planilhas, você sabe quanto tempo ele tem?
+
+00:37:30 Speaker 2
+São dezesseis horas, divididas em oito aulas de duas horas. Dá pra fazer no horário de trabalho, a empresa libera.
+
+00:37:36 Speaker 1
+Então usa aquelas duas horas protegidas da agenda pra isso, nas semanas do curso.
+
+00:37:40 Speaker 2
+Boa ideia. Assim não atrasa nada.
+
+00:37:42 Speaker 1
+E depois do curso, a primeira aplicação prática é automatizar o relatório semanal. Coloca isso como indicador: relatório entregue toda segunda até as dez, sem trabalho manual.
+
+00:37:50 Speaker 2
+Fechado.
+
+00:37:52 Speaker 1
+Agora uma pergunta mais ampla. Onde você se vê daqui a três anos, além da coordenação?
+
+00:37:57 Speaker 2
+Hum... eu gosto muito de atendimento, mas também me interesso pela parte de experiência do cliente como um todo. Tipo, olhar a jornada inteira, desde a compra até o pós-venda.
+
+00:38:06 Speaker 1
+Isso é uma área que está crescendo muito. Algumas empresas têm um gerente de experiência do cliente. Pode ser um caminho natural depois da coordenação.
+
+00:38:14 Speaker 2
+Eu adoraria. Mas acho que ainda estou longe disso.
+
+00:38:17 Speaker 1
+Não tão longe quanto você pensa. O que você já faz de olhar o problema do cliente entre as áreas é exatamente isso.
+
+00:38:24 Speaker 2
+Nunca tinha pensado assim. Obrigada.
+
+00:38:26 Speaker 1
+E pra chegar lá, além da liderança, vale aprender um pouco de análise de dados e de pesquisa com cliente. Mas isso é pra depois. Primeiro um passo de cada vez.
+
+00:38:36 Speaker 2
+Um passo de cada vez. Eu preciso repetir isso pra mim mesma.
+
+00:38:40 Speaker 1
+Todos nós precisamos.
+
+00:38:42 Speaker 2
+Posso perguntar uma coisa sobre a coordenação em si? Se eu assumir, eu continuo atendendo?
+
+00:38:47 Speaker 1
+No começo, um pouco sim, porque o time é pequeno. Mas a ideia é que você atenda só os casos mais críticos e dedique a maior parte do tempo ao time e aos processos.
+
+00:38:58 Speaker 2
+Entendi. Vai ser uma mudança grande.
+
+00:39:00 Speaker 1
+Vai, mas você já está fazendo parte disso. E a trilha de liderança vai ajudar muito na transição.
+
+00:39:06 Speaker 2
+Estou animada. Com medo, mas animada.
+
+00:39:08 Speaker 1
+Medo é normal. Significa que você leva a sério.
+
+00:39:11 Speaker 2
+Obrigada.
+
+00:39:13 Speaker 1
+Bom, eu acho que sobre o plano é isso. Você monta o rascunho com essa estrutura e me manda.
+
+00:39:19 Speaker 2
+Mando na semana que vem, como a gente combinou.
+
+00:39:22 Speaker 1
+Agora eu queria pedir um retorno seu sobre mim. Como tem sido trabalhar comigo nesse trimestre? Pode ser sincera.
+
+00:39:28 Speaker 2
+Hum... posso mesmo?
+
+00:39:30 Speaker 1
+Pode e deve. Senão eu não melhoro.
+
+00:39:32 Speaker 2
+Então, no geral é muito bom. Você é acessível, eu sinto que posso te procurar. Mas tem duas coisas. A primeira eu já falei, é a mudança de prioridade. A segunda é que às vezes você responde as mensagens muito tarde, tipo, eu pergunto uma coisa de manhã e você responde no fim do dia. E aí eu fico travada esperando.
+
+00:39:51 Speaker 1
+Isso é justo. Eu tenho ficado muito em reunião. O que ajudaria?
+
+00:39:55 Speaker 2
+Talvez, se for urgente, eu te ligar em vez de mandar mensagem? Ou ter um horário fixo no dia que você olha as mensagens do time.
+
+00:40:03 Speaker 1
+Gostei das duas. Se for urgente, me liga, mesmo que eu esteja em reunião. E eu vou reservar meia hora depois do almoço só pra responder o time. Combinado?
+
+00:40:12 Speaker 2
+Combinado. Isso já vai ajudar bastante.
+
+00:40:14 Speaker 1
+E a outra coisa, a das prioridades, a gente resolve com o alinhamento de segunda.
+
+00:40:19 Speaker 2
+Isso.
+
+00:40:21 Speaker 1
+Mais alguma coisa sobre mim?
+
+00:40:23 Speaker 2
+Acho que não. Ah, só uma: eu gostaria de receber mais retorno sobre o que eu faço. Tipo, o elogio do cliente das farmácias, eu fiquei sabendo só agora. Se eu soubesse na hora, teria me motivado muito.
+
+00:40:35 Speaker 1
+Você tem toda razão. Eu vou te repassar os elogios na hora, assim que chegarem. E também as críticas, pra gente corrigir rápido.
+
+00:40:42 Speaker 2
+Obrigada. É isso.
+
+00:40:44 Speaker 1
+Eu que agradeço. Esse tipo de retorno é muito valioso.
+
+00:40:47 Speaker 2
+Posso falar uma coisa sobre a empresa também?
+
+00:40:49 Speaker 1
+Claro.
+
+00:40:51 Speaker 2
+Eu sinto que o atendimento é visto como uma área menos importante. Nas reuniões gerais, a gente quase nunca é citado. E o time sente isso.
+
+00:40:59 Speaker 1
+É uma percepção que eu também tenho, e que eu já levei pra diretoria. Por isso eu acho tão importante você apresentar os números na reunião de gerentes. É uma forma de mostrar o valor do atendimento.
+
+00:41:11 Speaker 2
+Faz sentido. Eu não tinha pensado por esse lado.
+
+00:41:14 Speaker 1
+E outra ideia: a gente pode mandar um resumo mensal dos resultados do atendimento pra todas as áreas. Os números de satisfação, os elogios, o tempo de resposta.
+
+00:41:23 Speaker 2
+Gostei. Eu posso montar esse resumo junto com o relatório semanal, depois que a consulta estiver automatizada.
+
+00:41:28 Speaker 1
+Então fica pro ano que vem também, no plano. Não quero que você pegue mais coisa agora.
+
+00:41:33 Speaker 2
+Tá. Eu estou aprendendo a dizer não, né?
+
+00:41:35 Speaker 1
+Está sim.
+
+00:41:37 Speaker 2
+Uma dúvida sobre a avaliação de desempenho do fim do ano. Como vai funcionar? Ela tem relação com aumento?
+
+00:41:43 Speaker 1
+A avaliação formal acontece em dezembro e entra na discussão de mérito, que é decidida em março. Eu não consigo te prometer valor nenhum, porque depende do orçamento. Mas o que a gente conversou hoje vai estar refletido na minha avaliação.
+
+00:41:56 Speaker 2
+Entendi. Eu pergunto porque, com tudo que eu te contei, um aumento faria muita diferença.
+
+00:42:01 Speaker 1
+Eu entendo, e vou fazer o que estiver ao meu alcance pra defender o reconhecimento do seu trabalho. Mas eu prefiro ser transparente: não depende só de mim.
+
+00:42:10 Speaker 2
+Tudo bem. Eu agradeço a transparência.
+
+00:42:12 Speaker 1
+Bom, a gente está chegando perto do fim. Eu queria só garantir que você saia daqui com tudo claro. Vamos repassar os compromissos novos, além dos que a gente já tinha falado no começo?
+
+00:42:23 Speaker 2
+Vamos.
+
+00:42:25 Speaker 1
+Eu falo com o Marcelo da tecnologia essa semana sobre onde publicar a base de conhecimento.
+
+00:42:30 Speaker 2
+E eu reviso os oito artigos depois disso.
+
+00:42:32 Speaker 1
+Você ouve as ligações daquele dia, com cuidado, pra entender o que aconteceu no atendimento por telefone.
+
+00:42:37 Speaker 2
+Isso. E o treinamento de telefone fica pra depois da fila normalizar.
+
+00:42:41 Speaker 1
+Eu consulto o RH sobre a quarta remota e te dou um retorno até a semana que vem.
+
+00:42:47 Speaker 2
+E eu te mando hoje os dias da fisioterapia.
+
+00:42:50 Speaker 1
+Você levanta os números de casos por área até o fim do mês, e o relatório de quem pega cada tipo de chamado.
+
+00:42:57 Speaker 2
+Isso. E você leva pra reunião de gerentes de dezembro, comigo apresentando.
+
+00:43:01 Speaker 1
+Exato. Você procura o Henrique essa semana pra conversar.
+
+00:43:04 Speaker 2
+Combinado.
+
+00:43:06 Speaker 1
+Eu indico o seu nome pra trilha de liderança de fevereiro, e você conduz a próxima reunião semanal do time.
+
+00:43:12 Speaker 2
+Isso. E eu bloqueio duas horas por dia na agenda pros projetos, a partir da semana que vem.
+
+00:43:18 Speaker 1
+E eu passo a responder o time depois do almoço, e você me liga se for urgente.
+
+00:43:23 Speaker 2
+E você me repassa os elogios na hora.
+
+00:43:25 Speaker 1
+Na hora. E eu faço a ponte com o RH sobre os benefícios, em sigilo.
+
+00:43:30 Speaker 2
+Obrigada por isso.
+
+00:43:32 Speaker 1
+Acho que é isso. Olhando pra conversa toda, como você está se sentindo?
+
+00:43:36 Speaker 2
+Sinceramente? Bem melhor do que quando eu entrei. Eu estava com receio dessa conversa, achei que ia ser só cobrança. Mas foi muito equilibrado. Eu saio com um plano claro e me sentindo apoiada.
+
+00:43:47 Speaker 1
+Fico feliz em ouvir isso. E eu saio com a certeza de que você está pronta pra crescer. Você tem um potencial enorme, Camila.
+
+00:43:55 Speaker 2
+Obrigada, Rafael. De verdade.
+
+00:43:57 Speaker 1
+O próximo alinhamento formal fica pra daqui a três meses, como sempre. Mas toda segunda a gente se fala, e qualquer coisa antes disso, me procura.
+
+00:44:05 Speaker 2
+Pode deixar.
+
+00:44:07 Speaker 1
+E sobre os assuntos pessoais que você trouxe, fica só entre a gente. No registro do feedback eu coloco só o que é de trabalho.
+
+00:44:15 Speaker 2
+Obrigada, isso me deixa mais tranquila.
+
+00:44:17 Speaker 1
+Então tá. Bom trabalho, e cuida das costas, hein.
+
+00:44:20 Speaker 2
+Pode deixar. Até segunda!
+
+00:44:22 Speaker 1
+Até segunda, Camila.

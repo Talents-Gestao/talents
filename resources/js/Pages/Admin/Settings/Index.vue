@@ -2,11 +2,12 @@
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import MoneyInput from '@/Components/MoneyInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { formatDateTime } from '@/utils/dateOnly';
 
 const props = defineProps({
@@ -14,7 +15,36 @@ const props = defineProps({
     aiSettings: Object,
     mailSettings: Object,
     solidesSettings: Object,
+    feedbackAi: { type: Object, default: null },
 });
+
+// ── Feedbacks: provedor aprovado (trava de conformidade) e limite mensal por empresa ──
+const feedbackApproveForm = useForm({
+    provider: props.feedbackAi?.current_provider ?? '',
+    confirmed: false,
+});
+const approveFeedbackProvider = () => {
+    feedbackApproveForm.put(route('admin.settings.feedback-ai.approve'), {
+        preserveScroll: true,
+        onSuccess: () => feedbackApproveForm.reset('confirmed'),
+    });
+};
+const revokeFeedbackProvider = () => {
+    router.delete(route('admin.settings.feedback-ai.revoke'), { preserveScroll: true });
+};
+const centsToReais = (cents) => (cents == null ? '' : (cents / 100).toFixed(2));
+const feedbackLimits = ref(Object.fromEntries((props.feedbackAi?.companies ?? []).map((c) => [c.id, centsToReais(c.limit_cents)])));
+const saveFeedbackLimit = (company) => {
+    const raw = feedbackLimits.value[company.id];
+    const cents = raw === '' || raw == null ? null : Math.round(parseFloat(raw) * 100);
+    router.put(route('admin.settings.feedback-ai.limit', company.id), { limit_cents: cents }, { preserveScroll: true });
+};
+const formatCents = (cents) => (Number(cents ?? 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const feedbackStatusTitle = computed(() =>
+    props.feedbackAi?.status?.allowed
+        ? 'Liberado: ' + props.feedbackAi.status.provider_label + ' · ' + props.feedbackAi.status.model
+        : 'Processamento por IA ainda não liberado',
+);
 
 const tabQuery = computed(() => (['ia', 'mail', 'solides'].includes(props.tab) ? props.tab : 'ia'));
 
@@ -284,6 +314,81 @@ const setTab = (name) => {
                 </SecondaryButton>
             </div>
         </form>
+
+        <section
+            v-if="feedbackAi"
+            v-show="tabQuery === 'ia'"
+            class="surface-card mt-6 max-w-2xl space-y-4 p-6 text-slate-900"
+            data-settings-feedback-ai
+        >
+            <h3 class="text-lg font-semibold text-gray-900">Provedor aprovado para dados de Feedbacks</h3>
+            <p class="text-sm text-gray-600">
+                Transcrições de feedback só vão para IA depois desta aprovação, feita por quem confirmou contrato, retenção, região dos dados e não uso para
+                treinamento. Se o provedor da Mia mudar, a aprovação deixa de valer. Não é um interruptor de produto: sem ela, o servidor recusa toda
+                chamada de IA de Feedbacks.
+            </p>
+
+            <div
+                class="rounded-lg border px-4 py-3 text-sm"
+                :class="feedbackAi.status.allowed ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-slate-300 bg-slate-100 text-slate-800'"
+                role="status"
+            >
+                <p class="font-semibold">{{ feedbackStatusTitle }}</p>
+                <p v-if="!feedbackAi.status.allowed && feedbackAi.status.message" class="mt-1">{{ feedbackAi.status.message }}</p>
+                <p v-if="feedbackAi.approved_at" class="mt-1 text-xs opacity-80">
+                    <template v-if="feedbackAi.approved_provider">Aprovado: {{ feedbackAi.approved_provider_label }}</template>
+                    <template v-else>Aprovação revogada</template>
+                    em {{ formatDateTime(feedbackAi.approved_at) }}<span v-if="feedbackAi.approved_by"> por {{ feedbackAi.approved_by }}</span>.
+                </p>
+            </div>
+
+            <form class="space-y-3" @submit.prevent="approveFeedbackProvider">
+                <div>
+                    <InputLabel for="feedback_ai_provider" value="Provedor que vai receber os dados" />
+                    <select
+                        id="feedback_ai_provider"
+                        v-model="feedbackApproveForm.provider"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    >
+                        <option v-if="feedbackAi.current_provider" :value="feedbackAi.current_provider">
+                            {{ feedbackAi.current_provider_label }} · {{ feedbackAi.current_model }} (provedor atual da Mia)
+                        </option>
+                        <option v-if="feedbackAi.demo_available" value="demo">Demonstração local (sem IA externa; só neste ambiente)</option>
+                    </select>
+                    <p v-if="feedbackApproveForm.errors.provider" class="mt-1 text-sm text-red-700">{{ feedbackApproveForm.errors.provider }}</p>
+                </div>
+                <label class="flex items-start gap-2 text-sm">
+                    <input v-model="feedbackApproveForm.confirmed" type="checkbox" class="mt-0.5 rounded border-gray-300 text-talents-600 focus:ring-talents-500" />
+                    <span>Confirmei contrato, retenção, região dos dados e não uso para treinamento deste provedor.</span>
+                </label>
+                <p v-if="feedbackApproveForm.errors.confirmed" class="text-sm text-red-700">{{ feedbackApproveForm.errors.confirmed }}</p>
+                <div class="flex flex-wrap gap-3">
+                    <PrimaryButton :disabled="feedbackApproveForm.processing || !feedbackApproveForm.confirmed || !feedbackApproveForm.provider">
+                        Aprovar provedor
+                    </PrimaryButton>
+                    <SecondaryButton v-if="feedbackAi.approved_provider" type="button" @click="revokeFeedbackProvider">Revogar aprovação</SecondaryButton>
+                </div>
+            </form>
+
+            <div class="border-t border-gray-100 pt-4">
+                <h4 class="text-sm font-semibold text-gray-900">Limite mensal de IA por empresa</h4>
+                <p class="mt-1 text-xs text-gray-600">
+                    Custo estimado no mês (calendário de São Paulo). Em branco, vale o padrão de {{ formatCents(feedbackAi.default_limit_cents) }}; zero bloqueia.
+                    Ao atingir, novos processamentos são recusados e a Talents recebe um aviso.
+                </p>
+                <p v-if="!feedbackAi.companies.length" class="mt-2 text-sm text-gray-500">Nenhuma empresa ativa com Feedbacks.</p>
+                <ul v-else class="mt-3 divide-y divide-gray-100">
+                    <li v-for="company in feedbackAi.companies" :key="company.id" class="flex flex-wrap items-center gap-3 py-2 text-sm">
+                        <div class="min-w-0 flex-1">
+                            <p class="font-medium text-gray-900">{{ company.name }}</p>
+                            <p class="text-xs text-gray-500">Usado no mês: {{ formatCents(company.used_cents) }} de {{ formatCents(company.effective_limit_cents) }}</p>
+                        </div>
+                        <MoneyInput v-model="feedbackLimits[company.id]" class="w-32" placeholder="padrão" />
+                        <SecondaryButton type="button" @click="saveFeedbackLimit(company)">Salvar</SecondaryButton>
+                    </li>
+                </ul>
+            </div>
+        </section>
 
         <form
             v-show="tabQuery === 'mail'"

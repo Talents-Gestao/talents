@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Feedback;
 
 use App\Models\FeedbackAuditLog;
+use App\Models\FeedbackRecording;
+use App\Models\FeedbackRecordingReport;
 use App\Models\FeedbackSession;
 use App\Models\FeedbackSessionAnswer;
 use App\Models\FeedbackTemplate;
@@ -64,6 +66,14 @@ class DeleteFeedbackTemplate
                 ? 0
                 : FeedbackSessionAnswer::query()->whereIn('feedback_session_id', $sessionIds)->delete();
 
+            $recordings = $sessionIds->isEmpty()
+                ? 0
+                : FeedbackRecording::query()->whereIn('feedback_session_id', $sessionIds)->delete();
+
+            if ($sessionIds->isNotEmpty()) {
+                FeedbackRecordingReport::query()->whereIn('feedback_session_id', $sessionIds)->delete();
+            }
+
             if ($sessionIds->isNotEmpty()) {
                 FeedbackSession::query()->whereIn('id', $sessionIds)->delete();
             }
@@ -79,7 +89,10 @@ class DeleteFeedbackTemplate
                 'subject_label' => $locked->title,
                 'sessions_count' => $sessionIds->count(),
                 'answers_count' => $answers,
-                'details' => ['feedback_session_ids' => $sessionIds->values()->all()],
+                'details' => [
+                    'feedback_session_ids' => $sessionIds->values()->all(),
+                    'recordings_count' => $recordings,
+                ],
             ]);
 
             return ['sessions' => $sessionIds->count(), 'answers' => $answers];

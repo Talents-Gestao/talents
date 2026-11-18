@@ -6,8 +6,10 @@ namespace App\Actions\Notices;
 
 use App\Enums\CompanyNoticeAudience;
 use App\Enums\CompanyNoticeEventKind;
+use App\Models\Company;
 use App\Models\FeedbackSession;
 use App\Models\User;
+use App\Support\Feedback\Ai\FeedbackAiMonthlyLimit;
 
 /**
  * Avisos por empresa para o ciclo de feedbacks internos.
@@ -58,6 +60,21 @@ class PublishFeedbackNotice
             sourceId: (int) $session->id,
             eventKind: CompanyNoticeEventKind::FeedbackCompleted,
             dedupeWithinMinutes: 5,
+        );
+    }
+
+    /** Aviso à Talents: a empresa atingiu o limite mensal de IA de Feedbacks (um aviso por empresa no mês). */
+    public function aiLimitReached(Company $company): void
+    {
+        $this->publish->handle(
+            companyId: (int) $company->id,
+            title: 'Limite de IA de Feedbacks atingido',
+            body: "A empresa {$company->name} atingiu o limite mensal de IA de Feedbacks. Novos processamentos ficam bloqueados até o próximo mês ou até o limite ser ampliado em Configurações.",
+            audience: CompanyNoticeAudience::Talents,
+            sourceType: 'company',
+            sourceId: (int) $company->id,
+            eventKind: CompanyNoticeEventKind::FeedbackAiLimitReached,
+            dedupeWithinMinutes: max(1, (int) now()->diffInMinutes(FeedbackAiMonthlyLimit::monthStart(), true)),
         );
     }
 }

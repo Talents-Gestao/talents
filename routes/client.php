@@ -13,6 +13,8 @@ use App\Http\Controllers\Client\ExecutiveBriefController;
 use App\Http\Controllers\Client\ExportController;
 use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
 use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
+use App\Http\Controllers\Client\Feedback\FeedbackRecordingAiController;
+use App\Http\Controllers\Client\Feedback\FeedbackRecordingController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
 use App\Http\Controllers\Client\Feedback\FeedbackTemplateController;
 use App\Http\Controllers\Client\ImportController;
@@ -255,6 +257,16 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::delete('sessions/{session}', [FeedbackSessionController::class, 'destroy'])->name('sessions.destroy');
         Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
         Route::get('sessions/{session}/pdf', [FeedbackSessionController::class, 'pdf'])->name('sessions.pdf');
+        // Gravação (transcrição do Plaud): enviar, ver o original (só administrador) e excluir.
+        Route::post('sessions/{session}/gravacao', [FeedbackRecordingController::class, 'store'])->name('sessions.recording.store');
+        Route::get('sessions/{session}/gravacao/original', [FeedbackRecordingController::class, 'original'])->name('sessions.recording.original');
+        Route::delete('sessions/{session}/gravacao', [FeedbackRecordingController::class, 'destroy'])->name('sessions.recording.destroy');
+        // IA da gravação: falantes, processar, tentar de novo, relatório novo e edição da transcrição limpa.
+        Route::post('sessions/{session}/gravacao/falantes', [FeedbackRecordingAiController::class, 'speakers'])->name('sessions.recording.speakers');
+        Route::post('sessions/{session}/gravacao/processar', [FeedbackRecordingAiController::class, 'process'])->name('sessions.recording.process');
+        Route::post('sessions/{session}/gravacao/tentar-novamente', [FeedbackRecordingAiController::class, 'retry'])->name('sessions.recording.retry');
+        Route::post('sessions/{session}/gravacao/relatorio', [FeedbackRecordingAiController::class, 'regenerateReport'])->name('sessions.recording.report');
+        Route::put('sessions/{session}/gravacao/transcricao-limpa', [FeedbackRecordingAiController::class, 'updateClean'])->name('sessions.recording.clean');
         // Modelos da própria empresa (só administrador; o controller recusa os demais).
         Route::post('templates/{template}/duplicar', [FeedbackTemplateController::class, 'duplicate'])->name('templates.duplicate');
         Route::get('templates/{template}/exclusao', [FeedbackTemplateController::class, 'deletionImpact'])->name('templates.deletion');

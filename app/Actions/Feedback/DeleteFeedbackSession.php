@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Feedback;
 
 use App\Models\FeedbackAuditLog;
+use App\Models\FeedbackRecording;
+use App\Models\FeedbackRecordingReport;
 use App\Models\FeedbackSession;
 use App\Models\FeedbackSessionAnswer;
 use App\Models\User;
@@ -25,6 +27,10 @@ class DeleteFeedbackSession
             $session->loadMissing(['employee', 'leader']);
 
             $answers = FeedbackSessionAnswer::query()->where('feedback_session_id', $session->id)->delete();
+            // Gravação (transcrição do Plaud) sai junto; não há arquivo físico guardado.
+            $recordings = FeedbackRecording::query()->where('feedback_session_id', $session->id)->delete();
+            // Relatórios gerados por IA (derivados da gravação) saem junto.
+            FeedbackRecordingReport::query()->where('feedback_session_id', $session->id)->delete();
             $session->delete();
 
             FeedbackAuditLog::query()->create([
@@ -42,6 +48,7 @@ class DeleteFeedbackSession
                     'leader' => $session->leader?->name,
                     'scheduled_at' => $session->scheduled_at?->toIso8601String(),
                     'status' => $session->status?->value,
+                    'recordings_count' => $recordings,
                 ],
             ]);
 

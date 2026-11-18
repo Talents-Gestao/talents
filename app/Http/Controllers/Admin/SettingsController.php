@@ -57,6 +57,7 @@ class SettingsController extends Controller
                 'openai_transcription_api_key_set' => filled($aiRow->getRawOriginal('openai_transcription_api_key')),
                 'openai_transcription_api_key_readable' => $aiRow->canDecrypt('openai_transcription_api_key'),
             ],
+            'feedbackAi' => FeedbackAiSettingsController::props($aiRow),
             'mailSettings' => [
                 'id' => $mailRow->id,
                 'host' => $mailRow->host,

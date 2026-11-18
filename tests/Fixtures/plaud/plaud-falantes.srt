@@ -1,0 +1,12 @@
+1
+00:00:01,000 --> 00:00:05,500
+Speaker 1: Bom dia, Larissa. Vamos começar o alinhamento do semestre?
+
+2
+00:00:06,000 --> 00:00:11,000
+Speaker 2: Bom dia! Sim, eu trouxe as entregas
+do projeto de atendimento.
+
+3
+00:01:12,250 --> 00:01:15,000
+Speaker 1: Combinamos de revisar os prazos até sexta-feira.

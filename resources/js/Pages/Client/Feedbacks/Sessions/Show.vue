@@ -2,6 +2,7 @@
 import FeedbackActionsMenu from '@/Components/Feedback/FeedbackActionsMenu.vue';
 import FeedbackFlash from '@/Components/Feedback/FeedbackFlash.vue';
 import FeedbackPanel from '@/Components/Feedback/FeedbackPanel.vue';
+import FeedbackRecordingPanel from '@/Components/Feedback/FeedbackRecordingPanel.vue';
 import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccordion.vue';
 import FeedbackSessionDeleteModal from '@/Components/Feedback/FeedbackSessionDeleteModal.vue';
 import FeedbackSessionSignaturesPanel from '@/Components/Feedback/FeedbackSessionSignaturesPanel.vue';
@@ -11,7 +12,7 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { feedbackSectionIcon } from '@/utils/feedbackSectionIcons';
 import { formatDateTime } from '@/utils/dateOnly';
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import {
     ArrowDownTrayIcon,
     ArrowPathIcon,
@@ -27,6 +28,9 @@ const props = defineProps({
     session: Object,
     canExportPdf: { type: Boolean, default: false },
     canDelete: { type: Boolean, default: false },
+    recording: { type: Object, default: null },
+    recordingAccess: { type: Object, default: () => ({}) },
+    recordingAi: { type: Object, default: null },
 });
 
 const deletingSession = ref(null);
@@ -34,12 +38,25 @@ const deletingSession = ref(null);
 // Todas as ações do cabeçalho num menu: Editar (mesma regra do antigo botão), Exportar PDF e,
 // separado e por último, Excluir. Sem nenhum item, o botão «Ações» não aparece.
 const canEdit = computed(() => props.session.status !== 'completed' && props.session.status !== 'cancelled');
+const canRegenerateReport = computed(
+    () =>
+        !!props.recordingAi?.clean
+        && props.recordingAi?.gate?.allowed
+        && !props.recordingAi?.limit_reached
+        && ['ready', 'failed'].includes(props.recordingAi?.status)
+        && props.recordingAccess?.canProcess
+        && !props.recordingAccess?.locked,
+);
 const headerMenuItems = computed(() => [
     ...(canEdit.value
         ? [{ key: 'edit', label: 'Editar', icon: PencilSquareIcon, href: feedbackRoute('sessions.edit', props.session.id) }]
         : []),
     ...(props.canExportPdf
         ? [{ key: 'pdf', label: 'Exportar PDF', icon: ArrowDownTrayIcon, href: feedbackRoute('sessions.pdf', props.session.id), external: true }]
+        : []),
+    // Novo relatório da gravação (a IA pode estar travada; o servidor confere de novo a trava e o limite).
+    ...(canRegenerateReport.value
+        ? [{ key: 'report', label: 'Gerar relatório novamente', icon: ArrowPathIcon, onSelect: () => router.post(feedbackRoute('sessions.recording.report', props.session.id), {}, { preserveScroll: true }) }]
         : []),
     ...(props.canDelete
         ? [{ key: 'delete', label: 'Excluir feedback', icon: TrashIcon, danger: true, onSelect: () => (deletingSession.value = props.session) }]
@@ -189,7 +206,11 @@ const sectionMeta = (section) => {
             </dl>
         </FeedbackPanel>
 
-        <FeedbackSessionSignaturesPanel class="mb-8" :session="session" />
+        <FeedbackSessionSignaturesPanel class="mb-6" :session="session" />
+
+        <div class="mb-8">
+            <FeedbackRecordingPanel :session-id="session.id" :recording="recording" :ai="recordingAi" :access="recordingAccess" />
+        </div>
 
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Respostas por seção</h3>
         <div class="space-y-3">
