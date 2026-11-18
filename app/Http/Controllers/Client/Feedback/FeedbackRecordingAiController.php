@@ -1,0 +1,110 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Client\Feedback;
+
+use App\Actions\Feedback\MapFeedbackRecordingSpeakers;
+use App\Actions\Feedback\StartFeedbackRecordingProcessing;
+use App\Actions\Feedback\UpdateFeedbackCleanTranscript;
+use App\Http\Controllers\Concerns\ResolvesFeedbackRoutes;
+use App\Models\Company;
+use App\Models\FeedbackRecording;
+use App\Models\FeedbackSession;
+use App\Services\Feedback\Ai\FeedbackAiException;
+use App\Support\Feedback\FeedbackRecordingAccess;
+use App\Support\Feedback\FeedbackVisibility;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+
+/**
+ * IA da gravação do feedback: mapear falantes, processar (limpeza + relatório), tentar de novo, gerar o
+ * relatório novamente e editar a transcrição limpa. Portal e admin (empresa selecionada) usam este controller;
+ * a sessão passa sempre por authorizeSession e a sessão concluída ou cancelada fica só para leitura.
+ */
+class FeedbackRecordingAiController extends FeedbackCompanyController
+{
+    use ResolvesFeedbackRoutes;
+
+    public const MAX_CLEAN_CHARS = 1_000_000;
+
+    public function speakers(Request $request, FeedbackSession $session, MapFeedbackRecordingSpeakers $map): RedirectResponse
+    {
+        $recording = $this->recording($request, $session);
+        abort_unless(FeedbackRecordingAccess::canProcess($request, $session), 403);
+
+        $data = $request->validate(
+            ['speakers' => ['required', 'array', 'min:1', 'max:8'], 'speakers.*' => ['required', 'string']],
+            ['speakers.required' => 'Escolha o papel de cada pessoa da transcrição.', 'speakers.*.required' => 'Escolha o papel de cada pessoa da transcrição.'],
+        );
+
+        $map->execute($recording, $request->user(), $data['speakers']);
+
+        return back()->with('success', 'Falantes confirmados.');
+    }
+
+    public function process(Request $request, FeedbackSession $session, StartFeedbackRecordingProcessing $start): RedirectResponse
+    {
+        return $this->start($request, $session, $start, StartFeedbackRecordingProcessing::REQUEST_PROCESS, 'Processamento iniciado. O resultado aparece aqui quando ficar pronto.');
+    }
+
+    public function retry(Request $request, FeedbackSession $session, StartFeedbackRecordingProcessing $start): RedirectResponse
+    {
+        return $this->start($request, $session, $start, StartFeedbackRecordingProcessing::REQUEST_RETRY, 'Nova tentativa iniciada.');
+    }
+
+    public function regenerateReport(Request $request, FeedbackSession $session, StartFeedbackRecordingProcessing $start): RedirectResponse
+    {
+        return $this->start($request, $session, $start, StartFeedbackRecordingProcessing::REQUEST_REPORT, 'Novo relatório em geração. O anterior continua guardado.');
+    }
+
+    public function updateClean(Request $request, FeedbackSession $session, UpdateFeedbackCleanTranscript $update): RedirectResponse
+    {
+        $recording = $this->recording($request, $session);
+        abort_unless(FeedbackRecordingAccess::canEditClean($request, $session), 403);
+
+        $data = $request->validate([
+            'clean_text' => ['required', 'string', 'max:'.self::MAX_CLEAN_CHARS],
+            'revision' => ['required', 'integer', 'min:0'],
+        ], [
+            'clean_text.required' => 'A transcrição limpa não pode ficar vazia.',
+            'clean_text.max' => 'A transcrição limpa passa do limite de 1.000.000 caracteres.',
+        ]);
+
+        $update->execute($recording, $request->user(), trim($data['clean_text']), (int) $data['revision']);
+
+        return back()->with('success', 'Transcrição limpa salva. Para refletir no relatório, use «Gerar relatório novamente».');
+    }
+
+    private function start(Request $request, FeedbackSession $session, StartFeedbackRecordingProcessing $start, string $kind, string $success): RedirectResponse
+    {
+        $recording = $this->recording($request, $session);
+        abort_unless(FeedbackRecordingAccess::canProcess($request, $session), 403);
+
+        try {
+            $start->execute($recording, $request->user(), $kind);
+        } catch (FeedbackAiException $e) {
+            return back()->withErrors(['ai' => $e->getMessage()]);
+        }
+
+        return back()->with('success', $success);
+    }
+
+    /** Sessão da empresa e visível ao usuário, aberta, com gravação. */
+    private function recording(Request $request, FeedbackSession $session): FeedbackRecording
+    {
+        $this->authorizeSession($this->company($request), $session);
+        abort_if(FeedbackRecordingAccess::isLocked($session), 403, 'Feedback concluído ou cancelado: a gravação e o relatório ficam só para leitura.');
+
+        $recording = $session->currentRecording();
+        abort_if($recording === null, 404);
+
+        return $recording;
+    }
+
+    private function authorizeSession(Company $company, FeedbackSession $session): void
+    {
+        abort_unless($session->company_id === $company->id, 403);
+        FeedbackVisibility::authorizeSession(request()->user(), $session);
+    }
+}

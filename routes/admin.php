@@ -19,6 +19,8 @@ use App\Http\Controllers\Admin\ComplaintCompanySelectController;
 use App\Http\Controllers\Admin\SuggestionCompanySelectController;
 use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
 use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
+use App\Http\Controllers\Client\Feedback\FeedbackRecordingAiController;
+use App\Http\Controllers\Client\Feedback\FeedbackRecordingController;
 use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
 use App\Http\Controllers\Client\Feedback\FeedbackTemplateController;
 use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
@@ -47,6 +49,7 @@ use App\Http\Controllers\Admin\ClosedContractsController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\BusinessDiagnosticController;
 use App\Http\Controllers\Admin\LandingInterestSubmissionController;
+use App\Http\Controllers\Admin\FeedbackAiSettingsController;
 use App\Http\Controllers\Admin\MailSettingsController;
 use App\Http\Controllers\Admin\MethodologyCompanyController;
 use App\Http\Controllers\Admin\MethodologyController as AdminMethodologyController;
@@ -435,6 +438,14 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
                 ->except(['show'])
                 ->parameters(['templates' => 'template']);
             Route::get('sessions/{session}/pdf', [FeedbackSessionController::class, 'pdf'])->name('sessions.pdf');
+            Route::post('sessions/{session}/gravacao', [FeedbackRecordingController::class, 'store'])->name('sessions.recording.store');
+            Route::get('sessions/{session}/gravacao/original', [FeedbackRecordingController::class, 'original'])->name('sessions.recording.original');
+            Route::delete('sessions/{session}/gravacao', [FeedbackRecordingController::class, 'destroy'])->name('sessions.recording.destroy');
+            Route::post('sessions/{session}/gravacao/falantes', [FeedbackRecordingAiController::class, 'speakers'])->name('sessions.recording.speakers');
+            Route::post('sessions/{session}/gravacao/processar', [FeedbackRecordingAiController::class, 'process'])->name('sessions.recording.process');
+            Route::post('sessions/{session}/gravacao/tentar-novamente', [FeedbackRecordingAiController::class, 'retry'])->name('sessions.recording.retry');
+            Route::post('sessions/{session}/gravacao/relatorio', [FeedbackRecordingAiController::class, 'regenerateReport'])->name('sessions.recording.report');
+            Route::put('sessions/{session}/gravacao/transcricao-limpa', [FeedbackRecordingAiController::class, 'updateClean'])->name('sessions.recording.clean');
         });
     });
 
@@ -518,6 +529,10 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::put('settings/solides', [SolidesSettingsController::class, 'update'])->name('settings.solides.update');
         Route::post('settings/solides/test', [SolidesSettingsController::class, 'test'])->name('settings.solides.test');
         Route::put('settings/mail', [MailSettingsController::class, 'update'])->name('settings.mail.update');
+        // Feedbacks: provedor aprovado para dados de Feedbacks (trava de conformidade) e limite mensal por empresa.
+        Route::put('settings/feedbacks-ia/aprovacao', [FeedbackAiSettingsController::class, 'approve'])->name('settings.feedback-ai.approve');
+        Route::delete('settings/feedbacks-ia/aprovacao', [FeedbackAiSettingsController::class, 'revoke'])->name('settings.feedback-ai.revoke');
+        Route::put('settings/feedbacks-ia/limites/{company}', [FeedbackAiSettingsController::class, 'updateLimit'])->name('settings.feedback-ai.limit');
         Route::post('settings/mail/test', [MailSettingsController::class, 'test'])->name('settings.mail.test');
         Route::get('ai-settings', [AiSettingsController::class, 'edit'])->name('ai-settings.edit');
         Route::put('ai-settings', [AiSettingsController::class, 'update'])->name('ai-settings.update');

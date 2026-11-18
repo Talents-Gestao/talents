@@ -1,6 +1,7 @@
 <script setup>
 import FeedbackPanel from '@/Components/Feedback/FeedbackPanel.vue';
 import FeedbackQuestionField from '@/Components/Feedback/FeedbackQuestionField.vue';
+import FeedbackRecordingPanel from '@/Components/Feedback/FeedbackRecordingPanel.vue';
 import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccordion.vue';
 import FeedbackSectionExtraField from '@/Components/Feedback/FeedbackSectionExtraField.vue';
 import FeedbackStatusBadge from '@/Components/Feedback/FeedbackStatusBadge.vue';
@@ -16,6 +17,9 @@ import { reactive } from 'vue';
 
 const props = defineProps({
     session: Object,
+    recording: { type: Object, default: null },
+    recordingAccess: { type: Object, default: () => ({}) },
+    recordingAi: { type: Object, default: null },
 });
 
 const answers = reactive({ ...(props.session.answers ?? {}) });
@@ -100,6 +104,10 @@ const sectionMeta = (section) => {
                 </div>
             </div>
         </FeedbackPanel>
+
+        <div class="mb-6">
+            <FeedbackRecordingPanel :session-id="session.id" :recording="recording" :ai="recordingAi" :access="recordingAccess" />
+        </div>
 
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Respostas por seção</h3>
         <div class="space-y-3">

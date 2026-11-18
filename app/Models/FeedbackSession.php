@@ -79,6 +79,17 @@ class FeedbackSession extends Model
         return $this->hasMany(FeedbackSessionSignature::class);
     }
 
+    public function recordings(): HasMany
+    {
+        return $this->hasMany(FeedbackRecording::class);
+    }
+
+    /** Gravação atual (não excluída); no máximo uma por feedback. */
+    public function currentRecording(): ?FeedbackRecording
+    {
+        return $this->recordings()->latest('id')->first();
+    }
+
     public function isFullySigned(): bool
     {
         return $this->signatures()->whereNull('signed_at')->doesntExist()

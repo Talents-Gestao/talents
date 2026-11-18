@@ -23,6 +23,7 @@ use App\Models\User;
 use App\Services\Feedback\FeedbackPdfService;
 use App\Support\Company\CompanyEmployeeDirectory;
 use App\Support\Feedback\FeedbackCompanyContext;
+use App\Support\Feedback\FeedbackRecordingAccess;
 use App\Support\Feedback\FeedbackVisibility;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -175,6 +176,9 @@ class FeedbackSessionController extends FeedbackCompanyController
             'session' => $this->sessionPayload($session, $request->user()),
             'canExportPdf' => FeedbackVisibility::actsAsCompanyAdmin($request->user()),
             'canDelete' => $this->canDelete($request),
+            'recording' => FeedbackRecordingAccess::payload($recording = $session->currentRecording()),
+            'recordingAccess' => FeedbackRecordingAccess::flags($request, $session),
+            'recordingAi' => FeedbackRecordingAccess::aiPayload($recording),
         ]);
     }
 
@@ -186,6 +190,9 @@ class FeedbackSessionController extends FeedbackCompanyController
 
         return Inertia::render('Client/Feedbacks/Sessions/Edit', [
             'session' => $this->sessionPayload($session, $request->user()),
+            'recording' => FeedbackRecordingAccess::payload($recording = $session->currentRecording()),
+            'recordingAccess' => FeedbackRecordingAccess::flags($request, $session),
+            'recordingAi' => FeedbackRecordingAccess::aiPayload($recording),
         ]);
     }
 

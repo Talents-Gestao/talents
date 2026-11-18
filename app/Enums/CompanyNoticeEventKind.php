@@ -24,6 +24,7 @@ enum CompanyNoticeEventKind: string
     // Feedbacks / Denúncias (audiência empresa)
     case FeedbackAwaitingSignature = 'feedback_awaiting_signature';
     case FeedbackCompleted = 'feedback_completed';
+    case FeedbackAiLimitReached = 'feedback_ai_limit_reached';
     case ComplaintCreated = 'complaint_created';
     case ComplaintUpdated = 'complaint_updated';
 
@@ -51,6 +52,7 @@ enum CompanyNoticeEventKind: string
             self::LeadReceived => 'novo lead',
             self::FeedbackAwaitingSignature => 'feedback enviado para assinatura',
             self::FeedbackCompleted => 'feedback concluído',
+            self::FeedbackAiLimitReached => 'limite de IA de Feedbacks atingido',
             self::ComplaintCreated => 'nova denúncia',
             self::ComplaintUpdated => 'denúncia atualizada',
             self::Nr1OpportunityCreated => 'nova oportunidade NR-1',
