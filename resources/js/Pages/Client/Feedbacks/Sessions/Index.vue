@@ -8,12 +8,13 @@ import PaginationBar from '@/Components/PaginationBar.vue';
 import FormPageHeader from '@/Components/FormPageHeader.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { Head, Link } from '@inertiajs/vue3';
-import { ChatBubbleLeftRightIcon, PlusIcon } from '@heroicons/vue/24/outline';
+import { ChatBubbleLeftRightIcon, PlusIcon, UsersIcon } from '@heroicons/vue/24/outline';
 import { ref } from 'vue';
 
 defineProps({
     sessions: Object,
     canDelete: { type: Boolean, default: false },
+    canManageEmployees: { type: Boolean, default: false },
 });
 
 const deletingSession = ref(null);
@@ -31,6 +32,14 @@ const deletingSession = ref(null);
                 subtitle="Todos os alinhamentos registrados, do mais recente ao mais antigo"
             >
                 <template #trailing>
+                    <Link
+                        v-if="canManageEmployees"
+                        :href="feedbackRoute('employees.duplicates')"
+                        class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2"
+                    >
+                        <UsersIcon class="h-4 w-4" aria-hidden="true" />
+                        Cadastros duplicados
+                    </Link>
                     <Link
                         :href="feedbackRoute('sessions.create')"
                         class="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-talents-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2"

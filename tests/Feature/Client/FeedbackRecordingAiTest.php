@@ -315,12 +315,19 @@ class FeedbackRecordingAiTest extends TestCase
         $this->app['env'] = 'local';
         $this->artisan('feedbacks:demo-ia')->assertSuccessful();
 
-        $recording = FeedbackRecording::query()->sole();
+        // Feedback principal, parado em «mapear falantes».
+        $recording = FeedbackRecording::query()->whereHas('session', fn ($q) => $q->where('title', 'Alinhamento trimestral — demonstração fictícia'))->sole();
         $this->assertTrue($recording->has_speaker_labels);
         $this->assertTrue($recording->has_timestamps);
         $this->assertSame(FeedbackRecording::STATUS_UPLOADED, $recording->processing_status);
         $this->assertStringContainsString('(fictícia)', $recording->session->company->name);
         $this->assertSame('demo', AiSetting::current()->feedback_approved_provider);
+
+        // Evolução: 3 feedbacks prontos (provedor de demonstração) e um cadastro duplicado da mesma pessoa.
+        $person = CompanyEmployee::query()->where('email', 'bruno.siqueira@demo.local')->sole();
+        $this->assertSame(3, FeedbackRecording::query()->whereHas('session', fn ($q) => $q->where('company_employee_id', $person->id))->where('processing_status', FeedbackRecording::STATUS_READY)->count());
+        $this->assertSame(1, CompanyEmployee::query()->where('company_id', $person->company_id)->where('name', 'Bruno Siqueira')->count());
+        Http::assertNothingSent();
     }
 
     // ── Falantes, job e estados ─────────────────────────────────────────

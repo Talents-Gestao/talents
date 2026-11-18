@@ -57,6 +57,16 @@ class DemoFeedbackAiProvider
             throw new FeedbackAiException(FeedbackAiGate::LOCKED_MESSAGE, 'demo_outside_local');
         }
 
+        if ($purpose === AiUsageLog::PURPOSE_FEEDBACK_EVOLUTION) {
+            $text = (string) json_encode($this->evolution($this->between($userContent, 'relatorios')), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+            return [
+                'text' => $text,
+                'input_tokens' => (int) ceil(mb_strlen($userContent) / 4),
+                'output_tokens' => (int) ceil(mb_strlen($text) / 4),
+            ];
+        }
+
         $transcript = $this->between($userContent, 'transcript');
 
         $text = $purpose === AiUsageLog::PURPOSE_FEEDBACK_REPORT
@@ -254,6 +264,83 @@ class DemoFeedbackAiProvider
             ), 0, 4),
             'nao_afirmado' => $notAffirmed,
             'assunto_sensivel_citado' => (bool) preg_match(FeedbackReportSchema::SENSITIVE_PATTERN, $transcript),
+        ];
+    }
+
+    /**
+     * Evolução de demonstração, só a partir dos relatórios estruturados recebidos (sem julgamento sobre a pessoa).
+     *
+     * @return array<string, mixed>
+     */
+    private function evolution(string $json): array
+    {
+        $periods = json_decode($json, true);
+        $periods = is_array($periods) ? array_values($periods) : [];
+        $refs = array_column($periods, 'ref');
+
+        $byTheme = [];
+        foreach ($periods as $p) {
+            foreach ($p['temas'] ?? [] as $t) {
+                $byTheme[$t['chave']][] = ['ref' => $p['ref'], 'sentimento' => $t['sentimento']];
+            }
+        }
+
+        $label = fn ($k) => mb_strtolower(FeedbackReportSchema::THEMES[$k] ?? $k);
+        $sentiment = fn ($s) => mb_strtolower(FeedbackReportSchema::SENTIMENTS[$s] ?? $s);
+
+        $mudancas = [];
+        $recorrentes = [];
+        foreach ($byTheme as $key => $hits) {
+            if (count($hits) >= 2) {
+                $recorrentes[] = ['chave' => $key, 'fontes' => array_column($hits, 'ref')];
+            }
+            $first = $hits[0];
+            $last = $hits[count($hits) - 1];
+            if (count($hits) >= 2 && $first['sentimento'] !== $last['sentimento']) {
+                $mudancas[] = [
+                    'texto' => sprintf('O tema %s apareceu como %s em %s e como %s em %s.', $label($key), $sentiment($first['sentimento']), $first['ref'], $sentiment($last['sentimento']), $last['ref']),
+                    'fontes' => [$first['ref'], $last['ref']],
+                ];
+            } elseif (count($hits) >= 2) {
+                $mudancas[] = [
+                    'texto' => sprintf('O tema %s se manteve como %s nas conversas %s.', $label($key), $sentiment($first['sentimento']), implode(', ', array_column($hits, 'ref'))),
+                    'fontes' => array_column($hits, 'ref'),
+                ];
+            }
+        }
+
+        $compromissos = [];
+        foreach ($periods as $p) {
+            $count = count($p['compromissos'] ?? []);
+            if ($count > 0) {
+                $compromissos[] = [
+                    'texto' => $count === 1
+                        ? sprintf('Em %s foi combinado 1 compromisso, registrado no relatório daquela conversa.', $p['ref'])
+                        : sprintf('Em %s foram combinados %d compromissos, registrados no relatório daquela conversa.', $p['ref'], $count),
+                    'fontes' => [$p['ref']],
+                ];
+            }
+        }
+
+        $text = (string) json_encode($periods, JSON_UNESCAPED_UNICODE);
+        $nao = ['Os relatórios não registram se os compromissos de períodos anteriores foram cumpridos.'];
+        if (count($refs) < 3) {
+            $nao[] = 'Com só dois feedbacks, não dá para falar em tendência.';
+        }
+
+        return [
+            'resumo' => sprintf(
+                'Foram %d conversas de feedback, de %s a %s. Os assuntos mais presentes foram %s. A comparação descreve o que foi conversado e combinado em cada período.',
+                count($periods),
+                $periods[0]['periodo'] ?? 'sem data',
+                $periods[count($periods) - 1]['periodo'] ?? 'sem data',
+                $byTheme === [] ? 'gerais' : implode(', ', array_map($label, array_slice(array_keys($byTheme), 0, 4))),
+            ),
+            'mudancas' => array_slice($mudancas, 0, 8),
+            'temas_recorrentes' => array_slice($recorrentes, 0, 8),
+            'compromissos_retomados' => array_slice($compromissos, 0, 8),
+            'nao_afirmado' => $nao,
+            'assunto_sensivel_citado' => (bool) preg_match(FeedbackReportSchema::SENSITIVE_PATTERN, $text),
         ];
     }
 

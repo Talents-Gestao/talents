@@ -32,6 +32,12 @@ class FeedbackAuditLog extends Model
 
     public const ACTION_RECORDING_REPORT_GENERATED = 'recording_report_generated';
 
+    public const ACTION_EMPLOYEES_MERGED = 'employees_merged';
+
+    public const ACTION_EVOLUTION_REQUESTED = 'evolution_requested';
+
+    public const SUBJECT_EMPLOYEE = 'company_employee';
+
     public const SUBJECT_SESSION = 'feedback_session';
 
     public const SUBJECT_RECORDING = 'feedback_recording';

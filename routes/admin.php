@@ -422,6 +422,11 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('company', [FeedbackCompanySelectController::class, 'store'])->name('company.store');
 
         Route::middleware('feedback.company')->group(function () {
+            // Pessoa: cadastros duplicados e união (só quem administra) e Evolução (antes do resource, por causa de {employee}).
+            Route::get('employees/duplicados', [FeedbackEmployeeController::class, 'duplicates'])->name('employees.duplicates');
+            Route::get('employees/unir', [FeedbackEmployeeController::class, 'mergePreview'])->name('employees.merge.preview');
+            Route::post('employees/unir', [FeedbackEmployeeController::class, 'merge'])->name('employees.merge');
+            Route::post('employees/{employee}/evolucao', [FeedbackEmployeeController::class, 'evolution'])->name('employees.evolution');
             Route::resource('employees', FeedbackEmployeeController::class)->except(['destroy']);
             Route::delete('employees/{employee}', [FeedbackEmployeeController::class, 'destroy'])->name('employees.destroy');
             Route::get('sessions', [FeedbackSessionController::class, 'index'])->name('sessions.index');

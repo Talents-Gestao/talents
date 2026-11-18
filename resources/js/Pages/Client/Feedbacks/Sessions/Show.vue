@@ -12,7 +12,7 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { feedbackSectionIcon } from '@/utils/feedbackSectionIcons';
 import { formatDateTime } from '@/utils/dateOnly';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import {
     ArrowDownTrayIcon,
     ArrowPathIcon,
@@ -179,7 +179,13 @@ const sectionMeta = (section) => {
                     <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Colaborador</dt>
                     <dd class="mt-1 flex items-center gap-2 font-medium text-talents-900">
                         <UserIcon class="h-4 w-4 shrink-0 text-talents-600" aria-hidden="true" />
-                        <span class="truncate">{{ session.employee?.name ?? '—' }}</span>
+                        <Link
+                            v-if="session.employee_profile_id"
+                            :href="feedbackRoute('employees.show', session.employee_profile_id)"
+                            class="truncate rounded underline decoration-talents-300 underline-offset-2 hover:decoration-talents-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
+                            :title="'Ver histórico e evolução de ' + (session.employee?.name ?? 'colaborador')"
+                        >{{ session.employee?.name ?? '—' }}</Link>
+                        <span v-else class="truncate">{{ session.employee?.name ?? '—' }}</span>
                     </dd>
                 </div>
                 <div class="min-w-0">

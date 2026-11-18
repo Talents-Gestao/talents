@@ -71,9 +71,10 @@ class FeedbackModuleTest extends TestCase
             'email' => 'outro@test.local',
         ]);
 
+        // A página da pessoa (histórico e Evolução) recusa colaborador de outra empresa.
         $this->actingAs($admin)
             ->get(route('client.feedbacks.employees.show', $employee))
-            ->assertRedirect(route('client.feedbacks.index'));
+            ->assertForbidden();
     }
 
     public function test_company_user_can_list_feedback_dashboard(): void

@@ -35,6 +35,9 @@ class CompanyEmployee extends Model
         'rg',
         'is_active',
         'notes',
+        'merged_into_employee_id',
+        'merged_at',
+        'merged_by_user_id',
     ];
 
     protected function casts(): array
@@ -43,7 +46,29 @@ class CompanyEmployee extends Model
             'is_active' => 'boolean',
             'birth_date' => 'date',
             'admission_date' => 'date',
+            'merged_at' => 'datetime',
         ];
+    }
+
+    /** Cadastro que ficou, quando este foi absorvido numa união (Feedbacks, Fase 2). */
+    public function mergedInto(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'merged_into_employee_id');
+    }
+
+    /** Segue a cadeia de uniões até o cadastro que ficou (protege contra ciclos). */
+    public function resolveMerged(): self
+    {
+        $current = $this;
+        for ($i = 0; $i < 10 && $current->merged_into_employee_id !== null; $i++) {
+            $next = self::query()->find($current->merged_into_employee_id);
+            if ($next === null || $next->company_id !== $this->company_id) {
+                break;
+            }
+            $current = $next;
+        }
+
+        return $current;
     }
 
     public function company(): BelongsTo
@@ -79,5 +104,10 @@ class CompanyEmployee extends Model
     public function exitInterviews(): HasMany
     {
         return $this->hasMany(ExitInterview::class);
+    }
+
+    public function evolutionReports(): HasMany
+    {
+        return $this->hasMany(FeedbackEvolutionReport::class);
     }
 }

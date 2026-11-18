@@ -6,6 +6,8 @@ namespace App\Services\Feedback\Ai;
 
 use App\Models\AiSetting;
 use App\Models\AiUsageLog;
+use App\Models\Company;
+use App\Models\FeedbackEvolutionReport;
 use App\Models\FeedbackRecording;
 use App\Models\User;
 use App\Support\Feedback\Ai\FeedbackAiCostEstimator;
@@ -50,17 +52,59 @@ class FeedbackAiClient
         bool $json = false,
         ?callable $validate = null,
     ): array {
-        ['provider' => $provider, 'model' => $model] = $this->gate->assertAllowed();
         $recording->loadMissing('session.company');
-        $this->limit->assertWithin($recording->session->company);
+
+        return $this->call($recording->session->company, 'feedback_recording', $recording->id, $actor, $purpose, $system, $userContent, $maxTokens, $json, $validate);
+    }
+
+    /**
+     * Mesma porta de saída para a Evolução (relatórios estruturados de vários feedbacks de uma pessoa).
+     *
+     * @param  (callable(string): mixed)|null  $validate
+     * @return array{text: string, parsed: mixed, provider: string, model: string}
+     *
+     * @throws FeedbackAiException
+     */
+    public function completeEvolution(
+        FeedbackEvolutionReport $evolution,
+        ?User $actor,
+        string $system,
+        string $userContent,
+        int $maxTokens,
+        ?callable $validate = null,
+    ): array {
+        $evolution->loadMissing('employee.company');
+
+        return $this->call($evolution->employee->company, 'feedback_evolution', $evolution->id, $actor, AiUsageLog::PURPOSE_FEEDBACK_EVOLUTION, $system, $userContent, $maxTokens, true, $validate);
+    }
+
+    /**
+     * @return array{text: string, parsed: mixed, provider: string, model: string}
+     *
+     * @throws FeedbackAiException
+     */
+    private function call(
+        Company $company,
+        string $subjectType,
+        int $subjectId,
+        ?User $actor,
+        string $purpose,
+        string $system,
+        string $userContent,
+        int $maxTokens,
+        bool $json,
+        ?callable $validate,
+    ): array {
+        ['provider' => $provider, 'model' => $model] = $this->gate->assertAllowed();
+        $this->limit->assertWithin($company);
 
         $started = hrtime(true);
         $log = fn (bool $success, int $in, int $out, ?string $error) => AiUsageLog::query()->create([
-            'company_id' => $recording->company_id,
+            'company_id' => $company->id,
             'user_id' => $actor?->id,
             'purpose' => $purpose,
-            'subject_type' => 'feedback_recording',
-            'subject_id' => $recording->id,
+            'subject_type' => $subjectType,
+            'subject_id' => $subjectId,
             'provider' => $provider,
             'model' => $model,
             'input_tokens' => $in,
