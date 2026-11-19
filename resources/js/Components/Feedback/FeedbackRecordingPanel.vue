@@ -1,20 +1,22 @@
 <script setup>
 import FeedbackRecordingAi from '@/Components/Feedback/FeedbackRecordingAi.vue';
 import FeedbackRecordingDeleteModal from '@/Components/Feedback/FeedbackRecordingDeleteModal.vue';
+import FeedbackRecordingDetailsModal from '@/Components/Feedback/FeedbackRecordingDetailsModal.vue';
 import FeedbackRecordingSection from '@/Components/Feedback/FeedbackRecordingSection.vue';
 import FeedbackRecordingSteps from '@/Components/Feedback/FeedbackRecordingSteps.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { recordingSteps } from '@/utils/feedbackRecordingSteps';
-import { ArrowPathIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
+import { canAdjustSpeakers, canRegenerateReport, recordingState } from '@/utils/feedbackRecordingView';
+import { ArrowPathIcon, InformationCircleIcon, TrashIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
 import { router, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 /**
  * Seção «Gravação e relatório» do feedback, ligada ao servidor: envia a transcrição do Plaud (com consentimento),
- * abre o texto original (só administradores, sob demanda), exclui a gravação e, com a IA (FeedbackRecordingAi),
- * mapeia falantes, processa e mostra o relatório e a transcrição limpa. O visual fica em
- * FeedbackRecordingSection e FeedbackRecordingDeleteModal.
+ * abre o texto original (só administradores, sob demanda e registrado), exclui a gravação e, com a IA
+ * (FeedbackRecordingAi), mapeia falantes, processa e mostra o relatório e as transcrições. O visual fica em
+ * FeedbackRecordingSection, FeedbackRecordingDetailsModal e FeedbackRecordingDeleteModal.
  */
 const props = defineProps({
     sessionId: { type: Number, required: true },
@@ -25,7 +27,7 @@ const props = defineProps({
         type: Object,
         default: () => ({ canUpload: false, canDelete: false, canViewOriginal: false, locked: false }),
     },
-    /** Nomes já presentes na sessão, para o responsável dos compromissos: { leader, employee }. */
+    /** Nomes já presentes na sessão: { leader, employee }. */
     people: { type: Object, default: () => ({}) },
 });
 
@@ -63,6 +65,7 @@ function upload({ file, consent }) {
     });
 }
 
+/** Original sob demanda: cada abertura fica registrada no servidor. */
 async function showOriginal() {
     if (loadingOriginal.value) return;
     loadingOriginal.value = true;
@@ -71,41 +74,47 @@ async function showOriginal() {
         const { data } = await axios.get(feedbackRoute('sessions.recording.original', props.sessionId));
         original.value = data;
     } catch {
-        originalError.value = 'Não foi possível abrir a transcrição original. Tente de novo.';
+        originalError.value = 'Não foi possível abrir a transcrição. Tente de novo.';
     } finally {
         loadingOriginal.value = false;
     }
 }
 
+const state = computed(() => recordingState(props.recording, props.ai, props.access));
 const steps = computed(() => recordingSteps(props.recording, props.ai));
 
-// «Gerar relatório novamente» no menu «Ações» da gravação: mesmas condições e mesma requisição de antes.
+// ── Detalhes técnicos e privacidade (modal) ──
+const detailsOpen = ref(false);
+let detailsOpener = null;
+function openDetails() {
+    detailsOpener = document.activeElement;
+    detailsOpen.value = true;
+}
+function closeDetails() {
+    detailsOpen.value = false;
+    // Devolve o foco a quem abriu; se foi um item do menu (já fechado), ao botão «Ações».
+    setTimeout(() => {
+        const visible = detailsOpener && detailsOpener.isConnected && detailsOpener.offsetParent !== null;
+        const target = visible ? detailsOpener : document.querySelector('[data-feedback-recording] [data-menu-trigger]');
+        target?.focus?.();
+    }, 250);
+}
+
+// ── Menu «Ações» ──
 const regenerating = ref(false);
-const canRegenerate = computed(
-    () =>
-        !!props.ai?.clean
-        && props.ai?.gate?.allowed === true
-        && !props.ai?.limit_reached
-        && ['ready', 'failed'].includes(props.ai?.status)
-        && props.access.canProcess
-        && !props.access.locked,
-);
-// «Ajustar falantes»: refazer o mapeamento enquanto a gravação não foi processada (depois, o servidor recusa).
 const adjustSignal = ref(0);
-const canAdjustSpeakers = computed(
-    () =>
-        props.ai?.status === 'uploaded'
-        && (props.ai?.speakers?.length ?? 0) > 0
-        && !props.ai?.clean
-        && props.access.canProcess
-        && !props.access.locked,
-);
-const extraActions = computed(() => [
-    ...(canAdjustSpeakers.value
-        ? [{ key: 'adjust-speakers', label: 'Ajustar falantes', icon: UserGroupIcon, onSelect: () => (adjustSignal.value += 1) }]
+const menuItems = computed(() => [
+    ...(props.recording
+        ? [{ key: 'details', label: 'Detalhes técnicos e privacidade', icon: InformationCircleIcon, onSelect: openDetails }]
         : []),
-    ...(canRegenerate.value
+    ...(canAdjustSpeakers(props.ai, props.access)
+        ? [{ key: 'adjust-speakers', label: 'Alterar falantes', icon: UserGroupIcon, onSelect: () => nextTick(() => (adjustSignal.value += 1)) }]
+        : []),
+    ...(canRegenerateReport(props.ai, props.access)
         ? [{ key: 'regenerate', label: 'Gerar relatório novamente', icon: ArrowPathIcon, disabled: regenerating.value, onSelect: regenerate }]
+        : []),
+    ...(props.recording && props.access.canDelete && !props.access.locked
+        ? [{ key: 'delete-recording', label: 'Excluir gravação', icon: TrashIcon, danger: true, onSelect: openDelete }]
         : []),
 ]);
 
@@ -142,18 +151,15 @@ function confirmDelete() {
     <FeedbackRecordingSection
         :recording="recording"
         :access="access"
+        :state="state"
         :errors="form.errors"
         :uploading="form.processing"
-        :original="original"
-        :loading-original="loadingOriginal"
-        :original-error="originalError"
         :reset-key="resetKey"
-        :extra-actions="extraActions"
+        :menu-items="menuItems"
+        :show-no-speakers-warning="!!recording && !recording.has_speaker_labels && ['queued', 'waiting', 'limit', 'idle'].includes(state)"
         @file-change="form.clearErrors('file')"
         @upload="upload"
-        @show-original="showOriginal"
-        @hide-original="original = null"
-        @request-delete="openDelete"
+        @open-details="openDetails"
     >
         <template #steps>
             <FeedbackRecordingSteps :steps="steps" />
@@ -163,6 +169,7 @@ function confirmDelete() {
                 :session-id="sessionId"
                 :ai="ai"
                 :access="access"
+                :state="state"
                 :people="people"
                 :adjust-signal="adjustSignal"
                 :original="original"
@@ -172,6 +179,8 @@ function confirmDelete() {
             />
         </template>
     </FeedbackRecordingSection>
+
+    <FeedbackRecordingDetailsModal :show="detailsOpen" :recording="recording" @close="closeDetails" />
 
     <FeedbackRecordingDeleteModal
         :show="deleting"
