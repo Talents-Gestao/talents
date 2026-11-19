@@ -17,7 +17,9 @@ class AiUsageLog extends Model
 
     public const PURPOSE_FEEDBACK_REPORT = 'feedback_report';
 
-    public const FEEDBACK_PURPOSES = [self::PURPOSE_FEEDBACK_CLEAN, self::PURPOSE_FEEDBACK_REPORT];
+    public const PURPOSE_FEEDBACK_EVOLUTION = 'feedback_evolution';
+
+    public const FEEDBACK_PURPOSES = [self::PURPOSE_FEEDBACK_CLEAN, self::PURPOSE_FEEDBACK_REPORT, self::PURPOSE_FEEDBACK_EVOLUTION];
 
     protected $fillable = [
         'company_id',

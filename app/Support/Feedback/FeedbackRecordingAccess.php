@@ -91,9 +91,24 @@ final class FeedbackRecordingAccess
             $mapByKey[TranscriptSpeakers::key((string) $label)] = $role;
         }
 
-        $speakers = $recording->has_speaker_labels
-            ? array_map(fn (array $s) => $s + ['role' => $mapByKey[TranscriptSpeakers::key($s['label'])] ?? null], TranscriptSpeakers::labels($recording->safeOriginalText()))
-            : [];
+        $speakers = [];
+        $suggestion = null;
+        if ($recording->has_speaker_labels) {
+            $text = $recording->safeOriginalText();
+            $utterances = collect(TranscriptSpeakers::utterances($text))->keyBy(fn ($u) => TranscriptSpeakers::key($u['label']));
+            // Só a contagem e a primeira fala; as frases de «Ver trechos» vêm sob demanda (samples()), fora do HTML.
+            $speakers = array_map(fn (array $s) => $s + [
+                'role' => $mapByKey[TranscriptSpeakers::key($s['label'])] ?? null,
+            ], TranscriptSpeakers::labels($text));
+
+            // Sugestão sem IA para «Confirmar falantes» (nomes da sessão; só sugere, o usuário confirma).
+            $recording->loadMissing('session.leader', 'session.employee');
+            $suggestion = SpeakerRoleSuggestion::suggest(
+                $utterances->values()->all(),
+                $recording->session?->leader?->name,
+                $recording->session?->collaboratorDisplayName(),
+            );
+        }
 
         $current = $recording->currentReport();
         $company = $recording->session?->company;
@@ -107,6 +122,7 @@ final class FeedbackRecordingAccess
             ],
             'limit_reached' => $company !== null && FeedbackAiMonthlyLimit::usedCents($company->id) >= FeedbackAiMonthlyLimit::limitCents($company),
             'speakers' => $speakers,
+            'speaker_suggestion' => $suggestion,
             'speakers_mapped' => $map !== [],
             'speakers_mapped_at' => $recording->speakers_mapped_at?->toIso8601String(),
             'speakers_mapped_by' => $recording->speakersMappedBy?->name,

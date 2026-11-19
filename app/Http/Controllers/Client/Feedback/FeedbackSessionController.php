@@ -23,6 +23,7 @@ use App\Models\User;
 use App\Services\Feedback\FeedbackPdfService;
 use App\Support\Company\CompanyEmployeeDirectory;
 use App\Support\Feedback\FeedbackCompanyContext;
+use App\Support\Feedback\FeedbackEmployeeMergeAccess;
 use App\Support\Feedback\FeedbackRecordingAccess;
 use App\Support\Feedback\FeedbackVisibility;
 use Illuminate\Http\RedirectResponse;
@@ -66,6 +67,7 @@ class FeedbackSessionController extends FeedbackCompanyController
         return Inertia::render('Client/Feedbacks/Sessions/Index', [
             'sessions' => $sessions,
             'canDelete' => $this->canDelete($request),
+            'canManageEmployees' => FeedbackEmployeeMergeAccess::canManage($request),
         ]);
     }
 
@@ -512,6 +514,8 @@ class FeedbackSessionController extends FeedbackCompanyController
             'next_alignment_at' => $session->next_alignment_at?->toIso8601String(),
             'completed_at' => $session->completed_at?->toIso8601String(),
             'employee' => $session->collaboratorPayload(),
+            // Cadastro do colaborador, para o link «Ver pessoa» (histórico e Evolução).
+            'employee_profile_id' => $session->company_employee_id,
             'leader' => $session->leader?->only(['id', 'name', 'email']),
             'template' => $session->template,
             'answers' => $answers,

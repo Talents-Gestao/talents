@@ -106,7 +106,7 @@ const sectionMeta = (section) => {
         </FeedbackPanel>
 
         <div class="mb-6">
-            <FeedbackRecordingPanel :session-id="session.id" :recording="recording" :ai="recordingAi" :access="recordingAccess" />
+            <FeedbackRecordingPanel :session-id="session.id" :recording="recording" :ai="recordingAi" :access="recordingAccess" :people="{ leader: session.leader?.name, employee: session.employee?.name }" />
         </div>
 
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Respostas por seção</h3>

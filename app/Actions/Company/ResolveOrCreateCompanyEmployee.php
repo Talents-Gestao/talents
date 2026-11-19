@@ -13,7 +13,7 @@ class ResolveOrCreateCompanyEmployee
     /**
      * Resolve um colaborador da empresa a partir do nome (e e-mail opcional).
      * Com e-mail: chave (company_id, email). Sem e-mail: reutiliza o mesmo nome
-     * (case-insensitive) sem e-mail, ou cria um novo registro.
+     * (case-insensitive) sem e-mail, ou cria um novo registro. Cadastro absorvido numa união leva ao que ficou.
      */
     public function execute(
         Company $company,
@@ -34,6 +34,11 @@ class ResolveOrCreateCompanyEmployee
                     ->whereRaw('LOWER(email) = ?', [mb_strtolower($email)])
                     ->lockForUpdate()
                     ->first();
+
+                if ($employee && $employee->merged_into_employee_id !== null) {
+                    // Cadastro absorvido numa união: usa o que ficou, sem reativar o absorvido.
+                    return $employee->resolveMerged();
+                }
 
                 if ($employee) {
                     $employee->fill([
@@ -64,6 +69,10 @@ class ResolveOrCreateCompanyEmployee
                 ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
                 ->lockForUpdate()
                 ->first();
+
+            if ($employee && $employee->merged_into_employee_id !== null) {
+                return $employee->resolveMerged();
+            }
 
             if ($employee) {
                 $employee->fill([

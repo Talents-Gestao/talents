@@ -51,7 +51,7 @@ class NewsFeedTest extends TestCase
             ->assertJsonPath('items.0.category', NewsCategory::Hr->value)
             ->assertJsonStructure([
                 'categories' => [
-                    ['value', 'label', 'emoji'],
+                    ['value', 'label'],
                 ],
                 'items' => [
                     ['id', 'title', 'summary', 'url', 'category'],

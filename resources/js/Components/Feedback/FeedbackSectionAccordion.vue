@@ -4,7 +4,8 @@ import { computed, onMounted, ref, useSlots } from 'vue';
 
 const props = defineProps({
     title: { type: String, required: true },
-    icon: { type: String, default: '' },
+    /** Ícone de linha (componente Heroicons, como na barra lateral). */
+    icon: { type: [Object, Function], default: null },
     description: { type: String, default: '' },
     defaultOpen: { type: Boolean, default: false },
     meta: { type: String, default: '' },
@@ -35,7 +36,7 @@ onMounted(() => {
         >
             <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-2">
-                    <span v-if="icon" class="shrink-0 text-base leading-none" aria-hidden="true">{{ icon }}</span>
+                    <component :is="icon" v-if="icon" class="h-5 w-5 shrink-0 text-talents-600" aria-hidden="true" />
                     <h3 class="min-w-0 text-pretty font-semibold text-talents-900">{{ title }}</h3>
                     <span
                         v-if="meta"
@@ -67,7 +68,7 @@ onMounted(() => {
     >
         <div class="bg-gradient-to-r from-talents-50/60 to-white px-5 py-4">
             <div class="flex flex-wrap items-center gap-2">
-                <span v-if="icon" class="shrink-0 text-base leading-none" aria-hidden="true">{{ icon }}</span>
+                <component :is="icon" v-if="icon" class="h-5 w-5 shrink-0 text-talents-600" aria-hidden="true" />
                 <h3 class="min-w-0 text-pretty font-semibold text-talents-900">{{ title }}</h3>
             </div>
             <p v-if="description" class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">

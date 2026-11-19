@@ -29,20 +29,6 @@ enum NewsCategory: string
         };
     }
 
-    public function emoji(): string
-    {
-        return match ($this) {
-            self::Hr => '👥',
-            self::Entrepreneurship => '🚀',
-            self::Accounting => '⚖️',
-            self::Health => '🌿',
-            self::Trends => '📈',
-            self::Launches => '💡',
-            self::ImportantDates => '📅',
-            self::Events => '🎟️',
-        };
-    }
-
     /**
      * Consulta usada no RSS do Google News (pt-BR).
      */
@@ -61,7 +47,9 @@ enum NewsCategory: string
     }
 
     /**
-     * @return list<array{value: string, label: string, emoji: string}>
+     * O ícone de cada categoria fica na interface (NewsFeedDrawer), pela chave `value`.
+     *
+     * @return list<array{value: string, label: string}>
      */
     public static function options(): array
     {
@@ -69,7 +57,6 @@ enum NewsCategory: string
             static fn (self $category): array => [
                 'value' => $category->value,
                 'label' => $category->label(),
-                'emoji' => $category->emoji(),
             ],
             self::cases(),
         );
