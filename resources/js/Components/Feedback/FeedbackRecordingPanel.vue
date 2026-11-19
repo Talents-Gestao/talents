@@ -5,7 +5,7 @@ import FeedbackRecordingSection from '@/Components/Feedback/FeedbackRecordingSec
 import FeedbackRecordingSteps from '@/Components/Feedback/FeedbackRecordingSteps.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { recordingSteps } from '@/utils/feedbackRecordingSteps';
-import { ArrowPathIcon } from '@heroicons/vue/24/outline';
+import { ArrowPathIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
 import { router, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, ref, watch } from 'vue';
@@ -90,11 +90,24 @@ const canRegenerate = computed(
         && props.access.canProcess
         && !props.access.locked,
 );
-const extraActions = computed(() =>
-    canRegenerate.value
-        ? [{ key: 'regenerate', label: 'Gerar relatório novamente', icon: ArrowPathIcon, disabled: regenerating.value, onSelect: regenerate }]
-        : [],
+// «Ajustar falantes»: refazer o mapeamento enquanto a gravação não foi processada (depois, o servidor recusa).
+const adjustSignal = ref(0);
+const canAdjustSpeakers = computed(
+    () =>
+        props.ai?.status === 'uploaded'
+        && (props.ai?.speakers?.length ?? 0) > 0
+        && !props.ai?.clean
+        && props.access.canProcess
+        && !props.access.locked,
 );
+const extraActions = computed(() => [
+    ...(canAdjustSpeakers.value
+        ? [{ key: 'adjust-speakers', label: 'Ajustar falantes', icon: UserGroupIcon, onSelect: () => (adjustSignal.value += 1) }]
+        : []),
+    ...(canRegenerate.value
+        ? [{ key: 'regenerate', label: 'Gerar relatório novamente', icon: ArrowPathIcon, disabled: regenerating.value, onSelect: regenerate }]
+        : []),
+]);
 
 function regenerate() {
     if (regenerating.value) return;
@@ -151,6 +164,7 @@ function confirmDelete() {
                 :ai="ai"
                 :access="access"
                 :people="people"
+                :adjust-signal="adjustSignal"
                 :original="original"
                 :loading-original="loadingOriginal"
                 :original-error="originalError"

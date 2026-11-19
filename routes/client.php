@@ -267,6 +267,7 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::get('sessions/{session}/gravacao/original', [FeedbackRecordingController::class, 'original'])->name('sessions.recording.original');
         Route::delete('sessions/{session}/gravacao', [FeedbackRecordingController::class, 'destroy'])->name('sessions.recording.destroy');
         // IA da gravação: falantes, processar, tentar de novo, relatório novo e edição da transcrição limpa.
+        Route::get('sessions/{session}/gravacao/trechos', [FeedbackRecordingAiController::class, 'samples'])->name('sessions.recording.samples');
         Route::post('sessions/{session}/gravacao/falantes', [FeedbackRecordingAiController::class, 'speakers'])->name('sessions.recording.speakers');
         Route::post('sessions/{session}/gravacao/processar', [FeedbackRecordingAiController::class, 'process'])->name('sessions.recording.process');
         Route::post('sessions/{session}/gravacao/tentar-novamente', [FeedbackRecordingAiController::class, 'retry'])->name('sessions.recording.retry');

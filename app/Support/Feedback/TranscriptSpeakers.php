@@ -70,6 +70,65 @@ final class TranscriptSpeakers
     }
 
     /**
+     * Todas as falas de cada rótulo detectado (uma por turno: o texto da mesma linha ou das linhas seguintes,
+     * até o próximo rótulo), na ordem em que os rótulos aparecem. Só para os rótulos que labels() reconhece.
+     *
+     * @return list<array{label: string, utterances: list<string>}>
+     */
+    public static function utterances(string $text): array
+    {
+        $known = [];
+        foreach (self::labels($text) as $item) {
+            $known[self::key($item['label'])] = ['label' => $item['label'], 'utterances' => []];
+        }
+
+        $current = null;
+        foreach (preg_split('/\R/u', $text) ?: [] as $line) {
+            $parsed = self::parseLine($line);
+            if ($parsed !== null) {
+                $key = self::key($parsed[1]);
+                $current = isset($known[$key]) ? $key : null;
+                if ($current !== null) {
+                    $known[$current]['utterances'][] = $parsed[2];
+                }
+
+                continue;
+            }
+
+            $line = trim($line);
+            if ($current !== null && $line !== '') {
+                $last = count($known[$current]['utterances']) - 1;
+                $known[$current]['utterances'][$last] = trim($known[$current]['utterances'][$last].' '.$line);
+            }
+        }
+
+        return array_values(array_map(function ($item) {
+            $item['utterances'] = array_values(array_filter($item['utterances'], fn ($u) => $u !== ''));
+
+            return $item;
+        }, $known));
+    }
+
+    /**
+     * Até $limit frases representativas: as falas mais longas, na ordem em que aconteceram, encurtadas.
+     *
+     * @param  list<string>  $utterances
+     * @return list<string>
+     */
+    public static function representative(array $utterances, int $limit = 3): array
+    {
+        $indexed = [];
+        foreach ($utterances as $i => $u) {
+            $indexed[] = ['i' => $i, 'text' => $u, 'len' => mb_strlen($u)];
+        }
+        usort($indexed, fn ($a, $b) => $b['len'] <=> $a['len'] ?: $a['i'] <=> $b['i']);
+        $top = array_slice($indexed, 0, $limit);
+        usort($top, fn ($a, $b) => $a['i'] <=> $b['i']);
+
+        return array_map(fn ($u) => mb_strlen($u['text']) > 180 ? rtrim(mb_substr($u['text'], 0, 177)).'…' : $u['text'], $top);
+    }
+
+    /**
      * Troca cada rótulo mapeado pelo papel («Líder», «Colaborador», «Outra pessoa 1»…). Rótulos sem mapa ficam como estão.
      *
      * @param  array<string, string>  $map  rótulo => papel

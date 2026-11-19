@@ -446,6 +446,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::post('sessions/{session}/gravacao', [FeedbackRecordingController::class, 'store'])->name('sessions.recording.store');
             Route::get('sessions/{session}/gravacao/original', [FeedbackRecordingController::class, 'original'])->name('sessions.recording.original');
             Route::delete('sessions/{session}/gravacao', [FeedbackRecordingController::class, 'destroy'])->name('sessions.recording.destroy');
+            Route::get('sessions/{session}/gravacao/trechos', [FeedbackRecordingAiController::class, 'samples'])->name('sessions.recording.samples');
             Route::post('sessions/{session}/gravacao/falantes', [FeedbackRecordingAiController::class, 'speakers'])->name('sessions.recording.speakers');
             Route::post('sessions/{session}/gravacao/processar', [FeedbackRecordingAiController::class, 'process'])->name('sessions.recording.process');
             Route::post('sessions/{session}/gravacao/tentar-novamente', [FeedbackRecordingAiController::class, 'retry'])->name('sessions.recording.retry');

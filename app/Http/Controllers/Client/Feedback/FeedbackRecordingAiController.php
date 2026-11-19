@@ -9,11 +9,14 @@ use App\Actions\Feedback\StartFeedbackRecordingProcessing;
 use App\Actions\Feedback\UpdateFeedbackCleanTranscript;
 use App\Http\Controllers\Concerns\ResolvesFeedbackRoutes;
 use App\Models\Company;
+use App\Models\FeedbackAuditLog;
 use App\Models\FeedbackRecording;
 use App\Models\FeedbackSession;
 use App\Services\Feedback\Ai\FeedbackAiException;
 use App\Support\Feedback\FeedbackRecordingAccess;
 use App\Support\Feedback\FeedbackVisibility;
+use App\Support\Feedback\TranscriptSpeakers;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -56,6 +59,34 @@ class FeedbackRecordingAiController extends FeedbackCompanyController
     public function regenerateReport(Request $request, FeedbackSession $session, StartFeedbackRecordingProcessing $start): RedirectResponse
     {
         return $this->start($request, $session, $start, StartFeedbackRecordingProcessing::REQUEST_REPORT, 'Novo relatório em geração. O anterior continua guardado.');
+    }
+
+    /**
+     * «Ver trechos» de «Confirmar falantes» (JSON sob demanda, sem cache): número de falas e até 3 frases mais longas
+     * de cada falante, para quem pode mapear os falantes. Fica fora do HTML da página; cada abertura vai para a trilha.
+     */
+    public function samples(Request $request, FeedbackSession $session): JsonResponse
+    {
+        $recording = $this->recording($request, $session);
+        abort_unless(FeedbackRecordingAccess::canProcess($request, $session) && $recording->has_speaker_labels, 403);
+
+        $speakers = array_map(fn (array $u) => [
+            'label' => $u['label'],
+            'count' => count($u['utterances']),
+            'samples' => TranscriptSpeakers::representative($u['utterances']),
+        ], TranscriptSpeakers::utterances($recording->safeOriginalText()));
+
+        FeedbackAuditLog::query()->create([
+            'company_id' => $session->company_id,
+            'user_id' => $request->user()->id,
+            'action' => FeedbackAuditLog::ACTION_RECORDING_SAMPLES_VIEWED,
+            'subject_type' => FeedbackAuditLog::SUBJECT_RECORDING,
+            'subject_id' => $recording->id,
+            'subject_label' => $session->title,
+            'details' => ['feedback_session_id' => $session->id, 'speakers' => count($speakers)],
+        ]);
+
+        return response()->json(['speakers' => $speakers])->header('Cache-Control', 'no-store, private');
     }
 
     public function updateClean(Request $request, FeedbackSession $session, UpdateFeedbackCleanTranscript $update): RedirectResponse
