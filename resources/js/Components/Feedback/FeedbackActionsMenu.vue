@@ -87,7 +87,7 @@ const itemClass = (item) => [
         <button
             type="button"
             data-menu-trigger
-            class="inline-flex min-h-[40px] min-w-[40px] items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             :class="triggerClass"
             :aria-expanded="open ? 'true' : 'false'"
             :aria-controls="menuId"

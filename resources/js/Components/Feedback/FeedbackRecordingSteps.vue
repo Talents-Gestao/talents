@@ -18,8 +18,7 @@ const currentIndex = computed(() => props.steps.findIndex((s) => s.status === 'c
 
 <template>
     <nav aria-label="Etapas da gravação" class="min-w-0" data-feedback-recording-steps-indicator>
-        <ol class="flex flex-wrap items-center gap-x-1 gap-y-1.5 text-[13px] leading-5">
-            <li class="mr-1 font-semibold text-slate-700">Gravação:</li>
+        <ol class="flex flex-nowrap items-center gap-x-1 gap-y-1.5 text-[13px] leading-5 sm:flex-wrap">
             <li v-for="(step, i) in steps" :key="step.label" class="flex items-center gap-1" :aria-current="i === currentIndex ? 'step' : undefined">
                 <span
                     class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5"
@@ -45,11 +44,12 @@ const currentIndex = computed(() => props.steps.findIndex((s) => s.status === 'c
                         <MinusIcon v-else-if="step.status === 'skipped'" class="h-3 w-3" />
                         <template v-else>{{ i + 1 }}</template>
                     </span>
-                    <span :class="step.status === 'skipped' ? 'line-through decoration-slate-400' : ''">{{ step.label }}</span>
+                    <!-- No celular, só a etapa atual mostra o nome (as demais ficam para o leitor de tela): cabe numa linha. -->
+                    <span :class="[step.status === 'skipped' ? 'line-through decoration-slate-400' : '', i === currentIndex ? '' : 'sr-only sm:not-sr-only']">{{ step.label }}</span>
                     <span class="sr-only">({{ statusText[step.status] ?? statusText.todo }})</span>
-                    <span v-if="step.status === 'skipped'" class="text-slate-600" aria-hidden="true">(não se aplica)</span>
+                    <span v-if="step.status === 'skipped'" class="hidden text-slate-600 sm:inline" aria-hidden="true">(não se aplica)</span>
                 </span>
-                <ChevronRightIcon v-if="i < steps.length - 1" class="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+                <ChevronRightIcon v-if="i < steps.length - 1" class="hidden h-3.5 w-3.5 shrink-0 text-slate-400 sm:block" aria-hidden="true" />
             </li>
         </ol>
     </nav>
