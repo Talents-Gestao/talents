@@ -11,6 +11,7 @@ use App\Models\PsychosocialMeasureEvidence;
 use App\Models\Survey;
 use App\Models\User;
 use App\Models\UserWorkspace;
+use App\Support\Nr1MeasureCatalog;
 use App\Support\SurveyPublicationGate;
 use DateTimeInterface;
 use Illuminate\Http\UploadedFile;
@@ -59,9 +60,12 @@ final class PsychosocialMeasureService
 
     public const DUE_ORIGINS = ['talents' => 'Sugerido pela Talents', 'legal' => 'Prazo legal ou contratual', 'company' => 'Pedido da empresa'];
 
-    /** O motor nunca preenche responsável, prioridade SST, status nem implantação. */
+    /**
+     * O motor nunca preenche prioridade SST, status, implantação nem eficácia. Exceção única: o responsável sugerido
+     * (responsible_text), só como área/função do catálogo V11 (Nr1MeasureCatalog), nunca nome de pessoa e sem valor de
+     * aceite (o responsável confirmado é outro campo, preenchido pela empresa).
+     */
     private const ENGINE_FORBIDDEN_FIELDS = [
-        'responsible_text',
         'sst_priority',
         'status',
         'implemented_at',
@@ -111,6 +115,8 @@ final class PsychosocialMeasureService
             );
         }
 
+        $this->assertEngineResponsible($data['responsible_text'] ?? null);
+
         $basis = $data['evidence_basis'] ?? PsychosocialMeasure::BASIS_QUESTIONNAIRE_INDICATION;
         if ($basis !== PsychosocialMeasure::BASIS_QUESTIONNAIRE_INDICATION) {
             throw new PsychosocialMeasureException('Sugestão do motor só pode registrar indício do questionário.');
@@ -125,6 +131,106 @@ final class PsychosocialMeasureService
         ]);
 
         return $this->createWithEvent($attributes, null, null);
+    }
+
+    /**
+     * Editada pela Talents (ou por qualquer pessoa): tem algum evento com autor além do «created». Atualizações
+     * automáticas (Mia, catálogo) gravam eventos sem autor e não contam como edição.
+     */
+    public function isEditedByTalents(PsychosocialMeasure $measure): bool
+    {
+        return PsychosocialMeasureEvent::query()
+            ->where('measure_id', $measure->id)
+            ->whereNotNull('user_id')
+            ->where('field', '!=', PsychosocialMeasureEvent::FIELD_CREATED)
+            ->exists();
+    }
+
+    /**
+     * Atualização automática de uma sugestão do motor ainda intocada («A aprovar», sem edição de pessoa): grava antes e
+     * depois no histórico, sem autor.
+     *
+     * @param  array<string, mixed>  $changes
+     */
+    public function refreshEngineSuggestion(PsychosocialMeasure $measure, array $changes, string $reason = 'Atualizada pela Mia'): PsychosocialMeasure
+    {
+        if ($measure->origin !== PsychosocialMeasure::ORIGIN_ENGINE_SUGGESTION || $measure->status !== PsychosocialMeasure::STATUS_TO_APPROVE) {
+            throw new PsychosocialMeasureException('Só sugestões do motor ainda «A aprovar» são atualizadas automaticamente.');
+        }
+        $forbidden = array_values(array_intersect(array_keys($changes), self::ENGINE_FORBIDDEN_FIELDS));
+        if ($forbidden !== []) {
+            throw new PsychosocialMeasureException('Sugestão do motor não pode preencher: '.implode(', ', $forbidden).'.');
+        }
+        $this->assertEngineResponsible($changes['responsible_text'] ?? null);
+
+        return $this->applySystemChanges($measure, array_intersect_key($changes, array_flip(self::EDITABLE_FIELDS)), $reason);
+    }
+
+    /**
+     * Backfill do catálogo V11: preenche só campos vazios de uma sugestão do motor ainda «A aprovar», com evento sem
+     * autor por campo. Devolve os campos preenchidos.
+     *
+     * @param  array<string, string>  $fields
+     * @return array<string, string>
+     */
+    public function fillFromCatalog(PsychosocialMeasure $measure, array $fields): array
+    {
+        if ($measure->origin !== PsychosocialMeasure::ORIGIN_ENGINE_SUGGESTION || $measure->status !== PsychosocialMeasure::STATUS_TO_APPROVE) {
+            throw new PsychosocialMeasureException('O catálogo só preenche sugestões do motor ainda «A aprovar».');
+        }
+        $this->assertEngineResponsible($fields['responsible_text'] ?? null);
+        $empty = array_filter($fields, fn ($value, string $field) => blank($measure->getAttribute($field)), ARRAY_FILTER_USE_BOTH);
+        if ($empty !== []) {
+            $this->applySystemChanges($measure, $empty, 'Preenchimento automático do catálogo');
+        }
+
+        return $empty;
+    }
+
+    /**
+     * Junção de sugestões duplicadas (nr1:dedupe-engine-measures): opcionalmente junta a ação ao texto da mantida
+     * (evento sem autor) e registra na mantida um evento «junção» com os IDs removidos e o resumo do que saiu.
+     * Nunca altera eventos existentes.
+     *
+     * @param  array<string, mixed>  $summary
+     */
+    public function recordMerge(PsychosocialMeasure $keeper, array $summary, ?string $mergedDescription = null): void
+    {
+        DB::transaction(function () use ($keeper, $summary, $mergedDescription): void {
+            if ($mergedDescription !== null && $mergedDescription !== $keeper->measure_description) {
+                $this->applySystemChanges($keeper, ['measure_description' => $mergedDescription], 'Junção de sugestões duplicadas');
+            }
+            $this->recordEvent($keeper, null, 'merge', null, json_encode($summary, JSON_UNESCAPED_UNICODE), 'Junção de sugestões duplicadas');
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $changes
+     */
+    private function applySystemChanges(PsychosocialMeasure $measure, array $changes, string $reason): PsychosocialMeasure
+    {
+        return DB::transaction(function () use ($measure, $changes, $reason): PsychosocialMeasure {
+            $before = [];
+            foreach (array_keys($changes) as $field) {
+                $before[$field] = $this->stringify($measure->getAttribute($field));
+            }
+            $measure->fill($changes)->save();
+            foreach (array_keys($changes) as $field) {
+                $after = $this->stringify($measure->getAttribute($field));
+                if ($after !== $before[$field]) {
+                    $this->recordEvent($measure, null, $field, $before[$field], $after, $reason);
+                }
+            }
+
+            return $measure;
+        });
+    }
+
+    private function assertEngineResponsible(mixed $responsible): void
+    {
+        if ($responsible !== null && ! in_array($responsible, Nr1MeasureCatalog::responsibleAreas(), true)) {
+            throw new PsychosocialMeasureException('Sugestão do motor só pode indicar como responsável uma área ou função do catálogo.');
+        }
     }
 
     public function changeStatus(PsychosocialMeasure $measure, string $status, ?User $actor, ?string $reason = null): PsychosocialMeasure

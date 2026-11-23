@@ -18,6 +18,7 @@ final class PsychosocialMeasurePresenter
     /** Nome legível de cada campo que aparece no histórico. */
     public const FIELD_LABELS = [
         'created' => 'Criação',
+        'merge' => 'Junção de sugestões duplicadas',
         'status' => 'Status',
         'factor_label' => 'Fator / dimensão',
         'measure_description' => 'Ação proposta',

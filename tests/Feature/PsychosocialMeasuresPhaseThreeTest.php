@@ -66,7 +66,9 @@ class PsychosocialMeasuresPhaseThreeTest extends TestCase
     public static function engineForbiddenInputs(): array
     {
         return [
-            'responsável' => [['responsible_text' => 'RH']],
+            // Exceção única: responsável como área/função do catálogo V11; nome de pessoa ou texto livre continua proibido.
+            'responsável com nome de pessoa' => [['responsible_text' => 'Maria Souza']],
+            'responsável fora do catálogo' => [['responsible_text' => 'RH']],
             'prioridade SST' => [['sst_priority' => 'alta']],
             'status implantada' => [['status' => PsychosocialMeasure::STATUS_IMPLEMENTED]],
             'status pendente' => [['status' => PsychosocialMeasure::STATUS_PENDING]],
@@ -88,6 +90,20 @@ class PsychosocialMeasuresPhaseThreeTest extends TestCase
         } catch (PsychosocialMeasureException) {
             $this->assertSame(0, PsychosocialMeasure::query()->count());
         }
+    }
+
+    public function test_engine_suggestion_may_suggest_only_a_catalog_area_as_responsible(): void
+    {
+        $fx = $this->createSurveyFixture();
+
+        $measure = $this->service()->createEngineSuggestion($fx->survey, array_merge($this->suggestionData(), [
+            'responsible_text' => 'Gestão de Operações',
+        ]));
+
+        $this->assertSame('Gestão de Operações', $measure->responsible_text);
+        $this->assertNull($measure->confirmed_responsible_text, 'sugestão não é aceite');
+        $this->assertNull($measure->confirmed_at);
+        $this->assertSame(PsychosocialMeasure::STATUS_TO_APPROVE, $measure->status);
     }
 
     public function test_manual_measure_rejects_unknown_status_including_legacy_done(): void

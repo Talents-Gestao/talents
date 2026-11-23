@@ -1400,6 +1400,10 @@ Os rótulos da V11 deixam claro que a faixa é percepção do questionário, nã
 | `nr1:coarsen-completed-dates` | Reduz `completed_at` antigos ao mês (irreversível; exige `--force`) |
 | `nr1:reconstruct-answers` | Reconstrói respostas a partir de `survey_responses` (estimativa estatística, não dado original) |
 | `nr1:seed-profile-responses` | Insere respostas de perfil favorável/desfavorável (demonstração e testes) |
+| `nr1:dedupe-engine-measures` | Lista (dry-run, padrão) ou limpa (`--apply`) sugestões do motor duplicadas no plano de ação V11 (mesma campanha + dimensão normalizada + `engine_suggestion`); `--survey=` limita a uma campanha |
+| `nr1:backfill-engine-measures` | Lista (dry-run, padrão) ou preenche (`--apply`) só os campos vazios do catálogo V11 nas sugestões do motor de campanhas V11 ainda «A aprovar»; `--survey=` limita a uma campanha |
+
+**Limpeza e backfill das medidas (8.9.5).** Os dois comandos só alteram o banco com `--apply` e sempre exportam o conteúdo completo (IDs, campos, eventos e evidências) para `storage/app/nr1-exports/` (fora do Git). `nr1:dedupe-engine-measures` mantém, em cada grupo, a medida que saiu de «A aprovar» > a editada por pessoa > a com mais campos preenchidos > a mais antiga; as demais, sem evidência e só com eventos sem autor, são removidas e a mantida recebe o evento «Junção de sugestões duplicadas» (sem autor, com os IDs removidos e as ações descartadas). A ação descartada só entra no texto da mantida se ela ainda estiver «A aprovar» e não editada; senão, fica só no evento. **Requer decisão manual** (listado e nunca removido): descartada com evidência ou com evento com autor, e grupo com mais de uma medida fora de «A aprovar». Eventos existentes nunca são alterados. `nr1:backfill-engine-measures` grava um evento sem autor por campo («Preenchimento automático do catálogo»); o N da justificativa do prazo é a diferença em dias entre a criação e o prazo gravado.
 
 O recálculo foi otimizado em 25× (PR #117), com teste de equivalência. O botão «Recalcular» também existe no painel (Talents e empresa com `pesquisas:edit`).
 
@@ -1594,7 +1598,38 @@ Abas com `role=tablist`, setas, Home e End. Também: cartão da **Mia** (`MiaCar
 | Base de evidência | `questionnaire_indication` (indicação do questionário) ou `validated_factor` (fator validado) |
 | Origem | `manual` ou `engine_suggestion` (sugerida pelo motor) |
 | Aferição | indicador, evidência, verificação de eficácia (Eficaz · Parcialmente eficaz · Não eficaz), data e nota |
-| Histórico | eventos com autor, data, antes/depois e justificativa (`psychosocial_measure_events`) |
+| Histórico | eventos com autor, data, antes/depois e justificativa (`psychosocial_measure_events`); inclui «Junção de sugestões duplicadas» (8.4.5). Atualizações automáticas (Mia, catálogo) aparecem sem autor |
+
+**Formulário da sugestão (Talents):** «Justificativa da alteração» só aparece, e é obrigatória, quando um valor já registrado é trocado ou apagado (preencher campo vazio não exige). «Origem do prazo» e «Justificativa do prazo sugerido» são informação automática, recolhida e só de leitura; ficam editáveis apenas se a Talents mudar o prazo sugerido. O motivo obrigatório da empresa (confirmar, ajustar, replanejar) não muda.
+
+**Sugestões do motor (`ActionMeasuresGenerator`).** Idempotente por campanha + dimensão normalizada (sem caixa, sem acento e sem espaços repetidos; `Nr1MeasureCatalog::dimensionKey`) + `engine_suggestion`: uma sugestão por dimensão. Se a IA devolver duas medidas para a mesma dimensão, a segunda ação é juntada ao texto da primeira, sem repetir frase (validado no código, sem depender da IA; limite de 6). Ao regerar (agendamento ou «Atualizar medidas»/«Atualizar com a Mia»):
+
+| Situação da dimensão | O que acontece |
+|----------------------|----------------|
+| Já tem medida fora de «A aprovar» (confirmada, em andamento, replanejada, concluída) | pulada |
+| Já tem medida manual da Talents | pulada |
+| Sugestão do motor editada por pessoa (critério: algum evento com autor além de `created`) | pulada; nunca é apagada nem sobrescrita |
+| Sugestão do motor intocada | atualizada no lugar, com evento sem autor («Atualizada pela Mia») |
+| Sem nenhuma medida | sugestão criada «A aprovar» |
+| Sugestão intocada de dimensão que a IA não devolveu mais | removida (substituição, como antes) |
+
+Uma trava na linha da campanha serializa execuções simultâneas; continuam a trava de 15 minutos em cache do botão e o controle por `action_measures_generated_at`. Duplicatas antigas são tratadas por `nr1:dedupe-engine-measures`. Prompt da Mia (`Nr1AiAnalyzer::actionMeasuresSystemPrompt`): no máximo 6 medidas e no máximo 1 medida por dimensão, com `factor_label` igual ao nome da dimensão.
+
+**Regra do motor.** A sugestão do motor nasce «A aprovar», como indício do questionário, e nunca preenche prioridade SST, status, implantação nem eficácia. Única exceção: o responsável sugerido (`responsible_text`), só como área/função do catálogo V11 (nunca nome de pessoa) e sem valor de aceite (o responsável confirmado é outro campo, da empresa).
+
+**Catálogo V11 (`Nr1MeasureCatalog`, só campanhas V11).** Para as 7 dimensões, a sugestão do motor recebe indicador, objetivo, resultado esperado e responsável sugerido (área/função), sempre editáveis pela Talents; origem do prazo «Sugerido pela Talents» e justificativa do prazo «Faixa da dimensão: {faixa}. Prazo de {N} dias contados da geração da sugestão, dentro da regra do plano (de 15 a 90 dias).» (faixa lida de `survey_results`, sem recalcular). Só preenche campos vazios; em sugestão intocada atualizada pela Mia, a justificativa do prazo acompanha o novo prazo. Modelo anterior (COPSOQ) e medidas manuais ficam sem preenchimento. Texto sem diagnóstico clínico e sem afirmar cumprimento legal.
+
+| Dimensão | Responsável sugerido |
+|----------|----------------------|
+| Demandas e Sobrecarga | Gestão de Operações |
+| Autonomia e Organização | Gestão de Pessoas (RH) com as lideranças |
+| Liderança e Gestão | Diretoria e Gestão de Pessoas (RH) |
+| Relacionamentos e Clima | Gestão de Pessoas (RH) |
+| Segurança Psicológica | Gestão de Pessoas (RH) e Diretoria |
+| Esgotamento e Saúde Emocional | Gestão de Pessoas (RH) e SESMT, quando houver |
+| Percepção Organizacional | Diretoria e Comunicação Interna |
+
+Indicador, objetivo e resultado esperado de cada dimensão estão em `app/Support/Nr1MeasureCatalog.php`. O `--apply` do backfill em produção depende da revisão do conteúdo pela equipe.
 
 **Ciclo (rótulos do plano × valor gravado):**
 
