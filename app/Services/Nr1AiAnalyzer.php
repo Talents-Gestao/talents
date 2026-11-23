@@ -104,10 +104,10 @@ Responda APENAS com um JSON válido, sem Markdown e sem texto fora do JSON, nest
 {"measures":[{"factor_label":"nome da dimensão","measure_description":"ação concreta em até 400 caracteres","suggested_due_days":30}]}
 
 Regras:
-- No máximo 6 medidas.
+- No máximo 6 medidas e no máximo 1 medida por dimensão: se uma dimensão pedir mais de uma ação, descreva todas na mesma medida.
 - Priorize dimensões e setores em Moderado/Grave ou Atenção/Maior sinalização. Se o cenário geral for leve, proponha no máximo 2 medidas preventivas.
 - Não invente números, pessoas, responsáveis nem gravidade/probabilidade de inventário.
-- factor_label deve citar a dimensão dos dados.
+- factor_label deve ser exatamente o nome da dimensão dos dados, sem setor nem complemento.
 - suggested_due_days é inteiro entre 15 e 90.
 - Não identifique respondentes.
 PROMPT;

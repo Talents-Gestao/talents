@@ -1,6 +1,7 @@
 <script setup>
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, watch } from 'vue';
+import { dueDateChanged, replacedFields, suggestionValues } from '@/utils/nr1MeasureSuggestion';
 import DimensionBadge from './DimensionBadge.vue';
 import LevelPill from './LevelPill.vue';
 import MeasureDetails from './MeasureDetails.vue';
@@ -38,18 +39,15 @@ const canUpdateStatus = computed(
     () => props.statuses !== null && props.companyId !== null && props.surveyId !== null,
 );
 
-const suggestion = useForm({
-    factor_label: props.measure.factor_label ?? '',
-    measure_description: props.measure.measure_description ?? '',
-    objective: props.measure.objective ?? '',
-    expected_result: props.measure.expected_result ?? '',
-    indicator: props.measure.indicator ?? '',
-    responsible_text: props.measure.suggested?.responsible ?? '',
-    suggested_due_date: props.measure.suggested?.due_date ?? '',
-    suggested_due_origin: props.measure.suggested?.due_origin ?? '',
-    suggested_due_note: props.measure.suggested?.due_note ?? '',
-    reason: '',
-});
+const suggestion = useForm({ ...suggestionValues(props.measure), reason: '' });
+
+// Valores já gravados: a justificativa da alteração só aparece (e é exigida) quando um deles é trocado;
+// origem e justificativa do prazo são informação automática e só ficam editáveis se o prazo mudar.
+const recorded = computed(() => suggestionValues(props.measure));
+const replaced = computed(() => replacedFields(recorded.value, suggestion.data()));
+const needsReason = computed(() => replaced.value.length > 0);
+const dueEditable = computed(() => dueDateChanged(recorded.value, suggestion.data()));
+const dueOriginLabel = computed(() => props.dueOrigins[recorded.value.suggested_due_origin] ?? 'Não informada');
 
 watch(
     () => props.measure,
@@ -79,7 +77,7 @@ const saveSuggestion = () => {
             suggested_due_date: data.suggested_due_date || null,
             suggested_due_origin: data.suggested_due_origin || null,
             suggested_due_note: data.suggested_due_note || null,
-            reason: data.reason || null,
+            reason: needsReason.value ? data.reason || null : null,
         }))
         .patch(props.measure.urls.suggestion, {
             preserveScroll: true,
@@ -193,20 +191,28 @@ const dateBr = (iso) => (iso ? iso.split('-').reverse().join('/') : '—');
                 <label class="n1-label" :for="'due-' + measure.id">Prazo sugerido</label>
                 <input :id="'due-' + measure.id" v-model="suggestion.suggested_due_date" type="date" class="n1-field" />
             </div>
-            <div>
-                <label class="n1-label" :for="'orig-' + measure.id">Origem do prazo</label>
-                <select :id="'orig-' + measure.id" v-model="suggestion.suggested_due_origin" class="n1-field">
-                    <option value="">Não informada</option>
-                    <option v-for="(label, value) in dueOrigins" :key="value" :value="value">{{ label }}</option>
-                </select>
-            </div>
-            <div>
-                <label class="n1-label" :for="'note-' + measure.id">Justificativa do prazo sugerido</label>
-                <input :id="'note-' + measure.id" v-model="suggestion.suggested_due_note" type="text" class="n1-field" />
-            </div>
-            <div style="grid-column: 1 / -1">
-                <label class="n1-label" :for="'why-' + measure.id">Justificativa da alteração (obrigatória ao trocar um valor já registrado)</label>
-                <input :id="'why-' + measure.id" v-model="suggestion.reason" type="text" class="n1-field" />
+            <!-- Origem e justificativa do prazo: informação automática; editáveis só se a Talents mudar o prazo -->
+            <template v-if="dueEditable">
+                <div>
+                    <label class="n1-label" :for="'orig-' + measure.id">Origem do prazo</label>
+                    <select :id="'orig-' + measure.id" v-model="suggestion.suggested_due_origin" class="n1-field">
+                        <option value="">Não informada</option>
+                        <option v-for="(label, value) in dueOrigins" :key="value" :value="value">{{ label }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="n1-label" :for="'note-' + measure.id">Justificativa do prazo sugerido</label>
+                    <input :id="'note-' + measure.id" v-model="suggestion.suggested_due_note" type="text" class="n1-field" />
+                </div>
+            </template>
+            <details v-else class="n1-tiny" style="grid-column: 1 / -1" data-measure-due-info>
+                <summary style="cursor: pointer">Origem do prazo: {{ dueOriginLabel }}</summary>
+                <p style="margin-top: 4px">{{ recorded.suggested_due_note || 'Sem justificativa registrada.' }}</p>
+                <p style="margin-top: 4px">Para mudar a origem ou a justificativa, altere o prazo sugerido.</p>
+            </details>
+            <div v-if="needsReason" style="grid-column: 1 / -1" data-measure-reason>
+                <label class="n1-label" :for="'why-' + measure.id">Justificativa da alteração (obrigatória: você trocou um valor já registrado)</label>
+                <input :id="'why-' + measure.id" v-model="suggestion.reason" type="text" class="n1-field" required />
             </div>
             <div v-if="canUpdateStatus" style="grid-column: 1 / -1" class="n1-row" :style="{ gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }">
                 <div style="min-width: 180px">
