@@ -10,6 +10,12 @@ const props = defineProps({
     defaultOpen: { type: Boolean, default: false },
     meta: { type: String, default: '' },
     collapsible: { type: Boolean, default: true },
+    /** Estado da seção em texto («Não iniciada», «Em andamento 2/5», «Concluída»); com `progress`, vem com barra fina. */
+    status: { type: String, default: '' },
+    /** { answered, total } para a barra de progresso. */
+    progress: { type: Object, default: null },
+    /** Destaque da primeira seção incompleta. */
+    highlight: { type: Boolean, default: false },
 });
 
 const slots = useSlots();
@@ -23,13 +29,23 @@ onMounted(() => {
         detailsRef.value.open = true;
     }
 });
+
+const percent = computed(() => (props.progress?.total ? Math.round((props.progress.answered / props.progress.total) * 100) : 0));
+
+/** Abre a seção (ex.: «Continuar preenchimento») e devolve o elemento para rolar até ele. */
+function open() {
+    if (detailsRef.value) detailsRef.value.open = true;
+    return detailsRef.value;
+}
+defineExpose({ open });
 </script>
 
 <template>
     <details
         v-if="collapsible"
         ref="detailsRef"
-        class="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm open:border-talents-200/80 open:shadow-md"
+        class="group overflow-hidden rounded-2xl border bg-white shadow-sm open:shadow-md"
+        :class="highlight ? 'border-talents-300 ring-1 ring-talents-200' : 'border-slate-200/80 open:border-talents-200/80'"
     >
         <summary
             class="flex cursor-pointer list-none items-start justify-between gap-3 bg-gradient-to-r from-talents-50/60 to-white px-5 py-4 transition hover:from-talents-50/90 marker:content-none [&::-webkit-details-marker]:hidden"
@@ -43,6 +59,21 @@ onMounted(() => {
                         class="shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
                     >
                         {{ meta }}
+                    </span>
+                </div>
+                <div v-if="status" class="mt-2 flex items-center gap-3" data-feedback-section-status>
+                    <span class="shrink-0 text-[13px] font-medium" :class="progress && progress.total && progress.answered >= progress.total ? 'text-emerald-800' : 'text-slate-700'">{{ status }}</span>
+                    <span
+                        v-if="progress && progress.total"
+                        class="h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-slate-200"
+                        role="progressbar"
+                        :aria-label="`Progresso de ${title}`"
+                        aria-valuemin="0"
+                        :aria-valuemax="progress.total"
+                        :aria-valuenow="progress.answered"
+                        :aria-valuetext="status"
+                    >
+                        <span class="block h-full rounded-full" :class="percent >= 100 ? 'bg-emerald-600' : 'bg-talents-600'" :style="{ width: `${percent}%` }" />
                     </span>
                 </div>
                 <p

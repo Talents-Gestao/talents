@@ -39,6 +39,23 @@ final class FeedbackRecordingAccess
         return ! self::isLocked($session) && self::hasAction($request, PermissionAction::Delete);
     }
 
+    public const REWIND_SIGNATURE_MESSAGE = 'O feedback está em assinatura ou concluído: as etapas da gravação não podem ser refeitas.';
+
+    public const REWIND_PROCESSING_MESSAGE = 'A gravação está sendo processada. Aguarde terminar para voltar uma etapa.';
+
+    /**
+     * Voltar etapas da barra «Gravação»: nunca com assinatura solicitada ou concluída (nem com a sessão
+     * concluída ou cancelada). Devolve o motivo do bloqueio, ou null se a sessão permite voltar.
+     */
+    public static function rewindBlockedReason(FeedbackSession $session): ?string
+    {
+        $blocked = self::isLocked($session)
+            || $session->status === FeedbackSessionStatus::AwaitingSignatures
+            || $session->signatures()->exists();
+
+        return $blocked ? self::REWIND_SIGNATURE_MESSAGE : null;
+    }
+
     public static function canViewOriginal(Request $request): bool
     {
         return FeedbackVisibility::actsAsCompanyAdmin($request->user());
@@ -57,11 +74,12 @@ final class FeedbackRecordingAccess
     }
 
     /**
-     * @return array{canUpload: bool, canDelete: bool, canViewOriginal: bool, canProcess: bool, canEditClean: bool, locked: bool}
+     * @return array{canUpload: bool, canDelete: bool, canViewOriginal: bool, canProcess: bool, canEditClean: bool, locked: bool, rewindBlockedReason: string|null}
      */
     public static function flags(Request $request, FeedbackSession $session): array
     {
         return [
+            'rewindBlockedReason' => self::rewindBlockedReason($session),
             'canUpload' => self::canUpload($request, $session),
             'canDelete' => self::canDelete($request, $session),
             'canViewOriginal' => self::canViewOriginal($request),

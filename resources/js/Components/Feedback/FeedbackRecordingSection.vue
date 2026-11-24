@@ -7,7 +7,7 @@ import { ArrowUpTrayIcon, ChevronDownIcon, DocumentTextIcon, LockClosedIcon, Mic
 import { computed, ref, watch } from 'vue';
 
 /**
- * Seção «Gravação e relatório» (só apresentação). Cabeçalho com título, um selo de estado e o menu «Ações»; abaixo,
+ * Seção «Gravação e relatório» (só apresentação). Cabeçalho com título, um selo de estado e o menu «Opções da gravação» (kebab); abaixo,
  * a barra de etapas e só a etapa atual: sem gravação, o envio; com gravação, o que FeedbackRecordingPanel põe no
  * slot «ai». Detalhes técnicos e privacidade ficam fora da tela (modal aberto pelo menu ou pelo cadeado).
  * Não faz requisições: emite eventos para FeedbackRecordingPanel.
@@ -25,15 +25,17 @@ const props = defineProps({
     /** Muda após um envio bem-sucedido para limpar arquivo e consentimento. */
     resetKey: { type: Number, default: 0 },
     defaultOpen: { type: Boolean, default: false },
-    /** Itens do menu «Ações», no formato do FeedbackActionsMenu. */
+    /** Itens do menu «Opções da gravação», no formato do FeedbackActionsMenu. */
     menuItems: { type: Array, default: () => [] },
     /** Mostrar o aviso de arquivo sem identificação de quem fala (antes de processar). */
     showNoSpeakersWarning: { type: Boolean, default: false },
+    /** Dentro da aba «Gravação e relatório»: sem cartão recolhível; o selo e o kebab ficam numa linha. */
+    embedded: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['upload', 'file-change', 'open-details']);
 
-const open = ref(props.defaultOpen);
+const open = ref(props.defaultOpen || props.embedded);
 const bodyId = 'feedback_recording_body';
 
 const fileInput = ref(null);
@@ -114,13 +116,19 @@ const btnPrimary =
 <template>
     <section
         class="rounded-2xl border border-slate-200/80 bg-white shadow-sm"
-        :class="open ? 'border-talents-200/80 shadow-md' : ''"
+        :class="open && !embedded ? 'border-talents-200/80 shadow-md' : ''"
         aria-labelledby="feedback_recording_title"
         data-feedback-recording
         :data-feedback-recording-state="state"
     >
-        <!-- Cabeçalho: título e selo (abre e fecha) e o menu «Ações» -->
-        <div class="flex items-center gap-2 rounded-t-2xl bg-gradient-to-r from-talents-50/60 to-white px-3 py-2 sm:px-4" :class="open ? '' : 'rounded-b-2xl'">
+        <!-- Na aba: o título e o estado vêm do rótulo da aba; aqui, só as opções da gravação -->
+        <div v-if="embedded" class="flex items-center justify-end gap-2 rounded-t-2xl px-4 pt-3 sm:px-6" :class="actions.length ? '' : 'sr-only'">
+            <h3 id="feedback_recording_title" class="sr-only">Gravação e relatório: {{ badge.label }}</h3>
+            <FeedbackActionsMenu v-if="actions.length" :items="actions" label="Opções da gravação" />
+        </div>
+
+        <!-- Cabeçalho: título e selo (abre e fecha) e as opções da gravação -->
+        <div v-else class="flex items-center gap-2 rounded-t-2xl bg-gradient-to-r from-talents-50/60 to-white px-3 py-2 sm:px-4" :class="open ? '' : 'rounded-b-2xl'">
             <h3 id="feedback_recording_title" class="min-w-0 flex-1">
                 <button
                     type="button"
@@ -139,10 +147,10 @@ const btnPrimary =
                     <ChevronDownIcon class="h-5 w-5 shrink-0 text-talents-600 transition-transform motion-reduce:transition-none" :class="open ? 'rotate-180' : ''" aria-hidden="true" />
                 </button>
             </h3>
-            <FeedbackActionsMenu v-if="actions.length" :items="actions" show-label label="Ações" />
+            <FeedbackActionsMenu v-if="actions.length" :items="actions" label="Opções da gravação" />
         </div>
 
-        <div v-show="open" :id="bodyId" class="space-y-5 border-t border-slate-100 p-4 sm:p-6">
+        <div v-show="open" :id="bodyId" class="space-y-5 p-4 sm:p-6" :class="embedded ? '' : 'border-t border-slate-100'">
             <!-- Etapas numa linha e o cadeado «Privacidade» -->
             <div class="flex items-center justify-between gap-x-3 rounded-xl bg-slate-50 px-3 py-1 ring-1 ring-slate-200/70">
                 <slot name="steps" />

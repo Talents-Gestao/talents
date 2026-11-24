@@ -1,6 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
-import { ChevronDownIcon, EllipsisHorizontalIcon } from '@heroicons/vue/24/outline';
+import { ChevronDownIcon, EllipsisVerticalIcon } from '@heroicons/vue/24/outline';
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
 
 /**
@@ -14,7 +14,7 @@ const props = defineProps({
     label: { type: String, default: 'Mais ações' },
     /** Mostra o rótulo ao lado do ícone (no cabeçalho); na linha de uma lista, só o ícone. */
     showLabel: { type: Boolean, default: false },
-    /** `primary`: botão de destaque (único do cabeçalho), com seta; `default`: contornado, com reticências. */
+    /** `primary`: botão de destaque (único do cabeçalho), com seta; `default`: kebab contornado (reticências verticais). */
     variant: { type: String, default: 'default' },
 });
 
@@ -100,7 +100,7 @@ const itemClass = (item) => [
                 <ChevronDownIcon class="h-4 w-4 transition-transform" :class="open ? 'rotate-180' : ''" aria-hidden="true" />
             </template>
             <template v-else>
-                <EllipsisHorizontalIcon class="h-5 w-5" aria-hidden="true" />
+                <EllipsisVerticalIcon class="h-5 w-5" aria-hidden="true" />
                 <span v-if="showLabel" class="pr-1">{{ label }}</span>
             </template>
         </button>

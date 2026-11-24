@@ -1,29 +1,25 @@
 <script setup>
-import FeedbackActionsMenu from '@/Components/Feedback/FeedbackActionsMenu.vue';
+import FeedbackAnswersList from '@/Components/Feedback/FeedbackAnswersList.vue';
 import FeedbackFlash from '@/Components/Feedback/FeedbackFlash.vue';
-import FeedbackPanel from '@/Components/Feedback/FeedbackPanel.vue';
 import FeedbackRecordingPanel from '@/Components/Feedback/FeedbackRecordingPanel.vue';
-import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccordion.vue';
 import FeedbackSessionDeleteModal from '@/Components/Feedback/FeedbackSessionDeleteModal.vue';
+import FeedbackSessionHeader from '@/Components/Feedback/FeedbackSessionHeader.vue';
+import FeedbackSessionJourney from '@/Components/Feedback/FeedbackSessionJourney.vue';
 import FeedbackSessionSignaturesPanel from '@/Components/Feedback/FeedbackSessionSignaturesPanel.vue';
-import FeedbackStatusBadge from '@/Components/Feedback/FeedbackStatusBadge.vue';
+import FeedbackTabs from '@/Components/Feedback/FeedbackTabs.vue';
 import FeedbacksLayout from '@/Components/Feedback/FeedbacksLayout.vue';
-import FormPageHeader from '@/Components/FormPageHeader.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
-import { feedbackSectionIcon } from '@/utils/feedbackSectionIcons';
-import { formatDateTime } from '@/utils/dateOnly';
-import { Head, Link, router } from '@inertiajs/vue3';
-import {
-    ArrowDownTrayIcon,
-    ArrowPathIcon,
-    CalendarDaysIcon,
-    PencilSquareIcon,
-    TrashIcon,
-    UserCircleIcon,
-    UserIcon,
-} from '@heroicons/vue/24/outline';
-import { computed, ref } from 'vue';
+import { RECORDING_STATES, recordingState } from '@/utils/feedbackRecordingView';
+import { SESSION_TABS, journey, overallProgress, primaryAction, tabFromUrl, urlWithTab } from '@/utils/feedbackSessionView';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import { ArrowDownTrayIcon, ArrowPathIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { computed, nextTick, ref } from 'vue';
 
+/**
+ * Detalhe do feedback (portal e admin com empresa selecionada): cabeçalho com uma ação principal por estado e kebab,
+ * jornada numa linha e abas («Respostas», «Gravação e relatório», «Assinaturas») com a aba na URL (?aba=).
+ * Só apresentação: envio para assinatura, permissões, visibilidade e auditoria continuam no servidor como antes.
+ */
 const props = defineProps({
     session: Object,
     canExportPdf: { type: Boolean, default: false },
@@ -33,11 +29,69 @@ const props = defineProps({
     recordingAi: { type: Object, default: null },
 });
 
+const page = usePage();
 const deletingSession = ref(null);
 
-// Todas as ações do cabeçalho num menu: Editar (mesma regra do antigo botão), Exportar PDF e,
-// separado e por último, Excluir. Sem nenhum item, o botão «Ações» não aparece.
+// ── Estado da página ──
+const sections = computed(() => props.session.template?.sections ?? []);
+const progress = computed(() => overallProgress(sections.value, props.session.answers ?? {}));
+const primary = computed(() => primaryAction(props.session, progress.value));
+const steps = computed(() => journey(props.session, progress.value));
 const canEdit = computed(() => props.session.status !== 'completed' && props.session.status !== 'cancelled');
+
+// ── Abas na URL: clicar cria uma entrada no histórico (Voltar volta para a aba anterior) ──
+const tab = computed(() => tabFromUrl(page.url));
+function selectTab(key) {
+    if (key === tab.value) return;
+    router.push({ url: urlWithTab(page.url, key), preserveScroll: true, preserveState: true });
+}
+
+const recState = computed(() => recordingState(props.recording, props.recordingAi, props.recordingAccess));
+const recordingHintClass = {
+    action: 'bg-talents-50 text-talents-900 ring-talents-200',
+    warning: 'bg-amber-50 text-amber-950 ring-amber-300',
+    success: 'bg-emerald-50 text-emerald-900 ring-emerald-200',
+    danger: 'bg-rose-50 text-rose-900 ring-rose-200',
+};
+const signedCount = computed(() => (props.session.signatures ?? []).filter((s) => s.signed_at).length);
+const tabs = computed(() =>
+    SESSION_TABS.map((t) => {
+        if (t.key === 'respostas' && progress.value.total) return { ...t, hint: `${progress.value.answered}/${progress.value.total}` };
+        if (t.key === 'gravacao') {
+            const state = RECORDING_STATES[recState.value] ?? RECORDING_STATES.empty;
+            return { ...t, hint: state.label, hintClass: recordingHintClass[state.tone] };
+        }
+        if (t.key === 'assinaturas' && props.session.signatures?.length) return { ...t, hint: `${signedCount.value}/${props.session.signatures.length}` };
+        return t;
+    }),
+);
+
+// ── Ação principal ──
+const answersList = ref(null);
+const sending = ref(false);
+async function onPrimary(key) {
+    if (key === 'signatures') return selectTab('assinaturas');
+    if (key === 'continue') {
+        // Outra aba aberta: troca para «Respostas» e espera o painel aparecer antes de rolar e focar.
+        if (tab.value !== 'respostas') {
+            selectTab('respostas');
+            for (let i = 0; i < 60 && tab.value !== 'respostas'; i += 1) await new Promise((r) => requestAnimationFrame(r));
+        }
+        await nextTick();
+        return answersList.value?.focusFirstIncomplete();
+    }
+    if (key === 'send' && !sending.value) {
+        // Mesmo envio da aba «Assinaturas» (mesma rota e regra).
+        router.post(feedbackRoute('sessions.signatures', props.session.id), {}, {
+            preserveScroll: true,
+            onStart: () => (sending.value = true),
+            onSuccess: () => selectTab('assinaturas'),
+            onFinish: () => (sending.value = false),
+        });
+    }
+}
+
+// ── Menu kebab: as ações secundárias de antes ──
 const canRegenerateReport = computed(
     () =>
         !!props.recordingAi?.clean
@@ -47,212 +101,56 @@ const canRegenerateReport = computed(
         && props.recordingAccess?.canProcess
         && !props.recordingAccess?.locked,
 );
-const headerMenuItems = computed(() => [
-    ...(canEdit.value
-        ? [{ key: 'edit', label: 'Editar', icon: PencilSquareIcon, href: feedbackRoute('sessions.edit', props.session.id) }]
-        : []),
+const menuItems = computed(() => [
+    ...(canEdit.value ? [{ key: 'edit', label: 'Editar', icon: PencilSquareIcon, href: feedbackRoute('sessions.edit', props.session.id) }] : []),
     ...(props.canExportPdf
         ? [{ key: 'pdf', label: 'Exportar PDF', icon: ArrowDownTrayIcon, href: feedbackRoute('sessions.pdf', props.session.id), external: true }]
         : []),
-    // Novo relatório da gravação (a IA pode estar travada; o servidor confere de novo a trava e o limite).
     ...(canRegenerateReport.value
         ? [{ key: 'report', label: 'Gerar relatório novamente', icon: ArrowPathIcon, onSelect: () => router.post(feedbackRoute('sessions.recording.report', props.session.id), {}, { preserveScroll: true }) }]
         : []),
-    ...(props.canDelete
-        ? [{ key: 'delete', label: 'Excluir feedback', icon: TrashIcon, danger: true, onSelect: () => (deletingSession.value = props.session) }]
-        : []),
+    ...(props.canDelete ? [{ key: 'delete', label: 'Excluir feedback', icon: TrashIcon, danger: true, onSelect: () => (deletingSession.value = props.session) }] : []),
 ]);
 
-const ccmLabels = {
-    start: 'Começar',
-    continue: 'Continuar',
-    improve: 'Melhorar',
-    stop: 'Cessar',
-};
-
-const isActionRow = (item) =>
-    item != null
-    && typeof item === 'object'
-    && !Array.isArray(item)
-    && ('action' in item || 'responsible' in item || 'deadline' in item);
-
-const formatAnswer = (val, question = null) => {
-    if (val == null || val === '') return '—';
-
-    if (Array.isArray(val)) {
-        if (val.length === 0) return '—';
-
-        if (question?.question_type === 'action_table' || val.some(isActionRow)) {
-            const lines = val
-                .filter((row) => row != null && typeof row === 'object')
-                .map((row, index) => {
-                    const action = String(row.action ?? '').trim();
-                    const responsible = String(row.responsible ?? '').trim();
-                    const deadline = String(row.deadline ?? '').trim();
-                    if (!action && !responsible && !deadline) return null;
-
-                    return `${index + 1}. ${action || '—'} · Responsável: ${responsible || '—'} · Prazo: ${deadline || '—'}`;
-                })
-                .filter(Boolean);
-
-            return lines.length ? lines.join('\n') : '—';
-        }
-
-        const items = val
-            .filter((item) => item != null && item !== '')
-            .map((item) => (typeof item === 'object' ? JSON.stringify(item) : String(item)));
-
-        if (!items.length) return '—';
-
-        return items.map((item) => `• ${item}`).join('\n');
-    }
-
-    if (typeof val === 'object') {
-        const keys = Object.keys(ccmLabels);
-        if (question?.question_type === 'ccm_block' || keys.some((key) => key in val)) {
-            return keys
-                .map((key) => `${ccmLabels[key]}: ${String(val[key] ?? '').trim() || '—'}`)
-                .join('\n');
-        }
-
-        return JSON.stringify(val, null, 2);
-    }
-
-    if (question?.question_type === 'single_choice' && Array.isArray(question.options)) {
-        const option = question.options.find((opt) => opt.value === val);
-        if (option?.label) return option.label;
-    }
-
-    return String(val);
-};
-
-const formatDate = (iso) => formatDateTime(iso);
-const formatDateShort = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
-
-const sectionMeta = (section) => {
-    if (section.section_type === 'intro') return '';
-
-    const total = (section.questions?.length ?? 0) + 1;
-
-    let answered = section.questions.filter((q) => {
-        const val = props.session.answers?.[q.id];
-        if (val == null || val === '') return false;
-        if (Array.isArray(val)) return val.some(Boolean);
-        if (typeof val === 'object') return Object.values(val).some((v) => v != null && v !== '');
-        return true;
-    }).length;
-
-    const extra = props.session.section_extras?.[section.id];
-    if (extra?.question?.trim() || extra?.answer?.trim()) {
-        answered += 1;
-    }
-
-    return `${answered}/${total} respondidas`;
-};
+const panelId = (key) => `feedback-session-panel-${key}`;
+const tabId = (key) => `feedback-session-tab-${key}`;
 </script>
 
 <template>
-    <Head :title="session.title" />
+    <Head :title="`Feedback · ${session.employee?.name ?? session.title}`" />
 
     <FeedbacksLayout>
         <template #header>
-            <FormPageHeader
-                :back-href="feedbackRoute('index')"
-                back-label="Feedbacks"
-                :title="session.title"
-                :subtitle="session.employee?.name"
-            >
-                <template v-if="headerMenuItems.length" #trailing>
-                    <FeedbackActionsMenu :items="headerMenuItems" show-label label="Ações" variant="primary" />
-                </template>
-            </FormPageHeader>
+            <FeedbackSessionHeader :session="session" :primary="primary" :primary-busy="sending" :menu-items="menuItems" @primary="onPrimary" />
         </template>
 
-        <FeedbackFlash class="mb-6" />
+        <div class="space-y-6">
+            <FeedbackSessionJourney :journey="steps" />
 
-        <FeedbackPanel title="Resumo" class="mb-6">
-            <template #actions>
-                <FeedbackStatusBadge :status="session.status" :label="session.status_label" />
-            </template>
-            <dl class="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div class="min-w-0">
-                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Colaborador</dt>
-                    <dd class="mt-1 flex items-center gap-2 font-medium text-talents-900">
-                        <UserIcon class="h-4 w-4 shrink-0 text-talents-600" aria-hidden="true" />
-                        <Link
-                            v-if="session.employee_profile_id"
-                            :href="feedbackRoute('employees.show', session.employee_profile_id)"
-                            class="truncate rounded underline decoration-talents-300 underline-offset-2 hover:decoration-talents-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500"
-                            :title="'Ver histórico e evolução de ' + (session.employee?.name ?? 'colaborador')"
-                        >{{ session.employee?.name ?? '—' }}</Link>
-                        <span v-else class="truncate">{{ session.employee?.name ?? '—' }}</span>
-                    </dd>
-                </div>
-                <div class="min-w-0">
-                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Líder</dt>
-                    <dd class="mt-1 flex items-center gap-2 font-medium text-slate-800">
-                        <UserCircleIcon class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-                        <span class="truncate">{{ session.leader?.name ?? '—' }}</span>
-                    </dd>
-                </div>
-                <div class="min-w-0">
-                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Alinhamento</dt>
-                    <dd class="mt-1 flex items-center gap-2 text-sm text-slate-800">
-                        <CalendarDaysIcon class="h-4 w-4 shrink-0 text-talents-600" aria-hidden="true" />
-                        {{ formatDate(session.scheduled_at) }}
-                    </dd>
-                </div>
-                <div class="min-w-0">
-                    <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Próximo alinhamento</dt>
-                    <dd class="mt-1 flex items-center gap-2 text-sm text-slate-800">
-                        <ArrowPathIcon class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-                        {{ formatDateShort(session.next_alignment_at) }}
-                    </dd>
-                </div>
-            </dl>
-        </FeedbackPanel>
+            <FeedbackTabs :tabs="tabs" :model-value="tab" label="Conteúdo do feedback" id-prefix="feedback-session" @update:model-value="selectTab" />
 
-        <FeedbackSessionSignaturesPanel class="mb-6" :session="session" />
+            <!-- Avisos de sucesso e erro dentro da aba onde a ação aconteceu -->
+            <div :id="panelId('respostas')" role="tabpanel" :aria-labelledby="tabId('respostas')" tabindex="0" class="space-y-4 focus:outline-none" v-show="tab === 'respostas'">
+                <FeedbackFlash v-if="tab === 'respostas'" />
+                <FeedbackAnswersList ref="answersList" :session="session" :can-edit="canEdit" />
+            </div>
 
-        <div class="mb-8">
-            <FeedbackRecordingPanel :session-id="session.id" :recording="recording" :ai="recordingAi" :access="recordingAccess" :people="{ leader: session.leader?.name, employee: session.employee?.name }" />
-        </div>
+            <div :id="panelId('gravacao')" role="tabpanel" :aria-labelledby="tabId('gravacao')" tabindex="0" class="space-y-4 focus:outline-none" v-show="tab === 'gravacao'">
+                <FeedbackFlash v-if="tab === 'gravacao'" />
+                <FeedbackRecordingPanel
+                    :session-id="session.id"
+                    :recording="recording"
+                    :ai="recordingAi"
+                    :access="recordingAccess"
+                    :people="{ leader: session.leader?.name, employee: session.employee?.name }"
+                    embedded
+                />
+            </div>
 
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Respostas por seção</h3>
-        <div class="space-y-3">
-            <FeedbackSectionAccordion
-                v-for="(section, index) in session.template?.sections || []"
-                :key="section.id"
-                :title="section.title"
-                :icon="feedbackSectionIcon(section.key)"
-                :description="section.description"
-                :meta="sectionMeta(section)"
-                :collapsible="section.section_type !== 'intro'"
-                :default-open="index === 0"
-            >
-                <template v-if="section.section_type !== 'intro'">
-                    <div v-if="section.questions?.length" class="divide-y divide-slate-100">
-                        <div v-for="q in section.questions" :key="q.id" class="px-5 py-4 sm:px-6">
-                            <p class="max-w-prose text-sm font-semibold text-slate-800">{{ q.body }}</p>
-                            <p
-                                class="mt-2 max-w-prose whitespace-pre-wrap border-l-2 border-talents-100 pl-3 text-sm leading-relaxed text-slate-700"
-                            >{{ formatAnswer(session.answers?.[q.id], q) }}</p>
-                        </div>
-                        <div
-                            v-if="session.section_extras?.[section.id]?.question || session.section_extras?.[section.id]?.answer"
-                            class="px-5 py-4 sm:px-6"
-                        >
-                            <p class="max-w-prose text-sm font-semibold text-slate-800">
-                                {{ session.section_extras[section.id].question || 'Pergunta extra' }}
-                            </p>
-                            <p
-                                class="mt-2 max-w-prose whitespace-pre-wrap border-l-2 border-talents-100 pl-3 text-sm leading-relaxed text-slate-700"
-                            >{{ formatAnswer(session.section_extras[section.id].answer) }}</p>
-                        </div>
-                    </div>
-                    <p v-else class="px-5 py-4 text-sm text-slate-500">Sem perguntas nesta seção.</p>
-                </template>
-            </FeedbackSectionAccordion>
+            <div :id="panelId('assinaturas')" role="tabpanel" :aria-labelledby="tabId('assinaturas')" tabindex="0" class="space-y-4 focus:outline-none" v-show="tab === 'assinaturas'">
+                <FeedbackFlash v-if="tab === 'assinaturas'" />
+                <FeedbackSessionSignaturesPanel :session="session" :pending-answers="progress.total - progress.answered" @sent="selectTab('assinaturas')" />
+            </div>
         </div>
 
         <FeedbackSessionDeleteModal :session="deletingSession" @close="deletingSession = null" />

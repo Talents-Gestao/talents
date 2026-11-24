@@ -98,9 +98,8 @@ class Nr1ShellEntryTest extends TestCase
         $this->actingAs($companyAdmin)->get(route('client.dashboard'))->assertInertia(fn (Assert $p) => $p->where('nr1Shell.opportunitiesUrl', null));
         $this->actingAs($companyAdmin)->get('/nr1/oportunidades')->assertForbidden();
 
-        // O item vive no grupo Comercial do menu.
+        // O item saiu do grupo Comercial do menu do Admin: a seção continua acessível pela URL e pela sub-navegação do painel.
         $admin = (string) file_get_contents(resource_path('js/Layouts/AdminLayout.vue'));
-        $this->assertStringContainsString('label="Oportunidades NR-1"', $admin);
-        $this->assertStringContainsString('v-if="nr1OpportunitiesUrl"', $admin);
+        $this->assertStringNotContainsString('label="Oportunidades NR-1"', $admin);
     }
 }
