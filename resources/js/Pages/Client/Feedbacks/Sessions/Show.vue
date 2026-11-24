@@ -125,7 +125,7 @@ const tabId = (key) => `feedback-session-tab-${key}`;
         </template>
 
         <div class="space-y-6">
-            <FeedbackSessionJourney :journey="steps" />
+            <FeedbackSessionJourney :journey="steps" :progress="progress" />
 
             <FeedbackTabs :tabs="tabs" :model-value="tab" label="Conteúdo do feedback" id-prefix="feedback-session" @update:model-value="selectTab" />
 

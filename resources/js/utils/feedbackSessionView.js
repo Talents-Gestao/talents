@@ -125,3 +125,22 @@ export function journey(session, progress) {
 
     return { steps, current, compact };
 }
+
+/**
+ * Conectores da jornada (um entre cada par de etapas), só para apresentação.
+ * - etapa anterior concluída: cheio (1) e tom «done»;
+ * - etapa anterior é a atual e há percentual: preenchido na proporção (0–1) e tom «current»;
+ * - senão: vazio (0) e tom «todo».
+ * @param {Array<{ status: 'done' | 'current' | 'todo' }>} steps journey().steps
+ * @param {number | null} currentPercent percentual (0–100) da etapa atual, ou null
+ * @returns {Array<{ fill: number, tone: 'done' | 'current' | 'todo' }>}
+ */
+export function journeyConnectors(steps = [], currentPercent = null) {
+    return steps.slice(0, -1).map((step) => {
+        if (step.status === 'done') return { fill: 1, tone: 'done' };
+        if (step.status === 'current' && Number.isFinite(currentPercent)) {
+            return { fill: Math.min(1, Math.max(0, currentPercent / 100)), tone: 'current' };
+        }
+        return { fill: 0, tone: 'todo' };
+    });
+}

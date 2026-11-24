@@ -5,7 +5,7 @@ import { promptDialog } from '@/composables/useConfirmDialog';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { formatDateTime } from '@/utils/dateOnly';
 import { router } from '@inertiajs/vue3';
-import { CheckCircleIcon, ClipboardDocumentIcon, EnvelopeIcon } from '@heroicons/vue/24/outline';
+import { CheckCircleIcon, ClipboardDocumentIcon, EnvelopeIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
 
 /**
@@ -84,14 +84,7 @@ const copyLink = async (sig) => {
             </div>
         </div>
 
-        <!-- Estado vazio: texto curto e a ação -->
-        <div v-if="!session.signatures?.length" class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center sm:px-6" data-feedback-signatures-empty>
-            <EnvelopeIcon class="mx-auto h-8 w-8 text-slate-400" aria-hidden="true" />
-            <p class="mt-2 font-semibold text-slate-900">Nenhuma assinatura solicitada</p>
-            <p class="mx-auto mt-1 max-w-[60ch] text-sm text-slate-700">Colaborador e líder recebem um link por e-mail para assinar.</p>
-        </div>
-
-        <ul v-else class="divide-y divide-slate-100 rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+        <ul v-if="session.signatures?.length" class="divide-y divide-slate-100 rounded-2xl border border-slate-200/80 bg-white shadow-sm">
             <li v-for="sig in session.signatures" :key="sig.id" class="px-4 py-4 sm:px-5">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
@@ -106,7 +99,7 @@ const copyLink = async (sig) => {
                         <SecondaryButton
                             v-if="!sig.signed_at && sig.sign_url"
                             type="button"
-                            class="min-h-[44px] !px-3 text-xs"
+                            class="min-h-[44px] gap-1.5 !px-3 text-xs hover:border-talents-300 hover:text-talents-800 active:bg-talents-50"
                             @click="copyLink(sig)"
                         >
                             <ClipboardDocumentIcon class="h-4 w-4" aria-hidden="true" />
@@ -117,18 +110,49 @@ const copyLink = async (sig) => {
             </li>
         </ul>
 
-        <!-- Envio: o texto de apoio fica junto da ação -->
-        <div v-if="canSendInvites" class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4" data-feedback-signatures-send>
-            <!-- Secundário: a ação principal da página fica no cabeçalho (uma por estado) -->
-            <SecondaryButton type="button" class="min-h-[44px] justify-center" :disabled="sending" data-feedback-signatures-send-button @click="sendInvites">
-                <EnvelopeIcon class="mr-2 inline h-4 w-4" aria-hidden="true" />
-                {{ sending ? 'Enviando…' : inviteLabel }}
-            </SecondaryButton>
-            <div class="max-w-[60ch] text-sm text-slate-700">
-                <p>E-mails com link seguro para assinatura digital vão para o colaborador e o líder.</p>
-                <p v-if="pendingAnswers > 0" class="mt-1 font-medium text-amber-900" data-feedback-signatures-pending>
+        <!-- Estado e envio num só card: situação no topo, aviso de pendência e, no rodapé, a ação com o texto de apoio -->
+        <div
+            v-if="!session.signatures?.length || canSendInvites"
+            class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm"
+        >
+            <div v-if="!session.signatures?.length" class="flex items-start gap-4 px-4 py-5 sm:px-6" data-feedback-signatures-empty>
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-talents-50 ring-1 ring-talents-100" aria-hidden="true">
+                    <EnvelopeIcon class="h-5 w-5 text-talents-700" />
+                </span>
+                <div class="min-w-0">
+                    <p class="font-semibold text-slate-900">Nenhuma assinatura solicitada</p>
+                    <p class="mt-1 max-w-[60ch] text-sm text-slate-700">Colaborador e líder recebem um link por e-mail para assinar.</p>
+                </div>
+            </div>
+
+            <div
+                v-if="canSendInvites"
+                class="space-y-3 px-4 py-4 sm:px-6"
+                :class="!session.signatures?.length ? 'border-t border-slate-100 bg-slate-50/60' : ''"
+                data-feedback-signatures-send
+            >
+                <p
+                    v-if="pendingAnswers > 0"
+                    class="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 ring-1 ring-amber-200"
+                    data-feedback-signatures-pending
+                >
+                    <ExclamationTriangleIcon class="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
                     Ainda há {{ pendingAnswers }} {{ pendingAnswers === 1 ? 'pergunta sem resposta' : 'perguntas sem resposta' }}.
                 </p>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <!-- Secundário: a ação principal da página fica no cabeçalho (uma por estado) -->
+                    <SecondaryButton
+                        type="button"
+                        class="min-h-[44px] shrink-0 justify-center hover:border-talents-300 hover:text-talents-800 active:bg-talents-50 disabled:cursor-not-allowed"
+                        :disabled="sending"
+                        data-feedback-signatures-send-button
+                        @click="sendInvites"
+                    >
+                        <EnvelopeIcon class="mr-2 inline h-4 w-4" aria-hidden="true" />
+                        {{ sending ? 'Enviando…' : inviteLabel }}
+                    </SecondaryButton>
+                    <p class="max-w-[60ch] text-sm text-slate-700">E-mails com link seguro para assinatura digital vão para o colaborador e o líder.</p>
+                </div>
             </div>
         </div>
     </section>

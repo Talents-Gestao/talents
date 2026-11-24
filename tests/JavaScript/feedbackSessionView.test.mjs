@@ -5,6 +5,7 @@ import {
     SESSION_TABS,
     firstIncompleteSectionId,
     journey,
+    journeyConnectors,
     overallProgress,
     primaryAction,
     sectionProgress,
@@ -98,5 +99,42 @@ describe('detalhe do feedback: jornada', () => {
         assert.deepEqual(j.steps.map((s) => s.status), ['done', 'current', 'todo']);
         assert.equal(j.compact, 'Assinaturas 1 de 2 assinadas · 2 de 3');
         assert.deepEqual(journey({ status: 'completed', signatures: [] }, { answered: 1, total: 1 }).steps.map((s) => s.status), ['done', 'done', 'done']);
+    });
+});
+
+describe('detalhe do feedback: conectores da jornada', () => {
+    const steps = (...status) => status.map((s) => ({ status: s }));
+
+    it('um conector a menos que o número de etapas', () => {
+        assert.equal(journeyConnectors(steps('current', 'todo', 'todo'), null).length, 2);
+        assert.deepEqual(journeyConnectors([], null), []);
+    });
+
+    it('preenchimento atual: conector proporcional ao percentual; os seguintes vazios', () => {
+        assert.deepEqual(journeyConnectors(steps('current', 'todo', 'todo'), 18), [
+            { fill: 0.18, tone: 'current' },
+            { fill: 0, tone: 'todo' },
+        ]);
+        assert.deepEqual(journeyConnectors(steps('current', 'todo', 'todo'), 0)[0], { fill: 0, tone: 'current' });
+    });
+
+    it('sem percentual (ou inválido), o conector da etapa atual fica vazio', () => {
+        assert.deepEqual(journeyConnectors(steps('current', 'todo', 'todo'), null)[0], { fill: 0, tone: 'todo' });
+        assert.deepEqual(journeyConnectors(steps('current', 'todo', 'todo'), Number.NaN)[0], { fill: 0, tone: 'todo' });
+    });
+
+    it('etapa concluída enche o conector; percentual fora de 0–100 é limitado', () => {
+        assert.deepEqual(journeyConnectors(steps('done', 'current', 'todo'), null), [
+            { fill: 1, tone: 'done' },
+            { fill: 0, tone: 'todo' },
+        ]);
+        assert.deepEqual(journeyConnectors(steps('done', 'done', 'done'), null).map((c) => c.fill), [1, 1]);
+        assert.equal(journeyConnectors(steps('current', 'todo'), 140)[0].fill, 1);
+        assert.equal(journeyConnectors(steps('current', 'todo'), -5)[0].fill, 0);
+    });
+
+    it('funciona com a saída real de journey()', () => {
+        const j = journey({ status: 'awaiting_signatures', signatures: [{ signed_at: null }] }, { answered: 3, total: 3 });
+        assert.deepEqual(journeyConnectors(j.steps, null).map((c) => c.tone), ['done', 'todo']);
     });
 });
