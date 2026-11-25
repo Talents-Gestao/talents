@@ -2,10 +2,11 @@
 import FeedbackRecordingAi from '@/Components/Feedback/FeedbackRecordingAi.vue';
 import FeedbackRecordingDeleteModal from '@/Components/Feedback/FeedbackRecordingDeleteModal.vue';
 import FeedbackRecordingDetailsModal from '@/Components/Feedback/FeedbackRecordingDetailsModal.vue';
+import FeedbackRecordingRewindModal from '@/Components/Feedback/FeedbackRecordingRewindModal.vue';
 import FeedbackRecordingSection from '@/Components/Feedback/FeedbackRecordingSection.vue';
 import FeedbackRecordingSteps from '@/Components/Feedback/FeedbackRecordingSteps.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
-import { recordingSteps } from '@/utils/feedbackRecordingSteps';
+import { recordingSteps, rewindMessage, rewindOptions } from '@/utils/feedbackRecordingSteps';
 import { canAdjustSpeakers, canRegenerateReport, recordingState } from '@/utils/feedbackRecordingView';
 import { ArrowPathIcon, InformationCircleIcon, TrashIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
 import { router, useForm } from '@inertiajs/vue3';
@@ -29,6 +30,8 @@ const props = defineProps({
     },
     /** Nomes já presentes na sessão: { leader, employee }. */
     people: { type: Object, default: () => ({}) },
+    /** Dentro da aba «Gravação e relatório» do detalhe (FeedbackRecordingSection embedded). */
+    embedded: { type: Boolean, default: false },
 });
 
 const form = useForm({ file: null, consent: false });
@@ -82,6 +85,46 @@ async function showOriginal() {
 
 const state = computed(() => recordingState(props.recording, props.ai, props.access));
 const steps = computed(() => recordingSteps(props.recording, props.ai));
+const stepOptions = computed(() => rewindOptions(steps.value, props.recording, props.ai, props.access));
+
+// ── Voltar etapas (barra «Gravação»): confirmação e, conforme a etapa, a ação de sempre ──
+const rewindStep = ref('');
+const rewindSubmitting = ref(false);
+const rewindError = ref('');
+/** Muda ao confirmar «Voltar para Confirmar falantes»: a IA reabre o mapeamento atual preenchido. */
+const rewindSpeakersSignal = ref(0);
+const rewindLabel = computed(() => steps.value.find((s) => s.key === rewindStep.value)?.label ?? '');
+
+function openRewind(key) {
+    rewindError.value = '';
+    rewindStep.value = key;
+}
+function closeRewind() {
+    if (rewindSubmitting.value) return;
+    rewindStep.value = '';
+}
+function confirmRewind() {
+    const step = rewindStep.value;
+    if (!step || rewindSubmitting.value) return;
+    if (step === 'speakers') {
+        // Nada muda até confirmar o novo mapeamento (a volta é registrada nesse envio).
+        rewindStep.value = '';
+        nextTick(() => (rewindSpeakersSignal.value += 1));
+        return;
+    }
+    router.post(feedbackRoute('sessions.recording.rewind', props.sessionId), { step, confirmed: true }, {
+        preserveScroll: true,
+        preserveState: true,
+        onStart: () => (rewindSubmitting.value = true),
+        onFinish: () => (rewindSubmitting.value = false),
+        onSuccess: () => {
+            rewindStep.value = '';
+            // Novo envio: arquivo e consentimento vazios (o consentimento é pedido de novo).
+            if (step === 'upload') resetKey.value += 1;
+        },
+        onError: (errors) => (rewindError.value = errors.step || errors.ai || errors.confirmed || Object.values(errors)[0] || 'Não foi possível voltar a etapa.'),
+    });
+}
 
 // ── Detalhes técnicos e privacidade (modal) ──
 const detailsOpen = ref(false);
@@ -92,7 +135,7 @@ function openDetails() {
 }
 function closeDetails() {
     detailsOpen.value = false;
-    // Devolve o foco a quem abriu; se foi um item do menu (já fechado), ao botão «Ações».
+    // Devolve o foco a quem abriu; se foi um item do menu (já fechado), ao botão «Opções da gravação».
     setTimeout(() => {
         const visible = detailsOpener && detailsOpener.isConnected && detailsOpener.offsetParent !== null;
         const target = visible ? detailsOpener : document.querySelector('[data-feedback-recording] [data-menu-trigger]');
@@ -100,7 +143,7 @@ function closeDetails() {
     }, 250);
 }
 
-// ── Menu «Ações» ──
+// ── Menu «Opções da gravação» ──
 const regenerating = ref(false);
 const adjustSignal = ref(0);
 const menuItems = computed(() => [
@@ -156,13 +199,14 @@ function confirmDelete() {
         :uploading="form.processing"
         :reset-key="resetKey"
         :menu-items="menuItems"
+        :embedded="embedded"
         :show-no-speakers-warning="!!recording && !recording.has_speaker_labels && ['queued', 'waiting', 'limit', 'idle'].includes(state)"
         @file-change="form.clearErrors('file')"
         @upload="upload"
         @open-details="openDetails"
     >
         <template #steps>
-            <FeedbackRecordingSteps :steps="steps" />
+            <FeedbackRecordingSteps :steps="steps" :options="stepOptions" @rewind="openRewind" />
         </template>
         <template v-if="ai" #ai>
             <FeedbackRecordingAi
@@ -172,6 +216,7 @@ function confirmDelete() {
                 :state="state"
                 :people="people"
                 :adjust-signal="adjustSignal"
+                :rewind-speakers-signal="rewindSpeakersSignal"
                 :original="original"
                 :loading-original="loadingOriginal"
                 :original-error="originalError"
@@ -181,6 +226,17 @@ function confirmDelete() {
     </FeedbackRecordingSection>
 
     <FeedbackRecordingDetailsModal :show="detailsOpen" :recording="recording" @close="closeDetails" />
+
+    <FeedbackRecordingRewindModal
+        :show="!!rewindStep"
+        :step="rewindStep"
+        :label="rewindLabel"
+        :message="rewindMessage(rewindStep, ai)"
+        :submitting="rewindSubmitting"
+        :error="rewindError"
+        @close="closeRewind"
+        @confirm="confirmRewind"
+    />
 
     <FeedbackRecordingDeleteModal
         :show="deleting"

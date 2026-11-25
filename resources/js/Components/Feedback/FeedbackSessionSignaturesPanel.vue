@@ -1,35 +1,29 @@
 <script setup>
 import FeedbackStatusBadge from '@/Components/Feedback/FeedbackStatusBadge.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { promptDialog } from '@/composables/useConfirmDialog';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { formatDateTime } from '@/utils/dateOnly';
 import { router } from '@inertiajs/vue3';
-import { CheckCircleIcon, ClipboardDocumentIcon, EnvelopeIcon } from '@heroicons/vue/24/outline';
+import { CheckCircleIcon, ClipboardDocumentIcon, EnvelopeIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline';
 import { computed, ref } from 'vue';
 
+/**
+ * Aba «Assinaturas» do detalhe do feedback: envio (ou reenvio) dos convites com o texto de apoio junto da ação,
+ * o estado de cada assinatura e o link de cada convite. A jornada (Preenchimento › Assinaturas › Concluído) fica
+ * no topo da página. Regra de envio inalterada: qualquer status, exceto concluído ou cancelado.
+ */
 const props = defineProps({
     session: { type: Object, required: true },
+    /** Perguntas ainda sem resposta (só para avisar; não bloqueia o envio). */
+    pendingAnswers: { type: Number, default: 0 },
 });
+
+/** Depois do envio (o servidor volta ao detalhe sem ?aba), quem usa reabre a aba «Assinaturas». */
+const emit = defineEmits(['sent']);
 
 const sending = ref(false);
 const copiedToken = ref(null);
-
-const steps = [
-    { key: 'fill', label: 'Preenchimento' },
-    { key: 'invite', label: 'Convites' },
-    { key: 'sign', label: 'Assinaturas' },
-    { key: 'done', label: 'Concluído' },
-];
-
-const currentStep = computed(() => {
-    if (props.session.status === 'completed') return 3;
-    if (props.session.status === 'awaiting_signatures') return 2;
-    if (props.session.signatures?.length) return 2;
-    if (props.session.status === 'in_progress' || props.session.status === 'draft') return 0;
-    return 0;
-});
 
 const canSendInvites = computed(
     () => !['completed', 'cancelled'].includes(props.session.status),
@@ -41,15 +35,12 @@ const inviteLabel = computed(() =>
         : 'Enviar para assinatura',
 );
 
-const signedCount = computed(
-    () => props.session.signatures?.filter((s) => s.signed_at).length ?? 0,
-);
-
 const sendInvites = () => {
     if (!canSendInvites.value || sending.value) return;
     sending.value = true;
     router.post(feedbackRoute('sessions.signatures', props.session.id), {}, {
         preserveScroll: true,
+        onSuccess: () => emit('sent'),
         onFinish: () => {
             sending.value = false;
         },
@@ -78,75 +69,29 @@ const copyLink = async (sig) => {
 </script>
 
 <template>
-    <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-        <div class="border-b border-slate-100 bg-gradient-to-r from-talents-50/80 to-white px-5 py-4">
-            <h3 class="font-semibold text-talents-900">Fluxo de finalização</h3>
-            <p class="mt-1 text-sm text-slate-600">
-                Após o preenchimento, envie os convites. O feedback conclui quando colaborador e líder assinam.
-            </p>
-        </div>
-
-        <ol class="grid gap-2 border-b border-slate-100 px-5 py-4 sm:grid-cols-4">
-            <li
-                v-for="(step, index) in steps"
-                :key="step.key"
-                class="flex items-center gap-2 text-sm"
-                :class="index <= currentStep ? 'text-talents-800' : 'text-slate-700'"
-            >
-                <span
-                    class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                    :class="
-                        index < currentStep
-                            ? 'bg-talents-700 text-white'
-                            : index === currentStep
-                              ? 'bg-talents-100 text-talents-800 ring-2 ring-talents-300'
-                              : 'bg-white text-slate-700 ring-1 ring-slate-300'
-                    "
-                >
-                    <CheckCircleIcon v-if="index < currentStep" class="h-4 w-4" />
-                    <span v-else>{{ index + 1 }}</span>
-                </span>
-                <span class="font-medium">{{ step.label }}</span>
-            </li>
-        </ol>
+    <section class="space-y-4" aria-labelledby="feedback_signatures_title" data-feedback-signatures>
+        <h3 id="feedback_signatures_title" class="sr-only">Assinaturas</h3>
 
         <div
             v-if="session.status === 'completed'"
-            class="flex items-start gap-3 border-b border-emerald-100 bg-emerald-50/80 px-5 py-4 text-sm text-emerald-900"
+            class="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950"
+            role="status"
         >
-            <CheckCircleIcon class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+            <CheckCircleIcon class="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" aria-hidden="true" />
             <div>
                 <p class="font-semibold">Feedback concluído</p>
-                <p v-if="session.completed_at" class="mt-0.5 text-emerald-800/90">
-                    Finalizado em {{ formatDate(session.completed_at) }}.
-                </p>
+                <p v-if="session.completed_at" class="mt-0.5">Finalizado em {{ formatDate(session.completed_at) }}.</p>
             </div>
         </div>
 
-        <div v-else-if="canSendInvites" class="border-b border-slate-100 px-5 py-4">
-            <PrimaryButton type="button" :disabled="sending" @click="sendInvites">
-                <EnvelopeIcon class="mr-2 inline h-4 w-4" />
-                {{ inviteLabel }}
-            </PrimaryButton>
-            <p class="mt-2 text-sm text-slate-700">
-                E-mails serão enviados para o colaborador e o líder com link seguro para assinatura digital.
-            </p>
-        </div>
-
-        <ul class="divide-y divide-slate-100">
-            <li v-for="sig in session.signatures" :key="sig.id" class="px-5 py-4">
+        <ul v-if="session.signatures?.length" class="divide-y divide-slate-100 rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+            <li v-for="sig in session.signatures" :key="sig.id" class="px-4 py-4 sm:px-5">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="font-medium text-slate-800">{{ sig.signer_name }}</p>
-                        <p class="text-[13px] text-slate-600">
-                            {{ sig.role_label ?? sig.role }} · {{ sig.signer_email }}
-                        </p>
-                        <p v-if="sig.signed_at" class="mt-1 text-[13px] text-emerald-800">
-                            Assinado em {{ formatDate(sig.signed_at) }}
-                        </p>
-                        <p v-else-if="sig.sent_at" class="mt-1 text-[13px] text-slate-600">
-                            Convite enviado em {{ formatDate(sig.sent_at) }}
-                        </p>
+                        <p class="font-medium text-slate-900">{{ sig.signer_name }}</p>
+                        <p class="break-words text-[13px] text-slate-700">{{ sig.role_label ?? sig.role }} · {{ sig.signer_email }}</p>
+                        <p v-if="sig.signed_at" class="mt-1 text-[13px] text-emerald-800">Assinado em {{ formatDate(sig.signed_at) }}</p>
+                        <p v-else-if="sig.sent_at" class="mt-1 text-[13px] text-slate-700">Convite enviado em {{ formatDate(sig.sent_at) }}</p>
                     </div>
                     <div class="flex shrink-0 items-center gap-2">
                         <FeedbackStatusBadge v-if="sig.signed_at" status="completed" label="Assinado" />
@@ -154,18 +99,61 @@ const copyLink = async (sig) => {
                         <SecondaryButton
                             v-if="!sig.signed_at && sig.sign_url"
                             type="button"
-                            class="!px-2 !py-1.5 text-xs"
+                            class="min-h-[44px] gap-1.5 !px-3 text-xs hover:border-talents-300 hover:text-talents-800 active:bg-talents-50"
                             @click="copyLink(sig)"
                         >
-                            <ClipboardDocumentIcon class="h-4 w-4" />
+                            <ClipboardDocumentIcon class="h-4 w-4" aria-hidden="true" />
                             {{ copiedToken === sig.id ? 'Copiado' : 'Copiar link' }}
                         </SecondaryButton>
                     </div>
                 </div>
             </li>
-            <li v-if="!session.signatures?.length" class="px-5 py-6 text-center text-sm text-slate-600">
-                Nenhuma assinatura solicitada ainda. Use o botão acima após concluir o preenchimento.
-            </li>
         </ul>
+
+        <!-- Estado e envio num só card: situação no topo, aviso de pendência e, no rodapé, a ação com o texto de apoio -->
+        <div
+            v-if="!session.signatures?.length || canSendInvites"
+            class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm"
+        >
+            <div v-if="!session.signatures?.length" class="flex items-start gap-4 px-4 py-5 sm:px-6" data-feedback-signatures-empty>
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-talents-50 ring-1 ring-talents-100" aria-hidden="true">
+                    <EnvelopeIcon class="h-5 w-5 text-talents-700" />
+                </span>
+                <div class="min-w-0">
+                    <p class="font-semibold text-slate-900">Nenhuma assinatura solicitada</p>
+                    <p class="mt-1 max-w-[60ch] text-sm text-slate-700">Colaborador e líder recebem um link por e-mail para assinar.</p>
+                </div>
+            </div>
+
+            <div
+                v-if="canSendInvites"
+                class="space-y-3 px-4 py-4 sm:px-6"
+                :class="!session.signatures?.length ? 'border-t border-slate-100 bg-slate-50/60' : ''"
+                data-feedback-signatures-send
+            >
+                <p
+                    v-if="pendingAnswers > 0"
+                    class="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 ring-1 ring-amber-200"
+                    data-feedback-signatures-pending
+                >
+                    <ExclamationTriangleIcon class="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+                    Ainda há {{ pendingAnswers }} {{ pendingAnswers === 1 ? 'pergunta sem resposta' : 'perguntas sem resposta' }}.
+                </p>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <!-- Secundário: a ação principal da página fica no cabeçalho (uma por estado) -->
+                    <SecondaryButton
+                        type="button"
+                        class="min-h-[44px] shrink-0 justify-center hover:border-talents-300 hover:text-talents-800 active:bg-talents-50 disabled:cursor-not-allowed"
+                        :disabled="sending"
+                        data-feedback-signatures-send-button
+                        @click="sendInvites"
+                    >
+                        <EnvelopeIcon class="mr-2 inline h-4 w-4" aria-hidden="true" />
+                        {{ sending ? 'Enviando…' : inviteLabel }}
+                    </SecondaryButton>
+                    <p class="max-w-[60ch] text-sm text-slate-700">E-mails com link seguro para assinatura digital vão para o colaborador e o líder.</p>
+                </div>
+            </div>
+        </div>
     </section>
 </template>

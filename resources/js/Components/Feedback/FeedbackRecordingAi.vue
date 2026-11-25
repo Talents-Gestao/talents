@@ -42,6 +42,8 @@ const props = defineProps({
     people: { type: Object, default: () => ({}) },
     /** Muda quando o usuário escolhe «Alterar falantes» no menu «Ações»: abre a lista. */
     adjustSignal: { type: Number, default: 0 },
+    /** Muda ao confirmar «Voltar para Confirmar falantes» na barra: reabre o mapeamento atual já preenchido. */
+    rewindSpeakersSignal: { type: Number, default: 0 },
 });
 
 const emit = defineEmits(['show-original']);
@@ -78,13 +80,43 @@ async function openAdjust() {
     speakersSection.value?.querySelector('select')?.focus();
 }
 watch(() => props.adjustSignal, openAdjust);
+// ── Voltar para «Confirmar falantes» (mesmo depois de processar): o envio passa por «voltar» no servidor ──
+const rewinding = ref(false);
+async function openRewindSpeakers() {
+    if (!props.access.canProcess || !(props.ai.speakers?.length > 0)) return;
+    resetRoles();
+    rewinding.value = true;
+    manual.value = true;
+    await nextTick();
+    speakersSection.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    speakersSection.value?.querySelector('select')?.focus();
+}
+watch(() => props.rewindSpeakersSignal, openRewindSpeakers);
+const rewindWarning = computed(() =>
+    rewinding.value && (props.ai.report || props.ai.clean) ? 'O relatório atual vai para o histórico e será preciso processar de novo.' : '',
+);
+function confirmRewindSpeakers() {
+    if (busy.value) return;
+    router.post(feedbackRoute('sessions.recording.rewind', props.sessionId), { step: 'speakers', confirmed: true, speakers: speakerRoles.value }, {
+        preserveScroll: true,
+        preserveState: true,
+        onStart: () => (busy.value = true),
+        onSuccess: () => {
+            rewinding.value = false;
+            manual.value = false;
+        },
+        onFinish: () => (busy.value = false),
+    });
+}
+
 function cancelAdjust() {
+    rewinding.value = false;
     manual.value = false;
     resetRoles();
     announcement.value = '';
 }
 
-const showSpeakersStep = computed(() => props.state === 'speakers' || (manual.value && canAdjust.value));
+const showSpeakersStep = computed(() => props.state === 'speakers' || (manual.value && (canAdjust.value || rewinding.value)));
 const quick = computed(() => useQuickConfirm(props.ai, manual.value) && !props.ai.speakers_mapped);
 /** «Falante 1 = Rafael Mendes (líder) · Falante 2 = …» com os papéis já confirmados. */
 const summary = computed(() => (props.ai.speakers_mapped && props.ai.speakers.length ? speakersLine(props.ai.speakers, props.people) : ''));
@@ -307,7 +339,7 @@ const btnLink =
             <div v-if="quick" class="space-y-3 rounded-xl border border-talents-200 bg-talents-50/60 p-4" data-feedback-ai-speakers-quick>
                 <p class="text-sm font-medium leading-relaxed text-slate-900">{{ confirmSentence(ai.speakers, speakerRoles, people) }}</p>
                 <p v-if="ai.speaker_suggestion?.reason" class="text-[13px] text-slate-700">Sugestão automática: {{ displayText(ai.speaker_suggestion.reason) }}</p>
-                <p v-if="canProcessNow" class="text-[13px] text-slate-700" data-feedback-ai-provider>
+                <p v-if="canProcessNow && !rewinding" class="text-[13px] text-slate-700" data-feedback-ai-provider>
                     O texto vai para <strong>{{ ai.gate.provider_label }} · {{ ai.gate.model }}</strong>. «Reflexão do líder» não é enviada.
                 </p>
                 <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -365,9 +397,12 @@ const btnLink =
                 </ul>
 
                 <p class="sr-only" aria-live="polite">{{ announcement }}</p>
+                <p v-if="rewindWarning" class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950" role="status" data-feedback-ai-rewind-warning>
+                    {{ rewindWarning }}
+                </p>
                 <p v-if="mappingHint" class="text-sm font-medium text-amber-900" role="status">{{ mappingHint }}</p>
                 <p v-if="errors.speakers" class="text-sm font-medium text-rose-700" role="alert">{{ errors.speakers }}</p>
-                <p v-if="canProcessNow" class="text-[13px] text-slate-700" data-feedback-ai-provider>
+                <p v-if="canProcessNow && !rewinding" class="text-[13px] text-slate-700" data-feedback-ai-provider>
                     O texto vai para <strong>{{ ai.gate.provider_label }} · {{ ai.gate.model }}</strong>. «Reflexão do líder» não é enviada.
                 </p>
 
@@ -378,15 +413,15 @@ const btnLink =
                             type="button"
                             :class="[btnPrimary, 'w-full sm:w-auto']"
                             :disabled="busy"
-                            :aria-describedby="processBlockReason ? 'feedback_ai_list_reason' : undefined"
+                            :aria-describedby="processBlockReason && !rewinding ? 'feedback_ai_list_reason' : undefined"
                             data-feedback-ai-action="speakers"
-                            @click="canProcessNow ? confirmAndProcess() : confirmSpeakers()"
+                            @click="rewinding ? confirmRewindSpeakers() : canProcessNow ? confirmAndProcess() : confirmSpeakers()"
                         >
                             <CheckIcon class="h-4 w-4" aria-hidden="true" />
-                            {{ canProcessNow ? 'Confirmar e processar' : 'Confirmar' }}
+                            {{ rewinding ? 'Confirmar falantes' : canProcessNow ? 'Confirmar e processar' : 'Confirmar' }}
                         </button>
                         <button v-if="manual" type="button" :class="[btnSecondary, 'w-full sm:w-auto']" @click="cancelAdjust">Cancelar</button>
-                        <span v-if="processBlockReason" id="feedback_ai_list_reason" class="text-sm text-slate-700">{{ processBlockReason }}</span>
+                        <span v-if="processBlockReason && !rewinding" id="feedback_ai_list_reason" class="text-sm text-slate-700">{{ processBlockReason }}</span>
                     </div>
 
                     <FeedbackDisclosure label="Ver mais trechos" class="sm:max-w-md sm:flex-1" @toggle="onSamplesToggle">

@@ -273,6 +273,7 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::post('sessions/{session}/gravacao/tentar-novamente', [FeedbackRecordingAiController::class, 'retry'])->name('sessions.recording.retry');
         Route::post('sessions/{session}/gravacao/relatorio', [FeedbackRecordingAiController::class, 'regenerateReport'])->name('sessions.recording.report');
         Route::put('sessions/{session}/gravacao/transcricao-limpa', [FeedbackRecordingAiController::class, 'updateClean'])->name('sessions.recording.clean');
+        Route::post('sessions/{session}/gravacao/voltar', [FeedbackRecordingAiController::class, 'rewind'])->name('sessions.recording.rewind');
         // Modelos da própria empresa (só administrador; o controller recusa os demais).
         Route::post('templates/{template}/duplicar', [FeedbackTemplateController::class, 'duplicate'])->name('templates.duplicate');
         Route::get('templates/{template}/exclusao', [FeedbackTemplateController::class, 'deletionImpact'])->name('templates.deletion');

@@ -34,6 +34,9 @@ class FeedbackAuditLog extends Model
 
     public const ACTION_RECORDING_SAMPLES_VIEWED = 'recording_samples_viewed';
 
+    /** Volta de etapa na barra «Gravação» (details: from, to). */
+    public const ACTION_RECORDING_STEP_REVERTED = 'recording_step_reverted';
+
     public const ACTION_EMPLOYEES_MERGED = 'employees_merged';
 
     public const ACTION_EVOLUTION_REQUESTED = 'evolution_requested';

@@ -26,13 +26,9 @@ import {
 
 const { canAdmin, canAdminAny } = useAdminPermissions();
 const page = usePage();
-/** «Oportunidades NR-1» (grupo Comercial): só com a permissão nr1_oportunidades:view. */
-const nr1OpportunitiesUrl = computed(() => page.props.nr1Shell?.opportunitiesUrl ?? null);
 /** Item «NR-1» (perfil Talents, Nr1Shell::adminMenuUrl): ativo em qualquer /nr1/*. */
 const nr1AdminUrl = computed(() => page.props.nr1Shell?.adminUrl ?? null);
 const nr1Active = computed(() => isNr1Path(page.url));
-/** Sem o item «NR-1» (perfil só-Comercial), a entrada ativa em /nr1/* é «Oportunidades NR-1». */
-const nr1OpportunitiesActive = computed(() => nr1AdminUrl.value === null && nr1Active.value);
 
 const activeHiringProcessesCount = computed(
     () => Number(page.props.nav?.active_hiring_processes_count ?? 0) || 0,
@@ -49,9 +45,7 @@ const showComercial = computed(
         canAdminAny([
             'comercial_propostas',
             'comercial_valores_contratos',
-        ]) ||
-        canCommercialSettings.value ||
-        nr1OpportunitiesUrl.value !== null,
+        ]) || canCommercialSettings.value,
 );
 
 /** Menu Assinaturas oculto temporariamente (rotas /admin/plans continuam ativas). */
@@ -66,9 +60,6 @@ const comercialFallbackHref = computed(() => {
     }
     if (showAssinaturasMenu && canAdmin('plans')) {
         return route('admin.plans.index');
-    }
-    if (nr1OpportunitiesUrl.value) {
-        return nr1OpportunitiesUrl.value;
     }
     return route('admin.dashboard');
 });
@@ -269,10 +260,6 @@ const comercialSettingsProdutosHref = computed(() =>
     route('admin.comercial.settings.edit', { tab: 'produtos' }),
 );
 
-const comercialSettingsContratosHref = computed(() =>
-    route('admin.comercial.settings.edit', { tab: 'contratos' }),
-);
-
 const isComercialSettingsTab = (tab) => {
     if (!route().current('admin.comercial.settings.*')) {
         return false;
@@ -342,24 +329,6 @@ const isComercialSettingsTab = (tab) => {
                     :href="route('admin.comercial.propostas.index')"
                     :active="route().current('admin.comercial.propostas.*')"
                     label="Gestão"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                />
-                <SidebarNavItem
-                    v-if="canCommercialSettings"
-                    :href="comercialSettingsContratosHref"
-                    :active="isComercialSettingsTab('contratos')"
-                    label="Contrato"
-                    variant="nested"
-                    :collapsed="collapsed"
-                    :compact="compact"
-                />
-                <SidebarNavItem
-                    v-if="nr1OpportunitiesUrl"
-                    :href="nr1OpportunitiesUrl"
-                    :active="nr1OpportunitiesActive"
-                    label="Oportunidades NR-1"
                     variant="nested"
                     :collapsed="collapsed"
                     :compact="compact"

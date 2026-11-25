@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Client\Feedback;
 
 use App\Actions\Feedback\MapFeedbackRecordingSpeakers;
+use App\Actions\Feedback\RewindFeedbackRecording;
 use App\Actions\Feedback\StartFeedbackRecordingProcessing;
 use App\Actions\Feedback\UpdateFeedbackCleanTranscript;
 use App\Http\Controllers\Concerns\ResolvesFeedbackRoutes;
@@ -19,6 +20,7 @@ use App\Support\Feedback\TranscriptSpeakers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * IA da gravação do feedback: mapear falantes, processar (limpeza + relatório), tentar de novo, gerar o
@@ -59,6 +61,52 @@ class FeedbackRecordingAiController extends FeedbackCompanyController
     public function regenerateReport(Request $request, FeedbackSession $session, StartFeedbackRecordingProcessing $start): RedirectResponse
     {
         return $this->start($request, $session, $start, StartFeedbackRecordingProcessing::REQUEST_REPORT, 'Novo relatório em geração. O anterior continua guardado.');
+    }
+
+    /**
+     * Voltar uma etapa na barra «Gravação» (RewindFeedbackRecording). Mesmas permissões das ações reaproveitadas:
+     * «Enviar» exige excluir a gravação; «Confirmar falantes» e «Processar», processar. Nunca com assinatura
+     * solicitada ou concluída, nem durante o processamento.
+     */
+    public function rewind(Request $request, FeedbackSession $session, RewindFeedbackRecording $rewind): RedirectResponse
+    {
+        $recording = $this->recording($request, $session);
+
+        $data = $request->validate([
+            'step' => ['required', 'string', Rule::in(RewindFeedbackRecording::TARGETS)],
+            'confirmed' => ['accepted'],
+            'speakers' => ['required_if:step,'.RewindFeedbackRecording::STEP_SPEAKERS, 'array', 'max:8'],
+            'speakers.*' => ['required', 'string'],
+        ], [
+            'step.*' => 'Etapa inválida.',
+            'confirmed.accepted' => 'Confirme a volta de etapa.',
+            'speakers.required_if' => 'Escolha o papel de cada pessoa da transcrição.',
+            'speakers.*.required' => 'Escolha o papel de cada pessoa da transcrição.',
+        ]);
+
+        $step = $data['step'];
+        abort_unless($step === RewindFeedbackRecording::STEP_UPLOAD
+            ? FeedbackRecordingAccess::canDelete($request, $session)
+            : FeedbackRecordingAccess::canProcess($request, $session), 403);
+
+        if ($reason = FeedbackRecordingAccess::rewindBlockedReason($session)) {
+            abort(403, $reason);
+        }
+        if ($recording->processing_status === FeedbackRecording::STATUS_PROCESSING) {
+            return back()->withErrors(['step' => FeedbackRecordingAccess::REWIND_PROCESSING_MESSAGE]);
+        }
+
+        try {
+            $rewind->execute($recording, $request->user(), $step, $data['speakers'] ?? []);
+        } catch (FeedbackAiException $e) {
+            return back()->withErrors(['ai' => $e->getMessage()]);
+        }
+
+        return back()->with('success', match ($step) {
+            RewindFeedbackRecording::STEP_UPLOAD => 'Gravação excluída. Envie o novo arquivo.',
+            RewindFeedbackRecording::STEP_SPEAKERS => 'Falantes confirmados. O relatório anterior foi para o histórico; processe de novo.',
+            default => 'Novo relatório em geração. O anterior continua guardado.',
+        });
     }
 
     /**

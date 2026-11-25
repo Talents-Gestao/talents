@@ -452,6 +452,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::post('sessions/{session}/gravacao/tentar-novamente', [FeedbackRecordingAiController::class, 'retry'])->name('sessions.recording.retry');
             Route::post('sessions/{session}/gravacao/relatorio', [FeedbackRecordingAiController::class, 'regenerateReport'])->name('sessions.recording.report');
             Route::put('sessions/{session}/gravacao/transcricao-limpa', [FeedbackRecordingAiController::class, 'updateClean'])->name('sessions.recording.clean');
+            Route::post('sessions/{session}/gravacao/voltar', [FeedbackRecordingAiController::class, 'rewind'])->name('sessions.recording.rewind');
         });
     });
 
