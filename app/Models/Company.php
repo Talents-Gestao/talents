@@ -382,17 +382,14 @@ class Company extends Model
         return $this->subscriptionHasModuleKey(Module::KEY_SUGESTOES);
     }
 
+    /**
+     * Feedbacks internos: liberado para toda empresa, sem depender de assinatura ou plano.
+     * Só fica desligado quando a Talents força o bloqueio (`feedbacks_access = false`);
+     * `null` (padrão) e `true` habilitam. O status ativo da empresa é filtrado por quem consulta.
+     */
     public function hasFeedbacksEnabled(): bool
     {
-        if ($this->feedbacks_access === false) {
-            return false;
-        }
-
-        if ($this->feedbacks_access === true) {
-            return true;
-        }
-
-        return $this->subscriptionHasModuleKey(Module::KEY_FEEDBACKS);
+        return $this->feedbacks_access !== false;
     }
 
     public function hasFeriasEnabled(): bool

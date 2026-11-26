@@ -57,6 +57,8 @@ const desligamentoAccessMode = () => {
     return 'inherit';
 };
 
+const feedbacksAccessMode = () => (props.company.feedbacks_access === false ? 'disabled' : 'enabled');
+
 const acompanhamentoAccessMode = () => {
     const v = props.company.acompanhamento_access;
     if (v === true) return 'enabled';
@@ -86,6 +88,7 @@ const form = useForm({
     rhid_access_mode: rhidAccessMode(),
     denuncias_access_mode: denunciasAccessMode(),
     ferias_access_mode: feriasAccessMode(),
+    feedbacks_access_mode: feedbacksAccessMode(),
     desligamento_access_mode: desligamentoAccessMode(),
     acompanhamento_access_mode: acompanhamentoAccessMode(),
     plan_id: props.activePlanId ?? null,
@@ -339,6 +342,20 @@ const submit = () => {
                 >
                     <option value="inherit">Seguir a assinatura</option>
                     <option value="enabled">Forçar habilitado</option>
+                    <option value="disabled">Forçar desabilitado</option>
+                </select>
+            </div>
+            <div>
+                <InputLabel for="feedbacks_access_mode" value="Feedbacks internos" />
+                <p class="mt-0.5 text-xs text-gray-500">
+                    Liberado para todas as empresas. Use "Forçar desabilitado" para bloquear esta empresa.
+                </p>
+                <select
+                    id="feedbacks_access_mode"
+                    v-model="form.feedbacks_access_mode"
+                    class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option value="enabled">Habilitado (padrão)</option>
                     <option value="disabled">Forçar desabilitado</option>
                 </select>
             </div>
