@@ -26,12 +26,17 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Modelos de feedback da própria empresa (portal; no admin, da empresa selecionada).
- * Só o perfil administrador gerencia; o modelo só aparece para a empresa dona. Os modelos da Talents
- * (company_id nulo) são listados como referência, sem edição, mas podem ser duplicados para a empresa.
- * Depois que um modelo é usado em algum feedback, a estrutura (seções e perguntas) fica travada: só nome,
- * descrição e ativo mudam; para mudar as perguntas, duplica-se o modelo. Excluir um modelo usado exclui junto
- * os feedbacks feitos com ele (DeleteFeedbackTemplate), com alerta e confirmação explícita.
+ * Modelos de feedback. Há dois tipos:
+ * - universais (company_id nulo): criados pela Talents no admin, valem para todas as empresas. Só as rotas
+ *   do admin criam, editam, desativam e excluem; no portal aparecem como «Modelos da Talents» (usar e duplicar).
+ * - da empresa: criados pelo RH no portal, só aparecem para a empresa dona (no admin, para a empresa
+ *   selecionada, com o selo «Desta empresa», e a Talents também os edita).
+ * Criar ou duplicar no admin gera universal; no portal, gera da empresa. Só o perfil administrador gerencia.
+ * Depois que um modelo é usado em algum feedback (de qualquer empresa, no caso dos universais), a estrutura
+ * (seções e perguntas) fica travada: só nome, descrição e ativo mudam; para mudar as perguntas, duplica-se.
+ * Excluir um modelo da empresa usado exclui junto os feedbacks feitos com ele (DeleteFeedbackTemplate), com
+ * alerta e confirmação explícita; um universal usado nunca é excluído (desativa-se), para não apagar
+ * feedbacks de outras empresas.
  *
  * A estrutura faz ida e volta fiel: chave da seção/pergunta, tipo de seção (perguntas ou orientação),
  * público (inclusive «leader_self», visível só a administradores) e valor das opções são preservados,
@@ -53,6 +58,8 @@ class FeedbackTemplateController extends FeedbackCompanyController
     {
         $company = $this->companyForAdmin($request);
 
+        $isAdmin = $this->isAdminContext($request);
+
         $templates = FeedbackTemplate::query()
             ->where(fn ($q) => $q->whereNull('company_id')->orWhere('company_id', $company->id))
             ->withCount('sections')
@@ -60,24 +67,46 @@ class FeedbackTemplateController extends FeedbackCompanyController
             ->orderBy('title')
             ->get();
 
-        $usage = FeedbackSession::query()
+        // Uso na empresa (portal e admin) e, só no admin, o total geral dos universais.
+        $companyUsage = FeedbackSession::query()
             ->where('company_id', $company->id)
             ->whereIn('feedback_template_id', $templates->pluck('id'))
             ->selectRaw('feedback_template_id, count(*) as total')
             ->groupBy('feedback_template_id')
             ->pluck('total', 'feedback_template_id');
 
+        $totalUsage = $isAdmin
+            ? FeedbackSession::query()
+                ->whereIn('feedback_template_id', $templates->filter->isGlobal()->pluck('id'))
+                ->selectRaw('feedback_template_id, count(*) as total')
+                ->groupBy('feedback_template_id')
+                ->pluck('total', 'feedback_template_id')
+            : collect();
+
         return Inertia::render('Client/Feedbacks/Templates/Index', [
-            'templates' => $templates->map(fn (FeedbackTemplate $template) => [
-                'id' => $template->id,
-                'title' => $template->title,
-                'description' => $template->description,
-                'is_active' => (bool) $template->is_active,
-                'is_own' => $template->company_id !== null,
-                'sections_count' => (int) $template->sections_count,
-                'sessions_count' => (int) ($usage[$template->id] ?? 0),
-            ])->values(),
+            'templates' => $templates->map(function (FeedbackTemplate $template) use ($isAdmin, $companyUsage, $totalUsage) {
+                $universal = $template->isGlobal();
+                $inCompany = (int) ($companyUsage[$template->id] ?? 0);
+                $total = $isAdmin && $universal ? (int) ($totalUsage[$template->id] ?? 0) : null;
+
+                return [
+                    'id' => $template->id,
+                    'title' => $template->title,
+                    'description' => $template->description,
+                    'is_active' => (bool) $template->is_active,
+                    'is_own' => ! $universal,
+                    'is_universal' => $universal,
+                    // Portal só gerencia os da empresa; o admin gerencia universais e os da empresa selecionada.
+                    'manageable' => $isAdmin || ! $universal,
+                    'sections_count' => (int) $template->sections_count,
+                    // Base da trava: universal no admin conta o uso em todas as empresas.
+                    'sessions_count' => $total ?? $inCompany,
+                    'sessions_count_company' => $inCompany,
+                    'sessions_count_total' => $total,
+                ];
+            })->values(),
             'permissions' => $this->permissions($request),
+            'isAdminContext' => $isAdmin,
         ]);
     }
 
@@ -101,9 +130,12 @@ class FeedbackTemplateController extends FeedbackCompanyController
         $company = $this->companyForAdmin($request);
         $data = $this->validated($request, requireStructure: true);
 
-        DB::transaction(function () use ($company, $data, $request) {
+        // No admin, todo modelo novo é universal (vale para todas as empresas), mesmo com empresa selecionada.
+        $companyId = $this->isAdminContext($request) ? null : $company->id;
+
+        DB::transaction(function () use ($companyId, $data, $request) {
             $template = FeedbackTemplate::query()->create([
-                'company_id' => $company->id,
+                'company_id' => $companyId,
                 'title' => $data['title'],
                 'description' => $data['description'] ?? null,
                 'is_default' => false,
@@ -119,7 +151,8 @@ class FeedbackTemplateController extends FeedbackCompanyController
 
     public function edit(Request $request, FeedbackTemplate $template): Response
     {
-        $this->authorizeOwnTemplate($request, $template);
+        $this->authorizeManageableTemplate($request, $template);
+        // Universal: conta o uso em qualquer empresa.
         $sessionsCount = $this->usageCount($template);
         $permissions = $this->permissions($request);
 
@@ -134,6 +167,7 @@ class FeedbackTemplateController extends FeedbackCompanyController
             // As respostas apontam para as perguntas do modelo; por isso a estrutura trava após o primeiro uso.
             'structureLocked' => $sessionsCount > 0,
             'sessionsCount' => $sessionsCount,
+            'isUniversal' => $template->isGlobal(),
             // Admin da Talents só com «ver» no módulo: abre em modo leitura, sem salvar.
             'readOnly' => ! $permissions['edit'],
             'permissions' => $permissions,
@@ -144,7 +178,7 @@ class FeedbackTemplateController extends FeedbackCompanyController
 
     public function update(Request $request, FeedbackTemplate $template): RedirectResponse
     {
-        $this->authorizeOwnTemplate($request, $template);
+        $this->authorizeManageableTemplate($request, $template);
         $locked = $this->isInUse($template);
         $data = $this->validated($request, requireStructure: ! $locked);
 
@@ -172,16 +206,19 @@ class FeedbackTemplateController extends FeedbackCompanyController
     }
 
     /**
-     * Cópia editável (sem trava) de um modelo da empresa ou da Talents, pertencente à empresa de quem duplica.
+     * Cópia editável (sem trava) de um modelo universal ou da empresa. No admin a cópia é universal;
+     * no portal, pertence à empresa de quem duplica.
      */
     public function duplicate(Request $request, FeedbackTemplate $template): RedirectResponse
     {
         $company = $this->companyForAdmin($request);
         abort_unless($template->company_id === null || (int) $template->company_id === (int) $company->id, 404);
 
-        $copy = DB::transaction(function () use ($company, $template, $request) {
+        $companyId = $this->isAdminContext($request) ? null : $company->id;
+
+        $copy = DB::transaction(function () use ($companyId, $template, $request) {
             $copy = FeedbackTemplate::query()->create([
-                'company_id' => $company->id,
+                'company_id' => $companyId,
                 'title' => $this->copyTitle($template->title),
                 'description' => $template->description,
                 'is_default' => false,
@@ -212,16 +249,20 @@ class FeedbackTemplateController extends FeedbackCompanyController
      */
     public function deletionImpact(Request $request, FeedbackTemplate $template, DeleteFeedbackTemplate $delete): JsonResponse
     {
-        $this->authorizeOwnTemplate($request, $template);
+        $this->authorizeManageableTemplate($request, $template);
         abort_unless($this->permissions($request)['delete'], 403);
 
         $impact = $delete->impact($template);
+        // Universal usado (em qualquer empresa) não é excluído: a tela mostra a orientação de desativar.
+        $blocked = $template->isGlobal() && $impact['sessions'] > 0;
 
         return response()->json([
             'id' => $template->id,
             'title' => $template->title,
             'sessions_count' => $impact['sessions'],
             'answers_count' => $impact['answers'],
+            'blocked' => $blocked,
+            'blocked_message' => $blocked ? DeleteFeedbackTemplate::UNIVERSAL_IN_USE_MESSAGE : null,
         ]);
     }
 
@@ -231,7 +272,7 @@ class FeedbackTemplateController extends FeedbackCompanyController
      */
     public function destroy(Request $request, FeedbackTemplate $template, DeleteFeedbackTemplate $delete): RedirectResponse
     {
-        $this->authorizeOwnTemplate($request, $template);
+        $this->authorizeManageableTemplate($request, $template);
 
         $data = $request->validate([
             'confirmed' => ['sometimes', 'boolean'],
@@ -239,6 +280,10 @@ class FeedbackTemplateController extends FeedbackCompanyController
         ]);
         $confirmedSessions = (int) ($data['sessions_count'] ?? 0);
         $current = $this->usageCount($template);
+
+        if ($template->isGlobal() && $current > 0) {
+            throw ValidationException::withMessages(['template' => DeleteFeedbackTemplate::UNIVERSAL_IN_USE_MESSAGE]);
+        }
 
         if ($current > 0 && ! $request->boolean('confirmed')) {
             throw ValidationException::withMessages([
@@ -264,12 +309,26 @@ class FeedbackTemplateController extends FeedbackCompanyController
         return $this->company($request);
     }
 
-    private function authorizeOwnTemplate(Request $request, FeedbackTemplate $template): void
+    /**
+     * Quem edita, desativa e exclui: no admin, universais e os da empresa selecionada; no portal, só os da
+     * própria empresa. Modelo de outra empresa (ou universal, no portal) não existe para quem pede: 404.
+     */
+    private function authorizeManageableTemplate(Request $request, FeedbackTemplate $template): void
     {
         $company = $this->companyForAdmin($request);
 
-        // Modelo de outra empresa ou da Talents: não existe para esta empresa.
-        abort_unless($template->company_id !== null && (int) $template->company_id === (int) $company->id, 404);
+        if ($template->isGlobal()) {
+            abort_unless($this->isAdminContext($request), 404);
+
+            return;
+        }
+
+        abort_unless((int) $template->company_id === (int) $company->id, 404);
+    }
+
+    private function isAdminContext(Request $request): bool
+    {
+        return app(FeedbackCompanyContext::class)->isAdminContext($request);
     }
 
     /**
@@ -282,7 +341,7 @@ class FeedbackTemplateController extends FeedbackCompanyController
     {
         $user = $request->user();
 
-        if (! app(FeedbackCompanyContext::class)->isAdminContext($request)) {
+        if (! $this->isAdminContext($request)) {
             return ['create' => true, 'edit' => true, 'delete' => true];
         }
 

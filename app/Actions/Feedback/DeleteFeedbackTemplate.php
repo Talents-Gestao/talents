@@ -18,9 +18,14 @@ use Illuminate\Validation\ValidationException;
  * Exclui um modelo e, junto, todos os feedbacks feitos com ele e as respostas: tudo ou nada, numa transação,
  * com exclusão lógica (o suporte recupera pelos ids da trilha). A contagem confirmada na tela precisa bater
  * com a atual; se mudou entre abrir o alerta e confirmar, a exclusão é recusada.
+ *
+ * Modelo universal (company_id nulo) é usado por várias empresas: só é excluído sem uso. Em uso em qualquer
+ * empresa, a exclusão é recusada; nunca se apagam feedbacks de outras empresas por aqui.
  */
 class DeleteFeedbackTemplate
 {
+    public const UNIVERSAL_IN_USE_MESSAGE = 'Este modelo já foi usado em feedbacks. Desative-o para que não apareça em novos feedbacks.';
+
     /**
      * Impacto atual, calculado no servidor para o alerta.
      *
@@ -52,6 +57,10 @@ class DeleteFeedbackTemplate
                 ->where('feedback_template_id', $locked->id)
                 ->lockForUpdate()
                 ->pluck('id');
+
+            if ($locked->isGlobal() && $sessionIds->isNotEmpty()) {
+                throw ValidationException::withMessages(['template' => self::UNIVERSAL_IN_USE_MESSAGE]);
+            }
 
             if ($sessionIds->count() !== $confirmedSessions) {
                 throw ValidationException::withMessages([

@@ -23,8 +23,11 @@ const checked = ref(false);
 const error = ref('');
 
 const copy = computed(() => (impact.value ? templateDeletionCopy(impact.value) : null));
+// Modelo universal já usado (em qualquer empresa): não se exclui; a orientação é desativar.
+const blocked = computed(() => Boolean(impact.value?.blocked));
 const canSubmit = computed(
     () => copy.value !== null
+        && !blocked.value
         && canConfirmDeletion({ requiresCheck: copy.value.requiresCheck, checked: checked.value, busy: loading.value || submitting.value }),
 );
 
@@ -68,7 +71,7 @@ function submit() {
         onFinish: () => (submitting.value = false),
         onSuccess: () => emit('close'),
         onError: (errors) => {
-            error.value = errors.sessions_count || errors.confirmed || Object.values(errors)[0] || 'Não foi possível excluir.';
+            error.value = errors.template || errors.sessions_count || errors.confirmed || Object.values(errors)[0] || 'Não foi possível excluir.';
             // Contagem desatualizada: mostra o impacto atual e pede nova confirmação.
             if (errors.sessions_count || errors.confirmed) loadImpact();
         },
@@ -82,6 +85,14 @@ function submit() {
             <h2 class="text-lg font-semibold text-slate-900">{{ copy?.heading ?? 'Excluir modelo' }}</h2>
 
             <p v-if="loading" class="mt-3 text-sm text-slate-500">Calculando o impacto…</p>
+
+            <p
+                v-else-if="blocked"
+                class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                role="alert"
+            >
+                {{ impact.blocked_message }}
+            </p>
 
             <template v-else-if="copy">
                 <p
@@ -117,6 +128,7 @@ function submit() {
                     Cancelar
                 </button>
                 <button
+                    v-if="!blocked"
                     type="button"
                     class="inline-flex items-center rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                     :disabled="!canSubmit"
