@@ -214,7 +214,14 @@ class FeedbackDeletionTest extends TestCase
 
         $this->actingAs($this->admin)->getJson(route('client.feedbacks.templates.deletion', $template))
             ->assertOk()
-            ->assertExactJson(['id' => $template->id, 'title' => 'Modelo da empresa', 'sessions_count' => 0, 'answers_count' => 0]);
+            ->assertExactJson([
+                'id' => $template->id,
+                'title' => 'Modelo da empresa',
+                'sessions_count' => 0,
+                'answers_count' => 0,
+                'blocked' => false,
+                'blocked_message' => null,
+            ]);
 
         $this->actingAs($this->admin)
             ->delete(route('client.feedbacks.templates.destroy', $template))

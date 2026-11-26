@@ -18,6 +18,7 @@ use Tests\TestCase;
 
 /**
  * Edição de modelos de feedback em /admin/feedbacks/templates (empresa selecionada) e no portal.
+ * Modelo criado ou duplicado no admin é universal (company_id nulo), mesmo com empresa selecionada.
  * Modelo já usado em feedbacks: estrutura travada (as respostas apontam para as perguntas), com o motivo na tela.
  */
 class FeedbackTemplateAdminTest extends TestCase
@@ -71,7 +72,7 @@ class FeedbackTemplateAdminTest extends TestCase
             ->assertRedirect(route('admin.feedbacks.templates.index'))
             ->assertSessionHas('success', 'Modelo de feedback criado.');
 
-        return FeedbackTemplate::query()->where('company_id', $this->company->id)->firstOrFail();
+        return FeedbackTemplate::query()->whereNull('company_id')->where('title', 'Alinhamento trimestral')->firstOrFail();
     }
 
     private function useTemplate(FeedbackTemplate $template, int $times = 1): void
@@ -158,7 +159,7 @@ class FeedbackTemplateAdminTest extends TestCase
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('admin.feedbacks.templates.index'));
 
-        $question = FeedbackTemplate::query()->where('company_id', $this->company->id)->firstOrFail()
+        $question = FeedbackTemplate::query()->whereNull('company_id')->where('title', 'Alinhamento trimestral')->firstOrFail()
             ->sections()->firstOrFail()->questions()->where('question_type', 'single_choice')->firstOrFail();
         $this->assertSame(['Bom', 'Regular'], collect($question->options)->pluck('label')->all());
     }
@@ -185,7 +186,7 @@ class FeedbackTemplateAdminTest extends TestCase
             ->post(route('admin.feedbacks.templates.store'), $payload)
             ->assertSessionHasErrors(['sections.0.questions.1.options' => 'Informe pelo menos duas opções.']);
 
-        $this->assertDatabaseMissing('feedback_templates', ['company_id' => $this->company->id]);
+        $this->assertDatabaseMissing('feedback_templates', ['title' => 'Alinhamento trimestral']);
     }
 
     public function test_admin_with_view_only_permission_cannot_change_templates(): void
@@ -204,17 +205,18 @@ class FeedbackTemplateAdminTest extends TestCase
         $as()->delete(route('admin.feedbacks.templates.destroy', $template))->assertForbidden();
 
         $this->assertSame('Alinhamento trimestral', $template->fresh()->title);
-        $this->assertSame(1, FeedbackTemplate::query()->where('company_id', $this->company->id)->count());
+        $this->assertSame(0, FeedbackTemplate::query()->where('title', 'Invasor')->count());
     }
 
-    public function test_duplicating_the_talents_template_creates_a_faithful_editable_copy_for_the_company(): void
+    public function test_duplicating_the_talents_template_creates_a_faithful_editable_universal_copy(): void
     {
         $talents = $this->seedFeedbackTemplate();
         $this->useTemplate($talents); // o original está em uso; a cópia nasce sem trava
 
         $response = $this->asOwner()->post(route('admin.feedbacks.templates.duplicate', $talents));
 
-        $copy = FeedbackTemplate::query()->where('company_id', $this->company->id)->firstOrFail();
+        $copy = FeedbackTemplate::query()->where('title', $talents->title.' (cópia)')->firstOrFail();
+        $this->assertNull($copy->company_id, 'Duplicar no admin gera modelo universal.');
         $response->assertRedirect(route('admin.feedbacks.templates.edit', $copy))
             ->assertSessionHas('success', 'Cópia criada. Ajuste o que precisar e salve.');
 
@@ -251,7 +253,7 @@ class FeedbackTemplateAdminTest extends TestCase
 
         $this->asOwner()->post(route('admin.feedbacks.templates.duplicate', $template))->assertRedirect();
         $copy = FeedbackTemplate::query()->where('title', 'Alinhamento trimestral (cópia)')->firstOrFail();
-        $this->assertSame($this->company->id, (int) $copy->company_id);
+        $this->assertNull($copy->company_id, 'Duplicar no admin gera modelo universal.');
         $this->assertSame($this->structureSignature($template), $this->structureSignature($copy));
 
         // Nome longo e acentuado: corta por caractere, até 255 no total, sem quebrar acento.
@@ -289,11 +291,12 @@ class FeedbackTemplateAdminTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page->where('permissions.edit', false));
         $as()->post(route('admin.feedbacks.templates.duplicate', $template))->assertForbidden();
 
-        // Owner tem tudo; no portal, o administrador da empresa também.
+        // Owner tem tudo; no portal, o administrador da empresa também (nos modelos da própria empresa).
         $this->asOwner()->get(route('admin.feedbacks.templates.edit', $template))
             ->assertInertia(fn (AssertableInertia $page) => $page->where('readOnly', false));
+        $own = FeedbackTemplate::query()->create(['company_id' => $this->company->id, 'title' => 'Da empresa', 'is_active' => true]);
         $this->actingAs(User::factory()->companyAdmin($this->company->id)->create())
-            ->get(route('client.feedbacks.templates.edit', $template))
+            ->get(route('client.feedbacks.templates.edit', $own))
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('readOnly', false)
                 ->where('permissions', ['create' => true, 'edit' => true, 'delete' => true]));

@@ -19,6 +19,7 @@ import { computed, ref } from 'vue';
 const props = defineProps({
     templates: { type: Array, default: () => [] },
     permissions: { type: Object, default: () => ({ create: true, edit: true, delete: true }) },
+    isAdminContext: { type: Boolean, default: false },
 });
 
 const duplicatingId = ref(null);
@@ -30,15 +31,66 @@ function duplicateTemplate(template) {
     );
 }
 
-const ownTemplates = computed(() => props.templates.filter((template) => template.is_own));
-const talentsTemplates = computed(() => props.templates.filter((template) => !template.is_own));
+const companyTemplates = computed(() => props.templates.filter((template) => !template.is_universal));
+const universalTemplates = computed(() => props.templates.filter((template) => template.is_universal));
+
+// Listas que a tela gerencia (editar, duplicar, excluir). No admin: universais e os desta empresa;
+// no portal: só os da empresa (os da Talents ficam na seção de referência, abaixo).
+const manageableSections = computed(() => {
+    if (props.isAdminContext) {
+        return [
+            {
+                id: 'universal-templates',
+                title: 'Modelos universais (todas as empresas)',
+                subtitle: 'Criados pela Talents; aparecem em «Novo feedback» de todas as empresas enquanto estiverem ativos.',
+                items: universalTemplates.value,
+                badge: null,
+                emptyTitle: 'Ainda não há modelos universais',
+                emptyDescription: 'Crie um modelo: ele fica disponível para todas as empresas.',
+                emptyCreate: true,
+            },
+            {
+                id: 'company-templates',
+                title: 'Modelos desta empresa',
+                subtitle: 'Criados pelo RH desta empresa no portal; só aparecem para ela.',
+                items: companyTemplates.value,
+                badge: 'Desta empresa',
+                emptyTitle: 'Esta empresa não tem modelos próprios',
+                emptyDescription: 'Os modelos criados pelo RH da empresa no portal aparecem aqui.',
+                emptyCreate: false,
+            },
+        ];
+    }
+
+    return [
+        {
+            id: 'company-templates',
+            title: 'Modelos da empresa',
+            subtitle: 'Criados pela sua empresa; aparecem em «Novo feedback» enquanto estiverem ativos.',
+            items: companyTemplates.value,
+            badge: null,
+            emptyTitle: 'A empresa ainda não tem modelos próprios',
+            emptyDescription: 'Crie um modelo com as seções e perguntas que fazem sentido para a sua equipe.',
+            emptyCreate: true,
+        },
+    ];
+});
 
 // Modelo usado também pode ser excluído: o alerta mostra quantos feedbacks saem junto (calculado no servidor).
 const deletingTemplate = ref(null);
 
-function usageLabel(count) {
+function feedbacksCount(count) {
+    return count === 1 ? '1 feedback' : `${count} feedbacks`;
+}
+
+// Universal no admin: total geral e o desta empresa; demais casos: uso na empresa.
+function usageLabel(template) {
+    const count = template.sessions_count;
     if (!count) return 'Ainda não usado';
-    return count === 1 ? 'Usado em 1 feedback' : `Usado em ${count} feedbacks`;
+    if (template.sessions_count_total !== null && template.sessions_count_total !== undefined) {
+        return `Usado em ${feedbacksCount(template.sessions_count_total)} no total · ${template.sessions_count_company} nesta empresa`;
+    }
+    return `Usado em ${feedbacksCount(count)}`;
 }
 </script>
 
@@ -51,7 +103,7 @@ function usageLabel(count) {
                 :back-href="feedbackRoute('index')"
                 back-label="Feedbacks"
                 title="Modelos de feedback"
-                subtitle="Modelos da sua empresa e modelos da Talents"
+                :subtitle="isAdminContext ? 'Modelos universais e modelos desta empresa' : 'Modelos da sua empresa e modelos da Talents'"
             >
                 <template v-if="permissions.create" #trailing>
                     <Link
@@ -67,15 +119,21 @@ function usageLabel(count) {
 
         <FeedbackFlash class="mb-6" />
 
-        <section class="space-y-3" aria-labelledby="own-templates-title">
+        <section
+            v-for="(section, index) in manageableSections"
+            :key="section.id"
+            class="space-y-3"
+            :class="index > 0 ? 'mt-10' : ''"
+            :aria-labelledby="`${section.id}-title`"
+        >
             <div>
-                <h2 id="own-templates-title" class="text-base font-semibold text-slate-900">Modelos da empresa</h2>
-                <p class="mt-0.5 text-sm text-slate-600">Criados pela sua empresa; aparecem em «Novo feedback» enquanto estiverem ativos.</p>
+                <h2 :id="`${section.id}-title`" class="text-base font-semibold text-slate-900">{{ section.title }}</h2>
+                <p class="mt-0.5 text-sm text-slate-600">{{ section.subtitle }}</p>
             </div>
 
-            <ul v-if="ownTemplates.length" class="space-y-3">
+            <ul v-if="section.items.length" class="space-y-3">
                 <li
-                    v-for="template in ownTemplates"
+                    v-for="template in section.items"
                     :key="template.id"
                     class="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:border-talents-200 sm:flex-row sm:items-center sm:justify-between"
                     data-feedback-template
@@ -83,6 +141,12 @@ function usageLabel(count) {
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
                             <p class="font-semibold text-slate-900">{{ template.title }}</p>
+                            <span
+                                v-if="section.badge"
+                                class="inline-flex items-center rounded-full bg-talents-50 px-2 py-0.5 text-xs font-semibold text-talents-800 ring-1 ring-inset ring-talents-200"
+                            >
+                                {{ section.badge }}
+                            </span>
                             <span
                                 class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset"
                                 :class="template.is_active ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' : 'bg-slate-100 text-slate-600 ring-slate-200'"
@@ -94,7 +158,7 @@ function usageLabel(count) {
                                 :class="template.sessions_count ? 'bg-amber-50 text-amber-800 ring-amber-200' : 'bg-slate-50 text-slate-600 ring-slate-200'"
                             >
                                 <LockClosedIcon v-if="template.sessions_count" class="h-3 w-3" aria-hidden="true" />
-                                {{ usageLabel(template.sessions_count) }}
+                                {{ usageLabel(template) }}
                             </span>
                         </div>
                         <p v-if="template.description" class="mt-1 line-clamp-2 max-w-prose text-sm text-slate-600">{{ template.description }}</p>
@@ -135,11 +199,11 @@ function usageLabel(count) {
             <FeedbackEmptyState
                 v-else
                 :icon="DocumentDuplicateIcon"
-                title="A empresa ainda não tem modelos próprios"
-                description="Crie um modelo com as seções e perguntas que fazem sentido para a sua equipe."
+                :title="section.emptyTitle"
+                :description="section.emptyDescription"
             >
                 <Link
-                    v-if="permissions.create"
+                    v-if="section.emptyCreate && permissions.create"
                     :href="feedbackRoute('templates.create')"
                     class="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-talents-700 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2"
                 >
@@ -149,7 +213,7 @@ function usageLabel(count) {
             </FeedbackEmptyState>
         </section>
 
-        <section v-if="talentsTemplates.length" class="mt-10 space-y-3" aria-labelledby="talents-templates-title">
+        <section v-if="!isAdminContext && universalTemplates.length" class="mt-10 space-y-3" aria-labelledby="talents-templates-title">
             <div>
                 <h2 id="talents-templates-title" class="text-base font-semibold text-slate-900">Modelos da Talents</h2>
                 <p class="mt-0.5 text-sm text-slate-600">
@@ -159,7 +223,7 @@ function usageLabel(count) {
             </div>
             <ul class="grid gap-3 md:grid-cols-2">
                 <li
-                    v-for="template in talentsTemplates"
+                    v-for="template in universalTemplates"
                     :key="template.id"
                     class="flex flex-col gap-3 rounded-2xl border border-talents-100 bg-talents-50/30 p-5"
                     data-talents-template
