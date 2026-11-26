@@ -248,14 +248,14 @@ A checagem de rota é `EnsureModulePermission` (`can.module:{módulo}[,ação]`)
 | `rhid` | RHID / Ponto | `rhid_access` = sim, ou herda do plano | — |
 | `denuncias` | Denúncias | `denuncias_access` = sim, ou herda do plano | — |
 | `sugestoes` | Canal de sugestões e dúvidas | plano tem `sugestoes` | — |
-| `feedbacks` | Feedbacks internos | `feedbacks_access` = sim, ou herda do plano | — |
+| `feedbacks` | Feedbacks internos | sempre, para toda empresa (não depende de assinatura nem do plano); só `feedbacks_access` = `false` desliga | `company_user` conforme a matriz de permissões |
 | `ferias` | Férias | `ferias_access` = sim, ou herda do plano | só `company_admin` |
 | `desligamento` | Pesquisa de Desligamento | `desligamento_access` = sim, ou herda do plano | — |
 | `acompanhamento` | Acompanhamento | `acompanhamento_access` = sim, ou herda do plano | contador no menu só para `company_admin` |
 | `metodologia` | Direcionamento Estratégico | plano tem `metodologia` | rotas do portal comentadas (Oculto) |
 | `capacitacao` | Capacitação | nunca (`false` fixo) | fora da matriz |
 
-**Modo de acesso por empresa.** Na edição da empresa, cada módulo com flag própria tem três opções (`*_access_mode`): `inherit` (segue o plano), `enabled` (liga mesmo fora do plano) e `disabled` (desliga mesmo que o plano tenha). No banco isso vira `null`, `true` ou `false` na coluna `*_access`.
+**Modo de acesso por empresa.** Na edição da empresa, cada módulo com flag própria tem três opções (`*_access_mode`): `inherit` (segue o plano), `enabled` (liga mesmo fora do plano) e `disabled` (desliga mesmo que o plano tenha). No banco isso vira `null`, `true` ou `false` na coluna `*_access`. **Exceção: Feedbacks internos** é liberado para todas as empresas e o seletor tem só duas opções, «Habilitado (padrão)» (`feedbacks_access = null`) e «Forçar desabilitado» (`false`); `Company::hasFeedbacksEnabled()` não consulta o plano (um `true` antigo continua valendo como habilitado).
 
 ### 2.5 Portal próprio da empresa (marca)
 
@@ -861,7 +861,7 @@ Lead incluído manualmente também gera aviso «novo lead».
 
 **Criar empresa (campos):** nome (obrigatório), e-mail de contato (obrigatório; recebe o convite do primeiro `company_admin`), Instagram, razão social, CNPJ (com **consulta ReceitaWS** em `GET /admin/companies/lookup-cnpj`), segmento, ramo de atividade, mês da data-base (convenção coletiva), endereço (rua, bairro, cidade, UF, CEP), regime tributário, estimativa de funcionários, plano, ativo e logo (até 2 MB).
 
-**Editar empresa:** os mesmos campos, mais modos de acesso por módulo (2.4: calendário, tarefas, RHID, denúncias, férias, desligamento, acompanhamento), remover logo e **Portal de entrada** (`portal_slug`, nome da marca, cor).
+**Editar empresa:** os mesmos campos, mais modos de acesso por módulo (2.4: calendário, tarefas, RHID, denúncias, férias, desligamento, acompanhamento), o seletor «Feedbacks internos» («Habilitado (padrão)» grava `null`, «Forçar desabilitado» grava `false`; ajuda «Liberado para todas as empresas. Use "Forçar desabilitado" para bloquear esta empresa.»; campo `feedbacks_access_mode`, opcional no `update`, valores `enabled`/`disabled`), remover logo e **Portal de entrada** (`portal_slug`, nome da marca, cor).
 
 **Fluxo de criação**
 
@@ -1023,7 +1023,7 @@ As regras de cada módulo estão no capítulo 9; aqui ficam só as diferenças d
 
 | Módulo | Permissão admin | Diferença em relação ao portal |
 |--------|-----------------|--------------------------------|
-| Feedbacks | `feedbacks` | A Talents atua como administradora da empresa (vê todas as sessões, inclusive a seção do líder) |
+| Feedbacks | `feedbacks` | A Talents atua como administradora da empresa (vê todas as sessões, inclusive a seção do líder). O seletor lista toda empresa **ativa** que não esteja com Feedbacks forçado como desabilitado, com ou sem assinatura (`FeedbackCompanyContext::availableCompanies()`); selecionar empresa bloqueada dá 403 |
 | Férias | `ferias` | Mesmo cadastro; alimenta o calendário da empresa |
 | Desligamento | `desligamento` | Acesso também por Voz do Time → Pesquisas |
 | Denúncias | `denuncias` | Lista por empresa; mensagens e status como no portal |
@@ -1957,7 +1957,7 @@ Fluxo público em 10.2.
 
 ### 9.8 Feedbacks internos (`/client/feedbacks`)
 
-**Acesso:** `feedbacks`. **Páginas:** `Client/Feedbacks/*` dentro de `FeedbacksLayout`.
+**Acesso:** `feedbacks`. O módulo está habilitado para toda empresa, sem depender de assinatura ou plano; só fica fora quando a Talents marca «Forçar desabilitado» na edição da empresa (`feedbacks_access = false`), e aí menu e rotas recusam com 403. O `company_admin` acessa por ter o módulo habilitado; o `company_user` segue a matriz de permissões (2.4). **Páginas:** `Client/Feedbacks/*` dentro de `FeedbacksLayout`.
 
 #### 9.8.1 Telas
 
