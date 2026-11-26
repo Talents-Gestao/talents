@@ -276,6 +276,7 @@ class CompanyController extends Controller
             'rhid_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'denuncias_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'ferias_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
+            'feedbacks_access_mode' => ['sometimes', 'required', Rule::in(['enabled', 'disabled'])],
             'desligamento_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'acompanhamento_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'plan_id' => ['nullable', 'exists:plans,id'],
@@ -351,6 +352,12 @@ class CompanyController extends Controller
             'disabled' => false,
             default => null,
         };
+
+        // Feedbacks internos é liberado para todas: null = habilitado (padrão), false = bloqueado.
+        if (array_key_exists('feedbacks_access_mode', $data)) {
+            $data['feedbacks_access'] = $data['feedbacks_access_mode'] === 'disabled' ? false : null;
+            unset($data['feedbacks_access_mode']);
+        }
 
         $desligamentoMode = $data['desligamento_access_mode'];
         unset($data['desligamento_access_mode']);
