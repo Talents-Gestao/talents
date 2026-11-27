@@ -425,7 +425,7 @@ class FeedbackRecordingTest extends TestCase
         $this->actingAs($this->admin)->getJson(route('client.feedbacks.sessions.recording.original', $this->session))->assertNotFound();
     }
 
-    public function test_deleting_the_template_deletes_the_recordings_of_its_feedbacks(): void
+    public function test_used_template_is_not_deleted_and_its_recordings_stay(): void
     {
         $template = FeedbackTemplate::query()->create(['company_id' => $this->company->id, 'title' => 'Modelo próprio', 'is_active' => true]);
         $section = $template->sections()->create([
@@ -437,13 +437,15 @@ class FeedbackRecordingTest extends TestCase
         $recording = $this->uploadAsAdmin($session);
         $untouched = $this->uploadAsAdmin();
 
+        // Modelo usado não é excluído (arquiva-se): nenhum feedback nem gravação sai junto.
         $this->actingAs($this->admin)
             ->delete(route('client.feedbacks.templates.destroy', $template), ['confirmed' => true, 'sessions_count' => 1])
-            ->assertSessionHasNoErrors();
+            ->assertSessionHasErrors('template');
 
-        $this->assertSoftDeleted($recording);
+        $this->assertNotSoftDeleted($template);
+        $this->assertNotSoftDeleted($session);
+        $this->assertNotSoftDeleted($recording);
         $this->assertNotSoftDeleted($untouched);
-        $log = FeedbackAuditLog::query()->where('action', FeedbackAuditLog::ACTION_TEMPLATE_DELETED)->sole();
-        $this->assertSame(1, $log->details['recordings_count']);
+        $this->assertSame(0, FeedbackAuditLog::query()->where('action', FeedbackAuditLog::ACTION_TEMPLATE_DELETED)->count());
     }
 }

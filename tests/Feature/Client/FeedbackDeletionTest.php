@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Client;
 
+use App\Actions\Feedback\DeleteFeedbackTemplate;
 use App\Actions\SyncAdminUserPermissions;
 use App\Enums\AdminPermissionModule;
 use App\Enums\FeedbackSessionStatus;
@@ -22,7 +23,6 @@ use App\Support\Feedback\FeedbackCompanyContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
-use RuntimeException;
 use Tests\Support\CreatesFeedbackFixtures;
 use Tests\TestCase;
 
@@ -208,7 +208,7 @@ class FeedbackDeletionTest extends TestCase
 
     // ── Excluir modelo ──────────────────────────────────────────────────
 
-    public function test_unused_template_is_deleted_with_simple_confirmation(): void
+    public function test_unused_template_is_deleted_definitively(): void
     {
         $template = $this->ownTemplate();
 
@@ -218,7 +218,6 @@ class FeedbackDeletionTest extends TestCase
                 'id' => $template->id,
                 'title' => 'Modelo da empresa',
                 'sessions_count' => 0,
-                'answers_count' => 0,
                 'blocked' => false,
                 'blocked_message' => null,
             ]);
@@ -234,128 +233,50 @@ class FeedbackDeletionTest extends TestCase
         $this->assertSame(0, $log->sessions_count);
     }
 
-    public function test_used_template_without_confirmation_is_refused(): void
-    {
-        $template = $this->ownTemplate();
-        $session = $this->completedSession($template);
-
-        $this->actingAs($this->admin)
-            ->delete(route('client.feedbacks.templates.destroy', $template), ['sessions_count' => 1])
-            ->assertSessionHasErrors(['confirmed' => 'Este modelo já foi usado em 1 feedback. Confirme que ele também será excluído.']);
-
-        $this->assertNotSoftDeleted($template);
-        $this->assertNotSoftDeleted($session);
-        $this->assertSame(0, FeedbackAuditLog::query()->count());
-    }
-
-    public function test_used_template_with_outdated_count_is_refused(): void
-    {
-        $template = $this->ownTemplate();
-        $this->completedSession($template);
-
-        // A tela abriu com 1 feedback; outro foi criado antes de confirmar.
-        $this->completedSession($template);
-
-        $this->actingAs($this->admin)
-            ->delete(route('client.feedbacks.templates.destroy', $template), ['confirmed' => true, 'sessions_count' => 1])
-            ->assertSessionHasErrors([
-                'sessions_count' => 'O número de feedbacks deste modelo mudou desde que você abriu o alerta (agora são 2). Confira o impacto e confirme de novo.',
-            ]);
-
-        $this->assertNotSoftDeleted($template);
-        $this->assertSame(2, FeedbackSession::query()->where('feedback_template_id', $template->id)->count());
-        $this->assertSame(0, FeedbackAuditLog::query()->count());
-    }
-
-    public function test_used_template_with_confirmation_deletes_template_feedbacks_and_answers(): void
+    public function test_used_template_is_never_deleted_and_keeps_its_feedbacks(): void
     {
         $template = $this->ownTemplate();
         $a = $this->completedSession($template);
         $b = $this->completedSession($template);
-        $kept = $this->completedSession(FeedbackTemplate::query()->whereNull('company_id')->firstOrFail());
 
         $this->actingAs($this->admin)->getJson(route('client.feedbacks.templates.deletion', $template))
             ->assertOk()
-            ->assertJson(['sessions_count' => 2, 'answers_count' => 6]);
+            ->assertJson([
+                'sessions_count' => 2,
+                'blocked' => true,
+                'blocked_message' => DeleteFeedbackTemplate::IN_USE_MESSAGE,
+            ]);
 
+        // Nem com confirmação: o caminho que apagava feedbacks junto com o modelo não existe mais.
         $this->actingAs($this->admin)
             ->delete(route('client.feedbacks.templates.destroy', $template), ['confirmed' => true, 'sessions_count' => 2])
-            ->assertRedirect(route('client.feedbacks.templates.index'))
-            ->assertSessionHas('success', 'Modelo excluído, junto com 2 feedbacks feitos com ele.');
-
-        $this->assertSoftDeleted($template);
-        $this->assertSoftDeleted($a);
-        $this->assertSoftDeleted($b);
-        $this->assertSame(0, FeedbackSessionAnswer::query()->whereIn('feedback_session_id', [$a->id, $b->id])->count());
-        $this->assertSame(6, FeedbackSessionAnswer::onlyTrashed()->whereIn('feedback_session_id', [$a->id, $b->id])->count());
-        $this->assertNotSoftDeleted($kept);
-        $this->assertSame(3, FeedbackSessionAnswer::query()->where('feedback_session_id', $kept->id)->count());
-
-        $log = FeedbackAuditLog::query()->sole();
-        $this->assertSame(FeedbackAuditLog::ACTION_TEMPLATE_DELETED, $log->action);
-        $this->assertSame($template->id, (int) $log->subject_id);
-        $this->assertSame('Modelo da empresa', $log->subject_label);
-        $this->assertSame($this->admin->id, (int) $log->user_id);
-        $this->assertSame(2, $log->sessions_count);
-        $this->assertSame(6, $log->answers_count);
-        $this->assertEqualsCanonicalizing([$a->id, $b->id], $log->details['feedback_session_ids']);
-    }
-
-    public function test_failure_in_the_middle_leaves_nothing_half_deleted(): void
-    {
-        $template = $this->ownTemplate();
-        $session = $this->completedSession($template);
-
-        // Respostas e feedbacks já marcados quando o modelo falha: a transação desfaz tudo.
-        FeedbackTemplate::deleting(fn () => throw new RuntimeException('falha simulada'));
-
-        $this->withoutExceptionHandling();
-        try {
-            $this->actingAs($this->admin)
-                ->delete(route('client.feedbacks.templates.destroy', $template), ['confirmed' => true, 'sessions_count' => 1]);
-            $this->fail('A exclusão deveria ter falhado.');
-        } catch (RuntimeException $e) {
-            $this->assertSame('falha simulada', $e->getMessage());
-        }
+            ->assertSessionHasErrors(['template' => DeleteFeedbackTemplate::IN_USE_MESSAGE]);
 
         $this->assertNotSoftDeleted($template);
-        $this->assertNotSoftDeleted($session);
-        $this->assertSame(3, FeedbackSessionAnswer::query()->where('feedback_session_id', $session->id)->count());
+        $this->assertNotSoftDeleted($a);
+        $this->assertNotSoftDeleted($b);
+        $this->assertSame(6, FeedbackSessionAnswer::query()->whereIn('feedback_session_id', [$a->id, $b->id])->count());
         $this->assertSame(0, FeedbackAuditLog::query()->count());
     }
 
-    public function test_after_deleting_a_used_template_panel_and_other_screens_have_no_errors_nor_orphans(): void
+    public function test_archived_template_leaves_new_feedback_and_its_feedbacks_stay_normal(): void
     {
         $template = $this->ownTemplate();
         $session = $this->completedSession($template);
-        $signature = FeedbackSessionSignature::query()->where('feedback_session_id', $session->id)->firstOrFail();
-
         $before = app(FeedbackTeamAnalyticsService::class)->forCompany($this->company, $this->admin);
-        $this->assertSame(1, $before['completed_count']);
-        $this->assertSame(1, $before['nine_box']['total']);
 
         $this->actingAs($this->admin)
-            ->delete(route('client.feedbacks.templates.destroy', $template), ['confirmed' => true, 'sessions_count' => 1])
-            ->assertSessionHasNoErrors();
+            ->patch(route('client.feedbacks.templates.archive', $template))
+            ->assertRedirect(route('client.feedbacks.templates.index'))
+            ->assertSessionHas('success', 'Modelo arquivado. Ele não aparece mais em «Novo feedback»; os feedbacks já feitos continuam normais.');
 
-        // Painel: termômetro e 9-box sem o feedback excluído.
-        $this->actingAs($this->admin)->get(route('client.feedbacks.index'))
-            ->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page
-                ->where('analytics.completed_count', 0)
-                ->where('analytics.nine_box.total', 0)
-                ->where('analytics.thermometer.series', [0, 0, 0, 0, 0])
-                ->has('recentSessions', 0));
+        $template->refresh();
+        $this->assertTrue($template->isArchived());
+        $this->assertSame($this->admin->id, (int) $template->archived_by_user_id);
+        $this->assertSame(FeedbackAuditLog::ACTION_TEMPLATE_ARCHIVED, FeedbackAuditLog::query()->sole()->action);
 
-        // Lista de modelos e «Novo feedback» não mostram o modelo excluído; requisição direta recusa.
-        $this->actingAs($this->admin)->get(route('client.feedbacks.templates.index'))
-            ->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page->where(
-                'templates',
-                fn ($templates) => collect($templates)->doesntContain('id', $template->id),
-            ));
+        // Some de «Novo feedback» e a criação direta é recusada.
         $this->actingAs($this->admin)->get(route('client.feedbacks.sessions.create'))
-            ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page->where(
                 'templates',
                 fn ($templates) => collect($templates)->doesntContain('id', $template->id),
@@ -364,12 +285,31 @@ class FeedbackDeletionTest extends TestCase
             'employee_name' => 'Bruno', 'feedback_template_id' => $template->id,
             'leader_user_id' => $this->admin->id, 'scheduled_at' => now()->toDateTimeString(),
         ])->assertSessionHasErrors('feedback_template_id');
-        $this->assertSame(0, FeedbackSession::query()->where('feedback_template_id', $template->id)->count());
 
-        foreach (['edit', 'deletion'] as $action) {
-            $this->actingAs($this->admin)->get(route("client.feedbacks.templates.{$action}", $template))->assertNotFound();
-        }
-        $this->actingAs($this->admin)->post(route('client.feedbacks.templates.duplicate', $template))->assertNotFound();
+        // O feedback existente segue normal: tela, PDF, painel e respostas.
+        $this->actingAs($this->admin)->get(route('client.feedbacks.sessions.show', $session))->assertOk();
+        $this->actingAs($this->admin)->get(route('client.feedbacks.sessions.pdf', $session))->assertOk();
+        $this->assertSame($before, app(FeedbackTeamAnalyticsService::class)->forCompany($this->company, $this->admin));
+        $this->assertSame(3, FeedbackSessionAnswer::query()->where('feedback_session_id', $session->id)->count());
+
+        // Reativar devolve o modelo à lista.
+        $this->actingAs($this->admin)->patch(route('client.feedbacks.templates.unarchive', $template))->assertSessionHasNoErrors();
+        $this->assertFalse($template->fresh()->isArchived());
+        $this->actingAs($this->admin)->get(route('client.feedbacks.sessions.create'))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where(
+                'templates',
+                fn ($templates) => collect($templates)->contains('id', $template->id),
+            ));
+    }
+
+    public function test_deleted_feedback_screens_pdf_and_sign_link_return_404(): void
+    {
+        $session = $this->completedSession($this->ownTemplate());
+        $signature = FeedbackSessionSignature::query()->where('feedback_session_id', $session->id)->firstOrFail();
+
+        $this->actingAs($this->admin)
+            ->delete(route('client.feedbacks.sessions.destroy', $session), ['confirmed' => true])
+            ->assertSessionHasNoErrors();
 
         // Feedback excluído: telas, PDF e link de assinatura dão 404, nunca 500.
         foreach (['show', 'edit', 'pdf'] as $action) {

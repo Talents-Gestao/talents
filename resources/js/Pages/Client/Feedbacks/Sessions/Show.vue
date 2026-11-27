@@ -5,6 +5,8 @@ import FeedbackRecordingPanel from '@/Components/Feedback/FeedbackRecordingPanel
 import FeedbackSessionDeleteModal from '@/Components/Feedback/FeedbackSessionDeleteModal.vue';
 import FeedbackSessionHeader from '@/Components/Feedback/FeedbackSessionHeader.vue';
 import FeedbackSessionJourney from '@/Components/Feedback/FeedbackSessionJourney.vue';
+import FeedbackSessionReopenModal from '@/Components/Feedback/FeedbackSessionReopenModal.vue';
+import FeedbackSessionVersionModal from '@/Components/Feedback/FeedbackSessionVersionModal.vue';
 import FeedbackSessionSignaturesPanel from '@/Components/Feedback/FeedbackSessionSignaturesPanel.vue';
 import FeedbackTabs from '@/Components/Feedback/FeedbackTabs.vue';
 import FeedbacksLayout from '@/Components/Feedback/FeedbacksLayout.vue';
@@ -12,7 +14,7 @@ import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { RECORDING_STATES, recordingState } from '@/utils/feedbackRecordingView';
 import { SESSION_TABS, journey, overallProgress, primaryAction, tabFromUrl, urlWithTab } from '@/utils/feedbackSessionView';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { ArrowDownTrayIcon, ArrowPathIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { ArrowDownTrayIcon, ArrowPathIcon, ArrowUpCircleIcon, DocumentTextIcon, LockOpenIcon, PencilSquareIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { computed, nextTick, ref } from 'vue';
 
 /**
@@ -37,7 +39,14 @@ const sections = computed(() => props.session.template?.sections ?? []);
 const progress = computed(() => overallProgress(sections.value, props.session.answers ?? {}));
 const primary = computed(() => primaryAction(props.session, progress.value));
 const steps = computed(() => journey(props.session, progress.value));
-const canEdit = computed(() => props.session.status !== 'completed' && props.session.status !== 'cancelled');
+// Concluído, cancelado ou com convite de assinatura: o conteúdo não muda (reabrir antes, se preciso).
+const canEdit = computed(() => props.session.can_edit ?? !['completed', 'cancelled', 'awaiting_signatures'].includes(props.session.status));
+
+// Versão do modelo usada pelo feedback e, quando houver mais nova, «Atualizar para a versão X».
+const version = computed(() => props.session.version ?? null);
+const hasNewerVersion = computed(() => !!version.value && version.value.latest_number > version.value.number);
+const updatingVersion = ref(false);
+const reopening = ref(false);
 
 // ── Abas na URL: clicar cria uma entrada no histórico (Voltar volta para a aba anterior) ──
 const tab = computed(() => tabFromUrl(page.url));
@@ -103,6 +112,7 @@ const canRegenerateReport = computed(
 );
 const menuItems = computed(() => [
     ...(canEdit.value ? [{ key: 'edit', label: 'Editar', icon: PencilSquareIcon, href: feedbackRoute('sessions.edit', props.session.id) }] : []),
+    ...(props.session.reopen ? [{ key: 'reopen', label: 'Reabrir para edição', icon: LockOpenIcon, onSelect: () => (reopening.value = true) }] : []),
     ...(props.canExportPdf
         ? [{ key: 'pdf', label: 'Exportar PDF', icon: ArrowDownTrayIcon, href: feedbackRoute('sessions.pdf', props.session.id), external: true }]
         : []),
@@ -126,6 +136,29 @@ const tabId = (key) => `feedback-session-tab-${key}`;
 
         <div class="space-y-6">
             <FeedbackSessionJourney :journey="steps" :progress="progress" />
+
+            <div
+                v-if="version"
+                class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
+                data-feedback-version
+            >
+                <DocumentTextIcon class="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+                <span class="min-w-0">
+                    Modelo «{{ session.template?.title }}» · <strong class="font-semibold text-slate-900">versão {{ version.number }}</strong>
+                    <template v-if="hasNewerVersion && !version.can_update">
+                        <span class="text-slate-500"> · há uma versão mais nova ({{ version.latest_number }}); este feedback continua na versão dele.</span>
+                    </template>
+                </span>
+                <button
+                    v-if="version.can_update"
+                    type="button"
+                    class="ml-auto inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-talents-200 bg-talents-50 px-3 text-sm font-semibold text-talents-800 transition hover:bg-talents-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50"
+                    @click="updatingVersion = true"
+                >
+                    <ArrowUpCircleIcon class="h-4 w-4" aria-hidden="true" />
+                    Atualizar para a versão {{ version.latest_number }}
+                </button>
+            </div>
 
             <FeedbackTabs :tabs="tabs" :model-value="tab" label="Conteúdo do feedback" id-prefix="feedback-session" @update:model-value="selectTab" />
 
@@ -154,5 +187,7 @@ const tabId = (key) => `feedback-session-tab-${key}`;
         </div>
 
         <FeedbackSessionDeleteModal :session="deletingSession" @close="deletingSession = null" />
+        <FeedbackSessionVersionModal :session="session" :show="updatingVersion" @close="updatingVersion = false" />
+        <FeedbackSessionReopenModal :session="session" :show="reopening" @close="reopening = false" />
     </FeedbacksLayout>
 </template>

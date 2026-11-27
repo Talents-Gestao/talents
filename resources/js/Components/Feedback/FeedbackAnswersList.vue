@@ -4,7 +4,7 @@ import FeedbackSectionAccordion from '@/Components/Feedback/FeedbackSectionAccor
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { feedbackSectionIcon } from '@/utils/feedbackSectionIcons';
 import { firstIncompleteSectionId, sectionProgress, splitSections } from '@/utils/feedbackSessionView';
-import { InformationCircleIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
+import { ArchiveBoxIcon, InformationCircleIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
 import { Link } from '@inertiajs/vue3';
 import { computed, nextTick, ref } from 'vue';
 
@@ -78,6 +78,10 @@ function formatAnswer(val, question = null) {
 
 const extraOf = (section) => props.session.section_extras?.[section.id];
 const hasExtra = (section) => !!(extraOf(section)?.question || extraOf(section)?.answer);
+
+// Respostas e perguntas extras de uma versão anterior do modelo (o feedback foi atualizado de versão).
+const outOfVersion = computed(() => props.session.out_of_version_answers ?? []);
+const outOfVersionExtras = computed(() => (props.session.out_of_version_extras ?? []).filter((e) => e.question || e.answer));
 </script>
 
 <template>
@@ -140,6 +144,37 @@ const hasExtra = (section) => !!(extraOf(section)?.question || extraOf(section)?
                 </FeedbackSectionAccordion>
             </li>
         </ol>
+
+        <section
+            v-if="outOfVersion.length || outOfVersionExtras.length"
+            class="rounded-2xl border border-slate-300 border-dashed bg-slate-50/60"
+            aria-labelledby="feedback-out-of-version-title"
+            data-feedback-out-of-version
+        >
+            <div class="flex items-start gap-2 px-4 py-3 sm:px-6">
+                <ArchiveBoxIcon class="mt-0.5 h-5 w-5 shrink-0 text-slate-500" aria-hidden="true" />
+                <div>
+                    <h3 id="feedback-out-of-version-title" class="text-sm font-semibold text-slate-900">Fora da versão atual</h3>
+                    <p class="text-xs text-slate-600">
+                        Respostas guardadas de uma versão anterior do modelo. Estas perguntas não estão na versão {{ session.template?.version_number }}.
+                    </p>
+                </div>
+            </div>
+            <div class="divide-y divide-slate-200 border-t border-slate-200">
+                <div v-for="item in outOfVersion" :key="`ov-${item.question_id}`" class="px-4 py-4 sm:px-6">
+                    <p class="max-w-[70ch] text-sm font-semibold text-slate-900">
+                        {{ item.body }}<span v-if="item.section_title" class="font-normal text-slate-500"> · {{ item.section_title }}</span>
+                    </p>
+                    <p class="mt-2 max-w-[70ch] whitespace-pre-wrap border-l-2 border-slate-300 pl-3 text-sm leading-relaxed text-slate-800">{{ formatAnswer(item.value, item) }}</p>
+                </div>
+                <div v-for="extra in outOfVersionExtras" :key="`ox-${extra.section_id}`" class="px-4 py-4 sm:px-6">
+                    <p class="max-w-[70ch] text-sm font-semibold text-slate-900">
+                        {{ extra.question || 'Pergunta extra' }}<span v-if="extra.section_title" class="font-normal text-slate-500"> · {{ extra.section_title }}</span>
+                    </p>
+                    <p class="mt-2 max-w-[70ch] whitespace-pre-wrap border-l-2 border-slate-300 pl-3 text-sm leading-relaxed text-slate-800">{{ formatAnswer(extra.answer) }}</p>
+                </div>
+            </div>
+        </section>
 
         <!-- Encerramento: nota de rodapé -->
         <footer v-for="note in parts.closing" :key="note.id" class="max-w-[70ch] border-t border-slate-200 pt-4 text-[13px] leading-relaxed text-slate-700" data-feedback-answers-closing>

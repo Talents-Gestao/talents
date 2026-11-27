@@ -9,13 +9,13 @@ use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Http\Controllers\Concerns\ResolvesFeedbackRoutes;
 use App\Models\Company;
+use App\Models\FeedbackAuditLog;
 use App\Models\FeedbackSession;
 use App\Models\FeedbackTemplate;
-use App\Models\FeedbackTemplateQuestion;
-use App\Models\FeedbackTemplateSection;
+use App\Models\FeedbackTemplateVersion;
+use App\Services\Feedback\FeedbackTemplateVersioning;
 use App\Support\Feedback\FeedbackCompanyContext;
 use App\Support\Feedback\FeedbackVisibility;
-use BackedEnum;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,15 +28,15 @@ use Inertia\Response;
 /**
  * Modelos de feedback. Há dois tipos:
  * - universais (company_id nulo): criados pela Talents no admin, valem para todas as empresas. Só as rotas
- *   do admin criam, editam, desativam e excluem; no portal aparecem como «Modelos da Talents» (usar e duplicar).
+ *   do admin criam, editam, arquivam e excluem; no portal aparecem como «Modelos da Talents» (usar e duplicar).
  * - da empresa: criados pelo RH no portal, só aparecem para a empresa dona (no admin, para a empresa
  *   selecionada, com o selo «Desta empresa», e a Talents também os edita).
  * Criar ou duplicar no admin gera universal; no portal, gera da empresa. Só o perfil administrador gerencia.
- * Depois que um modelo é usado em algum feedback (de qualquer empresa, no caso dos universais), a estrutura
- * (seções e perguntas) fica travada: só nome, descrição e ativo mudam; para mudar as perguntas, duplica-se.
- * Excluir um modelo da empresa usado exclui junto os feedbacks feitos com ele (DeleteFeedbackTemplate), com
- * alerta e confirmação explícita; um universal usado nunca é excluído (desativa-se), para não apagar
- * feedbacks de outras empresas.
+ *
+ * Versões (FeedbackTemplateVersioning): editar a estrutura de um modelo cuja versão atual já foi usada cria a
+ * versão seguinte; os feedbacks feitos continuam na versão deles. Arquivar tira o modelo de «Novo feedback» sem
+ * afetar os feedbacks existentes. Exclusão definitiva só para modelo nunca usado em nenhuma versão; nenhum
+ * feedback é apagado junto com um modelo.
  *
  * A estrutura faz ida e volta fiel: chave da seção/pergunta, tipo de seção (perguntas ou orientação),
  * público (inclusive «leader_self», visível só a administradores) e valor das opções são preservados,
@@ -52,57 +52,62 @@ class FeedbackTemplateController extends FeedbackCompanyController
 
     private const AUDIENCES = ['both', 'employee', 'leader', FeedbackVisibility::AUDIENCE_LEADER_SELF];
 
-    private const KEY_PATTERN = '/^[a-z0-9_]{1,64}$/';
+    public function __construct(private readonly FeedbackTemplateVersioning $versioning) {}
 
     public function index(Request $request): Response
     {
         $company = $this->companyForAdmin($request);
-
         $isAdmin = $this->isAdminContext($request);
 
         $templates = FeedbackTemplate::query()
             ->where(fn ($q) => $q->whereNull('company_id')->orWhere('company_id', $company->id))
             ->withCount('sections')
+            ->with('currentVersion:id,number')
             ->orderByRaw('company_id is null')
             ->orderBy('title')
             ->get();
 
+        $templateIds = $templates->pluck('id');
+
         // Uso na empresa (portal e admin) e, só no admin, o total geral dos universais.
         $companyUsage = FeedbackSession::query()
             ->where('company_id', $company->id)
-            ->whereIn('feedback_template_id', $templates->pluck('id'))
+            ->whereIn('feedback_template_id', $templateIds)
             ->selectRaw('feedback_template_id, count(*) as total')
             ->groupBy('feedback_template_id')
             ->pluck('total', 'feedback_template_id');
 
-        $totalUsage = $isAdmin
-            ? FeedbackSession::query()
-                ->whereIn('feedback_template_id', $templates->filter->isGlobal()->pluck('id'))
-                ->selectRaw('feedback_template_id, count(*) as total')
-                ->groupBy('feedback_template_id')
-                ->pluck('total', 'feedback_template_id')
-            : collect();
+        // Uso geral (todas as empresas, todas as versões): decide se a exclusão definitiva é possível.
+        $totalUsage = FeedbackSession::query()
+            ->whereIn('feedback_template_id', $templateIds)
+            ->selectRaw('feedback_template_id, count(*) as total')
+            ->groupBy('feedback_template_id')
+            ->pluck('total', 'feedback_template_id');
 
         return Inertia::render('Client/Feedbacks/Templates/Index', [
             'templates' => $templates->map(function (FeedbackTemplate $template) use ($isAdmin, $companyUsage, $totalUsage) {
                 $universal = $template->isGlobal();
                 $inCompany = (int) ($companyUsage[$template->id] ?? 0);
-                $total = $isAdmin && $universal ? (int) ($totalUsage[$template->id] ?? 0) : null;
+                $total = (int) ($totalUsage[$template->id] ?? 0);
+                $adminTotal = $isAdmin && $universal ? $total : null;
 
                 return [
                     'id' => $template->id,
                     'title' => $template->title,
                     'description' => $template->description,
-                    'is_active' => (bool) $template->is_active,
+                    'is_archived' => $template->isArchived(),
+                    'archived_at' => $template->archived_at?->toIso8601String(),
                     'is_own' => ! $universal,
                     'is_universal' => $universal,
                     // Portal só gerencia os da empresa; o admin gerencia universais e os da empresa selecionada.
                     'manageable' => $isAdmin || ! $universal,
+                    'version_number' => (int) ($template->currentVersion?->number ?? 1),
                     'sections_count' => (int) $template->sections_count,
-                    // Base da trava: universal no admin conta o uso em todas as empresas.
-                    'sessions_count' => $total ?? $inCompany,
+                    'sessions_count' => $adminTotal ?? $inCompany,
                     'sessions_count_company' => $inCompany,
-                    'sessions_count_total' => $total,
+                    'sessions_count_total' => $adminTotal,
+                    // Exclusão definitiva só para modelo nunca usado (em nenhuma empresa e nenhuma versão).
+                    'deletable' => $total === 0,
                 ];
             })->values(),
             'permissions' => $this->permissions($request),
@@ -116,8 +121,8 @@ class FeedbackTemplateController extends FeedbackCompanyController
 
         return Inertia::render('Client/Feedbacks/Templates/Form', [
             'template' => null,
-            'structureLocked' => false,
-            'sessionsCount' => 0,
+            'version' => null,
+            'versions' => [],
             'readOnly' => false,
             'permissions' => $this->permissions($request),
             'questionTypes' => $this->questionTypeOptions(),
@@ -139,11 +144,11 @@ class FeedbackTemplateController extends FeedbackCompanyController
                 'title' => $data['title'],
                 'description' => $data['description'] ?? null,
                 'is_default' => false,
-                'is_active' => (bool) ($data['is_active'] ?? true),
+                'is_active' => true,
                 'created_by' => $request->user()->id,
             ]);
 
-            $this->writeStructure($template, $data['sections']);
+            $this->versioning->saveStructure($template, $data['sections'], $request->user());
         });
 
         return $this->feedbackRedirect('templates.index', [], 'Modelo de feedback criado.');
@@ -152,22 +157,28 @@ class FeedbackTemplateController extends FeedbackCompanyController
     public function edit(Request $request, FeedbackTemplate $template): Response
     {
         $this->authorizeManageableTemplate($request, $template);
-        // Universal: conta o uso em qualquer empresa.
-        $sessionsCount = $this->usageCount($template);
+        $current = $this->versioning->currentVersion($template);
         $permissions = $this->permissions($request);
+        $sessionsCount = $this->versioning->sessionsCount($current);
+        $used = $current->isUsed();
 
         return Inertia::render('Client/Feedbacks/Templates/Form', [
             'template' => [
                 'id' => $template->id,
                 'title' => $template->title,
                 'description' => $template->description,
-                'is_active' => (bool) $template->is_active,
-                'sections' => $this->structureOf($template),
+                'is_universal' => $template->isGlobal(),
+                'is_archived' => $template->isArchived(),
+                'sections' => $this->versioning->canonical($current),
             ],
-            // As respostas apontam para as perguntas do modelo; por isso a estrutura trava após o primeiro uso.
-            'structureLocked' => $sessionsCount > 0,
-            'sessionsCount' => $sessionsCount,
-            'isUniversal' => $template->isGlobal(),
+            // Versão atual já usada: salvar mudanças de estrutura cria a próxima versão (os feedbacks feitos não mudam).
+            'version' => [
+                'number' => $current->number,
+                'sessions_count' => $sessionsCount,
+                'used' => $used,
+                'next_number' => $used ? (int) $template->versions()->max('number') + 1 : null,
+            ],
+            'versions' => $this->versionHistory($template),
             // Admin da Talents só com «ver» no módulo: abre em modo leitura, sem salvar.
             'readOnly' => ! $permissions['edit'],
             'permissions' => $permissions,
@@ -179,35 +190,58 @@ class FeedbackTemplateController extends FeedbackCompanyController
     public function update(Request $request, FeedbackTemplate $template): RedirectResponse
     {
         $this->authorizeManageableTemplate($request, $template);
-        $locked = $this->isInUse($template);
-        $data = $this->validated($request, requireStructure: ! $locked);
+        $data = $this->validated($request, requireStructure: false);
 
-        DB::transaction(function () use ($template, $data, $locked) {
+        $result = DB::transaction(function () use ($template, $data, $request) {
             $template->update([
                 'title' => $data['title'],
                 'description' => $data['description'] ?? null,
-                'is_active' => (bool) ($data['is_active'] ?? true),
             ]);
+            $this->versioning->syncMetadata($template);
 
-            if (! $locked) {
-                $template->sections()->get()->each->delete();
-                $this->writeStructure($template, $data['sections']);
-                $template->increment('version');
-            }
+            return array_key_exists('sections', $data)
+                ? $this->versioning->saveStructure($template->fresh(), $data['sections'], $request->user())
+                : null;
         });
 
-        return $this->feedbackRedirect(
-            'templates.index',
-            [],
-            $locked
-                ? 'Modelo atualizado. As perguntas não mudam porque o modelo já foi usado em feedbacks.'
-                : 'Modelo de feedback atualizado.',
-        );
+        $message = match ($result['outcome'] ?? 'unchanged') {
+            'new_version' => "Modelo atualizado: criada a versão {$result['version']->number}. Os feedbacks já feitos continuam na versão {$result['previous']}.",
+            default => 'Modelo de feedback atualizado.',
+        };
+
+        return $this->feedbackRedirect('templates.index', [], $message);
+    }
+
+    /** Tira o modelo de «Novo feedback»; os feedbacks já feitos seguem normais. */
+    public function archive(Request $request, FeedbackTemplate $template): RedirectResponse
+    {
+        $this->authorizeManageableTemplate($request, $template);
+        abort_unless($this->permissions($request)['edit'], 403);
+
+        if (! $template->isArchived()) {
+            $template->update(['archived_at' => now(), 'archived_by_user_id' => $request->user()->id, 'is_active' => false]);
+            $this->audit($request, $template, FeedbackAuditLog::ACTION_TEMPLATE_ARCHIVED);
+        }
+
+        return $this->feedbackRedirect('templates.index', [], 'Modelo arquivado. Ele não aparece mais em «Novo feedback»; os feedbacks já feitos continuam normais.');
+    }
+
+    public function unarchive(Request $request, FeedbackTemplate $template): RedirectResponse
+    {
+        $this->authorizeManageableTemplate($request, $template);
+        abort_unless($this->permissions($request)['edit'], 403);
+
+        if ($template->isArchived()) {
+            $template->update(['archived_at' => null, 'archived_by_user_id' => null, 'is_active' => true]);
+            $this->audit($request, $template, FeedbackAuditLog::ACTION_TEMPLATE_UNARCHIVED);
+        }
+
+        return $this->feedbackRedirect('templates.index', [], 'Modelo reativado. Ele volta a aparecer em «Novo feedback».');
     }
 
     /**
-     * Cópia editável (sem trava) de um modelo universal ou da empresa. No admin a cópia é universal;
-     * no portal, pertence à empresa de quem duplica.
+     * Cópia editável de um modelo universal ou da empresa (estrutura da versão atual, chaves preservadas).
+     * No admin a cópia é universal; no portal, pertence à empresa de quem duplica.
      */
     public function duplicate(Request $request, FeedbackTemplate $template): RedirectResponse
     {
@@ -215,8 +249,9 @@ class FeedbackTemplateController extends FeedbackCompanyController
         abort_unless($template->company_id === null || (int) $template->company_id === (int) $company->id, 404);
 
         $companyId = $this->isAdminContext($request) ? null : $company->id;
+        $structure = $this->versioning->canonical($this->versioning->currentVersion($template));
 
-        $copy = DB::transaction(function () use ($companyId, $template, $request) {
+        $copy = DB::transaction(function () use ($companyId, $template, $request, $structure) {
             $copy = FeedbackTemplate::query()->create([
                 'company_id' => $companyId,
                 'title' => $this->copyTitle($template->title),
@@ -226,7 +261,9 @@ class FeedbackTemplateController extends FeedbackCompanyController
                 'created_by' => $request->user()->id,
             ]);
 
-            $this->writeStructure($copy, $this->structureOf($template));
+            $version = $this->versioning->currentVersion($copy);
+            $this->versioning->writeRows($version, $structure);
+            $this->versioning->refreshSnapshot($version);
 
             return $copy;
         });
@@ -245,61 +282,32 @@ class FeedbackTemplateController extends FeedbackCompanyController
     }
 
     /**
-     * Impacto atual da exclusão (feedbacks e respostas que seriam excluídos junto), para o alerta da tela.
+     * Situação da exclusão para o alerta da tela: modelo usado em qualquer versão não é excluído (arquiva-se).
      */
     public function deletionImpact(Request $request, FeedbackTemplate $template, DeleteFeedbackTemplate $delete): JsonResponse
     {
         $this->authorizeManageableTemplate($request, $template);
         abort_unless($this->permissions($request)['delete'], 403);
 
-        $impact = $delete->impact($template);
-        // Universal usado (em qualquer empresa) não é excluído: a tela mostra a orientação de desativar.
-        $blocked = $template->isGlobal() && $impact['sessions'] > 0;
+        $sessions = $delete->usage($template);
 
         return response()->json([
             'id' => $template->id,
             'title' => $template->title,
-            'sessions_count' => $impact['sessions'],
-            'answers_count' => $impact['answers'],
-            'blocked' => $blocked,
-            'blocked_message' => $blocked ? DeleteFeedbackTemplate::UNIVERSAL_IN_USE_MESSAGE : null,
+            'sessions_count' => $sessions,
+            'blocked' => $sessions > 0,
+            'blocked_message' => $sessions > 0 ? DeleteFeedbackTemplate::IN_USE_MESSAGE : null,
         ]);
     }
 
-    /**
-     * Modelo nunca usado: confirmação simples. Modelo usado: exclui junto os feedbacks feitos com ele e as respostas,
-     * só com confirmação explícita e com a contagem confirmada igual à atual.
-     */
+    /** Exclusão definitiva: só modelo nunca usado. Nenhum feedback é apagado junto. */
     public function destroy(Request $request, FeedbackTemplate $template, DeleteFeedbackTemplate $delete): RedirectResponse
     {
         $this->authorizeManageableTemplate($request, $template);
 
-        $data = $request->validate([
-            'confirmed' => ['sometimes', 'boolean'],
-            'sessions_count' => ['sometimes', 'integer', 'min:0'],
-        ]);
-        $confirmedSessions = (int) ($data['sessions_count'] ?? 0);
-        $current = $this->usageCount($template);
+        $delete->execute($template, $request->user());
 
-        if ($template->isGlobal() && $current > 0) {
-            throw ValidationException::withMessages(['template' => DeleteFeedbackTemplate::UNIVERSAL_IN_USE_MESSAGE]);
-        }
-
-        if ($current > 0 && ! $request->boolean('confirmed')) {
-            throw ValidationException::withMessages([
-                'confirmed' => $current === 1
-                    ? 'Este modelo já foi usado em 1 feedback. Confirme que ele também será excluído.'
-                    : "Este modelo já foi usado em {$current} feedbacks. Confirme que eles também serão excluídos.",
-            ]);
-        }
-
-        $result = $delete->execute($template, $request->user(), $confirmedSessions);
-
-        return $this->feedbackRedirect('templates.index', [], match ($result['sessions']) {
-            0 => 'Modelo de feedback excluído.',
-            1 => 'Modelo excluído, junto com 1 feedback feito com ele.',
-            default => "Modelo excluído, junto com {$result['sessions']} feedbacks feitos com ele.",
-        });
+        return $this->feedbackRedirect('templates.index', [], 'Modelo de feedback excluído.');
     }
 
     private function companyForAdmin(Request $request): Company
@@ -310,7 +318,7 @@ class FeedbackTemplateController extends FeedbackCompanyController
     }
 
     /**
-     * Quem edita, desativa e exclui: no admin, universais e os da empresa selecionada; no portal, só os da
+     * Quem edita, arquiva e exclui: no admin, universais e os da empresa selecionada; no portal, só os da
      * própria empresa. Modelo de outra empresa (ou universal, no portal) não existe para quem pede: 404.
      */
     private function authorizeManageableTemplate(Request $request, FeedbackTemplate $template): void
@@ -329,6 +337,44 @@ class FeedbackTemplateController extends FeedbackCompanyController
     private function isAdminContext(Request $request): bool
     {
         return app(FeedbackCompanyContext::class)->isAdminContext($request);
+    }
+
+    private function audit(Request $request, FeedbackTemplate $template, string $action): void
+    {
+        FeedbackAuditLog::query()->create([
+            'company_id' => $template->company_id,
+            'user_id' => $request->user()->id,
+            'action' => $action,
+            'subject_type' => FeedbackAuditLog::SUBJECT_TEMPLATE,
+            'subject_id' => $template->id,
+            'subject_label' => $template->title,
+        ]);
+    }
+
+    /**
+     * Histórico de versões: número, data, autor e quantos feedbacks usam cada uma.
+     *
+     * @return list<array{number: int, created_at: string|null, created_by: string|null, sessions_count: int, is_current: bool}>
+     */
+    private function versionHistory(FeedbackTemplate $template): array
+    {
+        $usage = FeedbackSession::query()
+            ->where('feedback_template_id', $template->id)
+            ->selectRaw('feedback_template_version_id, count(*) as total')
+            ->groupBy('feedback_template_version_id')
+            ->pluck('total', 'feedback_template_version_id');
+
+        return $template->versions()->with('creator:id,name')->get()
+            ->sortByDesc('number')
+            ->map(fn (FeedbackTemplateVersion $v) => [
+                'number' => $v->number,
+                'created_at' => $v->created_at?->toIso8601String(),
+                'created_by' => $v->creator?->name,
+                'sessions_count' => (int) ($usage[$v->id] ?? 0),
+                'is_current' => (int) $v->id === (int) $template->current_version_id,
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -350,52 +396,6 @@ class FeedbackTemplateController extends FeedbackCompanyController
             'edit' => $user->canAccessAdmin(AdminPermissionModule::Feedbacks, PermissionAction::Edit),
             'delete' => $user->canAccessAdmin(AdminPermissionModule::Feedbacks, PermissionAction::Delete),
         ];
-    }
-
-    private function isInUse(FeedbackTemplate $template): bool
-    {
-        return FeedbackSession::query()->where('feedback_template_id', $template->id)->exists();
-    }
-
-    private function usageCount(FeedbackTemplate $template): int
-    {
-        return FeedbackSession::query()->where('feedback_template_id', $template->id)->count();
-    }
-
-    /**
-     * Estrutura no formato do formulário (e da gravação).
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function structureOf(FeedbackTemplate $template): array
-    {
-        $template->loadMissing('sections.questions');
-
-        return $template->sections->map(fn (FeedbackTemplateSection $section) => [
-            'key' => $section->key,
-            'section_type' => $this->raw($section->section_type) ?: 'questions',
-            'audience' => $this->raw($section->audience) ?: 'both',
-            'title' => $section->title,
-            'description' => $section->description ?? '',
-            'questions' => $section->questions->map(fn (FeedbackTemplateQuestion $question) => [
-                'key' => $question->key,
-                'body' => $question->body,
-                'question_type' => $this->raw($question->question_type),
-                'is_required' => (bool) $question->is_required,
-                'options' => collect($question->options ?? [])
-                    ->map(fn ($option) => [
-                        'value' => (string) ($option['value'] ?? ''),
-                        'label' => (string) ($option['label'] ?? ''),
-                    ])
-                    ->values()
-                    ->all(),
-            ])->values()->all(),
-        ])->values()->all();
-    }
-
-    private function raw(mixed $value): string
-    {
-        return $value instanceof BackedEnum ? (string) $value->value : (string) $value;
     }
 
     /**
@@ -420,25 +420,27 @@ class FeedbackTemplateController extends FeedbackCompanyController
             $request->merge(['sections' => $sections]);
         }
 
+        $keyRegex = 'regex:'.FeedbackTemplateVersioning::KEY_PATTERN;
+
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'is_active' => ['sometimes', 'boolean'],
-            'sections' => $requireStructure ? ['required', 'array', 'min:1', 'max:20'] : ['prohibited'],
-            'sections.*.key' => ['nullable', 'string', 'regex:'.self::KEY_PATTERN],
+            // Na edição, sem «sections» só nome e descrição mudam.
+            'sections' => $requireStructure ? ['required', 'array', 'min:1', 'max:20'] : ['sometimes', 'array', 'min:1', 'max:20'],
+            'sections.*.key' => ['nullable', 'string', $keyRegex],
             'sections.*.section_type' => ['nullable', Rule::in(self::SECTION_TYPES)],
             'sections.*.audience' => ['nullable', Rule::in(self::AUDIENCES)],
             'sections.*.title' => ['required', 'string', 'max:255'],
             'sections.*.description' => ['nullable', 'string', 'max:2000'],
             'sections.*.questions' => ['nullable', 'array', 'max:40'],
-            'sections.*.questions.*.key' => ['nullable', 'string', 'regex:'.self::KEY_PATTERN],
+            'sections.*.questions.*.key' => ['nullable', 'string', $keyRegex],
             'sections.*.questions.*.body' => ['required', 'string', 'max:2000'],
             'sections.*.questions.*.question_type' => ['required', Rule::in(self::QUESTION_TYPES)],
             'sections.*.questions.*.is_required' => ['sometimes', 'boolean'],
             'sections.*.questions.*.options' => ['nullable', 'array', 'max:20'],
-            // Opção em branco é descartada ao gravar (writeStructure); o mínimo de duas é checado abaixo.
+            // Opção em branco é descartada ao gravar; o mínimo de duas é checado abaixo.
             'sections.*.questions.*.options.*.label' => ['nullable', 'string', 'max:255'],
-            'sections.*.questions.*.options.*.value' => ['nullable', 'string', 'regex:'.self::KEY_PATTERN],
+            'sections.*.questions.*.options.*.value' => ['nullable', 'string', $keyRegex],
         ], [
             'title.required' => 'Informe o nome do modelo.',
             'title.max' => 'O nome do modelo pode ter até 255 caracteres.',
@@ -446,7 +448,6 @@ class FeedbackTemplateController extends FeedbackCompanyController
             'sections.required' => 'O modelo precisa de pelo menos uma seção com perguntas.',
             'sections.min' => 'O modelo precisa de pelo menos uma seção com perguntas.',
             'sections.max' => 'O modelo pode ter até 20 seções.',
-            'sections.prohibited' => 'Este modelo já foi usado em feedbacks: as seções e perguntas não podem mais ser alteradas.',
             'sections.*.key.regex' => 'Identificador da seção inválido.',
             'sections.*.section_type.in' => 'Tipo de seção inválido.',
             'sections.*.audience.in' => 'Público da seção inválido.',
@@ -490,7 +491,7 @@ class FeedbackTemplateController extends FeedbackCompanyController
             }
         }
 
-        if ($requireStructure && $sectionsWithQuestions === 0 && ! isset($errors['sections'])) {
+        if (array_key_exists('sections', $data) && $sectionsWithQuestions === 0 && ! isset($errors['sections'])) {
             $errors['sections'] = 'O modelo precisa de pelo menos uma seção com perguntas.';
         }
 
@@ -499,101 +500,6 @@ class FeedbackTemplateController extends FeedbackCompanyController
         }
 
         return $data;
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $sections
-     */
-    private function writeStructure(FeedbackTemplate $template, array $sections): void
-    {
-        $sectionKeys = [];
-        $questionKeys = [];
-
-        foreach (array_values($sections) as $sectionIndex => $sectionData) {
-            $sectionType = ($sectionData['section_type'] ?? 'questions') === 'intro' ? 'intro' : 'questions';
-
-            $section = $template->sections()->create([
-                'key' => $this->uniqueKey($sectionData['key'] ?? null, 'section_'.($sectionIndex + 1), $sectionKeys),
-                'title' => $sectionData['title'],
-                'description' => ($sectionData['description'] ?? '') !== '' ? $sectionData['description'] : null,
-                'section_type' => $sectionType,
-                'audience' => $sectionData['audience'] ?? 'both',
-                'sort_order' => $sectionIndex + 1,
-            ]);
-
-            if ($sectionType === 'intro') {
-                continue;
-            }
-
-            foreach (array_values($sectionData['questions'] ?? []) as $questionIndex => $questionData) {
-                $type = $questionData['question_type'];
-
-                $section->questions()->create([
-                    'key' => $this->uniqueKey(
-                        $questionData['key'] ?? null,
-                        'q_'.($sectionIndex + 1).'_'.($questionIndex + 1),
-                        $questionKeys,
-                    ),
-                    'body' => $questionData['body'],
-                    'question_type' => $type,
-                    'options' => $type === 'single_choice' ? $this->normalizeOptions($questionData['options'] ?? []) : null,
-                    'is_required' => (bool) ($questionData['is_required'] ?? false),
-                    'sort_order' => $questionIndex + 1,
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Mantém o valor de cada opção (o painel da equipe lê por valor); opção nova recebe option_N livre.
-     *
-     * @param  array<int, mixed>  $options
-     * @return list<array{value: string, label: string}>|null
-     */
-    private function normalizeOptions(array $options): ?array
-    {
-        $used = [];
-        $result = [];
-
-        foreach ($options as $option) {
-            $label = trim((string) (is_array($option) ? ($option['label'] ?? '') : $option));
-            if ($label === '') {
-                continue;
-            }
-            $value = is_array($option) ? ($option['value'] ?? null) : null;
-            $result[] = ['value' => $this->uniqueKey($value, null, $used, 'option_'), 'label' => $label];
-        }
-
-        return $result ?: null;
-    }
-
-    /**
-     * @param  array<string, true>  $used  chaves já usadas (atualizado por referência)
-     */
-    private function uniqueKey(?string $preferred, ?string $fallback, array &$used, string $prefix = 'k_'): string
-    {
-        foreach ([$preferred, $fallback] as $candidate) {
-            if (is_string($candidate) && preg_match(self::KEY_PATTERN, $candidate) && ! isset($used[$candidate])) {
-                return $this->markUsed($candidate, $used);
-            }
-        }
-
-        $n = count($used) + 1;
-        while (isset($used[$prefix.$n])) {
-            $n++;
-        }
-
-        return $this->markUsed($prefix.$n, $used);
-    }
-
-    /**
-     * @param  array<string, true>  $used
-     */
-    private function markUsed(string $key, array &$used): string
-    {
-        $used[$key] = true;
-
-        return $key;
     }
 
     /**

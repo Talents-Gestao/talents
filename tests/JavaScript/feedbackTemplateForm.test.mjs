@@ -5,7 +5,8 @@ import {
     ensureTwoOptions,
     normalizeTemplateOptions,
     templateFormPayload,
-    templateLockMessage,
+    templateVersionNotice,
+    versionUsageLabel,
 } from '../../resources/js/utils/feedbackTemplateForm.js';
 
 const data = {
@@ -15,23 +16,26 @@ const data = {
     sections: [{ title: 'Resultados', description: '', questions: [{ body: 'O que foi entregue?' }] }],
 };
 
-test('modelo livre envia nome, descrição, status e a estrutura completa', () => {
-    assert.deepEqual(templateFormPayload(data, false), data);
+test('o formulário envia nome, descrição e a estrutura completa (sem o antigo «Ativo»)', () => {
+    assert.deepEqual(templateFormPayload(data), { title: 'Alinhamento', description: 'Uso interno', sections: data.sections });
 });
 
-test('modelo em uso envia só nome, descrição e status (seções ficam de fora)', () => {
-    assert.deepEqual(templateFormPayload(data, true), { title: 'Alinhamento', description: 'Uso interno', is_active: true });
+test('aviso de versão: só quando a versão atual já foi usada, com o número da próxima', () => {
+    assert.equal(templateVersionNotice(null), null);
+    assert.equal(templateVersionNotice({ number: 1, used: false, sessions_count: 0, next_number: null }), null);
+
+    const one = templateVersionNotice({ number: 1, used: true, sessions_count: 1, next_number: 2 });
+    assert.match(one, /^Usado em 1 feedback; salvar mudanças nas seções e perguntas criará a versão 2\./);
+    assert.match(one, /continuam na versão 1/);
+    assert.match(one, /Mudar só o nome ou a descrição não cria versão/);
+
+    assert.match(templateVersionNotice({ number: 3, used: true, sessions_count: 22, next_number: 4 }), /^Usado em 22 feedbacks; .*versão 4/);
 });
 
-test('motivo do bloqueio cita o uso, explica a regra e aponta para duplicar', () => {
-    const one = templateLockMessage(1);
-    assert.match(one, /usado em 1 feedback,/);
-    assert.match(one, /respostas registradas dependem destas perguntas/);
-    assert.match(one, /nome, descrição e «Ativo» continuam editáveis/);
-    assert.match(one, /duplique o modelo e edite a cópia/);
-
-    assert.match(templateLockMessage(22), /usado em 22 feedbacks/);
-    assert.match(templateLockMessage(undefined), /usado em feedbacks/);
+test('histórico de versões: número, atual e uso', () => {
+    assert.equal(versionUsageLabel({ number: 2, sessions_count: 0, is_current: true }), 'Versão 2 (atual) · sem feedbacks');
+    assert.equal(versionUsageLabel({ number: 1, sessions_count: 1 }), 'Versão 1 · 1 feedback');
+    assert.equal(versionUsageLabel({ number: 1, sessions_count: 5 }), 'Versão 1 · 5 feedbacks');
 });
 
 test('opções viram {value, label} preservando o valor existente', () => {

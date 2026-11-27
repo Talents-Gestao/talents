@@ -13,6 +13,7 @@
         .value { margin-top: 2px; white-space: pre-wrap; }
         .signatures { margin-top: 24px; }
         .signatures img { max-height: 60px; }
+        .note { color: #64748b; font-size: 10px; }
     </style>
 </head>
 <body>
@@ -23,9 +24,13 @@
         <tr><td><strong>Líder:</strong></td><td>{{ $session->leader?->name }}</td></tr>
         <tr><td><strong>Data:</strong></td><td>{{ $session->scheduled_at?->format('d/m/Y H:i') ?? '—' }}</td></tr>
         <tr><td><strong>Próximo alinhamento:</strong></td><td>{{ $session->next_alignment_at?->format('d/m/Y') ?? '—' }}</td></tr>
+        <tr><td><strong>Modelo:</strong></td><td>{{ $version->title }} (versão {{ $version->number }})</td></tr>
     </table>
+    @if ($version->description)
+        <p>{{ $version->description }}</p>
+    @endif
 
-    @foreach ($session->template->sections as $section)
+    @foreach ($sections as $section)
         @if ($section->section_type === 'intro')
             <h2>{{ $section->title }}</h2>
             @if ($section->description)
@@ -39,49 +44,7 @@
             @php $answer = $answersByQuestion->get($question->id); @endphp
             <div class="question">
                 <div class="label">{{ $question->body }}</div>
-                <div class="value">
-                    @if (! $answer)
-                        —
-                    @elseif ($answer->value_json)
-                        @if (is_array($answer->value_json))
-                            @php
-                                $json = $answer->value_json;
-                                $isList = array_is_list($json);
-                                $first = $isList ? ($json[0] ?? null) : null;
-                                $isActionTable = is_array($first) && array_key_exists('action', $first);
-                                $ccmLabels = ['start' => 'Começar', 'continue' => 'Continuar', 'improve' => 'Melhorar', 'stop' => 'Cessar'];
-                                $isCcm = ! $isList && collect(array_keys($ccmLabels))->contains(fn ($key) => array_key_exists($key, $json));
-                            @endphp
-                            @if ($isActionTable)
-                                @foreach ($json as $i => $row)
-                                    @if (is_array($row))
-                                        @php
-                                            $action = trim((string) ($row['action'] ?? ''));
-                                            $responsible = trim((string) ($row['responsible'] ?? ''));
-                                            $deadline = trim((string) ($row['deadline'] ?? ''));
-                                        @endphp
-                                        @if ($action !== '' || $responsible !== '' || $deadline !== '')
-                                            {{ $i + 1 }}. {{ $action !== '' ? $action : '—' }} · Responsável: {{ $responsible !== '' ? $responsible : '—' }} · Prazo: {{ $deadline !== '' ? $deadline : '—' }}<br>
-                                        @endif
-                                    @endif
-                                @endforeach
-                            @elseif ($isCcm)
-                                @foreach ($ccmLabels as $key => $label)
-                                    {{ $label }}: {{ trim((string) ($json[$key] ?? '')) !== '' ? $json[$key] : '—' }}<br>
-                                @endforeach
-                            @else
-                                @foreach ($json as $k => $v)
-                                    @if (is_array($v))
-                                        {{ is_string($k) ? ucfirst($k).': ' : '' }}{{ json_encode($v, JSON_UNESCAPED_UNICODE) }}<br>
-                                    @else
-                                        • {{ $v }}<br>
-                                    @endif
-                                @endforeach
-                            @endif
-                        @endif
-                    @else
-                        {{ $answer->value_text }}
-                    @endif
+                @include('reports.partials.feedback-answer-value', ['value' => $answer ? ($answer->value_json ?? $answer->value_text) : null])
                 </div>
             </div>
         @endforeach
@@ -93,6 +56,23 @@
             </div>
         @endif
     @endforeach
+
+    @if (count($outOfVersionAnswers) || count($outOfVersionExtras))
+        <h2>Fora da versão atual</h2>
+        <p class="note">Respostas guardadas de uma versão anterior do modelo; estas perguntas não estão na versão {{ $version->number }}.</p>
+        @foreach ($outOfVersionAnswers as $item)
+            <div class="question">
+                <div class="label">{{ $item['body'] }}@if ($item['section_title']) <span class="note">({{ $item['section_title'] }})</span>@endif</div>
+                @include('reports.partials.feedback-answer-value', ['value' => $item['value']])
+            </div>
+        @endforeach
+        @foreach ($outOfVersionExtras as $extra)
+            <div class="question">
+                <div class="label">{{ $extra['question'] ?: 'Pergunta extra' }}@if ($extra['section_title']) <span class="note">({{ $extra['section_title'] }})</span>@endif</div>
+                <div class="value">{{ $extra['answer'] ?: '—' }}</div>
+            </div>
+        @endforeach
+    @endif
 
     <div class="signatures">
         <h2>Assinaturas</h2>

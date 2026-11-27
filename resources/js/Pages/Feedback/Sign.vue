@@ -3,13 +3,16 @@ import SignaturePad from '@/Components/Feedback/SignaturePad.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import { formatDateTime } from '@/utils/dateOnly';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { CheckCircleIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
+import { CheckCircleIcon, DocumentTextIcon, NoSymbolIcon } from '@heroicons/vue/24/outline';
 import { computed } from 'vue';
 
 const props = defineProps({
     signature: Object,
     token: String,
-    session: Object,
+    /** null quando o convite foi cancelado («Reabrir para edição»). */
+    session: { type: Object, default: null },
+    cancelled: { type: Boolean, default: false },
+    cancelledMessage: { type: String, default: '' },
 });
 
 const page = usePage();
@@ -20,7 +23,7 @@ const form = useForm({
     declaration_accepted: false,
 });
 
-const signed = computed(() => !!props.signature.signed_at);
+const signed = computed(() => !!props.signature?.signed_at);
 
 const submit = () => {
     form.post(route('feedback.sign.store', props.token));
@@ -39,8 +42,23 @@ const submit = () => {
                 <h1 class="mt-4 font-serif text-2xl font-bold tracking-tight text-talents-900 sm:text-3xl">
                     Assinatura de feedback
                 </h1>
-                <p class="mt-2 text-sm text-slate-600">{{ session.title }}</p>
+                <p v-if="session" class="mt-2 text-sm text-slate-600">{{ session.title }}</p>
             </div>
+
+            <div
+                v-if="cancelled"
+                class="mt-8 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900"
+                role="alert"
+                data-feedback-sign-cancelled
+            >
+                <NoSymbolIcon class="h-6 w-6 shrink-0 text-amber-600" aria-hidden="true" />
+                <div>
+                    <p class="font-semibold">Convite de assinatura cancelado</p>
+                    <p class="mt-1">{{ cancelledMessage }}</p>
+                </div>
+            </div>
+
+            <template v-else>
 
             <div
                 v-if="success"
@@ -62,6 +80,14 @@ const submit = () => {
                     <div>
                         <dt class="text-xs text-slate-500">Líder</dt>
                         <dd class="mt-1 font-medium text-slate-800">{{ session.leader?.name }}</dd>
+                    </div>
+                    <div v-if="session.template" class="sm:col-span-2">
+                        <dt class="text-xs text-slate-500">Modelo</dt>
+                        <dd class="mt-1 font-medium text-slate-800">
+                            {{ session.template.title }}
+                            <span class="font-normal text-slate-500">(versão {{ session.template.version_number }})</span>
+                        </dd>
+                        <dd v-if="session.template.description" class="mt-1 whitespace-pre-wrap text-slate-600">{{ session.template.description }}</dd>
                     </div>
                     <div class="sm:col-span-2">
                         <dt class="text-xs text-slate-500">Signatário</dt>
@@ -125,6 +151,7 @@ const submit = () => {
                     </p>
                 </div>
             </div>
+            </template>
         </div>
     </GuestLayout>
 </template>

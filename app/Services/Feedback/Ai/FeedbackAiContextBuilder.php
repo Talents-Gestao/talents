@@ -6,7 +6,7 @@ namespace App\Services\Feedback\Ai;
 
 use App\Models\FeedbackSession;
 use App\Models\FeedbackTemplateSection;
-use App\Support\Feedback\FeedbackVisibility;
+use App\Support\Feedback\FeedbackSessionStructure;
 
 /**
  * Respostas já registradas que podem ir à IA como contexto do relatório. O relatório é visto pelo administrador
@@ -20,10 +20,11 @@ class FeedbackAiContextBuilder
 
     public function answers(FeedbackSession $session): string
     {
-        $session->loadMissing(['template.sections.questions', 'answers']);
+        $session->loadMissing(['templateVersion.sections.questions', 'answers']);
 
-        $sections = ($session->template?->sections ?? collect())
-            ->reject(fn (FeedbackTemplateSection $s) => $s->audience === FeedbackVisibility::AUDIENCE_LEADER_SELF || $s->section_type === 'intro');
+        // Estrutura da versão usada pelo feedback, sem a «Reflexão do líder» e sem seções de orientação.
+        $sections = FeedbackSessionStructure::sections($session, false)
+            ->reject(fn (FeedbackTemplateSection $s) => $s->section_type === 'intro');
 
         $answers = $session->answers->keyBy('feedback_template_question_id');
         $extras = $session->section_extras ?? [];
@@ -47,6 +48,23 @@ class FeedbackAiContextBuilder
             if ($lines !== []) {
                 $blocks[] = 'Seção: '.trim((string) $section->title)."\n".implode("\n", $lines);
             }
+        }
+
+        // Respostas guardadas de uma versão anterior do modelo: sinalizadas, nunca misturadas às perguntas atuais.
+        $outside = [];
+        foreach (FeedbackSessionStructure::outOfVersionAnswers($session, false) as $item) {
+            $value = $this->flatten($item['value']);
+            if ($value !== '') {
+                $outside[] = '- '.trim($item['body']).': '.$value;
+            }
+        }
+        foreach (FeedbackSessionStructure::outOfVersionExtras($session, false) as $extra) {
+            if (trim($extra['answer']) !== '') {
+                $outside[] = '- '.trim($extra['question'] !== '' ? $extra['question'] : 'Pergunta extra').': '.trim($extra['answer']);
+            }
+        }
+        if ($outside !== []) {
+            $blocks[] = "Fora da versão atual do modelo (respostas de uma versão anterior):\n".implode("\n", $outside);
         }
 
         $text = implode("\n\n", $blocks);

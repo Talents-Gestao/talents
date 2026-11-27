@@ -1,36 +1,46 @@
 /**
  * Regras puras do formulário de modelo de feedback (Client/Feedbacks/Templates/Form.vue).
  *
- * Depois que o modelo é usado em algum feedback, as respostas apontam para as perguntas dele,
- * então seções e perguntas ficam travadas: só nome, descrição e «Ativo» são enviados.
+ * Seções e perguntas são sempre editáveis. Se a versão atual do modelo já foi usada em feedbacks, salvar
+ * mudanças na estrutura cria a versão seguinte (os feedbacks já feitos continuam na versão deles).
  */
 
 /**
- * @param {{ title: string, description: string, is_active: boolean, sections?: Array<object> }} data
- * @param {boolean} structureLocked
+ * O que vai ao servidor: nome, descrição e a estrutura completa (o servidor decide se cria versão).
+ *
+ * @param {{ title: string, description: string, sections?: Array<object> }} data
  */
-export function templateFormPayload(data, structureLocked) {
-    if (!structureLocked) {
-        return data;
-    }
-
-    return { title: data.title, description: data.description, is_active: data.is_active };
+export function templateFormPayload(data) {
+    return { title: data.title, description: data.description, sections: data.sections };
 }
 
 /**
- * Motivo do bloqueio, mostrado acima das seções (ao lado do botão «Duplicar modelo»).
+ * «Usado em N feedbacks; salvar criará a versão X». null quando a versão atual ainda não foi usada.
  *
- * @param {number} sessionsCount
+ * @param {{ number?: number, used?: boolean, sessions_count?: number, next_number?: number | null } | null | undefined} version
+ * @returns {string | null}
  */
-export function templateLockMessage(sessionsCount) {
-    const count = Number(sessionsCount) || 0;
-    const usage = count === 1 ? 'em 1 feedback' : count > 1 ? `em ${count} feedbacks` : 'em feedbacks';
+export function templateVersionNotice(version) {
+    if (!version?.used || !version.next_number) return null;
+    const count = Number(version.sessions_count) || 0;
+    const usage = count === 1 ? 'Usado em 1 feedback' : count > 1 ? `Usado em ${count} feedbacks` : 'Usado em feedbacks';
 
     return (
-        `Este modelo já foi usado ${usage}, e as respostas registradas dependem destas perguntas. ` +
-        'Por isso seções e perguntas não podem mais ser alteradas; nome, descrição e «Ativo» continuam editáveis. ' +
-        'Para mudar as perguntas, duplique o modelo e edite a cópia.'
+        `${usage}; salvar mudanças nas seções e perguntas criará a versão ${version.next_number}. ` +
+        `Os feedbacks já feitos continuam na versão ${version.number}. Mudar só o nome ou a descrição não cria versão.`
     );
+}
+
+/**
+ * Linha do histórico de versões.
+ *
+ * @param {{ number: number, sessions_count?: number, is_current?: boolean }} version
+ */
+export function versionUsageLabel(version) {
+    const count = Number(version?.sessions_count) || 0;
+    const usage = count === 0 ? 'sem feedbacks' : count === 1 ? '1 feedback' : `${count} feedbacks`;
+
+    return `Versão ${version.number}${version.is_current ? ' (atual)' : ''} · ${usage}`;
 }
 
 /**
