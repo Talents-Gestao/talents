@@ -25,6 +25,7 @@ use App\Services\PsychosocialDashboardExtras;
 use App\Support\Nr1BandLabels;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1InstrumentMatrix;
+use App\Support\Nr1MeasureCatalog;
 use App\Support\PsychosocialMeasurePresenter;
 use App\Support\SurveyPublicationGate;
 use Illuminate\Http\Request;
@@ -223,7 +224,8 @@ class Nr1ShellPageData
     public function plan(Survey $survey, User $user, bool $forTalents): array
     {
         $dashboard = $this->dashboard->build($survey);
-        $scores = collect($dashboard['dimensions'] ?? [])->keyBy('title');
+        // Medida ↔ dimensão sempre pela chave normalizada (caixa, acento e espaços não importam).
+        $scores = collect($dashboard['dimensions'] ?? [])->keyBy(fn (array $dimension) => Nr1MeasureCatalog::dimensionKey((string) ($dimension['title'] ?? '')));
         $departmentsByFactor = $this->departmentsByFactor($dashboard);
         $rows = PsychosocialMeasure::query()->where('survey_id', $survey->id)->orderBy('sort_order')->orderBy('id')->get();
 
@@ -237,8 +239,9 @@ class Nr1ShellPageData
                 ->mapWithKeys(fn (PsychosocialMeasureEvidence $evidence) => [$evidence->id => route('client.surveys.measures.evidences.download', [$survey->id, $measure->id, $evidence->id])])
                 ->all();
             $present = PsychosocialMeasurePresenter::present($measure, $downloads);
-            $score = $scores->get($measure->factor_label);
-            $departments = $departmentsByFactor[$measure->factor_label] ?? [];
+            $dimensionKey = Nr1MeasureCatalog::dimensionKey((string) $measure->factor_label);
+            $score = $scores->get($dimensionKey);
+            $departments = $departmentsByFactor[$dimensionKey] ?? [];
             $next = PsychosocialMeasure::PLAN_TRANSITIONS[$measure->status] ?? [];
             $action = fn (string $name, bool $allowed) => $canAct && $allowed ? route("client.surveys.measures.{$name}", [$survey->id, $measure->id]) : null;
 
@@ -289,7 +292,7 @@ class Nr1ShellPageData
     }
 
     /**
-     * Setores em que a dimensão da medida está em atenção, com a faixa daquele recorte.
+     * Setores em que a dimensão da medida está em atenção, com a faixa daquele recorte, por chave normalizada da dimensão.
      *
      * @param  array<string, mixed>  $dashboard
      * @return array<string, list<array{name: string, band_label: ?string, score_label: ?string}>>
@@ -302,7 +305,7 @@ class Nr1ShellPageData
             if ($title === '' || ! Nr1BandLabels::isAttention($dimension['score'] ?? '')) {
                 return;
             }
-            $groups[$title][] = [
+            $groups[Nr1MeasureCatalog::dimensionKey($title)][] = [
                 'name' => $name,
                 'band_label' => $dimension['band_label'] ?? null,
                 'score_label' => $dimension['score_label'] ?? null,
