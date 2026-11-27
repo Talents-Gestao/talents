@@ -130,7 +130,15 @@ const submit = () => {
                 </div>
                 <div>
                     <InputLabel for="due_date" :value="isCreate && form.is_recurring ? 'Primeiro vencimento' : 'Vencimento'" />
-                    <input id="due_date" v-model="form.due_date" type="date" required :class="fieldClass" />
+                    <input
+                        id="due_date"
+                        v-model="form.due_date"
+                        type="date"
+                        min="2000-01-01"
+                        max="2100-12-31"
+                        required
+                        :class="fieldClass"
+                    />
                     <p v-if="isCreate && form.is_recurring" class="mt-1 text-xs text-slate-500">
                         Os meses seguintes usam o mesmo dia, sem transbordar o fim do mês.
                     </p>
