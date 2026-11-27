@@ -29,7 +29,7 @@ final class PsychosocialMeasureDeduplicator
 
     public const DECISION_MANUAL = 'requer decisão manual';
 
-    public const CONTENT_FIELDS = ['measure_description', 'objective', 'expected_result', 'indicator', 'responsible_text', 'suggested_due_date', 'suggested_due_origin', 'suggested_due_note', 'evidence_text'];
+    public const CONTENT_FIELDS = ['measure_description', 'indicator', 'responsible_text', 'suggested_due_date', 'suggested_due_origin', 'suggested_due_note', 'evidence_text'];
 
     public function __construct(private readonly PsychosocialMeasureService $measures) {}
 

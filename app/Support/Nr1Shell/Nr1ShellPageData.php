@@ -264,8 +264,6 @@ class Nr1ShellPageData
                 'status_label' => $present['status_label'],
                 'factor_label' => $present['factor_label'],
                 'measure_description' => $present['measure_description'],
-                'objective' => $present['objective'],
-                'expected_result' => $present['expected_result'],
                 'indicator' => $present['indicator'],
                 'suggested' => $present['suggested'],
                 'confirmed' => $present['confirmed'],

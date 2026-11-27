@@ -55,8 +55,6 @@ final class PsychosocialMeasurePresenter
             'status_label' => $measure->planLabel(),
             'factor_label' => $measure->factor_label,
             'measure_description' => $measure->measure_description,
-            'objective' => $measure->objective,
-            'expected_result' => $measure->expected_result,
             'indicator' => $measure->indicator,
             'origin' => $measure->origin,
             'suggested' => [

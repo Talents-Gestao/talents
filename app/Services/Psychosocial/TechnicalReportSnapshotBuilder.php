@@ -127,8 +127,6 @@ class TechnicalReportSnapshotBuilder implements DocumentSnapshotBuilder
             ->map(fn (PsychosocialMeasure $measure) => [
                 'factor_label' => $measure->factor_label,
                 'measure_description' => $measure->measure_description,
-                'objective' => $measure->objective,
-                'expected_result' => $measure->expected_result,
                 'indicator' => $measure->indicator,
                 'status' => $measure->status,
                 'status_label' => $measure->planLabel(),

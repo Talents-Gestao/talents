@@ -10,8 +10,6 @@ const props = defineProps({
 
 const form = useForm({
     measure_description: props.measure.measure_description ?? '',
-    objective: props.measure.plan.objective ?? '',
-    expected_result: props.measure.plan.expected_result ?? '',
     indicator: props.measure.plan.indicator ?? '',
     responsible_text: props.measure.plan.suggested.responsible ?? '',
     suggested_due_date: props.measure.plan.suggested.due_date ?? '',
@@ -37,14 +35,6 @@ const submit = () => {
             <label class="text-sm text-slate-700" :for="`desc-${measure.id}`">Ação proposta</label>
             <textarea :id="`desc-${measure.id}`" v-model="form.measure_description" rows="2" required class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
             <p v-if="form.errors.measure_description" class="mt-1 text-xs text-red-600">{{ form.errors.measure_description }}</p>
-        </div>
-        <div>
-            <label class="text-sm text-slate-700" :for="`obj-${measure.id}`">Objetivo</label>
-            <textarea :id="`obj-${measure.id}`" v-model="form.objective" rows="2" class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
-        </div>
-        <div>
-            <label class="text-sm text-slate-700" :for="`exp-${measure.id}`">Resultado esperado</label>
-            <textarea :id="`exp-${measure.id}`" v-model="form.expected_result" rows="2" class="mt-1 block w-full rounded-lg border-slate-300 text-sm" />
         </div>
         <div>
             <label class="text-sm text-slate-700" :for="`ind-${measure.id}`">Indicador</label>

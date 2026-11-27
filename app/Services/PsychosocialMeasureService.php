@@ -24,7 +24,10 @@ use Illuminate\Support\Facades\Storage;
  */
 final class PsychosocialMeasureService
 {
-    /** Campos editáveis por pessoa; status tem fluxo próprio e origem/campanha são fixas. */
+    /**
+     * Campos editáveis por pessoa; status tem fluxo próprio e origem/campanha são fixas. «Objetivo» e «Resultado
+     * esperado» saíram do plano: as colunas e os dados antigos ficam no banco, mas nada novo é aceito nelas.
+     */
     private const EDITABLE_FIELDS = [
         'factor_label',
         'evidence_basis',
@@ -37,8 +40,6 @@ final class PsychosocialMeasureService
         'effectiveness_checked_at',
         'effectiveness_result',
         'sort_order',
-        'objective',
-        'expected_result',
         'suggested_due_origin',
         'suggested_due_note',
         'indicator',
@@ -49,8 +50,6 @@ final class PsychosocialMeasureService
         'factor_label',
         'evidence_basis',
         'measure_description',
-        'objective',
-        'expected_result',
         'responsible_text',
         'suggested_due_date',
         'suggested_due_origin',
@@ -323,7 +322,7 @@ final class PsychosocialMeasureService
      ------------------------------------------------------------------ */
 
     /**
-     * Talents: edita a sugestão (ação, objetivo, responsável e prazo sugeridos, indicador). Nunca confirma.
+     * Talents: edita a sugestão (ação, responsável e prazo sugeridos, indicador). Nunca confirma.
      *
      * @param  array<string, mixed>  $changes
      */

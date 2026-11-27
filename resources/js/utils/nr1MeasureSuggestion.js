@@ -7,8 +7,6 @@
 export const SUGGESTION_FIELDS = [
     'factor_label',
     'measure_description',
-    'objective',
-    'expected_result',
     'indicator',
     'responsible_text',
     'suggested_due_date',
@@ -26,8 +24,6 @@ export function suggestionValues(measure) {
     return {
         factor_label: measure?.factor_label ?? '',
         measure_description: measure?.measure_description ?? '',
-        objective: measure?.objective ?? '',
-        expected_result: measure?.expected_result ?? '',
         indicator: measure?.indicator ?? '',
         responsible_text: measure?.suggested?.responsible ?? '',
         suggested_due_date: measure?.suggested?.due_date ?? '',

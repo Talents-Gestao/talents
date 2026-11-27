@@ -73,18 +73,22 @@ class PsychosocialMeasureAdminController extends Controller
         $data = $request->validate([
             'factor_label' => ['sometimes', 'required', 'string', 'max:255'],
             'measure_description' => ['sometimes', 'required', 'string', 'max:5000'],
-            'objective' => ['sometimes', 'nullable', 'string', 'max:5000'],
-            'expected_result' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            // «Objetivo» e «Resultado esperado» saíram do plano: recusados se vierem preenchidos.
+            'objective' => ['prohibited'],
+            'expected_result' => ['prohibited'],
             'responsible_text' => ['sometimes', 'nullable', 'string', 'max:255'],
             'suggested_due_date' => ['sometimes', 'nullable', 'date'],
             'suggested_due_origin' => ['sometimes', 'nullable', 'string', 'in:'.implode(',', array_keys(PsychosocialMeasureService::DUE_ORIGINS))],
             'suggested_due_note' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'indicator' => ['sometimes', 'nullable', 'string', 'max:255'],
             'reason' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'objective.prohibited' => '«Objetivo» não faz mais parte do plano de ação.',
+            'expected_result.prohibited' => '«Resultado esperado» não faz mais parte do plano de ação.',
         ]);
 
         $reason = $data['reason'] ?? null;
-        unset($data['reason']);
+        unset($data['reason'], $data['objective'], $data['expected_result']);
         $changes = array_map(fn ($value) => is_string($value) && trim($value) === '' ? null : $value, $data);
 
         try {
@@ -106,12 +110,16 @@ class PsychosocialMeasureAdminController extends Controller
             'evidence_basis' => ['required', 'string', 'in:'.implode(',', PsychosocialMeasure::EVIDENCE_BASES)],
             'responsible_text' => ['nullable', 'string', 'max:255'],
             'suggested_due_date' => ['nullable', 'date'],
-            'objective' => ['nullable', 'string', 'max:5000'],
-            'expected_result' => ['nullable', 'string', 'max:5000'],
+            'objective' => ['prohibited'],
+            'expected_result' => ['prohibited'],
             'indicator' => ['nullable', 'string', 'max:255'],
+        ], [
+            'objective.prohibited' => '«Objetivo» não faz mais parte do plano de ação.',
+            'expected_result.prohibited' => '«Resultado esperado» não faz mais parte do plano de ação.',
         ]);
 
-        foreach (['objective', 'expected_result', 'indicator'] as $optional) {
+        unset($data['objective'], $data['expected_result']);
+        foreach (['indicator'] as $optional) {
             $data[$optional] = filled($data[$optional] ?? null) ? $data[$optional] : null;
         }
         $data['responsible_text'] = filled($data['responsible_text'] ?? null) ? $data['responsible_text'] : null;

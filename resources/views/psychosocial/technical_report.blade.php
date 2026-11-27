@@ -208,8 +208,8 @@
                     <td>{{ $measure['factor_label'] }}</td>
                     <td>
                         {{ $measure['measure_description'] }}
-                        @if($measure['objective'])<br><strong>Objetivo:</strong> {{ $measure['objective'] }}@endif
-                        @if($measure['expected_result'])<br><strong>Resultado esperado:</strong> {{ $measure['expected_result'] }}@endif
+                        @if($measure['objective'] ?? null)<br><strong>Objetivo:</strong> {{ $measure['objective'] }}@endif
+                        @if($measure['expected_result'] ?? null)<br><strong>Resultado esperado:</strong> {{ $measure['expected_result'] }}@endif
                         @if($measure['indicator'])<br><strong>Indicador:</strong> {{ $measure['indicator'] }}@endif
                     </td>
                     <td>
