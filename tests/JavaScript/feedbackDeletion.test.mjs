@@ -5,46 +5,32 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+    TEMPLATE_IN_USE_MESSAGE,
     answersLabel,
     canConfirmDeletion,
     feedbacksLabel,
     templateDeletionCopy,
-    templateDeletionPayload,
 } from '../../resources/js/utils/feedbackDeletion.js';
 
 describe('alerta de exclusão de modelo', () => {
     it('modelo nunca usado: confirmação simples, sem caixa de confirmação', () => {
-        const copy = templateDeletionCopy({ title: 'Trimestral', sessions_count: 0 });
-        assert.equal(copy.inUse, false);
+        const copy = templateDeletionCopy({ title: 'Trimestral', sessions_count: 0, blocked: false });
+        assert.equal(copy.blocked, false);
         assert.equal(copy.requiresCheck, false);
         assert.equal(copy.confirmLabel, 'Excluir modelo');
         assert.match(copy.message, /«Trimestral»/);
     });
 
-    it('modelo usado: alerta com impacto, botão com a contagem e confirmação explícita', () => {
-        const copy = templateDeletionCopy({ title: 'Trimestral', sessions_count: 3 });
-        assert.equal(copy.inUse, true);
-        assert.equal(copy.requiresCheck, true);
-        assert.equal(copy.confirmLabel, 'Excluir modelo e 3 feedbacks');
-        assert.equal(
-            copy.message,
-            'Este modelo já foi usado em 3 feedbacks. Ao excluí-lo, os 3 feedbacks feitos com ele e todas as respostas '
-                + 'também serão excluídos, e isso afeta o painel de Feedbacks (termômetro e 9-box) e os históricos dos '
-                + 'colaboradores. Essa ação não pode ser desfeita por aqui.',
-        );
-        assert.match(copy.checkLabel, /«Trimestral» e os 3 feedbacks feitos com ele serão excluídos/);
+    it('modelo usado: não se exclui, a orientação é arquivar e nenhum feedback sai junto', () => {
+        const copy = templateDeletionCopy({ title: 'Trimestral', sessions_count: 3, blocked: true, blocked_message: TEMPLATE_IN_USE_MESSAGE });
+        assert.equal(copy.blocked, true);
+        assert.equal(copy.confirmLabel, null);
+        assert.equal(copy.message, 'Este modelo já foi usado em feedbacks e não pode ser excluído. Arquive-o para que não apareça em novos feedbacks.');
+        assert.doesNotMatch(copy.message, /serão excluídos/);
     });
 
-    it('singular com 1 feedback', () => {
-        const copy = templateDeletionCopy({ title: 'X', sessions_count: 1 });
-        assert.equal(copy.confirmLabel, 'Excluir modelo e 1 feedback');
-        assert.match(copy.message, /^Este modelo já foi usado em 1 feedback\. Ao excluí-lo, o feedback feito com ele/);
-    });
-
-    it('envia a contagem vista no alerta para o servidor conferir', () => {
-        assert.deepEqual(templateDeletionPayload({ sessions_count: 0 }, false), { sessions_count: 0 });
-        assert.deepEqual(templateDeletionPayload({ sessions_count: 4 }, true), { confirmed: true, sessions_count: 4 });
-        assert.deepEqual(templateDeletionPayload({ sessions_count: 4 }, false), { confirmed: false, sessions_count: 4 });
+    it('sem a mensagem do servidor, usa o mesmo texto', () => {
+        assert.equal(templateDeletionCopy({ title: 'X', sessions_count: 1 }).message, TEMPLATE_IN_USE_MESSAGE);
     });
 });
 
@@ -68,10 +54,10 @@ describe('telas', () => {
     const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
     const read = (path) => readFileSync(join(root, path), 'utf8');
 
-    it('«Excluir» aparece também para modelo usado e abre o alerta com impacto do servidor', () => {
+    it('«Excluir» só para modelo nunca usado; o alerta consulta o servidor', () => {
         const index = read('resources/js/Pages/Client/Feedbacks/Templates/Index.vue');
-        assert.match(index, /v-if="permissions\.delete"\s/);
-        assert.doesNotMatch(index, /!template\.sessions_count/);
+        assert.match(index, /v-if="permissions\.delete && template\.deletable"/);
+        assert.match(index, /'templates\.archive'/);
         assert.match(index, /<FeedbackTemplateDeleteModal/);
         const modal = read('resources/js/Components/Feedback/FeedbackTemplateDeleteModal.vue');
         assert.match(modal, /feedbackRoute\('templates\.deletion'/);

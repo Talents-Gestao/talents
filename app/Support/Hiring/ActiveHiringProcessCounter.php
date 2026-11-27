@@ -15,7 +15,7 @@ final class ActiveHiringProcessCounter
 {
     /**
      * Conta vagas ativas no acompanhamento (fase diferente de Contratação).
-     * Visível para Administrador Talents (Sólides) e Administrador da empresa.
+     * Visível para Administrador Talents (Contratação · Acompanhamento) e Administrador da empresa.
      */
     public function forUser(?User $user): int
     {
@@ -24,7 +24,7 @@ final class ActiveHiringProcessCounter
         }
 
         if ($user->isSuperAdmin()) {
-            if (! $user->canAccessAdmin(AdminPermissionModule::Solides, PermissionAction::View)) {
+            if (! $user->canAccessAdmin(AdminPermissionModule::SolidesAcompanhamento, PermissionAction::View)) {
                 return 0;
             }
 

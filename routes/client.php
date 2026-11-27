@@ -261,6 +261,9 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::patch('sessions/{session}', [FeedbackSessionController::class, 'update'])->name('sessions.update');
         Route::delete('sessions/{session}', [FeedbackSessionController::class, 'destroy'])->name('sessions.destroy');
         Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
+        Route::patch('sessions/{session}/reabrir', [FeedbackSessionController::class, 'reopen'])->name('sessions.reopen');
+        Route::get('sessions/{session}/versao', [FeedbackSessionController::class, 'versionPreview'])->name('sessions.version.preview');
+        Route::patch('sessions/{session}/versao', [FeedbackSessionController::class, 'updateVersion'])->name('sessions.version.update');
         Route::get('sessions/{session}/pdf', [FeedbackSessionController::class, 'pdf'])->name('sessions.pdf');
         // Gravação (transcrição do Plaud): enviar, ver o original (só administrador) e excluir.
         Route::post('sessions/{session}/gravacao', [FeedbackRecordingController::class, 'store'])->name('sessions.recording.store');
@@ -276,6 +279,8 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::post('sessions/{session}/gravacao/voltar', [FeedbackRecordingAiController::class, 'rewind'])->name('sessions.recording.rewind');
         // Modelos da própria empresa (só administrador; o controller recusa os demais).
         Route::post('templates/{template}/duplicar', [FeedbackTemplateController::class, 'duplicate'])->name('templates.duplicate');
+        Route::patch('templates/{template}/arquivar', [FeedbackTemplateController::class, 'archive'])->name('templates.archive');
+        Route::patch('templates/{template}/reativar', [FeedbackTemplateController::class, 'unarchive'])->name('templates.unarchive');
         Route::get('templates/{template}/exclusao', [FeedbackTemplateController::class, 'deletionImpact'])->name('templates.deletion');
         Route::resource('templates', FeedbackTemplateController::class)
             ->except(['show'])

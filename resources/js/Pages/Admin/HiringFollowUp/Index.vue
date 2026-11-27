@@ -11,6 +11,7 @@ defineProps({
     processes: { type: Array, required: true },
     companies: { type: Array, required: true },
     filters: { type: Object, required: true },
+    vacancies_url: { type: String, default: null },
 });
 
 const boardRoutes = computed(() => ({
@@ -46,6 +47,7 @@ const boardRoutes = computed(() => ({
             :companies="companies"
             :filters="filters"
             :routes="boardRoutes"
+            :vacancies_url="vacancies_url"
             can_create
             can_manage
             can_delete

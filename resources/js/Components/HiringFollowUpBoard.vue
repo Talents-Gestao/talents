@@ -14,6 +14,7 @@ import {
     ArrowLeftIcon,
     ArrowRightIcon,
     Bars3Icon,
+    BriefcaseIcon,
     BuildingOffice2Icon,
     ChevronDownIcon,
     ClockIcon,
@@ -38,6 +39,8 @@ const props = defineProps({
     show_talent_bank_link: { type: Boolean, default: false },
     show_company_on_card: { type: Boolean, default: true },
     routes: { type: Object, required: true },
+    /** Só o admin com Contratação · Vagas recebe; o portal nunca envia. */
+    vacancies_url: { type: String, default: null },
 });
 
 const currentStage = ref(props.active_stage);
@@ -886,6 +889,54 @@ watch(
                                         </p>
                                     </div>
                                 </details>
+
+                                <!-- Vagas do processo (só admin com Contratação · Vagas) -->
+                                <section
+                                    v-if="Array.isArray(p.vacancies)"
+                                    class="mt-4 rounded-xl border border-slate-200/90 bg-white px-3.5 py-3"
+                                    :aria-labelledby="'vacancies-title-' + p.id"
+                                >
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <h4
+                                            :id="'vacancies-title-' + p.id"
+                                            class="inline-flex items-center gap-2 text-sm font-semibold text-talents-700"
+                                        >
+                                            <BriefcaseIcon class="h-4 w-4" aria-hidden="true" />
+                                            Vagas deste processo
+                                        </h4>
+                                        <Link
+                                            v-if="vacancies_url"
+                                            :href="vacancies_url + '?hiring_process_id=' + p.id"
+                                            class="text-xs font-semibold text-talents-700 hover:text-talents-900 hover:underline"
+                                        >
+                                            Abrir vagas
+                                        </Link>
+                                    </div>
+                                    <ul v-if="p.vacancies.length" class="mt-2 divide-y divide-slate-100">
+                                        <li
+                                            v-for="v in p.vacancies"
+                                            :key="v.id"
+                                            class="flex flex-wrap items-center justify-between gap-2 py-2"
+                                        >
+                                            <Link
+                                                :href="v.url"
+                                                class="min-w-0 truncate text-sm font-medium text-slate-800 hover:text-talents-700 hover:underline"
+                                            >
+                                                {{ v.title }}
+                                            </Link>
+                                            <span class="flex items-center gap-2 text-xs text-slate-500">
+                                                <span class="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-700">
+                                                    {{ v.status_label }}
+                                                </span>
+                                                <span class="tabular-nums">
+                                                    {{ v.applications_count }}
+                                                    {{ v.applications_count === 1 ? 'candidato' : 'candidatos' }}
+                                                </span>
+                                            </span>
+                                        </li>
+                                    </ul>
+                                    <p v-else class="mt-2 text-sm text-slate-500">Nenhuma vaga cadastrada neste processo.</p>
+                                </section>
 
                                 <!-- Mensagens livres do processo -->
                                 <div class="mt-4">

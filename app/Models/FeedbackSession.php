@@ -19,6 +19,7 @@ class FeedbackSession extends Model
     protected $fillable = [
         'company_id',
         'feedback_template_id',
+        'feedback_template_version_id',
         'company_employee_id',
         'rhid_person_id',
         'employee_name',
@@ -44,6 +45,18 @@ class FeedbackSession extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        // O feedback usa a versão atual do modelo no momento da criação e fica nela até ser atualizado.
+        static::creating(function (FeedbackSession $session) {
+            if ($session->feedback_template_version_id === null && $session->feedback_template_id !== null) {
+                $session->feedback_template_version_id = FeedbackTemplate::withTrashed()
+                    ->whereKey($session->feedback_template_id)
+                    ->value('current_version_id');
+            }
+        });
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
@@ -52,6 +65,12 @@ class FeedbackSession extends Model
     public function template(): BelongsTo
     {
         return $this->belongsTo(FeedbackTemplate::class, 'feedback_template_id');
+    }
+
+    /** Versão do modelo usada por este feedback (estrutura, título e descrição exibidos). */
+    public function templateVersion(): BelongsTo
+    {
+        return $this->belongsTo(FeedbackTemplateVersion::class, 'feedback_template_version_id');
     }
 
     public function employee(): BelongsTo
@@ -74,9 +93,23 @@ class FeedbackSession extends Model
         return $this->hasMany(FeedbackSessionAnswer::class);
     }
 
+    /** Assinaturas vigentes (as canceladas por «Reabrir para edição» ficam fora). */
     public function signatures(): HasMany
     {
+        return $this->hasMany(FeedbackSessionSignature::class)->whereNull('cancelled_at');
+    }
+
+    /** Todas as assinaturas, inclusive as canceladas (histórico). */
+    public function allSignatures(): HasMany
+    {
         return $this->hasMany(FeedbackSessionSignature::class);
+    }
+
+    /** Sessão aberta: rascunho ou em preenchimento, sem convite de assinatura vigente. */
+    public function isOpenForEditing(): bool
+    {
+        return in_array($this->status, [FeedbackSessionStatus::Draft, FeedbackSessionStatus::InProgress], true)
+            && $this->signatures()->doesntExist();
     }
 
     public function recordings(): HasMany

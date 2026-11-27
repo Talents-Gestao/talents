@@ -57,6 +57,9 @@ class NoticeDestinationUrl
             CompanyNoticeEventKind::ComplaintUpdated => $this->adminComplaintUrl($sourceId),
             CompanyNoticeEventKind::Nr1OpportunityCreated => $sourceType === 'nr1_survey' ? route('admin.nr1-opportunities.index') : $this->opportunityUrl($sourceId),
             CompanyNoticeEventKind::Nr1ProposalRequested => $this->campaignUrl($sourceId),
+            CompanyNoticeEventKind::HiringFollowupSupportRequested => $sourceId > 0
+                ? route('admin.contratacao.pos.show', $sourceId)
+                : route('admin.contratacao.pos.index'),
             default => null,
         };
     }

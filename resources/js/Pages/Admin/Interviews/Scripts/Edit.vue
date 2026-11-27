@@ -5,11 +5,20 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const props = defineProps({
     questionnaire: { type: Object, default: null },
+    can: { type: Object, default: () => ({}) },
 });
+
+// Roteiro com entrevistas: seções e perguntas ficam travadas; só nome, descrição e «padrão» mudam.
+const locked = computed(() => Boolean(props.questionnaire?.locked));
+
+const duplicate = () => {
+    router.post(route('admin.entrevistas.roteiros.duplicate', props.questionnaire.id));
+};
 
 const emptySection = () => ({
     title: '',
@@ -73,8 +82,34 @@ const submit = () => {
             <FormPageHeader
                 :back-href="route('admin.entrevistas.roteiros.index')"
                 :title="questionnaire ? 'Editar roteiro' : 'Novo roteiro'"
-            />
+                :subtitle="questionnaire ? `Versão ${questionnaire.version}` : null"
+            >
+                <template v-if="questionnaire && can.duplicate" #trailing>
+                    <SecondaryButton type="button" @click="duplicate">Duplicar como nova versão</SecondaryButton>
+                </template>
+            </FormPageHeader>
         </template>
+
+        <div
+            v-if="$page.props.flash?.success"
+            class="mb-4 max-w-3xl rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+            role="status"
+        >
+            {{ $page.props.flash.success }}
+        </div>
+        <div v-if="locked" class="mb-4 max-w-3xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Este roteiro já tem entrevistas. Seções e perguntas não podem ser alteradas nem removidas aqui, para não apagar respostas.
+            <template v-if="can.duplicate">Use «Duplicar como nova versão» para mudar o roteiro; </template>
+            <template v-else>Para mudar o roteiro, peça a quem pode criar roteiros que o duplique como nova versão; </template>
+            nome, descrição e «padrão» continuam editáveis.
+        </div>
+        <p
+            v-if="form.errors.sections"
+            class="mb-4 max-w-3xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            role="alert"
+        >
+            {{ form.errors.sections }}
+        </p>
 
         <form class="space-y-6" @submit.prevent="submit">
             <div class="surface-card max-w-3xl space-y-4 p-6">
@@ -97,11 +132,17 @@ const submit = () => {
                 </label>
             </div>
 
-            <div v-for="(section, sIndex) in form.sections" :key="sIndex" class="surface-card p-6">
+            <fieldset
+                v-for="(section, sIndex) in form.sections"
+                :key="sIndex"
+                class="surface-card p-6"
+                :disabled="locked"
+                :class="locked ? 'opacity-80' : ''"
+            >
                 <div class="mb-4 flex items-center justify-between gap-3">
                     <h3 class="font-semibold text-gray-900">Seção {{ sIndex + 1 }}</h3>
                     <button
-                        v-if="form.sections.length > 1"
+                        v-if="form.sections.length > 1 && !locked"
                         type="button"
                         class="text-sm text-red-600 hover:underline"
                         @click="removeSection(sIndex)"
@@ -122,7 +163,7 @@ const submit = () => {
                     <div class="mb-2 flex items-center justify-between">
                         <span class="text-xs font-medium text-slate-500">Pergunta {{ qIndex + 1 }}</span>
                         <button
-                            v-if="section.questions.length > 1"
+                            v-if="section.questions.length > 1 && !locked"
                             type="button"
                             class="text-xs text-red-600 hover:underline"
                             @click="removeQuestion(sIndex, qIndex)"
@@ -138,11 +179,11 @@ const submit = () => {
                     />
                 </div>
 
-                <SecondaryButton type="button" @click="addQuestion(sIndex)">+ Pergunta</SecondaryButton>
-            </div>
+                <SecondaryButton v-if="!locked" type="button" @click="addQuestion(sIndex)">+ Pergunta</SecondaryButton>
+            </fieldset>
 
             <div class="flex flex-wrap gap-3">
-                <SecondaryButton type="button" @click="addSection">+ Seção</SecondaryButton>
+                <SecondaryButton v-if="!locked" type="button" @click="addSection">+ Seção</SecondaryButton>
                 <PrimaryButton :disabled="form.processing">Salvar roteiro</PrimaryButton>
                 <Link :href="route('admin.entrevistas.roteiros.index')">
                     <SecondaryButton type="button">Cancelar</SecondaryButton>

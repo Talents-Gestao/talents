@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Interview;
 use App\Services\Interview\InterviewReportRenderer;
 use Illuminate\Http\Response as HttpResponse;
-use Illuminate\Support\Facades\File;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class InterviewReportController extends Controller

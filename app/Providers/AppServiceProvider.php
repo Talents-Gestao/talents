@@ -4,9 +4,11 @@ namespace App\Providers;
 
 use App\Auth\NonExpiringDatabaseTokenRepository;
 use App\Models\MailSetting;
+use App\Models\PsychosocialDocumentVersion;
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
 use App\Models\TaskComment;
+use App\Policies\PsychosocialDocumentVersionPolicy;
 use App\Policies\TaskBoardPolicy;
 use App\Policies\TaskCardPolicy;
 use App\Policies\TaskCommentPolicy;
@@ -61,7 +63,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(TaskBoard::class, TaskBoardPolicy::class);
         Gate::policy(TaskCard::class, TaskCardPolicy::class);
         Gate::policy(TaskComment::class, TaskCommentPolicy::class);
-        Gate::policy(\App\Models\PsychosocialDocumentVersion::class, \App\Policies\PsychosocialDocumentVersionPolicy::class);
+        Gate::policy(PsychosocialDocumentVersion::class, PsychosocialDocumentVersionPolicy::class);
 
         Vite::prefetch(concurrency: 3);
 
@@ -94,6 +96,14 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('public-client-evaluation-submit', function (Request $request) {
+            $max = (int) config('public_rate_limits.survey_submit_per_minute', 30);
+            $token = (string) $request->route('token', '');
+
+            return Limit::perMinute(max(1, $max))->by($request->ip().':'.$token);
+        });
+
+        // Pesquisa pública do pós-contratação: mesmo limite da avaliação de cliente, por IP e token.
+        RateLimiter::for('public-hiring-followup-submit', function (Request $request) {
             $max = (int) config('public_rate_limits.survey_submit_per_minute', 30);
             $token = (string) $request->route('token', '');
 

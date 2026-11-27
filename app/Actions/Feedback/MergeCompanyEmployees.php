@@ -29,6 +29,14 @@ class MergeCompanyEmployees
         'feedback_evolution_reports' => 'Evoluções geradas',
     ];
 
+    /**
+     * Ciclos do pós-contratação (Talents) também mudam de dono, mas ficam fora de LINKED_TABLES porque a
+     * pré-visualização aparece no portal da empresa: a contagem só vai para a auditoria.
+     */
+    public const INTERNAL_TABLES = ['employment_cycles'];
+
+    public const OPEN_CYCLES_MESSAGE = 'Os dois cadastros têm acompanhamento da Talents em andamento. Peça à Talents para encerrar um deles antes de unir.';
+
     public const STALE_MESSAGE = 'Os dados dos cadastros mudaram desde a pré-visualização. Confira de novo antes de unir.';
 
     /**
@@ -91,9 +99,14 @@ class MergeCompanyEmployees
 
             $sessionIds = DB::table('feedback_sessions')->where('company_employee_id', $a->id)->pluck('id')->all();
             $moved = [];
-            foreach (array_keys(self::LINKED_TABLES) as $table) {
+            foreach ([...array_keys(self::LINKED_TABLES), ...self::INTERNAL_TABLES] as $table) {
                 // Só o vínculo: sem tocar em updated_at nem em qualquer outra coluna.
                 $moved[$table] = DB::table($table)->where('company_employee_id', $a->id)->update(['company_employee_id' => $p->id]);
+            }
+
+            // O vínculo com o candidato de Contratação acompanha o cadastro que fica.
+            if ($p->talent_candidate_id === null && $a->talent_candidate_id !== null) {
+                $p->forceFill(['talent_candidate_id' => $a->talent_candidate_id])->save();
             }
 
             $now = Carbon::now();
@@ -180,6 +193,16 @@ class MergeCompanyEmployees
         }
         if ($absorbed->merged_into_employee_id !== null) {
             throw ValidationException::withMessages(['absorbed' => 'Este cadastro já foi unido a outro.']);
+        }
+
+        // Nunca dois ciclos em aberto do mesmo colaborador na mesma empresa.
+        $openCycles = DB::table('employment_cycles')
+            ->whereIn('company_employee_id', [$primary->id, $absorbed->id])
+            ->where('status', '!=', 'terminated')
+            ->distinct()
+            ->count('company_employee_id');
+        if ($openCycles > 1) {
+            throw ValidationException::withMessages(['absorbed' => self::OPEN_CYCLES_MESSAGE]);
         }
     }
 }

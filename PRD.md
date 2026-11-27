@@ -188,6 +188,10 @@ A matriz é editada em **Configuração → Equipe**, por usuário, com o compon
 | `solides_banco_talentos` | Contratação · Banco de talentos | Currículos Sólides |
 | `solides_acompanhamento` | Contratação · Acompanhamento | Kanban de contratação |
 | `solides_profiler` | Contratação · Profiler | Tela «em breve» |
+| `contratacao_vagas` | Contratação · Vagas | Vagas dos processos de acompanhamento, com etapas próprias e candidatos (`/admin/contratacao/vagas`, 7.4.2); também mostra o bloco «Vagas deste processo» no Acompanhamento. Avaliação da candidatura: ver (Visualizar) e editar (Editar); aprovar o dossiê usa «Validar», única ação além do CRUD na matriz do admin. Backfill: quem tinha `solides_acompanhamento` ou o legado `solides` recebeu as mesmas ações |
+| `contratacao_candidatos` | Contratação · Candidatos | Tela Candidatos (`/admin/contratacao/candidatos`, 7.4.6): lista, ficha, criar (Criar), editar (Editar), arquivar e restaurar (Excluir), «Cadastrar no Talents» no Banco de talentos (Criar); a ação Criar também libera o cadastro rápido dentro da vaga. Backfill: quem tinha `solides_banco_talentos` ou o legado `solides` recebeu as mesmas ações |
+| `contratacao_pos` | Contratação · Pós-contratação | Fila e ciclos do pós-contratação (`/admin/contratacao/pos-contratacao`, 7.4.2): ver (Visualizar); registrar admissão, confirmar, pausar, retomar, anotar, pular marco e enviar convites (Editar); desligar e readmitir (Excluir). Backfill: quem tinha `contratacao_vagas` recebeu as mesmas ações (sem «Validar»); também coberto pelo legado `solides` |
+| `contratacao_anexos` | Contratação · Anexos internos (restrito) | Anexos internos do candidato: listar e baixar (Visualizar), enviar (Criar), excluir (Excluir). Exige também `contratacao_candidatos:view`. **Sem backfill e fora do `legacyExpansionMap`:** só o Owner até ser concedido em Equipe |
 | `entrevistas_ia` | Contratação · Entrevistas IA | Entrevistas com áudio e relatório |
 | `entrevistas_roteiros` | Contratação · Roteiros | Roteiros de entrevista |
 | `entrevistas_reunioes` | Reuniões | Reuniões com ata por IA (menu oculto) |
@@ -248,14 +252,14 @@ A checagem de rota é `EnsureModulePermission` (`can.module:{módulo}[,ação]`)
 | `rhid` | RHID / Ponto | `rhid_access` = sim, ou herda do plano | — |
 | `denuncias` | Denúncias | `denuncias_access` = sim, ou herda do plano | — |
 | `sugestoes` | Canal de sugestões e dúvidas | plano tem `sugestoes` | — |
-| `feedbacks` | Feedbacks internos | `feedbacks_access` = sim, ou herda do plano | — |
+| `feedbacks` | Feedbacks internos | sempre, para toda empresa (não depende de assinatura nem do plano); só `feedbacks_access` = `false` desliga | `company_user` conforme a matriz de permissões |
 | `ferias` | Férias | `ferias_access` = sim, ou herda do plano | só `company_admin` |
 | `desligamento` | Pesquisa de Desligamento | `desligamento_access` = sim, ou herda do plano | — |
 | `acompanhamento` | Acompanhamento | `acompanhamento_access` = sim, ou herda do plano | contador no menu só para `company_admin` |
 | `metodologia` | Direcionamento Estratégico | plano tem `metodologia` | rotas do portal comentadas (Oculto) |
 | `capacitacao` | Capacitação | nunca (`false` fixo) | fora da matriz |
 
-**Modo de acesso por empresa.** Na edição da empresa, cada módulo com flag própria tem três opções (`*_access_mode`): `inherit` (segue o plano), `enabled` (liga mesmo fora do plano) e `disabled` (desliga mesmo que o plano tenha). No banco isso vira `null`, `true` ou `false` na coluna `*_access`.
+**Modo de acesso por empresa.** Na edição da empresa, cada módulo com flag própria tem três opções (`*_access_mode`): `inherit` (segue o plano), `enabled` (liga mesmo fora do plano) e `disabled` (desliga mesmo que o plano tenha). No banco isso vira `null`, `true` ou `false` na coluna `*_access`. **Exceção: Feedbacks internos** é liberado para todas as empresas e o seletor tem só duas opções, «Habilitado (padrão)» (`feedbacks_access = null`) e «Forçar desabilitado» (`false`); `Company::hasFeedbacksEnabled()` não consulta o plano (um `true` antigo continua valendo como habilitado).
 
 ### 2.5 Portal próprio da empresa (marca)
 
@@ -399,6 +403,9 @@ A sidebar só mostra o que o usuário pode abrir. Um grupo aparece se houver ao 
 | **Contratação** (grupo) | — | algum item abaixo |
 | ↳ Banco de talentos | `admin.solides.curriculos.index` | `solides_banco_talentos` |
 | ↳ Acompanhamento | `admin.acompanhamento.index` | `solides_acompanhamento` |
+| ↳ Vagas | `admin.contratacao.vagas.index` (ativo em `admin.contratacao.vagas.*`) | `contratacao_vagas` |
+| ↳ Candidatos | `admin.contratacao.candidatos.index` (ativo em `admin.contratacao.candidatos.*`) | `contratacao_candidatos` |
+| ↳ Pós-contratação | `admin.contratacao.pos.index` (ativo em `admin.contratacao.pos.*`) | `contratacao_pos` |
 | ↳ Entrevistas IA | `admin.entrevistas.index` | `entrevistas_ia` |
 | ↳ Roteiros | `admin.entrevistas.roteiros.index` | `entrevistas_roteiros` |
 | **Reuniões** | `admin.reunioes.index` | **Oculto** (`showReunioes = false`) |
@@ -607,9 +614,15 @@ sequenceDiagram
 |-------|------|------|--------|
 | 1 | Comercial | proposta de Contratação de Talentos fechada | processo criado em Engenharia de Cargo |
 | 2 | Talents | Contratação → Acompanhamento | avança etapas (anúncio, currículos, análise comportamental, entrevistas, visita, contratação), com notas e nº de candidatos |
-| 3 | Talents | Banco de talentos | consulta candidatos da Sólides agrupados por vaga inferida |
-| 4 | Talents | Entrevistas IA | grava a entrevista, obtém transcrição e relatório por roteiro (PDF/DOCX) |
-| 5 | Empresa | Acompanhamento (portal) | acompanha o mesmo quadro e comenta |
+| 3 | Talents | Contratação → Vagas | cria vagas dentro do processo (fora da fase Contratação), cada uma com etapas próprias; inclui candidatos já cadastrados ou por cadastro rápido e os move entre as etapas, com histórico e anotações |
+| 4 | Talents | Banco de talentos / Candidatos | consulta candidatos da Sólides e os cadastra no Talents (7.4.6) |
+| 5 | Talents | Entrevistas | entrevista vinculada ao candidato e à vaga (áudio, texto ou Plaud), sugestões da IA revisadas por pessoa, relatório PDF/DOCX |
+| 6 | Talents | Avaliação da candidatura | perfil de sucesso, case, critérios com evidência e decisão humana; dossiê aprovado (`validate`) e enviado ao contato da empresa por e-mail |
+| 7 | Talents → Empresa | «Comunicar etapa» no quadro da vaga | atualização de etapa ao contato elegível (sem dado de candidato), por e-mail ou texto para copiar |
+| 8 | Talents | «Registrar admissão» (candidatura em Contratado) | colaborador na empresa (deduplicado por e-mail), cargo e gestor; com a data de admissão confirmada, nascem os marcos D15, D30, D60 e D90 |
+| 9 | Talents | Contratação → Pós-contratação | «Enviar acompanhamento» em cada marco ao colaborador, ao gestor ou a ambos (e-mail ou copiar link e mensagem); pausa, desligamento e readmissão |
+| 10 | Colaborador / gestor | `/pos-contratacao/{token}` | responde de 1 a 5 estrelas, comenta e pode pedir apoio; com o D90 concluído, o acompanhamento do ciclo fica concluído |
+| 11 | Empresa | Acompanhamento (portal) | acompanha só a fase macro do processo e comenta; nunca vê vagas, candidatos, dossiê, histórico nem respostas do pós-contratação |
 
 #### 4.7.7 Desligamento
 
@@ -861,7 +874,7 @@ Lead incluído manualmente também gera aviso «novo lead».
 
 **Criar empresa (campos):** nome (obrigatório), e-mail de contato (obrigatório; recebe o convite do primeiro `company_admin`), Instagram, razão social, CNPJ (com **consulta ReceitaWS** em `GET /admin/companies/lookup-cnpj`), segmento, ramo de atividade, mês da data-base (convenção coletiva), endereço (rua, bairro, cidade, UF, CEP), regime tributário, estimativa de funcionários, plano, ativo e logo (até 2 MB).
 
-**Editar empresa:** os mesmos campos, mais modos de acesso por módulo (2.4: calendário, tarefas, RHID, denúncias, férias, desligamento, acompanhamento), remover logo e **Portal de entrada** (`portal_slug`, nome da marca, cor).
+**Editar empresa:** os mesmos campos, mais modos de acesso por módulo (2.4: calendário, tarefas, RHID, denúncias, férias, desligamento, acompanhamento), o seletor «Feedbacks internos» («Habilitado (padrão)» grava `null`, «Forçar desabilitado» grava `false`; ajuda «Liberado para todas as empresas. Use "Forçar desabilitado" para bloquear esta empresa.»; campo `feedbacks_access_mode`, opcional no `update`, valores `enabled`/`disabled`), remover logo e **Portal de entrada** (`portal_slug`, nome da marca, cor).
 
 **Fluxo de criação**
 
@@ -878,6 +891,7 @@ Lead incluído manualmente também gera aviso «novo lead».
 | **Gestão de ponto** | Credenciais RHID da empresa (`CompanyRhidCredentialsForm`) e métricas (`GET …/rhid-metrics`); exige `rhid` |
 | **Colaboradores** | Lista de colaboradores da empresa e atalho para o cadastro (7.3.4) |
 | **Regulamento interno** | Regulamentos publicados (7.3.5) |
+| **Contatos** | Contatos da empresa para comunicações da Talents (ver «Contatos da empresa» abaixo); exige `companies` |
 
 **Painel operacional (aba Empresa):** prop Inertia `dashboard` com contagens leves (usuários, campanhas NR-1, plano ativo, colaboradores, regulamentos, flags RHID/denúncias), atalhos tipados e listas curtas de campanhas/mapas. UI em `CompanyDashboardSummary` + `CompanyShortcutGrid`. Os atalhos de gestão não desenrolam bloco na página: abrem `CompanyShortcutDestinationModal` para escolher o destino. Acessos e Mapa de Propósito, que já eram atalhos de rotina, usam o mesmo modal. Excluir empresa abre a confirmação direto.
 
@@ -895,6 +909,19 @@ Lead incluído manualmente também gera aviso «novo lead».
 A revogação de compartilhamentos de documentos com revisores continua em `DELETE …/document-shares/{share}`.
 
 **Excluir campanha NR-1:** `DELETE /admin/companies/{company}/surveys/{survey}` executa `ArchiveAndDeleteSurvey` (arquiva e faz soft delete, registrando quem excluiu).
+
+**Contatos da empresa (aba «Contatos», `company_contacts`)**
+
+**Acesso:** ver pela aba com `companies:view`; criar, editar, conferir, arquivar e restaurar com `companies:edit` (rotas `/admin/companies/{company}/contatos/*`, com `scopeBindings`: contato de outra empresa dá 404). **Componente:** `CompanyContactsTab`. **Regras:** `CompanyContactService` e `App\Support\Hiring\CompanyContactEligibility`.
+
+| Item | Regra |
+|------|-------|
+| Campos | nome (obrigatório), função, e-mail, telefone internacional (com `+`, guardado também em `phone_digits`), canais autorizados (e-mail, WhatsApp), tópicos (`CompanyContactTopic`: Vagas, Pós-contratação, Pesquisas), habilitado, principal, responsável Talents (usuário `super_admin`), observações. Canal e-mail exige e-mail; canal WhatsApp exige telefone |
+| Principal | só um por empresa: marcar um desmarca os demais (com registro no histórico); arquivado não pode ser principal |
+| Conferência | «Conferir» grava `reviewed_at`/`reviewed_by`. Mudar e-mail ou telefone desfaz a conferência (regra no model) |
+| Arquivar e restaurar | arquivar tira o contato das comunicações e do posto de principal; o histórico fica |
+| Histórico | `company_contact_events`, só inserção: criado, alterado (só os nomes dos campos), conferido, arquivado, restaurado |
+| Elegibilidade | um contato só recebe comunicação se estiver **habilitado, conferido, não arquivado, com o tópico e o canal certos** (canal marcado e com o dado preenchido). A regra fica só em `CompanyContactEligibility`, usada na aba (coluna «Pode receber»), nas telas de envio e no servidor |
 
 #### 7.3.3 Acessos da empresa (pelo admin)
 
@@ -958,6 +985,7 @@ O `company_admin` também cria e acompanha avaliações no portal (9.17).
 | Visões | Lista ou agrupada por **vaga inferida** (`SolidesInferredVacancyGrouper`), porque a API não tem endpoint nativo de vagas |
 | Paginação | Paginação da própria API |
 | Sem integração | Mensagem de configuração pendente |
+| «Cadastrar no Talents» | botão por linha (lista e agrupada) com `contratacao_candidatos:create`: cria ou reaproveita o cadastro por `solides_id` e abre a ficha, sem sobrescrever dados (7.4.6) |
 
 #### 7.4.2 Acompanhamento de contratação (`/admin/acompanhamento`)
 
@@ -985,25 +1013,135 @@ O `company_admin` também cria e acompanha avaliações no portal (9.17).
 
 Processo também nasce automaticamente ao fechar proposta (7.2.1, passo 5), com aviso «acompanhamento criado».
 
+Para quem tem `contratacao_vagas:view`, cada processo do quadro mostra o bloco **«Vagas deste processo»** (título, situação, nº de candidatos e link para a vaga) e o link «Abrir vagas» (filtrado pelo processo). Sem essa permissão, o payload não traz `vacancies` nem `vacancies_url`. O portal (9.7) nunca recebe esses dados.
+
+##### Vagas (`/admin/contratacao/vagas`)
+
+**Acesso:** `contratacao_vagas`, com ação explícita por rota (Apêndice A). **Páginas:** `Admin/Hiring/Vacancies/Index` e `Admin/Hiring/Vacancies/Show`. **Regras:** `App\Services\Hiring\HiringVacancyService` e `TalentCandidateResolver`, sempre em transação. Nesta fase nenhuma ação envia aviso ou e-mail.
+
+O processo (`hiring_processes`) continua com as 8 fases macro acima; as **vagas** (`hiring_vacancies`) ficam dentro dele e copiam a empresa do processo. Cada vaga tem **etapas próprias** (`hiring_vacancy_stages`) e **candidaturas** (`hiring_applications`), com histórico só de inserção (`hiring_application_events`).
+
+| Item | Regra |
+|------|-------|
+| Lista | filtros por empresa, processo, situação e busca (título da vaga, empresa ou processo); 20 por página; colunas de candidatos e contratados |
+| Criar vaga | processo obrigatório e fora da fase Contratação; título (255), descrição (5.000). Nasce «Em andamento» com as etapas **Triagem, Entrevista, Finalistas e Contratado** (esta é a de contratado) |
+| Situação (`HiringVacancyStatus`) | Em andamento, Pausada, Concluída, Cancelada; Concluída e Cancelada gravam `closed_at`; voltar para as outras o limpa |
+| Adicionar etapa | entra logo antes da etapa de contratado; nome até 80, sem repetir na vaga (sem diferenciar maiúsculas); máximo de 20 etapas |
+| Renomear etapa | mesmo limite e sem repetir nome |
+| Marcar contratado | só uma etapa por vaga; ao trocar, `hired_at` é recalculado (quem está na nova etapa recebe a data, os demais a perdem) |
+| Excluir etapa | só sem candidatos; nunca a única nem a de contratado |
+| Reordenar etapas | exige a lista completa das etapas da vaga, sem repetição |
+| Incluir candidato | busca entre os cadastrados (`GET …/candidatos-disponiveis`: até 10 ativos fora da vaga, por nome, e-mail ou telefone) ou cadastro rápido (nome obrigatório, e-mail, telefone; exige também `contratacao_candidatos:create`); etapa inicial escolhida ou a primeira. Um candidato entra uma vez por vaga; cadastro arquivado é recusado |
+| Identificação do candidato | por `solides_id` e depois por e-mail normalizado (minúsculas, sem espaços); o nome nunca identifica a pessoa. E-mail já cadastrado reaproveita o cadastro existente; cadastro arquivado com o mesmo e-mail gera erro pedindo para restaurar, sem duplicar. Alterar o e-mail zera a conferência e a autorização do e-mail; alterar o telefone zera a conferência do telefone |
+| Mover candidato | arrastar no quadro (vue-draggable-plus) ou seletor de etapa acessível no cartão; posição dentro da etapa; etapa de contratado grava `hired_at`, outra etapa o limpa; mudança de etapa registra o evento «Mudança de etapa» |
+| Histórico e anotação | eventos «Incluído na vaga», «Mudança de etapa» e «Anotação» (2.000), com autor e data; não podem ser alterados nem excluídos |
+| Retirar da vaga | apaga a candidatura e o histórico dela; o cadastro do candidato continua |
+| Ficha | o nome do candidato no cartão leva à ficha (7.4.6) só para quem tem `contratacao_candidatos:view` |
+| Isolamento | rotas com `scopeBindings`: etapa ou candidatura de outra vaga dá 404; etapa de destino de outra vaga é recusada na validação |
+
 #### 7.4.3 Entrevistas IA (`/admin/entrevistas`)
 
-**Acesso:** `entrevistas_ia`. **Páginas:** `Admin/Interviews/Index`, `Create`, `Show`.
+**Acesso:** `entrevistas_ia`, com ação explícita por rota: ver (lista, entrevista, relatórios), criar (nova entrevista), editar (vincular, respostas, concluir revisão, reprocessar), excluir (excluir e restaurar). **Páginas:** `Admin/Interviews/Index`, `Create`, `Show`. **Regras:** `App\Services\Interview\InterviewService`, `InterviewTranscriptReader`, `InterviewAnswerExtractor`.
 
-1. «Nova entrevista»: nome do candidato (obrigatório), cargo, roteiro (obrigatório), empresa (opcional) e áudio (até 500 MB, `interview.max_upload_mb`).
-2. O job `ProcessInterviewAudioJob` (fila Redis, `ffmpeg`) transcreve com Whisper e extrai respostas por pergunta do roteiro.
-3. Status (`InterviewStatus`): Na fila → Transcrevendo → Extraindo → Concluída | Falhou.
-4. Relatório em PDF (`…/relatorio.pdf`) e DOCX (`…/relatorio.docx`).
-5. «Reprocessar» refaz a análise; «Excluir» remove entrevista e áudio.
+| Item | Regra |
+|------|-------|
+| Vínculo | a entrevista nasce ligada a um **candidato cadastrado** (busca só nos ativos, `GET /admin/entrevistas/candidatos`) e, opcionalmente, a uma candidatura dele (vaga). A empresa vem da vaga; `candidate_name` e `position_title` são preenchidos a partir do vínculo. Candidatura de outro candidato é recusada |
+| Entrevistas antigas | ficam sem vínculo (selo «Sem vínculo»); a ação «Vincular a candidato» exige escolher o cadastro e confirmar explicitamente candidato e vaga. **Nada é vinculado automaticamente pelo nome** |
+| Fontes (`InterviewTranscriptSource`) | `audio_whisper`: áudio até 500 MB (`interview.max_upload_mb`), `ffmpeg` + Whisper. `manual_text`: texto colado. `file_upload`: TXT ou VTT até 2 MB; VTT vira texto sem marcações de tempo («<v Nome>» vira «Nome: »). `plaud`: texto colado ou TXT exportado do Plaud, lido pelo mesmo parser dos Feedbacks (`PlaudTranscriptExtractor`). O áudio só é exigido na fonte de áudio; fontes de texto pulam a transcrição (limite de 1.000.000 caracteres) |
+| Confirmação | antes de gravar texto (criação com fonte de texto ou «Vincular a candidato»), a tela mostra candidato e vaga e exige a caixa de confirmação; o servidor confere que o candidato e a vaga confirmados são os do vínculo |
+| IA | só roda com a IA habilitada e com chave em Configuração → Geral. Sem IA, entrevista de texto fica «Concluída» e pronta para preenchimento manual; a de áudio é transcrita e fica pronta para preenchimento. A IA só sugere: sem trecho literal da transcrição que sustente a resposta, a resposta fica vazia e marcada `evidence_missing` (texto sem evidência, «Não mencionado» ou trecho que não existe na transcrição são descartados) |
+| Respostas e revisão humana | por pergunta: resposta, evidência (`raw_quote`) e observação; «Salvar rascunho» a qualquer momento depois do processamento. Resposta ou evidência alterada vira «Revisão humana»; a da IA aparece como «Sugestão da IA não revisada» até «Concluir revisão», que grava `reviewed_at` e `reviewed_by`. Alterar resposta depois de concluir reabre a revisão |
+| Status (`InterviewStatus`) | Na fila → Transcrevendo → Gerando relatório → Concluída \| Falhou |
+| Relatórios | PDF (`…/relatorio.pdf`) e DOCX (`…/relatorio.docx`) depois de concluída; mostram a situação da revisão humana, «Sugestão da IA não revisada» nas respostas da IA ainda não revisadas, «Sem evidência na transcrição», a evidência e a observação |
+| Exclusão recuperável | «Excluir» é soft delete (áudio, texto e respostas ficam); filtro «Excluídas» na lista, com «Restaurar». Entrevista em processamento (na fila, transcrevendo ou gerando relatório) não pode ser excluída, revinculada, editada nem reprocessada. Excluir entrevista nunca exclui o candidato |
+| Ligações | ficha do candidato (7.4.6) lista as entrevistas dele; o quadro da vaga tem o atalho «Entrevistas (N)» por candidatura (lista filtrada por `hiring_application_id`, com «Nova entrevista» já vinculada) |
 
-Dependências: chave de transcrição em Configuração → Geral; worker da fila com timeout de 1.800 s.
+Dependências: chave de transcrição em Configuração → Geral (só para áudio); worker da fila com timeout de 1.800 s.
 
 #### 7.4.4 Roteiros de entrevista (`/admin/entrevistas/roteiros`)
 
 **Acesso:** `entrevistas_roteiros`. Roteiros com nome, padrão (sim/não) e seções com perguntas; o seeder cria um roteiro padrão de 7 seções (`InterviewQuestionnaireSeeder`).
 
+**Versionamento:** roteiro com entrevistas (inclusive excluídas, que podem ser restauradas) fica «Em uso»: seções e perguntas não podem ser alteradas nem removidas no lugar (antes, apagar pergunta apagava as respostas em cascata), e o roteiro não pode ser excluído. Nome, descrição e «padrão» continuam editáveis. «Duplicar como nova versão» (`POST …/roteiros/{questionnaire}/duplicar`, ação Criar; o botão só aparece com `entrevistas_roteiros:create`) copia seções e perguntas (mesmas chaves) para um roteiro novo, não padrão, com `version` seguinte e `parent_id` na raiz da família, livre para edição até ter entrevistas.
+
+##### Avaliação e dossiê da candidatura (`/admin/contratacao/vagas/{vacancy}/candidaturas/{application}/avaliacao`)
+
+**Acesso:** `contratacao_vagas` — ver (`view`), editar (`edit`), aprovar o dossiê (`validate`, ação «Validar» da matriz, disponível só neste módulo). **Página:** `Admin/Hiring/Assessments/Edit`. **Regras:** `HiringAssessmentService` e `HiringDossierRenderer`. Uso interno: nada vai para o portal da empresa.
+
+| Item | Regra |
+|------|-------|
+| Registro | uma avaliação por candidatura (`hiring_assessments`), aberta pelo atalho «Avaliação» no cartão do quadro da vaga |
+| Campos | perfil de sucesso; case (descrição e resultado); critérios `[{criterio, evidencia, origem, avaliacao}]` com avaliação Atende, Atende parcialmente, Não atende ou Sem evidência (`HiringAssessmentRating`; critério avaliado sem evidência é recusado); síntese da entrevistadora; limites da avaliação; decisão humana (`HiringAssessmentDecision`: Pendente, Recomendado, Não recomendado, Em espera) |
+| Aprovação | exige avaliação salva, decisão diferente de Pendente e síntese preenchida; grava `approved_at`/`approved_by`. Alterar o conteúdo depois desfaz a aprovação. Candidatura com dossiê aprovado não pode ser retirada da vaga |
+| Dossiê em PDF | `GET …/dossie.pdf` (dompdf, padrão visual do relatório de entrevista) só depois de aprovado (antes: 422). Contém identificação do candidato (nome, cargo e empresa atuais), vaga, empresa, processo, etapa, avaliação, lista das entrevistas da candidatura (data, roteiro e versão, fonte, revisão) e a nota metodológica fixa: decisão humana; a IA não decide; anexos internos, protocolos psicológicos e dados financeiros, criminais ou jurídicos não entram. Não lê anexos, observações nem contato do candidato |
+| Isolamento | rotas com `scopeBindings`: candidatura de outra vaga dá 404; o atalho `…/candidaturas/{application}/entrevistas/{interview}` só abre entrevista da própria candidatura (404 para outra) |
+| Enviar dossiê ao cliente | na avaliação aprovada, com `contratacao_vagas,validate`: só contatos elegíveis da empresa da vaga com o tópico «Vagas» e o canal e-mail; o PDF é gerado do conteúdo aprovado no momento do envio e vai anexado; registro em `hiring_communications` com `kind = dossier` e a mesma idempotência e limite diário da comunicação de etapa (a chave inclui a data da aprovação: nova aprovação permite novo envio). O portal da empresa continua sem ver o dossiê |
+
+##### Comunicação de etapa (`/admin/contratacao/vagas/{vacancy}/comunicacoes`)
+
+**Acesso:** `contratacao_vagas,edit` (o histórico aparece para quem vê a vaga). **Componentes:** `StageCommunicationModal` («Comunicar etapa» no quadro da vaga) e `CommunicationHistory`. **Regras:** `HiringCommunicationService`; e-mail `HiringCommunicationMail`.
+
+| Item | Regra |
+|------|-------|
+| Destinatários | contatos da empresa da vaga elegíveis para o tópico «Vagas» no canal escolhido (`CompanyContactEligibility`). Contato de outra empresa ou inelegível é recusado (422). A tela mostra quantos contatos não podem receber e leva à aba «Contatos» |
+| Texto | modelo editável com nome da vaga, etapa e quantidade de candidatos na etapa. Nunca leva nome nem dado de candidato: texto que cite nome, e-mail ou telefone de candidato da vaga é recusado |
+| Revisão | antes do envio, `POST …/comunicacoes/revisar` mostra destinatários, motivos de inelegibilidade e se o mesmo texto já saiu para cada contato |
+| Idempotência | chave `sha256` de tipo + vaga + etapa (ou candidatura e aprovação, no dossiê) + contato + canal + texto, única em `hiring_communications.idempotency_key`. O mesmo conteúdo não sai duas vezes; para repetir, muda-se o texto ou confirma-se «Enviar novamente», que gera e registra uma chave nova. Rascunho ou falha anterior com o mesmo conteúdo é reaproveitado na nova tentativa |
+| E-mail | pelo SMTP do painel (`MailSetting`); sem SMTP ligado, o envio por e-mail é recusado. Limite fixo de **20 e-mails de comunicação por dia** (`HiringCommunicationService::DAILY_EMAIL_LIMIT`, fuso America/Sao_Paulo, etapa + dossiê); acima disso o envio inteiro é recusado com a quantidade restante. Falha do servidor de e-mail vira `failed` com o motivo, sem quebrar a tela |
+| WhatsApp | o sistema não envia: gera o texto (rascunho) e registra «Texto copiado» quando o usuário clica em «Copiar» (`POST …/comunicacoes/{communication}/copiado`). Nunca marca como enviado nem entregue |
+| Status (`HiringCommunicationStatus`) | Rascunho, Enviado ao servidor de e-mail, Falhou, Texto copiado. Nunca «entregue» nem «lido» |
+| Histórico | seção «Comunicações com a empresa» no quadro da vaga (tipo, canal, contato, destinatário, etapa, texto, status, motivo da falha, autor e data); na avaliação, «Envios do dossiê» |
+| Isolamento | `scopeBindings`: comunicação de outra vaga dá 404 |
+
+##### Pós-contratação (`/admin/contratacao/pos-contratacao`)
+
+**Acesso:** `contratacao_pos` — ver (`view`); registrar admissão, confirmar admissão, editar o vínculo, pausar, retomar, anotar, pular marco e enviar convites (`edit`); desligar e readmitir (`delete`). Rotas com `scopeBindings` (marco de outro ciclo e convite de outro marco dão 404); gestor e colaborador de outra empresa são recusados (422). **Páginas:** `Admin/Hiring/Followup/Index` (fila) e `Show` (ciclo); componentes `AdmissionModal` e `FollowupSendModal`. **Regras:** `EmploymentCycleService`, `FollowupInvitationService`, `FollowupResponseService` e a classe pura `App\Support\Hiring\FollowupMilestoneStatus`. Nada aqui vai ao portal da empresa.
+
+| Item | Regra |
+|------|-------|
+| Registrar admissão | no quadro da vaga, em candidatura na etapa de contratado: colaborador da empresa da vaga, escolhido ou criado (mesmo e-mail na empresa reaproveita o cadastro; o nome não identifica); cargo; gestor = contato da empresa com o tópico «Pós-contratação» (7.3.2), mostrado em destaque; e-mail, telefone e autorização do colaborador. O colaborador fica ligado ao candidato (`company_employees.talent_candidate_id`). Uma admissão por candidatura |
+| Ciclo de vínculo (`employment_cycles`) | `EmploymentCycleStatus`: Admissão pendente (sem data confirmada, sem marcos), Ativo, Pausado, Desligado. Só um ciclo em aberto por colaborador e empresa. Desligar aceita data opcional (não anterior à admissão) e revoga os convites em aberto. Readmitir exige data válida, depois do desligamento anterior, e cria um ciclo novo; os anteriores ficam («Ciclos anteriores» no detalhe). Histórico só de inserção em `employment_cycle_events`, que também guarda o registro de acompanhamento (anotações) |
+| Marcos (`hiring_followup_milestones`) | D15, D30, D60 e D90 = admissão + N dias, criados ao confirmar a admissão. Status (`FollowupStatus`): Programado (antes da data), Devido (da data até + 7 dias), Vencido · revisar (depois), Pausado (ciclo pausado), Concluído (com resposta ou pulado com motivo), Desligado (ciclo encerrado). Depois do D90 concluído, o ciclo fica Concluído na fila. **Sem retroativo:** admissão antiga cria marcos já vencidos que só pedem revisão; não existe envio agendado |
+| Fila | filtros por status (inclusive Admissão pendente), empresa e busca (colaborador, empresa ou cargo); colunas colaborador, empresa, cargo, gestor, admissão, próximo marco e status; botão «Enviar acompanhamento» no próximo marco |
+| Enviar acompanhamento | ação única no marco: destino Colaborador, Gestor ou Ambos; canal E-mail ou Copiar link e mensagem. Cada destino é avaliado sozinho: sem elegibilidade, é pulado com o motivo («Gestor não definido», «Gestor sem conferência», «Colaborador sem autorização de e-mail»…) e o outro segue (envio parcial explícito). A tela nunca trava pedindo contato da empresa: num marco vencido sem gestor, mostra o motivo e deixa enviar ao colaborador. Ciclo pendente, pausado ou desligado e marco pulado não enviam |
+| Elegibilidade | colaborador: autorização de convite e e-mail (no canal e-mail) ou e-mail/telefone (no copiar). Gestor: `CompanyContactEligibility` com o tópico «Pós-contratação» e o canal (e-mail no canal e-mail; WhatsApp no copiar link e mensagem) |
+| Convites (`hiring_followup_invitations`) | um convite válido por marco e destino, com o destinatário registrado no momento, token UUID e validade de 30 dias. Tentar de novo reaproveita o existente; destinatário diferente (outro gestor, e-mail alterado) revoga o antigo com o motivo e gera outro. Estados mostrados separadamente, sem confundir (`FollowupInvitationState`): Gerado, Link copiado, Enviado ao servidor de e-mail, Falhou, Respondido, Expirado, Revogado. Copiar registra `copied_at` sozinho, sem confirmação, e nunca `emailed_at` |
+| E-mail | pelo SMTP do painel (`HiringFollowupInvitationMail`), síncrono, com falha registrada no convite; conta no **mesmo limite diário de 20 e-mails de Contratação** da comunicação de etapa e do dossiê (fuso America/Sao_Paulo). Acima do limite, o envio inteiro é recusado com a quantidade restante |
+| Respostas | aparecem só no detalhe do ciclo (Talents): nota, comentário e pedido de apoio. O comentário do colaborador nunca vai ao gestor nem ao portal da empresa |
+| Ligações | a ficha do candidato mostra «Vínculo e pós-contratação» (empresa, cargo, gestor, status e link do ciclo) e o quadro da vaga mostra «Vínculo · status» na candidatura, com link para o ciclo |
+| União de cadastros | `MergeCompanyEmployees` (Feedbacks) também move os ciclos, na mesma transação, idempotente e com a contagem em `feedback_audit_logs`. Os ciclos ficam fora da pré-visualização (ela aparece no portal) e a união é recusada se os dois cadastros tiverem ciclo em aberto |
+
 #### 7.4.5 Profiler — Planejado
 
 `/admin/em-breve/profiler` (`Admin/ComingSoon`) e a permissão `solides_profiler` existem; não há funcionalidade.
+
+#### 7.4.6 Candidatos (`/admin/contratacao/candidatos`)
+
+**Acesso:** `contratacao_candidatos`, com ação explícita por rota (Apêndice A); anexos internos exigem também `contratacao_anexos`. **Páginas:** `Admin/Hiring/Candidates/Index`, `Show`, `Form` (criar e editar) e `Attachments`. **Regras:** `TalentCandidateService`, `TalentCandidateResolver`, `TalentCandidateAttachmentService` e `TalentCandidateAuditor` (`App\Services\Hiring`).
+
+| Item | Regra |
+|------|-------|
+| Lista | busca por nome, e-mail ou telefone (com 3 ou mais dígitos, compara só os dígitos: `phone_digits`); filtro Ativos (padrão) / Arquivados / Todos; 20 por página; nº de vagas por candidato. Ícones Visualizar, Editar, Arquivar/Restaurar e Anexos, com `title` e `aria-label` em PT-BR; Anexos só com `contratacao_anexos:view` |
+| Ficha | dados completos e conferências; vagas em que o candidato está (empresa, vaga, situação da vaga, etapa atual, link para a vaga só com `contratacao_vagas:view`); histórico de cada candidatura; bloco «Entrevistas» (vazio até a Fase 3); «Histórico do cadastro» (auditoria, até 100 registros); botão «Anexos internos (N)» só com `contratacao_anexos:view` |
+| Campos | nome (obrigatório, 255), e-mail, telefone internacional (começa com `+`, 8 a 15 dígitos; também exigido no cadastro rápido da vaga), e-mail conferido, telefone conferido, autoriza convites por e-mail, preferência de contato (E-mail, WhatsApp ou Telefone), origem (120), cargo atual, empresa atual, observações (5.000) |
+| Criar | não duplica: se o e-mail normalizado ou o `solides_id` já existir, recusa com «Já existe um cadastro…» e o link «Abrir o cadastro existente» |
+| Editar | e-mail igual ao de outro cadastro é recusado da mesma forma. Mudar o e-mail zera «e-mail conferido» e «autoriza convites»; mudar o telefone zera «telefone conferido» (regra no model, vale também fora da tela) |
+| Arquivar e restaurar | arquivar grava `archived_at`/`archived_by`; restaurar limpa. Nenhum dos dois apaga candidaturas, entrevistas ou anexos. Arquivado não entra em vaga nova (seleção ou cadastro rápido) nem aparece em «candidatos disponíveis». Restaurar é recusado se outro cadastro ativo tiver o mesmo e-mail. **Não existe exclusão definitiva** |
+| Cadastro arquivado em outra tela | a mensagem do `TalentCandidateResolver` («Já existe um cadastro arquivado…») traz o link da ficha, onde fica «Restaurar», só para quem tem `contratacao_candidatos:view` e `delete` |
+| «Cadastrar no Talents» (Banco de talentos, 7.4.1) | botão por linha, nas visões lista e agrupada, com `contratacao_candidatos:create`. Cria (nome, e-mail, telefone, origem «Sólides») ou reaproveita por `solides_id` e depois por e-mail e leva à ficha. Reaproveitar nunca sobrescreve dados; só grava o `solides_id` num cadastro que ainda não o tinha. E-mail inválido vindo da Sólides é descartado; o telefone é guardado como veio |
+
+##### Anexos internos (`/admin/contratacao/candidatos/{candidate}/anexos`)
+
+| Item | Regra |
+|------|-------|
+| Arquivos aceitos | PDF, PNG, JPG ou JPEG até 5 MB. O tipo é conferido pelo conteúdo (`finfo`) e precisa bater com a extensão (PNG com extensão `.pdf` ou texto com extensão `.pdf` são recusados) |
+| Campos obrigatórios | profissional ou pessoa que entregou (255), data de recebimento (não futura), finalidade administrativa (1.000) e a caixa «Confirmo que o arquivamento deste documento tem finalidade administrativa e foi conferido quanto à privacidade» (grava `privacy_confirmed_at`) |
+| Deduplicação | mesmo `sha256` no mesmo candidato é recusado («Este arquivo já foi anexado a este candidato.»); em outro candidato é permitido |
+| Armazenamento | disco `local` (privado, `storage/app/private`) em `candidates/{id}/`, com nome gerado (UUID); o nome original fica só no banco. O caminho nunca vai ao frontend |
+| Download | só pelo controller, `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, sem cache; auditado |
+| Exclusão | apaga registro e arquivo; auditada |
+| Uso | nunca entram em exportação, relatório, IA, dossiê nem portal da empresa, e não são analisados automaticamente |
+| Isolamento | rotas com `scopeBindings`: anexo de outro candidato dá 404 |
 
 ### 7.5 Reuniões IA (`/admin/reunioes`) — Oculto no menu
 
@@ -1023,7 +1161,7 @@ As regras de cada módulo estão no capítulo 9; aqui ficam só as diferenças d
 
 | Módulo | Permissão admin | Diferença em relação ao portal |
 |--------|-----------------|--------------------------------|
-| Feedbacks | `feedbacks` | A Talents atua como administradora da empresa (vê todas as sessões, inclusive a seção do líder). Modelos criados ou duplicados no admin são universais (todas as empresas), mesmo com empresa selecionada; a lista de modelos mostra os universais e os da empresa selecionada, todos editáveis pela Talents (9.8). |
+| Feedbacks | `feedbacks` | A Talents atua como administradora da empresa (vê todas as sessões, inclusive a seção do líder). Modelos criados ou duplicados no admin são universais (todas as empresas), mesmo com empresa selecionada; a lista de modelos mostra os universais e os da empresa selecionada, todos editáveis pela Talents (9.8). O seletor lista toda empresa **ativa** que não esteja com Feedbacks forçado como desabilitado, com ou sem assinatura (`FeedbackCompanyContext::availableCompanies()`); selecionar empresa bloqueada dá 403. No cabeçalho do painel, ao lado do chip «Empresa: …», o botão «Escolher outra empresa» (`DELETE /admin/feedbacks/company`) limpa a empresa da sessão e volta à tela «Selecione a empresa»; não aparece quando a empresa vem do workspace da empresa com Feedbacks habilitado (aí não há tela de seleção). O card «Trocar empresa» continua |
 | Férias | `ferias` | Mesmo cadastro; alimenta o calendário da empresa |
 | Desligamento | `desligamento` | Acesso também por Voz do Time → Pesquisas |
 | Denúncias | `denuncias` | Lista por empresa; mensagens e status como no portal |
@@ -1955,9 +2093,11 @@ Fluxo público em 10.2.
 
 **Acesso:** `acompanhamento` (criar, editar e excluir exigem as ações correspondentes). **Página:** `Client/HiringFollowUp/Index` com o mesmo quadro de 8 etapas do admin (7.4.2). Para `company_admin`, o menu mostra o número de processos ativos.
 
+A empresa vê só a fase macro do processo e os comentários. Vagas, candidatos, etapas das vagas e histórico das candidaturas são internos da Talents: o `AcompanhamentoController` do portal não envia `vacancies` nem `vacancies_url`, e as rotas `/admin/contratacao/vagas/*` recusam quem não é `super_admin`.
+
 ### 9.8 Feedbacks internos (`/client/feedbacks`)
 
-**Acesso:** `feedbacks`. **Páginas:** `Client/Feedbacks/*` dentro de `FeedbacksLayout`.
+**Acesso:** `feedbacks`. O módulo está habilitado para toda empresa, sem depender de assinatura ou plano; só fica fora quando a Talents marca «Forçar desabilitado» na edição da empresa (`feedbacks_access = false`), e aí menu e rotas recusam com 403. O `company_admin` acessa por ter o módulo habilitado; o `company_user` segue a matriz de permissões (2.4). **Páginas:** `Client/Feedbacks/*` dentro de `FeedbacksLayout`.
 
 #### 9.8.1 Telas
 
@@ -1969,30 +2109,36 @@ Fluxo público em 10.2.
 | Sessões | `/client/feedbacks/sessions` | lista de sessões em cartões; «Excluir» no cartão para quem pode excluir |
 | Novo feedback | `/client/feedbacks/sessions/create` | colaborador (nome obrigatório, e-mail), modelo, líder (obrigatório), data agendada (obrigatória), próximo alinhamento, título. Modelo digitado sem correspondência mostra erro (não é trocado pelo padrão); em branco, usa o padrão |
 | Editar sessão | `/client/feedbacks/sessions/{s}/edit` | seção «Gravação e relatório», respostas por seção (`FeedbackQuestionField`), perguntas extras por seção, enviar para assinatura |
-| Sessão | `/client/feedbacks/sessions/{s}` | respostas, painel de assinaturas, seção «Gravação e relatório» (`FeedbackRecordingPanel`), PDF, «Excluir» para quem pode excluir |
-| Modelos | `/client/feedbacks/templates` (e `/create`, `/{template}/edit`, `POST /{template}/duplicar`) | modelos de feedback da própria empresa: nome, descrição, ativo, seções (perguntas ou só texto de orientação; quem responde: líder e colaborador, colaborador, líder ou reflexão do líder, só administradores) e perguntas (Texto longo, Texto curto, Escolha única, Lista de itens, Começar/continuar/melhorar/parar, Tabela de ações; obrigatória); os modelos da Talents aparecem como referência, com «Duplicar» |
+| Sessão | `/client/feedbacks/sessions/{s}` | faixa com o modelo e a versão usada («Atualizar para a versão X» quando houver mais nova e o feedback estiver aberto), respostas (com o bloco «Fora da versão atual», se houver), painel de assinaturas, «Reabrir para edição» no menu quando aguarda assinaturas, seção «Gravação e relatório» (`FeedbackRecordingPanel`), PDF, «Excluir» para quem pode excluir |
+| Modelos | `/client/feedbacks/templates` (e `/create`, `/{template}/edit`, `POST /{template}/duplicar`) | modelos de feedback da própria empresa: nome, descrição, versão atual, «Arquivar/Reativar», histórico de versões na edição, seções (perguntas ou só texto de orientação; quem responde: líder e colaborador, colaborador, líder ou reflexão do líder, só administradores) e perguntas (Texto longo, Texto curto, Escolha única, Lista de itens, Começar/continuar/melhorar/parar, Tabela de ações; obrigatória); os modelos da Talents aparecem como referência, com «Duplicar» |
 
 #### 9.8.2 Regras
 
 | Regra | Detalhe |
 |-------|---------|
 | Modelo padrão | «Contrato de Expectativas — Padrão Talents» (`FeedbackTemplateSeeder`) |
-| Modelos universais × da empresa | Dois tipos (`FeedbackTemplateController`). **Universais** (`company_id` nulo): criados pela Talents no admin, valem para todas as empresas; todo modelo criado ou duplicado no admin nasce universal, mesmo com empresa selecionada. Só as rotas do admin editam, desativam e excluem universais; no portal eles aparecem em «Modelos da Talents» só para usar e duplicar (editar, alterar, ver impacto ou excluir pelo portal: 404). **Da empresa** (`company_id` preenchido): criados pelo RH no portal, só aparecem para a empresa dona (lista, «Novo feedback» e edição; para outra empresa é 404, também no admin com outra empresa selecionada). No admin, a tela de modelos mostra «Modelos universais (todas as empresas)» e «Modelos desta empresa» (selo «Desta empresa», editáveis pela Talents); no portal, «Modelos da empresa» e «Modelos da Talents». «Novo feedback» oferece os universais ativos e os ativos da empresa. Uso exibido: no admin, para universais, total geral e o da empresa selecionada («Usado em N feedbacks no total · M nesta empresa»); no portal, só o da própria empresa |
-| Modelos da empresa | Só o administrador (`company_admin`, ou a Talents com a empresa selecionada) cria, edita e exclui; `company_user` recebe 403. Depois de usado em algum feedback (a partir do primeiro feedback criado, mesmo sem respostas; para universais, em **qualquer** empresa), seções e perguntas ficam travadas, porque as respostas apontam para as perguntas: só nome, descrição e ativo mudam, a tela mostra o motivo com os campos desabilitados, o servidor recusa estrutura enviada para modelo travado, Pode ser desativado ou excluído (ver «Excluir modelo»). Não há versionamento por edição |
+| Modelos universais × da empresa | Dois tipos (`FeedbackTemplateController`). **Universais** (`company_id` nulo): criados pela Talents no admin, valem para todas as empresas; todo modelo criado ou duplicado no admin nasce universal, mesmo com empresa selecionada. Só as rotas do admin editam, arquivam e excluem universais; no portal eles aparecem em «Modelos da Talents» só para usar e duplicar (editar, alterar, ver impacto ou excluir pelo portal: 404). **Da empresa** (`company_id` preenchido): criados pelo RH no portal, só aparecem para a empresa dona (lista, «Novo feedback» e edição; para outra empresa é 404, também no admin com outra empresa selecionada). No admin, a tela de modelos mostra «Modelos universais (todas as empresas)» e «Modelos desta empresa» (selo «Desta empresa», editáveis pela Talents); no portal, «Modelos da empresa» e «Modelos da Talents». «Novo feedback» oferece os universais ativos e os ativos da empresa. Uso exibido: no admin, para universais, total geral e o da empresa selecionada («Usado em N feedbacks no total · M nesta empresa»); no portal, só o da própria empresa |
+| Modelos da empresa | Só o administrador (`company_admin`, ou a Talents com a empresa selecionada) cria, edita, arquiva e exclui; `company_user` recebe 403. Nome e descrição mudam a qualquer momento sem criar versão. Seções e perguntas são sempre editáveis: ver «Versões do modelo». Não há mais a trava de estrutura nem o «Ativo/Inativo» (substituído por «Arquivar/Reativar») |
+| Versões do modelo | A estrutura (seções e perguntas) fica em versões (`feedback_template_versions`), cada uma dona das próprias linhas de seção e pergunta; título e descrição são guardados na versão. Cada feedback aponta para a versão usada na criação (`feedback_sessions.feedback_template_version_id`) e as respostas continuam ligadas à linha da pergunta em que foram dadas. Salvar a estrutura (`FeedbackTemplateVersioning`): versão atual sem nenhum feedback (inclusive excluído) é alterada no lugar; versão atual já usada (em qualquer empresa, no caso dos universais) gera a versão N+1 («Modelo atualizado: criada a versão N+1. Os feedbacks já feitos continuam na versão N.»); estrutura igual (mesmo hash) não gera versão; nome, descrição e arquivamento também não. Na edição, aviso «Usado em N feedbacks; salvar mudanças nas seções e perguntas criará a versão X» e «Histórico de versões» (número, data, autor e feedbacks de cada versão). A lista mostra «Versão N» em cada modelo. Trilha `template_version_created` |
+| Chaves estáveis | Seção e pergunta mantêm a chave (`key`) entre versões; o que é novo recebe chave gerada (`s_`/`q_` + 10 caracteres) que nunca foi usada em nenhuma versão do modelo, inclusive as removidas; chave enviada que já existiu e não está na versão atual é trocada. O 9-box e o termômetro leem por chave (`termometro_nivel`, `perc_*`), então valem entre versões |
+| Arquivar/Reativar | «Arquivar» (`PATCH …/templates/{template}/arquivar`) tira o modelo de «Novo feedback» (a criação direta é recusada: «… de outra empresa ou arquivado»); os feedbacks existentes seguem normais (tela, PDF, painel, assinatura). «Reativar» (`…/reativar`) devolve. Grava `archived_at`/`archived_by_user_id` e trilha `template_archived`/`template_unarchived`. Universal só é arquivado pelo admin (no portal, 404); no portal, universal arquivado some da lista «Modelos da Talents». A migration converteu os modelos inativos em arquivados |
+| Atualizar feedback de versão | No detalhe, «Atualizar para a versão X» aparece quando há versão mais nova, o feedback está em rascunho ou em preenchimento, sem convite de assinatura, e o usuário tem «editar» em Feedbacks. A prévia (`GET …/sessions/{session}/versao`) lista perguntas mantidas, novas e que saem, com as respostas; a atualização (`PATCH …/sessions/{session}/versao`, exige `confirmed` e o id da versão vista na prévia) reaponta as respostas cuja pergunta tem a mesma chave; respostas sem par ficam na linha antiga e aparecem como «Fora da versão atual» na tela, no PDF e no contexto da IA (sinalizadas, nunca misturadas às perguntas atuais); perguntas extras são remapeadas pela chave da seção. Trilha `session_version_updated` com versão de/para e contagens, nunca o conteúdo (`FeedbackSessionVersionUpdater`) |
+| Feedback imutável | Concluído, cancelado ou com convite de assinatura: editar (tela e `PATCH`) recusa com 403 («Este feedback aguarda assinaturas e não pode ser editado. Use «Reabrir para edição» para alterá-lo.»); sempre exibido pela versão própria (tela, PDF e assinatura) |
+| Reabrir para edição | Feedback aguardando assinaturas: «Reabrir para edição» (menu do detalhe; `PATCH …/sessions/{session}/reabrir`) para quem tem «editar» em Feedbacks. O aviso mostra quantos convites são cancelados e quantas assinaturas coletadas serão descartadas e exige confirmação; o servidor confere a quantidade de assinadas (`signed_count`). Marca as assinaturas com `cancelled_at`/`cancelled_by_user_id` (ficam no histórico, fora da contagem), volta o feedback para «Em preenchimento» e grava `session_reopened` (convites e assinaturas descartadas, sem conteúdo). Os links antigos passam a recusar (10.6) |
 | Mínimo de estrutura | o modelo precisa de pelo menos uma seção com perguntas (seção só de orientação não conta); cada seção de perguntas precisa de ao menos uma pergunta; escolha única, de duas opções (opção em branco é descartada) |
-| Duplicar modelo | «Duplicar» (na lista, para modelos da empresa e da Talents, e no aviso de modelo travado) cria uma cópia editável e sem trava, com seções, perguntas e opções, nome «… (cópia)», ativa; no admin a cópia é universal, no portal é da empresa de quem duplica; abre a edição da cópia. Preserva chaves, tipo de seção, público e valores das opções (o painel da equipe lê respostas por chave e valor), também ao salvar pelo editor. Modelo de outra empresa: 404. No admin exige `feedbacks:create` |
+| Duplicar modelo | «Duplicar» (na lista, para modelos da empresa e da Talents) cria uma cópia (versão 1) com a estrutura da versão atual, com seções, perguntas e opções, nome «… (cópia)», ativa; no admin a cópia é universal, no portal é da empresa de quem duplica; abre a edição da cópia. Preserva chaves, tipo de seção, público e valores das opções (o painel da equipe lê respostas por chave e valor), também ao salvar pelo editor. Modelo de outra empresa: 404. No admin exige `feedbacks:create` |
 | Excluir feedback | «Excluir» na lista de sessões e no detalhe abre o alerta «Este feedback e todas as respostas serão excluídos e não poderão ser recuperados por aqui.», com colaborador, líder, data e número de respostas, e exige marcar a confirmação; o servidor recusa sem `confirmed` (`DELETE …/sessions/{session}`, `DeleteFeedbackSession`). Pode excluir: no portal, o administrador da empresa (`company_admin`) com a permissão de excluir do módulo; no admin, a matriz `feedbacks` com «excluir». Líder comum (`company_user`) não exclui, nem os próprios feedbacks (403); feedback de outra empresa, 403 |
-| Excluir modelo | modelo nunca usado: confirmação simples. Modelo usado: o alerta busca o impacto no servidor (`GET …/templates/{template}/exclusao`, feedbacks e respostas) e diz «Este modelo já foi usado em N feedbacks. Ao excluí-lo, os N feedbacks feitos com ele e todas as respostas também serão excluídos, e isso afeta o painel de Feedbacks (termômetro e 9-box) e os históricos dos colaboradores. Essa ação não pode ser desfeita por aqui.»; botão «Excluir modelo e N feedbacks», habilitado só com a caixa de confirmação marcada. O servidor recusa sem `confirmed` e recusa se a contagem confirmada (`sessions_count`) não bate com a atual (o alerta recarrega o impacto e pede nova confirmação). Modelo universal não é excluível pela empresa (404). Universal em uso em qualquer empresa: a Talents não consegue excluir; o alerta e o servidor respondem «Este modelo já foi usado em feedbacks. Desative-o para que não apareça em novos feedbacks.» (o impacto vem com `blocked`); sem uso, exclui com confirmação simples. A exclusão nunca apaga feedbacks de outras empresas. Admin só com «ver», 403 (`DeleteFeedbackTemplate`) |
+| Excluir modelo | Exclusão definitiva só para modelo nunca usado (nenhum feedback, em nenhuma versão e em nenhuma empresa): «Excluir» só aparece nesse caso e pede confirmação simples. Modelo usado não é excluído: o alerta (`GET …/templates/{template}/exclusao`) e o servidor respondem «Este modelo já foi usado em feedbacks e não pode ser excluído. Arquive-o para que não apareça em novos feedbacks.». Nenhum feedback é apagado junto com um modelo (o caminho antigo «excluir com alerta», que apagava os feedbacks, foi removido). Universal não é excluível pela empresa (404); admin só com «ver», 403 (`DeleteFeedbackTemplate`) |
 | Conversão dos modelos existentes | Migration `2026_11_26_200000_make_talents_feedback_templates_universal`: modelos com empresa criados por `super_admin` (papel do usuário ou workspace Talents) passam a universais, com a empresa antiga em `converted_from_company_id`; modelos do RH (`company_admin`/`company_user`) ou sem autor não mudam; feedbacks já feitos continuam na empresa original; o `down()` devolve cada modelo à empresa de origem |
-| Como a exclusão é feita | exclusão lógica (`deleted_at`) em modelo, feedbacks e respostas, em cascata e numa única transação (tudo ou nada), para o suporte poder recuperar; a interface diz que não é possível desfazer. Seções e perguntas do modelo e as assinaturas ficam como estão (recuperação completa). Feedback excluído some da lista, do painel (termômetro, 9-box, linha do tempo, pontos fortes, recentes) e dos contadores; detalhe, edição, PDF e link público de assinatura dão 404. Modelo excluído some da lista de modelos e de «Novo feedback», e é recusado em requisição direta (criar feedback, editar, duplicar). Avisos já publicados sobre um feedback excluído continuam no sino e abrem a lista de Feedbacks. Apagar uma resposta na edição continua sendo exclusão definitiva da resposta |
-| Auditoria da exclusão | `feedback_audit_logs`: quem excluiu, quando, a ação (`session_deleted`/`template_deleted`), o id e o nome do que foi excluído, quantos feedbacks e respostas foram afetados e, para modelo, os ids dos feedbacks (para recuperação) |
+| Como a exclusão é feita | exclusão lógica (`deleted_at`): do modelo sem uso (só ele) e do feedback (com respostas, gravação e relatórios, numa única transação), para o suporte poder recuperar; a interface diz que não é possível desfazer |
+| Auditoria da exclusão | `feedback_audit_logs`: quem excluiu, quando, a ação (`session_deleted`/`template_deleted`), o id e o nome do que foi excluído, quantos feedbacks e respostas foram afetados (modelo excluído nunca tem feedbacks) |
 | Permissão no admin | rotas pela matriz `feedbacks` conforme o método (ver, criar, editar, excluir); quem só tem «ver» abre a edição em modo leitura (campos desabilitados, aviso, sem salvar) e não vê Novo, Duplicar nem Excluir |
 | Criar feedback: empresa | o líder (`leader_user_id`) precisa ter acesso ativo à empresa do feedback pela fonte única de acessos (`User::withActiveCompanyAccess`, 7.3.3), também no admin com a empresa selecionada («O líder precisa ter acesso ativo ao sistema nesta empresa.»); o dropdown «Líder responsável» lista o mesmo conjunto, com a ajuda «Pessoas com acesso ativo ao sistema nesta empresa.» e rótulo «Nome (papel)», com o e-mail quando o nome se repete; o modelo precisa ser da Talents ou da empresa e estar ativo, mesmo em requisição direta; modelo inválido dá erro no campo, nunca é trocado em silêncio; sem modelo disponível: «Nenhum modelo disponível. Fale com o suporte.» (detalhe técnico só no log) |
 | Tipos de pergunta (`FeedbackQuestionType`) | Texto, Texto longo, Escolha única, Lista de tópicos, Bloco CCM, Tabela de ações, Grupo de notas |
 | Status (`FeedbackSessionStatus`) | Em andamento (ao criar) → Aguardando assinaturas → Concluída; ou Cancelada. O valor Rascunho existe no enum, mas a criação já grava Em andamento |
 | Visibilidade | `company_admin` (e a Talents) vê todas as sessões; `company_user` vê só as sessões em que é o líder (`FeedbackVisibility`) |
 | Seção do líder | «Perguntas do líder para o líder» só aparece ao perfil administrador |
-| Assinaturas | enviar para assinatura cria duas assinaturas (colaborador e líder), cada uma com token e e-mail (`FeedbackSignatureInvitationMail`); sem e-mail do colaborador, o envio é recusado com mensagem |
+| Assinaturas | enviar para assinatura cria duas assinaturas (colaborador e líder), cada uma com token e e-mail (`FeedbackSignatureInvitationMail`); sem e-mail do colaborador, o envio é recusado com mensagem. A partir do envio, o feedback não é editado (ver «Feedback imutável» e «Reabrir para edição») |
 | Conclusão | quando as duas assinaturas são registradas, a sessão fica Concluída e gera aviso «feedback concluído» |
 | Avisos | «feedback enviado para assinatura» e «feedback concluído» |
 | PDF | `GET …/pdf` |
@@ -2003,8 +2149,9 @@ Fluxo público em 10.2.
 | Gravação: falantes e tempo | Na leitura, o sistema detecta se há identificação de quem fala (rótulos como «Speaker 1»/«Falante 2» em pelo menos duas linhas, ou ao menos dois nomes no início da linha seguidos de «:» ou de marcação de tempo, em três linhas ou mais) e marcação de tempo (em pelo menos duas linhas), e grava `has_speaker_labels` e `has_timestamps`. Sem falantes, o arquivo é aceito com o aviso «Arquivo sem identificação de quem fala; o relatório ficará menos preciso. Exporte novamente com essa opção ligada.» (na mensagem do envio e fixo na seção); os metadados mostram «Quem fala» e «Marcação de tempo». Os exemplos de teste em `tests/Fixtures/plaud/` imitam o formato de exportação e devem ser trocados por exportações reais do Plaud |
 | Gravação: leitura e retenção | `PlaudTranscriptExtractor` extrai o texto original sem limpar nem resumir: TXT (UTF-8, UTF-16 ou Windows-1252), SRT (cada bloco vira «[hh:mm:ss] texto»), DOCX (`phpoffice/phpword`, parágrafos e tabelas) e PDF (Python + `pdfplumber` do container). O arquivo enviado é apagado logo após a extração e nunca vai para o storage; ficam só o texto original (imutável) e o nome do arquivo, criptografados (`encrypted`), o hash SHA-256 e o tamanho do arquivo, e a quantidade de caracteres (`feedback_recordings`) |
 | Gravação: quem vê e faz | Envia quem acessa a sessão e tem «criar» em Feedbacks (administrador da empresa, líder do próprio feedback, Talents com a empresa selecionada e «criar» na matriz). Metadados (formato, quem enviou, consentimento, hash) aparecem para quem vê a sessão. O texto original só para o administrador da empresa e a Talents, aberto sob demanda (aba «Original», `GET …/gravacao/original`, JSON sem cache); a transcrição limpa e o relatório, para quem vê a sessão (administrador e líder do feedback); o colaborador não vê nada disso. Feedback de outra empresa ou de outro líder: 403 |
-| Gravação: exclusão e trava | «Excluir gravação» (kebab «Opções da gravação», separado em vermelho; `DELETE …/gravacao`, exige `confirmed`) para quem tem «excluir» em Feedbacks; exclusão lógica (`deleted_at`) e um novo envio fica liberado. Excluir a gravação, o feedback ou o modelo exclui junto a gravação, a transcrição limpa e os relatórios (`recordings_count` nos detalhes da trilha); não há arquivo físico a apagar. Feedback concluído ou cancelado trava a gravação: não envia, não exclui, não processa, não edita a transcrição limpa nem gera relatório (relatório, transcrição limpa e original ficam só para leitura) |
+| Gravação: exclusão e trava | «Excluir gravação» (kebab «Opções da gravação», separado em vermelho; `DELETE …/gravacao`, exige `confirmed`) para quem tem «excluir» em Feedbacks; exclusão lógica (`deleted_at`) e um novo envio fica liberado. Excluir a gravação ou o feedback exclui junto a gravação (modelo usado não é excluído), a transcrição limpa e os relatórios (`recordings_count` nos detalhes da trilha); não há arquivo físico a apagar. Feedback concluído ou cancelado trava a gravação: não envia, não exclui, não processa, não edita a transcrição limpa nem gera relatório (relatório, transcrição limpa e original ficam só para leitura) |
 | Gravação: trilha | `feedback_audit_logs` registra `recording_uploaded` (formato, hash, tamanho, caracteres, consentimento), `recording_original_viewed` (cada abertura do original), `recording_deleted` (com `reports_count`), `recording_speakers_mapped` (contagem por papel), `recording_processing_requested` (pedido, modo, tentativa, provedor e modelo), `recording_step_reverted` (volta de etapa na barra «Gravação»: `from`, `to`), `recording_clean_edited` (revisão e tamanho) e `recording_report_generated` (id do relatório, provedor, modelo, versões de prompt e esquema); nunca o conteúdo |
+| Evolução: versões | O aviso da Evolução distingue «Os feedbacks usaram modelos diferentes…» de «Os feedbacks usaram versões diferentes do mesmo modelo; algumas perguntas podem ter mudado entre os períodos.» (`FeedbackEvolutionBuilder`). Comparação de respostas por chave fica fora desta entrega |
 
 Fluxo público de assinatura em 10.6.
 
@@ -2198,6 +2345,7 @@ Regras comuns: sem login; token aleatório (UUID ou similar) por empresa ou por 
 | Mensagem do denunciante | 30 |
 | Lead da landing | 5 |
 | Assinatura de feedback / envio de desligamento | 20 (throttle fixo da rota) |
+| Resposta do pós-contratação (`public-hiring-followup-submit`) | 30 (mesmo valor do envio de pesquisa) |
 
 ### 10.1 Questionário NR-1 (`/pesquisa/{token}`)
 
@@ -2229,11 +2377,15 @@ O token do canal é da empresa (`companies.complaints_public_token`), exibido no
 
 ### 10.6 Assinatura de feedback (`/feedback/assinar/{token}`)
 
-`Feedback/Sign`: mostra a sessão e o papel (colaborador ou líder), captura a assinatura desenhada (`SignaturePad`, `signature_data`) e a aceitação da declaração. Ao completar as duas assinaturas, a sessão é concluída.
+`Feedback/Sign`: mostra a sessão, o papel (colaborador ou líder) e o modelo com a versão usada (título e descrição da versão), captura a assinatura desenhada (`SignaturePad`, `signature_data`) e a aceitação da declaração. Ao completar as duas assinaturas, a sessão é concluída. Convite cancelado por «Reabrir para edição» (9.8.2): a página mostra só «Convite de assinatura cancelado» com «Este pedido de assinatura foi cancelado porque o feedback foi reaberto para edição. Aguarde um novo convite por e-mail.», sem o conteúdo do feedback, e o envio da assinatura volta à página com a mesma mensagem, sem gravar nada.
 
 ### 10.7 Avaliação de cliente (`/avaliacao/{uuid}`)
 
 `ClientEvaluation/Take` («Avaliação Talents»): NPS e notas de Atendimento, Qualidade da entrega e Comunicação, comentário, nome e cargo. Depois, `ThankYou`. Expirada, respondida ou substituída → `Unavailable` («Avaliação indisponível»).
+
+### 10.9 Pesquisa pós-contratação (`/pos-contratacao/{token}`)
+
+`HiringFollowup/Take` («Acompanhamento Talents»), por convite individual do marco D15/D30/D60/D90 (7.4.2): nota de 1 a 5 estrelas (obrigatória), comentário (até 2.000 caracteres) e «Preciso de apoio da Talents» com texto opcional. Mostra só o primeiro nome do destinatário, a empresa e o marco; ao gestor, também o nome do colaborador avaliado. Uma resposta por convite (a primeira conclui o marco); depois, `ThankYou`. Respondido, revogado ou expirado → `Unavailable`, com mensagem própria. Pedido de apoio gera aviso interno à Talents (`PublishHiringFollowupNotice`) sem o comentário nem o texto do pedido. Throttle `public-token-page` na leitura e `public-hiring-followup-submit` no envio.
 
 ### 10.8 Pesquisa de satisfação (`/satisfacao/{token}`)
 
@@ -2300,8 +2452,9 @@ Tabela `company_notices` (leitura em `company_notice_reads`). Audiência (`Compa
 | `nr1_opportunity_created` | nova oportunidade NR-1 | Comercial | NR-1 |
 | `nr1_proposal_requested` | nova solicitação de proposta ou conversa | Talents | NR-1 |
 | `nr1_report_published` | relatório publicado | empresa | NR-1 |
+| `hiring_followup_support_requested` | pedido de apoio no pós-contratação | Talents (só quem tem `contratacao_pos:view`) | pesquisa pública do pós-contratação; sem o comentário nem o texto do pedido; abre o ciclo |
 
-Regras: cada aviso tem destino ao clicar (`NoticeDestinationUrl`); a visibilidade dos avisos NR-1 segue `NoticeVisibility` (ninguém recebe aviso de área que não pode abrir), inclusive no contador e no e-mail.
+Regras: cada aviso tem destino ao clicar (`NoticeDestinationUrl`); a visibilidade dos avisos NR-1 e do pedido de apoio do pós-contratação segue `NoticeVisibility` (ninguém recebe aviso de área que não pode abrir), inclusive no contador e no e-mail.
 
 ### 12.2 E-mails (`app/Mail`)
 
@@ -2316,6 +2469,8 @@ Regras: cada aviso tem destino ao clicar (`NoticeDestinationUrl`); a visibilidad
 | `FeedbackSignatureInvitationMail` | pedido de assinatura de feedback |
 | `Nr1NoticeMail` | avisos NR-1 (quando há SMTP) |
 | `MfaResetMail` / `MfaSecurityMail` | reset e eventos de segurança do MFA |
+| `HiringFollowupInvitationMail` | convite do acompanhamento pós-contratação (D15/D30/D60/D90) ao colaborador ou ao gestor, com o link individual; só por ação de uma pessoa, no mesmo limite diário de 20 e-mails de Contratação (7.4.2) |
+| `HiringCommunicationMail` | comunicação de etapa da vaga ao contato da empresa (sem dado de candidato) e envio do dossiê aprovado (PDF anexado); só com o SMTP do painel ligado, até 20 por dia (7.4.2) |
 
 Envio usa o SMTP do painel quando habilitado; senão, `MAIL_*` do ambiente.
 
@@ -2327,7 +2482,7 @@ Envio usa o SMTP do painel quando habilitado; senão, `MAIL_*` do ambiente.
 
 | Job | Função | Gatilho |
 |-----|--------|---------|
-| `ProcessInterviewAudioJob` | transcrição e relatório de entrevista | upload ou reprocessar |
+| `ProcessInterviewAudioJob` | fonte de áudio: `ffmpeg` + Whisper; fontes de texto pulam a transcrição. Depois, só com a IA habilitada, sugere respostas por pergunta (`origin = ai_suggestion`; sem trecho que sustente, resposta vazia e `evidence_missing`); sem IA, conclui para preenchimento manual. Zera a revisão humana ao regravar as respostas | criação da entrevista (fonte de áudio, ou de texto com IA habilitada) ou reprocessar |
 | `ProcessMeetingAudioJob` | transcrição e ata de reunião | upload ou reprocessar |
 | `GenerateAiAnalysisJob` | análise da Mia na campanha NR-1 | botão de análise (limite por hora) |
 | `GeneratePurposeMapThemesJob` | temas do Mapa de Propósito | botão «Analisar» |
@@ -2372,6 +2527,7 @@ Proteção de chamadas de saída: URLs externas configuráveis passam por `SafeE
 - Toda consulta do portal é filtrada pela empresa do workspace ativo; não há parâmetro de empresa aceito do usuário no portal.
 - No admin, telas por empresa usam a empresa da URL (`/admin/companies/{company}/…`) ou a empresa selecionada na sessão (7.6), sempre conferindo o vínculo do registro com a empresa.
 - Isolamento entre empresas coberto por testes de IDOR.
+- Pós-contratação (7.4.2): o ciclo pertence à empresa da vaga; colaborador, gestor e marcos são conferidos contra ela (`scopeBindings` nas rotas; colaborador ou gestor de outra empresa é recusado).
 
 ### 14.2 Anonimato e dados sensíveis
 
@@ -2379,6 +2535,8 @@ Proteção de chamadas de saída: URLs externas configuráveis passam por `SafeE
 - Denúncias, sugestões, segredos de IA, SMTP, RHID e ZapSign são criptografados com `APP_KEY`. `APP_KEY` é imutável em produção; `SafelyDecryptsAttributes` evita erro fatal se ela mudar e `app:check-encryption` diagnostica.
 - Respostas NR-1 com data reduzida ao mês; V11 não coleta idade nem tempo de casa.
 - Dados reais de clientes não devem ir para logs de desenvolvimento nem ambientes de teste.
+- Pesquisa pós-contratação: o comentário e o pedido de apoio do colaborador ficam só para a Talents; nunca vão ao gestor, ao portal da empresa nem ao aviso interno. Cada convite registra o destinatário do momento; links revogados ou expirados não aceitam resposta.
+- Anexos internos de candidatos (`talent_candidate_attachments`, 7.4.6) são restritos a `contratacao_anexos` (sem backfill: só o Owner até ser concedido), ficam no disco privado com nome gerado, só são baixados pelo controller e nunca entram em exportação, relatório, IA, dossiê nem portal da empresa, nem são analisados automaticamente. Quem não tem o módulo não recebe anexos no payload da ficha nem os detalhes de anexo na auditoria.
 
 ### 14.3 Limites de upload
 
@@ -2389,6 +2547,7 @@ Proteção de chamadas de saída: URLs externas configuráveis passam por `SafeE
 | Logo da empresa | 2 MB |
 | Anexos NR-1 (parecer, relatórios, evidências, dossiê, material de treinamento) | 20 MB cada |
 | Prova de validação informada | 10 MB |
+| Anexo interno de candidato (PDF, PNG, JPG ou JPEG, tipo conferido pelo conteúdo) | 5 MB |
 
 ### 14.4 Idioma, datas e moeda
 
@@ -2403,11 +2562,14 @@ Proteção de chamadas de saída: URLs externas configuráveis passam por `SafeE
 | Denúncias | `complaint_audit_logs` |
 | RHID | `rhid_audit_logs` |
 | Financeiro (datas de pagamento, pagamentos e devoluções de comissão) | `finance_audit_logs` |
-| Feedbacks (exclusão de modelo e de feedback) | `feedback_audit_logs` |
+| Feedbacks (exclusão de modelo e de feedback, versões, arquivamento e reabertura) | `feedback_audit_logs` |
 | NR-1 (acesso a dados e documentos) | `psychosocial_access_logs` |
 | NR-1 (medidas, rodadas, oportunidades) | `psychosocial_measure_events`, `psychosocial_review_events`, `nr1_opportunity_events` |
 | MFA | `mfa_audit_events` |
 | Tarefas | `task_activity_logs` |
+| Contatos da empresa | `company_contact_events` (só inserção): criado, alterado (só os nomes dos campos), conferido, arquivado, restaurado |
+| Comunicações da vaga | `hiring_communications`: cada comunicação de etapa ou envio do dossiê, com contato, destinatário, texto, chave de idempotência, status, data de envio, motivo da falha e autor |
+| Candidatos de contratação | `talent_candidate_audit_logs` (só inserção, com IP): `created`, `updated` (só os nomes dos campos alterados), `archived`, `restored`, `imported_solides`, `attachment_uploaded`, `attachment_downloaded`, `attachment_deleted`; `meta` nunca guarda conteúdo de arquivo |
 | Campanhas excluídas | soft delete com autor (`deleted_by`) |
 
 ### 14.6 Interruptores de configuração existentes (exceções à regra de entrega)
@@ -2640,6 +2802,71 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/admin/acompanhamento/{hiringProcess}/observacoes` | `admin.acompanhamento.comments.store` | auth · admin.can:solides_acompanhamento | — |
 | POST | `/admin/acompanhamento/{hiringProcess}/recuar` | `admin.acompanhamento.retreat` | auth · admin.can:solides_acompanhamento | — |
 
+#### `/admin/contratacao/candidatos`
+
+| Método | URI | Nome | Proteção | Tela |
+|--------|-----|------|----------|------|
+| GET | `/admin/contratacao/candidatos` | `admin.contratacao.candidatos.index` | auth · admin.can:contratacao_candidatos,view | `Admin/Hiring/Candidates/Index` |
+| GET | `/admin/contratacao/candidatos/criar` | `admin.contratacao.candidatos.create` | auth · admin.can:contratacao_candidatos,create | `Admin/Hiring/Candidates/Form` |
+| POST | `/admin/contratacao/candidatos` | `admin.contratacao.candidatos.store` | auth · admin.can:contratacao_candidatos,create | — |
+| POST | `/admin/contratacao/candidatos/importar-solides` | `admin.contratacao.candidatos.import-solides` | auth · admin.can:contratacao_candidatos,create | — |
+| GET | `/admin/contratacao/candidatos/{candidate}` | `admin.contratacao.candidatos.show` | auth · admin.can:contratacao_candidatos,view | `Admin/Hiring/Candidates/Show` |
+| GET | `/admin/contratacao/candidatos/{candidate}/editar` | `admin.contratacao.candidatos.edit` | auth · admin.can:contratacao_candidatos,edit | `Admin/Hiring/Candidates/Form` |
+| PATCH | `/admin/contratacao/candidatos/{candidate}` | `admin.contratacao.candidatos.update` | auth · admin.can:contratacao_candidatos,edit | — |
+| POST | `/admin/contratacao/candidatos/{candidate}/arquivar` | `admin.contratacao.candidatos.archive` | auth · admin.can:contratacao_candidatos,delete | — |
+| POST | `/admin/contratacao/candidatos/{candidate}/restaurar` | `admin.contratacao.candidatos.restore` | auth · admin.can:contratacao_candidatos,delete | — |
+| GET | `/admin/contratacao/candidatos/{candidate}/anexos` | `admin.contratacao.candidatos.anexos.index` | auth · admin.can:contratacao_candidatos,view · admin.can:contratacao_anexos,view | `Admin/Hiring/Candidates/Attachments` |
+| POST | `/admin/contratacao/candidatos/{candidate}/anexos` | `admin.contratacao.candidatos.anexos.store` | auth · admin.can:contratacao_candidatos,view · admin.can:contratacao_anexos,create | — |
+| GET | `/admin/contratacao/candidatos/{candidate}/anexos/{attachment}/baixar` | `admin.contratacao.candidatos.anexos.download` | auth · admin.can:contratacao_candidatos,view · admin.can:contratacao_anexos,view · scopeBindings | arquivo (attachment) |
+| DELETE | `/admin/contratacao/candidatos/{candidate}/anexos/{attachment}` | `admin.contratacao.candidatos.anexos.destroy` | auth · admin.can:contratacao_candidatos,view · admin.can:contratacao_anexos,delete · scopeBindings | — |
+
+#### `/admin/contratacao/pos-contratacao`
+
+| Método | URI | Nome | Proteção | Tela |
+|--------|-----|------|----------|------|
+| GET | `/admin/contratacao/pos-contratacao` | `admin.contratacao.pos.index` | auth · admin.can:contratacao_pos,view | `Admin/Hiring/Followup/Index` |
+| GET | `/admin/contratacao/pos-contratacao/ciclos/{cycle}` | `admin.contratacao.pos.show` | auth · admin.can:contratacao_pos,view | `Admin/Hiring/Followup/Show` |
+| PATCH | `/admin/contratacao/pos-contratacao/ciclos/{cycle}` | `admin.contratacao.pos.update` | auth · admin.can:contratacao_pos,edit | — |
+| POST | `/admin/contratacao/pos-contratacao/ciclos/{cycle}/confirmar-admissao` | `admin.contratacao.pos.confirm-admission` | auth · admin.can:contratacao_pos,edit | — |
+| POST | `/admin/contratacao/pos-contratacao/ciclos/{cycle}/pausar` | `admin.contratacao.pos.pause` | auth · admin.can:contratacao_pos,edit | — |
+| POST | `/admin/contratacao/pos-contratacao/ciclos/{cycle}/retomar` | `admin.contratacao.pos.resume` | auth · admin.can:contratacao_pos,edit | — |
+| POST | `/admin/contratacao/pos-contratacao/ciclos/{cycle}/desligar` | `admin.contratacao.pos.terminate` | auth · admin.can:contratacao_pos,delete | — |
+| POST | `/admin/contratacao/pos-contratacao/ciclos/{cycle}/readmitir` | `admin.contratacao.pos.readmit` | auth · admin.can:contratacao_pos,delete | — |
+| POST | `/admin/contratacao/pos-contratacao/ciclos/{cycle}/anotacoes` | `admin.contratacao.pos.notes.store` | auth · admin.can:contratacao_pos,edit | — |
+| POST | `/admin/contratacao/pos-contratacao/ciclos/{cycle}/marcos/{milestone}/enviar` | `admin.contratacao.pos.milestones.send` | auth · admin.can:contratacao_pos,edit · scopeBindings | JSON (resultado por destino) |
+| POST | `/admin/contratacao/pos-contratacao/ciclos/{cycle}/marcos/{milestone}/pular` | `admin.contratacao.pos.milestones.skip` | auth · admin.can:contratacao_pos,edit · scopeBindings | — |
+| POST | `/admin/contratacao/pos-contratacao/ciclos/{cycle}/marcos/{milestone}/convites/{invitation}/copiado` | `admin.contratacao.pos.invitations.copied` | auth · admin.can:contratacao_pos,edit · scopeBindings | JSON |
+
+#### `/admin/contratacao/vagas`
+
+| Método | URI | Nome | Proteção | Tela |
+|--------|-----|------|----------|------|
+| GET | `/admin/contratacao/vagas` | `admin.contratacao.vagas.index` | auth · admin.can:contratacao_vagas,view | `Admin/Hiring/Vacancies/Index` |
+| POST | `/admin/contratacao/vagas` | `admin.contratacao.vagas.store` | auth · admin.can:contratacao_vagas,create | — |
+| GET | `/admin/contratacao/vagas/{vacancy}` | `admin.contratacao.vagas.show` | auth · admin.can:contratacao_vagas,view | `Admin/Hiring/Vacancies/Show` |
+| PATCH | `/admin/contratacao/vagas/{vacancy}` | `admin.contratacao.vagas.update` | auth · admin.can:contratacao_vagas,edit | — |
+| GET | `/admin/contratacao/vagas/{vacancy}/candidatos-disponiveis` | `admin.contratacao.vagas.candidates.available` | auth · admin.can:contratacao_vagas,view | JSON |
+| POST | `/admin/contratacao/vagas/{vacancy}/etapas` | `admin.contratacao.vagas.stages.store` | auth · admin.can:contratacao_vagas,edit | — |
+| POST | `/admin/contratacao/vagas/{vacancy}/etapas/reordenar` | `admin.contratacao.vagas.stages.reorder` | auth · admin.can:contratacao_vagas,edit | — |
+| PATCH | `/admin/contratacao/vagas/{vacancy}/etapas/{stage}` | `admin.contratacao.vagas.stages.update` | auth · admin.can:contratacao_vagas,edit · scopeBindings | — |
+| DELETE | `/admin/contratacao/vagas/{vacancy}/etapas/{stage}` | `admin.contratacao.vagas.stages.destroy` | auth · admin.can:contratacao_vagas,delete · scopeBindings | — |
+| POST | `/admin/contratacao/vagas/{vacancy}/candidaturas` | `admin.contratacao.vagas.applications.store` | auth · admin.can:contratacao_vagas,create (cadastro rápido: + contratacao_candidatos:create) | — |
+| PATCH | `/admin/contratacao/vagas/{vacancy}/candidaturas/{application}/mover` | `admin.contratacao.vagas.applications.move` | auth · admin.can:contratacao_vagas,edit · scopeBindings | — |
+| POST | `/admin/contratacao/vagas/{vacancy}/candidaturas/{application}/anotacoes` | `admin.contratacao.vagas.applications.notes.store` | auth · admin.can:contratacao_vagas,edit · scopeBindings | — |
+| DELETE | `/admin/contratacao/vagas/{vacancy}/candidaturas/{application}` | `admin.contratacao.vagas.applications.destroy` | auth · admin.can:contratacao_vagas,delete · scopeBindings | — |
+| GET | `/admin/contratacao/vagas/{vacancy}/candidaturas/{application}/avaliacao` | `admin.contratacao.vagas.applications.assessment.show` | auth · admin.can:contratacao_vagas,view · scopeBindings | `Admin/Hiring/Assessments/Edit` |
+| PUT | `/admin/contratacao/vagas/{vacancy}/candidaturas/{application}/avaliacao` | `admin.contratacao.vagas.applications.assessment.update` | auth · admin.can:contratacao_vagas,edit · scopeBindings | — |
+| POST | `/admin/contratacao/vagas/{vacancy}/candidaturas/{application}/avaliacao/aprovar` | `admin.contratacao.vagas.applications.assessment.approve` | auth · admin.can:contratacao_vagas,validate · scopeBindings | — |
+| GET | `/admin/contratacao/vagas/{vacancy}/candidaturas/{application}/dossie.pdf` | `admin.contratacao.vagas.applications.assessment.dossier` | auth · admin.can:contratacao_vagas,view · scopeBindings · só aprovado | arquivo (PDF) |
+| GET | `/admin/contratacao/vagas/{vacancy}/candidaturas/{application}/admissao/opcoes` | `admin.contratacao.vagas.applications.admission.options` | auth · admin.can:contratacao_pos,edit · scopeBindings | JSON (colaboradores e gestores) |
+| POST | `/admin/contratacao/vagas/{vacancy}/candidaturas/{application}/admissao` | `admin.contratacao.vagas.applications.admission.store` | auth · admin.can:contratacao_pos,edit · scopeBindings | — |
+| POST | `/admin/contratacao/vagas/{vacancy}/candidaturas/{application}/dossie/enviar` | `admin.contratacao.vagas.applications.assessment.send` | auth · admin.can:contratacao_vagas,validate · scopeBindings | — |
+| GET | `/admin/contratacao/vagas/{vacancy}/comunicacoes/modelo` | `admin.contratacao.vagas.communications.template` | auth · admin.can:contratacao_vagas,edit | JSON (texto-modelo da etapa) |
+| POST | `/admin/contratacao/vagas/{vacancy}/comunicacoes/revisar` | `admin.contratacao.vagas.communications.review` | auth · admin.can:contratacao_vagas,edit | JSON (revisão antes do envio) |
+| POST | `/admin/contratacao/vagas/{vacancy}/comunicacoes` | `admin.contratacao.vagas.communications.store` | auth · admin.can:contratacao_vagas,edit | — |
+| POST | `/admin/contratacao/vagas/{vacancy}/comunicacoes/{communication}/copiado` | `admin.contratacao.vagas.communications.copied` | auth · admin.can:contratacao_vagas,edit · scopeBindings | JSON |
+| GET | `/admin/contratacao/vagas/{vacancy}/candidaturas/{application}/entrevistas/{interview}` | `admin.contratacao.vagas.applications.interviews.show` | auth · admin.can:contratacao_vagas,view · admin.can:entrevistas_ia,view · scopeBindings | redireciona para a entrevista |
+
 #### `/admin/ai-settings`
 
 | Método | URI | Nome | Proteção | Tela |
@@ -2751,7 +2978,12 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/admin/companies` | `admin.companies.store` | auth · admin.can:companies | — |
 | GET | `/admin/companies/create` | `admin.companies.create` | auth · admin.can:companies | `Admin/Companies/Create` |
 | GET | `/admin/companies/lookup-cnpj` | `admin.companies.lookup-cnpj` | auth · admin.can:companies | — |
-| GET | `/admin/companies/{company}` | `admin.companies.show` | auth · admin.can:companies | `Admin/Companies/Show` |
+| GET | `/admin/companies/{company}` | `admin.companies.show` | auth · admin.can:companies | `Admin/Companies/Show` (aba `?tab=contatos`) |
+| POST | `/admin/companies/{company}/contatos` | `admin.companies.contacts.store` | auth · admin.can:companies,edit | — |
+| PATCH | `/admin/companies/{company}/contatos/{contact}` | `admin.companies.contacts.update` | auth · admin.can:companies,edit · scopeBindings | — |
+| POST | `/admin/companies/{company}/contatos/{contact}/conferir` | `admin.companies.contacts.review` | auth · admin.can:companies,edit · scopeBindings | — |
+| POST | `/admin/companies/{company}/contatos/{contact}/arquivar` | `admin.companies.contacts.archive` | auth · admin.can:companies,edit · scopeBindings | — |
+| POST | `/admin/companies/{company}/contatos/{contact}/restaurar` | `admin.companies.contacts.restore` | auth · admin.can:companies,edit · scopeBindings | — |
 | PUT/PATCH | `/admin/companies/{company}` | `admin.companies.update` | auth · admin.can:companies | — |
 | DELETE | `/admin/companies/{company}` | `admin.companies.destroy` | auth · admin.can:companies | — |
 | DELETE | `/admin/companies/{company}/document-shares/{share}` | `admin.companies.document-shares.revoke` | auth · admin.can:companies | — |
@@ -2902,20 +3134,26 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 
 | Método | URI | Nome | Proteção | Tela |
 |--------|-----|------|----------|------|
-| GET | `/admin/entrevistas` | `admin.entrevistas.index` | auth · admin.can:entrevistas_ia | `Admin/Interviews/Index` |
-| POST | `/admin/entrevistas` | `admin.entrevistas.store` | auth · admin.can:entrevistas_ia | — |
-| GET | `/admin/entrevistas/nova` | `admin.entrevistas.create` | auth · admin.can:entrevistas_ia | `Admin/Interviews/Create` |
+| GET | `/admin/entrevistas` | `admin.entrevistas.index` | auth · admin.can:entrevistas_ia,view | `Admin/Interviews/Index` |
+| POST | `/admin/entrevistas` | `admin.entrevistas.store` | auth · admin.can:entrevistas_ia,create | — |
+| GET | `/admin/entrevistas/nova` | `admin.entrevistas.create` | auth · admin.can:entrevistas_ia,create | `Admin/Interviews/Create` |
+| GET | `/admin/entrevistas/candidatos` | `admin.entrevistas.candidates` | auth · admin.can:entrevistas_ia,view | JSON (até 10 candidatos ativos com as candidaturas) |
 | GET | `/admin/entrevistas/roteiros` | `admin.entrevistas.roteiros.index` | auth · admin.can:entrevistas_roteiros | `Admin/Interviews/Scripts/Index` |
 | POST | `/admin/entrevistas/roteiros` | `admin.entrevistas.roteiros.store` | auth · admin.can:entrevistas_roteiros | — |
 | GET | `/admin/entrevistas/roteiros/create` | `admin.entrevistas.roteiros.create` | auth · admin.can:entrevistas_roteiros | `Admin/Interviews/Scripts/Edit` |
 | PUT/PATCH | `/admin/entrevistas/roteiros/{questionnaire}` | `admin.entrevistas.roteiros.update` | auth · admin.can:entrevistas_roteiros | — |
 | DELETE | `/admin/entrevistas/roteiros/{questionnaire}` | `admin.entrevistas.roteiros.destroy` | auth · admin.can:entrevistas_roteiros | — |
 | GET | `/admin/entrevistas/roteiros/{questionnaire}/edit` | `admin.entrevistas.roteiros.edit` | auth · admin.can:entrevistas_roteiros | `Admin/Interviews/Scripts/Edit` |
-| GET | `/admin/entrevistas/{interview}` | `admin.entrevistas.show` | auth · admin.can:entrevistas_ia | `Admin/Interviews/Show` |
-| DELETE | `/admin/entrevistas/{interview}` | `admin.entrevistas.destroy` | auth · admin.can:entrevistas_ia | — |
-| GET | `/admin/entrevistas/{interview}/relatorio.docx` | `admin.entrevistas.report.docx` | auth · admin.can:entrevistas_ia | — |
-| GET | `/admin/entrevistas/{interview}/relatorio.pdf` | `admin.entrevistas.report.pdf` | auth · admin.can:entrevistas_ia | — |
-| POST | `/admin/entrevistas/{interview}/reprocessar` | `admin.entrevistas.reprocess` | auth · admin.can:entrevistas_ia | — |
+| POST | `/admin/entrevistas/roteiros/{questionnaire}/duplicar` | `admin.entrevistas.roteiros.duplicate` | auth · admin.can:entrevistas_roteiros · admin.can:entrevistas_roteiros,create | — |
+| GET | `/admin/entrevistas/{interview}` | `admin.entrevistas.show` | auth · admin.can:entrevistas_ia,view · aceita excluída | `Admin/Interviews/Show` |
+| DELETE | `/admin/entrevistas/{interview}` | `admin.entrevistas.destroy` | auth · admin.can:entrevistas_ia,delete (soft delete) | — |
+| POST | `/admin/entrevistas/{interview}/restaurar` | `admin.entrevistas.restore` | auth · admin.can:entrevistas_ia,delete · aceita excluída | — |
+| POST | `/admin/entrevistas/{interview}/vincular` | `admin.entrevistas.link` | auth · admin.can:entrevistas_ia,edit | — |
+| PATCH | `/admin/entrevistas/{interview}/respostas` | `admin.entrevistas.answers.update` | auth · admin.can:entrevistas_ia,edit | — |
+| POST | `/admin/entrevistas/{interview}/concluir-revisao` | `admin.entrevistas.review.conclude` | auth · admin.can:entrevistas_ia,edit | — |
+| GET | `/admin/entrevistas/{interview}/relatorio.docx` | `admin.entrevistas.report.docx` | auth · admin.can:entrevistas_ia,view | — |
+| GET | `/admin/entrevistas/{interview}/relatorio.pdf` | `admin.entrevistas.report.pdf` | auth · admin.can:entrevistas_ia,view | — |
+| POST | `/admin/entrevistas/{interview}/reprocessar` | `admin.entrevistas.reprocess` | auth · admin.can:entrevistas_ia,edit | — |
 
 #### `/admin/feedbacks`
 
@@ -2923,6 +3161,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 |--------|-----|------|----------|------|
 | GET | `/admin/feedbacks` | `admin.feedbacks.index` | auth · admin.can:feedbacks | `Client/Feedbacks/Index` |
 | POST | `/admin/feedbacks/company` | `admin.feedbacks.company.store` | auth · admin.can:feedbacks | — |
+| DELETE | `/admin/feedbacks/company` | `admin.feedbacks.company.destroy` | auth · admin.can:feedbacks | — |
 | GET | `/admin/feedbacks/employees` | `admin.feedbacks.employees.index` | auth · admin.can:feedbacks · Feedback selecionada | — |
 | POST | `/admin/feedbacks/employees` | `admin.feedbacks.employees.store` | auth · admin.can:feedbacks · Feedback selecionada | — |
 | GET | `/admin/feedbacks/employees/create` | `admin.feedbacks.employees.create` | auth · admin.can:feedbacks · Feedback selecionada | — |
@@ -2941,9 +3180,14 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | PATCH | `/admin/feedbacks/sessions/{session}` | `admin.feedbacks.sessions.update` | auth · admin.can:feedbacks · Feedback selecionada | — |
 | DELETE | `/admin/feedbacks/sessions/{session}` | `admin.feedbacks.sessions.destroy` | auth · admin.can:feedbacks (excluir) · Feedback selecionada | — |
 | POST | `/admin/feedbacks/sessions/{session}/assinaturas` | `admin.feedbacks.sessions.signatures` | auth · admin.can:feedbacks · Feedback selecionada | — |
+| PATCH | `/admin/feedbacks/sessions/{session}/reabrir` | `admin.feedbacks.sessions.reopen` | auth · admin.can:feedbacks (editar) · Feedback selecionada | — |
+| GET | `/admin/feedbacks/sessions/{session}/versao` | `admin.feedbacks.sessions.version.preview` | auth · admin.can:feedbacks · Feedback selecionada | JSON da prévia |
+| PATCH | `/admin/feedbacks/sessions/{session}/versao` | `admin.feedbacks.sessions.version.update` | auth · admin.can:feedbacks (editar) · Feedback selecionada | — |
 | GET · POST · PUT · DELETE | `/admin/feedbacks/templates` (`/create`, `/{template}`, `/{template}/edit`) | `admin.feedbacks.templates.{index,create,store,edit,update,destroy}` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Templates/Index` e `Form` |
 | POST | `/admin/feedbacks/templates/{template}/duplicar` | `admin.feedbacks.templates.duplicate` | auth · admin.can:feedbacks (criar) · Feedback selecionada | — |
-| GET | `/admin/feedbacks/templates/{template}/exclusao` | `admin.feedbacks.templates.deletion` | auth · admin.can:feedbacks (o controller exige excluir) · Feedback selecionada | JSON do impacto |
+| PATCH | `/admin/feedbacks/templates/{template}/arquivar` | `admin.feedbacks.templates.archive` | auth · admin.can:feedbacks (editar) · Feedback selecionada | — |
+| PATCH | `/admin/feedbacks/templates/{template}/reativar` | `admin.feedbacks.templates.unarchive` | auth · admin.can:feedbacks (editar) · Feedback selecionada | — |
+| GET | `/admin/feedbacks/templates/{template}/exclusao` | `admin.feedbacks.templates.deletion` | auth · admin.can:feedbacks (o controller exige excluir) · Feedback selecionada | JSON da situação (uso e bloqueio) |
 | GET | `/admin/feedbacks/sessions/{session}/edit` | `admin.feedbacks.sessions.edit` | auth · admin.can:feedbacks · Feedback selecionada | `Client/Feedbacks/Sessions/Edit` |
 | GET | `/admin/feedbacks/sessions/{session}/pdf` | `admin.feedbacks.sessions.pdf` | auth · admin.can:feedbacks · Feedback selecionada | — |
 | POST | `/admin/feedbacks/sessions/{session}/gravacao` | `admin.feedbacks.sessions.recording.store` | auth · admin.can:feedbacks (criar) · Feedback selecionada | — |
@@ -3408,6 +3652,9 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | PATCH | `/client/feedbacks/sessions/{session}` | `client.feedbacks.sessions.update` | auth · can.module:feedbacks | — |
 | DELETE | `/client/feedbacks/sessions/{session}` | `client.feedbacks.sessions.destroy` | auth · can.module:feedbacks (excluir) · administrador | — |
 | POST | `/client/feedbacks/sessions/{session}/assinaturas` | `client.feedbacks.sessions.signatures` | auth · can.module:feedbacks | — |
+| PATCH | `/client/feedbacks/sessions/{session}/reabrir` | `client.feedbacks.sessions.reopen` | auth · can.module:feedbacks (editar) | — |
+| GET | `/client/feedbacks/sessions/{session}/versao` | `client.feedbacks.sessions.version.preview` | auth · can.module:feedbacks | JSON da prévia |
+| PATCH | `/client/feedbacks/sessions/{session}/versao` | `client.feedbacks.sessions.version.update` | auth · can.module:feedbacks (editar) | — |
 | GET | `/client/feedbacks/sessions/{session}/edit` | `client.feedbacks.sessions.edit` | auth · can.module:feedbacks | `Client/Feedbacks/Sessions/Edit` |
 | GET | `/client/feedbacks/sessions/{session}/pdf` | `client.feedbacks.sessions.pdf` | auth · can.module:feedbacks | — |
 | POST | `/client/feedbacks/sessions/{session}/gravacao` | `client.feedbacks.sessions.recording.store` | auth · can.module:feedbacks (criar) | — |
@@ -3422,7 +3669,9 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | POST | `/client/feedbacks/sessions/{session}/gravacao/voltar` | `client.feedbacks.sessions.recording.rewind` | auth · can.module:feedbacks (criar; «Enviar» exige excluir) · sem assinatura nem processamento | — |
 | GET · POST · PUT · DELETE | `/client/feedbacks/templates` (`/create`, `/{template}`, `/{template}/edit`) | `client.feedbacks.templates.{index,create,store,edit,update,destroy}` | auth · can.module:feedbacks · administrador | `Client/Feedbacks/Templates/Index` e `Form` |
 | POST | `/client/feedbacks/templates/{template}/duplicar` | `client.feedbacks.templates.duplicate` | auth · can.module:feedbacks · administrador | — |
-| GET | `/client/feedbacks/templates/{template}/exclusao` | `client.feedbacks.templates.deletion` | auth · can.module:feedbacks · administrador | JSON do impacto |
+| PATCH | `/client/feedbacks/templates/{template}/arquivar` | `client.feedbacks.templates.archive` | auth · can.module:feedbacks · administrador (universal: 404) | — |
+| PATCH | `/client/feedbacks/templates/{template}/reativar` | `client.feedbacks.templates.unarchive` | auth · can.module:feedbacks · administrador (universal: 404) | — |
+| GET | `/client/feedbacks/templates/{template}/exclusao` | `client.feedbacks.templates.deletion` | auth · can.module:feedbacks · administrador | JSON da situação (uso e bloqueio) |
 
 #### `/client/ferias`
 
@@ -3722,7 +3971,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | Método | URI | Nome | Proteção | Tela |
 |--------|-----|------|----------|------|
 | GET | `/feedback/assinar/{token}` | `feedback.sign.show` | — | `Feedback/Sign` |
-| POST | `/feedback/assinar/{token}` | `feedback.sign.store` | — | — |
+| POST | `/feedback/assinar/{token}` | `feedback.sign.store` | — | — (convite cancelado: volta à página com aviso) |
 
 #### `/forgot-password`
 
@@ -3811,6 +4060,14 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 | GET | `/pesquisa/{token}/obrigado` | `survey.public.thanks` | — | `Survey/ThankYou` |
 | GET | `/pesquisa/{token}/treinamento/{training}/arquivo` | `survey.public.training-material` | — | — |
 | GET | `/pesquisa/{token}/video/{video}` | `survey.public.orientation-video` | — | stream inline do vídeo exigido pela campanha |
+
+#### `/pos-contratacao`
+
+| Método | URI | Nome | Proteção | Tela |
+|--------|-----|------|----------|------|
+| GET | `/pos-contratacao/{token}` | `hiring-followup.public` | throttle:public-token-page | `HiringFollowup/Take`, `HiringFollowup/Unavailable` |
+| POST | `/pos-contratacao/{token}` | `hiring-followup.public.submit` | throttle:public-hiring-followup-submit | — |
+| GET | `/pos-contratacao/{token}/obrigado` | `hiring-followup.public.thanks` | throttle:public-token-page | `HiringFollowup/ThankYou` |
 
 #### `/profile`
 
@@ -3913,7 +4170,7 @@ Gerado a partir das migrations (`database/migrations`, 181 arquivos), aplicando 
 | `positions` | `id`, `company_id`, `name`, `created_at/updated_at` |
 | `company_rhid_schedule_settings` | `id`, `company_id`, `settings`, `created_at/updated_at` |
 | `landing_interest_submissions` | `id`, `name`, `email`, `company`, `message`, `mail_sent_at`, `mail_error`, `phone`, `source`, `created_by`, `admin_notes`, `is_qualified`, `assigned_to`, `converted_company_id`, `converted_at`, `created_at/updated_at` |
-| `company_employees` | `id`, `company_id`, `name`, `email`, `phone`, `department_id`, `position_id`, `leader_user_id`, `is_active`, `notes`, `birth_date`, `emergency_contact_name`, `emergency_contact_relationship`, `emergency_contact_phone`, `admission_date`, `work_schedule`, `cpf`, `rg`, `address_zip`, `address_street`, `address_number`, `address_complement`, `address_neighborhood`, `address_city`, `address_state`, `merged_into_employee_id` (cadastro que ficou, quando unido), `merged_at`, `merged_by_user_id`, `created_at/updated_at` |
+| `company_employees` | `id`, `company_id`, `name`, `email`, `phone`, `department_id`, `position_id`, `leader_user_id`, `is_active`, `notes`, `birth_date`, `emergency_contact_name`, `emergency_contact_relationship`, `emergency_contact_phone`, `admission_date`, `work_schedule`, `cpf`, `rg`, `address_zip`, `address_street`, `address_number`, `address_complement`, `address_neighborhood`, `address_city`, `address_state`, `merged_into_employee_id` (cadastro que ficou, quando unido), `merged_at`, `merged_by_user_id`, `talent_candidate_id` (nulo, nullOnDelete; candidato de Contratação), `created_at/updated_at` |
 | `company_internal_regulations` | `id`, `company_id`, `title`, `body_html`, `is_published`, `updated_by`, `file_path`, `file_name`, `created_at/updated_at` |
 | `company_monthly_highlights` | `id`, `company_id`, `company_employee_id`, `person_name`, `category`, `year`, `month`, `photo_path`, `photo_disk`, `description`, `is_published`, `created_by`, `updated_by`, `created_at/updated_at` |
 | `business_diagnostics` | `id`, `company_id`, `created_by`, `company_name`, `cnpj`, `segment`, `employee_count`, `responsible_name`, `email`, `phone`, `company_history`, `biggest_challenge`, `hr_maturity`, `created_at/updated_at` |
@@ -4000,13 +4257,14 @@ Gerado a partir das migrations (`database/migrations`, 181 arquivos), aplicando 
 
 | Tabela | Colunas |
 |--------|---------|
-| `feedback_templates` | `id`, `company_id` (nulo = universal, da Talents), `converted_from_company_id` (empresa de origem de modelo convertido em universal; nulo nos demais), `title`, `description`, `is_default`, `is_active`, `version`, `created_by`, `created_at/updated_at`, `deleted_at` |
-| `feedback_template_sections` | `id`, `feedback_template_id`, `key`, `title`, `description`, `section_type`, `audience`, `sort_order`, `config`, `created_at/updated_at` |
+| `feedback_templates` | `id`, `company_id` (nulo = universal, da Talents), `converted_from_company_id` (empresa de origem de modelo convertido em universal; nulo nos demais), `title`, `description`, `is_default`, `is_active` (legado; espelha o arquivamento), `version` (contador legado), `current_version_id`, `archived_at`, `archived_by_user_id`, `created_by`, `created_at/updated_at`, `deleted_at` |
+| `feedback_template_versions` | `id`, `feedback_template_id`, `number` (único por modelo), `title`, `description`, `structure` (json: snapshot canônico de seções e perguntas), `structure_hash` (sha256), `created_by`, `created_at/updated_at` |
+| `feedback_template_sections` | `id`, `feedback_template_id`, `feedback_template_version_id`, `key`, `title`, `description`, `section_type`, `audience`, `sort_order`, `config`, `created_at/updated_at` |
 | `feedback_template_questions` | `id`, `feedback_template_section_id`, `key`, `body`, `question_type`, `options`, `is_required`, `sort_order`, `config`, `created_at/updated_at` |
-| `feedback_sessions` | `id`, `company_id`, `feedback_template_id`, `company_employee_id`, `leader_user_id`, `created_by_user_id`, `title`, `status`, `scheduled_at`, `next_alignment_at`, `completed_at`, `section_extras`, `rhid_person_id`, `employee_name`, `employee_email`, `created_at/updated_at`, `deleted_at` |
+| `feedback_sessions` | `id`, `company_id`, `feedback_template_id`, `feedback_template_version_id` (versão usada), `company_employee_id`, `leader_user_id`, `created_by_user_id`, `title`, `status`, `scheduled_at`, `next_alignment_at`, `completed_at`, `section_extras`, `rhid_person_id`, `employee_name`, `employee_email`, `created_at/updated_at`, `deleted_at` |
 | `feedback_session_answers` | `id`, `feedback_session_id`, `feedback_template_question_id`, `value_text`, `value_json`, `created_at/updated_at`, `deleted_at` |
-| `feedback_session_signatures` | `id`, `feedback_session_id`, `role`, `signer_name`, `signer_email`, `token`, `sent_at`, `signed_at`, `signature_path`, `ip`, `user_agent`, `created_at/updated_at` |
-| `feedback_audit_logs` | `id`, `company_id`, `user_id`, `action` (`session_deleted`, `template_deleted`, `recording_uploaded`, `recording_original_viewed`, `recording_deleted`, `recording_step_reverted`, `recording_speakers_mapped`, `recording_processing_requested`, `recording_clean_edited`, `recording_report_generated`, `recording_samples_viewed`, `employees_merged`, `evolution_requested`), `subject_type`, `subject_id`, `subject_label`, `sessions_count`, `answers_count`, `details` (json), `created_at/updated_at` |
+| `feedback_session_signatures` | `id`, `feedback_session_id`, `role`, `signer_name`, `signer_email`, `token`, `sent_at`, `signed_at`, `cancelled_at`, `cancelled_by_user_id` (convite cancelado por «Reabrir para edição»), `signature_path`, `ip`, `user_agent`, `created_at/updated_at` |
+| `feedback_audit_logs` | `id`, `company_id`, `user_id`, `action` (`session_deleted`, `template_deleted`, `template_version_created`, `template_archived`, `template_unarchived`, `session_version_updated`, `session_reopened`, `recording_uploaded`, `recording_original_viewed`, `recording_deleted`, `recording_step_reverted`, `recording_speakers_mapped`, `recording_processing_requested`, `recording_clean_edited`, `recording_report_generated`, `recording_samples_viewed`, `employees_merged`, `evolution_requested`), `subject_type`, `subject_id`, `subject_label`, `sessions_count`, `answers_count`, `details` (json), `created_at/updated_at` |
 | `feedback_recordings` | `id`, `company_id`, `feedback_session_id`, `source_format` (`txt`/`srt`/`docx`/`pdf`), `original_filename` (criptografado), `file_sha256`, `file_size_bytes`, `original_text` (criptografado), `original_chars`, `has_speaker_labels`, `has_timestamps`, `uploaded_by_user_id`, `consent_by_user_id`, `consent_confirmed_at`, `speaker_map` (json rótulo → `leader`/`employee`/`other`), `speakers_mapped_by_user_id`, `speakers_mapped_at`, `processing_status` (`uploaded`/`processing`/`ready`/`failed`), `processing_mode` (`full`/`report`), `processing_stage` (`cleaning`/`report`), `processing_chunks_done`, `processing_chunks_total`, `processing_error`, `processing_attempts`, `processing_requested_by_user_id`, `processing_started_at`, `processed_at`, `clean_text` (criptografado), `clean_generated_at`, `clean_revision`, `clean_edited_by_user_id`, `clean_edited_at`, `created_at/updated_at`, `deleted_at` |
 | `feedback_recording_reports` | `id`, `company_id`, `feedback_session_id`, `feedback_recording_id`, `report_json` (criptografado), `prompt_version`, `schema_version`, `provider`, `model`, `clean_revision`, `generated_by_user_id`, `is_current`, `created_at/updated_at`, `deleted_at` |
 | `feedback_evolution_reports` | `id`, `company_id`, `company_employee_id`, `session_ids` (json), `report_ids` (json), `status` (`processing`/`ready`/`failed`), `error`, `report_json` (criptografado), `prompt_version`, `schema_version`, `provider`, `model`, `generated_by_user_id`, `created_at/updated_at`, `deleted_at` |
@@ -4080,15 +4338,31 @@ Gerado a partir das migrations (`database/migrations`, 181 arquivos), aplicando 
 
 | Tabela | Colunas |
 |--------|---------|
-| `interview_questionnaires` | `id`, `name`, `description`, `is_default`, `created_by`, `created_at/updated_at` |
+| `interview_questionnaires` | `id`, `name`, `description`, `is_default`, `version` (versão na família), `parent_id` (raiz da família de versões), `created_by`, `created_at/updated_at` |
 | `interview_questionnaire_sections` | `id`, `questionnaire_id`, `title`, `position`, `created_at/updated_at` |
 | `interview_questionnaire_questions` | `id`, `section_id`, `question_key`, `text`, `position`, `created_at/updated_at` |
-| `interviews` | `id`, `questionnaire_id`, `candidate_name`, `position_title`, `company_id`, `status`, `audio_path`, `audio_mime`, `audio_size`, `duration_seconds`, `transcript_text`, `failure_reason`, `started_at`, `finished_at`, `created_by`, `created_at/updated_at` |
-| `interview_answers` | `id`, `interview_id`, `question_id`, `answer`, `raw_quote`, `created_at/updated_at` |
+| `interviews` | `id`, `questionnaire_id`, `talent_candidate_id` (nulo, nullOnDelete), `hiring_application_id` (nulo, nullOnDelete), `candidate_name`, `position_title`, `company_id`, `status`, `transcript_source` (`InterviewTranscriptSource`; antigas = `audio_whisper`), `audio_path`, `audio_mime`, `audio_size`, `duration_seconds`, `transcript_text`, `failure_reason`, `started_at`, `finished_at`, `reviewed_at`, `reviewed_by`, `created_by`, `created_at/updated_at`, `deleted_at` (soft delete) |
+| `interview_answers` | `id`, `interview_id`, `question_id`, `answer` (nulo quando sem evidência), `raw_quote`, `origin` (`InterviewAnswerOrigin`; antigas = `ai_suggestion`), `evidence_missing`, `reviewer_note`, `created_at/updated_at` |
 | `hiring_processes` | `id`, `company_id`, `title`, `current_stage`, `notes`, `updated_by`, `sort_order`, `notes_at`, `candidates_count`, `candidates_count_at`, `commercial_proposal_id`, `created_at/updated_at` |
 | `hiring_process_comments` | `id`, `hiring_process_id`, `user_id`, `body`, `created_at/updated_at` |
 | `meetings` | `id`, `title`, `company_id`, `participants_text`, `status`, `audio_path`, `audio_mime`, `audio_size`, `duration_seconds`, `transcript_text`, `minutes_text`, `failure_reason`, `started_at`, `finished_at`, `created_by`, `created_at/updated_at` |
 | `hiring_process_stage_entries` | `id`, `hiring_process_id`, `stage`, `notes`, `candidates_count`, `created_by`, `created_at/updated_at` |
+| `talent_candidates` | `id`, `solides_id` (único, nulo), `name`, `email`, `email_normalized` (índice; identifica a pessoa junto com `solides_id`), `phone`, `phone_digits` (índice; só os dígitos, para a busca), `email_reviewed`, `phone_reviewed`, `email_opt_in`, `contact_preference`, `source`, `current_role`, `current_company`, `notes`, `archived_at`, `archived_by`, `created_by`, `updated_by`, `created_at/updated_at` |
+| `hiring_vacancies` | `id`, `hiring_process_id` (obrigatório, cascade), `company_id` (copiado do processo), `title`, `description`, `status` (`HiringVacancyStatus`), `closed_at`, `created_by`, `updated_by`, `created_at/updated_at` |
+| `hiring_vacancy_stages` | `id`, `hiring_vacancy_id`, `name`, `position`, `is_hired` (uma por vaga), `created_at/updated_at` |
+| `hiring_applications` | `id`, `hiring_vacancy_id`, `talent_candidate_id` (restrict), `hiring_vacancy_stage_id` (restrict), `sort_order`, `hired_at`, `created_by`, `created_at/updated_at`; único (`hiring_vacancy_id`, `talent_candidate_id`) |
+| `hiring_application_events` | `id`, `hiring_application_id`, `type` (`HiringApplicationEventType`), `from_stage_id`, `to_stage_id` (nulos se a etapa for excluída), `note`, `user_id`, `created_at`; só inserção |
+| `talent_candidate_attachments` | `id`, `talent_candidate_id` (restrict), `original_name`, `path` (disco `local`, `candidates/{id}/{uuid}.{ext}`; nunca exposto), `mime` (detectado pelo conteúdo), `size`, `sha256`, `sender_name`, `received_on`, `purpose`, `privacy_confirmed_at`, `uploaded_by`, `created_at/updated_at`; único (`talent_candidate_id`, `sha256`) |
+| `company_contacts` | `id`, `company_id` (cascade), `name`, `role`, `email` (minúsculas), `phone`, `phone_digits` (índice), `channel_email`, `channel_whatsapp`, `topics` (JSON com `vagas`, `pos_contratacao`, `pesquisas`), `is_enabled`, `reviewed_at`, `reviewed_by`, `is_primary` (um por empresa, garantido no service), `responsible_user_id`, `notes`, `archived_at`, `created_by`, `updated_by`, `created_at/updated_at` |
+| `company_contact_events` | `id`, `company_contact_id`, `type` (`CompanyContactEventType`), `meta` (JSON, só nomes de campos), `user_id`, `created_at`; só inserção |
+| `employment_cycles` | `id`, `company_id`, `company_employee_id`, `hiring_application_id` (nulo), `status` (`EmploymentCycleStatus`), `admission_date`, `active_confirmed_at`, `role_title`, `manager_contact_id` (contato da empresa), `collaborator_email`, `collaborator_phone`, `collaborator_email_opt_in`, `paused_at`, `pause_reason`, `terminated_on` (nulo), `termination_note`, `created_by`, `created_at/updated_at`; um ciclo em aberto por colaborador e empresa (garantido no service) |
+| `employment_cycle_events` | `id`, `employment_cycle_id`, `type` (`EmploymentCycleEventType`), `note`, `meta` (JSON), `user_id`, `created_at`; só inserção |
+| `hiring_followup_milestones` | `id`, `employment_cycle_id`, `moment` (`FollowupMoment`), `due_on`, `skipped_at`, `skip_reason`, `completed_at`, `created_at/updated_at`; único (`employment_cycle_id`, `moment`) |
+| `hiring_followup_invitations` | `id`, `milestone_id`, `audience` (`FollowupAudience`), `recipient_name`, `recipient_email`, `recipient_phone`, `token` (UUID, único), `expires_at` (30 dias), `revoked_at`, `revoke_reason`, `copied_at`, `emailed_at`, `email_failure_reason`, `answered_at`, `created_by`, `created_at/updated_at` |
+| `hiring_followup_responses` | `id`, `invitation_id` (único), `rating` (1 a 5), `comment`, `support_requested`, `support_note`, `created_at` |
+| `hiring_communications` | `id`, `hiring_vacancy_id` (cascade), `hiring_application_id` (nulo; dossiê), `company_contact_id`, `kind` (`HiringCommunicationKind`), `channel` (`HiringCommunicationChannel`), `stage_name`, `recipient` (e-mail ou telefone no momento), `subject`, `body`, `idempotency_key` (único), `status` (`HiringCommunicationStatus`), `sent_at`, `failure_reason`, `created_by`, `created_at/updated_at` |
+| `hiring_assessments` | `id`, `hiring_application_id` (único, cascade), `success_profile`, `case_description`, `case_result`, `criteria` (JSON `[{criterio, evidencia, origem, avaliacao}]`), `interviewer_summary`, `limitations`, `decision` (`HiringAssessmentDecision`), `approved_at`, `approved_by`, `created_by`, `updated_by`, `created_at/updated_at` |
+| `talent_candidate_audit_logs` | `id`, `talent_candidate_id` (restrict), `user_id`, `action` (`TalentCandidateAuditAction`), `meta` (JSON, sem conteúdo de arquivo), `ip`, `created_at`; só inserção |
 
 #### RHID / Ponto
 
@@ -4117,13 +4391,17 @@ Valores gravados no banco e rótulos exibidos (`label()`), extraídos de `app/En
 
 | Enum | Valores (rótulo) |
 |------|------------------|
-| `AdminPermissionModule` | `dashboard` (Painel) · `landing_interest` (Clientes · Leads) · `companies` (Clientes · Empresas) · `companies_diagnostico` (Clientes · Diagnóstico empresarial) · `companies_contratos_fechados` (Clientes · Contratos fechados) · `rhid` (RHID - Empresas) · `plans` (Comercial · Assinaturas) · `survey_templates` (Voz do Time · Pesquisas / Mapeamentos) · `methodology` (Direcionamento Estratégico) · `strategic_calendar` (Calendário estratégico) · `tarefas` (Tarefas) · `comercial_resumo` (Comercial · Resumo (legado)) · `comercial_propostas` (Comercial · Gestão) · `comercial_processos` (Comercial · Processos) · `comercial_valores_contratos` (Comercial · Valores e contratos) · `financeiro_resumo` (Financeiro · Resumo) · `financeiro_vendas` (Financeiro · Vendas) · `financeiro_comissoes` (Financeiro · Comissões) · `financeiro_comissoes_adiantamento` (Financeiro · Comissões · Pagar antes do recebimento) · `financeiro_contas_bancarias` (Financeiro · Contas bancárias) · `financeiro_contas_a_pagar` (Financeiro · Contas a pagar) · `financeiro_contas_a_receber` (Financeiro · Contas a receber) · `financeiro_formas_pagamento` (Financeiro · Formas de pagamento) · `empresa_talents` (Configuração · Empresa Talents) · `solides_banco_talentos` (Contratação · Banco de talentos) · `solides_acompanhamento` (Contratação · Acompanhamento) · `solides_profiler` (Contratação · Profiler) · `nr1_dados_brutos` (Pesquisas NR-1 · Dados brutos (interno)) · `nr1_oportunidades` (Comercial · Oportunidades NR-1 (agregado)) · `settings` (Configuração · Geral) · `training` (Capacitação) · `equipe` (Configuração · Equipe) · `entrevistas_ia` (Contratação · Entrevistas IA) · `entrevistas_roteiros` (Contratação · Roteiros) · `entrevistas_reunioes` (Reuniões) · `feedbacks` (Feedbacks internos) · `ferias` (Férias) · `desligamento` (Voz do Time · Desligamento) · `denuncias` (Voz do Time · Canal de denúncias) · `sugestoes` (Voz do Time · Canal de sugestões e dúvidas) · `financeiro` (Financeiro (legado)) · `comercial` (Comercial (legado)) · `solides` (Sólides (legado)) · `entrevistas` (Entrevistas (legado)) |
+| `AdminPermissionModule` | `dashboard` (Painel) · `landing_interest` (Clientes · Leads) · `companies` (Clientes · Empresas) · `companies_diagnostico` (Clientes · Diagnóstico empresarial) · `companies_contratos_fechados` (Clientes · Contratos fechados) · `rhid` (RHID - Empresas) · `plans` (Comercial · Assinaturas) · `survey_templates` (Voz do Time · Pesquisas / Mapeamentos) · `methodology` (Direcionamento Estratégico) · `strategic_calendar` (Calendário estratégico) · `tarefas` (Tarefas) · `comercial_resumo` (Comercial · Resumo (legado)) · `comercial_propostas` (Comercial · Gestão) · `comercial_processos` (Comercial · Processos) · `comercial_valores_contratos` (Comercial · Valores e contratos) · `financeiro_resumo` (Financeiro · Resumo) · `financeiro_vendas` (Financeiro · Vendas) · `financeiro_comissoes` (Financeiro · Comissões) · `financeiro_comissoes_adiantamento` (Financeiro · Comissões · Pagar antes do recebimento) · `financeiro_contas_bancarias` (Financeiro · Contas bancárias) · `financeiro_contas_a_pagar` (Financeiro · Contas a pagar) · `financeiro_contas_a_receber` (Financeiro · Contas a receber) · `financeiro_formas_pagamento` (Financeiro · Formas de pagamento) · `empresa_talents` (Configuração · Empresa Talents) · `solides_banco_talentos` (Contratação · Banco de talentos) · `solides_acompanhamento` (Contratação · Acompanhamento) · `solides_profiler` (Contratação · Profiler) · `contratacao_vagas` (Contratação · Vagas) · `contratacao_candidatos` (Contratação · Candidatos) · `contratacao_anexos` (Contratação · Anexos internos (restrito)) · `contratacao_pos` (Contratação · Pós-contratação) · `nr1_dados_brutos` (Pesquisas NR-1 · Dados brutos (interno)) · `nr1_oportunidades` (Comercial · Oportunidades NR-1 (agregado)) · `settings` (Configuração · Geral) · `training` (Capacitação) · `equipe` (Configuração · Equipe) · `entrevistas_ia` (Contratação · Entrevistas IA) · `entrevistas_roteiros` (Contratação · Roteiros) · `entrevistas_reunioes` (Reuniões) · `feedbacks` (Feedbacks internos) · `ferias` (Férias) · `desligamento` (Voz do Time · Desligamento) · `denuncias` (Voz do Time · Canal de denúncias) · `sugestoes` (Voz do Time · Canal de sugestões e dúvidas) · `financeiro` (Financeiro (legado)) · `comercial` (Comercial (legado)) · `solides` (Sólides (legado)) · `entrevistas` (Entrevistas (legado)) |
 | `ClientEvaluationStatus` | `pending` (Pendente) · `answered` (Respondida) · `expired` (Expirada) · `superseded` (Substituída) |
 | `CommercialProductPricingType` | `fixed` · `per_employee` · `tiered_per_employee` · `fixed_modality` · `salary_times_employees` · `threshold_multiplier` · `flexible_rates` |
 | `CommercialProposalPaymentMethod` | `boleto` (Boleto) · `pix` (PIX) · `credito` (Cartão de crédito) · `debito` (Cartão de débito) |
 | `CompanyNoticeAudience` | `company` (empresa) · `talents` (Talents) |
-| `CompanyNoticeEventKind` | `created` (novo item) · `updated` (item atualizado) · `deleted` (item removido) · `date_changed` (data alterada) · `proposal_created` (nova proposta) · `proposal_won` (proposta fechada) · `hiring_follow_up_from_proposal` (acompanhamento criado) · `sale_created` (nova venda) · `installment_paid` (parcela paga) · `installment_overdue` (parcela vencida) · `commission_paid` (comissão paga) · `commission_loss_assumed` (perda de comissão assumida) · `commission_refund_due` (devolução de comissão pendente) · `lead_received` (novo lead) · `feedback_awaiting_signature` (feedback enviado para assinatura) · `feedback_completed` (feedback concluído) · `complaint_created` (nova denúncia) · `complaint_updated` (denúncia atualizada) · `nr1_opportunity_created` (nova oportunidade NR-1) · `nr1_proposal_requested` (nova solicitação de proposta ou conversa) · `nr1_report_published` (relatório publicado) |
+| `CompanyContactEventType` | `created` (Contato criado) · `updated` (Contato alterado) · `reviewed` (Contato conferido) · `archived` (Contato arquivado) · `restored` (Contato restaurado) |
+| `CompanyContactTopic` | `vagas` (Vagas) · `pos_contratacao` (Pós-contratação) · `pesquisas` (Pesquisas) |
+| `CompanyNoticeEventKind` | `created` (novo item) · `updated` (item atualizado) · `deleted` (item removido) · `date_changed` (data alterada) · `proposal_created` (nova proposta) · `proposal_won` (proposta fechada) · `hiring_follow_up_from_proposal` (acompanhamento criado) · `sale_created` (nova venda) · `installment_paid` (parcela paga) · `installment_overdue` (parcela vencida) · `commission_paid` (comissão paga) · `commission_loss_assumed` (perda de comissão assumida) · `commission_refund_due` (devolução de comissão pendente) · `lead_received` (novo lead) · `feedback_awaiting_signature` (feedback enviado para assinatura) · `feedback_completed` (feedback concluído) · `complaint_created` (nova denúncia) · `complaint_updated` (denúncia atualizada) · `nr1_opportunity_created` (nova oportunidade NR-1) · `nr1_proposal_requested` (nova solicitação de proposta ou conversa) · `nr1_report_published` (relatório publicado) · `hiring_followup_support_requested` (pedido de apoio no pós-contratação) |
 | `EmployeeLeaveStatus` | `scheduled` (Agendado) · `in_progress` (Em férias) · `completed` (Concluído) · `cancelled` (Cancelado) |
+| `EmploymentCycleEventType` | `created` (Vínculo registrado) · `admission_confirmed` (Admissão confirmada) · `updated` (Dados do vínculo alterados) · `paused` (Acompanhamento pausado) · `resumed` (Acompanhamento retomado) · `terminated` (Desligamento registrado) · `readmitted` (Readmissão registrada) · `milestone_skipped` (Marco pulado) · `invitation_revoked` (Convite revogado) · `note` (Anotação) |
+| `EmploymentCycleStatus` | `pending_admission` (Admissão pendente) · `active` (Ativo) · `paused` (Pausado) · `terminated` (Desligado) |
 | `ExitInterviewStatus` | `draft` (Rascunho) · `completed` (Concluída) |
 | `FeedbackQuestionType` | `text` · `textarea` · `single_choice` · `bullet_list` · `ccm_block` · `action_table` · `rating_group` |
 | `FeedbackSessionStatus` | `draft` (Rascunho) · `in_progress` (Em preenchimento) · `awaiting_signatures` (Aguardando assinaturas) · `completed` (Concluído) · `cancelled` (Cancelado) |
@@ -4131,8 +4409,21 @@ Valores gravados no banco e rótulos exibidos (`label()`), extraídos de `app/En
 | `FinanceBankAccountType` | `checking` (Conta corrente) · `savings` (Poupança) · `cash` (Caixa) · `other` (Outra) |
 | `FinancePayableStatus` | `pending` (Pendente) · `paid` (Pago) · `cancelled` (Cancelado) |
 | `FinanceReceivableStatus` | `pending` (Pendente) · `paid` (Recebido) · `cancelled` (Cancelado) |
+| `FollowupAudience` | `collaborator` (Colaborador) · `manager` (Gestor) |
+| `FollowupInvitationState` | `generated` (Gerado) · `copied` (Link copiado) · `emailed` (Enviado ao servidor de e-mail) · `failed` (Falhou) · `answered` (Respondido) · `expired` (Expirado) · `revoked` (Revogado) |
+| `FollowupMoment` | `d15` (D15) · `d30` (D30) · `d60` (D60) · `d90` (D90) |
+| `FollowupStatus` | `pending_admission` (Admissão pendente) · `scheduled` (Programado) · `due` (Devido) · `overdue` (Vencido · revisar) · `paused` (Pausado) · `completed` (Concluído) · `terminated` (Desligado) |
+| `HiringAssessmentDecision` | `pending` (Pendente) · `recommended` (Recomendado) · `not_recommended` (Não recomendado) · `on_hold` (Em espera) |
+| `HiringAssessmentRating` | `atende` (Atende) · `parcial` (Atende parcialmente) · `nao_atende` (Não atende) · `sem_evidencia` (Sem evidência) |
+| `HiringCommunicationChannel` | `email` (E-mail) · `whatsapp` (WhatsApp) |
+| `HiringCommunicationKind` | `stage_update` (Comunicação de etapa) · `dossier` (Envio do dossiê) |
+| `HiringCommunicationStatus` | `draft` (Rascunho) · `sent` (Enviado ao servidor de e-mail) · `failed` (Falhou) · `copied` (Texto copiado) |
 | `HiringProcessStage` | `engenharia_cargo` (Engenharia de Cargo) · `anuncio_vagas` (Anúncio de Vagas) · `analise_curriculo` (Análise de currículo) · `analise_comportamental` (Análise Comportamental) · `entrevista_presencial` (Entrevista Presencial) · `entrevista_gestor` (Entrevista com o Gestor) · `visita_empresa` (Visita à Empresa (Opcional)) · `contratacao` (Contratação) |
+| `HiringVacancyStatus` | `open` (Em andamento) · `paused` (Pausada) · `filled` (Concluída) · `cancelled` (Cancelada) |
+| `HiringApplicationEventType` | `added` (Incluído na vaga) · `moved` (Mudança de etapa) · `note` (Anotação) |
+| `InterviewAnswerOrigin` | `ai_suggestion` (Sugestão da IA) · `human` (Revisão humana) |
 | `InterviewStatus` | `queued` (Na fila) · `transcribing` (Transcrevendo áudio) · `extracting` (Gerando relatório) · `completed` (Concluída) · `failed` (Falhou) |
+| `InterviewTranscriptSource` | `audio_whisper` (Áudio (transcrição pelo Whisper)) · `manual_text` (Texto colado) · `file_upload` (Arquivo TXT ou VTT) · `plaud` (Plaud (texto colado ou TXT)) |
 | `LandingInterestSource` | `site` (Site) · `phone` (Telefone) · `whatsapp` (WhatsApp) · `referral` (Indicação) · `event` (Evento) · `other` (Outro) |
 | `MeetingStatus` | `draft` (Rascunho) · `queued` (Na fila) · `transcribing` (Transcrevendo áudio) · `generating_minutes` (Gerando ata) · `completed` (Concluída) · `failed` (Falhou) |
 | `MonthlyHighlightCategory` | `produtividade` (Produtividade) · `pontualidade` (Pontualidade) · `engajamento` (Engajamento) · `atendimento` (Atendimento) · `comercial` (Comercial) · `indicacao` (Indicação) |
@@ -4144,6 +4435,7 @@ Valores gravados no banco e rótulos exibidos (`label()`), extraídos de `app/En
 | `StrategicCalendarRecurrence` | `weekly` (Semanal) · `biweekly` (Quinzenal) · `monthly` (Mensal) · `annual` (Anual) |
 | `StrategicCalendarSource` | `talents` (Talents) · `company` (Empresa) |
 | `StrategicCalendarViewPeriod` | `two_months` (2 meses) · `three_months` (3 meses) · `quarter` (Trimestre atual) · `annual` (Ano civil atual) |
+| `TalentCandidateAuditAction` | `created` (Cadastro criado) · `updated` (Cadastro alterado) · `archived` (Cadastro arquivado) · `restored` (Cadastro restaurado) · `imported_solides` (Importado da Sólides) · `attachment_uploaded` (Anexo interno enviado) · `attachment_downloaded` (Anexo interno baixado) · `attachment_deleted` (Anexo interno excluído) |
 | `TaskBoardMemberRole` | `owner` · `editor` · `commenter` · `viewer` |
 | `TaskCardRecurrence` | `daily` (Diariamente) · `weekly` (Semanalmente) · `monthly` (Mensalmente) · `annual` (Anualmente) |
 | `TaskCardVisibility` | `internal` (Interno) · `company` (Visível à empresa) · `inherit` (Seguir a lista) |

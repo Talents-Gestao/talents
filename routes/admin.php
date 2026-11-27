@@ -1,32 +1,35 @@
 <?php
 
 use App\Http\Controllers\Admin\ActionPlanAdminController;
-use App\Http\Controllers\Admin\ExecutiveBriefAdminController;
-use App\Http\Controllers\Admin\PsychosocialDocumentAdminController;
-use App\Http\Controllers\Admin\SurveyCampaignRegistrationAdminController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AiSettingsController;
+use App\Http\Controllers\Admin\BusinessDiagnosticController;
+use App\Http\Controllers\Admin\CampaignAdminController;
+use App\Http\Controllers\Admin\ClientEvaluationController;
+use App\Http\Controllers\Admin\ClosedContractsController;
+use App\Http\Controllers\Admin\ComingSoonController;
+use App\Http\Controllers\Admin\Commercial\CommercialProcessController;
 use App\Http\Controllers\Admin\Commercial\ContractController as CommercialContractController;
-use App\Http\Controllers\Admin\Commercial\ProductController as CommercialProductController;
 use App\Http\Controllers\Admin\Commercial\ContractTemplateController as CommercialContractTemplateController;
 use App\Http\Controllers\Admin\Commercial\PreviewController as CommercialPreviewController;
+use App\Http\Controllers\Admin\Commercial\ProductController as CommercialProductController;
 use App\Http\Controllers\Admin\Commercial\ProposalController as CommercialProposalController;
 use App\Http\Controllers\Admin\Commercial\SettingsController as CommercialSettingsController;
+use App\Http\Controllers\Admin\CompanyContactController;
+use App\Http\Controllers\Admin\CompanyController;
+use App\Http\Controllers\Admin\CompanyEmployeeController;
+use App\Http\Controllers\Admin\CompanyNoticeController as AdminCompanyNoticeController;
+use App\Http\Controllers\Admin\CompanySurveyController;
+use App\Http\Controllers\Admin\CompanyUserController;
+use App\Http\Controllers\Admin\ComplaintCompanySelectController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\DesligamentoCompanySelectController;
+use App\Http\Controllers\Admin\DocumentShareAdminController;
+use App\Http\Controllers\Admin\ExecutiveBriefAdminController;
+use App\Http\Controllers\Admin\ExternalReviewerAdminController;
+use App\Http\Controllers\Admin\FeedbackAiSettingsController;
 use App\Http\Controllers\Admin\FeedbackCompanySelectController;
 use App\Http\Controllers\Admin\FeriasCompanySelectController;
-use App\Http\Controllers\Admin\DesligamentoCompanySelectController;
-use App\Http\Controllers\Admin\ComplaintCompanySelectController;
-use App\Http\Controllers\Admin\SuggestionCompanySelectController;
-use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
-use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
-use App\Http\Controllers\Client\Feedback\FeedbackRecordingAiController;
-use App\Http\Controllers\Client\Feedback\FeedbackRecordingController;
-use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
-use App\Http\Controllers\Client\Feedback\FeedbackTemplateController;
-use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
-use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
-use App\Http\Controllers\Client\ComplaintController;
-use App\Http\Controllers\Client\SuggestionController;
 use App\Http\Controllers\Admin\Finance\BankAccountController as FinanceBankAccountController;
 use App\Http\Controllers\Admin\Finance\CommissionController as FinanceCommissionController;
 use App\Http\Controllers\Admin\Finance\FinanceDashboardController;
@@ -35,36 +38,50 @@ use App\Http\Controllers\Admin\Finance\PayableController as FinancePayableContro
 use App\Http\Controllers\Admin\Finance\PaymentMethodController as FinancePaymentMethodController;
 use App\Http\Controllers\Admin\Finance\ReceivableController as FinanceReceivableController;
 use App\Http\Controllers\Admin\Finance\SaleController as FinanceSaleController;
-use App\Http\Controllers\Admin\ClientEvaluationController;
-use App\Http\Controllers\Admin\CompanyController;
-use App\Http\Controllers\Admin\CompanySurveyController;
-use App\Http\Controllers\Admin\PurposeMapCampaignController;
-use App\Http\Controllers\Admin\Commercial\CommercialProcessController;
+use App\Http\Controllers\Admin\Hiring\AdmissionController;
+use App\Http\Controllers\Admin\Hiring\ApplicationController as HiringApplicationController;
+use App\Http\Controllers\Admin\Hiring\AssessmentController;
+use App\Http\Controllers\Admin\Hiring\CandidateAttachmentController;
+use App\Http\Controllers\Admin\Hiring\CandidateController;
+use App\Http\Controllers\Admin\Hiring\FollowupController;
+use App\Http\Controllers\Admin\Hiring\VacancyCommunicationController;
+use App\Http\Controllers\Admin\Hiring\VacancyController;
+use App\Http\Controllers\Admin\Hiring\VacancyStageController;
+use App\Http\Controllers\Admin\HiringProcessController;
 use App\Http\Controllers\Admin\InternalRegulationController;
-use App\Http\Controllers\Admin\MonthlyHighlightController;
-use App\Http\Controllers\Admin\CompanyEmployeeController;
-use App\Http\Controllers\Admin\CompanyUserController;
-use App\Http\Controllers\Admin\ComingSoonController;
-use App\Http\Controllers\Admin\ClosedContractsController;
-use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
-use App\Http\Controllers\Admin\BusinessDiagnosticController;
+use App\Http\Controllers\Admin\Interviews\InterviewController;
+use App\Http\Controllers\Admin\Interviews\InterviewQuestionnaireController;
+use App\Http\Controllers\Admin\Interviews\InterviewReportController;
 use App\Http\Controllers\Admin\LandingInterestSubmissionController;
-use App\Http\Controllers\Admin\FeedbackAiSettingsController;
 use App\Http\Controllers\Admin\MailSettingsController;
+use App\Http\Controllers\Admin\Meetings\MeetingController;
 use App\Http\Controllers\Admin\MethodologyCompanyController;
 use App\Http\Controllers\Admin\MethodologyController as AdminMethodologyController;
 use App\Http\Controllers\Admin\MethodologyFormTemplateController;
+use App\Http\Controllers\Admin\MfaResetController;
+use App\Http\Controllers\Admin\MonthlyHighlightController;
+use App\Http\Controllers\Admin\Nr1OpportunityController;
+use App\Http\Controllers\Admin\Nr1OrientationVideoController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\PlatformCompanyController;
 use App\Http\Controllers\Admin\PontoEspelhoController;
 use App\Http\Controllers\Admin\PontoPanelController;
+use App\Http\Controllers\Admin\PsychosocialDocumentAdminController;
+use App\Http\Controllers\Admin\PsychosocialMeasureAdminController;
+use App\Http\Controllers\Admin\PsychosocialResultsAdminController;
+use App\Http\Controllers\Admin\PurposeMapCampaignController;
+use App\Http\Controllers\Admin\ReviewRoundAdminController;
 use App\Http\Controllers\Admin\RhidPortfolioController;
+use App\Http\Controllers\Admin\ServiceMatchAdminController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SolidesCurriculumController;
 use App\Http\Controllers\Admin\SolidesSettingsController;
-use App\Http\Controllers\Admin\HiringProcessController;
-use App\Http\Controllers\Admin\CompanyNoticeController as AdminCompanyNoticeController;
 use App\Http\Controllers\Admin\StrategicCalendarController as AdminStrategicCalendarController;
+use App\Http\Controllers\Admin\SuggestionCompanySelectController;
+use App\Http\Controllers\Admin\SurveyCampaignRegistrationAdminController;
+use App\Http\Controllers\Admin\SurveyPublicationAdminController;
+use App\Http\Controllers\Admin\SurveyRawExportController;
+use App\Http\Controllers\Admin\SurveyServiceSuggestionAdminController;
 use App\Http\Controllers\Admin\SurveyTemplateController;
 use App\Http\Controllers\Admin\Tasks\BoardActivationController as TasksBoardActivationController;
 use App\Http\Controllers\Admin\Tasks\ProcessTemplateController as TasksProcessTemplateController;
@@ -80,10 +97,16 @@ use App\Http\Controllers\Admin\Tasks\TaskBoardListController;
 use App\Http\Controllers\Admin\Tasks\TaskBoardMemberController;
 use App\Http\Controllers\Admin\Tasks\TemplateCardController as TasksTemplateCardController;
 use App\Http\Controllers\Admin\Tasks\TemplateListController as TasksTemplateListController;
-use App\Http\Controllers\Admin\Interviews\InterviewController;
-use App\Http\Controllers\Admin\Meetings\MeetingController;
-use App\Http\Controllers\Admin\Interviews\InterviewQuestionnaireController;
-use App\Http\Controllers\Admin\Interviews\InterviewReportController;
+use App\Http\Controllers\Client\ComplaintController;
+use App\Http\Controllers\Client\Feedback\FeedbackDashboardController;
+use App\Http\Controllers\Client\Feedback\FeedbackEmployeeController;
+use App\Http\Controllers\Client\Feedback\FeedbackRecordingAiController;
+use App\Http\Controllers\Client\Feedback\FeedbackRecordingController;
+use App\Http\Controllers\Client\Feedback\FeedbackSessionController;
+use App\Http\Controllers\Client\Feedback\FeedbackTemplateController;
+use App\Http\Controllers\Client\Leaves\EmployeeLeaveController;
+use App\Http\Controllers\Client\Offboarding\ExitInterviewController;
+use App\Http\Controllers\Client\SuggestionController;
 use App\Http\Controllers\NewsFeedController;
 use Illuminate\Support\Facades\Route;
 
@@ -208,21 +231,21 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.evidence-dossier.release');
         Route::get('companies/{company}/surveys/{survey}/dossie/anexos/{attachment}', [PsychosocialDocumentAdminController::class, 'downloadAttachment'])
             ->name('companies.surveys.evidence-dossier.attachments.download');
-        Route::get('companies/{company}/surveys/{survey}/medidas', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'edit'])
+        Route::get('companies/{company}/surveys/{survey}/medidas', [PsychosocialMeasureAdminController::class, 'edit'])
             ->name('companies.surveys.measures.edit');
-        Route::post('companies/{company}/surveys/{survey}/medidas', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'store'])
+        Route::post('companies/{company}/surveys/{survey}/medidas', [PsychosocialMeasureAdminController::class, 'store'])
             ->name('companies.surveys.measures.store');
-        Route::post('companies/{company}/surveys/{survey}/medidas/atualizar-ia', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'refreshFromAi'])
+        Route::post('companies/{company}/surveys/{survey}/medidas/atualizar-ia', [PsychosocialMeasureAdminController::class, 'refreshFromAi'])
             ->name('companies.surveys.measures.refresh-ai');
-        Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}/sugestao', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateSuggestion'])
+        Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}/sugestao', [PsychosocialMeasureAdminController::class, 'updateSuggestion'])
             ->name('companies.surveys.measures.suggestion');
-        Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateStatus'])
+        Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}', [PsychosocialMeasureAdminController::class, 'updateStatus'])
             ->name('companies.surveys.measures.status');
-        Route::post('companies/{company}/surveys/{survey}/solucoes-sugeridas/liberar', [\App\Http\Controllers\Admin\SurveyServiceSuggestionAdminController::class, 'release'])
+        Route::post('companies/{company}/surveys/{survey}/solucoes-sugeridas/liberar', [SurveyServiceSuggestionAdminController::class, 'release'])
             ->name('companies.surveys.service-suggestions.release');
-        Route::patch('companies/{company}/surveys/{survey}/solucoes-sugeridas/{suggestion}', [\App\Http\Controllers\Admin\SurveyServiceSuggestionAdminController::class, 'update'])
+        Route::patch('companies/{company}/surveys/{survey}/solucoes-sugeridas/{suggestion}', [SurveyServiceSuggestionAdminController::class, 'update'])
             ->name('companies.surveys.service-suggestions.update');
-        Route::post('companies/{company}/surveys/{survey}/solucoes-sugeridas/{suggestion}/dispensar', [\App\Http\Controllers\Admin\SurveyServiceSuggestionAdminController::class, 'dismiss'])
+        Route::post('companies/{company}/surveys/{survey}/solucoes-sugeridas/{suggestion}/dispensar', [SurveyServiceSuggestionAdminController::class, 'dismiss'])
             ->name('companies.surveys.service-suggestions.dismiss');
         Route::get('companies/{company}/surveys/{survey}/documentos/{type}/previa', [PsychosocialDocumentAdminController::class, 'preview'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier', 'technical_report'])
@@ -233,47 +256,47 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('companies/{company}/surveys/{survey}/documentos/{type}/validacao-informada', [PsychosocialDocumentAdminController::class, 'validateInformed'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier', 'technical_report'])
             ->name('companies.surveys.psychosocial-documents.validate-informed');
-        Route::post('companies/{company}/surveys/{survey}/documentos/{type}/compartilhar', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'store'])
+        Route::post('companies/{company}/surveys/{survey}/documentos/{type}/compartilhar', [DocumentShareAdminController::class, 'store'])
             ->whereIn('type', ['executive_brief', 'pgr_subsidy', 'evidence_dossier', 'technical_report'])
             ->name('companies.surveys.psychosocial-documents.share');
         // Campanha NR-1 V11: treinamentos contratados por público e total de elegíveis (só a Talents).
-        Route::get('companies/{company}/surveys/{survey}/campanha-nr1', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'show'])
+        Route::get('companies/{company}/surveys/{survey}/campanha-nr1', [CampaignAdminController::class, 'show'])
             ->name('companies.surveys.campaign.show');
-        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/contratar', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'contract'])
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/contratar', [CampaignAdminController::class, 'contract'])
             ->name('companies.surveys.campaign.contract');
-        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/remover-contratacao', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'uncontract'])
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/remover-contratacao', [CampaignAdminController::class, 'uncontract'])
             ->name('companies.surveys.campaign.uncontract');
-        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/elegiveis', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'updateEligible'])
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/elegiveis', [CampaignAdminController::class, 'updateEligible'])
             ->name('companies.surveys.campaign.eligible');
-        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/convite-unico', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'updateInvitationOption'])
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/convite-unico', [CampaignAdminController::class, 'updateInvitationOption'])
             ->name('companies.surveys.campaign.invitation-option');
-        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/convites', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'generateInvitations'])
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/convites', [CampaignAdminController::class, 'generateInvitations'])
             ->name('companies.surveys.campaign.invitations');
-        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/videos', [\App\Http\Controllers\Admin\CampaignAdminController::class, 'updateVideos'])
+        Route::post('companies/{company}/surveys/{survey}/campanha-nr1/videos', [CampaignAdminController::class, 'updateVideos'])
             ->name('companies.surveys.campaign.videos');
         // Painel de resultados V11 para a consultoria e Revisão interna (Caderno §9): nada disso chega à empresa.
-        Route::get('companies/{company}/surveys/{survey}/resultados-psicossociais', [\App\Http\Controllers\Admin\PsychosocialResultsAdminController::class, 'show'])
+        Route::get('companies/{company}/surveys/{survey}/resultados-psicossociais', [PsychosocialResultsAdminController::class, 'show'])
             ->name('companies.surveys.results.show');
-        Route::post('companies/{company}/surveys/{survey}/revisao-interna', [\App\Http\Controllers\Admin\PsychosocialResultsAdminController::class, 'storeInternalReview'])
+        Route::post('companies/{company}/surveys/{survey}/revisao-interna', [PsychosocialResultsAdminController::class, 'storeInternalReview'])
             ->middleware('mfa:stepup')->name('companies.surveys.internal-review.store');
         // Fluxo de revisão dos dois documentos finais (campanha V11): Em edição → … → Publicado.
-        Route::get('companies/{company}/surveys/{survey}/documentos', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'index'])
+        Route::get('companies/{company}/surveys/{survey}/documentos', [ReviewRoundAdminController::class, 'index'])
             ->name('companies.surveys.documents.index');
-        Route::post('companies/{company}/surveys/{survey}/documentos/revisao', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'start'])
+        Route::post('companies/{company}/surveys/{survey}/documentos/revisao', [ReviewRoundAdminController::class, 'start'])
             ->name('companies.surveys.documents.start');
-        Route::post('companies/{company}/surveys/{survey}/documentos/exigir-revisao', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'updateReviewRequirement'])
+        Route::post('companies/{company}/surveys/{survey}/documentos/exigir-revisao', [ReviewRoundAdminController::class, 'updateReviewRequirement'])
             ->name('companies.surveys.documents.review-requirement');
-        Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/gerar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'regenerate'])
+        Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/gerar', [ReviewRoundAdminController::class, 'regenerate'])
             ->whereNumber('round')->name('companies.surveys.documents.regenerate');
-        Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/enviar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'send'])
+        Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/enviar', [ReviewRoundAdminController::class, 'send'])
             ->whereNumber('round')->name('companies.surveys.documents.send');
-        Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/publicar', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'publish'])
+        Route::post('companies/{company}/surveys/{survey}/documentos/revisao/{round}/publicar', [ReviewRoundAdminController::class, 'publish'])
             ->whereNumber('round')->middleware('mfa:stepup')->name('companies.surveys.documents.publish');
-        Route::get('companies/{company}/surveys/{survey}/documentos/versoes/{version}/download', [\App\Http\Controllers\Admin\ReviewRoundAdminController::class, 'download'])
+        Route::get('companies/{company}/surveys/{survey}/documentos/versoes/{version}/download', [ReviewRoundAdminController::class, 'download'])
             ->whereNumber('version')->name('companies.surveys.documents.download');
-        Route::post('companies/{company}/surveys/{survey}/publicar', [\App\Http\Controllers\Admin\SurveyPublicationAdminController::class, 'publish'])
+        Route::post('companies/{company}/surveys/{survey}/publicar', [SurveyPublicationAdminController::class, 'publish'])
             ->name('companies.surveys.publication.store');
-        Route::delete('companies/{company}/document-shares/{share}', [\App\Http\Controllers\Admin\DocumentShareAdminController::class, 'revoke'])
+        Route::delete('companies/{company}/document-shares/{share}', [DocumentShareAdminController::class, 'revoke'])
             ->name('companies.document-shares.revoke');
         Route::get('companies/{company}/surveys/{survey}/action-plan/pdf', [ActionPlanAdminController::class, 'pdf'])
             ->name('companies.surveys.action-plan.pdf');
@@ -295,7 +318,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.technical-opinion-file.download');
         Route::get('companies/{company}/surveys/{survey}/nr1-reports/{type}', [ActionPlanAdminController::class, 'downloadNr1Report'])
             ->name('companies.surveys.nr1-reports.download');
-        Route::get('companies/{company}/surveys/{survey}/dados-brutos/csv', [\App\Http\Controllers\Admin\SurveyRawExportController::class, 'csv'])
+        Route::get('companies/{company}/surveys/{survey}/dados-brutos/csv', [SurveyRawExportController::class, 'csv'])
             ->middleware(['admin.can:nr1_dados_brutos,view', 'mfa:stepup'])
             ->name('companies.surveys.raw-export.csv');
         Route::get('mapa-proposito', [PurposeMapCampaignController::class, 'index'])
@@ -319,6 +342,16 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'detachTemplate'])->name('companies.methodology-templates.detach');
     });
 
+    // Contatos da empresa (aba «Contatos»): ver pela própria aba (companies:view); criar, editar, conferir,
+    // arquivar e restaurar exigem companies:edit. scopeBindings: contato de outra empresa dá 404.
+    Route::prefix('companies/{company}/contatos')->name('companies.contacts.')->scopeBindings()->middleware('admin.can:companies,edit')->group(function () {
+        Route::post('/', [CompanyContactController::class, 'store'])->name('store');
+        Route::patch('{contact}', [CompanyContactController::class, 'update'])->name('update');
+        Route::post('{contact}/conferir', [CompanyContactController::class, 'review'])->name('review');
+        Route::post('{contact}/arquivar', [CompanyContactController::class, 'archive'])->name('archive');
+        Route::post('{contact}/restaurar', [CompanyContactController::class, 'restore'])->name('restore');
+    });
+
     Route::middleware('admin.can:companies_diagnostico')->group(function () {
         Route::resource('diagnostico-empresarial', BusinessDiagnosticController::class)
             ->parameters(['diagnostico-empresarial' => 'diagnostico_empresarial']);
@@ -330,18 +363,18 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     });
 
     Route::middleware('admin.can:nr1_oportunidades,view')->prefix('oportunidades-nr1')->name('nr1-opportunities.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'index'])->name('index');
-        Route::get('fila/{opportunity}', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'showOpportunity'])
+        Route::get('/', [Nr1OpportunityController::class, 'index'])->name('index');
+        Route::get('fila/{opportunity}', [Nr1OpportunityController::class, 'showOpportunity'])
             ->whereNumber('opportunity')->name('opportunity');
-        Route::get('{survey}', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'show'])
+        Route::get('{survey}', [Nr1OpportunityController::class, 'show'])
             ->whereNumber('survey')->name('show');
     });
 
     // Trabalhar a fila (assumir, estado, próxima ação) exige edição no módulo; só ver não basta.
     Route::middleware('admin.can:nr1_oportunidades,edit')->prefix('oportunidades-nr1/fila')->name('nr1-opportunities.')->group(function () {
-        Route::post('{opportunity}/assumir', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'assume'])->whereNumber('opportunity')->name('assume');
-        Route::post('{opportunity}/estado', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'changeStatus'])->whereNumber('opportunity')->name('status');
-        Route::post('{opportunity}/proxima-acao', [\App\Http\Controllers\Admin\Nr1OpportunityController::class, 'nextAction'])->whereNumber('opportunity')->name('next-action');
+        Route::post('{opportunity}/assumir', [Nr1OpportunityController::class, 'assume'])->whereNumber('opportunity')->name('assume');
+        Route::post('{opportunity}/estado', [Nr1OpportunityController::class, 'changeStatus'])->whereNumber('opportunity')->name('status');
+        Route::post('{opportunity}/proxima-acao', [Nr1OpportunityController::class, 'nextAction'])->whereNumber('opportunity')->name('next-action');
     });
 
     Route::middleware('admin.can:rhid')->get('rhid/{path?}', function () {
@@ -420,6 +453,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::middleware('admin.can:feedbacks')->prefix('feedbacks')->name('feedbacks.')->group(function () {
         Route::get('/', [FeedbackDashboardController::class, 'index'])->name('index');
         Route::post('company', [FeedbackCompanySelectController::class, 'store'])->name('company.store');
+        Route::delete('company', [FeedbackCompanySelectController::class, 'destroy'])->name('company.destroy');
 
         Route::middleware('feedback.company')->group(function () {
             // Pessoa: cadastros duplicados e união (só quem administra) e Evolução (antes do resource, por causa de {employee}).
@@ -437,7 +471,12 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             Route::patch('sessions/{session}', [FeedbackSessionController::class, 'update'])->name('sessions.update');
             Route::delete('sessions/{session}', [FeedbackSessionController::class, 'destroy'])->name('sessions.destroy');
             Route::post('sessions/{session}/assinaturas', [FeedbackSessionController::class, 'sendSignatures'])->name('sessions.signatures');
+            Route::patch('sessions/{session}/reabrir', [FeedbackSessionController::class, 'reopen'])->name('sessions.reopen');
+            Route::get('sessions/{session}/versao', [FeedbackSessionController::class, 'versionPreview'])->name('sessions.version.preview');
+            Route::patch('sessions/{session}/versao', [FeedbackSessionController::class, 'updateVersion'])->name('sessions.version.update');
             Route::post('templates/{template}/duplicar', [FeedbackTemplateController::class, 'duplicate'])->name('templates.duplicate');
+            Route::patch('templates/{template}/arquivar', [FeedbackTemplateController::class, 'archive'])->name('templates.archive');
+            Route::patch('templates/{template}/reativar', [FeedbackTemplateController::class, 'unarchive'])->name('templates.unarchive');
             Route::get('templates/{template}/exclusao', [FeedbackTemplateController::class, 'deletionImpact'])->name('templates.deletion');
             Route::resource('templates', FeedbackTemplateController::class)
                 ->except(['show'])
@@ -514,17 +553,17 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::middleware('admin.can:survey_templates')->group(function () {
         Route::resource('survey-templates', SurveyTemplateController::class);
 
-        Route::get('nr1/videos', [\App\Http\Controllers\Admin\Nr1OrientationVideoController::class, 'index'])
+        Route::get('nr1/videos', [Nr1OrientationVideoController::class, 'index'])
             ->name('nr1-videos.index');
-        Route::post('nr1/videos', [\App\Http\Controllers\Admin\Nr1OrientationVideoController::class, 'store'])
+        Route::post('nr1/videos', [Nr1OrientationVideoController::class, 'store'])
             ->name('nr1-videos.store');
-        Route::put('nr1/videos/{nr1_video}', [\App\Http\Controllers\Admin\Nr1OrientationVideoController::class, 'update'])
+        Route::put('nr1/videos/{nr1_video}', [Nr1OrientationVideoController::class, 'update'])
             ->name('nr1-videos.update');
-        Route::post('nr1/videos/{nr1_video}/substituir', [\App\Http\Controllers\Admin\Nr1OrientationVideoController::class, 'replace'])
+        Route::post('nr1/videos/{nr1_video}/substituir', [Nr1OrientationVideoController::class, 'replace'])
             ->name('nr1-videos.replace');
-        Route::delete('nr1/videos/{nr1_video}', [\App\Http\Controllers\Admin\Nr1OrientationVideoController::class, 'destroy'])
+        Route::delete('nr1/videos/{nr1_video}', [Nr1OrientationVideoController::class, 'destroy'])
             ->name('nr1-videos.destroy');
-        Route::get('nr1/videos/{nr1_video}/arquivo', [\App\Http\Controllers\Admin\Nr1OrientationVideoController::class, 'stream'])
+        Route::get('nr1/videos/{nr1_video}/arquivo', [Nr1OrientationVideoController::class, 'stream'])
             ->name('nr1-videos.stream');
     });
 
@@ -561,11 +600,86 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('acompanhamento/{hiringProcess}', [HiringProcessController::class, 'destroy'])->name('acompanhamento.destroy');
     });
 
+    // Candidatos de contratação (uso interno). Excluir = arquivar; não há exclusão definitiva.
+    // Anexos internos exigem também contratacao_anexos; scopeBindings: anexo de outro candidato dá 404.
+    Route::prefix('contratacao/candidatos')->name('contratacao.candidatos.')->scopeBindings()->group(function () {
+        Route::get('/', [CandidateController::class, 'index'])->middleware('admin.can:contratacao_candidatos,view')->name('index');
+        Route::get('criar', [CandidateController::class, 'create'])->middleware('admin.can:contratacao_candidatos,create')->name('create');
+        Route::post('/', [CandidateController::class, 'store'])->middleware('admin.can:contratacao_candidatos,create')->name('store');
+        Route::post('importar-solides', [CandidateController::class, 'importSolides'])->middleware('admin.can:contratacao_candidatos,create')->name('import-solides');
+        Route::get('{candidate}', [CandidateController::class, 'show'])->middleware('admin.can:contratacao_candidatos,view')->name('show');
+        Route::get('{candidate}/editar', [CandidateController::class, 'edit'])->middleware('admin.can:contratacao_candidatos,edit')->name('edit');
+        Route::patch('{candidate}', [CandidateController::class, 'update'])->middleware('admin.can:contratacao_candidatos,edit')->name('update');
+        Route::post('{candidate}/arquivar', [CandidateController::class, 'archive'])->middleware('admin.can:contratacao_candidatos,delete')->name('archive');
+        Route::post('{candidate}/restaurar', [CandidateController::class, 'restore'])->middleware('admin.can:contratacao_candidatos,delete')->name('restore');
+
+        Route::middleware('admin.can:contratacao_candidatos,view')->group(function () {
+            Route::get('{candidate}/anexos', [CandidateAttachmentController::class, 'index'])->middleware('admin.can:contratacao_anexos,view')->name('anexos.index');
+            Route::post('{candidate}/anexos', [CandidateAttachmentController::class, 'store'])->middleware('admin.can:contratacao_anexos,create')->name('anexos.store');
+            Route::get('{candidate}/anexos/{attachment}/baixar', [CandidateAttachmentController::class, 'download'])->middleware('admin.can:contratacao_anexos,view')->name('anexos.download');
+            Route::delete('{candidate}/anexos/{attachment}', [CandidateAttachmentController::class, 'destroy'])->middleware('admin.can:contratacao_anexos,delete')->name('anexos.destroy');
+        });
+    });
+
+    // Pós-contratação (contratacao_pos): ver = view; admissão, convites e anotações = edit; desligar e readmitir = delete.
+    // scopeBindings: marco de outro ciclo e convite de outro marco dão 404.
+    Route::prefix('contratacao/pos-contratacao')->name('contratacao.pos.')->scopeBindings()->group(function () {
+        Route::get('/', [FollowupController::class, 'index'])->middleware('admin.can:contratacao_pos,view')->name('index');
+        Route::get('ciclos/{cycle}', [FollowupController::class, 'show'])->middleware('admin.can:contratacao_pos,view')->name('show');
+        Route::patch('ciclos/{cycle}', [FollowupController::class, 'update'])->middleware('admin.can:contratacao_pos,edit')->name('update');
+        Route::post('ciclos/{cycle}/confirmar-admissao', [FollowupController::class, 'confirmAdmission'])->middleware('admin.can:contratacao_pos,edit')->name('confirm-admission');
+        Route::post('ciclos/{cycle}/pausar', [FollowupController::class, 'pause'])->middleware('admin.can:contratacao_pos,edit')->name('pause');
+        Route::post('ciclos/{cycle}/retomar', [FollowupController::class, 'resume'])->middleware('admin.can:contratacao_pos,edit')->name('resume');
+        Route::post('ciclos/{cycle}/desligar', [FollowupController::class, 'terminate'])->middleware('admin.can:contratacao_pos,delete')->name('terminate');
+        Route::post('ciclos/{cycle}/readmitir', [FollowupController::class, 'readmit'])->middleware('admin.can:contratacao_pos,delete')->name('readmit');
+        Route::post('ciclos/{cycle}/anotacoes', [FollowupController::class, 'storeNote'])->middleware('admin.can:contratacao_pos,edit')->name('notes.store');
+        Route::post('ciclos/{cycle}/marcos/{milestone}/enviar', [FollowupController::class, 'send'])->middleware('admin.can:contratacao_pos,edit')->name('milestones.send');
+        Route::post('ciclos/{cycle}/marcos/{milestone}/pular', [FollowupController::class, 'skip'])->middleware('admin.can:contratacao_pos,edit')->name('milestones.skip');
+        Route::post('ciclos/{cycle}/marcos/{milestone}/convites/{invitation}/copiado', [FollowupController::class, 'copied'])->middleware('admin.can:contratacao_pos,edit')->name('invitations.copied');
+    });
+
+    // Vagas de contratação (uso interno). scopeBindings: etapa/candidatura de outra vaga dá 404.
+    Route::prefix('contratacao/vagas')->name('contratacao.vagas.')->scopeBindings()->group(function () {
+        Route::get('/', [VacancyController::class, 'index'])->middleware('admin.can:contratacao_vagas,view')->name('index');
+        Route::post('/', [VacancyController::class, 'store'])->middleware('admin.can:contratacao_vagas,create')->name('store');
+        Route::get('{vacancy}', [VacancyController::class, 'show'])->middleware('admin.can:contratacao_vagas,view')->name('show');
+        Route::patch('{vacancy}', [VacancyController::class, 'update'])->middleware('admin.can:contratacao_vagas,edit')->name('update');
+        Route::get('{vacancy}/candidatos-disponiveis', [VacancyController::class, 'availableCandidates'])->middleware('admin.can:contratacao_vagas,view')->name('candidates.available');
+
+        Route::post('{vacancy}/etapas', [VacancyStageController::class, 'store'])->middleware('admin.can:contratacao_vagas,edit')->name('stages.store');
+        Route::post('{vacancy}/etapas/reordenar', [VacancyStageController::class, 'reorder'])->middleware('admin.can:contratacao_vagas,edit')->name('stages.reorder');
+        Route::patch('{vacancy}/etapas/{stage}', [VacancyStageController::class, 'update'])->middleware('admin.can:contratacao_vagas,edit')->name('stages.update');
+        Route::delete('{vacancy}/etapas/{stage}', [VacancyStageController::class, 'destroy'])->middleware('admin.can:contratacao_vagas,delete')->name('stages.destroy');
+
+        Route::post('{vacancy}/candidaturas', [HiringApplicationController::class, 'store'])->middleware('admin.can:contratacao_vagas,create')->name('applications.store');
+        Route::patch('{vacancy}/candidaturas/{application}/mover', [HiringApplicationController::class, 'move'])->middleware('admin.can:contratacao_vagas,edit')->name('applications.move');
+        Route::post('{vacancy}/candidaturas/{application}/anotacoes', [HiringApplicationController::class, 'storeNote'])->middleware('admin.can:contratacao_vagas,edit')->name('applications.notes.store');
+        Route::delete('{vacancy}/candidaturas/{application}', [HiringApplicationController::class, 'destroy'])->middleware('admin.can:contratacao_vagas,delete')->name('applications.destroy');
+
+        // Avaliação e dossiê da candidatura (uso interno; nada vai ao portal).
+        Route::get('{vacancy}/candidaturas/{application}/avaliacao', [AssessmentController::class, 'show'])->middleware('admin.can:contratacao_vagas,view')->name('applications.assessment.show');
+        Route::put('{vacancy}/candidaturas/{application}/avaliacao', [AssessmentController::class, 'update'])->middleware('admin.can:contratacao_vagas,edit')->name('applications.assessment.update');
+        Route::post('{vacancy}/candidaturas/{application}/avaliacao/aprovar', [AssessmentController::class, 'approve'])->middleware('admin.can:contratacao_vagas,validate')->name('applications.assessment.approve');
+        Route::get('{vacancy}/candidaturas/{application}/dossie.pdf', [AssessmentController::class, 'dossier'])->middleware('admin.can:contratacao_vagas,view')->name('applications.assessment.dossier');
+        // «Registrar admissão» (candidatura na etapa de contratado) → ciclo do pós-contratação.
+        Route::get('{vacancy}/candidaturas/{application}/admissao/opcoes', [AdmissionController::class, 'options'])->middleware('admin.can:contratacao_pos,edit')->name('applications.admission.options');
+        Route::post('{vacancy}/candidaturas/{application}/admissao', [AdmissionController::class, 'store'])->middleware('admin.can:contratacao_pos,edit')->name('applications.admission.store');
+        Route::post('{vacancy}/candidaturas/{application}/dossie/enviar', [AssessmentController::class, 'sendDossier'])->middleware('admin.can:contratacao_vagas,validate')->name('applications.assessment.send');
+
+        // Comunicação de etapa aos contatos da empresa (tópico «vagas»).
+        Route::get('{vacancy}/comunicacoes/modelo', [VacancyCommunicationController::class, 'template'])->middleware('admin.can:contratacao_vagas,edit')->name('communications.template');
+        Route::post('{vacancy}/comunicacoes/revisar', [VacancyCommunicationController::class, 'review'])->middleware('admin.can:contratacao_vagas,edit')->name('communications.review');
+        Route::post('{vacancy}/comunicacoes', [VacancyCommunicationController::class, 'store'])->middleware('admin.can:contratacao_vagas,edit')->name('communications.store');
+        Route::post('{vacancy}/comunicacoes/{communication}/copiado', [VacancyCommunicationController::class, 'copied'])->middleware('admin.can:contratacao_vagas,edit')->name('communications.copied');
+        // Entrevista da candidatura: só abre a da própria candidatura (scopeBindings).
+        Route::get('{vacancy}/candidaturas/{application}/entrevistas/{interview}', [InterviewController::class, 'showForApplication'])->middleware(['admin.can:contratacao_vagas,view', 'admin.can:entrevistas_ia,view'])->name('applications.interviews.show');
+    });
+
     Route::middleware('admin.can:methodology')->group(function () {
         // Regras de recomendação das Soluções Talents (dimensão em atenção → serviço), revisadas pela Talents.
-        Route::get('solucoes-nr1', [\App\Http\Controllers\Admin\ServiceMatchAdminController::class, 'index'])->name('service-matches.index');
-        Route::patch('solucoes-nr1/{match}', [\App\Http\Controllers\Admin\ServiceMatchAdminController::class, 'update'])->whereNumber('match')->name('service-matches.update');
-        Route::post('solucoes-nr1/{match}/revisar', [\App\Http\Controllers\Admin\ServiceMatchAdminController::class, 'approve'])->whereNumber('match')->name('service-matches.approve');
+        Route::get('solucoes-nr1', [ServiceMatchAdminController::class, 'index'])->name('service-matches.index');
+        Route::patch('solucoes-nr1/{match}', [ServiceMatchAdminController::class, 'update'])->whereNumber('match')->name('service-matches.update');
+        Route::post('solucoes-nr1/{match}/revisar', [ServiceMatchAdminController::class, 'approve'])->whereNumber('match')->name('service-matches.approve');
         Route::get('metodologia', [AdminMethodologyController::class, 'index'])->name('metodologia.index');
         Route::resource('methodology-templates', MethodologyFormTemplateController::class)
             ->parameters(['methodology-templates' => 'template']);
@@ -792,17 +906,27 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::resource('roteiros', InterviewQuestionnaireController::class)
             ->except(['show'])
             ->parameters(['roteiros' => 'questionnaire']);
+        // Roteiro com entrevistas não muda no lugar: vira nova versão.
+        Route::post('roteiros/{questionnaire}/duplicar', [InterviewQuestionnaireController::class, 'duplicate'])
+            ->middleware('admin.can:entrevistas_roteiros,create')
+            ->name('roteiros.duplicate');
     });
 
-    Route::middleware('admin.can:entrevistas_ia')->prefix('entrevistas')->name('entrevistas.')->group(function () {
-        Route::get('/', [InterviewController::class, 'index'])->name('index');
-        Route::get('nova', [InterviewController::class, 'create'])->name('create');
-        Route::post('/', [InterviewController::class, 'store'])->name('store');
-        Route::get('{interview}/relatorio.pdf', [InterviewReportController::class, 'pdf'])->name('report.pdf');
-        Route::get('{interview}/relatorio.docx', [InterviewReportController::class, 'docx'])->name('report.docx');
-        Route::post('{interview}/reprocessar', [InterviewController::class, 'reprocess'])->name('reprocess');
-        Route::get('{interview}', [InterviewController::class, 'show'])->name('show');
-        Route::delete('{interview}', [InterviewController::class, 'destroy'])->name('destroy');
+    // Entrevistas: ação explícita por rota. Excluir é recuperável (show e restaurar aceitam excluídas).
+    Route::prefix('entrevistas')->name('entrevistas.')->group(function () {
+        Route::get('/', [InterviewController::class, 'index'])->middleware('admin.can:entrevistas_ia,view')->name('index');
+        Route::get('nova', [InterviewController::class, 'create'])->middleware('admin.can:entrevistas_ia,create')->name('create');
+        Route::get('candidatos', [InterviewController::class, 'candidates'])->middleware('admin.can:entrevistas_ia,view')->name('candidates');
+        Route::post('/', [InterviewController::class, 'store'])->middleware('admin.can:entrevistas_ia,create')->name('store');
+        Route::get('{interview}/relatorio.pdf', [InterviewReportController::class, 'pdf'])->middleware('admin.can:entrevistas_ia,view')->name('report.pdf');
+        Route::get('{interview}/relatorio.docx', [InterviewReportController::class, 'docx'])->middleware('admin.can:entrevistas_ia,view')->name('report.docx');
+        Route::post('{interview}/reprocessar', [InterviewController::class, 'reprocess'])->middleware('admin.can:entrevistas_ia,edit')->name('reprocess');
+        Route::post('{interview}/vincular', [InterviewController::class, 'link'])->middleware('admin.can:entrevistas_ia,edit')->name('link');
+        Route::patch('{interview}/respostas', [InterviewController::class, 'saveAnswers'])->middleware('admin.can:entrevistas_ia,edit')->name('answers.update');
+        Route::post('{interview}/concluir-revisao', [InterviewController::class, 'concludeReview'])->middleware('admin.can:entrevistas_ia,edit')->name('review.conclude');
+        Route::post('{interview}/restaurar', [InterviewController::class, 'restore'])->middleware('admin.can:entrevistas_ia,delete')->withTrashed()->name('restore');
+        Route::get('{interview}', [InterviewController::class, 'show'])->middleware('admin.can:entrevistas_ia,view')->withTrashed()->name('show');
+        Route::delete('{interview}', [InterviewController::class, 'destroy'])->middleware('admin.can:entrevistas_ia,delete')->name('destroy');
     });
 
     Route::middleware('admin.can:entrevistas_reunioes')->prefix('reunioes')->name('reunioes.')->group(function () {
@@ -824,11 +948,11 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
         Route::match(['put', 'patch'], 'users/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::delete('users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
-        Route::post('users/{user}/mfa/reset', [\App\Http\Controllers\Admin\MfaResetController::class, 'store'])->whereNumber('user')->name('users.mfa.reset');
+        Route::post('users/{user}/mfa/reset', [MfaResetController::class, 'store'])->whereNumber('user')->name('users.mfa.reset');
         // Revisores externos (PASSEG): cadastro e convite pela Talents. Não liberam acesso com a revisão externa desligada.
-        Route::get('revisores-externos', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'index'])->name('external-reviewers.index');
-        Route::post('revisores-externos', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'store'])->name('external-reviewers.store');
-        Route::post('revisores-externos/{user}/reenviar-convite', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'resend'])->whereNumber('user')->name('external-reviewers.resend');
-        Route::post('revisores-externos/{user}/ativo', [\App\Http\Controllers\Admin\ExternalReviewerAdminController::class, 'toggle'])->whereNumber('user')->name('external-reviewers.toggle');
+        Route::get('revisores-externos', [ExternalReviewerAdminController::class, 'index'])->name('external-reviewers.index');
+        Route::post('revisores-externos', [ExternalReviewerAdminController::class, 'store'])->name('external-reviewers.store');
+        Route::post('revisores-externos/{user}/reenviar-convite', [ExternalReviewerAdminController::class, 'resend'])->whereNumber('user')->name('external-reviewers.resend');
+        Route::post('revisores-externos/{user}/ativo', [ExternalReviewerAdminController::class, 'toggle'])->whereNumber('user')->name('external-reviewers.toggle');
     });
 });

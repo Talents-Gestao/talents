@@ -47,6 +47,21 @@ enum AdminPermissionModule: string
     case SolidesAcompanhamento = 'solides_acompanhamento';
     case SolidesProfiler = 'solides_profiler';
 
+    /** Vagas dentro do processo de acompanhamento: etapas próprias e candidatos. */
+    case ContratacaoVagas = 'contratacao_vagas';
+
+    /** Cadastro de candidatos usado pelas vagas. */
+    case ContratacaoCandidatos = 'contratacao_candidatos';
+
+    /**
+     * Anexos internos do candidato (restrito). Sem backfill e fora do legacyExpansionMap:
+     * só o Owner até ser concedido em Configuração → Equipe.
+     */
+    case ContratacaoAnexos = 'contratacao_anexos';
+
+    /** Pós-contratação: admissão, ciclos de vínculo, marcos D15/D30/D60/D90 e convites. */
+    case ContratacaoPos = 'contratacao_pos';
+
     /** Dado bruto das pesquisas NR-1 (exportação linha a linha, uso interno, sempre auditada). */
     case Nr1DadosBrutos = 'nr1_dados_brutos';
 
@@ -106,6 +121,10 @@ enum AdminPermissionModule: string
             self::SolidesBancoTalentos => 'Contratação · Banco de talentos',
             self::SolidesAcompanhamento => 'Contratação · Acompanhamento',
             self::SolidesProfiler => 'Contratação · Profiler',
+            self::ContratacaoVagas => 'Contratação · Vagas',
+            self::ContratacaoCandidatos => 'Contratação · Candidatos',
+            self::ContratacaoAnexos => 'Contratação · Anexos internos (restrito)',
+            self::ContratacaoPos => 'Contratação · Pós-contratação',
             self::Nr1DadosBrutos => 'Pesquisas NR-1 · Dados brutos (interno)',
             self::Nr1Oportunidades => 'Comercial · Oportunidades NR-1 (agregado)',
             self::Settings => 'Configuração · Geral',
@@ -149,6 +168,10 @@ enum AdminPermissionModule: string
             self::SolidesBancoTalentos,
             self::SolidesAcompanhamento,
             self::SolidesProfiler,
+            self::ContratacaoVagas,
+            self::ContratacaoCandidatos,
+            self::ContratacaoAnexos,
+            self::ContratacaoPos,
             self::EntrevistasIa,
             self::EntrevistasRoteiros,
             self::EntrevistasReunioes,
@@ -178,6 +201,35 @@ enum AdminPermissionModule: string
     }
 
     /**
+     * Ações da matriz do admin: o CRUD em todos os módulos e «Validar» só onde há o que validar
+     * (Contratação · Vagas: aprovar o dossiê da candidatura).
+     *
+     * @return list<PermissionAction>
+     */
+    public static function matrixActions(): array
+    {
+        return [...PermissionAction::all(), PermissionAction::Validate];
+    }
+
+    /**
+     * @return list<self>|null nulo quando a ação vale para qualquer módulo
+     */
+    public static function modulesForAction(PermissionAction $action): ?array
+    {
+        return match ($action) {
+            PermissionAction::Validate => [self::ContratacaoVagas],
+            default => null,
+        };
+    }
+
+    public function allowsAction(PermissionAction $action): bool
+    {
+        $modules = self::modulesForAction($action);
+
+        return $modules === null || in_array($this, $modules, true);
+    }
+
+    /**
      * Pais legados → filhos atuais (para backfill e compatibilidade de grants antigos).
      *
      * @return array<string, list<self>>
@@ -204,6 +256,9 @@ enum AdminPermissionModule: string
                 self::SolidesBancoTalentos,
                 self::SolidesAcompanhamento,
                 self::SolidesProfiler,
+                self::ContratacaoVagas,
+                self::ContratacaoCandidatos,
+                self::ContratacaoPos,
             ],
             self::Entrevistas->value => [
                 self::EntrevistasIa,

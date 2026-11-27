@@ -3,15 +3,29 @@
 namespace App\Models;
 
 use App\Enums\InterviewStatus;
+use App\Enums\InterviewTranscriptSource;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * Entrevista de contratação. Pode estar vinculada a um candidato e a uma candidatura (vaga);
+ * entrevistas antigas ficam sem vínculo até alguém confirmar o vínculo explicitamente.
+ * Excluir é recuperável (soft delete) e nunca exclui o candidato.
+ */
 class Interview extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'questionnaire_id',
+        'talent_candidate_id',
+        'hiring_application_id',
+        'transcript_source',
+        'reviewed_at',
+        'reviewed_by',
         'candidate_name',
         'position_title',
         'company_id',
@@ -31,6 +45,8 @@ class Interview extends Model
     {
         return [
             'status' => InterviewStatus::class,
+            'transcript_source' => InterviewTranscriptSource::class,
+            'reviewed_at' => 'datetime',
             'audio_size' => 'integer',
             'duration_seconds' => 'integer',
             'started_at' => 'datetime',
@@ -56,6 +72,36 @@ class Interview extends Model
     public function answers(): HasMany
     {
         return $this->hasMany(InterviewAnswer::class);
+    }
+
+    public function candidate(): BelongsTo
+    {
+        return $this->belongsTo(TalentCandidate::class, 'talent_candidate_id');
+    }
+
+    public function application(): BelongsTo
+    {
+        return $this->belongsTo(HiringApplication::class, 'hiring_application_id');
+    }
+
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function isReviewed(): bool
+    {
+        return $this->reviewed_at !== null;
+    }
+
+    public function isLinked(): bool
+    {
+        return $this->talent_candidate_id !== null;
+    }
+
+    public function source(): InterviewTranscriptSource
+    {
+        return $this->transcript_source ?? InterviewTranscriptSource::AudioWhisper;
     }
 
     public function audioAbsolutePath(): ?string

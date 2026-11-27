@@ -123,6 +123,9 @@ const showContratacao = computed(() =>
     canAdminAny([
         'solides_banco_talentos',
         'solides_acompanhamento',
+        'contratacao_vagas',
+        'contratacao_candidatos',
+        'contratacao_pos',
         'entrevistas_ia',
         'entrevistas_roteiros',
     ]),
@@ -134,6 +137,15 @@ const contratacaoFallbackHref = computed(() => {
     }
     if (canAdmin('solides_acompanhamento')) {
         return route('admin.acompanhamento.index');
+    }
+    if (canAdmin('contratacao_vagas')) {
+        return route('admin.contratacao.vagas.index');
+    }
+    if (canAdmin('contratacao_candidatos')) {
+        return route('admin.contratacao.candidatos.index');
+    }
+    if (canAdmin('contratacao_pos')) {
+        return route('admin.contratacao.pos.index');
     }
     if (canAdmin('entrevistas_ia')) {
         return route('admin.entrevistas.index');
@@ -148,6 +160,9 @@ const contratacaoActive = computed(
     () =>
         route().current('admin.solides.*') ||
         route().current('admin.acompanhamento.*') ||
+        route().current('admin.contratacao.vagas.*') ||
+        route().current('admin.contratacao.candidatos.*') ||
+        route().current('admin.contratacao.pos.*') ||
         route().current('admin.entrevistas.*'),
 );
 
@@ -428,6 +443,33 @@ const isComercialSettingsTab = (tab) => {
                     :collapsed="collapsed"
                     :compact="compact"
                     :badge="activeHiringProcessesCount > 0 ? activeHiringProcessesCount : null"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('contratacao_vagas')"
+                    :href="route('admin.contratacao.vagas.index')"
+                    :active="route().current('admin.contratacao.vagas.*')"
+                    label="Vagas"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('contratacao_candidatos')"
+                    :href="route('admin.contratacao.candidatos.index')"
+                    :active="route().current('admin.contratacao.candidatos.*')"
+                    label="Candidatos"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
+                />
+                <SidebarNavItem
+                    v-if="canAdmin('contratacao_pos')"
+                    :href="route('admin.contratacao.pos.index')"
+                    :active="route().current('admin.contratacao.pos.*')"
+                    label="Pós-contratação"
+                    variant="nested"
+                    :collapsed="collapsed"
+                    :compact="compact"
                 />
                 <SidebarNavItem
                     v-if="canAdmin('entrevistas_ia')"

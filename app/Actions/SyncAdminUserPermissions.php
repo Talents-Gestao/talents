@@ -32,7 +32,7 @@ class SyncAdminUserPermissions
         );
         $allowedActions = array_map(
             static fn (PermissionAction $a) => $a->value,
-            PermissionAction::all(),
+            AdminPermissionModule::matrixActions(),
         );
 
         $workspace->adminPermissions()->delete();
@@ -55,6 +55,11 @@ class SyncAdminUserPermissions
                 continue;
             }
 
+            // Ações restritas (ex.: «Validar») só nos módulos que as usam.
+            if (! AdminPermissionModule::from($module)->allowsAction(PermissionAction::from($action))) {
+                continue;
+            }
+
             $seen[$key] = true;
             $workspace->adminPermissions()->create([
                 'module' => $module,
@@ -72,7 +77,10 @@ class SyncAdminUserPermissions
     {
         $rows = [];
         foreach (AdminPermissionModule::all() as $module) {
-            foreach (PermissionAction::all() as $action) {
+            foreach (AdminPermissionModule::matrixActions() as $action) {
+                if (! $module->allowsAction($action)) {
+                    continue;
+                }
                 $rows[] = [
                     'module' => $module->value,
                     'action' => $action->value,

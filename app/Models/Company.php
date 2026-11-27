@@ -3,8 +3,11 @@
 namespace App\Models;
 
 use App\Enums\PermissionModule;
+use App\Enums\StrategicCalendarViewPeriod;
 use App\Enums\UserRole;
 use App\Support\PortugueseLabels;
+use App\Support\StrategicCalendarPeriod;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -159,6 +162,12 @@ class Company extends Model
             'logo_path' => null,
             'logo_disk' => null,
         ])->save();
+    }
+
+    /** Contatos da empresa para comunicações da Talents (aba «Contatos» do admin). */
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(CompanyContact::class);
     }
 
     public function hiringProcesses(): HasMany
@@ -319,11 +328,11 @@ class Company extends Model
     /**
      * Janela de visualização do calendário estratégico conforme o plano (null = sem limite).
      *
-     * @return array{start: \Carbon\Carbon, end: \Carbon\Carbon, label: string, period: \App\Enums\StrategicCalendarViewPeriod}|null
+     * @return array{start: Carbon, end: Carbon, label: string, period: StrategicCalendarViewPeriod}|null
      */
-    public function strategicCalendarVisibleRange(?\Carbon\Carbon $now = null): ?array
+    public function strategicCalendarVisibleRange(?Carbon $now = null): ?array
     {
-        return \App\Support\StrategicCalendarPeriod::forCompany($this, $now);
+        return StrategicCalendarPeriod::forCompany($this, $now);
     }
 
     /**
@@ -382,17 +391,14 @@ class Company extends Model
         return $this->subscriptionHasModuleKey(Module::KEY_SUGESTOES);
     }
 
+    /**
+     * Feedbacks internos: liberado para toda empresa, sem depender de assinatura ou plano.
+     * Só fica desligado quando a Talents força o bloqueio (`feedbacks_access = false`);
+     * `null` (padrão) e `true` habilitam. O status ativo da empresa é filtrado por quem consulta.
+     */
     public function hasFeedbacksEnabled(): bool
     {
-        if ($this->feedbacks_access === false) {
-            return false;
-        }
-
-        if ($this->feedbacks_access === true) {
-            return true;
-        }
-
-        return $this->subscriptionHasModuleKey(Module::KEY_FEEDBACKS);
+        return $this->feedbacks_access !== false;
     }
 
     public function hasFeriasEnabled(): bool

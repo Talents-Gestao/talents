@@ -58,4 +58,10 @@ class HiringProcess extends Model
     {
         return $this->hasMany(HiringProcessStageEntry::class);
     }
+
+    /** Vagas do processo (uso interno da Talents; nunca enviadas ao portal). */
+    public function vacancies(): HasMany
+    {
+        return $this->hasMany(HiringVacancy::class);
+    }
 }

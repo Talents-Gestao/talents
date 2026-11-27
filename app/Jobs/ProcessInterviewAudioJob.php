@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Enums\InterviewAnswerOrigin;
 use App\Enums\InterviewStatus;
 use App\Models\AiSetting;
 use App\Models\Interview;
@@ -19,6 +20,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * Processa a entrevista:
+ * - fonte audio_whisper: ffmpeg + Whisper (exige a chave de transcrição) e depois a extração;
+ * - fontes de texto (manual_text, file_upload, plaud): pulam a transcrição, o texto já está gravado.
+ * A extração das respostas só roda com a IA habilitada nas configurações; sem IA, a entrevista
+ * fica concluída e pronta para preenchimento manual. Respostas da IA entram como «Sugestão da IA».
+ */
 class ProcessInterviewAudioJob implements ShouldQueue
 {
     use Dispatchable;
@@ -45,39 +53,53 @@ class ProcessInterviewAudioJob implements ShouldQueue
         }
 
         $setting = AiSetting::current();
-        if (! $setting || $setting->safeTranscriptionApiKey() === null) {
-            $interview->markFailed('Configure a chave OpenAI para transcrição nas configurações de IA.');
-
-            return;
-        }
-
-        if (! $setting->is_enabled || $setting->safeApiKey() === null) {
-            $interview->markFailed('IA desabilitada ou sem chave para extração do relatório.');
-
-            return;
-        }
-
-        $audioPath = $interview->audioAbsolutePath();
-        if (! $audioPath || ! is_file($audioPath)) {
-            $interview->markFailed('Arquivo de áudio não encontrado no storage.');
-
-            return;
-        }
+        $aiEnabled = $setting !== null && $setting->is_enabled && $setting->safeApiKey() !== null;
+        $isText = $interview->source()->isText();
 
         $workDir = '';
 
         try {
-            $interview->markProcessing(InterviewStatus::Transcribing);
+            if ($isText) {
+                $transcript = (string) $interview->transcript_text;
+                if (trim($transcript) === '') {
+                    $interview->markFailed('A entrevista não tem texto para processar.');
 
-            $prepared = $chunker->prepareChunks($audioPath);
-            $workDir = $prepared['work_dir'];
-            $transcript = $whisper->transcribeChunks($prepared['chunks'], $setting);
+                    return;
+                }
+            } else {
+                if (! $setting || $setting->safeTranscriptionApiKey() === null) {
+                    $interview->markFailed('Configure a chave OpenAI para transcrição nas configurações de IA.');
 
-            if (trim($transcript) === '') {
-                throw new \RuntimeException('Transcrição vazia. Verifique a qualidade do áudio.');
+                    return;
+                }
+
+                $audioPath = $interview->audioAbsolutePath();
+                if (! $audioPath || ! is_file($audioPath)) {
+                    $interview->markFailed('Arquivo de áudio não encontrado no storage.');
+
+                    return;
+                }
+
+                $interview->markProcessing(InterviewStatus::Transcribing);
+
+                $prepared = $chunker->prepareChunks($audioPath);
+                $workDir = $prepared['work_dir'];
+                $transcript = $whisper->transcribeChunks($prepared['chunks'], $setting);
+
+                if (trim($transcript) === '') {
+                    throw new \RuntimeException('Transcrição vazia. Verifique a qualidade do áudio.');
+                }
+
+                $interview->update(['transcript_text' => $transcript]);
             }
 
-            $interview->update(['transcript_text' => $transcript]);
+            if (! $aiEnabled) {
+                // Sem IA: pronta para preenchimento manual.
+                $interview->markCompleted();
+
+                return;
+            }
+
             $interview->markProcessing(InterviewStatus::Extracting);
 
             $questions = InterviewQuestionnaireQuestion::query()
@@ -99,18 +121,24 @@ class ProcessInterviewAudioJob implements ShouldQueue
                         continue;
                     }
 
+                    $missing = (bool) ($row['evidence_missing'] ?? false);
+
                     InterviewAnswer::query()->create([
                         'interview_id' => $interview->id,
                         'question_id' => $question->id,
-                        'answer' => $row['answer'],
-                        'raw_quote' => $row['raw_quote'],
+                        'answer' => $missing ? null : $row['answer'],
+                        'raw_quote' => $missing ? null : $row['raw_quote'],
+                        'origin' => InterviewAnswerOrigin::AiSuggestion,
+                        'evidence_missing' => $missing,
                     ]);
                 }
+
+                $interview->update(['reviewed_at' => null, 'reviewed_by' => null]);
             });
 
             $interview->markCompleted();
 
-            if (! config('interview.keep_audio', true) && $interview->audio_path) {
+            if (! $isText && ! config('interview.keep_audio', true) && $interview->audio_path) {
                 Storage::disk('local')->delete($interview->audio_path);
                 $interview->update(['audio_path' => null]);
             }

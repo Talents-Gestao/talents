@@ -1,4 +1,5 @@
 <script setup>
+import CompanyContactsTab from '@/Components/Admin/Companies/CompanyContactsTab.vue';
 import CompanyDashboardSummary from '@/Components/Admin/Companies/CompanyDashboardSummary.vue';
 import CompanyShortcutDestinationModal from '@/Components/Admin/Companies/CompanyShortcutDestinationModal.vue';
 import CompanyShortcutGrid from '@/Components/Admin/Companies/CompanyShortcutGrid.vue';
@@ -51,6 +52,8 @@ const props = defineProps({
     methodologyTemplates: { type: Array, default: () => [] },
     employees: { type: Array, default: () => [] },
     regulations: { type: Array, default: () => [] },
+    contacts: { type: Array, default: () => [] },
+    contactOptions: { type: Object, default: null },
     dashboard: {
         type: Object,
         default: () => ({
@@ -166,6 +169,7 @@ const tabs = computed(() => {
     if (canAdmin('companies')) {
         items.push({ id: 'colaboradores', label: 'Colaboradores' });
         items.push({ id: 'regulamento', label: 'Regulamento interno' });
+        items.push({ id: 'contatos', label: 'Contatos' });
     }
 
     return items;
@@ -748,6 +752,40 @@ const removeRegulation = async (id) => {
                     <p v-else class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-500">
                         Nenhum regulamento cadastrado.
                     </p>
+                </CompanyShowTabFrame>
+            </div>
+
+            <!-- Tab: Contatos -->
+            <div v-else-if="activeTab === 'contatos'">
+                <CompanyShowTabFrame
+                    accent="talents"
+                    eyebrow="Comunicação"
+                    title="Contatos"
+                    description="Pessoas da empresa que recebem comunicações da Talents sobre vagas, pós-contratação e pesquisas."
+                >
+                    <template #icon>
+                        <EnvelopeIcon class="h-6 w-6" aria-hidden="true" />
+                    </template>
+                    <div
+                        v-if="$page.props.flash?.success"
+                        class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+                        role="status"
+                    >
+                        {{ $page.props.flash.success }}
+                    </div>
+                    <div
+                        v-if="$page.props.errors?.contact"
+                        class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                        role="alert"
+                    >
+                        {{ $page.props.errors.contact }}
+                    </div>
+                    <CompanyContactsTab
+                        :company-id="company.id"
+                        :contacts="contacts"
+                        :options="contactOptions ?? undefined"
+                        :can-edit="canAdmin('companies', 'edit')"
+                    />
                 </CompanyShowTabFrame>
             </div>
         </div>

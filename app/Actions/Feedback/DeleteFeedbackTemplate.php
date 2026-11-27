@@ -5,86 +5,37 @@ declare(strict_types=1);
 namespace App\Actions\Feedback;
 
 use App\Models\FeedbackAuditLog;
-use App\Models\FeedbackRecording;
-use App\Models\FeedbackRecordingReport;
 use App\Models\FeedbackSession;
-use App\Models\FeedbackSessionAnswer;
 use App\Models\FeedbackTemplate;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Exclui um modelo e, junto, todos os feedbacks feitos com ele e as respostas: tudo ou nada, numa transação,
- * com exclusão lógica (o suporte recupera pelos ids da trilha). A contagem confirmada na tela precisa bater
- * com a atual; se mudou entre abrir o alerta e confirmar, a exclusão é recusada.
- *
- * Modelo universal (company_id nulo) é usado por várias empresas: só é excluído sem uso. Em uso em qualquer
- * empresa, a exclusão é recusada; nunca se apagam feedbacks de outras empresas por aqui.
+ * Exclusão definitiva de um modelo de feedback: só quando nenhum feedback o usa, em nenhuma versão e em nenhuma
+ * empresa. Modelo usado não é excluído (arquiva-se) e nenhum feedback é apagado junto com um modelo.
+ * Exclusão lógica (deleted_at), com trilha em feedback_audit_logs.
  */
 class DeleteFeedbackTemplate
 {
-    public const UNIVERSAL_IN_USE_MESSAGE = 'Este modelo já foi usado em feedbacks. Desative-o para que não apareça em novos feedbacks.';
+    public const IN_USE_MESSAGE = 'Este modelo já foi usado em feedbacks e não pode ser excluído. Arquive-o para que não apareça em novos feedbacks.';
 
-    /**
-     * Impacto atual, calculado no servidor para o alerta.
-     *
-     * @return array{sessions: int, answers: int}
-     */
-    public function impact(FeedbackTemplate $template): array
+    /** Feedbacks (não excluídos) feitos com o modelo, em qualquer versão e empresa. */
+    public function usage(FeedbackTemplate $template): int
     {
-        $sessionIds = FeedbackSession::query()->where('feedback_template_id', $template->id)->pluck('id');
-
-        return [
-            'sessions' => $sessionIds->count(),
-            'answers' => $sessionIds->isEmpty()
-                ? 0
-                : FeedbackSessionAnswer::query()->whereIn('feedback_session_id', $sessionIds)->count(),
-        ];
+        return FeedbackSession::query()->where('feedback_template_id', $template->id)->count();
     }
 
     /**
-     * @return array{sessions: int, answers: int}
-     *
-     * @throws ValidationException quando a contagem confirmada não bate com a atual
+     * @throws ValidationException quando o modelo já foi usado
      */
-    public function execute(FeedbackTemplate $template, User $actor, int $confirmedSessions): array
+    public function execute(FeedbackTemplate $template, User $actor): void
     {
-        return DB::transaction(function () use ($template, $actor, $confirmedSessions) {
+        DB::transaction(function () use ($template, $actor) {
             $locked = FeedbackTemplate::query()->whereKey($template->id)->lockForUpdate()->firstOrFail();
 
-            $sessionIds = FeedbackSession::query()
-                ->where('feedback_template_id', $locked->id)
-                ->lockForUpdate()
-                ->pluck('id');
-
-            if ($locked->isGlobal() && $sessionIds->isNotEmpty()) {
-                throw ValidationException::withMessages(['template' => self::UNIVERSAL_IN_USE_MESSAGE]);
-            }
-
-            if ($sessionIds->count() !== $confirmedSessions) {
-                throw ValidationException::withMessages([
-                    'sessions_count' => sprintf(
-                        'O número de feedbacks deste modelo mudou desde que você abriu o alerta (agora %s). Confira o impacto e confirme de novo.',
-                        $sessionIds->count() === 1 ? 'é 1' : 'são '.$sessionIds->count(),
-                    ),
-                ]);
-            }
-
-            $answers = $sessionIds->isEmpty()
-                ? 0
-                : FeedbackSessionAnswer::query()->whereIn('feedback_session_id', $sessionIds)->delete();
-
-            $recordings = $sessionIds->isEmpty()
-                ? 0
-                : FeedbackRecording::query()->whereIn('feedback_session_id', $sessionIds)->delete();
-
-            if ($sessionIds->isNotEmpty()) {
-                FeedbackRecordingReport::query()->whereIn('feedback_session_id', $sessionIds)->delete();
-            }
-
-            if ($sessionIds->isNotEmpty()) {
-                FeedbackSession::query()->whereIn('id', $sessionIds)->delete();
+            if (FeedbackSession::query()->where('feedback_template_id', $locked->id)->lockForUpdate()->exists()) {
+                throw ValidationException::withMessages(['template' => self::IN_USE_MESSAGE]);
             }
 
             $locked->delete();
@@ -96,15 +47,9 @@ class DeleteFeedbackTemplate
                 'subject_type' => FeedbackAuditLog::SUBJECT_TEMPLATE,
                 'subject_id' => $locked->id,
                 'subject_label' => $locked->title,
-                'sessions_count' => $sessionIds->count(),
-                'answers_count' => $answers,
-                'details' => [
-                    'feedback_session_ids' => $sessionIds->values()->all(),
-                    'recordings_count' => $recordings,
-                ],
+                'sessions_count' => 0,
+                'answers_count' => 0,
             ]);
-
-            return ['sessions' => $sessionIds->count(), 'answers' => $answers];
         });
     }
 }

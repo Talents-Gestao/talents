@@ -7,6 +7,7 @@ namespace Tests\Feature\Client;
 use App\Models\FeedbackSession;
 use App\Models\FeedbackTemplate;
 use App\Models\User;
+use App\Support\Feedback\FeedbackSessionStructure;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Finder\SplFileInfo;
@@ -95,9 +96,13 @@ class FeedbackNoEmojiTest extends TestCase
             $this->assertNoEmoji((string) $response->getContent(), $url);
         }
 
-        $session = FeedbackSession::query()->with(['employee.department', 'employee.position', 'leader', 'template.sections.questions', 'answers.question', 'signatures'])->findOrFail($session->id);
+        $session = FeedbackSession::query()->with(['employee.department', 'employee.position', 'leader', 'templateVersion.sections.questions', 'answers.question', 'signatures'])->findOrFail($session->id);
         $html = view('reports.feedback-session', [
             'session' => $session,
+            'version' => FeedbackSessionStructure::version($session),
+            'sections' => FeedbackSessionStructure::sections($session, true),
+            'outOfVersionAnswers' => FeedbackSessionStructure::outOfVersionAnswers($session, true),
+            'outOfVersionExtras' => FeedbackSessionStructure::outOfVersionExtras($session, true),
             'answersByQuestion' => $session->answers->keyBy('feedback_template_question_id'),
             'sectionExtras' => $session->section_extras ?? [],
         ])->render();

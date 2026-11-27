@@ -8,8 +8,9 @@ import SectionHeader from '@/Components/Dashboard/SectionHeader.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
 import FeedbacksLayout from '@/Components/Feedback/FeedbacksLayout.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import {
+    ArrowsRightLeftIcon,
     ChartBarIcon,
     ChatBubbleLeftRightIcon,
     CheckCircleIcon,
@@ -25,11 +26,21 @@ const props = defineProps({
     companyPicker: { type: Array, default: null },
     activeCompany: { type: Object, default: null },
     isAdminContext: { type: Boolean, default: false },
+    canChooseOtherCompany: { type: Boolean, default: false },
 });
 
 const needsCompanySelection = computed(
     () => props.isAdminContext && props.companyPicker?.length && !props.activeCompany,
 );
+
+// Só no admin, com empresa vinda da seleção (não do workspace da empresa).
+const showChooseOtherCompany = computed(
+    () => props.isAdminContext && props.canChooseOtherCompany && Boolean(props.activeCompany),
+);
+
+const chooseOtherCompany = () => {
+    router.delete(route('admin.feedbacks.company.destroy'));
+};
 
 const hasNineBox = computed(
     () => props.isCompanyAdmin && (props.analytics.nine_box?.total ?? 0) > 0,
@@ -94,12 +105,22 @@ const perceptionSeries = computed(() => {
                     <p class="mt-1 text-pretty text-sm text-slate-600">
                         Alinhamentos estruturados entre líder e colaborador, com assinatura digital.
                     </p>
-                    <p
-                        v-if="activeCompany"
-                        class="mt-2 inline-flex items-center rounded-full bg-talents-50 px-2.5 py-0.5 text-xs font-medium text-talents-800 ring-1 ring-inset ring-talents-200"
-                    >
-                        Empresa: {{ activeCompany.name }}
-                    </p>
+                    <div v-if="activeCompany" class="mt-2 flex flex-wrap items-center gap-2">
+                        <p
+                            class="inline-flex items-center rounded-full bg-talents-50 px-2.5 py-0.5 text-xs font-medium text-talents-800 ring-1 ring-inset ring-talents-200"
+                        >
+                            Empresa: {{ activeCompany.name }}
+                        </p>
+                        <button
+                            v-if="showChooseOtherCompany"
+                            type="button"
+                            class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50 focus-visible:ring-offset-2"
+                            @click="chooseOtherCompany"
+                        >
+                            <ArrowsRightLeftIcon class="h-4 w-4" aria-hidden="true" />
+                            Escolher outra empresa
+                        </button>
+                    </div>
                 </div>
                 <div v-if="!needsCompanySelection" class="flex shrink-0 flex-wrap items-center gap-2">
                     <Link

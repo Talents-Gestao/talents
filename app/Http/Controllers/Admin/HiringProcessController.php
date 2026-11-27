@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminPermissionModule;
 use App\Enums\HiringProcessStage;
+use App\Enums\PermissionAction;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\HiringProcess;
 use App\Models\HiringProcessComment;
 use App\Models\HiringProcessStageEntry;
+use App\Models\HiringVacancy;
 use App\Support\Hiring\HiringProcessStageRecorder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -53,13 +56,24 @@ class HiringProcessController extends Controller
             $stageCounts[$stage->value] = (int) ($rawCounts[$stage->value] ?? 0);
         }
 
+        // Vagas só para quem pode ver Contratação · Vagas (o portal da empresa nunca recebe).
+        $canViewVacancies = (bool) $request->user()?->canAccessAdmin(
+            AdminPermissionModule::ContratacaoVagas,
+            PermissionAction::View,
+        );
+
+        $relations = [
+            'company:id,name',
+            'updatedByUser:id,name',
+            'comments.user:id,name,role',
+            'stageEntries.createdByUser:id,name',
+        ];
+        if ($canViewVacancies) {
+            $relations['vacancies'] = fn ($q) => $q->withCount('applications')->orderBy('created_at');
+        }
+
         $processesQuery = HiringProcess::query()
-            ->with([
-                'company:id,name',
-                'updatedByUser:id,name',
-                'comments.user:id,name,role',
-                'stageEntries.createdByUser:id,name',
-            ])
+            ->with($relations)
             ->where('current_stage', $activeStage->value)
             ->orderBy('sort_order')
             ->orderByDesc('updated_at');
@@ -71,7 +85,7 @@ class HiringProcessController extends Controller
             $this->applySearchFilter($processesQuery, $search);
         }
 
-        $processes = $processesQuery->get()->map(fn (HiringProcess $p) => $this->processToFrontend($p));
+        $processes = $processesQuery->get()->map(fn (HiringProcess $p) => $this->processToFrontend($p, $canViewVacancies));
 
         $companies = Company::query()
             ->where('is_active', true)
@@ -90,6 +104,7 @@ class HiringProcessController extends Controller
                 'company_id' => $companyId,
                 'q' => $search !== '' ? $search : null,
             ],
+            'vacancies_url' => $canViewVacancies ? route('admin.contratacao.vagas.index') : null,
         ]);
     }
 
@@ -299,7 +314,7 @@ class HiringProcessController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function processToFrontend(HiringProcess $p): array
+    private function processToFrontend(HiringProcess $p, bool $withVacancies = false): array
     {
         $stageEntries = $p->stageEntries
             ->sortBy(fn (HiringProcessStageEntry $e) => $e->stage->order())
@@ -307,7 +322,7 @@ class HiringProcessController extends Controller
             ->map(fn (HiringProcessStageEntry $e) => $e->toFrontend())
             ->all();
 
-        return [
+        $payload = [
             'id' => $p->id,
             'title' => $p->title,
             'notes' => $p->notes,
@@ -327,6 +342,19 @@ class HiringProcessController extends Controller
             'stage_entries' => $stageEntries,
             'comments' => $p->comments->map(fn (HiringProcessComment $c) => $c->toFrontend())->values()->all(),
         ];
+
+        if ($withVacancies) {
+            $payload['vacancies'] = $p->vacancies->map(fn (HiringVacancy $v) => [
+                'id' => $v->id,
+                'title' => $v->title,
+                'status' => $v->status->value,
+                'status_label' => $v->status->label(),
+                'applications_count' => (int) $v->applications_count,
+                'url' => route('admin.contratacao.vagas.show', $v),
+            ])->values()->all();
+        }
+
+        return $payload;
     }
 
     private function applySearchFilter($query, string $search): void

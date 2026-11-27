@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Feedback;
 
+use App\Actions\Feedback\ReopenFeedbackSession;
 use App\Actions\Notices\PublishFeedbackNotice;
 use App\Enums\FeedbackSessionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\FeedbackSessionSignature;
+use App\Support\Feedback\FeedbackSessionStructure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -19,18 +21,39 @@ class PublicFeedbackSignController extends Controller
     public function show(string $token): Response
     {
         $signature = $this->findSignature($token);
+
+        // Convite cancelado («Reabrir para edição»): o link recusa, com aviso claro e sem mostrar o conteúdo.
+        if ($signature->isCancelled()) {
+            return Inertia::render('Feedback/Sign', [
+                'cancelled' => true,
+                'cancelledMessage' => ReopenFeedbackSession::CANCELLED_LINK_MESSAGE,
+                'signature' => ['role_label' => $signature->role->label(), 'signer_name' => $signature->signer_name],
+                'token' => $token,
+                'session' => null,
+            ]);
+        }
+
         $session = $signature->session()->with([
             'employee.department',
             'employee.position',
             'leader',
-            'template.sections.questions',
+            'templateVersion.sections.questions',
             'answers',
             'signatures',
         ])->firstOrFail();
 
+        // Quem assina não é administrador: a «Reflexão do líder» fica fora, como na tela do líder.
+        $template = FeedbackSessionStructure::templatePayload($session, false);
+        $visibleQuestionIds = collect($template['sections'])
+            ->flatMap(fn ($s) => collect($s['questions'])->pluck('id'))
+            ->map(fn ($id) => (int) $id)
+            ->flip();
+
         $answers = [];
         foreach ($session->answers as $answer) {
-            $answers[$answer->feedback_template_question_id] = $answer->value_json ?? $answer->value_text;
+            if ($visibleQuestionIds->has((int) $answer->feedback_template_question_id)) {
+                $answers[$answer->feedback_template_question_id] = $answer->value_json ?? $answer->value_text;
+            }
         }
 
         return Inertia::render('Feedback/Sign', [
@@ -43,6 +66,7 @@ class PublicFeedbackSignController extends Controller
                 'signed_at' => $signature->signed_at?->toIso8601String(),
             ],
             'token' => $token,
+            'cancelled' => false,
             'session' => [
                 'id' => $session->id,
                 'title' => $session->title,
@@ -50,8 +74,9 @@ class PublicFeedbackSignController extends Controller
                 'next_alignment_at' => $session->next_alignment_at?->format('d/m/Y'),
                 'employee' => $session->employee,
                 'leader' => $session->leader?->only(['name', 'email']),
-                'template' => $session->template,
+                'template' => $template,
                 'answers' => $answers,
+                'out_of_version_answers' => FeedbackSessionStructure::outOfVersionAnswers($session, false),
                 'signatures' => $session->signatures->map(fn ($s) => [
                     'role' => $s->role->value,
                     'signer_name' => $s->signer_name,
@@ -64,6 +89,12 @@ class PublicFeedbackSignController extends Controller
     public function store(Request $request, string $token, PublishFeedbackNotice $notices): RedirectResponse
     {
         $signature = $this->findSignature($token);
+        // Convite cancelado: não assina; volta à página do link, que mostra o aviso.
+        if ($signature->isCancelled()) {
+            return redirect()
+                ->route('feedback.sign.show', $token)
+                ->with('error', ReopenFeedbackSession::CANCELLED_LINK_MESSAGE);
+        }
         abort_if($signature->isSigned(), 403, 'Este documento já foi assinado.');
 
         $data = $request->validate([

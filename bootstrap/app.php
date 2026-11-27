@@ -40,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(base_path('routes/feedback.php'));
             Route::middleware('web')->group(base_path('routes/offboarding.php'));
             Route::middleware('web')->group(base_path('routes/client-evaluation.php'));
+            Route::middleware('web')->group(base_path('routes/hiring-followup.php'));
             Route::middleware('web')->group(base_path('routes/external-review.php'));
             Route::group([], base_path('routes/nr1.php'));
         },

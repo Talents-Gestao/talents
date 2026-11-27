@@ -16,6 +16,7 @@ use App\Models\SurveyTemplate;
 use App\Models\User;
 use App\Services\ReceitaWsService;
 use App\Support\Admin\CompanyShowDashboardBuilder;
+use App\Support\Hiring\CompanyContactsPayload;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -148,7 +149,7 @@ class CompanyController extends Controller
         ]);
 
         $tab = $request->string('tab')->toString();
-        $validTabs = ['empresa', 'ponto', 'colaboradores', 'regulamento'];
+        $validTabs = ['empresa', 'ponto', 'colaboradores', 'regulamento', 'contatos'];
         if (! in_array($tab, $validTabs, true)) {
             $tab = 'empresa';
         }
@@ -179,6 +180,8 @@ class CompanyController extends Controller
             'methodologyTemplates' => MethodologyFormTemplate::query()->where('is_active', true)->orderBy('title')->get(['id', 'title']),
             'employees' => [],
             'regulations' => [],
+            'contacts' => [],
+            'contactOptions' => null,
         ];
 
         $payload['dashboard'] = app(CompanyShowDashboardBuilder::class)->build(
@@ -223,6 +226,11 @@ class CompanyController extends Controller
                 ])
                 ->values()
                 ->all();
+        }
+
+        if ($tab === 'contatos') {
+            $payload['contacts'] = app(CompanyContactsPayload::class)->contacts($company);
+            $payload['contactOptions'] = app(CompanyContactsPayload::class)->options();
         }
 
         return Inertia::render('Admin/Companies/Show', $payload);
@@ -276,6 +284,7 @@ class CompanyController extends Controller
             'rhid_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'denuncias_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'ferias_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
+            'feedbacks_access_mode' => ['sometimes', 'required', Rule::in(['enabled', 'disabled'])],
             'desligamento_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'acompanhamento_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'plan_id' => ['nullable', 'exists:plans,id'],
@@ -351,6 +360,12 @@ class CompanyController extends Controller
             'disabled' => false,
             default => null,
         };
+
+        // Feedbacks internos é liberado para todas: null = habilitado (padrão), false = bloqueado.
+        if (array_key_exists('feedbacks_access_mode', $data)) {
+            $data['feedbacks_access'] = $data['feedbacks_access_mode'] === 'disabled' ? false : null;
+            unset($data['feedbacks_access_mode']);
+        }
 
         $desligamentoMode = $data['desligamento_access_mode'];
         unset($data['desligamento_access_mode']);

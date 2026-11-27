@@ -33,6 +33,9 @@ enum CompanyNoticeEventKind: string
     case Nr1ProposalRequested = 'nr1_proposal_requested';
     case Nr1ReportPublished = 'nr1_report_published';
 
+    // Contratação · Pós-contratação (audiência Talents, sem o texto da resposta)
+    case HiringFollowupSupportRequested = 'hiring_followup_support_requested';
+
     public function label(): string
     {
         return match ($this) {
@@ -58,6 +61,7 @@ enum CompanyNoticeEventKind: string
             self::Nr1OpportunityCreated => 'nova oportunidade NR-1',
             self::Nr1ProposalRequested => 'nova solicitação de proposta ou conversa',
             self::Nr1ReportPublished => 'relatório publicado',
+            self::HiringFollowupSupportRequested => 'pedido de apoio no pós-contratação',
         };
     }
 }

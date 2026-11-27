@@ -12,6 +12,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\UserInvitationMail;
 use App\Models\User;
 use App\Models\UserWorkspace;
+use App\Services\Mfa\MfaService;
 use App\Support\InvitationPassword;
 use App\Support\WorkspaceManager;
 use Illuminate\Http\RedirectResponse;
@@ -174,7 +175,7 @@ class AdminUserController extends Controller
             ],
             // Reset da verificação em duas etapas: só o proprietário Talents, e não sobre si mesmo.
             'mfa' => [
-                'active' => app(\App\Services\Mfa\MfaService::class)->isActive($user),
+                'active' => app(MfaService::class)->isActive($user),
                 'can_reset' => (bool) (auth()->user()?->isOwner() && auth()->id() !== $user->id),
             ],
             'permissionModules' => $this->permissionModulesPayload(),
@@ -301,7 +302,7 @@ class AdminUserController extends Controller
         );
         $actionValues = array_map(
             static fn (PermissionAction $a) => $a->value,
-            PermissionAction::all(),
+            AdminPermissionModule::matrixActions(),
         );
 
         return $request->validate([
@@ -351,16 +352,23 @@ class AdminUserController extends Controller
     }
 
     /**
-     * @return list<array{value: string, label: string}>
+     * «Validar» aparece só nos módulos que a usam (only_modules), como na matriz do portal.
+     *
+     * @return list<array{value: string, label: string, only_modules: list<string>|null}>
      */
     private function permissionActionsPayload(): array
     {
         return array_map(
-            static fn (PermissionAction $a) => [
-                'value' => $a->value,
-                'label' => $a->label(),
-            ],
-            PermissionAction::all(),
+            static function (PermissionAction $a): array {
+                $modules = AdminPermissionModule::modulesForAction($a);
+
+                return [
+                    'value' => $a->value,
+                    'label' => $a->label(),
+                    'only_modules' => $modules === null ? null : array_map(static fn (AdminPermissionModule $m) => $m->value, $modules),
+                ];
+            },
+            AdminPermissionModule::matrixActions(),
         );
     }
 

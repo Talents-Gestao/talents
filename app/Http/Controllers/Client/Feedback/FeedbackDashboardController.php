@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Client\Feedback;
 
 use App\Models\FeedbackSession;
+use App\Services\Feedback\FeedbackTeamAnalyticsService;
 use App\Support\Feedback\FeedbackCompanyContext;
 use App\Support\Feedback\FeedbackVisibility;
-use App\Services\Feedback\FeedbackTeamAnalyticsService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,6 +27,7 @@ class FeedbackDashboardController extends FeedbackCompanyController
                 'companyPicker' => $context->availableCompanies(),
                 'activeCompany' => null,
                 'isAdminContext' => true,
+                'canChooseOtherCompany' => false,
             ]);
         }
 
@@ -60,6 +61,7 @@ class FeedbackDashboardController extends FeedbackCompanyController
             'companyPicker' => $context->isAdminContext($request) ? $context->availableCompanies() : null,
             'activeCompany' => $company->only(['id', 'name']),
             'isAdminContext' => $context->isAdminContext($request),
+            'canChooseOtherCompany' => $context->canChooseOtherCompany($request),
         ]);
     }
 

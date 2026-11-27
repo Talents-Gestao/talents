@@ -35,7 +35,7 @@ Tudo roda em **Docker**, no ambiente que já existe (projeto `talents`, porta **
 ```bash
 docker compose up -d --build                         # app, nginx, postgres, redis, queue, scheduler → http://localhost:8080
 docker compose exec app php artisan migrate --seed   # migrations e seeders sempre via container
-docker compose exec app php artisan test             # PHPUnit (SQLite em memória, ver phpunit.xml)
+docker compose exec app sh -c 'php artisan test $(find tests/Unit tests/Feature -name "*Test.php" | sort)'   # suíte completa (ver nota abaixo)
 docker compose exec app php artisan test --filter=NomeDoTesteOuMetodo
 docker compose exec app php artisan test tests/Feature/Nr1ShellTest.php
 docker compose exec app ./vendor/bin/pint <arquivos alterados>   # lint PHP só no que mudou
@@ -46,6 +46,7 @@ docker compose --profile tools run --rm node npm run build    # após pull/troca
 docker compose --profile tools run --rm node npm run test:js  # node --test em tests/JavaScript/*.test.mjs
 ```
 
+- Neste ambiente (projeto montado no container por 9p do WSL2), `php artisan test` **sem argumentos pula pastas de teste sem avisar** (a listagem de diretórios do PHP perde entradas nessa montagem; ~30% dos testes deixam de rodar). A suíte completa se roda sempre com o comando que passa os arquivos explicitamente (`find … | sort`, acima).
 - `docker compose up/restart` não recompila o frontend; sem Vite dev, o navegador serve `public/build/`.
 - Ao gerar relatório de testes no container, usar caminho **relativo** (`--log-junit=storage/logs/junit-x.xml`); caminho absoluto do Windows cria uma pasta lixo no projeto.
 - Fila: `queue:work` com timeout de 1.800 s (áudios de entrevista e reunião, parser de espelho, PDFs). Agendamentos (`bootstrap/app.php`): 00:30 `rhid:import-closed-day`, 08:00 lembrete de tarefas, 08:15 `commercial:notify-overdue-installments`.
@@ -130,6 +131,7 @@ Esconder item de menu nunca é a única barreira: a rota precisa recusar (403/40
 # 8. Testes
 
 - PHPUnit em `tests/Feature` e `tests/Unit`, SQLite em memória, `QUEUE_CONNECTION=sync`: testes que disparam jobs de IA precisam de `Queue::fake()`. Chaves de IA/ZapSign/Sólides são falsas em `phpunit.xml`.
+- Suíte completa: `docker compose exec app sh -c 'php artisan test $(find tests/Unit tests/Feature -name "*Test.php" | sort)'`. Sem argumentos, `php artisan test` pula pastas sem avisar na montagem 9p do WSL2 (seção 4); confira o total de testes informado.
 - JS: só lógica pura em `tests/JavaScript/*.test.mjs` (`node --test`); não há E2E nem Vitest.
 - Coberturas que não podem regredir: isolamento entre empresas (IDOR), gate de publicação, privacidade de grupos pequenos (inclusive varredura do payload do painel NR-1), MFA/step-up, cálculo V11, comissões.
 - Checklist manual de go-live: `SMOKE_CHECKLIST.md`.
