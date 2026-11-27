@@ -26,7 +26,7 @@ final class PsychosocialMeasureService
 {
     /**
      * Campos editáveis por pessoa; status tem fluxo próprio e origem/campanha são fixas. «Objetivo» e «Resultado
-     * esperado» saíram do plano: as colunas e os dados antigos ficam no banco, mas nada novo é aceito nelas.
+     * esperado» saíram do plano: as colunas e os dados antigos ficam no banco e o que vier neles é ignorado.
      */
     private const EDITABLE_FIELDS = [
         'factor_label',
@@ -56,6 +56,9 @@ final class PsychosocialMeasureService
         'suggested_due_note',
         'indicator',
     ];
+
+    /** Campos que saíram do plano de ação: descartados em silêncio em qualquer gravação (colunas e dados antigos ficam). */
+    private const RETIRED_FIELDS = ['objective', 'expected_result'];
 
     /** Evento da junção de sugestões duplicadas (PsychosocialMeasureDeduplicator): não conta como edição de pessoa. */
     public const MERGE_FIELD = 'merge';
@@ -290,6 +293,7 @@ final class PsychosocialMeasureService
      */
     public function update(PsychosocialMeasure $measure, array $changes, User $actor, ?string $reason = null): PsychosocialMeasure
     {
+        $changes = array_diff_key($changes, array_flip(self::RETIRED_FIELDS));
         $notEditable = array_diff(array_keys($changes), self::EDITABLE_FIELDS);
         if ($notEditable !== []) {
             throw new PsychosocialMeasureException('Campos não editáveis por esta operação: '.implode(', ', $notEditable).'.');
@@ -331,6 +335,7 @@ final class PsychosocialMeasureService
         $this->assertTalentsActor($actor);
         $this->assertTalentsMayEdit($measure->survey);
 
+        $changes = array_diff_key($changes, array_flip(self::RETIRED_FIELDS));
         $notSuggestion = array_diff(array_keys($changes), self::SUGGESTION_FIELDS);
         if ($notSuggestion !== []) {
             throw new PsychosocialMeasureException('Campos fora da sugestão da Talents: '.implode(', ', $notSuggestion).'.');

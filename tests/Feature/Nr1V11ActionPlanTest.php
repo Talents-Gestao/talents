@@ -139,38 +139,50 @@ class Nr1V11ActionPlanTest extends TestCase
     public function test_objective_and_expected_result_left_the_plan_without_deleting_data(): void
     {
         $plan = $this->plan();
-        // Dado antigo nas colunas: continua no banco, mas sai das telas e não é mais aceito.
+        // Dado antigo nas colunas: continua no banco, mas sai das telas e o que vier nesses campos é ignorado.
         PsychosocialMeasure::query()->whereKey($plan->measure->id)->update(['objective' => 'Objetivo antigo.', 'expected_result' => 'Resultado antigo.']);
         $suggestionUrl = route('admin.companies.surveys.measures.suggestion', [$plan->company->id, $plan->survey->id, $plan->measure->id]);
+        $events = fn () => PsychosocialMeasureEvent::query()->where('measure_id', $plan->measure->id)->whereIn('field', ['objective', 'expected_result'])->count();
 
-        $this->actingAs($plan->talents)->patch($suggestionUrl, ['objective' => 'Novo objetivo.', 'reason' => 'Teste'])
-            ->assertSessionHasErrors(['objective' => '«Objetivo» não faz mais parte do plano de ação.']);
-        $this->actingAs($plan->talents)->patch($suggestionUrl, ['expected_result' => 'Novo resultado.', 'reason' => 'Teste'])
-            ->assertSessionHasErrors(['expected_result' => '«Resultado esperado» não faz mais parte do plano de ação.']);
-        $this->actingAs($plan->talents)->post(route('admin.companies.surveys.measures.store', [$plan->company->id, $plan->survey->id]), [
-            'factor_label' => 'Liderança e Gestão', 'measure_description' => 'Formar líderes.', 'evidence_basis' => PsychosocialMeasure::BASIS_QUESTIONNAIRE_INDICATION,
-            'objective' => 'Objetivo.',
-        ])->assertSessionHasErrors('objective');
-
-        // Cliente antigo que ainda manda os campos vazios segue funcionando, sem gravar nada neles.
-        $this->actingAs($plan->talents)->patch($suggestionUrl, ['indicator' => 'Percentual de equipes', 'objective' => null, 'expected_result' => ''])
+        // Preenchidos: ignorados em silêncio, sem erro; o resto da alteração é gravado.
+        $this->actingAs($plan->talents)->patch($suggestionUrl, ['indicator' => 'Percentual de equipes', 'objective' => 'Novo objetivo.', 'expected_result' => 'Novo resultado.'])
+            ->assertSessionHasNoErrors()
             ->assertSessionHas('success');
+        // Só os dois campos: nada a gravar, sem erro.
+        $this->actingAs($plan->talents)->patch($suggestionUrl, ['objective' => 'Outro objetivo.', 'expected_result' => 'Outro resultado.', 'reason' => 'Teste'])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success');
+        // Vazios (cliente antigo): também ignorados.
+        $this->actingAs($plan->talents)->patch($suggestionUrl, ['objective' => null, 'expected_result' => ''])
+            ->assertSessionHasNoErrors();
 
         $fresh = $plan->measure->fresh();
         $this->assertSame('Objetivo antigo.', $fresh->objective);
         $this->assertSame('Resultado antigo.', $fresh->expected_result);
         $this->assertSame('Percentual de equipes', $fresh->indicator);
+        $this->assertSame(0, $events(), 'nenhum evento para os campos ignorados');
 
-        $this->expectException(PsychosocialMeasureException::class);
-        try {
-            $card = app(Nr1ShellPageData::class)->plan($plan->survey->fresh(), $plan->talents, true)['measures'][0];
-            $this->assertArrayNotHasKey('objective', $card);
-            $this->assertArrayNotHasKey('expected_result', $card);
-            foreach (Nr1MeasureCatalog::V11 as $entry) {
-                $this->assertSame(['indicator', 'responsible'], array_keys($entry));
-            }
-        } finally {
-            $this->service->updateSuggestion($fresh, ['objective' => 'Pelo serviço.'], $plan->talents, 'Teste');
+        // «Nova medida» com os campos preenchidos: criada, sem gravar nada neles.
+        $this->actingAs($plan->talents)->post(route('admin.companies.surveys.measures.store', [$plan->company->id, $plan->survey->id]), [
+            'factor_label' => 'Liderança e Gestão', 'measure_description' => 'Formar líderes.', 'evidence_basis' => PsychosocialMeasure::BASIS_QUESTIONNAIRE_INDICATION,
+            'objective' => 'Objetivo.', 'expected_result' => 'Resultado.',
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $created = PsychosocialMeasure::query()->where('survey_id', $plan->survey->id)->where('factor_label', 'Liderança e Gestão')->sole();
+        $this->assertNull($created->objective);
+        $this->assertNull($created->expected_result);
+
+        // Pelo serviço: também ignorados, sem exceção.
+        $this->service->updateSuggestion($fresh, ['objective' => 'Pelo serviço.', 'expected_result' => 'Pelo serviço.'], $plan->talents, 'Teste');
+        $this->service->update($fresh->fresh(), ['objective' => 'Pelo serviço.'], $plan->talents);
+        $this->assertSame('Objetivo antigo.', $fresh->fresh()->objective);
+        $this->assertSame('Resultado antigo.', $fresh->fresh()->expected_result);
+        $this->assertSame(0, $events());
+
+        $card = collect(app(Nr1ShellPageData::class)->plan($plan->survey->fresh(), $plan->talents, true)['measures'])->firstWhere('id', $plan->measure->id);
+        $this->assertArrayNotHasKey('objective', $card);
+        $this->assertArrayNotHasKey('expected_result', $card);
+        foreach (Nr1MeasureCatalog::V11 as $entry) {
+            $this->assertSame(['indicator', 'responsible'], array_keys($entry));
         }
     }
 

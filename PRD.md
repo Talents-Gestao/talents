@@ -1590,7 +1590,7 @@ Abas com `role=tablist`, setas, Home e End. Também: cartão da **Mia** (`MiaCar
 | Campo | Comportamento |
 |-------|---------------|
 | Fator/dimensão | referência ao resultado; descrição do problema organizacional, sem diagnóstico clínico |
-| Ação proposta | texto revisável pela Talents. «Objetivo» e «Resultado esperado» saíram do plano (telas, impressão, validação e catálogo); colunas e dados antigos ficam no banco, e documentos já emitidos não mudam |
+| Ação proposta | texto revisável pela Talents. «Objetivo» e «Resultado esperado» saíram do plano (telas, impressão e catálogo; se vierem numa gravação, mesmo preenchidos, são ignorados em silêncio); colunas e dados antigos ficam no banco, e documentos já emitidos não mudam |
 | Responsável sugerido | área/função sugerida pela Talents; não equivale a aceite |
 | Responsável confirmado | usuário da empresa ou texto livre |
 | Prazo sugerido | data, origem e justificativa; editável pela Talents até a publicação |
