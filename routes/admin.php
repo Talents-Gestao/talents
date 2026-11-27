@@ -423,6 +423,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::middleware('admin.can:feedbacks')->prefix('feedbacks')->name('feedbacks.')->group(function () {
         Route::get('/', [FeedbackDashboardController::class, 'index'])->name('index');
         Route::post('company', [FeedbackCompanySelectController::class, 'store'])->name('company.store');
+        Route::delete('company', [FeedbackCompanySelectController::class, 'destroy'])->name('company.destroy');
 
         Route::middleware('feedback.company')->group(function () {
             // Pessoa: cadastros duplicados e união (só quem administra) e Evolução (antes do resource, por causa de {employee}).

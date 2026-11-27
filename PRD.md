@@ -1023,7 +1023,7 @@ As regras de cada módulo estão no capítulo 9; aqui ficam só as diferenças d
 
 | Módulo | Permissão admin | Diferença em relação ao portal |
 |--------|-----------------|--------------------------------|
-| Feedbacks | `feedbacks` | A Talents atua como administradora da empresa (vê todas as sessões, inclusive a seção do líder). Modelos criados ou duplicados no admin são universais (todas as empresas), mesmo com empresa selecionada; a lista de modelos mostra os universais e os da empresa selecionada, todos editáveis pela Talents (9.8). O seletor lista toda empresa **ativa** que não esteja com Feedbacks forçado como desabilitado, com ou sem assinatura (`FeedbackCompanyContext::availableCompanies()`); selecionar empresa bloqueada dá 403 |
+| Feedbacks | `feedbacks` | A Talents atua como administradora da empresa (vê todas as sessões, inclusive a seção do líder). Modelos criados ou duplicados no admin são universais (todas as empresas), mesmo com empresa selecionada; a lista de modelos mostra os universais e os da empresa selecionada, todos editáveis pela Talents (9.8). O seletor lista toda empresa **ativa** que não esteja com Feedbacks forçado como desabilitado, com ou sem assinatura (`FeedbackCompanyContext::availableCompanies()`); selecionar empresa bloqueada dá 403. No card «Trocar empresa» do painel, ao lado do botão «Aplicar», o botão «Escolher outra empresa» (`DELETE /admin/feedbacks/company`) limpa a empresa da sessão e volta à tela «Selecione a empresa». Só aparece para a Talents (`super_admin`) na tela do admin e não aparece quando a empresa vem do workspace da empresa com Feedbacks habilitado (aí não há tela de seleção); a rota recusa os demais perfis. O cabeçalho mostra só o chip «Empresa: …» |
 | Férias | `ferias` | Mesmo cadastro; alimenta o calendário da empresa |
 | Desligamento | `desligamento` | Acesso também por Voz do Time → Pesquisas |
 | Denúncias | `denuncias` | Lista por empresa; mensagens e status como no portal |
@@ -2945,6 +2945,7 @@ Gerado a partir de `php artisan route:list` na base desta revisão (702 rotas). 
 |--------|-----|------|----------|------|
 | GET | `/admin/feedbacks` | `admin.feedbacks.index` | auth · admin.can:feedbacks | `Client/Feedbacks/Index` |
 | POST | `/admin/feedbacks/company` | `admin.feedbacks.company.store` | auth · admin.can:feedbacks | — |
+| DELETE | `/admin/feedbacks/company` | `admin.feedbacks.company.destroy` | auth · admin.can:feedbacks | — |
 | GET | `/admin/feedbacks/employees` | `admin.feedbacks.employees.index` | auth · admin.can:feedbacks · Feedback selecionada | — |
 | POST | `/admin/feedbacks/employees` | `admin.feedbacks.employees.store` | auth · admin.can:feedbacks · Feedback selecionada | — |
 | GET | `/admin/feedbacks/employees/create` | `admin.feedbacks.employees.create` | auth · admin.can:feedbacks · Feedback selecionada | — |
