@@ -54,8 +54,6 @@ watch(
     (measure) => {
         suggestion.factor_label = measure.factor_label ?? '';
         suggestion.measure_description = measure.measure_description ?? '';
-        suggestion.objective = measure.objective ?? '';
-        suggestion.expected_result = measure.expected_result ?? '';
         suggestion.indicator = measure.indicator ?? '';
         suggestion.responsible_text = measure.suggested?.responsible ?? '';
         suggestion.suggested_due_date = measure.suggested?.due_date ?? '';
@@ -70,8 +68,6 @@ const saveSuggestion = () => {
         .transform((data) => ({
             factor_label: data.factor_label,
             measure_description: data.measure_description,
-            objective: data.objective || null,
-            expected_result: data.expected_result || null,
             indicator: data.indicator || null,
             responsible_text: data.responsible_text || null,
             suggested_due_date: data.suggested_due_date || null,
@@ -176,14 +172,6 @@ const dateBr = (iso) => (iso ? iso.split('-').reverse().join('/') : '—');
                 <textarea :id="'desc-' + measure.id" v-model="suggestion.measure_description" rows="3" required class="n1-field" />
             </div>
             <div>
-                <label class="n1-label" :for="'obj-' + measure.id">Objetivo</label>
-                <textarea :id="'obj-' + measure.id" v-model="suggestion.objective" rows="2" class="n1-field" />
-            </div>
-            <div>
-                <label class="n1-label" :for="'exp-' + measure.id">Resultado esperado</label>
-                <textarea :id="'exp-' + measure.id" v-model="suggestion.expected_result" rows="2" class="n1-field" />
-            </div>
-            <div>
                 <label class="n1-label" :for="'owner-' + measure.id">Responsável sugerido</label>
                 <input :id="'owner-' + measure.id" v-model="suggestion.responsible_text" type="text" class="n1-field" placeholder="Área ou função" />
             </div>
@@ -274,7 +262,7 @@ const dateBr = (iso) => (iso ? iso.split('-').reverse().join('/') : '—');
 
             <div class="n1-row" style="gap: 10px; flex-wrap: wrap; align-items: flex-end">
                 <div class="n1-tiny">
-                    <b>Evidência e aferição:</b> {{ measure.indicator ?? measure.expected_result ?? 'definidos com a empresa' }}.
+                    <b>Evidência e aferição:</b> {{ measure.indicator ?? 'definidos com a empresa' }}.
                     <b>Verificação:</b> comparar a situação após a implementação e registrar o resultado.
                     <template v-if="measure.effectiveness.result_label"> <b>Eficácia:</b> {{ measure.effectiveness.result_label }}.</template>
                 </div>

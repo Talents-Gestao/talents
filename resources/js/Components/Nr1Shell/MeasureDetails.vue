@@ -51,9 +51,7 @@ const saveEvidence = () => submit(evidenceForm, props.measure.urls.evidence, 'Ev
     <details class="n1-measure-more">
         <summary>Execução, evidências e histórico</summary>
 
-        <dl v-if="measure.objective || measure.expected_result || measure.indicator" class="n1-measure-facts">
-            <div v-if="measure.objective"><dt>Objetivo</dt><dd>{{ measure.objective }}</dd></div>
-            <div v-if="measure.expected_result"><dt>Resultado esperado</dt><dd>{{ measure.expected_result }}</dd></div>
+        <dl v-if="measure.indicator" class="n1-measure-facts">
             <div v-if="measure.indicator"><dt>Indicador</dt><dd>{{ measure.indicator }}</dd></div>
         </dl>
 

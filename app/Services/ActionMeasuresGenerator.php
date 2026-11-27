@@ -24,8 +24,9 @@ use RuntimeException;
  *   medida manual da Talents ou sugestão do motor editada pela Talents (critério: algum evento com autor além de
  *   «created»; atualizações automáticas gravam eventos sem autor e não contam como edição);
  * - atualiza no lugar a sugestão intocada (com evento sem autor) e só cria quando a dimensão não tem nenhuma.
- * Sugestões intocadas de dimensões que a IA não devolveu mais saem, como antes. Duplicatas antigas ficam para o
- * comando nr1:dedupe-engine-measures. Uma trava na linha da campanha serializa execuções simultâneas.
+ * Sugestões intocadas de dimensões que a IA não devolveu mais saem, como antes. Em seguida, a regra única de
+ * PsychosocialMeasureDeduplicator junta na hora as duplicatas da campanha (qualquer origem): só sai sugestão do
+ * motor intocada. Uma trava na linha da campanha serializa execuções simultâneas.
  */
 final class ActionMeasuresGenerator
 {
@@ -34,6 +35,7 @@ final class ActionMeasuresGenerator
     public function __construct(
         private readonly Nr1AiAnalyzer $analyzer,
         private readonly PsychosocialMeasureService $measures,
+        private readonly PsychosocialMeasureDeduplicator $deduplicator,
     ) {}
 
     public static function pendingCacheKey(int $surveyId): string
@@ -114,6 +116,9 @@ final class ActionMeasuresGenerator
                     && $m->status === PsychosocialMeasure::STATUS_TO_APPROVE
                     && ! $this->measures->isEditedByTalents($m))
                 ->each(fn (PsychosocialMeasure $m) => $m->delete());
+
+            // Uma medida por dimensão: junta na hora as duplicatas (inclusive antigas e de outra origem).
+            $this->deduplicator->applyForSurvey($survey);
 
             AiAnalysis::query()->create([
                 'survey_id' => $survey->id,

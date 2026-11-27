@@ -101,7 +101,15 @@ const submit = () => {
                 </div>
                 <div>
                     <InputLabel for="due_date" value="Vencimento" />
-                    <TextInput id="due_date" v-model="form.due_date" type="date" class="mt-1 block w-full" required />
+                    <TextInput
+                        id="due_date"
+                        v-model="form.due_date"
+                        type="date"
+                        min="2000-01-01"
+                        max="2100-12-31"
+                        class="mt-1 block w-full"
+                        required
+                    />
                     <InputError class="mt-1" :message="form.errors.due_date" />
                 </div>
             </div>

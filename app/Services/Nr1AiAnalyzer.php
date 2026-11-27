@@ -7,6 +7,7 @@ use App\Models\Survey;
 use App\Models\SurveyMethodVersion;
 use App\Models\SurveyResult;
 use App\Support\Nr1BandLabels;
+use App\Support\Nr1DimensionTitle;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1Scoring;
 use Illuminate\Support\Facades\Http;
@@ -206,7 +207,7 @@ PROMPT;
             ->filter(fn ($r) => $r->survey_template_section_id !== null && $r->department_id === null)
             ->values()
             ->map(fn ($r) => [
-                'dimension' => data_get($r->meta, 'section_title') ?? $r->section?->title ?? 'Dimensão',
+                'dimension' => Nr1DimensionTitle::of($r),
                 'average_score' => round((float) $r->average_score, 2),
                 'risk_level' => Nr1Scoring::riskLabel($r->risk_level, $methodCode),
                 'respondent_count' => $r->respondent_count,
@@ -235,7 +236,7 @@ PROMPT;
 
         $byDeptAndDimension = $deptSectionResults->map(fn ($r) => [
             'department' => $r->department?->name ?? 'Setor',
-            'dimension' => data_get($r->meta, 'section_title') ?? $r->section?->title ?? 'Dimensão',
+            'dimension' => Nr1DimensionTitle::of($r),
             'average_score' => round((float) $r->average_score, 2),
             'risk_level' => Nr1Scoring::riskLabel($r->risk_level, $methodCode),
             'respondent_count' => $r->respondent_count,

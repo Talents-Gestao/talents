@@ -148,7 +148,14 @@ const labelClass = 'text-xs font-medium uppercase tracking-wide text-slate-500';
                         </div>
                         <div>
                             <label :class="labelClass">Vencimento</label>
-                            <input v-model="form.due_date" type="date" required :class="fieldClass" />
+                            <input
+                                v-model="form.due_date"
+                                type="date"
+                                min="2000-01-01"
+                                max="2100-12-31"
+                                required
+                                :class="fieldClass"
+                            />
                             <p v-if="form.errors.due_date" class="mt-1 text-xs text-rose-600">
                                 {{ form.errors.due_date }}
                             </p>

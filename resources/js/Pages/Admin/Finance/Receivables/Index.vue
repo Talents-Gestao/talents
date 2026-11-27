@@ -797,6 +797,8 @@ const submitEdit = () => {
                                 <input
                                     v-model="editForm.due_date"
                                     type="date"
+                                    min="2000-01-01"
+                                    max="2100-12-31"
                                     required
                                     class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                                 />

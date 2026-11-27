@@ -224,8 +224,6 @@ class ActionPlanAdminController extends Controller
                     'evidences' => [],
                     'history' => [],
                     'departments' => [],
-                    'objective' => null,
-                    'expected_result' => null,
                     'indicator' => null,
                 ], $shell, [
                     'id' => $measure->id,

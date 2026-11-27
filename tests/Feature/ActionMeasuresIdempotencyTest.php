@@ -141,12 +141,12 @@ class ActionMeasuresIdempotencyTest extends TestCase
         $this->aiMeasures = [$this->measure('Demandas e Sobrecarga', 'Revisar metas.'), $this->measure('Liderança e Gestão', 'Formar líderes.')];
         $this->generate($survey);
         $edited = PsychosocialMeasure::query()->where('factor_label', 'Liderança e Gestão')->sole();
-        app(PsychosocialMeasureService::class)->update($edited, ['objective' => 'Objetivo escrito pela Talents.'], User::factory()->create());
+        app(PsychosocialMeasureService::class)->update($edited, ['indicator' => 'Indicador escrito pela Talents.'], User::factory()->create());
 
         // A IA não devolve mais «Liderança e Gestão» e muda o texto de «Demandas»: a editada fica intacta.
         $this->aiMeasures = [$this->measure('Demandas e Sobrecarga', 'Revisar metas e prazos.')];
         $this->generate($survey);
-        $this->assertSame('Objetivo escrito pela Talents.', $edited->fresh()->objective);
+        $this->assertSame('Indicador escrito pela Talents.', $edited->fresh()->indicator);
         $this->assertSame('Formar líderes.', $edited->fresh()->measure_description);
 
         // Se a IA voltar a devolver a dimensão, também não sobrescreve nem cria outra.

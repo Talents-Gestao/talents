@@ -4,6 +4,7 @@ import EmptyState from './EmptyState.vue';
 import CountUp from './CountUp.vue';
 import MeasureCard from './MeasureCard.vue';
 import Nr1Button from './Nr1Button.vue';
+import MeasureDuplicatesPanel from './MeasureDuplicatesPanel.vue';
 
 defineProps({
     plan: { type: Object, required: true },
@@ -35,6 +36,8 @@ const print = () => window.print();
                 <div class="n1-cap">Aguardando confirmação</div>
                 <div class="n1-big"><CountUp :value="String(plan.counters.pending)" /></div>
             </div>
+
+            <MeasureDuplicatesPanel v-if="plan.duplicates" :duplicates="plan.duplicates" />
 
             <div class="n1-card c12">
                 <div class="n1-sectiontop">

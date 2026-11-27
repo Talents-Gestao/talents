@@ -5,142 +5,79 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\PsychosocialMeasure;
-use App\Services\PsychosocialMeasureService;
-use App\Support\Nr1MeasureCatalog;
+use App\Services\PsychosocialMeasureDeduplicator;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 /**
- * Limpa sugestões do motor duplicadas (mesma campanha + dimensão normalizada + engine_suggestion). Dry-run por padrão;
- * só --apply altera algo. Sempre exporta o conteúdo completo para storage/app/nr1-exports.
- *
- * Em cada grupo, mantém (nesta ordem): a que saiu de «A aprovar» > a editada por pessoa > a com mais campos
- * preenchidos > a mais antiga. As demais:
- * - sem evidência e só com eventos sem autor: removidas no --apply; a mantida recebe um evento «junção» (sem autor)
- *   com os IDs removidos e o resumo do que saiu. A ação removida só entra no texto da mantida se ela ainda estiver
- *   «A aprovar» e não editada; senão, fica só no evento;
- * - com evidência ou com evento com autor: «requer decisão manual» (nunca removidas).
- * Grupo com mais de uma medida fora de «A aprovar»: «requer decisão manual» por inteiro.
- * Nunca altera eventos existentes nem toca em action_plan_items.
+ * Lista (dry-run, padrão) ou unifica (--apply) medidas duplicadas do plano de ação: mesma campanha + dimensão
+ * normalizada, em qualquer origem (sugestão do motor e medida manual). Mesma regra da ação «Unificar sugestões
+ * duplicadas» da tela (PsychosocialMeasureDeduplicator): só sai sugestão do motor intocada; manual, editada,
+ * confirmada ou com evidência nunca sai e, quando não é a mantida, fica como «requer decisão manual».
+ * Sempre exporta o conteúdo completo dos grupos (antes da junção) para storage/app/nr1-exports; o evento
+ * «Junção de sugestões duplicadas» na mantida guarda só os IDs. Nunca toca em action_plan_items.
  */
 class DedupeEngineMeasuresCommand extends Command
 {
     protected $signature = 'nr1:dedupe-engine-measures
-        {--apply : Aplica a limpeza (sem esta opção, só lista e exporta)}
+        {--apply : Aplica a unificação (sem esta opção, só lista e exporta)}
         {--survey= : Limita a uma campanha (id)}';
 
-    protected $description = 'Lista (dry-run) ou limpa (--apply) sugestões do motor duplicadas por campanha e dimensão do plano de ação NR-1.';
+    protected $description = 'Lista (dry-run) ou unifica (--apply) medidas duplicadas por campanha e dimensão do plano de ação NR-1 (sugestões do motor e medidas manuais).';
 
-    private const CONTENT_FIELDS = ['measure_description', 'objective', 'expected_result', 'indicator', 'responsible_text', 'suggested_due_date', 'suggested_due_origin', 'suggested_due_note', 'evidence_text'];
-
-    public function handle(PsychosocialMeasureService $service): int
+    public function handle(PsychosocialMeasureDeduplicator $deduplicator): int
     {
         $apply = (bool) $this->option('apply');
-        $groups = $this->duplicateGroups();
+        $groups = $deduplicator->groups(
+            PsychosocialMeasure::query()->when($this->option('survey'), fn ($q, $id) => $q->where('survey_id', (int) $id))
+        );
         $this->line($apply ? 'Modo: --apply (altera o banco).' : 'Modo: dry-run (nada é alterado). Use --apply para aplicar.');
 
         $report = [];
+        $toRemove = 0;
         $removed = 0;
-        foreach ($groups as $measures) {
-            $plan = $this->plan($measures, $service);
-            $report[] = $plan['export'];
-            $this->printPlan($plan);
+        foreach ($groups as $group) {
+            $plan = $deduplicator->plan($group);
+            $export = $this->exportRow($plan, $group);
+            $report[] = $export;
+            $toRemove += count($plan['remove']);
+            $this->printPlan($export);
 
-            if ($apply && $plan['remove'] !== []) {
-                DB::transaction(function () use ($plan, $service): void {
-                    $service->recordMerge($plan['keeper'], $plan['summary'], $plan['merged_description']);
-                    PsychosocialMeasure::query()->whereKey(array_map(fn (PsychosocialMeasure $m) => $m->id, $plan['remove']))->get()
-                        ->each(fn (PsychosocialMeasure $m) => $m->delete());
-                });
-                $removed += count($plan['remove']);
+            if ($apply) {
+                $removed += count($deduplicator->apply($plan));
             }
         }
 
         $path = $this->export($report, $apply);
         $this->newLine();
-        $this->info(sprintf('Grupos duplicados: %d. %s: %d. Export: %s', count($groups), $apply ? 'Removidas' : 'Seriam removidas', $apply ? $removed : array_sum(array_map(fn ($g) => count($g['remove']), $report)), $path));
+        $this->info(sprintf('Grupos duplicados: %d. %s: %d. Export: %s', count($groups), $apply ? 'Removidas' : 'Seriam removidas', $apply ? $removed : $toRemove, $path));
 
         return self::SUCCESS;
     }
 
-    /** @return list<Collection<int, PsychosocialMeasure>> */
-    private function duplicateGroups(): array
-    {
-        return PsychosocialMeasure::query()
-            ->where('origin', PsychosocialMeasure::ORIGIN_ENGINE_SUGGESTION)
-            ->when($this->option('survey'), fn ($q, $id) => $q->where('survey_id', (int) $id))
-            ->orderBy('survey_id')->orderBy('id')
-            ->get()
-            ->groupBy(fn (PsychosocialMeasure $m) => $m->survey_id.'|'.Nr1MeasureCatalog::dimensionKey((string) $m->factor_label))
-            ->filter(fn (Collection $g) => $g->count() > 1)
-            ->values()
-            ->all();
-    }
-
     /**
-     * @param  Collection<int, PsychosocialMeasure>  $measures
+     * @param  array<string, mixed>  $plan
+     * @param  Collection<int, PsychosocialMeasure>  $group
      * @return array<string, mixed>
      */
-    private function plan(Collection $measures, PsychosocialMeasureService $service): array
+    private function exportRow(array $plan, Collection $group): array
     {
-        $info = $measures->map(fn (PsychosocialMeasure $m) => [
-            'measure' => $m,
-            'advanced' => $m->status !== PsychosocialMeasure::STATUS_TO_APPROVE,
-            'edited' => $service->isEditedByTalents($m),
-            'evidences' => $m->evidences()->count(),
-            'filled' => collect(self::CONTENT_FIELDS)->filter(fn (string $f) => filled($m->getAttribute($f)))->count(),
-        ]);
-        $first = $measures->first();
-        $base = ['survey_id' => $first->survey_id, 'company_id' => $first->company_id, 'dimension' => Nr1MeasureCatalog::v11Dimension((string) $first->factor_label) ?? $first->factor_label];
-
-        if ($info->where('advanced', true)->count() > 1) {
-            return [
-                'keeper' => null, 'remove' => [], 'merged_description' => null, 'summary' => [],
-                'export' => $base + [
-                    'decision' => 'requer decisão manual',
-                    'reason' => 'Mais de uma medida do grupo já saiu de «A aprovar».',
-                    'keep' => null, 'remove' => [], 'manual' => $info->map(fn ($i) => $this->row($i['measure']))->values()->all(),
-                ],
-            ];
-        }
-
-        $ranked = $info->sort(fn ($a, $b) => [$b['advanced'], $b['edited'], $b['filled'], $a['measure']->id] <=> [$a['advanced'], $a['edited'], $a['filled'], $b['measure']->id])->values();
-        $keeperInfo = $ranked->first();
-        $keeper = $keeperInfo['measure'];
-        $remove = [];
-        $manual = [];
-        foreach ($ranked->slice(1) as $i) {
-            if ($i['evidences'] > 0 || $i['edited']) {
-                $manual[] = $this->row($i['measure']) + ['reason' => $i['evidences'] > 0 ? 'Tem evidência registrada.' : 'Tem alteração feita por pessoa.'];
-            } else {
-                $remove[] = $i['measure'];
-            }
-        }
-
-        $textEditable = ! $keeperInfo['advanced'] && ! $keeperInfo['edited'];
-        $merged = null;
-        if ($textEditable && $remove !== []) {
-            $merged = array_reduce($remove, fn (string $text, PsychosocialMeasure $m) => Nr1MeasureCatalog::mergeDescriptions($text, (string) $m->measure_description), (string) $keeper->measure_description);
-        }
-        $summary = [
-            'removed_ids' => array_map(fn (PsychosocialMeasure $m) => $m->id, $remove),
-            'removed_actions' => array_map(fn (PsychosocialMeasure $m) => ['id' => $m->id, 'factor_label' => $m->factor_label, 'measure_description' => $m->measure_description], $remove),
-            'text_merged_into_kept' => $merged !== null && $merged !== $keeper->measure_description,
-        ];
+        $keeper = $plan['keeper'];
+        $textUnchanged = $plan['merged_description'] === null && $plan['remove'] !== []
+            ? 'Mantida manual, editada, confirmada ou em andamento: o texto dela não muda e a ação removida fica só neste export.'
+            : null;
 
         return [
-            'keeper' => $keeper,
-            'remove' => $remove,
-            'merged_description' => $merged,
-            'summary' => $summary,
-            'export' => $base + [
-                'decision' => $remove === [] ? 'requer decisão manual' : 'juntar e remover',
-                'keep' => $this->row($keeper) + ['merged_description' => $merged, 'text_unchanged_reason' => $textEditable ? null : 'Mantida já confirmada, em andamento ou editada: a ação removida fica só no evento «junção».'],
-                'remove' => array_map(fn (PsychosocialMeasure $m) => $this->row($m), $remove),
-                'manual' => $manual,
-            ],
+            'survey_id' => $keeper->survey_id,
+            'company_id' => $keeper->company_id,
+            'dimension' => $plan['dimension'],
+            'decision' => $plan['decision'],
+            'reason' => $plan['remove'] === [] ? 'Nenhuma medida do grupo pode ser removida (manual, editada, confirmada ou com evidência).' : null,
+            'keep' => $this->row($keeper) + ['merged_description' => $plan['merged_description'], 'text_unchanged_reason' => $textUnchanged],
+            'remove' => array_map(fn (PsychosocialMeasure $m) => $this->row($m), $plan['remove']),
+            'manual' => array_map(fn (array $item) => $this->row($item['measure']) + ['reason' => $item['reason']], $plan['manual']),
+            'group_ids' => $group->pluck('id')->all(),
         ];
     }
 
@@ -153,28 +90,25 @@ class DedupeEngineMeasuresCommand extends Command
         ];
     }
 
-    /** @param  array<string, mixed>  $plan */
-    private function printPlan(array $plan): void
+    /** @param  array<string, mixed>  $e */
+    private function printPlan(array $e): void
     {
-        $e = $plan['export'];
         $this->newLine();
         $this->line(sprintf('Campanha %d · empresa %d · %s → %s', $e['survey_id'], $e['company_id'], $e['dimension'], $e['decision']));
-        if (isset($e['reason'])) {
+        if ($e['reason'] !== null) {
             $this->line('  '.$e['reason']);
         }
-        if ($e['keep']) {
-            $this->line(sprintf('  Mantida #%d [%s]: %s', $e['keep']['id'], $e['keep']['status'], $e['keep']['measure_description']));
-            if ($e['keep']['merged_description'] !== null && $e['keep']['merged_description'] !== $e['keep']['measure_description']) {
-                $this->line('    Texto após a junção: '.$e['keep']['merged_description']);
-            } elseif ($e['keep']['text_unchanged_reason'] && $e['remove'] !== []) {
-                $this->line('    '.$e['keep']['text_unchanged_reason']);
-            }
+        $this->line(sprintf('  Mantida #%d [%s · %s]: %s', $e['keep']['id'], $e['keep']['origin'], $e['keep']['status'], $e['keep']['measure_description']));
+        if ($e['keep']['merged_description'] !== null && $e['keep']['merged_description'] !== $e['keep']['measure_description']) {
+            $this->line('    Texto após a junção: '.$e['keep']['merged_description']);
+        } elseif ($e['keep']['text_unchanged_reason'] !== null) {
+            $this->line('    '.$e['keep']['text_unchanged_reason']);
         }
         foreach ($e['remove'] as $row) {
-            $this->line(sprintf('  Remover #%d [%s]: %s', $row['id'], $row['status'], $row['measure_description']));
+            $this->line(sprintf('  Remover #%d [%s · %s]: %s', $row['id'], $row['origin'], $row['status'], $row['measure_description']));
         }
         foreach ($e['manual'] as $row) {
-            $this->line(sprintf('  Requer decisão manual #%d [%s]%s: %s', $row['id'], $row['status'], isset($row['reason']) ? ' ('.$row['reason'].')' : '', $row['measure_description']));
+            $this->line(sprintf('  Requer decisão manual #%d [%s · %s] (%s): %s', $row['id'], $row['origin'], $row['status'], $row['reason'], $row['measure_description']));
         }
     }
 

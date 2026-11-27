@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Models\FinanceBankAccount;
 use App\Models\FinancePayable;
 use App\Models\FinancePaymentMethod;
+use App\Support\Finance\FinanceDueDate;
 use App\Support\Finance\FinanceListReturn;
 use App\Support\Finance\FinanceListSort;
 use App\Support\Finance\FinancePaymentDate;
@@ -450,7 +451,7 @@ class PayableController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'supplier_name' => ['nullable', 'string', 'max:255'],
             'amount_reais' => ['required', 'numeric', 'min:0.01'],
-            'due_date' => ['required', 'date'],
+            'due_date' => FinanceDueDate::rules(),
             'status' => ['required', Rule::enum(FinancePayableStatus::class)],
             'payment_method_id' => ['nullable', 'exists:finance_payment_methods,id'],
             'bank_account_id' => [
@@ -478,6 +479,7 @@ class PayableController extends Controller
             'recurring_months.required' => 'Informe a duração em meses da recorrência.',
             'recurring_months.min' => 'A duração deve ser de pelo menos 2 meses.',
             'recurring_months.max' => 'A duração não pode ser maior que 60 meses.',
+            ...FinanceDueDate::messages(),
             ...FinancePaymentDate::messages(),
         ]);
 

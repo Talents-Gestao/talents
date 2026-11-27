@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Models\FinanceBankAccount;
 use App\Models\FinancePaymentMethod;
 use App\Models\FinanceReceivable;
+use App\Support\Finance\FinanceDueDate;
 use App\Support\Finance\FinanceListReturn;
 use App\Support\Finance\FinanceListSort;
 use App\Support\Finance\FinancePaymentDate;
@@ -263,7 +264,7 @@ class ReceivableController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'payer_name' => ['nullable', 'string', 'max:255'],
             'amount_reais' => ['required', 'numeric', 'min:0.01'],
-            'due_date' => ['required', 'date'],
+            'due_date' => FinanceDueDate::rules(),
             'status' => ['required', Rule::enum(FinanceReceivableStatus::class)],
             'payment_method_id' => ['nullable', 'exists:finance_payment_methods,id'],
             'bank_account_id' => [
@@ -275,6 +276,7 @@ class ReceivableController extends Controller
             'notes' => ['nullable', 'string', 'max:5000'],
         ], [
             'bank_account_id.required' => 'Selecione a conta de destino/recebimento.',
+            ...FinanceDueDate::messages(),
             ...FinancePaymentDate::messages(),
         ]);
 
