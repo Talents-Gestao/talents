@@ -58,6 +58,9 @@ final class PsychosocialMeasureService
         'indicator',
     ];
 
+    /** Evento da junção de sugestões duplicadas (PsychosocialMeasureDeduplicator): não conta como edição de pessoa. */
+    public const MERGE_FIELD = 'merge';
+
     public const DUE_ORIGINS = ['talents' => 'Sugerido pela Talents', 'legal' => 'Prazo legal ou contratual', 'company' => 'Pedido da empresa'];
 
     /**
@@ -81,6 +84,7 @@ final class PsychosocialMeasureService
     {
         $status = (string) ($data['status'] ?? PsychosocialMeasure::STATUS_TO_APPROVE);
         $this->assertKnownStatus($status);
+        $this->assertDimensionFree($survey, (string) ($data['factor_label'] ?? ''));
 
         $attributes = array_merge($this->editableSubset($data), [
             'survey_id' => $survey->id,
@@ -142,7 +146,7 @@ final class PsychosocialMeasureService
         return PsychosocialMeasureEvent::query()
             ->where('measure_id', $measure->id)
             ->whereNotNull('user_id')
-            ->where('field', '!=', PsychosocialMeasureEvent::FIELD_CREATED)
+            ->whereNotIn('field', [PsychosocialMeasureEvent::FIELD_CREATED, self::MERGE_FIELD])
             ->exists();
     }
 
@@ -188,20 +192,38 @@ final class PsychosocialMeasureService
     }
 
     /**
-     * Junção de sugestões duplicadas (nr1:dedupe-engine-measures): opcionalmente junta a ação ao texto da mantida
-     * (evento sem autor) e registra na mantida um evento «junção» com os IDs removidos e o resumo do que saiu.
-     * Nunca altera eventos existentes.
+     * Junção de sugestões duplicadas (PsychosocialMeasureDeduplicator): opcionalmente junta a ação ao texto da mantida
+     * (evento sem autor) e registra na mantida um evento «Junção de sugestões duplicadas» com os IDs removidos, sem
+     * conteúdo. O autor é quem pediu a unificação na tela (nulo no gerador e no comando). Nunca altera eventos existentes.
      *
      * @param  array<string, mixed>  $summary
      */
-    public function recordMerge(PsychosocialMeasure $keeper, array $summary, ?string $mergedDescription = null): void
+    public function recordMerge(PsychosocialMeasure $keeper, array $summary, ?string $mergedDescription = null, ?User $actor = null): void
     {
-        DB::transaction(function () use ($keeper, $summary, $mergedDescription): void {
+        DB::transaction(function () use ($keeper, $summary, $mergedDescription, $actor): void {
             if ($mergedDescription !== null && $mergedDescription !== $keeper->measure_description) {
                 $this->applySystemChanges($keeper, ['measure_description' => $mergedDescription], 'Junção de sugestões duplicadas');
             }
-            $this->recordEvent($keeper, null, 'merge', null, json_encode($summary, JSON_UNESCAPED_UNICODE), 'Junção de sugestões duplicadas');
+            $this->recordEvent($keeper, $actor, self::MERGE_FIELD, null, json_encode($summary, JSON_UNESCAPED_UNICODE), 'Junção de sugestões duplicadas');
         });
+    }
+
+    /**
+     * Uma medida por dimensão na campanha (chave normalizada): recusa criar ou mover uma medida para uma dimensão que
+     * já tem outra.
+     */
+    public function assertDimensionFree(Survey $survey, string $factorLabel, ?int $exceptMeasureId = null): void
+    {
+        $key = Nr1MeasureCatalog::dimensionKey($factorLabel);
+        $existing = PsychosocialMeasure::query()->where('survey_id', $survey->id)
+            ->when($exceptMeasureId !== null, fn ($q) => $q->whereKeyNot($exceptMeasureId))
+            ->get(['id', 'factor_label'])
+            ->first(fn (PsychosocialMeasure $m) => Nr1MeasureCatalog::dimensionKey((string) $m->factor_label) === $key);
+
+        if ($existing !== null) {
+            $dimension = Nr1MeasureCatalog::v11Dimension((string) $existing->factor_label) ?? $existing->factor_label;
+            throw new PsychosocialMeasureException("Esta campanha já tem uma medida para a dimensão «{$dimension}». Edite o cartão existente em vez de criar outra.");
+        }
     }
 
     /**
@@ -317,6 +339,11 @@ final class PsychosocialMeasureService
 
         if (isset($changes['suggested_due_origin']) && ! array_key_exists($changes['suggested_due_origin'], self::DUE_ORIGINS)) {
             throw new PsychosocialMeasureException('Origem de prazo inválida.');
+        }
+
+        if (isset($changes['factor_label'])
+            && Nr1MeasureCatalog::dimensionKey((string) $changes['factor_label']) !== Nr1MeasureCatalog::dimensionKey((string) $measure->factor_label)) {
+            $this->assertDimensionFree($measure->survey, (string) $changes['factor_label'], $measure->id);
         }
 
         $replacesValue = false;

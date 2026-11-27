@@ -214,6 +214,9 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.measures.store');
         Route::post('companies/{company}/surveys/{survey}/medidas/atualizar-ia', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'refreshFromAi'])
             ->name('companies.surveys.measures.refresh-ai');
+        Route::patch('companies/{company}/surveys/{survey}/medidas/unificar-duplicadas', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'unifyDuplicates'])
+            ->middleware('admin.can:companies,edit')
+            ->name('companies.surveys.measures.unify-duplicates');
         Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}/sugestao', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateSuggestion'])
             ->name('companies.surveys.measures.suggestion');
         Route::patch('companies/{company}/surveys/{survey}/medidas/{measure}', [\App\Http\Controllers\Admin\PsychosocialMeasureAdminController::class, 'updateStatus'])

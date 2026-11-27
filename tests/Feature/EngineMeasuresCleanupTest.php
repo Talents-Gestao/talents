@@ -125,9 +125,10 @@ class EngineMeasuresCleanupTest extends TestCase
         $merge = $kept->events()->where('field', 'merge')->sole();
         $this->assertNull($merge->user_id);
         $summary = json_decode($merge->new_value, true);
-        $this->assertSame([$older->id], $summary['removed_ids']);
-        $this->assertSame('Revisar metas.', $summary['removed_actions'][0]['measure_description']);
-        $this->assertTrue($this->latestExport('dedupe-engine-measures')['apply']);
+        $this->assertSame(['removed_ids' => [$older->id], 'text_merged_into_kept' => true], $summary, 'evento só com IDs, sem conteúdo');
+        $export = $this->latestExport('dedupe-engine-measures');
+        $this->assertTrue($export['apply']);
+        $this->assertSame('Revisar metas.', $export['groups'][0]['remove'][0]['measure_description'], 'o conteúdo removido fica no export');
     }
 
     public function test_discarded_with_evidence_or_human_change_is_kept_and_listed(): void
@@ -151,22 +152,35 @@ class EngineMeasuresCleanupTest extends TestCase
         $this->assertSame('Revisar metas.', $keeper->fresh()->measure_description);
     }
 
-    public function test_group_with_two_advanced_measures_is_left_untouched(): void
+    public function test_group_with_two_advanced_measures_keeps_both_and_removes_only_the_untouched_one(): void
     {
         $survey = $this->survey();
         $a = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Primeira.');
         $b = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Segunda.');
         $c = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Terceira.');
         PsychosocialMeasure::query()->whereKey([$a->id, $b->id])->update(['status' => PsychosocialMeasure::STATUS_PENDING]);
-        $before = $this->snapshot();
 
-        $this->artisan('nr1:dedupe-engine-measures', ['--apply' => true])->expectsOutputToContain('requer decisão manual')->assertSuccessful();
+        $this->artisan('nr1:dedupe-engine-measures', ['--apply' => true])->expectsOutputToContain('Requer decisão manual #'.$b->id)->assertSuccessful();
 
-        $this->assertSame($before, $this->snapshot());
-        $this->assertNotNull($c->fresh());
+        $this->assertSame('Primeira.', $a->fresh()->measure_description);
+        $this->assertSame('Segunda.', $b->fresh()->measure_description);
+        $this->assertNull($c->fresh(), 'só a sugestão intocada sai');
     }
 
-    public function test_confirmed_keeper_text_is_never_changed_the_action_goes_to_the_merge_event(): void
+    public function test_group_where_nothing_can_be_removed_is_left_untouched(): void
+    {
+        $survey = $this->survey();
+        $a = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Primeira.');
+        $b = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Segunda.');
+        PsychosocialMeasure::query()->whereKey([$a->id, $b->id])->update(['status' => PsychosocialMeasure::STATUS_PENDING]);
+        $before = $this->snapshot();
+
+        $this->artisan('nr1:dedupe-engine-measures', ['--apply' => true])->expectsOutputToContain('→ requer decisão manual')->assertSuccessful();
+
+        $this->assertSame($before, $this->snapshot());
+    }
+
+    public function test_confirmed_keeper_text_is_never_changed_the_action_goes_to_the_export(): void
     {
         $survey = $this->survey();
         $confirmed = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Revisar metas.');
@@ -179,7 +193,8 @@ class EngineMeasuresCleanupTest extends TestCase
         $this->assertNull(PsychosocialMeasure::query()->find($duplicate->id));
         $summary = json_decode($confirmed->events()->where('field', 'merge')->sole()->new_value, true);
         $this->assertFalse($summary['text_merged_into_kept']);
-        $this->assertSame('Mapear picos.', $summary['removed_actions'][0]['measure_description']);
+        $this->assertArrayNotHasKey('removed_actions', $summary, 'o evento não guarda conteúdo');
+        $this->assertSame('Mapear picos.', $this->latestExport('dedupe-engine-measures')['groups'][0]['remove'][0]['measure_description']);
     }
 
     public function test_dedupe_never_mixes_companies(): void

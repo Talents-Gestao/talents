@@ -22,6 +22,7 @@ use App\Services\Nr1\Nr1OrientationVideoService;
 use App\Services\Psychosocial\InternalReviewService;
 use App\Services\PsychosocialDashboardBuilder;
 use App\Services\PsychosocialDashboardExtras;
+use App\Services\PsychosocialMeasureDeduplicator;
 use App\Support\Nr1BandLabels;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1InstrumentMatrix;
@@ -232,6 +233,18 @@ class Nr1ShellPageData
         $published = $survey->requires_publication && $survey->published_at !== null;
         $canEditSuggestion = $forTalents && ! $published && $user->canAccessAdmin(AdminPermissionModule::Companies, PermissionAction::Edit);
         $canAct = ! $forTalents && $user->canAccess(PermissionModule::PlanosAcao, PermissionAction::Edit);
+        // «Unificar sugestões duplicadas»: só Talents com a permissão de editar sugestões, também depois da publicação
+        // (só sai sugestão do motor intocada), e só quando há duplicata detectada.
+        $duplicates = null;
+        if ($forTalents && $user->canAccessAdmin(AdminPermissionModule::Companies, PermissionAction::Edit)) {
+            $deduplicator = app(PsychosocialMeasureDeduplicator::class);
+            $groups = $deduplicator->preview($survey);
+            $duplicates = $groups === [] ? null : [
+                'groups' => $groups,
+                'removable_ids' => $deduplicator->removableIds($survey),
+                'url' => route('admin.companies.surveys.measures.unify-duplicates', [$survey->company_id, $survey->id]),
+            ];
+        }
 
         $measures = $rows->map(function (PsychosocialMeasure $measure) use ($survey, $scores, $departmentsByFactor, $canEditSuggestion, $canAct, $forTalents): array {
             $downloads = $forTalents ? [] : $measure->evidences
@@ -283,6 +296,7 @@ class Nr1ShellPageData
             'counters' => ['confirmed' => $confirmed, 'pending' => $rows->count() - $confirmed, 'total' => $rows->count()],
             'canEditSuggestion' => $canEditSuggestion,
             'canAct' => $canAct,
+            'duplicates' => $duplicates,
             'users' => $canAct ? User::query()
                 ->whereHas('workspaces', fn ($q) => $q->where('company_id', $survey->company_id)->where('is_active', true))
                 ->orderBy('name')->get(['id', 'name'])->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name])->all() : [],

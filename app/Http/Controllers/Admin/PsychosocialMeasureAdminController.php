@@ -12,6 +12,7 @@ use App\Models\Company;
 use App\Models\PsychosocialMeasure;
 use App\Models\Survey;
 use App\Services\ActionMeasuresGenerator;
+use App\Services\PsychosocialMeasureDeduplicator;
 use App\Services\PsychosocialMeasureService;
 use App\Support\PsychosocialMeasurePresenter;
 use Illuminate\Http\RedirectResponse;
@@ -168,6 +169,35 @@ class PsychosocialMeasureAdminController extends Controller
         }
 
         return back()->with('success', 'Status da medida atualizado.');
+    }
+
+    /**
+     * «Unificar sugestões duplicadas» (Talents, também depois da publicação): aplica a prévia que a pessoa viu e
+     * confirmou. Se as medidas que sairiam mudaram desde a prévia, nada é feito e a prévia é mostrada de novo.
+     */
+    public function unifyDuplicates(Request $request, Company $company, Survey $survey, PsychosocialMeasureDeduplicator $deduplicator): RedirectResponse
+    {
+        $this->assertSurveyBelongsToCompany($company, $survey);
+
+        $data = $request->validate([
+            'confirm' => ['accepted'],
+            'expected_ids' => ['present', 'array'],
+            'expected_ids.*' => ['integer'],
+        ], [
+            'confirm.accepted' => 'Confirme a unificação depois de revisar a prévia.',
+        ]);
+
+        $expected = array_map('intval', $data['expected_ids']);
+        sort($expected);
+        if ($expected !== $deduplicator->removableIds($survey)) {
+            return back()->with('error', 'As sugestões mudaram desde a prévia. Revise a prévia atualizada e confirme de novo.');
+        }
+
+        $removed = $deduplicator->applyForSurvey($survey, $request->user());
+
+        return back()->with('success', $removed === []
+            ? 'Nenhuma sugestão foi removida: as duplicatas restantes pedem decisão manual.'
+            : sprintf('Sugestões unificadas: %d removida(s). Medidas manuais, editadas, confirmadas ou com evidência foram mantidas.', count($removed)));
     }
 
     private function assertSurveyBelongsToCompany(Company $company, Survey $survey): void
