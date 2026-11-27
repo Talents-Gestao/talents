@@ -124,12 +124,15 @@ class FeedbackEvolutionBuilder
         ));
 
         $templates = $eligible->pluck('feedback_template_id')->unique()->count();
+        $versions = $eligible->pluck('feedback_template_version_id')->unique()->count();
         $warnings = [];
         if ($eligible->count() === self::MIN_SESSIONS) {
             $warnings[] = 'Só há dois feedbacks com relatório: compare com cuidado; dois pontos não mostram tendência.';
         }
         if ($templates > 1) {
             $warnings[] = 'Os feedbacks usaram modelos diferentes; as perguntas não são as mesmas entre os períodos.';
+        } elseif ($versions > 1) {
+            $warnings[] = 'Os feedbacks usaram versões diferentes do mesmo modelo; algumas perguntas podem ter mudado entre os períodos.';
         }
         $withoutReport = $sessions->count() - $eligible->count();
         if ($withoutReport > 0 && $eligible->count() > 0) {

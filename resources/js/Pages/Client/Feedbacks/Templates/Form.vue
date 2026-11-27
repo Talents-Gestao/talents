@@ -13,19 +13,21 @@ import {
     ensureTwoOptions,
     normalizeTemplateOptions,
     templateFormPayload,
-    templateLockMessage,
+    templateVersionNotice,
+    versionUsageLabel,
 } from '@/utils/feedbackTemplateForm';
-import { DocumentDuplicateIcon, EyeIcon, LockClosedIcon, PlusIcon, TrashIcon } from '@heroicons/vue/24/outline';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { formatDateTime } from '@/utils/dateOnly';
+import { ClockIcon, EyeIcon, InformationCircleIcon, PlusIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const props = defineProps({
     /** null ao criar. */
     template: { type: Object, default: null },
-    /** Modelo já usado em feedbacks: seções e perguntas não mudam. */
-    structureLocked: { type: Boolean, default: false },
-    /** Quantos feedbacks usam o modelo (só na edição). */
-    sessionsCount: { type: Number, default: 0 },
+    /** Versão atual (só na edição): número, uso e o número da próxima quando salvar criar versão. */
+    version: { type: Object, default: null },
+    /** Histórico de versões, da mais nova para a mais antiga. */
+    versions: { type: Array, default: () => [] },
     /** Admin da Talents só com permissão de ver: tudo desabilitado e sem salvar. */
     readOnly: { type: Boolean, default: false },
     permissions: { type: Object, default: () => ({ create: true, edit: true, delete: true }) },
@@ -38,9 +40,9 @@ const pageTitle = computed(() => {
     if (!isEdit.value) return 'Novo modelo de feedback';
     return props.readOnly ? 'Modelo de feedback' : 'Editar modelo de feedback';
 });
-const lockMessage = computed(() => templateLockMessage(props.sessionsCount));
-/** Seções e perguntas podem ser alteradas (adicionar, remover, digitar). */
-const structureEditable = computed(() => !props.structureLocked && !props.readOnly);
+const versionNotice = computed(() => templateVersionNotice(props.version));
+/** Seções e perguntas podem ser alteradas (adicionar, remover, digitar); com uso, salvar cria a próxima versão. */
+const structureEditable = computed(() => !props.readOnly);
 
 const newQuestion = () => ({ key: '', body: '', question_type: 'textarea', is_required: false, options: [] });
 const newSection = () => ({
@@ -55,7 +57,6 @@ const newSection = () => ({
 const form = useForm({
     title: props.template?.title ?? '',
     description: props.template?.description ?? '',
-    is_active: props.template?.is_active ?? true,
     sections: props.template?.sections?.length
         ? props.template.sections.map((section) => ({
               key: section.key ?? '',
@@ -107,22 +108,13 @@ function submit() {
 
     // Com erro, rola para o topo, onde fica o resumo; os campos com problema aparecem destacados abaixo.
     const options = { preserveScroll: (page) => Object.keys(page.props.errors || {}).length === 0 };
-    const payload = (data) => templateFormPayload(data, props.structureLocked);
+    const payload = (data) => templateFormPayload(data);
 
     if (isEdit.value) {
         form.transform(payload).put(feedbackRoute('templates.update', props.template.id), options);
     } else {
         form.transform(payload).post(feedbackRoute('templates.store'), options);
     }
-}
-
-const duplicating = ref(false);
-function duplicateTemplate() {
-    router.post(
-        feedbackRoute('templates.duplicate', props.template.id),
-        {},
-        { onStart: () => (duplicating.value = true), onFinish: () => (duplicating.value = false) },
-    );
 }
 
 // Estado desabilitado visível: dentro de <fieldset disabled> os campos não aceitam digitação.
@@ -168,24 +160,33 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
             </div>
 
             <div
-                v-else-if="structureLocked"
-                class="flex flex-wrap items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                v-else-if="versionNotice"
+                class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
                 role="status"
-                data-template-locked
+                data-template-version-notice
             >
-                <LockClosedIcon class="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-                <p class="min-w-0 flex-1">{{ lockMessage }}</p>
-                <button
-                    v-if="permissions.create"
-                    type="button"
-                    class="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-900 hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-60"
-                    :disabled="duplicating"
-                    @click="duplicateTemplate"
-                >
-                    <DocumentDuplicateIcon class="h-4 w-4" aria-hidden="true" />
-                    {{ duplicating ? 'Duplicando…' : 'Duplicar modelo' }}
-                </button>
+                <InformationCircleIcon class="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                <p class="min-w-0 flex-1">{{ versionNotice }}</p>
             </div>
+
+            <details
+                v-if="versions.length"
+                class="group rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
+                data-template-versions
+            >
+                <summary class="flex min-h-[32px] cursor-pointer list-none items-center gap-2 font-semibold text-slate-900">
+                    <ClockIcon class="h-4 w-4 text-slate-500" aria-hidden="true" />
+                    Histórico de versões ({{ versions.length }})
+                </summary>
+                <ul class="mt-2 divide-y divide-slate-100">
+                    <li v-for="item in versions" :key="item.number" class="flex flex-wrap items-baseline justify-between gap-2 py-2">
+                        <span :class="item.is_current ? 'font-semibold text-slate-900' : ''">{{ versionUsageLabel(item) }}</span>
+                        <span class="text-xs text-slate-500">
+                            {{ item.created_at ? formatDateTime(item.created_at) : '' }}<template v-if="item.created_by"> · {{ item.created_by }}</template>
+                        </span>
+                    </li>
+                </ul>
+            </details>
 
             <fieldset :disabled="readOnly" class="space-y-6">
                 <legend class="sr-only">Modelo de feedback</legend>
@@ -202,10 +203,6 @@ const checkboxClass = `rounded border-slate-300 text-talents-700 focus:ring-tale
                         <AutoGrowTextarea id="template_description" v-model="form.description" :min-rows="8" :class="fieldClass" />
                         <InputError class="mt-2" :message="form.errors.description" />
                     </div>
-                    <label class="flex min-h-[36px] items-center gap-2 text-sm text-slate-700">
-                        <input v-model="form.is_active" type="checkbox" :class="checkboxClass" />
-                        Ativo (aparece em «Novo feedback»)
-                    </label>
                     </div>
                 </FeedbackPanel>
 

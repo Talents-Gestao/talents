@@ -14,40 +14,37 @@ export function answersLabel(count) {
     return n === 1 ? '1 resposta' : `${n} respostas`;
 }
 
+/** Mesmo texto do servidor (DeleteFeedbackTemplate::IN_USE_MESSAGE). */
+export const TEMPLATE_IN_USE_MESSAGE =
+    'Este modelo já foi usado em feedbacks e não pode ser excluído. Arquive-o para que não apareça em novos feedbacks.';
+
 /**
- * Alerta da exclusão de modelo, a partir do impacto calculado no servidor.
- * Nunca usado: confirmação simples. Usado: alerta completo, botão com a contagem e confirmação explícita.
+ * Alerta da exclusão de modelo, a partir da situação calculada no servidor.
+ * Nunca usado: confirmação simples. Usado (em qualquer versão ou empresa): não se exclui; a orientação é arquivar.
+ * Nenhum feedback é apagado junto com um modelo.
  *
- * @param {{ title: string, sessions_count: number }} impact
+ * @param {{ title: string, sessions_count: number, blocked?: boolean, blocked_message?: string | null }} impact
  */
 export function templateDeletionCopy(impact) {
     const sessions = Number(impact?.sessions_count) || 0;
     const title = impact?.title ?? '';
 
-    if (sessions === 0) {
+    if (impact?.blocked || sessions > 0) {
         return {
-            inUse: false,
-            heading: 'Excluir modelo',
-            message: `Excluir o modelo «${title}»? Ele ainda não foi usado em nenhum feedback.`,
-            confirmLabel: 'Excluir modelo',
+            blocked: true,
+            heading: 'Modelo em uso',
+            message: impact?.blocked_message || TEMPLATE_IN_USE_MESSAGE,
+            confirmLabel: null,
             requiresCheck: false,
-            checkLabel: '',
         };
     }
 
-    const n = feedbacksLabel(sessions);
-    const made = sessions === 1 ? 'o feedback feito com ele' : `os ${n} feitos com ele`;
-
     return {
-        inUse: true,
-        heading: 'Excluir modelo já usado',
-        message:
-            `Este modelo já foi usado em ${n}. Ao excluí-lo, ${made} e todas as respostas também serão excluídos, `
-            + 'e isso afeta o painel de Feedbacks (termômetro e 9-box) e os históricos dos colaboradores. '
-            + 'Essa ação não pode ser desfeita por aqui.',
-        confirmLabel: `Excluir modelo e ${n}`,
-        requiresCheck: true,
-        checkLabel: `Entendo que o modelo «${title}» e ${sessions === 1 ? 'o feedback feito' : `os ${n} feitos`} com ele serão excluídos.`,
+        blocked: false,
+        heading: 'Excluir modelo',
+        message: `Excluir o modelo «${title}»? Ele ainda não foi usado em nenhum feedback.`,
+        confirmLabel: 'Excluir modelo',
+        requiresCheck: false,
     };
 }
 
@@ -55,10 +52,4 @@ export function templateDeletionCopy(impact) {
 export function canConfirmDeletion({ requiresCheck, checked, busy }) {
     if (busy) return false;
     return !requiresCheck || checked === true;
-}
-
-/** Corpo da requisição de exclusão do modelo: a contagem vista no alerta vai junto para o servidor conferir. */
-export function templateDeletionPayload(impact, checked) {
-    const sessions = Number(impact?.sessions_count) || 0;
-    return sessions === 0 ? { sessions_count: 0 } : { confirmed: checked === true, sessions_count: sessions };
 }

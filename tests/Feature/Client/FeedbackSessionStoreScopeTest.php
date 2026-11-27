@@ -181,21 +181,21 @@ class FeedbackSessionStoreScopeTest extends TestCase
         $this->assertNotContains($inactiveAccount->id, $leaderIds);
     }
 
-    public function test_inactive_foreign_or_missing_template_is_refused_instead_of_swapped(): void
+    public function test_archived_foreign_or_missing_template_is_refused_instead_of_swapped(): void
     {
         $talents = $this->seedFeedbackTemplate();
         $company = $this->createFeedbackCompany();
         $other = $this->createFeedbackCompany(['name' => 'Outra empresa']);
         $admin = User::factory()->companyAdmin($company->id)->create();
 
-        $inactive = FeedbackTemplate::query()->create(['company_id' => $company->id, 'title' => 'Inativo', 'is_active' => false]);
+        $inactive = FeedbackTemplate::query()->create(['company_id' => $company->id, 'title' => 'Arquivado', 'archived_at' => now()]);
         $foreign = FeedbackTemplate::query()->create(['company_id' => $other->id, 'title' => 'Alheio', 'is_active' => true]);
 
         foreach ([$inactive->id, $foreign->id, 999999] as $templateId) {
             $this->actingAs($admin)
                 ->post(route('client.feedbacks.sessions.store'), $this->payload($admin->id, $templateId))
                 ->assertSessionHasErrors([
-                    'feedback_template_id' => 'Modelo indisponível para esta empresa (inexistente, excluído, de outra empresa ou inativo). Escolha um modelo da lista.',
+                    'feedback_template_id' => 'Modelo indisponível para esta empresa (inexistente, excluído, de outra empresa ou arquivado). Escolha um modelo da lista.',
                 ]);
         }
         $this->assertSame(0, FeedbackSession::query()->count());

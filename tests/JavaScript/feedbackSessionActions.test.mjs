@@ -24,7 +24,9 @@ describe('detalhe do feedback: cabeçalho, kebab e abas', () => {
         const order = ['edit', 'pdf', 'report', 'delete'].map((k) => show.indexOf(`key: '${k}'`));
         assert.ok(order.every((i, n) => i > -1 && (n === 0 || i > order[n - 1])));
         assert.match(show, /key: 'delete'[^\n]*danger: true/);
-        assert.match(show, /status !== 'completed' && props\.session\.status !== 'cancelled'/);
+        // Concluído, cancelado ou com convite de assinatura: sem «Editar»; aguardando assinatura oferece «Reabrir para edição».
+        assert.match(show, /\['completed', 'cancelled', 'awaiting_signatures'\]\.includes\(props\.session\.status\)/);
+        assert.match(show, /key: 'reopen', label: 'Reabrir para edição'/);
         assert.match(show, /href: feedbackRoute\('sessions\.edit', props\.session\.id\)/);
     });
 

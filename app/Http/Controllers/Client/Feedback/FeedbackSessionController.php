@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Client\Feedback;
 
 use App\Actions\Company\ResolveOrCreateCompanyEmployee;
 use App\Actions\Feedback\DeleteFeedbackSession;
+use App\Actions\Feedback\ReopenFeedbackSession;
 use App\Actions\Feedback\SendFeedbackSignatureInvites;
 use App\Enums\AdminPermissionModule;
 use App\Enums\FeedbackSessionStatus;
@@ -19,13 +20,18 @@ use App\Models\FeedbackSessionAnswer;
 use App\Models\FeedbackTemplate;
 use App\Models\FeedbackTemplateQuestion;
 use App\Models\FeedbackTemplateSection;
+use App\Models\FeedbackTemplateVersion;
 use App\Models\User;
 use App\Services\Feedback\FeedbackPdfService;
+use App\Services\Feedback\FeedbackSessionVersionUpdater;
+use App\Services\Feedback\FeedbackTemplateVersioning;
 use App\Support\Company\CompanyEmployeeDirectory;
 use App\Support\Feedback\FeedbackCompanyContext;
 use App\Support\Feedback\FeedbackEmployeeMergeAccess;
 use App\Support\Feedback\FeedbackRecordingAccess;
+use App\Support\Feedback\FeedbackSessionStructure;
 use App\Support\Feedback\FeedbackVisibility;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -88,13 +94,13 @@ class FeedbackSessionController extends FeedbackCompanyController
         $data = $request->validate([
             'employee_name' => ['required', 'string', 'max:255'],
             'employee_email' => ['nullable', 'email', 'max:255'],
-            // Modelo da Talents ou da própria empresa, e ativo; nunca é trocado em silêncio por outro.
+            // Modelo da Talents ou da própria empresa, e não arquivado; nunca é trocado em silêncio por outro.
             'feedback_template_id' => [
                 'nullable',
                 'integer',
                 Rule::exists('feedback_templates', 'id')
                     ->whereNull('deleted_at')
-                    ->where('is_active', true)
+                    ->whereNull('archived_at')
                     ->where(fn ($q) => $q->whereNull('company_id')->orWhere('company_id', $company->id)),
             ],
             // Líder: acesso ativo à empresa do feedback (mesma fonte da lista de Acessos; isolamento entre empresas).
@@ -111,7 +117,7 @@ class FeedbackSessionController extends FeedbackCompanyController
             'next_alignment_at' => ['nullable', 'date'],
             'title' => ['nullable', 'string', 'max:255'],
         ], [
-            'feedback_template_id.exists' => 'Modelo indisponível para esta empresa (inexistente, excluído, de outra empresa ou inativo). Escolha um modelo da lista.',
+            'feedback_template_id.exists' => 'Modelo indisponível para esta empresa (inexistente, excluído, de outra empresa ou arquivado). Escolha um modelo da lista.',
             'leader_user_id.required' => 'Selecione o líder responsável.',
         ], [
             'employee_name' => 'nome do colaborador',
@@ -188,7 +194,7 @@ class FeedbackSessionController extends FeedbackCompanyController
     {
         $company = $this->company($request);
         $this->authorizeSession($company, $session);
-        abort_if(in_array($session->status, [FeedbackSessionStatus::Completed, FeedbackSessionStatus::Cancelled], true), 403);
+        $this->abortUnlessEditable($session);
 
         return Inertia::render('Client/Feedbacks/Sessions/Edit', [
             'session' => $this->sessionPayload($session, $request->user()),
@@ -202,7 +208,7 @@ class FeedbackSessionController extends FeedbackCompanyController
     {
         $company = $this->company($request);
         $this->authorizeSession($company, $session);
-        abort_if(in_array($session->status, [FeedbackSessionStatus::Completed, FeedbackSessionStatus::Cancelled], true), 403);
+        $this->abortUnlessEditable($session);
 
         $data = $request->validate([
             'scheduled_at' => ['nullable', 'date'],
@@ -245,6 +251,76 @@ class FeedbackSessionController extends FeedbackCompanyController
         $action->execute($session, $request->user());
 
         return $this->feedbackRedirect('sessions.show', $session, 'Convites de assinatura enviados por e-mail.');
+    }
+
+    /**
+     * Prévia de «Atualizar para a versão X»: perguntas mantidas, novas e que saem (com resposta preservada).
+     */
+    public function versionPreview(Request $request, FeedbackSession $session, FeedbackSessionVersionUpdater $updater): JsonResponse
+    {
+        $company = $this->company($request);
+        $this->authorizeSession($company, $session);
+        abort_unless($session->isOpenForEditing(), 422, FeedbackSessionVersionUpdater::NOT_OPEN_MESSAGE);
+
+        return response()->json($updater->preview($session, $this->latestVersion($session)));
+    }
+
+    /** Leva o feedback aberto para a versão atual do modelo, com confirmação explícita. */
+    public function updateVersion(Request $request, FeedbackSession $session, FeedbackSessionVersionUpdater $updater): RedirectResponse
+    {
+        $company = $this->company($request);
+        $this->authorizeSession($company, $session);
+
+        $data = $request->validate([
+            'confirmed' => ['accepted'],
+            'version_id' => ['required', 'integer'],
+        ], [
+            'confirmed.accepted' => 'Confirme a atualização do feedback para a nova versão do modelo.',
+        ]);
+
+        $target = $this->latestVersion($session);
+        if ((int) $data['version_id'] !== (int) $target->id) {
+            throw ValidationException::withMessages([
+                'version' => 'O modelo ganhou outra versão desde que você abriu a prévia. Confira de novo antes de atualizar.',
+            ]);
+        }
+
+        $result = $updater->apply($session, $target, $request->user());
+
+        $message = "Feedback atualizado para a versão {$result['to']} do modelo.";
+        if ($result['answers_out_of_version'] > 0) {
+            $message .= $result['answers_out_of_version'] === 1
+                ? ' 1 resposta ficou fora da versão atual e continua guardada.'
+                : " {$result['answers_out_of_version']} respostas ficaram fora da versão atual e continuam guardadas.";
+        }
+
+        return $this->feedbackRedirect('sessions.show', $session, $message);
+    }
+
+    /**
+     * «Reabrir para edição»: cancela os convites e descarta as assinaturas coletadas (com confirmação da quantidade).
+     */
+    public function reopen(Request $request, FeedbackSession $session, ReopenFeedbackSession $reopen): RedirectResponse
+    {
+        $company = $this->company($request);
+        $this->authorizeSession($company, $session);
+
+        $data = $request->validate([
+            'confirmed' => ['accepted'],
+            'signed_count' => ['required', 'integer', 'min:0'],
+        ], [
+            'confirmed.accepted' => 'Confirme que os convites serão cancelados e as assinaturas coletadas, descartadas.',
+        ]);
+
+        $result = $reopen->execute($session, $request->user(), (int) $data['signed_count']);
+
+        $message = match ($result['signed']) {
+            0 => 'Feedback reaberto para edição. Os convites de assinatura foram cancelados.',
+            1 => 'Feedback reaberto para edição. Os convites foram cancelados e 1 assinatura foi descartada.',
+            default => "Feedback reaberto para edição. Os convites foram cancelados e {$result['signed']} assinaturas foram descartadas.",
+        };
+
+        return $this->feedbackRedirect('sessions.show', $session, $message);
     }
 
     public function pdf(Request $request, FeedbackSession $session, FeedbackPdfService $pdf): HttpResponse
@@ -332,8 +408,9 @@ class FeedbackSessionController extends FeedbackCompanyController
      */
     private function syncAnswers(FeedbackSession $session, array $answers, User $user): void
     {
+        // Só perguntas da versão do feedback (respostas fora da versão atual ficam como estão).
         $questionsQuery = FeedbackTemplateQuestion::query()
-            ->whereHas('section', fn ($q) => $q->where('feedback_template_id', $session->feedback_template_id));
+            ->whereIn('id', FeedbackSessionStructure::questionIds($session));
 
         if (! FeedbackVisibility::canViewLeaderSelfSections($user)) {
             $questionsQuery->whereHas(
@@ -384,8 +461,9 @@ class FeedbackSessionController extends FeedbackCompanyController
      */
     private function normalizeSectionExtras(FeedbackSession $session, array $extras, User $user): ?array
     {
+        $versionId = FeedbackSessionStructure::version($session)->id;
         $sectionsQuery = FeedbackTemplateSection::query()
-            ->where('feedback_template_id', $session->feedback_template_id)
+            ->where('feedback_template_version_id', $versionId)
             ->where('section_type', '!=', 'intro');
 
         if (! FeedbackVisibility::canViewLeaderSelfSections($user)) {
@@ -416,9 +494,21 @@ class FeedbackSessionController extends FeedbackCompanyController
             ];
         }
 
+        // Perguntas extras de seções fora da versão atual (feedback atualizado): preservadas como estão.
+        $versionSectionIds = FeedbackTemplateSection::query()
+            ->where('feedback_template_version_id', $versionId)
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->flip();
+        foreach ($session->section_extras ?? [] as $sectionId => $extra) {
+            if (! $versionSectionIds->has((string) $sectionId) && is_array($extra)) {
+                $normalized[(string) $sectionId] = $extra;
+            }
+        }
+
         if (! FeedbackVisibility::canViewLeaderSelfSections($user)) {
             $leaderSelfSectionIds = FeedbackTemplateSection::query()
-                ->where('feedback_template_id', $session->feedback_template_id)
+                ->where('feedback_template_version_id', $versionId)
                 ->where('audience', FeedbackVisibility::AUDIENCE_LEADER_SELF)
                 ->pluck('id')
                 ->map(fn ($id) => (string) $id);
@@ -455,55 +545,32 @@ class FeedbackSessionController extends FeedbackCompanyController
             'employee.department',
             'employee.position',
             'leader',
-            'template.sections.questions',
+            'templateVersion.sections.questions',
             'answers',
             'signatures',
         ]);
 
         $canViewLeaderSelf = FeedbackVisibility::canViewLeaderSelfSections($user);
 
-        if ($session->template && ! $canViewLeaderSelf) {
-            $session->template->setRelation(
-                'sections',
-                $session->template->sections
-                    ->reject(fn (FeedbackTemplateSection $section) => $section->audience === FeedbackVisibility::AUDIENCE_LEADER_SELF)
-                    ->values(),
-            );
-        }
-
-        $hiddenQuestionIds = collect();
-        if (! $canViewLeaderSelf && $session->template) {
-            $hiddenQuestionIds = FeedbackTemplateQuestion::query()
-                ->whereHas(
-                    'section',
-                    fn ($q) => $q
-                        ->where('feedback_template_id', $session->feedback_template_id)
-                        ->where('audience', FeedbackVisibility::AUDIENCE_LEADER_SELF),
-                )
-                ->pluck('id');
-        }
+        // Estrutura, título e descrição da versão usada pelo feedback (não da versão atual do modelo).
+        $template = FeedbackSessionStructure::templatePayload($session, $canViewLeaderSelf);
+        $visibleSections = collect($template['sections']);
+        $visibleQuestionIds = $visibleSections->flatMap(fn ($s) => collect($s['questions'])->pluck('id'))->map(fn ($id) => (int) $id)->flip();
+        $visibleSectionIds = $visibleSections->pluck('id')->map(fn ($id) => (string) $id)->flip();
 
         $answers = [];
         foreach ($session->answers as $answer) {
-            if ($hiddenQuestionIds->contains($answer->feedback_template_question_id)) {
-                continue;
+            if ($visibleQuestionIds->has((int) $answer->feedback_template_question_id)) {
+                $answers[$answer->feedback_template_question_id] = $answer->value_json ?? $answer->value_text;
             }
-            $answers[$answer->feedback_template_question_id] = $answer->value_json ?? $answer->value_text;
         }
 
-        $sectionExtras = $session->section_extras ?? [];
-        if (! $canViewLeaderSelf && $session->template) {
-            $hiddenSectionIds = FeedbackTemplateSection::query()
-                ->where('feedback_template_id', $session->feedback_template_id)
-                ->where('audience', FeedbackVisibility::AUDIENCE_LEADER_SELF)
-                ->pluck('id')
-                ->map(fn ($id) => (string) $id)
-                ->all();
+        $sectionExtras = collect($session->section_extras ?? [])
+            ->filter(fn ($_, $sectionId) => $visibleSectionIds->has((string) $sectionId))
+            ->all();
 
-            $sectionExtras = collect($sectionExtras)
-                ->reject(fn ($_, $sectionId) => in_array((string) $sectionId, $hiddenSectionIds, true))
-                ->all();
-        }
+        $latest = $this->latestVersion($session);
+        $canEditSession = $this->userCanEditSession($user);
 
         return [
             'id' => $session->id,
@@ -517,10 +584,24 @@ class FeedbackSessionController extends FeedbackCompanyController
             // Cadastro do colaborador, para o link «Ver pessoa» (histórico e Evolução).
             'employee_profile_id' => $session->company_employee_id,
             'leader' => $session->leader?->only(['id', 'name', 'email']),
-            'template' => $session->template,
+            'template' => $template,
             'answers' => $answers,
             'answers_count' => $session->answers->count(),
             'section_extras' => $sectionExtras,
+            // Respostas e perguntas extras guardadas de uma versão anterior (feedback atualizado de versão).
+            'out_of_version_answers' => FeedbackSessionStructure::outOfVersionAnswers($session, $canViewLeaderSelf),
+            'out_of_version_extras' => FeedbackSessionStructure::outOfVersionExtras($session, $canViewLeaderSelf),
+            'version' => [
+                'id' => $template['version_id'],
+                'number' => $template['version_number'],
+                'latest_id' => $latest->id,
+                'latest_number' => $latest->number,
+                'can_update' => $canEditSession && $session->isOpenForEditing() && (int) $latest->id !== (int) $template['version_id'],
+            ],
+            'can_edit' => $canEditSession && $this->isEditableStatus($session),
+            'reopen' => $canEditSession && $session->status === FeedbackSessionStatus::AwaitingSignatures
+                ? app(ReopenFeedbackSession::class)->impact($session)
+                : null,
             'signatures' => $session->signatures->map(fn ($signature) => [
                 'id' => $signature->id,
                 'role' => $signature->role->value,
@@ -545,10 +626,48 @@ class FeedbackSessionController extends FeedbackCompanyController
             ->where(function ($q) use ($company) {
                 $q->whereNull('company_id')->orWhere('company_id', $company->id);
             })
-            ->where('is_active', true)
+            ->whereNull('archived_at')
             ->orderByDesc('is_default')
             ->orderBy('title')
             ->get(['id', 'title', 'description', 'is_default']);
+    }
+
+    /** Concluído, cancelado ou com convite de assinatura: o conteúdo não muda (reabrir antes, se preciso). */
+    private function isEditableStatus(FeedbackSession $session): bool
+    {
+        return ! in_array($session->status, [
+            FeedbackSessionStatus::Completed,
+            FeedbackSessionStatus::Cancelled,
+            FeedbackSessionStatus::AwaitingSignatures,
+        ], true);
+    }
+
+    private function abortUnlessEditable(FeedbackSession $session): void
+    {
+        abort_unless(
+            $this->isEditableStatus($session),
+            403,
+            $session->status === FeedbackSessionStatus::AwaitingSignatures
+                ? 'Este feedback aguarda assinaturas e não pode ser editado. Use «Reabrir para edição» para alterá-lo.'
+                : 'Este feedback não pode mais ser editado.',
+        );
+    }
+
+    /** «Editar» em Feedbacks: no admin, a matriz do módulo; no portal, a permissão do módulo (RH e líder). */
+    private function userCanEditSession(User $user): bool
+    {
+        if (app(FeedbackCompanyContext::class)->isAdminContext(request())) {
+            return $user->canAccessAdmin(AdminPermissionModule::Feedbacks, PermissionAction::Edit);
+        }
+
+        return $user->canAccess(PermissionModule::Feedbacks, PermissionAction::Edit);
+    }
+
+    private function latestVersion(FeedbackSession $session): FeedbackTemplateVersion
+    {
+        $template = $session->template()->withTrashed()->firstOrFail();
+
+        return app(FeedbackTemplateVersioning::class)->currentVersion($template);
     }
 
     private function authorizeSession(Company $company, FeedbackSession $session): void

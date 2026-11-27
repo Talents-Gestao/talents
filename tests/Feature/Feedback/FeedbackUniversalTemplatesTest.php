@@ -24,7 +24,7 @@ class FeedbackUniversalTemplatesTest extends TestCase
     use CreatesFeedbackFixtures;
     use RefreshDatabase;
 
-    private const IN_USE_MESSAGE = 'Este modelo já foi usado em feedbacks. Desative-o para que não apareça em novos feedbacks.';
+    private const IN_USE_MESSAGE = 'Este modelo já foi usado em feedbacks e não pode ser excluído. Arquive-o para que não apareça em novos feedbacks.';
 
     private Company $companyA;
 
@@ -159,7 +159,7 @@ class FeedbackUniversalTemplatesTest extends TestCase
         $this->assertNotSoftDeleted($universal);
     }
 
-    public function test_universal_in_use_in_another_company_locks_structure_and_refuses_deletion(): void
+    public function test_universal_in_use_in_another_company_gets_a_new_version_and_refuses_deletion(): void
     {
         $universal = $this->universalTemplate('Universal');
         $leaderB = User::factory()->companyUser($this->companyB->id)->create();
@@ -170,16 +170,19 @@ class FeedbackUniversalTemplatesTest extends TestCase
             ['feedback_template_id' => $universal->id],
         );
 
-        // Trava a estrutura mesmo vista com a empresa A selecionada (uso em qualquer empresa).
+        // Uso em qualquer empresa conta: vista com a empresa A selecionada, a edição anuncia a versão 2.
         $this->asOwnerOn($this->companyA)
             ->get(route('admin.feedbacks.templates.edit', $universal))
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->where('structureLocked', true)
-                ->where('sessionsCount', 1)
-                ->where('isUniversal', true));
+                ->where('version.used', true)
+                ->where('version.sessions_count', 1)
+                ->where('version.next_number', 2)
+                ->where('template.is_universal', true));
         $this->asOwnerOn($this->companyA)
             ->put(route('admin.feedbacks.templates.update', $universal), $this->payload('Universal', 'Pergunta trocada'))
-            ->assertSessionHasErrors('sections');
+            ->assertSessionHasNoErrors();
+        $this->assertSame(2, $universal->fresh()->currentVersion->number);
+        $this->assertSame(1, $session->fresh()->templateVersion->number, 'O feedback da B continua na versão 1.');
 
         // Contagem: total geral e o da empresa selecionada.
         $this->asOwnerOn($this->companyA)

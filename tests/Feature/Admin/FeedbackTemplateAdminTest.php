@@ -19,7 +19,7 @@ use Tests\TestCase;
 /**
  * Edição de modelos de feedback em /admin/feedbacks/templates (empresa selecionada) e no portal.
  * Modelo criado ou duplicado no admin é universal (company_id nulo), mesmo com empresa selecionada.
- * Modelo já usado em feedbacks: estrutura travada (as respostas apontam para as perguntas), com o motivo na tela.
+ * Modelo já usado em feedbacks: mudar a estrutura cria a versão seguinte; os feedbacks feitos ficam na versão deles.
  */
 class FeedbackTemplateAdminTest extends TestCase
 {
@@ -83,7 +83,7 @@ class FeedbackTemplateAdminTest extends TestCase
         }
     }
 
-    public function test_in_use_template_edit_screen_receives_the_lock_reason(): void
+    public function test_in_use_template_edit_screen_announces_the_next_version(): void
     {
         $template = $this->createTemplate();
         $this->useTemplate($template, 2);
@@ -93,8 +93,12 @@ class FeedbackTemplateAdminTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Client/Feedbacks/Templates/Form')
-                ->where('structureLocked', true)
-                ->where('sessionsCount', 2)
+                ->where('version.number', 1)
+                ->where('version.used', true)
+                ->where('version.sessions_count', 2)
+                ->where('version.next_number', 2)
+                ->where('versions.0.number', 1)
+                ->where('versions.0.sessions_count', 2)
                 ->where('template.sections.0.questions.0.body', 'O que foi entregue?'));
     }
 
@@ -106,8 +110,9 @@ class FeedbackTemplateAdminTest extends TestCase
             ->get(route('admin.feedbacks.templates.edit', $template))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->where('structureLocked', false)
-                ->where('sessionsCount', 0));
+                ->where('version.used', false)
+                ->where('version.sessions_count', 0)
+                ->where('version.next_number', null));
 
         $payload = $this->payload('Alinhamento semestral', 'Quais entregas marcaram o semestre?');
         $payload['sections'][] = [
@@ -124,12 +129,13 @@ class FeedbackTemplateAdminTest extends TestCase
 
         $template->refresh()->load('sections.questions');
         $this->assertSame('Alinhamento semestral', $template->title);
+        $this->assertSame(1, $template->versions()->count(), 'Sem uso: edita a versão atual no lugar.');
         $this->assertCount(2, $template->sections);
         $this->assertSame('Quais entregas marcaram o semestre?', $template->sections[0]->questions[0]->body);
         $this->assertSame('Próximos passos', $template->sections[1]->title);
     }
 
-    public function test_locked_template_saves_name_and_keeps_questions(): void
+    public function test_used_template_name_change_does_not_create_a_version(): void
     {
         $template = $this->createTemplate();
         $this->useTemplate($template);
@@ -138,14 +144,13 @@ class FeedbackTemplateAdminTest extends TestCase
             ->put(route('admin.feedbacks.templates.update', $template), [
                 'title' => 'Nome novo',
                 'description' => null,
-                'is_active' => false,
             ])
             ->assertSessionHasNoErrors()
-            ->assertSessionHas('success', 'Modelo atualizado. As perguntas não mudam porque o modelo já foi usado em feedbacks.');
+            ->assertSessionHas('success', 'Modelo de feedback atualizado.');
 
         $template->refresh()->load('sections.questions');
         $this->assertSame('Nome novo', $template->title);
-        $this->assertFalse((bool) $template->is_active);
+        $this->assertSame(1, $template->versions()->count());
         $this->assertSame('O que foi entregue?', $template->sections[0]->questions[0]->body);
     }
 
@@ -230,7 +235,7 @@ class FeedbackTemplateAdminTest extends TestCase
         // A cópia abre editável e, salva sem mudanças pelo formulário, mantém público, tipo, chaves e valores.
         $page = $this->asOwner()->get(route('admin.feedbacks.templates.edit', $copy))
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->where('structureLocked', false)
+                ->where('version.used', false)
                 ->where('readOnly', false))
             ->viewData('page');
 
@@ -302,18 +307,27 @@ class FeedbackTemplateAdminTest extends TestCase
                 ->where('permissions', ['create' => true, 'edit' => true, 'delete' => true]));
     }
 
-    public function test_locked_template_refuses_structure_changes_explicitly(): void
+    public function test_structure_change_on_used_template_creates_the_next_version(): void
     {
         $template = $this->createTemplate();
         $this->useTemplate($template);
+        $session = $template->sessions()->sole();
+        $v1 = $template->currentVersion;
 
         $this->asOwner()
             ->put(route('admin.feedbacks.templates.update', $template), $this->payload('Outro nome', 'Pergunta trocada'))
-            ->assertSessionHasErrors('sections');
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success', 'Modelo atualizado: criada a versão 2. Os feedbacks já feitos continuam na versão 1.');
 
         $template->refresh()->load('sections.questions');
-        $this->assertSame('Alinhamento trimestral', $template->title);
-        $this->assertSame('O que foi entregue?', $template->sections[0]->questions[0]->body);
+        $this->assertSame('Outro nome', $template->title);
+        $this->assertSame(2, $template->currentVersion->number);
+        $this->assertSame('Pergunta trocada', $template->sections[0]->questions[0]->body);
+
+        // O feedback feito continua na versão 1, com as perguntas e o título dela.
+        $this->assertSame($v1->id, (int) $session->fresh()->feedback_template_version_id);
+        $this->assertSame('O que foi entregue?', $v1->fresh()->sections()->first()->questions()->first()->body);
+        $this->assertSame('Alinhamento trimestral', $v1->fresh()->title);
     }
 
     public function test_template_needs_at_least_one_section_with_questions(): void

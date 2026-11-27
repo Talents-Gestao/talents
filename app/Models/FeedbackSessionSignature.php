@@ -18,6 +18,8 @@ class FeedbackSessionSignature extends Model
         'token',
         'sent_at',
         'signed_at',
+        'cancelled_at',
+        'cancelled_by_user_id',
         'signature_path',
         'ip',
         'user_agent',
@@ -29,6 +31,7 @@ class FeedbackSessionSignature extends Model
             'role' => FeedbackSignatureRole::class,
             'sent_at' => 'datetime',
             'signed_at' => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 
@@ -40,5 +43,11 @@ class FeedbackSessionSignature extends Model
     public function isSigned(): bool
     {
         return $this->signed_at !== null;
+    }
+
+    /** Convite cancelado ao reabrir o feedback para edição: o link deixa de aceitar assinatura. */
+    public function isCancelled(): bool
+    {
+        return $this->cancelled_at !== null;
     }
 }

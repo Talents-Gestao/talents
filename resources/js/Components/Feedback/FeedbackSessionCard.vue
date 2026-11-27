@@ -65,7 +65,7 @@ defineEmits(['delete']);
                 Ver detalhes
             </Link>
             <Link
-                v-if="session.status !== 'completed' && session.status !== 'cancelled'"
+                v-if="!['completed', 'cancelled', 'awaiting_signatures'].includes(session.status)"
                 :href="feedbackRoute('sessions.edit', session.id)"
                 class="rounded text-sm font-medium text-slate-600 hover:text-talents-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50"
             >

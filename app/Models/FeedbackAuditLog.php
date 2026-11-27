@@ -18,6 +18,16 @@ class FeedbackAuditLog extends Model
 
     public const ACTION_TEMPLATE_DELETED = 'template_deleted';
 
+    public const ACTION_TEMPLATE_VERSION_CREATED = 'template_version_created';
+
+    public const ACTION_TEMPLATE_ARCHIVED = 'template_archived';
+
+    public const ACTION_TEMPLATE_UNARCHIVED = 'template_unarchived';
+
+    public const ACTION_SESSION_VERSION_UPDATED = 'session_version_updated';
+
+    public const ACTION_SESSION_REOPENED = 'session_reopened';
+
     public const ACTION_RECORDING_UPLOADED = 'recording_uploaded';
 
     public const ACTION_RECORDING_ORIGINAL_VIEWED = 'recording_original_viewed';

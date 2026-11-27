@@ -7,6 +7,8 @@ import FormPageHeader from '@/Components/FormPageHeader.vue';
 import { feedbackRoute } from '@/composables/useFeedbackRoutes';
 import { Head, Link, router } from '@inertiajs/vue3';
 import {
+    ArchiveBoxIcon,
+    ArrowUturnLeftIcon,
     DocumentDuplicateIcon,
     EyeIcon,
     LockClosedIcon,
@@ -32,7 +34,9 @@ function duplicateTemplate(template) {
 }
 
 const companyTemplates = computed(() => props.templates.filter((template) => !template.is_universal));
-const universalTemplates = computed(() => props.templates.filter((template) => template.is_universal));
+const universalTemplates = computed(() =>
+    props.templates.filter((template) => template.is_universal && (props.isAdminContext || !template.is_archived)),
+);
 
 // Listas que a tela gerencia (editar, duplicar, excluir). No admin: universais e os desta empresa;
 // no portal: só os da empresa (os da Talents ficam na seção de referência, abaixo).
@@ -76,8 +80,17 @@ const manageableSections = computed(() => {
     ];
 });
 
-// Modelo usado também pode ser excluído: o alerta mostra quantos feedbacks saem junto (calculado no servidor).
+// Exclusão definitiva só para modelo nunca usado; modelo usado se arquiva (os feedbacks feitos não mudam).
 const deletingTemplate = ref(null);
+
+const archivingId = ref(null);
+function toggleArchive(template) {
+    router.patch(
+        feedbackRoute(template.is_archived ? 'templates.unarchive' : 'templates.archive', template.id),
+        {},
+        { preserveScroll: true, onStart: () => (archivingId.value = template.id), onFinish: () => (archivingId.value = null) },
+    );
+}
 
 function feedbacksCount(count) {
     return count === 1 ? '1 feedback' : `${count} feedbacks`;
@@ -148,10 +161,14 @@ function usageLabel(template) {
                                 {{ section.badge }}
                             </span>
                             <span
-                                class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset"
-                                :class="template.is_active ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' : 'bg-slate-100 text-slate-600 ring-slate-200'"
+                                v-if="template.is_archived"
+                                class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-200"
                             >
-                                {{ template.is_active ? 'Ativo' : 'Inativo' }}
+                                <ArchiveBoxIcon class="h-3 w-3" aria-hidden="true" />
+                                Arquivado
+                            </span>
+                            <span class="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200">
+                                Versão {{ template.version_number }}
                             </span>
                             <span
                                 class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset"
@@ -185,7 +202,17 @@ function usageLabel(template) {
                             {{ duplicatingId === template.id ? 'Duplicando…' : 'Duplicar' }}
                         </button>
                         <button
-                            v-if="permissions.delete"
+                            v-if="permissions.edit"
+                            type="button"
+                            class="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-3 font-medium text-slate-700 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50 disabled:opacity-60"
+                            :disabled="archivingId !== null"
+                            @click="toggleArchive(template)"
+                        >
+                            <component :is="template.is_archived ? ArrowUturnLeftIcon : ArchiveBoxIcon" class="h-4 w-4" aria-hidden="true" />
+                            {{ template.is_archived ? 'Reativar' : 'Arquivar' }}
+                        </button>
+                        <button
+                            v-if="permissions.delete && template.deletable"
                             type="button"
                             class="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-3 font-medium text-slate-500 transition hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60 sm:ml-2 sm:border-l sm:border-slate-200 sm:pl-3"
                             @click="deletingTemplate = template"
