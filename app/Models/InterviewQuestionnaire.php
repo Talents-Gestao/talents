@@ -12,6 +12,8 @@ class InterviewQuestionnaire extends Model
         'name',
         'description',
         'is_default',
+        'version',
+        'parent_id',
         'created_by',
     ];
 
@@ -19,6 +21,7 @@ class InterviewQuestionnaire extends Model
     {
         return [
             'is_default' => 'boolean',
+            'version' => 'integer',
         ];
     }
 
@@ -35,6 +38,21 @@ class InterviewQuestionnaire extends Model
     public function interviews(): HasMany
     {
         return $this->hasMany(Interview::class, 'questionnaire_id');
+    }
+
+    /**
+     * Roteiro com entrevistas (inclusive excluídas, que podem ser restauradas) não tem seções
+     * nem perguntas alteradas no lugar: vira nova versão.
+     */
+    public function isLocked(): bool
+    {
+        return Interview::withTrashed()->where('questionnaire_id', $this->id)->exists();
+    }
+
+    /** Raiz da família de versões. */
+    public function rootId(): int
+    {
+        return (int) ($this->parent_id ?? $this->id);
     }
 
     public static function defaultQuestionnaire(): ?self

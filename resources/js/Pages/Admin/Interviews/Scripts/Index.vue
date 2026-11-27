@@ -6,7 +6,12 @@ import { confirmDialog } from '@/composables/useConfirmDialog';
 
 defineProps({
     questionnaires: Array,
+    can: { type: Object, default: () => ({}) },
 });
+
+const duplicate = (id) => {
+    router.post(route('admin.entrevistas.roteiros.duplicate', id));
+};
 
 const destroyQuestionnaire = async (id, name) => {
     if (!(await confirmDialog(`Excluir o roteiro "${name}"?`))) {
@@ -24,7 +29,9 @@ const destroyQuestionnaire = async (id, name) => {
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h2 class="text-xl font-semibold leading-tight text-gray-900">Roteiros de entrevista</h2>
-                    <p class="mt-1 text-sm text-gray-600">Templates de perguntas usados na extração automática de respostas.</p>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Templates de perguntas das entrevistas. Roteiro com entrevistas não muda no lugar: vira nova versão.
+                    </p>
                 </div>
                 <div class="flex gap-2">
                     <Link :href="route('admin.entrevistas.index')">
@@ -52,6 +59,7 @@ const destroyQuestionnaire = async (id, name) => {
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-gray-700">Nome</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">Versão</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-700">Seções</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-700">Entrevistas</th>
                             <th class="px-4 py-3 text-right font-medium text-gray-700">Ações</th>
@@ -67,7 +75,15 @@ const destroyQuestionnaire = async (id, name) => {
                                 >
                                     Padrão
                                 </span>
+                                <span
+                                    v-if="q.locked"
+                                    class="ml-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+                                    title="Tem entrevistas: seções e perguntas não mudam no lugar"
+                                >
+                                    Em uso
+                                </span>
                             </td>
+                            <td class="px-4 py-3 text-gray-700">v{{ q.version }}</td>
                             <td class="px-4 py-3 text-gray-700">{{ q.sections_count }}</td>
                             <td class="px-4 py-3 text-gray-700">{{ q.interviews_count }}</td>
                             <td class="px-4 py-3 text-right space-x-3">
@@ -78,7 +94,15 @@ const destroyQuestionnaire = async (id, name) => {
                                     Editar
                                 </Link>
                                 <button
-                                    v-if="!q.is_default"
+                                    v-if="can.duplicate"
+                                    type="button"
+                                    class="font-medium text-talents-700 hover:underline"
+                                    @click="duplicate(q.id)"
+                                >
+                                    Duplicar como nova versão
+                                </button>
+                                <button
+                                    v-if="!q.is_default && !q.locked"
                                     type="button"
                                     class="text-sm text-red-600 hover:underline"
                                     @click="destroyQuestionnaire(q.id, q.name)"

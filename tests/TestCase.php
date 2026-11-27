@@ -6,11 +6,16 @@ use App\Models\Company;
 use App\Models\Module;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\User;
+use App\Services\Mfa\MfaService;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Str;
 
 abstract class TestCase extends BaseTestCase
@@ -47,9 +52,9 @@ abstract class TestCase extends BaseTestCase
      * Age como o usuário com a sessão de MFA já verificada agora (para as ações sensíveis do NR-1 e a área do revisor).
      * Use com `User::factory()->...->mfaVerified()`.
      */
-    protected function actingAsMfa(\App\Models\User $user): static
+    protected function actingAsMfa(User $user): static
     {
-        return $this->actingAs($user)->withSession([\App\Services\Mfa\MfaService::SESSION_VERIFIED_AT => now()->getTimestamp()]);
+        return $this->actingAs($user)->withSession([MfaService::SESSION_VERIFIED_AT => now()->getTimestamp()]);
     }
 
     protected function setUp(): void
@@ -57,11 +62,39 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         $this->withoutMiddleware(ValidateCsrfToken::class);
-        \Illuminate\Support\Facades\Cache::flush();
+        Cache::flush();
+
+        $this->isolateFakeDisksPerProcess();
 
         // Impede chamadas HTTP reais em todos os testes — qualquer Http::get/post não
         // interceptado com Http::fake() lança RequestException imediatamente.
         Http::preventStrayRequests();
+    }
+
+    /**
+     * Storage::fake() usa storage/framework/testing/disks/{disco}, uma pasta só para todos os processos.
+     * Com duas execuções de PHPUnit ao mesmo tempo, o cleanDirectory de uma apagava os arquivos da outra
+     * (era a falha intermitente do AiInterviewTest na suíte completa). Com um token por processo, o Laravel
+     * usa {disco}_test_{token}; a pasta do processo é apagada quando ele termina.
+     */
+    private function isolateFakeDisksPerProcess(): void
+    {
+        $token = 'pid'.getmypid();
+        ParallelTesting::resolveTokenUsing(fn () => $token);
+
+        static $cleanupRegistered = false;
+        if ($cleanupRegistered) {
+            return;
+        }
+        $cleanupRegistered = true;
+
+        $pattern = storage_path('framework/testing/disks/*_test_'.$token);
+        register_shutdown_function(static function () use ($pattern): void {
+            $filesystem = new Filesystem;
+            foreach (glob($pattern, GLOB_ONLYDIR) ?: [] as $dir) {
+                $filesystem->deleteDirectory($dir);
+            }
+        });
     }
 
     protected function subscribeCompanyToNr1(Company $company, bool $withRhid = true, bool $withDenuncias = true): void

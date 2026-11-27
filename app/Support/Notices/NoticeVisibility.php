@@ -25,6 +25,7 @@ final class NoticeVisibility
         CompanyNoticeEventKind::Nr1OpportunityCreated,
         CompanyNoticeEventKind::Nr1ProposalRequested,
         CompanyNoticeEventKind::Nr1ReportPublished,
+        CompanyNoticeEventKind::HiringFollowupSupportRequested,
     ];
 
     public static function canSee(User $user, ?CompanyNoticeEventKind $kind): bool
@@ -40,6 +41,8 @@ final class NoticeVisibility
                 && $user->canAccessAdmin(AdminPermissionModule::Companies, PermissionAction::View),
             CompanyNoticeEventKind::Nr1ReportPublished => ! $user->isSuperAdmin()
                 && $user->canAccess(PermissionModule::Relatorios, PermissionAction::View),
+            CompanyNoticeEventKind::HiringFollowupSupportRequested => $user->isSuperAdmin()
+                && $user->canAccessAdmin(AdminPermissionModule::ContratacaoPos, PermissionAction::View),
             default => true,
         };
     }

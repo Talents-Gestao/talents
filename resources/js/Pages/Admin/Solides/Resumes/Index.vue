@@ -4,8 +4,9 @@ import DateRangePicker from '@/Components/DateRangePicker.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { useAdminPermissions } from '@/composables/useAdminPermissions';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     configured: Boolean,
@@ -19,6 +20,26 @@ const props = defineProps({
     grouped: { type: Array, default: () => [] },
     error: { type: String, default: null },
 });
+
+const { canAdmin } = useAdminPermissions();
+const canImport = computed(() => canAdmin('contratacao_candidatos', 'create'));
+const importingId = ref(null);
+
+/** «Cadastrar no Talents»: cria ou reaproveita o cadastro pelo ID da Sólides e abre a ficha. */
+const importCandidate = (solidesId, name, email, phone) => {
+    if (!solidesId) {
+        return;
+    }
+    importingId.value = String(solidesId);
+    router.post(
+        route('admin.contratacao.candidatos.import-solides'),
+        { solides_id: String(solidesId), name: name || null, email: email || null, phone: phone || null },
+        { onFinish: () => (importingId.value = null) },
+    );
+};
+
+const importButtonClass =
+    'inline-flex items-center whitespace-nowrap rounded-lg border border-talents-200 bg-white px-2.5 py-1 text-xs font-semibold text-talents-800 hover:bg-talents-50 disabled:opacity-50';
 
 const filterForm = useForm({
     dateRange: {
@@ -215,6 +236,9 @@ const applyFilters = () => {
                                             <th class="px-3 py-2 text-left font-medium text-gray-700">CPF</th>
                                             <th class="px-3 py-2 text-left font-medium text-gray-700">Origem</th>
                                             <th class="px-3 py-2 text-left font-medium text-gray-700">Senioridade / perfil</th>
+                                            <th v-if="canImport" class="px-3 py-2 text-right font-medium text-gray-700">
+                                                <span class="sr-only">Ações</span>
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-200">
@@ -238,6 +262,18 @@ const applyFilters = () => {
                                             </td>
                                             <td class="max-w-[8rem] truncate px-3 py-2 text-gray-700" :title="c.seniority_or_profile || ''">
                                                 {{ c.seniority_or_profile || '—' }}
+                                            </td>
+                                            <td v-if="canImport" class="px-3 py-2 text-right">
+                                                <button
+                                                    v-if="c.solides_id"
+                                                    type="button"
+                                                    :class="importButtonClass"
+                                                    :disabled="importingId === String(c.solides_id)"
+                                                    :aria-label="`Cadastrar ${c.name || 'candidato'} no Talents`"
+                                                    @click="importCandidate(c.solides_id, c.name, c.email, null)"
+                                                >
+                                                    Cadastrar no Talents
+                                                </button>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -268,6 +304,9 @@ const applyFilters = () => {
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-medium text-gray-700">Cidade/UF</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-center font-medium text-gray-700">Exp.</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-center font-medium text-gray-700">Form.</th>
+                                    <th v-if="canImport" class="px-4 py-3 text-right font-medium text-gray-700">
+                                        <span class="sr-only">Ações</span>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
@@ -299,6 +338,18 @@ const applyFilters = () => {
                                     </td>
                                     <td class="whitespace-nowrap px-4 py-3 text-center text-gray-700">{{ c.experiences_count }}</td>
                                     <td class="whitespace-nowrap px-4 py-3 text-center text-gray-700">{{ c.education_count }}</td>
+                                    <td v-if="canImport" class="px-4 py-3 text-right">
+                                        <button
+                                            v-if="c.id"
+                                            type="button"
+                                            :class="importButtonClass"
+                                            :disabled="importingId === String(c.id)"
+                                            :aria-label="`Cadastrar ${c.fullName || 'candidato'} no Talents`"
+                                            @click="importCandidate(c.id, c.fullName, c.mainEmail, c.mobile || c.phone)"
+                                        >
+                                            Cadastrar no Talents
+                                        </button>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>

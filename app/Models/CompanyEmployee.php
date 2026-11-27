@@ -12,6 +12,7 @@ class CompanyEmployee extends Model
 {
     protected $fillable = [
         'company_id',
+        'talent_candidate_id',
         'name',
         'email',
         'birth_date',
@@ -69,6 +70,12 @@ class CompanyEmployee extends Model
         }
 
         return $current;
+    }
+
+    /** Ciclos de vínculo do pós-contratação (uso interno da Talents). */
+    public function employmentCycles(): HasMany
+    {
+        return $this->hasMany(EmploymentCycle::class, 'company_employee_id');
     }
 
     public function company(): BelongsTo

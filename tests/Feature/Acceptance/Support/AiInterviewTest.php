@@ -11,6 +11,7 @@ use App\Jobs\ProcessInterviewAudioJob;
 use App\Models\Interview;
 use App\Models\InterviewAnswer;
 use App\Models\InterviewQuestionnaire;
+use App\Models\TalentCandidate;
 use App\Models\User;
 use Database\Seeders\InterviewQuestionnaireSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,17 +33,21 @@ class AiInterviewTest extends TestCase
         $this->seed(InterviewQuestionnaireSeeder::class);
         $questionnaire = InterviewQuestionnaire::query()->where('is_default', true)->firstOrFail();
         $admin = User::factory()->talentsOwner()->create();
+        // A entrevista nasce vinculada a um candidato cadastrado; nome e cargo vêm do vínculo.
+        $candidate = TalentCandidate::query()->create(['name' => 'Joana Candidata', 'current_role' => 'Analista de RH']);
 
         $this->actingAs($admin)
             ->post(route('admin.entrevistas.store'), [
-                'candidate_name' => 'Joana Candidata',
-                'position_title' => 'Analista de RH',
+                'talent_candidate_id' => $candidate->id,
+                'transcript_source' => 'audio_whisper',
                 'questionnaire_id' => $questionnaire->id,
                 'audio' => UploadedFile::fake()->create('entrevista.mp3', 200, 'audio/mpeg'),
             ])
             ->assertRedirect();
 
         $interview = Interview::query()->where('candidate_name', 'Joana Candidata')->firstOrFail();
+        $this->assertSame($candidate->id, $interview->talent_candidate_id);
+        $this->assertSame('Analista de RH', $interview->position_title);
         $this->assertSame(InterviewStatus::Queued, $interview->status);
         Storage::disk('local')->assertExists($interview->audio_path);
         Queue::assertPushed(ProcessInterviewAudioJob::class);
