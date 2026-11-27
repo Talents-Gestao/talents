@@ -37,6 +37,26 @@ final class FeedbackCompanyContext
         return ! $company || ! $company->hasFeedbacksEnabled();
     }
 
+    /**
+     * A Talents pode voltar à tela de seleção («Escolher outra empresa») quando a empresa
+     * veio da sessão do admin. Com workspace de empresa com Feedbacks habilitado, a seleção
+     * não aparece (needsCompanySelection = false), então o botão também não.
+     */
+    public function canChooseOtherCompany(Request $request): bool
+    {
+        $user = $request->user();
+
+        if (! $user?->isSuperAdmin() || ! $request->routeIs('admin.feedbacks.*')) {
+            return false;
+        }
+
+        if ($user->contextCompany()?->hasFeedbacksEnabled()) {
+            return false;
+        }
+
+        return ! $this->needsCompanySelection($request);
+    }
+
     public function resolve(Request $request): Company
     {
         $user = $request->user();

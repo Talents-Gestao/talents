@@ -29,4 +29,14 @@ class FeedbackCompanySelectController extends Controller
             ->route('admin.feedbacks.index')
             ->with('success', 'Empresa selecionada: '.$company->name);
     }
+
+    /** «Escolher outra empresa»: limpa a empresa da sessão e volta à tela de seleção. */
+    public function destroy(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+
+        $request->session()->forget(FeedbackCompanyContext::SESSION_KEY);
+
+        return redirect()->route('admin.feedbacks.index');
+    }
 }

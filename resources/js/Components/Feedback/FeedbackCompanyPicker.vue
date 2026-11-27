@@ -1,20 +1,36 @@
 <script setup>
 import CompanySearchSelect from '@/Components/CompanySearchSelect.vue';
-import { useForm } from '@inertiajs/vue3';
-import { BuildingOffice2Icon } from '@heroicons/vue/24/outline';
+import { router, useForm } from '@inertiajs/vue3';
+import { ArrowsRightLeftIcon, BuildingOffice2Icon } from '@heroicons/vue/24/outline';
+import { ref } from 'vue';
 
 const props = defineProps({
     companies: { type: Array, required: true },
     activeCompanyId: { type: [Number, String], default: null },
     compact: { type: Boolean, default: false },
+    // «Escolher outra empresa»: só no admin, com empresa vinda da seleção (regra no servidor).
+    canChooseOtherCompany: { type: Boolean, default: false },
 });
 
 const form = useForm({
     company_id: props.activeCompanyId ?? '',
 });
 
+const clearing = ref(false);
+
 const submit = () => {
     form.post(route('admin.feedbacks.company.store'));
+};
+
+const chooseOtherCompany = () => {
+    router.delete(route('admin.feedbacks.company.destroy'), {
+        onStart: () => {
+            clearing.value = true;
+        },
+        onFinish: () => {
+            clearing.value = false;
+        },
+    });
 };
 </script>
 
@@ -56,6 +72,16 @@ const submit = () => {
                 :disabled="form.processing || !form.company_id"
             >
                 {{ compact ? 'Aplicar' : 'Continuar' }}
+            </button>
+            <button
+                v-if="compact && canChooseOtherCompany"
+                type="button"
+                class="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="form.processing || clearing"
+                @click="chooseOtherCompany"
+            >
+                <ArrowsRightLeftIcon class="h-4 w-4" aria-hidden="true" />
+                Escolher outra empresa
             </button>
         </form>
     </div>

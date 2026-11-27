@@ -25,10 +25,16 @@ const props = defineProps({
     companyPicker: { type: Array, default: null },
     activeCompany: { type: Object, default: null },
     isAdminContext: { type: Boolean, default: false },
+    canChooseOtherCompany: { type: Boolean, default: false },
 });
 
 const needsCompanySelection = computed(
     () => props.isAdminContext && props.companyPicker?.length && !props.activeCompany,
+);
+
+// Só no admin, com empresa vinda da seleção (não do workspace da empresa).
+const showChooseOtherCompany = computed(
+    () => props.isAdminContext && props.canChooseOtherCompany && Boolean(props.activeCompany),
 );
 
 const hasNineBox = computed(
@@ -144,6 +150,7 @@ const perceptionSeries = computed(() => {
                 v-if="isAdminContext && companyPicker?.length"
                 :companies="companyPicker"
                 :active-company-id="activeCompany?.id"
+                :can-choose-other-company="showChooseOtherCompany"
                 compact
                 class="mt-6"
             />
