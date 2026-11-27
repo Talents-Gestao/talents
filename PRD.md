@@ -1194,7 +1194,7 @@ Saldo atual (`FinanceBankAccountBalance`) = saldo inicial + recebimentos manuais
 
 #### 7.10.5 Contas a pagar (`/admin/financeiro/contas-a-pagar`)
 
-**Acesso:** `financeiro_contas_a_pagar`. Campos: título, valor, vencimento, conta bancária (obrigatória), status (`FinancePayableStatus`: pendente, pago, cancelado) e recorrência mensal (nº de meses; vencimentos sem transbordar o fim do mês, `MonthlyRecurrenceDates`). «Registrar pagamento» pede conta e forma de pagamento e a data efetiva (`PaymentDateFields`). Lançamentos de origem comissão ficam travados.
+**Acesso:** `financeiro_contas_a_pagar`. Campos: título, valor, vencimento (só o dia, de 01/01/2000 a 31/12/2100: `FinanceDueDate` no servidor e `min`/`max` no campo), conta bancária (obrigatória), status (`FinancePayableStatus`: pendente, pago, cancelado) e recorrência mensal (nº de meses; vencimentos sem transbordar o fim do mês, `MonthlyRecurrenceDates`). «Registrar pagamento» pede conta e forma de pagamento e a data efetiva (`PaymentDateFields`). Lançamentos de origem comissão ficam travados.
 
 #### 7.10.6 Contas a receber (`/admin/financeiro/contas-a-receber`)
 
@@ -1206,7 +1206,7 @@ Saldo atual (`FinanceBankAccountBalance`) = saldo inicial + recebimentos manuais
 | Ordenação | por vencimento (sem data no fim) ou por data de recebimento (pendentes no fim) (`FinanceListSort`) |
 | Receber | modais «Receber parcela» e «Receber conta», com conta bancária obrigatória e data efetiva |
 | Data de pagamento | editável depois da baixa (`ChangeFinancePaymentDate`): muda só `paid_at`, sem mexer em valor, conta, status ou comprovante; toda alteração fica em `finance_audit_logs` |
-| Fuso | a data informada é o dia no calendário de São Paulo; grava 00:00 desse dia (`FinancePaymentDate`) |
+| Datas e fuso | vencimento de conta manual e de parcela (criar e editar): só o dia, de 01/01/2000 a 31/12/2100 (`FinanceDueDate`; `min`/`max` no campo); a data de recebimento informada é o dia no calendário de São Paulo e grava 00:00 desse dia (`FinancePaymentDate`) |
 | Retorno à lista | após salvar, volta à lista com a mesma busca, aba, ordenação e página (`FinanceListReturn`) |
 | Avisos | parcela paga gera aviso «parcela paga»; o comando `commercial:notify-overdue-installments` (diário, 08:15) cria «parcela vencida» uma vez por parcela |
 

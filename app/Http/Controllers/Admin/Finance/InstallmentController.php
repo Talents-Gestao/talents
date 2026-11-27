@@ -7,6 +7,7 @@ use App\Actions\Finance\RegisterFinancePayment;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialSale;
 use App\Models\CommercialSaleInstallment;
+use App\Support\Finance\FinanceDueDate;
 use App\Support\Finance\FinancePaymentDate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -128,7 +129,7 @@ class InstallmentController extends Controller
     public function update(Request $request, CommercialSaleInstallment $installment): RedirectResponse
     {
         $data = $request->validate([
-            'due_date' => ['required', 'date'],
+            'due_date' => FinanceDueDate::rules(),
             'amount_reais' => ['required', 'numeric', 'min:0.01'],
             'method' => ['required', Rule::in(['pix', 'boleto', 'cartao'])],
             'status' => ['required', Rule::in([
@@ -147,11 +148,11 @@ class InstallmentController extends Controller
             'payment_date_reason' => FinancePaymentDate::reasonRules(),
             'notes' => ['nullable', 'string', 'max:2000'],
         ], [
-            'due_date.required' => 'Informe o vencimento.',
             'amount_reais.required' => 'Informe o valor.',
             'method.required' => 'Selecione o método.',
             'status.required' => 'Selecione o status.',
             'bank_account_id.required' => 'Selecione a conta de destino/recebimento.',
+            ...FinanceDueDate::messages(),
             ...FinancePaymentDate::messages(),
         ]);
 
