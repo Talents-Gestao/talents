@@ -55,8 +55,6 @@ final class PsychosocialMeasurePresenter
             'status_label' => $measure->planLabel(),
             'factor_label' => $measure->factor_label,
             'measure_description' => $measure->measure_description,
-            'objective' => $measure->objective,
-            'expected_result' => $measure->expected_result,
             'indicator' => $measure->indicator,
             'origin' => $measure->origin,
             'suggested' => [
@@ -113,6 +111,14 @@ final class PsychosocialMeasurePresenter
             ->all();
     }
 
+    /** Evento da junção: só os números das sugestões removidas (o evento não guarda conteúdo). */
+    private static function mergeSummary(string $value): string
+    {
+        $ids = array_map('intval', (array) (json_decode($value, true)['removed_ids'] ?? []));
+
+        return $ids === [] ? 'Sugestões duplicadas unificadas.' : 'Sugestões removidas: '.implode(', ', array_map(fn (int $id) => '#'.$id, $ids)).'.';
+    }
+
     private static function value(string $field, ?string $value): ?string
     {
         if ($value === null) {
@@ -122,6 +128,7 @@ final class PsychosocialMeasurePresenter
         return match ($field) {
             'status' => PsychosocialMeasure::PLAN_LABELS[$value] ?? $value,
             'effectiveness_result' => PsychosocialMeasure::EFFECTIVENESS_RESULTS[$value] ?? $value,
+            'merge' => self::mergeSummary($value),
             default => $value,
         };
     }

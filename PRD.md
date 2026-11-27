@@ -1400,10 +1400,10 @@ Os rótulos da V11 deixam claro que a faixa é percepção do questionário, nã
 | `nr1:coarsen-completed-dates` | Reduz `completed_at` antigos ao mês (irreversível; exige `--force`) |
 | `nr1:reconstruct-answers` | Reconstrói respostas a partir de `survey_responses` (estimativa estatística, não dado original) |
 | `nr1:seed-profile-responses` | Insere respostas de perfil favorável/desfavorável (demonstração e testes) |
-| `nr1:dedupe-engine-measures` | Lista (dry-run, padrão) ou limpa (`--apply`) sugestões do motor duplicadas no plano de ação V11 (mesma campanha + dimensão normalizada + `engine_suggestion`); `--survey=` limita a uma campanha |
-| `nr1:backfill-engine-measures` | Lista (dry-run, padrão) ou preenche (`--apply`) só os campos vazios do catálogo V11 nas sugestões do motor de campanhas V11 ainda «A aprovar»; `--survey=` limita a uma campanha |
+| `nr1:dedupe-engine-measures` | Lista (dry-run, padrão) ou unifica (`--apply`) medidas duplicadas no plano de ação (mesma campanha + dimensão normalizada, em qualquer origem: sugestão do motor e medida manual), com a mesma regra da ação «Unificar sugestões duplicadas» da tela (8.9.5); `--survey=` limita a uma campanha |
+| `nr1:backfill-engine-measures` | Lista (dry-run, padrão) ou preenche (`--apply`) só os campos vazios do catálogo V11 (indicador, responsável sugerido, origem e justificativa do prazo) nas sugestões do motor de campanhas V11 ainda «A aprovar»; `--survey=` limita a uma campanha |
 
-**Limpeza e backfill das medidas (8.9.5).** Os dois comandos só alteram o banco com `--apply` e sempre exportam o conteúdo completo (IDs, campos, eventos e evidências) para `storage/app/nr1-exports/` (fora do Git). `nr1:dedupe-engine-measures` mantém, em cada grupo, a medida que saiu de «A aprovar» > a editada por pessoa > a com mais campos preenchidos > a mais antiga; as demais, sem evidência e só com eventos sem autor, são removidas e a mantida recebe o evento «Junção de sugestões duplicadas» (sem autor, com os IDs removidos e as ações descartadas). A ação descartada só entra no texto da mantida se ela ainda estiver «A aprovar» e não editada; senão, fica só no evento. **Requer decisão manual** (listado e nunca removido): descartada com evidência ou com evento com autor, e grupo com mais de uma medida fora de «A aprovar». Eventos existentes nunca são alterados. `nr1:backfill-engine-measures` grava um evento sem autor por campo («Preenchimento automático do catálogo»); o N da justificativa do prazo é a diferença em dias entre a criação e o prazo gravado.
+**Limpeza e backfill das medidas (8.9.5).** Os dois comandos só alteram o banco com `--apply` e sempre exportam o conteúdo completo (IDs, campos, eventos e evidências) para `storage/app/nr1-exports/` (fora do Git). `nr1:dedupe-engine-measures` aplica a regra única de `PsychosocialMeasureDeduplicator` (8.9.5): mantém, em cada grupo, a medida que saiu de «A aprovar» > a manual ou editada por pessoa > a com mais campos preenchidos > a mais antiga; só remove sugestão do motor intocada (sem evento com autor além da criação e da junção, «A aprovar», sem evidência), e a mantida recebe o evento «Junção de sugestões duplicadas» (sem autor, só com os IDs removidos; o conteúdo descartado fica no export). A ação descartada só entra no texto da mantida se ela mesma for sugestão intocada; senão, o texto não muda. **Requer decisão manual** (listado e nunca removido): medida manual, editada, confirmada ou com evidência que não é a mantida; o grupo inteiro fica assim quando nenhuma medida pode ser removida. Eventos existentes nunca são alterados. Em produção, a unificação se faz pela tela (8.9.5), sem comando no servidor. `nr1:backfill-engine-measures` grava um evento sem autor por campo («Preenchimento automático do catálogo»); o N da justificativa do prazo é a diferença em dias entre a criação e o prazo gravado.
 
 O recálculo foi otimizado em 25× (PR #117), com teste de equivalência. O botão «Recalcular» também existe no painel (Talents e empresa com `pesquisas:edit`).
 
@@ -1585,12 +1585,12 @@ Abas com `role=tablist`, setas, Home e End. Também: cartão da **Mia** (`MiaCar
 
 **Contadores:** Ações propostas, Responsáveis confirmados (ex.: 0/6), Aguardando confirmação.
 
-**Cartão de medida (`MeasureCard`):** dimensão com índice e faixa, chips «Sugestão Talents» × «Confirmada pela empresa», status, linha do tempo, responsável e prazo sugeridos e confirmados, aferição, evidências e histórico antes/depois (`PsychosocialMeasurePresenter`).
+**Cartão de medida (`MeasureCard`):** dimensão com índice, faixa e setores apontados (casados com a medida pela chave normalizada da dimensão, `Nr1MeasureCatalog::dimensionKey`: caixa, acento e espaços não importam; o título da dimensão segue uma regra só, `Nr1DimensionTitle`, para painel, plano e prompt da Mia), chips «Sugestão Talents» × «Confirmada pela empresa», status, linha do tempo, responsável e prazo sugeridos e confirmados, aferição, evidências e histórico antes/depois (`PsychosocialMeasurePresenter`).
 
 | Campo | Comportamento |
 |-------|---------------|
 | Fator/dimensão | referência ao resultado; descrição do problema organizacional, sem diagnóstico clínico |
-| Ação proposta | texto revisável pela Talents; objetivo e resultado esperado |
+| Ação proposta | texto revisável pela Talents. «Objetivo» e «Resultado esperado» saíram do plano (telas, impressão, validação e catálogo); colunas e dados antigos ficam no banco, e documentos já emitidos não mudam |
 | Responsável sugerido | área/função sugerida pela Talents; não equivale a aceite |
 | Responsável confirmado | usuário da empresa ou texto livre |
 | Prazo sugerido | data, origem e justificativa; editável pela Talents até a publicação |
@@ -1602,7 +1602,7 @@ Abas com `role=tablist`, setas, Home e End. Também: cartão da **Mia** (`MiaCar
 
 **Formulário da sugestão (Talents):** «Justificativa da alteração» só aparece, e é obrigatória, quando um valor já registrado é trocado ou apagado (preencher campo vazio não exige). «Origem do prazo» e «Justificativa do prazo sugerido» são informação automática, recolhida e só de leitura; ficam editáveis apenas se a Talents mudar o prazo sugerido. O motivo obrigatório da empresa (confirmar, ajustar, replanejar) não muda.
 
-**Sugestões do motor (`ActionMeasuresGenerator`).** Idempotente por campanha + dimensão normalizada (sem caixa, sem acento e sem espaços repetidos; `Nr1MeasureCatalog::dimensionKey`) + `engine_suggestion`: uma sugestão por dimensão. Se a IA devolver duas medidas para a mesma dimensão, a segunda ação é juntada ao texto da primeira, sem repetir frase (validado no código, sem depender da IA; limite de 6). Ao regerar (agendamento ou «Atualizar medidas»/«Atualizar com a Mia»):
+**Sugestões do motor (`ActionMeasuresGenerator`).** Idempotente por campanha + dimensão normalizada (sem caixa, sem acento e sem espaços repetidos; `Nr1MeasureCatalog::dimensionKey`): uma medida por dimensão, em qualquer origem. Se a IA devolver duas medidas para a mesma dimensão, a segunda ação é juntada ao texto da primeira, sem repetir frase (validado no código, sem depender da IA; limite de 6). Ao regerar (agendamento ou «Atualizar medidas»/«Atualizar com a Mia»):
 
 | Situação da dimensão | O que acontece |
 |----------------------|----------------|
@@ -1613,11 +1613,25 @@ Abas com `role=tablist`, setas, Home e End. Também: cartão da **Mia** (`MiaCar
 | Sem nenhuma medida | sugestão criada «A aprovar» |
 | Sugestão intocada de dimensão que a IA não devolveu mais | removida (substituição, como antes) |
 
-Uma trava na linha da campanha serializa execuções simultâneas; continuam a trava de 15 minutos em cache do botão e o controle por `action_measures_generated_at`. Duplicatas antigas são tratadas por `nr1:dedupe-engine-measures`. Prompt da Mia (`Nr1AiAnalyzer::actionMeasuresSystemPrompt`): no máximo 6 medidas e no máximo 1 medida por dimensão, com `factor_label` igual ao nome da dimensão.
+Depois de atualizar, o gerador junta na hora as duplicatas da campanha pela regra única abaixo (só sai sugestão do motor intocada). Uma trava na linha da campanha serializa execuções simultâneas; continuam a trava de 15 minutos em cache do botão e o controle por `action_measures_generated_at`. Prompt da Mia (`Nr1AiAnalyzer::actionMeasuresSystemPrompt`): no máximo 6 medidas e no máximo 1 medida por dimensão, com `factor_label` igual ao nome da dimensão.
+
+**Uma medida por dimensão (`PsychosocialMeasureDeduplicator`).** Regra única usada pelo gerador, pela tela e pelo `nr1:dedupe-engine-measures` (8.4.5). Grupo = mesma campanha + mesma dimensão normalizada, em qualquer origem.
+
+| Medida do grupo | Tratamento |
+|-----------------|------------|
+| Mantida | a que saiu de «A aprovar» > a manual ou editada por pessoa > a com mais campos preenchidos > a mais antiga |
+| Sugestão do motor intocada (sem evento com autor além da criação e da junção, «A aprovar», sem evidência) | removida; a ação entra no texto da mantida (sem repetir frase) só se a mantida também for sugestão intocada |
+| Manual, editada, confirmada ou com evidência | nunca removida; se não é a mantida, «requer decisão manual» |
+
+No par manual × motor, a mantida é a manual e sai a sugestão do motor intocada. «Requer decisão manual» só quando nenhuma medida pode sair (ex.: duas editadas ou com evidência). A mantida recebe o evento «Junção de sugestões duplicadas» (autor: quem unificou na tela; sem autor no gerador e no comando) só com os IDs removidos, sem conteúdo; esse evento não conta como edição de pessoa.
+
+**«Nova medida» e troca de dimensão.** O servidor recusa criar medida (ou mudar o fator de uma sugestão) para uma dimensão que já tem medida na campanha: «Esta campanha já tem uma medida para a dimensão «{dimensão}». Edite o cartão existente em vez de criar outra.»
+
+**«Unificar sugestões duplicadas» (tela do plano).** Só para a Talents com `companies:edit` (a permissão de editar sugestões), também depois da publicação, e só quando há duplicata detectada; a empresa e o comercial não veem. Mostra a prévia por dimensão (mantida, juntada, removida, requer decisão manual) e exige confirmação explícita («Revisei a prévia e confirmo a unificação»); se as sugestões mudaram desde a prévia, nada é feito e a prévia é mostrada de novo. Rota `PATCH /admin/companies/{c}/surveys/{s}/medidas/unificar-duplicadas` (empresa errada na URL: 404). É assim que duplicatas antigas são corrigidas em produção, sem comando no servidor.
 
 **Regra do motor.** A sugestão do motor nasce «A aprovar», como indício do questionário, e nunca preenche prioridade SST, status, implantação nem eficácia. Única exceção: o responsável sugerido (`responsible_text`), só como área/função do catálogo V11 (nunca nome de pessoa) e sem valor de aceite (o responsável confirmado é outro campo, da empresa).
 
-**Catálogo V11 (`Nr1MeasureCatalog`, só campanhas V11).** Para as 7 dimensões, a sugestão do motor recebe indicador, objetivo, resultado esperado e responsável sugerido (área/função), sempre editáveis pela Talents; origem do prazo «Sugerido pela Talents» e justificativa do prazo «Faixa da dimensão: {faixa}. Prazo de {N} dias contados da geração da sugestão, dentro da regra do plano (de 15 a 90 dias).» (faixa lida de `survey_results`, sem recalcular). Só preenche campos vazios; em sugestão intocada atualizada pela Mia, a justificativa do prazo acompanha o novo prazo. Modelo anterior (COPSOQ) e medidas manuais ficam sem preenchimento. Texto sem diagnóstico clínico e sem afirmar cumprimento legal.
+**Catálogo V11 (`Nr1MeasureCatalog`, só campanhas V11).** Para as 7 dimensões, a sugestão do motor recebe indicador e responsável sugerido (área/função), sempre editáveis pela Talents; origem do prazo «Sugerido pela Talents» e justificativa do prazo «Faixa da dimensão: {faixa}. Prazo de {N} dias contados da geração da sugestão, dentro da regra do plano (de 15 a 90 dias).» (faixa lida de `survey_results`, sem recalcular). Só preenche campos vazios; em sugestão intocada atualizada pela Mia, a justificativa do prazo acompanha o novo prazo. Modelo anterior (COPSOQ) e medidas manuais ficam sem preenchimento. Texto sem diagnóstico clínico e sem afirmar cumprimento legal.
 
 | Dimensão | Responsável sugerido |
 |----------|----------------------|
@@ -1629,7 +1643,7 @@ Uma trava na linha da campanha serializa execuções simultâneas; continuam a t
 | Esgotamento e Saúde Emocional | Gestão de Pessoas (RH) e SESMT, quando houver |
 | Percepção Organizacional | Diretoria e Comunicação Interna |
 
-Indicador, objetivo e resultado esperado de cada dimensão estão em `app/Support/Nr1MeasureCatalog.php`. O `--apply` do backfill em produção depende da revisão do conteúdo pela equipe.
+O indicador de cada dimensão está em `app/Support/Nr1MeasureCatalog.php`. O `--apply` do backfill em produção depende da revisão do conteúdo pela equipe.
 
 **Ciclo (rótulos do plano × valor gravado):**
 
@@ -1647,8 +1661,9 @@ stateDiagram-v2
 
 | Ação | Quem | Rota | Campos |
 |------|------|------|--------|
-| Nova medida | Talents | `POST /admin/companies/{c}/surveys/{s}/medidas` | fator (obrig.), descrição (obrig.), base de evidência (obrig.), responsável, prazo, objetivo, resultado esperado, indicador |
-| Editar sugestão | Talents (até publicar) | `PATCH …/medidas/{m}/sugestao` | fator, descrição, objetivo, resultado esperado, responsável, prazo, origem e nota do prazo, indicador, motivo |
+| Nova medida | Talents | `POST /admin/companies/{c}/surveys/{s}/medidas` | fator (obrig.; recusado se a dimensão já tem medida), descrição (obrig.), base de evidência (obrig.), responsável, prazo, indicador |
+| Editar sugestão | Talents (até publicar) | `PATCH …/medidas/{m}/sugestao` | fator, descrição, responsável, prazo, origem e nota do prazo, indicador, motivo |
+| Unificar sugestões duplicadas | Talents (`companies:edit`, também após publicar) | `PATCH …/medidas/unificar-duplicadas` | confirmação (obrig.) e IDs da prévia |
 | Mudar status | Talents | `PATCH …/medidas/{m}` | status |
 | Confirmar | Empresa (`planos_acao:edit`) | `POST /client/surveys/{s}/plano-de-acao/{m}/confirmar` | responsável (usuário ou texto), prazo (obrig.), motivo |
 | Ajustar | Empresa | `…/ajustar` | responsável, prazo, **motivo obrigatório** |

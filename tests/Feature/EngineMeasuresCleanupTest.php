@@ -115,7 +115,7 @@ class EngineMeasuresCleanupTest extends TestCase
     {
         $survey = $this->survey();
         $older = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Revisar metas.');
-        $fuller = $this->suggestion($survey, 'Demandas e sobrecarga', 'Mapear picos.', ['objective' => 'Equilibrar demandas.', 'indicator' => 'Percentual de equipes']);
+        $fuller = $this->suggestion($survey, 'Demandas e sobrecarga', 'Mapear picos.', ['indicator' => 'Percentual de equipes']);
 
         $this->artisan('nr1:dedupe-engine-measures', ['--apply' => true])->assertSuccessful();
 
@@ -125,9 +125,10 @@ class EngineMeasuresCleanupTest extends TestCase
         $merge = $kept->events()->where('field', 'merge')->sole();
         $this->assertNull($merge->user_id);
         $summary = json_decode($merge->new_value, true);
-        $this->assertSame([$older->id], $summary['removed_ids']);
-        $this->assertSame('Revisar metas.', $summary['removed_actions'][0]['measure_description']);
-        $this->assertTrue($this->latestExport('dedupe-engine-measures')['apply']);
+        $this->assertSame(['removed_ids' => [$older->id], 'text_merged_into_kept' => true], $summary, 'evento só com IDs, sem conteúdo');
+        $export = $this->latestExport('dedupe-engine-measures');
+        $this->assertTrue($export['apply']);
+        $this->assertSame('Revisar metas.', $export['groups'][0]['remove'][0]['measure_description'], 'o conteúdo removido fica no export');
     }
 
     public function test_discarded_with_evidence_or_human_change_is_kept_and_listed(): void
@@ -139,7 +140,7 @@ class EngineMeasuresCleanupTest extends TestCase
         $withEvidence = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Com evidência.');
         PsychosocialMeasureEvidence::query()->create(['measure_id' => $withEvidence->id, 'kind' => PsychosocialMeasureEvidence::KIND_TEXT, 'description' => 'Ata da reunião']);
         $withAuthor = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Editada.');
-        $this->service()->update($withAuthor, ['expected_result' => 'Escrito por pessoa'], User::factory()->create());
+        $this->service()->update($withAuthor, ['indicator' => 'Escrito por pessoa'], User::factory()->create());
 
         $this->artisan('nr1:dedupe-engine-measures', ['--apply' => true])
             ->expectsOutputToContain('Requer decisão manual #'.$withEvidence->id)
@@ -151,27 +152,40 @@ class EngineMeasuresCleanupTest extends TestCase
         $this->assertSame('Revisar metas.', $keeper->fresh()->measure_description);
     }
 
-    public function test_group_with_two_advanced_measures_is_left_untouched(): void
+    public function test_group_with_two_advanced_measures_keeps_both_and_removes_only_the_untouched_one(): void
     {
         $survey = $this->survey();
         $a = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Primeira.');
         $b = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Segunda.');
         $c = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Terceira.');
         PsychosocialMeasure::query()->whereKey([$a->id, $b->id])->update(['status' => PsychosocialMeasure::STATUS_PENDING]);
-        $before = $this->snapshot();
 
-        $this->artisan('nr1:dedupe-engine-measures', ['--apply' => true])->expectsOutputToContain('requer decisão manual')->assertSuccessful();
+        $this->artisan('nr1:dedupe-engine-measures', ['--apply' => true])->expectsOutputToContain('Requer decisão manual #'.$b->id)->assertSuccessful();
 
-        $this->assertSame($before, $this->snapshot());
-        $this->assertNotNull($c->fresh());
+        $this->assertSame('Primeira.', $a->fresh()->measure_description);
+        $this->assertSame('Segunda.', $b->fresh()->measure_description);
+        $this->assertNull($c->fresh(), 'só a sugestão intocada sai');
     }
 
-    public function test_confirmed_keeper_text_is_never_changed_the_action_goes_to_the_merge_event(): void
+    public function test_group_where_nothing_can_be_removed_is_left_untouched(): void
+    {
+        $survey = $this->survey();
+        $a = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Primeira.');
+        $b = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Segunda.');
+        PsychosocialMeasure::query()->whereKey([$a->id, $b->id])->update(['status' => PsychosocialMeasure::STATUS_PENDING]);
+        $before = $this->snapshot();
+
+        $this->artisan('nr1:dedupe-engine-measures', ['--apply' => true])->expectsOutputToContain('→ requer decisão manual')->assertSuccessful();
+
+        $this->assertSame($before, $this->snapshot());
+    }
+
+    public function test_confirmed_keeper_text_is_never_changed_the_action_goes_to_the_export(): void
     {
         $survey = $this->survey();
         $confirmed = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Revisar metas.');
         PsychosocialMeasure::query()->whereKey($confirmed->id)->update(['status' => PsychosocialMeasure::STATUS_PENDING]);
-        $duplicate = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Mapear picos.', ['objective' => 'a', 'indicator' => 'b', 'expected_result' => 'c']);
+        $duplicate = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Mapear picos.', ['indicator' => 'b', 'suggested_due_note' => 'c']);
 
         $this->artisan('nr1:dedupe-engine-measures', ['--apply' => true])->assertSuccessful();
 
@@ -179,7 +193,8 @@ class EngineMeasuresCleanupTest extends TestCase
         $this->assertNull(PsychosocialMeasure::query()->find($duplicate->id));
         $summary = json_decode($confirmed->events()->where('field', 'merge')->sole()->new_value, true);
         $this->assertFalse($summary['text_merged_into_kept']);
-        $this->assertSame('Mapear picos.', $summary['removed_actions'][0]['measure_description']);
+        $this->assertArrayNotHasKey('removed_actions', $summary, 'o evento não guarda conteúdo');
+        $this->assertSame('Mapear picos.', $this->latestExport('dedupe-engine-measures')['groups'][0]['remove'][0]['measure_description']);
     }
 
     public function test_dedupe_never_mixes_companies(): void
@@ -201,7 +216,7 @@ class EngineMeasuresCleanupTest extends TestCase
     public function test_backfill_fills_only_empty_fields_of_v11_engine_suggestions_to_approve(): void
     {
         $survey = $this->survey();
-        $target = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Revisar metas.', ['objective' => 'Objetivo da Talents.', 'suggested_due_date' => now()->addDays(45)->toDateString()]);
+        $target = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Revisar metas.', ['indicator' => 'Indicador da Talents.', 'suggested_due_date' => now()->addDays(45)->toDateString()]);
         $confirmed = $this->suggestion($survey, 'Esgotamento e Saúde Emocional', 'Pausas.');
         PsychosocialMeasure::query()->whereKey($confirmed->id)->update(['status' => PsychosocialMeasure::STATUS_PENDING]);
         $manual = $this->service()->createManual($survey, ['factor_label' => 'Liderança e Gestão', 'measure_description' => 'Formar líderes.', 'evidence_basis' => PsychosocialMeasure::BASIS_QUESTIONNAIRE_INDICATION], User::factory()->create());
@@ -216,14 +231,14 @@ class EngineMeasuresCleanupTest extends TestCase
 
         $target->refresh();
         $entry = Nr1MeasureCatalog::V11['Demandas e Sobrecarga'];
-        $this->assertSame('Objetivo da Talents.', $target->objective, 'nunca sobrescreve');
-        $this->assertSame($entry['indicator'], $target->indicator);
-        $this->assertSame($entry['expected_result'], $target->expected_result);
+        $this->assertSame('Indicador da Talents.', $target->indicator, 'nunca sobrescreve');
+        $this->assertNull($target->objective, '«Objetivo» saiu do catálogo');
+        $this->assertNull($target->expected_result, '«Resultado esperado» saiu do catálogo');
         $this->assertSame($entry['responsible'], $target->responsible_text);
         $this->assertSame('talents', $target->suggested_due_origin);
         $this->assertStringContainsString('Prazo de 45 dias contados da geração da sugestão', (string) $target->suggested_due_note);
         $this->assertStringStartsWith('Faixa da dimensão: ', (string) $target->suggested_due_note);
-        $this->assertSame(5, $target->events()->where('reason', 'Preenchimento automático do catálogo')->whereNull('user_id')->count());
+        $this->assertSame(3, $target->events()->where('reason', 'Preenchimento automático do catálogo')->whereNull('user_id')->count());
         $this->assertFalse($this->service()->isEditedByTalents($target), 'preenchimento automático não conta como edição');
 
         foreach ([$confirmed, $manual, $copsoq] as $untouched) {
@@ -258,7 +273,9 @@ class EngineMeasuresCleanupTest extends TestCase
 
         $filled = PsychosocialMeasure::query()->where('survey_id', $v11->id)->sole();
         $entry = Nr1MeasureCatalog::V11['Demandas e Sobrecarga'];
-        $this->assertSame($entry['objective'], $filled->objective);
+        $this->assertSame($entry['indicator'], $filled->indicator);
+        $this->assertNull($filled->objective, '«Objetivo» saiu do catálogo');
+        $this->assertNull($filled->expected_result, '«Resultado esperado» saiu do catálogo');
         $this->assertSame($entry['responsible'], $filled->responsible_text);
         $this->assertSame(PsychosocialMeasure::ORIGIN_ENGINE_SUGGESTION, $filled->origin);
         $this->assertSame(PsychosocialMeasure::STATUS_TO_APPROVE, $filled->status);
@@ -275,13 +292,13 @@ class EngineMeasuresCleanupTest extends TestCase
     {
         $this->fakeAi([['factor_label' => 'Demandas e Sobrecarga', 'measure_description' => 'Revisar metas.', 'suggested_due_days' => 30]]);
         $survey = $this->survey();
-        $measure = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Texto antigo.', ['objective' => 'Objetivo já gravado.']);
+        $measure = $this->suggestion($survey, 'Demandas e Sobrecarga', 'Texto antigo.', ['indicator' => 'Indicador já gravado.']);
 
         app(ActionMeasuresGenerator::class)->generate($survey, AiSetting::current());
 
         $measure->refresh();
-        $this->assertSame('Objetivo já gravado.', $measure->objective);
+        $this->assertSame('Indicador já gravado.', $measure->indicator);
         $this->assertSame('Revisar metas.', $measure->measure_description, 'intocada: a ação é atualizada no lugar');
-        $this->assertSame(Nr1MeasureCatalog::V11['Demandas e Sobrecarga']['indicator'], $measure->indicator, 'vazios são preenchidos');
+        $this->assertSame(Nr1MeasureCatalog::V11['Demandas e Sobrecarga']['responsible'], $measure->responsible_text, 'vazios são preenchidos');
     }
 }

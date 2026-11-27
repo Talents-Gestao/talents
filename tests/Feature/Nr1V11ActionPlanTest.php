@@ -14,6 +14,8 @@ use App\Models\User;
 use App\Models\UserPermission;
 use App\Services\PsychosocialDashboardBuilder;
 use App\Services\PsychosocialMeasureService;
+use App\Support\Nr1MeasureCatalog;
+use App\Support\Nr1Shell\Nr1ShellPageData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -112,7 +114,6 @@ class Nr1V11ActionPlanTest extends TestCase
                 'suggested_due_date' => $newDue,
                 'suggested_due_origin' => 'talents',
                 'suggested_due_note' => 'Depende do calendário de turnos.',
-                'objective' => 'Reduzir a sobrecarga percebida.',
                 'indicator' => 'Índice de Demandas e Sobrecarga',
                 'reason' => 'Ajuste após reunião com a diretoria.',
             ],
@@ -133,6 +134,44 @@ class Nr1V11ActionPlanTest extends TestCase
         $this->assertSame('Gerência de pessoas', $event->new_value);
         $this->assertSame($plan->talents->id, (int) $event->user_id);
         $this->assertSame('Ajuste após reunião com a diretoria.', $event->reason);
+    }
+
+    public function test_objective_and_expected_result_left_the_plan_without_deleting_data(): void
+    {
+        $plan = $this->plan();
+        // Dado antigo nas colunas: continua no banco, mas sai das telas e não é mais aceito.
+        PsychosocialMeasure::query()->whereKey($plan->measure->id)->update(['objective' => 'Objetivo antigo.', 'expected_result' => 'Resultado antigo.']);
+        $suggestionUrl = route('admin.companies.surveys.measures.suggestion', [$plan->company->id, $plan->survey->id, $plan->measure->id]);
+
+        $this->actingAs($plan->talents)->patch($suggestionUrl, ['objective' => 'Novo objetivo.', 'reason' => 'Teste'])
+            ->assertSessionHasErrors(['objective' => '«Objetivo» não faz mais parte do plano de ação.']);
+        $this->actingAs($plan->talents)->patch($suggestionUrl, ['expected_result' => 'Novo resultado.', 'reason' => 'Teste'])
+            ->assertSessionHasErrors(['expected_result' => '«Resultado esperado» não faz mais parte do plano de ação.']);
+        $this->actingAs($plan->talents)->post(route('admin.companies.surveys.measures.store', [$plan->company->id, $plan->survey->id]), [
+            'factor_label' => 'Liderança e Gestão', 'measure_description' => 'Formar líderes.', 'evidence_basis' => PsychosocialMeasure::BASIS_QUESTIONNAIRE_INDICATION,
+            'objective' => 'Objetivo.',
+        ])->assertSessionHasErrors('objective');
+
+        // Cliente antigo que ainda manda os campos vazios segue funcionando, sem gravar nada neles.
+        $this->actingAs($plan->talents)->patch($suggestionUrl, ['indicator' => 'Percentual de equipes', 'objective' => null, 'expected_result' => ''])
+            ->assertSessionHas('success');
+
+        $fresh = $plan->measure->fresh();
+        $this->assertSame('Objetivo antigo.', $fresh->objective);
+        $this->assertSame('Resultado antigo.', $fresh->expected_result);
+        $this->assertSame('Percentual de equipes', $fresh->indicator);
+
+        $this->expectException(PsychosocialMeasureException::class);
+        try {
+            $card = app(Nr1ShellPageData::class)->plan($plan->survey->fresh(), $plan->talents, true)['measures'][0];
+            $this->assertArrayNotHasKey('objective', $card);
+            $this->assertArrayNotHasKey('expected_result', $card);
+            foreach (Nr1MeasureCatalog::V11 as $entry) {
+                $this->assertSame(['indicator', 'responsible'], array_keys($entry));
+            }
+        } finally {
+            $this->service->updateSuggestion($fresh, ['objective' => 'Pelo serviço.'], $plan->talents, 'Teste');
+        }
     }
 
     public function test_talents_must_justify_replacing_an_existing_suggestion(): void

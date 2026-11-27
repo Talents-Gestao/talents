@@ -22,9 +22,11 @@ use App\Services\Nr1\Nr1OrientationVideoService;
 use App\Services\Psychosocial\InternalReviewService;
 use App\Services\PsychosocialDashboardBuilder;
 use App\Services\PsychosocialDashboardExtras;
+use App\Services\PsychosocialMeasureDeduplicator;
 use App\Support\Nr1BandLabels;
 use App\Support\Nr1GroupPrivacy;
 use App\Support\Nr1InstrumentMatrix;
+use App\Support\Nr1MeasureCatalog;
 use App\Support\PsychosocialMeasurePresenter;
 use App\Support\SurveyPublicationGate;
 use Illuminate\Http\Request;
@@ -223,13 +225,26 @@ class Nr1ShellPageData
     public function plan(Survey $survey, User $user, bool $forTalents): array
     {
         $dashboard = $this->dashboard->build($survey);
-        $scores = collect($dashboard['dimensions'] ?? [])->keyBy('title');
+        // Medida ↔ dimensão sempre pela chave normalizada (caixa, acento e espaços não importam).
+        $scores = collect($dashboard['dimensions'] ?? [])->keyBy(fn (array $dimension) => Nr1MeasureCatalog::dimensionKey((string) ($dimension['title'] ?? '')));
         $departmentsByFactor = $this->departmentsByFactor($dashboard);
         $rows = PsychosocialMeasure::query()->where('survey_id', $survey->id)->orderBy('sort_order')->orderBy('id')->get();
 
         $published = $survey->requires_publication && $survey->published_at !== null;
         $canEditSuggestion = $forTalents && ! $published && $user->canAccessAdmin(AdminPermissionModule::Companies, PermissionAction::Edit);
         $canAct = ! $forTalents && $user->canAccess(PermissionModule::PlanosAcao, PermissionAction::Edit);
+        // «Unificar sugestões duplicadas»: só Talents com a permissão de editar sugestões, também depois da publicação
+        // (só sai sugestão do motor intocada), e só quando há duplicata detectada.
+        $duplicates = null;
+        if ($forTalents && $user->canAccessAdmin(AdminPermissionModule::Companies, PermissionAction::Edit)) {
+            $deduplicator = app(PsychosocialMeasureDeduplicator::class);
+            $groups = $deduplicator->preview($survey);
+            $duplicates = $groups === [] ? null : [
+                'groups' => $groups,
+                'removable_ids' => $deduplicator->removableIds($survey),
+                'url' => route('admin.companies.surveys.measures.unify-duplicates', [$survey->company_id, $survey->id]),
+            ];
+        }
 
         $measures = $rows->map(function (PsychosocialMeasure $measure) use ($survey, $scores, $departmentsByFactor, $canEditSuggestion, $canAct, $forTalents): array {
             $downloads = $forTalents ? [] : $measure->evidences
@@ -237,8 +252,9 @@ class Nr1ShellPageData
                 ->mapWithKeys(fn (PsychosocialMeasureEvidence $evidence) => [$evidence->id => route('client.surveys.measures.evidences.download', [$survey->id, $measure->id, $evidence->id])])
                 ->all();
             $present = PsychosocialMeasurePresenter::present($measure, $downloads);
-            $score = $scores->get($measure->factor_label);
-            $departments = $departmentsByFactor[$measure->factor_label] ?? [];
+            $dimensionKey = Nr1MeasureCatalog::dimensionKey((string) $measure->factor_label);
+            $score = $scores->get($dimensionKey);
+            $departments = $departmentsByFactor[$dimensionKey] ?? [];
             $next = PsychosocialMeasure::PLAN_TRANSITIONS[$measure->status] ?? [];
             $action = fn (string $name, bool $allowed) => $canAct && $allowed ? route("client.surveys.measures.{$name}", [$survey->id, $measure->id]) : null;
 
@@ -248,8 +264,6 @@ class Nr1ShellPageData
                 'status_label' => $present['status_label'],
                 'factor_label' => $present['factor_label'],
                 'measure_description' => $present['measure_description'],
-                'objective' => $present['objective'],
-                'expected_result' => $present['expected_result'],
                 'indicator' => $present['indicator'],
                 'suggested' => $present['suggested'],
                 'confirmed' => $present['confirmed'],
@@ -280,6 +294,7 @@ class Nr1ShellPageData
             'counters' => ['confirmed' => $confirmed, 'pending' => $rows->count() - $confirmed, 'total' => $rows->count()],
             'canEditSuggestion' => $canEditSuggestion,
             'canAct' => $canAct,
+            'duplicates' => $duplicates,
             'users' => $canAct ? User::query()
                 ->whereHas('workspaces', fn ($q) => $q->where('company_id', $survey->company_id)->where('is_active', true))
                 ->orderBy('name')->get(['id', 'name'])->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name])->all() : [],
@@ -289,7 +304,7 @@ class Nr1ShellPageData
     }
 
     /**
-     * Setores em que a dimensão da medida está em atenção, com a faixa daquele recorte.
+     * Setores em que a dimensão da medida está em atenção, com a faixa daquele recorte, por chave normalizada da dimensão.
      *
      * @param  array<string, mixed>  $dashboard
      * @return array<string, list<array{name: string, band_label: ?string, score_label: ?string}>>
@@ -302,7 +317,7 @@ class Nr1ShellPageData
             if ($title === '' || ! Nr1BandLabels::isAttention($dimension['score'] ?? '')) {
                 return;
             }
-            $groups[$title][] = [
+            $groups[Nr1MeasureCatalog::dimensionKey($title)][] = [
                 'name' => $name,
                 'band_label' => $dimension['band_label'] ?? null,
                 'score_label' => $dimension['score_label'] ?? null,

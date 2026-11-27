@@ -17,7 +17,7 @@ use App\Models\SurveyResult;
  */
 final class Nr1MeasureSuggestionFiller
 {
-    public const CATALOG_FIELDS = ['indicator', 'objective', 'expected_result', 'responsible_text', 'suggested_due_origin', 'suggested_due_note'];
+    public const CATALOG_FIELDS = ['indicator', 'responsible_text', 'suggested_due_origin', 'suggested_due_note'];
 
     public static function appliesTo(Survey $survey): bool
     {
@@ -59,8 +59,6 @@ final class Nr1MeasureSuggestionFiller
 
         $fields = [
             'indicator' => $entry['indicator'],
-            'objective' => $entry['objective'],
-            'expected_result' => $entry['expected_result'],
             'responsible_text' => $entry['responsible'],
             'suggested_due_origin' => 'talents',
         ];

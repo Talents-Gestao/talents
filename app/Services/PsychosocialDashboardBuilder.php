@@ -12,6 +12,7 @@ use App\Models\SurveyGroupResult;
 use App\Models\SurveyMethodVersion;
 use App\Models\SurveyResult;
 use App\Support\Nr1BandLabels;
+use App\Support\Nr1DimensionTitle;
 use App\Support\Nr1GroupPrivacy;
 use Illuminate\Support\Collection;
 
@@ -547,7 +548,7 @@ class PsychosocialDashboardBuilder
     {
         return array_merge($this->presentRow($result), [
             'section_id' => (int) $result->survey_template_section_id,
-            'title' => (string) ($result->section?->title ?? $result->meta['section_title'] ?? 'Dimensão'),
+            'title' => Nr1DimensionTitle::of($result),
         ]);
     }
 

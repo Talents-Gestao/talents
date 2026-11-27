@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\File;
 
 /**
  * Preenche, com o catálogo V11 (Nr1MeasureCatalog), só os campos vazios das sugestões do motor de campanhas V11 ainda
- * «A aprovar»: indicador, objetivo, resultado esperado, responsável sugerido (área/função), origem e justificativa do
+ * «A aprovar»: indicador, responsável sugerido (área/função), origem e justificativa do
  * prazo (N = dias entre a criação e o prazo gravado). Nunca sobrescreve campo preenchido. Dry-run por padrão; só
  * --apply grava, com um evento sem autor por campo («Preenchimento automático do catálogo»). Exporta para
  * storage/app/nr1-exports. Modelo anterior (COPSOQ) e medidas manuais ficam de fora.
